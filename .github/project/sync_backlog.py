@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+FIELDS_INITIALIZED_MARKER = "<!-- backlog-fields-initialized -->"
+
 import json
 import os
 import subprocess
@@ -81,14 +83,24 @@ def build_issue_marker(issue_key: str) -> str:
     return f"<!-- backlog-key: {issue_key} -->"
 
 
-def build_issue_body(issue: dict[str, Any]) -> str:
+def build_issue_body(
+    issue: dict[str, Any],
+    existing_body: str = "",
+) -> str:
+    markers = [build_issue_marker(issue["key"])]
+
+    if FIELDS_INITIALIZED_MARKER in existing_body:
+        markers.append(FIELDS_INITIALIZED_MARKER)
+
+    marker_block = "\n".join(markers)
+
     acceptance_criteria = "\n".join(
         f"- [ ] {criterion}"
         for criterion in issue["acceptance_criteria"]
     )
 
     return f"""\
-{build_issue_marker(issue["key"])}
+{marker_block}
 
 ## Issue
 

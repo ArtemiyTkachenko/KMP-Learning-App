@@ -296,9 +296,10 @@ def update_child_issue(
     parent_number: int,
     github_issue_number: int,
     issue: dict[str, Any],
+    existing_body: str,
 ) -> None:
     title = build_issue_title(issue)
-    body = build_issue_body(issue)
+    body = build_issue_body(issue, existing_body)
 
     body_file = write_temp_body(body)
 
@@ -370,6 +371,7 @@ def synchronize(
                     parent_number=parent_number,
                     github_issue_number=number,
                     issue=issue,
+                    existing_body=existing.get("body") or "",
                 )
 
                 updated += 1

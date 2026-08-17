@@ -124,19 +124,51 @@ def find_child(
     return matches[0]
 
 
-def resolve_project_number(project_title: str) -> int:
-    projects = parse_collection(
-        run_gh(
-            "project",
-            "list",
-            "--owner",
-            "@me",
-            "--limit",
-            "100",
-            "--format",
-            "json",
-        ),
-        "projects",
+def resolve_project_number(
+    project_title: str,
+    repository: str,
+) -> int:
+    owner = repository.split("/", 1)[0]
+
+    query = """
+    query($owner: String!, $title: String!) {
+      user(login: $owner) {
+        projectsV2(first: 100, query: $title) {
+          nodes {
+            number
+            title
+          }
+        }
+      }
+    }
+    """
+
+    output = run_gh(
+        "api",
+        "graphql",
+        "-f",
+        f"query={query}",
+        "-f",
+        f"owner={owner}",
+        "-f",
+        f"title={project_title}",
+    )
+
+    data = json.loads(output)
+
+    user = (
+        data.get("data", {})
+        .get("user")
+    )
+
+    if not isinstance(user, dict):
+        fail(
+            f"Unable to resolve GitHub user '{owner}'."
+        )
+
+    projects = (
+        user.get("projectsV2", {})
+        .get("nodes", [])
     )
 
     matches = [
@@ -146,16 +178,23 @@ def resolve_project_number(project_title: str) -> int:
     ]
 
     if not matches:
-        fail(f"Project '{project_title}' was not found.")
+        fail(
+            f"Project '{project_title}' was not found "
+            f"under user '{owner}'."
+        )
 
     if len(matches) > 1:
-        fail(f"Multiple Projects are titled '{project_title}'.")
+        fail(
+            f"Multiple Projects are titled "
+            f"'{project_title}'."
+        )
 
     number = matches[0].get("number")
 
     if not isinstance(number, int):
         fail(
-            f"Project '{project_title}' has no valid project number."
+            f"Project '{project_title}' has no "
+            f"valid project number."
         )
 
     return number
@@ -346,7 +385,8 @@ def main() -> int:
                 )
 
         project_number = resolve_project_number(
-            project_title
+            project_title,
+            repository,
         )
 
         validate_project_fields(project_number)

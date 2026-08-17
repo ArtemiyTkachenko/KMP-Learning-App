@@ -109,7 +109,7 @@ epics:
 
         priority: "P1"
         size: "M"
-        initial_status: "In Progress"
+        initial_status: "Done"
 
       - key: E01-06
         title: "Plan Iteration 1"
@@ -333,7 +333,7 @@ epics:
 
         priority: "P1"
         size: "M"
-        initial_status: "In Progress"
+        initial_status: "Done"
 
       - key: E03-04
         title: "Automate child-issue synchronization"
@@ -357,7 +357,7 @@ epics:
 
         priority: "P1"
         size: "L"
-        initial_status: "Backlog"
+        initial_status: "Done"
 
       - key: E03-05
         title: "Automate GitHub Project field synchronization"
@@ -380,7 +380,7 @@ epics:
 
         priority: "P1"
         size: "M"
-        initial_status: "Backlog"
+        initial_status: "In Progress"
 
       - key: E03-06
         title: "Establish pull-request CI"

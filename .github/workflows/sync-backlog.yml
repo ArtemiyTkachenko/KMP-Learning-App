@@ -24,19 +24,69 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check PyYAML==6.0.3
 
+      # ------------------------------------------------------------
+      # 1. Validate backlog.yml before making any GitHub changes
+      # ------------------------------------------------------------
       - name: Validate backlog
         run: |
           python .github/project/validate_backlog.py \
             .github/project/backlog.yml
 
-      - name: Verify GitHub CLI sub-issue support
+      # ------------------------------------------------------------
+      # 2. Make sure the GitHub CLI installed on the runner supports
+      #    the functionality required by our synchronization scripts
+      # ------------------------------------------------------------
+      - name: Verify GitHub CLI capabilities
         run: |
+          echo "GitHub CLI version:"
+          gh --version
+
+          echo "Checking native sub-issue support..."
           gh issue create --help | grep -q -- "--parent"
 
+          echo "Checking Project field editing support..."
+          gh project item-edit --help | grep -q -- "--field"
+          gh project item-edit --help | grep -q -- "--value"
+
+          echo "Required GitHub CLI capabilities are available."
+
+      # ------------------------------------------------------------
+      # 3. Synchronize issues
+      #
+      #    - Find existing parent epics
+      #    - Create missing child issues
+      #    - Reuse/update existing child issues
+      #    - Establish native parent/sub-issue relationships
+      #    - Add child issues to the GitHub Project
+      # ------------------------------------------------------------
       - name: Synchronize child issues
         env:
           GH_TOKEN: ${{ secrets.PROJECT_PAT }}
           PROJECT_TITLE: ${{ vars.PROJECT_TITLE }}
         run: |
           python .github/project/sync_backlog.py \
+            .github/project/backlog.yml
+
+      # ------------------------------------------------------------
+      # 4. Synchronize Project fields
+      #
+      #    Priority:
+      #      Always synchronized from backlog.yml
+      #
+      #    Size:
+      #      Always synchronized from backlog.yml
+      #
+      #    Status:
+      #      Initialized once from initial_status.
+      #      Existing workflow status is preserved on future runs.
+      #
+      #    Iteration:
+      #      Never modified by backlog synchronization.
+      # ------------------------------------------------------------
+      - name: Synchronize Project fields
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_PAT }}
+          PROJECT_TITLE: ${{ vars.PROJECT_TITLE }}
+        run: |
+          python .github/project/sync_project_fields.py \
             .github/project/backlog.yml

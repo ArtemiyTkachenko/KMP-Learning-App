@@ -64,7 +64,7 @@ def load_repository_issues(repository: str) -> list[dict[str, Any]]:
         "--limit",
         "1000",
         "--json",
-        "number,title,body,url",
+        "number,title,body,url,parent",
     )
 
     data = json.loads(output)
@@ -294,16 +294,27 @@ def update_child_issue(
     repository: str,
     project_title: str,
     parent_number: int,
-    github_issue_number: int,
+    github_issue: dict[str, Any],
     issue: dict[str, Any],
-    existing_body: str,
 ) -> None:
+    github_issue_number = github_issue["number"]
+
     title = build_issue_title(issue)
+    existing_body = github_issue.get("body") or ""
     body = build_issue_body(issue, existing_body)
+
+    current_parent = github_issue.get("parent")
+
+    current_parent_number = (
+        current_parent.get("number")
+        if isinstance(current_parent, dict)
+        else None
+    )
 
     body_file = write_temp_body(body)
 
     try:
+        # Keep ordinary issue metadata synchronized.
         run_gh(
             "issue",
             "edit",
@@ -314,11 +325,58 @@ def update_child_issue(
             title,
             "--body-file",
             body_file,
-            "--parent",
-            str(parent_number),
             "--add-project",
             project_title,
         )
+
+        # Only modify the hierarchy when necessary.
+        if current_parent_number == parent_number:
+            print(
+                f"         parent already correct: #{parent_number}"
+            )
+
+        elif current_parent_number is None:
+            print(
+                f"         setting parent: #{parent_number}"
+            )
+
+            run_gh(
+                "issue",
+                "edit",
+                str(github_issue_number),
+                "--repo",
+                repository,
+                "--parent",
+                str(parent_number),
+            )
+
+        else:
+            print(
+                f"         changing parent: "
+                f"#{current_parent_number} -> #{parent_number}"
+            )
+
+            # Remove the incorrect relationship first.
+            run_gh(
+                "issue",
+                "edit",
+                str(github_issue_number),
+                "--repo",
+                repository,
+                "--remove-parent",
+            )
+
+            # Then establish the desired relationship.
+            run_gh(
+                "issue",
+                "edit",
+                str(github_issue_number),
+                "--repo",
+                repository,
+                "--parent",
+                str(parent_number),
+            )
+
     finally:
         Path(body_file).unlink(missing_ok=True)
 
@@ -369,9 +427,8 @@ def synchronize(
                     repository=repository,
                     project_title=project_title,
                     parent_number=parent_number,
-                    github_issue_number=number,
+                    github_issue=existing,
                     issue=issue,
-                    existing_body=existing.get("body") or "",
                 )
 
                 updated += 1

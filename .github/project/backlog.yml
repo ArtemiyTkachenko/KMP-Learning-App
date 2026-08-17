@@ -20,7 +20,7 @@ epics:
           - "Project scope and explicit exclusions are defined."
 
         priority: "Medium"
-        size: "S"
+        size: "P1"
         initial_status: "Done"
 
       - key: E01-02

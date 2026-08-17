@@ -19,8 +19,8 @@ epics:
           - "Primary learning objectives are defined."
           - "Project scope and explicit exclusions are defined."
 
-        priority: "Medium"
-        size: "P1"
+        priority: "P1"
+        size: "S"
         initial_status: "Done"
 
       - key: E01-02

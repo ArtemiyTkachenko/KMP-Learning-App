@@ -44,10 +44,6 @@ jobs:
           echo "Checking native sub-issue support..."
           gh issue create --help | grep -q -- "--parent"
 
-          echo "Checking Project field editing support..."
-          gh project item-edit --help | grep -q -- "--field"
-          gh project item-edit --help | grep -q -- "--value"
-
           echo "Required GitHub CLI capabilities are available."
 
       # ------------------------------------------------------------

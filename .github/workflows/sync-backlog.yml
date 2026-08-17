@@ -1,0 +1,30 @@
+name: Sync backlog
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate backlog
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install validation dependencies
+        run: |
+          python -m pip install --disable-pip-version-check PyYAML==6.0.3
+
+      - name: Validate backlog
+        run: |
+          python .github/project/validate_backlog.py \
+            .github/project/backlog.yml

@@ -1,0 +1,58 @@
+name: Create test epic
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  create-test-epic:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ensure epic label exists
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_PAT }}
+        run: |
+          gh label create epic \
+            --repo "$GITHUB_REPOSITORY" \
+            --description "Top-level project epic" \
+            --force
+
+      - name: Check whether test epic already exists
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_PAT }}
+        run: |
+          EXISTS=$(gh issue list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state all \
+            --label epic \
+            --json title \
+            --jq 'any(.[]; .title == "EPIC-01 Product & Backlog Management")')
+
+          echo "exists=$EXISTS" >> "$GITHUB_OUTPUT"
+
+      - name: Create test epic
+        if: steps.check.outputs.exists != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_PAT }}
+          PROJECT_TITLE: ${{ vars.PROJECT_TITLE }}
+        run: |
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "EPIC-01 Product & Backlog Management" \
+            --label "epic" \
+            --project "$PROJECT_TITLE" \
+            --body "## Goal
+
+          Establish the product-management structure for the Android/KMP learning project.
+
+          ## Scope
+
+          - Define and maintain the product backlog
+          - Practice issue prioritization and sizing
+          - Organize work into epics and iterations
+          - Maintain project status and delivery visibility"

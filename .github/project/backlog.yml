@@ -1,0 +1,522 @@
+epics:
+  - key: E01
+    github_title: "EPIC-01 Product & Backlog Management"
+
+    issues:
+      - key: E01-01
+        title: "Define project goals and scope"
+
+        issue: >
+          Establish what the project is intended to accomplish, what we
+          want to learn, and what is explicitly outside the project scope.
+
+        approach: >
+          Capture the agreed product goals, learning objectives, project
+          boundaries, and explicit exclusions.
+
+        acceptance_criteria:
+          - "Project goals are defined."
+          - "Primary learning objectives are defined."
+          - "Project scope and explicit exclusions are defined."
+
+        priority: "P1"
+        size: "S"
+        initial_status: "Done"
+
+      - key: E01-02
+        title: "Define initial epic roadmap"
+
+        issue: >
+          The project needs a high-level roadmap that separates the major
+          product, Android, KMP, delivery, and learning objectives into
+          manageable areas.
+
+        approach: >
+          Organize the project into top-level epics that represent coherent
+          areas of work and learning.
+
+        acceptance_criteria:
+          - "The initial project roadmap is divided into agreed top-level epics."
+          - "Each major project objective is represented by an epic."
+          - "All 20 agreed epics exist as GitHub issues."
+
+        priority: "P1"
+        size: "S"
+        initial_status: "Done"
+
+      - key: E01-03
+        title: "Configure GitHub Project workflow"
+
+        issue: >
+          The GitHub Project needs a consistent set of fields and workflow
+          states for managing work throughout the project.
+
+        approach: >
+          Configure the Project with the agreed Status, Priority, Size, and
+          Iteration fields and expose the native parent/sub-issue information.
+
+        acceptance_criteria:
+          - "Status supports Backlog, Ready, In Progress, and Done."
+          - "Priority supports P0, P1, P2, and P3."
+          - "Size supports XS, S, M, and L."
+          - "An Iteration field is available for planning."
+          - "Parent issue information can be displayed in the Project."
+
+        priority: "P1"
+        size: "S"
+        initial_status: "Done"
+
+      - key: E01-04
+        title: "Define issue conventions and completion rules"
+
+        issue: >
+          Issues need a consistent structure so that work can be understood,
+          prioritized, implemented, and evaluated without unnecessary
+          project-management overhead.
+
+        approach: >
+          Establish conventions for issue identifiers, titles, descriptions,
+          acceptance criteria, priorities, sizing, and workflow status.
+
+        acceptance_criteria:
+          - "Child issues use stable E##-## identifiers."
+          - "Issues describe both the underlying problem and the intended approach."
+          - "Acceptance criteria describe observable completion outcomes."
+          - "Priority and sizing rules are defined."
+          - "Ready and Done have distinct agreed meanings."
+
+        priority: "P1"
+        size: "S"
+        initial_status: "Done"
+
+      - key: E01-05
+        title: "Create initial prioritized backlog"
+
+        issue: >
+          The project currently has high-level epics but needs an actionable
+          near-term backlog.
+
+        approach: >
+          Refine the first project epics into appropriately scoped child issues
+          with clear descriptions, acceptance criteria, priorities, and sizes.
+
+        acceptance_criteria:
+          - "EPIC-01 through EPIC-04 have an agreed initial backlog."
+          - "Every child issue has a stable key."
+          - "Every child issue has clear acceptance criteria."
+          - "Every child issue has an assigned priority."
+          - "Every child issue has an assigned size."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Done"
+
+      - key: E01-06
+        title: "Plan Iteration 1"
+
+        issue: >
+          The project needs a realistic first iteration rather than attempting
+          to work directly from the entire backlog.
+
+        approach: >
+          Review dependencies, priorities, and issue sizes and select a
+          coherent amount of ready work for the first iteration.
+
+        acceptance_criteria:
+          - "Iteration 1 has a clearly defined goal."
+          - "Selected issues are sufficiently specified to begin work."
+          - "Blocking prerequisites for selected issues are resolved."
+          - "Selected issues are assigned to Iteration 1."
+          - "Selected issues are moved to Ready."
+
+        priority: "P1"
+        size: "S"
+        initial_status: "Backlog"
+
+      - key: E01-07
+        title: "Review and refine backlog after Iteration 1"
+
+        issue: >
+          The backlog should evolve based on what is learned during actual
+          implementation rather than being fully specified in advance.
+
+        approach: >
+          Review the completed iteration and use the findings to refine,
+          split, reprioritize, resize, add, or remove upcoming work.
+
+        acceptance_criteria:
+          - "Iteration 1 outcomes are reviewed."
+          - "Newly discovered work is represented in the backlog where appropriate."
+          - "Upcoming issues are reprioritized or resized where needed."
+          - "Issues that are too large are split before future iteration planning."
+
+        priority: "P2"
+        size: "S"
+        initial_status: "Backlog"
+
+
+  - key: E02
+    github_title: "EPIC-02 KMP Project Foundation"
+
+    issues:
+      - key: E02-01
+        title: "Bootstrap Kotlin Multiplatform project"
+
+        issue: >
+          The application needs a working Kotlin Multiplatform foundation
+          before shared functionality can be developed.
+
+        approach: >
+          Establish the initial KMP project structure using an intentionally
+          minimal configuration that can be expanded as the project progresses.
+
+        acceptance_criteria:
+          - "The project can be built successfully from a clean checkout."
+          - "The intended Kotlin Multiplatform structure exists."
+          - "The Android application target builds successfully."
+          - "The shared module builds successfully."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E02-02
+        title: "Establish Android app and shared-module boundaries"
+
+        issue: >
+          The project needs clear boundaries between Android-specific code and
+          code intended to be shared across platforms.
+
+        approach: >
+          Establish the initial Android application and shared-module
+          responsibilities and demonstrate communication between them.
+
+        acceptance_criteria:
+          - "The Android application can consume functionality from the shared module."
+          - "Android-specific code remains outside common shared source sets."
+          - "The initial responsibility boundary between app and shared code is clear."
+          - "The structure supports subsequent migration of domain functionality."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E02-03
+        title: "Establish Gradle and dependency conventions"
+
+        issue: >
+          Dependency and build configuration need a consistent structure before
+          additional modules and libraries are introduced.
+
+        approach: >
+          Establish centralized dependency/version management and consistent
+          Gradle conventions suitable for the initial multiplatform project.
+
+        acceptance_criteria:
+          - "Dependency versions are managed consistently."
+          - "Modules do not contain unnecessary duplicated version declarations."
+          - "The complete project builds successfully using the agreed configuration."
+          - "Adding future dependencies has a clear established pattern."
+
+        priority: "P1"
+        size: "S"
+        initial_status: "Backlog"
+
+      - key: E02-04
+        title: "Establish shared test structure"
+
+        issue: >
+          Shared code needs automated test support from the beginning so that
+          multiplatform domain and data logic can be developed safely.
+
+        approach: >
+          Configure the initial common test source set and add a minimal test
+          that verifies the shared testing pipeline.
+
+        acceptance_criteria:
+          - "Shared tests can be executed through the normal Gradle workflow."
+          - "At least one common test executes successfully."
+          - "A failing shared test causes the relevant test task to fail."
+          - "The test structure can be reused by subsequent shared functionality."
+
+        priority: "P2"
+        size: "S"
+        initial_status: "Backlog"
+
+      - key: E02-05
+        title: "Verify end-to-end project foundation"
+
+        issue: >
+          Individual pieces of the project foundation need to be verified
+          together before feature development begins.
+
+        approach: >
+          Add a minimal piece of shared functionality, consume it from the
+          Android application, and verify the complete build and test path.
+
+        acceptance_criteria:
+          - "The Android application successfully consumes shared functionality."
+          - "The shared functionality is covered by an automated test."
+          - "A clean project build succeeds."
+          - "All foundation tests pass."
+
+        priority: "P2"
+        size: "S"
+        initial_status: "Backlog"
+
+
+  - key: E03
+    github_title: "EPIC-03 Engineering Workflow Foundation"
+
+    issues:
+      - key: E03-01
+        title: "Establish GitHub Actions project access"
+
+        issue: >
+          GitHub Actions needs authenticated access to both the repository and
+          GitHub Project before project-management automation can be built.
+
+        approach: >
+          Configure repository secrets and permissions and verify them using a
+          manually triggered workflow.
+
+        acceptance_criteria:
+          - "A GitHub Actions workflow can authenticate successfully."
+          - "The workflow can create a repository issue."
+          - "The workflow can add the created issue to the GitHub Project."
+          - "Authentication credentials are stored as GitHub Actions secrets."
+
+        priority: "P1"
+        size: "S"
+        initial_status: "Done"
+
+      - key: E03-02
+        title: "Automate idempotent epic creation"
+
+        issue: >
+          Creating all project epics manually would be repetitive and would not
+          exercise the GitHub Actions automation goals of the project.
+
+        approach: >
+          Use a matrix-based GitHub Actions workflow to create the agreed epics
+          while checking for existing issues before creation.
+
+        acceptance_criteria:
+          - "All 20 agreed epic issues exist."
+          - "All created epics are added to the GitHub Project."
+          - "Epic issues use the epic label."
+          - "Rerunning the workflow does not create duplicate epics."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Done"
+
+      - key: E03-03
+        title: "Define version-controlled backlog schema"
+
+        issue: >
+          The project needs a maintainable representation of backlog definitions
+          that is separate from the automation used to synchronize them.
+
+        approach: >
+          Define a YAML-based backlog format containing stable keys, hierarchy,
+          issue descriptions, approaches, acceptance criteria, priorities,
+          sizes, and initial workflow state.
+
+        acceptance_criteria:
+          - "The backlog format represents epics and their child issues."
+          - "Every child issue has a stable unique key."
+          - "The format supports Issue, Approach, and Acceptance criteria sections."
+          - "Priority and Size are represented using the agreed values."
+          - "Initial Status is distinct from mutable GitHub workflow status."
+          - "Iteration is not stored as backlog-definition state."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Done"
+
+      - key: E03-04
+        title: "Automate child-issue synchronization"
+
+        issue: >
+          Backlog definitions need to be reflected in GitHub without requiring
+          every child issue to be created and maintained manually.
+
+        approach: >
+          Build a synchronization workflow that validates the backlog, resolves
+          existing parent epics, creates or reuses child issues, and establishes
+          native GitHub parent/sub-issue relationships.
+
+        acceptance_criteria:
+          - "The workflow validates backlog data before modifying GitHub."
+          - "Missing child issues are created from backlog definitions."
+          - "Existing child issues are reused rather than duplicated."
+          - "Each child issue is attached to the correct native GitHub parent issue."
+          - "Generated issue bodies contain Issue, Approach, and Acceptance criteria sections."
+          - "Rerunning the workflow does not create duplicate child issues."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Done"
+
+      - key: E03-05
+        title: "Automate GitHub Project field synchronization"
+
+        issue: >
+          Child issues created from the backlog also need their stable planning
+          metadata represented consistently in the GitHub Project.
+
+        approach: >
+          Extend backlog synchronization to resolve Project fields dynamically
+          and apply the configured Priority, Size, and initial Status values.
+
+        acceptance_criteria:
+          - "Every synchronized issue is added to the GitHub Project."
+          - "Priority is synchronized from backlog.yml."
+          - "Size is synchronized from backlog.yml."
+          - "Initial Status is applied when a new issue is created."
+          - "Existing mutable Status values are not reset by later synchronization."
+          - "Iteration values are not modified by backlog synchronization."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "In Progress"
+
+      - key: E03-06
+        title: "Establish pull-request CI"
+
+        issue: >
+          Code changes need automated validation before they can be considered
+          complete and merged into the main codebase.
+
+        approach: >
+          Configure a GitHub Actions workflow that runs the agreed build and
+          automated test checks for pull requests.
+
+        acceptance_criteria:
+          - "Pull requests automatically trigger CI."
+          - "The project build runs in CI."
+          - "Relevant automated tests run in CI."
+          - "A failing build or automated test produces a failed CI result."
+          - "A successful CI run demonstrates that the branch satisfies the automated checks."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E03-07
+        title: "Establish main-branch integration rules"
+
+        issue: >
+          The project needs a lightweight and consistent rule for how completed
+          work enters the main codebase.
+
+        approach: >
+          Adopt a pull-request-based integration workflow in which completed
+          changes are reviewed against acceptance criteria and validated by CI
+          before merge.
+
+        acceptance_criteria:
+          - "Normal implementation work is integrated through pull requests."
+          - "Relevant automated CI checks pass before work is considered Done."
+          - "Merged work satisfies the issue acceptance criteria."
+          - "The project's Done definition reflects successful integration into the main codebase."
+
+        priority: "P2"
+        size: "S"
+        initial_status: "Backlog"
+
+
+  - key: E04
+    github_title: "EPIC-04 Android Framework Refresher"
+
+    issues:
+      - key: E04-01
+        title: "Refresh Android lifecycle fundamentals"
+
+        issue: >
+          Android lifecycle behavior should be refreshed before building more
+          complex UI and presentation logic.
+
+        approach: >
+          Use a small focused exercise to revisit Activity and Fragment
+          lifecycle behavior and lifecycle-aware resource/state handling.
+
+        acceptance_criteria:
+          - "Activity lifecycle transitions can be explained and demonstrated."
+          - "Fragment view lifecycle versus Fragment lifecycle is understood."
+          - "The exercise handles lifecycle-dependent behavior correctly."
+          - "Relevant automated tests pass where practical."
+
+        priority: "P2"
+        size: "S"
+        initial_status: "Backlog"
+
+      - key: E04-02
+        title: "Refresh ViewModel and reactive state handling"
+
+        issue: >
+          ViewModel, StateFlow, and lifecycle-aware state observation are
+          foundational concepts for the later Compose architecture.
+
+        approach: >
+          Implement a small presentation example that exposes immutable UI state
+          from a ViewModel and observes it according to Android lifecycle rules.
+
+        acceptance_criteria:
+          - "UI state is owned by a ViewModel rather than the UI component."
+          - "State is exposed through an appropriate reactive API."
+          - "State observation respects the Android lifecycle."
+          - "Expected state survives relevant configuration changes."
+          - "Presentation behavior is covered by appropriate automated tests."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E04-03
+        title: "Refresh classic Views interoperability"
+
+        issue: >
+          A limited refresher on the classic Android Views stack is useful for
+          working with existing Android code and understanding Compose
+          interoperability, but should not dominate the project.
+
+        approach: >
+          Build a narrowly scoped Views-based example using the relevant legacy
+          UI concepts and compare its responsibilities with the Compose model.
+
+        acceptance_criteria:
+          - "A small Views-based UI example functions correctly."
+          - "View lifecycle and binding responsibilities are handled correctly."
+          - "The important interoperability boundary with Compose is understood."
+          - "No unnecessary legacy application architecture is introduced."
+
+        priority: "P3"
+        size: "S"
+        initial_status: "Backlog"
+
+      - key: E04-04
+        title: "Review legacy Android integration patterns"
+
+        issue: >
+          Common Android dependency injection, networking, and serialization
+          patterns should be refreshed sufficiently to recognize and work with
+          them without turning the project into a legacy-stack exercise.
+
+        approach: >
+          Review the roles and typical integration patterns of technologies such
+          as dependency injection, Retrofit-style networking, and JSON
+          serialization, with emphasis on how these concerns compare with the
+          later KMP architecture.
+
+        acceptance_criteria:
+          - "The role of dependency injection in Android architecture is understood."
+          - "The responsibilities of a Retrofit-style networking layer are understood."
+          - "Serialization responsibilities and boundaries are understood."
+          - "The differences between these Android-specific patterns and the planned KMP approach can be explained."
+          - "No unresolved foundational gap blocks subsequent project work."
+
+        priority: "P3"
+        size: "S"
+        initial_status: "Backlog"

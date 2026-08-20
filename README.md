@@ -44,3 +44,21 @@ Useful foundation checks:
 
 Use `./gradlew build` when a full local build is needed across Android,
 desktop, web, shared metadata, and native framework outputs.
+
+## Gradle And Dependency Conventions
+
+Dependency and plugin versions are centralized in `gradle/libs.versions.toml`.
+Module build files should consume catalog aliases such as `libs.compose.ui` or
+`libs.plugins.kotlinMultiplatform` rather than declaring dependency versions
+inline.
+
+When adding a dependency:
+
+1. Add or reuse the version and library alias in `gradle/libs.versions.toml`.
+2. Add the dependency only to the module and source set that actually needs it.
+3. Keep platform-specific dependencies out of `commonMain`.
+4. Prefer existing Gradle/module patterns before introducing new build
+   abstractions.
+
+Project dependencies use Gradle project references, for example
+`implementation(project(":shared"))`.

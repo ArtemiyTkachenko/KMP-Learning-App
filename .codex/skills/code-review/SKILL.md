@@ -16,6 +16,7 @@ Inspect for:
 - Correctness bugs and behavioral regressions.
 - Acceptance-criteria violations for referenced `E##-##` issues.
 - KMP boundary violations.
+- Class visibility correctness
 - Android lifecycle, coroutine, or platform issues where applicable.
 - Compose issues where applicable to current code.
 - Unnecessary complexity, speculative abstraction, or unrelated refactors.

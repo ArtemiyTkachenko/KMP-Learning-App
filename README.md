@@ -62,6 +62,17 @@ Useful foundation checks:
 Use `./gradlew build` when a full local build is needed across Android,
 desktop, web, shared metadata, and native framework outputs.
 
+## Shared Testing
+
+Common shared tests live in `shared/src/commonTest` and use `kotlin.test`.
+They should cover platform-independent behavior that belongs in shared code.
+
+Run shared tests with:
+
+```sh
+./gradlew :shared:allTests
+```
+
 ## Gradle And Dependency Conventions
 
 Dependency and plugin versions are centralized in `gradle/libs.versions.toml`.

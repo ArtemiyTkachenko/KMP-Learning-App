@@ -32,6 +32,23 @@ Shared code belongs in `shared/src/commonMain` only when it is genuinely
 platform-independent. Platform-specific behavior belongs in the appropriate
 platform source set.
 
+## Android And Shared Boundaries
+
+`androidApp` owns Android application concerns such as the Activity entry point,
+Android manifest, launcher resources, app id, SDK configuration, and Android
+preview setup. It depends on `:shared` and hosts the shared Compose entry point
+with `App()`.
+
+`:shared` owns code intended to be reused across configured targets. Common
+shared code lives in `shared/src/commonMain`; platform-specific implementations
+live in platform source sets such as `shared/src/androidMain`.
+
+When migrating future domain functionality, start from whether the concept is
+platform-independent. Domain rules and pure data transformations are candidates
+for shared code. Android framework integration, lifecycle entry points,
+permissions, resources, and other platform APIs should remain in Android-owned
+code or Android-specific source sets.
+
 ## Verification
 
 Useful foundation checks:

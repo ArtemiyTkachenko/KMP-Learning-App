@@ -464,91 +464,70 @@ epics:
 
     issues:
       - key: E04-01
-        title: "Refresh Android lifecycle fundamentals"
+        title: "Refresh Fragment architecture and lifecycle"
 
         issue: >
-          Android lifecycle behavior should be refreshed before building more
-          complex UI and presentation logic.
+          Although the project will primarily use Compose, understanding
+          Fragments remains useful for working with existing Android
+          applications, hybrid View/Compose codebases, and migration scenarios.
+          The main refresher need is understanding Fragment architecture and
+          the distinction between the Fragment lifecycle and its View lifecycle.
 
         approach: >
-          Use a small focused exercise to revisit Activity and Fragment
-          lifecycle behavior and lifecycle-aware resource/state handling.
+          Review Fragment architecture conceptually rather than building a
+          substantial Fragment-based feature. Focus on lifecycle behavior,
+          FragmentManager and navigation concepts, View lifecycle ownership,
+          ViewModel scoping, state restoration, communication patterns, and
+          the common lifecycle mistakes encountered in production Android
+          applications. Relate these concepts to modern Compose-first
+          application architecture where appropriate.
 
         acceptance_criteria:
-          - "Activity lifecycle transitions can be explained and demonstrated."
-          - "Fragment view lifecycle versus Fragment lifecycle is understood."
-          - "The exercise handles lifecycle-dependent behavior correctly."
-          - "Relevant automated tests pass where practical."
+          - "The purpose and responsibilities of a Fragment can be explained."
+          - "The difference between the Fragment lifecycle and Fragment View lifecycle can be explained."
+          - "The significance of onCreateView, onViewCreated, and onDestroyView is understood."
+          - "The reasons for clearing ViewBinding references when the Fragment View is destroyed are understood."
+          - "Lifecycle-aware state collection using the Fragment View lifecycle is understood."
+          - "FragmentManager, transactions, and back-stack behavior are understood conceptually."
+          - "Fragment-scoped and Activity-scoped ViewModel use cases can be distinguished."
+          - "Common Fragment lifecycle bugs and their causes can be identified."
+          - "The role of Fragments in hybrid View/Compose applications and Compose migration can be explained."
+          - "The situations in which a Compose-first screen does not require a Fragment are understood."
 
         priority: "P2"
         size: "S"
-        initial_status: "Backlog"
-
-      - key: E04-02
-        title: "Refresh ViewModel and reactive state handling"
-
-        issue: >
-          ViewModel, StateFlow, and lifecycle-aware state observation are
-          foundational concepts for the later Compose architecture.
-
-        approach: >
-          Implement a small presentation example that exposes immutable UI state
-          from a ViewModel and observes it according to Android lifecycle rules.
-
-        acceptance_criteria:
-          - "UI state is owned by a ViewModel rather than the UI component."
-          - "State is exposed through an appropriate reactive API."
-          - "State observation respects the Android lifecycle."
-          - "Expected state survives relevant configuration changes."
-          - "Presentation behavior is covered by appropriate automated tests."
-
-        priority: "P2"
-        size: "M"
         initial_status: "Backlog"
 
       - key: E04-03
-        title: "Refresh classic Views interoperability"
+        title: "Refresh Views and RecyclerView fundamentals"
 
         issue: >
-          A limited refresher on the classic Android Views stack is useful for
-          working with existing Android code and understanding Compose
-          interoperability, but should not dominate the project.
+          Compose replaces much of the classic Android View-based UI stack,
+          but knowledge of Views and RecyclerView remains important when
+          maintaining existing Android applications, reviewing legacy code,
+          or integrating Compose into an established View-based codebase.
 
         approach: >
-          Build a narrowly scoped Views-based example using the relevant legacy
-          UI concepts and compare its responsibilities with the Compose model.
+          Review the classic Android View model with particular emphasis on
+          RecyclerView. Focus on XML layouts, ViewBinding, RecyclerView,
+          Adapter and ViewHolder responsibilities, recycling behavior,
+          ListAdapter and DiffUtil, multiple view types, event handling, and
+          the conceptual relationship between RecyclerView and Compose lazy
+          lists. Treat this as a theory-focused refresher rather than building
+          a substantial legacy UI implementation.
 
         acceptance_criteria:
-          - "A small Views-based UI example functions correctly."
-          - "View lifecycle and binding responsibilities are handled correctly."
-          - "The important interoperability boundary with Compose is understood."
-          - "No unnecessary legacy application architecture is introduced."
+          - "The basic relationship between XML layouts, Views, and ViewBinding can be explained."
+          - "The responsibilities of RecyclerView, Adapter, ViewHolder, and LayoutManager can be explained."
+          - "The purpose of ViewHolder recycling and its implications for binding state are understood."
+          - "The risks of relying on stale adapter positions are understood."
+          - "The roles of DiffUtil, ListAdapter, and immutable list updates can be explained."
+          - "The difference between areItemsTheSame and areContentsTheSame can be explained."
+          - "Multiple RecyclerView view types and common event-propagation patterns are understood."
+          - "Common RecyclerView state and recycling bugs can be identified."
+          - "The conceptual differences between RecyclerView and Compose LazyColumn/LazyRow are understood."
+          - "Basic View and Compose interoperability using ComposeView and AndroidView can be explained."
 
-        priority: "P3"
-        size: "S"
-        initial_status: "Backlog"
-
-      - key: E04-04
-        title: "Review legacy Android integration patterns"
-
-        issue: >
-          Common Android dependency injection, networking, and serialization
-          patterns should be refreshed sufficiently to recognize and work with
-          them without turning the project into a legacy-stack exercise.
-
-        approach: >
-          Review the roles and typical integration patterns of technologies such
-          as dependency injection, Retrofit-style networking, and JSON
-          serialization, with emphasis on how these concerns compare with the
-          later KMP architecture.
-
-        acceptance_criteria:
-          - "The role of dependency injection in Android architecture is understood."
-          - "The responsibilities of a Retrofit-style networking layer are understood."
-          - "Serialization responsibilities and boundaries are understood."
-          - "The differences between these Android-specific patterns and the planned KMP approach can be explained."
-          - "No unresolved foundational gap blocks subsequent project work."
-
-        priority: "P3"
+        priority: "P2"
         size: "S"
         initial_status: "Backlog"

@@ -74,3 +74,32 @@ This repository is an Android / Kotlin Multiplatform learning and portfolio proj
 ## Learning Handoff
 
 For non-trivial generated changes, explain the important Android/KMP/Compose/Gradle choices, files worth reviewing, meaningful alternatives or tradeoffs, tests run, and anything not validated. Do not explain trivial Kotlin syntax unless asked.
+
+## Code Review Rules
+
+Automated and manual code reviews should focus on substantive engineering issues rather than stylistic noise.
+
+Prioritize findings involving:
+
+- correctness bugs and behavioral regressions;
+- violations of relevant issue acceptance criteria;
+- incorrect Kotlin Multiplatform boundaries;
+- accidental Android/platform dependencies in shared code;
+- incorrect dependency direction between platform-specific and shared modules;
+- meaningful missing or inadequate automated tests;
+- Gradle/build configuration problems;
+- unnecessary dependencies or premature abstractions;
+- Android lifecycle or coroutine issues where relevant;
+- Compose state, side-effect, or lifecycle issues where relevant;
+- accidental unrelated changes;
+- security or reliability problems where relevant.
+
+De-emphasize or omit:
+
+- formatting-only comments;
+- subjective naming preferences with no meaningful maintainability impact;
+- stylistic suggestions already handled by tooling;
+- speculative architecture rewrites unrelated to the issue;
+- comments made only to produce review output.
+
+Prioritize review findings by severity. Do not manufacture findings when the implementation is sound. For each substantive finding, identify the concrete problem, why it matters, and the smallest appropriate correction.

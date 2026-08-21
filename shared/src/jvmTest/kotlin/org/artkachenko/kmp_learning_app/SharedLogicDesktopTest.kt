@@ -3,10 +3,10 @@ package org.artkachenko.kmp_learning_app
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class SharedLogicDesktopTest {
+internal class SharedLogicDesktopTest {
 
     @Test
-    fun example() {
-        assertEquals(3, 1 + 2)
+    fun sharedGreetingRunsOnDesktopJvm() {
+        assertEquals("Hello, desktop JVM!", sayHello("desktop JVM"))
     }
 }

@@ -18,6 +18,15 @@ This repository is an Android / Kotlin Multiplatform learning and portfolio proj
 - Follow established repository conventions unless the task explicitly changes them.
 - Introduce dependencies only for concrete requirements, and explain material tradeoffs.
 - Preserve generated/project files unless the task specifically requires changing them.
+- Before finishing, inspect the final diff and verify every changed file is directly related to the requested task.
+- Check `git status --short` before reporting completion and keep generated build/cache output out of the final diff unless the task intentionally changes generated or lock files.
+
+## Kotlin Code Style
+
+- Use the narrowest practical visibility for new Kotlin declarations and declarations changed during a task.
+- Prefer `private` for file-local helpers and implementation details.
+- Prefer `internal` for module/source-set implementation details, including most test classes.
+- Use public visibility only for intentional module APIs, framework entry points, serialization/reflection requirements, Compose previews when needed, or platform lifecycle APIs.
 
 ## Kotlin Multiplatform Boundaries
 
@@ -41,6 +50,7 @@ This repository is an Android / Kotlin Multiplatform learning and portfolio proj
 - Add or update tests for meaningful behavior changes.
 - Prefer tests of observable behavior over implementation details.
 - Prefer `commonTest` for genuinely shared behavior; use platform test source sets for platform-specific behavior.
+- Test classes and helpers should usually be `internal` or `private`; after reducing visibility, run the relevant test task to confirm test discovery still works.
 - Do not add mocking or test dependencies simply to increase test count.
 - Run the narrowest relevant checks first, then a broader check when the change warrants it.
 - Useful current commands:

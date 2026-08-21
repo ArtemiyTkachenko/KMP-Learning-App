@@ -3,10 +3,10 @@ package org.artkachenko.kmp_learning_app
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class SharedLogicAndroidHostTest {
+internal class SharedLogicAndroidHostTest {
 
     @Test
-    fun example() {
-        assertEquals(3, 1 + 2)
+    fun sharedGreetingRunsOnAndroidHost() {
+        assertEquals("Hello, Android host!", sayHello("Android host"))
     }
 }

@@ -426,36 +426,36 @@ epics:
         size: "S"
         initial_status: "Backlog"
      - key: E03-08
-        title: "Add automatic pull-request code review"
+       title: "Add automatic pull-request code review"
 
-        issue: >
-          Pull requests currently have automated build and test validation,
-          but they do not receive a guaranteed automated semantic code review.
-          The repository should automatically request at least one Codex review
-          for every pull request entering the normal review workflow.
+       issue: >
+         Pull requests currently have automated build and test validation,
+         but they do not receive a guaranteed automated semantic code review.
+         The repository should automatically request at least one Codex review
+         for every pull request entering the normal review workflow.
 
-        approach: >
-          Configure the repository's Codex GitHub integration so that every
-          non-draft pull request receives an automatic review when it is opened,
-          or when it becomes ready for review if GitHub/Codex uses the
-          draft-to-ready transition as the supported trigger. Keep manual
-          @codex review available for additional review passes after substantial
-          changes. Treat Codex review as advisory initially while retaining the
-          existing deterministic Build and test CI check as the required merge
-          gate.
+       approach: >
+         Configure the repository's Codex GitHub integration so that every
+         non-draft pull request receives an automatic review when it is opened,
+         or when it becomes ready for review if GitHub/Codex uses the
+         draft-to-ready transition as the supported trigger. Keep manual
+         @codex review available for additional review passes after substantial
+         changes. Treat Codex review as advisory initially while retaining the
+         existing deterministic Build and test CI check as the required merge
+         gate.
 
-        acceptance_criteria:
-          - "Codex automatic pull-request review is enabled for the repository."
-          - "Every non-draft pull request receives at least one automatic Codex review without requiring a manual @codex review command."
-          - "If a pull request is created as a draft, an automatic review is triggered when it becomes ready for review where supported by Codex."
-          - "Manual @codex review remains available for additional review passes."
-          - "Automated Codex review remains advisory and is not initially configured as a required merge check."
-          - "The existing Build and test CI check remains the required deterministic merge gate."
-          - "The automatic review uses the repository's existing project and agent guidance where supported."
+       acceptance_criteria:
+         - "Codex automatic pull-request review is enabled for the repository."
+         - "Every non-draft pull request receives at least one automatic Codex review without requiring a manual @codex review command."
+         - "If a pull request is created as a draft, an automatic review is triggered when it becomes ready for review where supported by Codex."
+         - "Manual @codex review remains available for additional review passes."
+         - "Automated Codex review remains advisory and is not initially configured as a required merge check."
+         - "The existing Build and test CI check remains the required deterministic merge gate."
+         - "The automatic review uses the repository's existing project and agent guidance where supported."
 
-        priority: "P2"
-        size: "S"
-        initial_status: "Backlog"  
+       priority: "P2"
+       size: "S"
+       initial_status: "Backlog"  
 
 
   - key: E04

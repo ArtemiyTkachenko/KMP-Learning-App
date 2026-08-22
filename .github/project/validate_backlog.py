@@ -20,6 +20,13 @@ ROOT_FIELDS = {"epics"}
 EPIC_FIELDS = {
     "key",
     "github_title",
+    "goal",
+    "issues",
+}
+
+EPIC_REQUIRED_FIELDS = {
+    "key",
+    "github_title",
     "issues",
 }
 
@@ -46,12 +53,14 @@ def fail(message: str) -> None:
 def require_mapping(value: Any, location: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         fail(f"{location} must be a mapping/object.")
+
     return value
 
 
 def require_list(value: Any, location: str) -> list[Any]:
     if not isinstance(value, list):
         fail(f"{location} must be a list.")
+
     return value
 
 
@@ -101,7 +110,10 @@ def validate_acceptance_criteria(
     )
 
     if not criteria:
-        fail(f"{issue_key}.acceptance_criteria must contain at least one item.")
+        fail(
+            f"{issue_key}.acceptance_criteria "
+            "must contain at least one item."
+        )
 
     normalized_criteria: list[str] = []
 
@@ -110,10 +122,14 @@ def validate_acceptance_criteria(
             criterion,
             f"{issue_key}.acceptance_criteria[{index}]",
         )
+
         normalized_criteria.append(text)
 
     if len(normalized_criteria) != len(set(normalized_criteria)):
-        fail(f"{issue_key}.acceptance_criteria contains duplicate items.")
+        fail(
+            f"{issue_key}.acceptance_criteria "
+            "contains duplicate items."
+        )
 
 
 def validate_issue(
@@ -121,10 +137,22 @@ def validate_issue(
     parent_epic_key: str,
     seen_issue_keys: set[str],
 ) -> None:
-    issue = require_mapping(issue, f"Issue under {parent_epic_key}")
+    issue = require_mapping(
+        issue,
+        f"Issue under {parent_epic_key}",
+    )
 
-    validate_allowed_fields(issue, ISSUE_FIELDS, f"Issue under {parent_epic_key}")
-    validate_required_fields(issue, ISSUE_FIELDS, f"Issue under {parent_epic_key}")
+    validate_allowed_fields(
+        issue,
+        ISSUE_FIELDS,
+        f"Issue under {parent_epic_key}",
+    )
+
+    validate_required_fields(
+        issue,
+        ISSUE_FIELDS,
+        f"Issue under {parent_epic_key}",
+    )
 
     issue_key = require_non_empty_string(
         issue["key"],
@@ -141,7 +169,8 @@ def validate_issue(
 
     if not issue_key.startswith(expected_prefix):
         fail(
-            f"{issue_key}: key does not match parent epic {parent_epic_key}."
+            f"{issue_key}: key does not match "
+            f"parent epic {parent_epic_key}."
         )
 
     if issue_key in seen_issue_keys:
@@ -156,8 +185,9 @@ def validate_issue(
 
     if issue_key in title:
         fail(
-            f"{issue_key}.title must not contain the issue key. "
-            "The synchronizer will add it automatically."
+            f"{issue_key}.title must not contain "
+            "the issue key. The synchronizer will "
+            "add it automatically."
         )
 
     require_non_empty_string(
@@ -182,8 +212,9 @@ def validate_issue(
 
     if priority not in ALLOWED_PRIORITIES:
         fail(
-            f"{issue_key}.priority has invalid value '{priority}'. "
-            f"Allowed values: {', '.join(sorted(ALLOWED_PRIORITIES))}"
+            f"{issue_key}.priority has invalid value "
+            f"'{priority}'. Allowed values: "
+            f"{', '.join(sorted(ALLOWED_PRIORITIES))}"
         )
 
     size = require_non_empty_string(
@@ -193,8 +224,8 @@ def validate_issue(
 
     if size not in ALLOWED_SIZES:
         fail(
-            f"{issue_key}.size has invalid value '{size}'. "
-            "Allowed values: XS, S, M, L"
+            f"{issue_key}.size has invalid value "
+            f"'{size}'. Allowed values: XS, S, M, L"
         )
 
     initial_status = require_non_empty_string(
@@ -217,8 +248,17 @@ def validate_epic(
 ) -> int:
     epic = require_mapping(epic, "Epic")
 
-    validate_allowed_fields(epic, EPIC_FIELDS, "Epic")
-    validate_required_fields(epic, EPIC_FIELDS, "Epic")
+    validate_allowed_fields(
+        epic,
+        EPIC_FIELDS,
+        "Epic",
+    )
+
+    validate_required_fields(
+        epic,
+        EPIC_REQUIRED_FIELDS,
+        "Epic",
+    )
 
     epic_key = require_non_empty_string(
         epic["key"],
@@ -250,6 +290,12 @@ def validate_epic(
             f"'{expected_prefix}'. Found: '{github_title}'"
         )
 
+    if "goal" in epic:
+        require_non_empty_string(
+            epic["goal"],
+            f"{epic_key}.goal",
+        )
+
     issues = require_list(
         epic["issues"],
         f"{epic_key}.issues",
@@ -277,10 +323,22 @@ def validate_backlog(path: Path) -> tuple[int, int]:
 
     root = require_mapping(data, "Root")
 
-    validate_allowed_fields(root, ROOT_FIELDS, "Root")
-    validate_required_fields(root, ROOT_FIELDS, "Root")
+    validate_allowed_fields(
+        root,
+        ROOT_FIELDS,
+        "Root",
+    )
 
-    epics = require_list(root["epics"], "epics")
+    validate_required_fields(
+        root,
+        ROOT_FIELDS,
+        "Root",
+    )
+
+    epics = require_list(
+        root["epics"],
+        "epics",
+    )
 
     if not epics:
         fail("epics must contain at least one epic.")
@@ -310,7 +368,10 @@ def main() -> int:
     print(f"Validating {backlog_path}...")
 
     try:
-        epic_count, issue_count = validate_backlog(backlog_path)
+        epic_count, issue_count = validate_backlog(
+            backlog_path
+        )
+
     except ValidationError as error:
         print()
         print("BACKLOG VALIDATION FAILED")
@@ -325,6 +386,7 @@ def main() -> int:
     print(f"Issues: {issue_count}")
     print()
     print("No GitHub changes were made.")
+
     return 0
 
 

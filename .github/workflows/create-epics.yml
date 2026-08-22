@@ -19,22 +19,6 @@ jobs:
           - "EPIC-02 KMP Project Foundation"
           - "EPIC-03 Engineering Workflow Foundation"
           - "EPIC-04 Android Framework Refresher"
-          - "EPIC-05 Android Application Infrastructure"
-          - "EPIC-06 Core Learning & Exam Domain"
-          - "EPIC-07 Compose UI Migration"
-          - "EPIC-08 Compose State, Lifecycle & Presentation"
-          - "EPIC-09 Compose Quality, Testing & Performance"
-          - "EPIC-10 Shared Domain Migration"
-          - "EPIC-11 Shared Data & Networking"
-          - "EPIC-12 Multiplatform Persistence"
-          - "EPIC-13 Shared Presentation & Dependency Construction"
-          - "EPIC-14 Compose Multiplatform UI"
-          - "EPIC-15 Desktop Application"
-          - "EPIC-16 Basic iOS Application"
-          - "EPIC-17 CI/CD Maturation"
-          - "EPIC-18 Architecture Decisions & Technical Documentation"
-          - "EPIC-19 Senior Android/KMP Interview Curriculum"
-          - "EPIC-20 Portfolio & Interview Case Study"
 
     steps:
       - name: Check whether epic exists

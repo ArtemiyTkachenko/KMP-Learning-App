@@ -116,4 +116,6 @@ Prefer, in order:
 
 Comments should explain **why** a decision or constraint exists, not restate what the code does.
 
-When a task requires choosing between multiple reasonable approaches and the choice is not already documented, include the decision and rationale in the implementation handoff and, when it is likely to matter later, persist it in the repository documentation.
+If a future maintainer is likely to reasonably ask "Why was this done this way?", document that reasoning somewhere durable.
+
+When choosing between multiple reasonable approaches and the choice is not already documented, include the decision and rationale in the implementation handoff and persist it in repository documentation when it is likely to matter later.

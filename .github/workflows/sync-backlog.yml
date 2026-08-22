@@ -33,8 +33,9 @@ jobs:
             .github/project/backlog.yml
 
       # ------------------------------------------------------------
-      # 2. Make sure the GitHub CLI installed on the runner supports
-      #    the functionality required by our synchronization scripts
+      # 2. Verify that the GitHub CLI installed on the runner
+      #    supports the native parent/sub-issue functionality used
+      #    by the synchronization script
       # ------------------------------------------------------------
       - name: Verify GitHub CLI capabilities
         run: |
@@ -47,15 +48,23 @@ jobs:
           echo "Required GitHub CLI capabilities are available."
 
       # ------------------------------------------------------------
-      # 3. Synchronize issues
+      # 3. Synchronize backlog issues
       #
-      #    - Find existing parent epics
-      #    - Create missing child issues
-      #    - Reuse/update existing child issues
-      #    - Establish native parent/sub-issue relationships
-      #    - Add child issues to the GitHub Project
+      #    Parent epics:
+      #      - Create missing epics
+      #      - Update existing epic titles and managed goals
+      #      - Ensure the epic label is applied
+      #      - Add epics to the GitHub Project
+      #
+      #    Child issues:
+      #      - Create missing child issues
+      #      - Reuse/update existing child issues
+      #      - Establish native parent/sub-issue relationships
+      #      - Add child issues to the GitHub Project
+      #
+      #    Removal from backlog.yml is intentionally non-destructive.
       # ------------------------------------------------------------
-      - name: Synchronize child issues
+      - name: Synchronize backlog issues
         env:
           GH_TOKEN: ${{ secrets.PROJECT_PAT }}
           PROJECT_TITLE: ${{ vars.PROJECT_TITLE }}
@@ -64,7 +73,7 @@ jobs:
             .github/project/backlog.yml
 
       # ------------------------------------------------------------
-      # 4. Synchronize Project fields
+      # 4. Synchronize child-issue Project fields
       #
       #    Priority:
       #      Always synchronized from backlog.yml
@@ -78,6 +87,9 @@ jobs:
       #
       #    Iteration:
       #      Never modified by backlog synchronization.
+      #
+      #    Parent epics themselves do not receive Priority, Size,
+      #    or initial Status values from this step.
       # ------------------------------------------------------------
       - name: Synchronize Project fields
         env:

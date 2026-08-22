@@ -425,7 +425,7 @@ epics:
         priority: "P2"
         size: "S"
         initial_status: "Backlog"
-        
+
       - key: E03-08
         title: "Add automatic pull-request code review"
 
@@ -456,7 +456,7 @@ epics:
 
         priority: "P2"
         size: "S"
-        initial_status: "Backlog"  
+        initial_status: "Backlog"
 
 
   - key: E04
@@ -531,3 +531,101 @@ epics:
         priority: "P2"
         size: "S"
         initial_status: "Backlog"
+
+
+  - key: E05
+    github_title: "EPIC-05 KMP Application Shell & Navigation"
+
+    goal: >
+      Establish the KMP-first application shell that will host the interview
+      preparation product. Define the top-level application structure,
+      navigation model, application composition, and mobile-oriented execution
+      path while keeping Android as the primary development and validation
+      platform.
+
+    issues: []
+
+
+  - key: E06
+    github_title: "EPIC-06 Android Interview Curriculum & Content"
+
+    goal: >
+      Define the structured Android interview curriculum and the content model
+      used by the application. Establish topics, subtopics, questions, answer
+      options, correct answers, explanations, authoritative sources, and stable
+      content identities suitable for bundled application content.
+
+    issues: []
+
+
+  - key: E07
+    github_title: "EPIC-07 Local Data & Content Import"
+
+    goal: >
+      Establish the local-first data layer for the application. Support
+      importing bundled structured interview content into local persistence,
+      validating that content, and providing the runtime data access required
+      by the rest of the application without introducing networking or backend
+      dependencies.
+
+    issues: []
+
+
+  - key: E08
+    github_title: "EPIC-08 Learning & Assessment Engine"
+
+    goal: >
+      Build the shared domain capabilities required to create and complete
+      assessments. Support question selection, focused and mixed test
+      configurations, individual question attempts, test attempts, scoring,
+      completion, and retakes through a common assessment model.
+
+    issues: []
+
+
+  - key: E09
+    github_title: "EPIC-09 Topic Study & Focused Practice"
+
+    goal: >
+      Deliver the focused learning journey in which users can browse Android
+      interview topics and subtopics, start targeted tests, answer questions,
+      review results and explanations, follow authoritative source references,
+      and repeat focused practice.
+
+    issues: []
+
+
+  - key: E10
+    github_title: "EPIC-10 Mixed Android Interview"
+
+    goal: >
+      Deliver the primary interview-readiness experience by allowing users to
+      take a mixed Android assessment covering multiple areas of the curriculum.
+      Provide appropriate cross-topic question selection, an overall result,
+      topic-level performance information, and answer review.
+
+    issues: []
+
+
+  - key: E11
+    github_title: "EPIC-11 Progress, Statistics & Mistake Review"
+
+    goal: >
+      Turn persisted assessment history into useful learning feedback. Derive
+      overall, topic, and subtopic performance from real attempts, identify
+      weak areas, preserve useful attempt history, and provide a workflow for
+      reviewing previously incorrect questions and their explanations.
+
+    issues: []
+
+
+  - key: E12
+    github_title: "EPIC-12 MVP Quality, Testing & Hardening"
+
+    goal: >
+      Bring the complete MVP to a defensible engineering standard by reviewing
+      correctness, automated test coverage, KMP boundaries, persistence and
+      content-import reliability, Compose behavior, accessibility, relevant
+      performance concerns, and CI coverage across the implemented product.
+
+    issues: []

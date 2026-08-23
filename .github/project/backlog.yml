@@ -543,7 +543,157 @@ epics:
       path while keeping Android as the primary development and validation
       platform.
 
-    issues: []
+    issues:
+      - key: E05-01
+        title: "Establish shared application root and mobile shell"
+
+        issue: >
+          The project has a working Kotlin Multiplatform foundation but needs
+          a durable shared application root before product features are added.
+          Platform entry points should remain thin while the normal application
+          UI and application-level composition live in shared code.
+
+        approach: >
+          Establish a shared App entry point using Compose Multiplatform and
+          Material 3. Configure the basic mobile-oriented application container
+          and shared resource usage while keeping Android as the primary
+          execution target. Keep platform modules responsible only for the
+          platform-specific bootstrap required to host the shared application.
+
+        acceptance_criteria:
+          - "A shared Compose Multiplatform App entry point exists."
+          - "The Android application launches the shared App entry point."
+          - "Normal application UI composition lives in shared code rather than the Android platform module."
+          - "Material 3 is established as the application UI component baseline."
+          - "Compose Multiplatform Resources can be used from shared UI code."
+          - "The application shell assumes a mobile layout without introducing tablet or desktop-specific UI patterns."
+          - "No interview-preparation feature implementation is introduced as part of the shell."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+
+      - key: E05-02
+        title: "Establish Navigation 3 and typed routes"
+
+        issue: >
+          The application needs a shared navigation foundation before product
+          journeys can be implemented. Navigation should be type-safe,
+          compatible with Kotlin Multiplatform, and owned explicitly by the
+          application rather than relying on string route identifiers.
+
+        approach: >
+          Introduce Navigation 3 in shared code. Define a small typed route
+          hierarchy using NavKey and kotlinx.serialization, establish the
+          application-owned back stack and NavDisplay, and add only the
+          placeholder destinations necessary to demonstrate forward and back
+          navigation. Keep the route model independent of unfinished product
+          domain implementations.
+
+        acceptance_criteria:
+          - "Navigation 3 is configured in shared application code."
+          - "Navigation destinations are represented by typed NavKey objects rather than string route identifiers."
+          - "The initial route hierarchy supports serialization using kotlinx.serialization."
+          - "The application owns and manages its navigation back stack explicitly."
+          - "NavDisplay renders destinations from the shared navigation state."
+          - "Forward navigation between at least two placeholder destinations works."
+          - "Back navigation returns to the previous destination correctly."
+          - "The navigation implementation does not introduce Decompose, Voyager, or another competing navigation framework."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+
+      - key: E05-03
+        title: "Establish shared presentation state and lifecycle conventions"
+
+        issue: >
+          Shared screens need a consistent presentation-state model before
+          feature development begins. ViewModels must also have predictable
+          lifecycle ownership when used with Navigation 3.
+
+        approach: >
+          Establish the shared presentation pattern using multiplatform
+          AndroidX ViewModel, immutable UI state exposed through StateFlow,
+          lifecycle-aware Compose state collection, and navigation-entry
+          ViewModel scoping. Demonstrate the pattern with the smallest useful
+          state interaction rather than implementing real product behavior.
+
+        acceptance_criteria:
+          - "Multiplatform AndroidX ViewModel can be used from shared application code."
+          - "The established presentation pattern exposes immutable UI state through StateFlow."
+          - "Shared Compose UI collects ViewModel state using lifecycle-aware collection."
+          - "Navigation 3 entry decorators required for navigation-entry ViewModel scoping are configured."
+          - "A ViewModel associated with a destination has lifecycle ownership tied to the intended navigation entry."
+          - "A minimal state-changing interaction demonstrates the ViewModel-to-UI state flow."
+          - "The example does not introduce unfinished interview domain or persistence behavior."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+
+      - key: E05-04
+        title: "Establish application composition boundary"
+
+        issue: >
+          Future features will introduce repositories, persistence, assessment
+          services, and other dependencies. The application needs a clear
+          composition boundary before those dependencies appear, without
+          prematurely introducing a dependency-injection framework.
+
+        approach: >
+          Define where application-level dependencies are constructed and how
+          they are supplied to shared presentation and domain components.
+          Prefer explicit constructor injection for the current dependency
+          graph. Record Koin as the intended dependency-injection framework if
+          a real dependency graph later justifies it, but do not introduce Koin
+          solely to satisfy this issue.
+
+        acceptance_criteria:
+          - "The application has a clear composition point for constructing and supplying shared dependencies."
+          - "Dependencies used by presentation components can be supplied through explicit constructor injection."
+          - "Shared components do not obtain dependencies through hidden global mutable state."
+          - "No dependency-injection framework is introduced without a concrete dependency graph that requires it."
+          - "The intended future use of Koin, and the reason for deferring its introduction, is documented in accordance with the repository decision-documentation rules."
+          - "The composition structure can accommodate future repositories and domain services without changing platform entry-point responsibilities."
+
+        priority: "P2"
+        size: "S"
+        initial_status: "Backlog"
+
+
+      - key: E05-05
+        title: "Verify end-to-end KMP application shell"
+
+        issue: >
+          The application-shell pieces need to be verified together before
+          product-domain and data work begins. Individual setup tasks are not
+          sufficient if navigation, lifecycle, presentation state, and platform
+          integration do not operate coherently.
+
+        approach: >
+          Verify the complete application path from a platform entry point into
+          the shared App, through Navigation 3, a navigation-scoped ViewModel,
+          StateFlow-backed presentation state, and shared Compose UI. Use
+          Android as the primary runtime validation target while ensuring that
+          other existing KMP targets remain buildable where currently supported.
+
+        acceptance_criteria:
+          - "The Android application launches successfully into the shared application shell."
+          - "The shared application can navigate between the established placeholder destinations."
+          - "Destination presentation state is provided by a shared navigation-scoped ViewModel."
+          - "State updates are reflected correctly in shared Compose UI."
+          - "Back navigation behaves correctly after state interaction."
+          - "A clean build and the relevant automated tests pass."
+          - "Existing non-Android KMP targets remain buildable where they were supported before this epic."
+          - "No persistence, networking, curriculum content, or assessment-domain implementation is required to complete the application shell."
+
+        priority: "P2"
+        size: "S"
+        initial_status: "Backlog"
 
 
   - key: E06

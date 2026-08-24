@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_title">KMP Learning App</string>
-    <string name="app_shell_body">Shared application shell ready for interview preparation features.</string>
+    <string name="placeholder_start_title">KMP Learning App</string>
+    <string name="placeholder_start_body">Shared navigation shell ready for future placeholder journeys.</string>
+    <string name="placeholder_open_detail">Open placeholder detail</string>
+    <string name="placeholder_detail_title">Placeholder detail</string>
+    <string name="placeholder_detail_argument">Typed route argument: %1$s</string>
+    <string name="placeholder_go_back">Back</string>
 </resources>

@@ -705,7 +705,175 @@ epics:
       options, correct answers, explanations, authoritative sources, and stable
       content identities suitable for bundled application content.
 
-    issues: []
+    issues:
+      - key: E06-01
+        title: "Define MVP Android interview curriculum"
+
+        issue: >
+          The interview-preparation product needs an agreed curriculum before
+          questions can be authored or persisted. Without a defined taxonomy,
+          content risks becoming an unstructured collection of questions with
+          inconsistent coverage and no reliable basis for focused practice,
+          mixed interviews, or progress reporting.
+
+        approach: >
+          Define the MVP Android interview curriculum as a hierarchy of topics
+          and subtopics representing the areas expected in modern senior Android
+          interviews. Keep the taxonomy focused enough for the MVP while making
+          the boundaries clear enough for later question selection, focused
+          practice, mixed assessments, and topic-level statistics.
+
+        acceptance_criteria:
+          - "An agreed set of MVP Android interview topics is defined."
+          - "Each topic contains one or more clearly scoped subtopics."
+          - "Topic and subtopic boundaries avoid unnecessary overlap where practical."
+          - "The curriculum covers the major technical areas relevant to modern senior Android interviews."
+          - "The taxonomy is suitable for focused practice, mixed interview selection, and later topic/subtopic statistics."
+          - "Topics intentionally excluded from the MVP are documented where the exclusion would otherwise be ambiguous."
+          - "The curriculum definition does not depend on a database schema, persistence library, or UI implementation."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+
+      - key: E06-02
+        title: "Define structured curriculum content model"
+
+        issue: >
+          Curriculum content needs a stable shared representation before it can
+          be authored, validated, imported, persisted, or consumed by the
+          assessment engine. The representation must preserve content identity
+          independently from mutable display text.
+
+        approach: >
+          Define common KMP content models for the curriculum hierarchy and
+          interview questions. Represent topics, subtopics, questions, answer
+          options, the correct answer, explanations, authoritative source
+          references, optional difficulty metadata, and content lifecycle state.
+          Establish explicit stable identity rules without coupling the model to
+          a database or runtime persistence representation.
+
+        acceptance_criteria:
+          - "Shared models represent Topic, Subtopic, Question, AnswerOption, and authoritative SourceReference concepts."
+          - "A Question belongs unambiguously to the appropriate curriculum topic/subtopic."
+          - "Questions support multiple answer options and exactly one correct answer for the MVP."
+          - "Questions contain an explanation suitable for answer review."
+          - "Questions support one or more authoritative source references."
+          - "Difficulty metadata is optional and does not affect core question validity."
+          - "Topic, Subtopic, and Question have stable identities that are independent of display names and wording."
+          - "The content model can distinguish active content from deprecated content without requiring deletion."
+          - "The model is defined in shared/common KMP code and contains no Android-specific dependencies."
+          - "The model does not define database entities, persistence annotations, repository interfaces, or import mechanics."
+          - "Meaningful model invariants are covered by focused shared tests where appropriate."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+
+      - key: E06-03
+        title: "Define interview content authoring and quality standards"
+
+        issue: >
+          A structurally valid question can still be poor interview-preparation
+          content. The project needs lightweight authoring standards so that the
+          question bank remains technically accurate, understandable, reviewable,
+          and consistently sourced as it grows.
+
+        approach: >
+          Document concise rules for writing questions, answer options,
+          explanations, and references. Prefer official Android, Kotlin,
+          Jetpack, Gradle, and Kotlin Multiplatform documentation where an
+          authoritative primary source exists. Define expectations for ambiguity,
+          distractors, explanation quality, source relevance, and content
+          freshness without building a heavyweight editorial process.
+
+        acceptance_criteria:
+          - "Question-writing guidelines define what constitutes a clear and answerable MVP question."
+          - "Incorrect answer options should be plausible without relying on deliberate ambiguity or trick wording."
+          - "Explanations state why the correct answer is correct and clarify important misconceptions where useful."
+          - "Official primary documentation is preferred as the authoritative source where available."
+          - "Source references must support the technical claim being tested rather than merely reference the general topic."
+          - "Rules exist for identifying content that has become outdated or deprecated."
+          - "The standards distinguish technical content quality from application storage or import concerns."
+          - "The guidelines are stored in a durable repository document suitable for future contributors and AI-assisted content authoring."
+
+        priority: "P1"
+        size: "S"
+        initial_status: "Backlog"
+
+
+      - key: E06-04
+        title: "Create initial Android interview question bank"
+
+        issue: >
+          The application needs real interview content before the later data,
+          assessment, and learning journeys can be implemented meaningfully.
+          Placeholder questions would not exercise curriculum coverage,
+          explanations, sourcing, or question-selection behavior realistically.
+
+        approach: >
+          Author an initial MVP question bank using the agreed curriculum,
+          structured content model, and authoring standards. Distribute
+          questions across the agreed topics and subtopics rather than heavily
+          concentrating them in one area. Include stable IDs, answer options,
+          correct answers, explanations, and authoritative source references for
+          every question. Keep the amount of content sufficient for development
+          and realistic practice without attempting to create an exhaustive
+          interview database in this issue.
+
+        acceptance_criteria:
+          - "Every agreed MVP topic has representative interview questions."
+          - "The initial question bank covers the agreed subtopics sufficiently to exercise focused and mixed practice flows."
+          - "Every question has a stable question identity."
+          - "Every question contains multiple answer options and exactly one correct answer."
+          - "Every question contains an explanation."
+          - "Every question contains at least one authoritative source reference."
+          - "Question wording and explanations follow the agreed authoring standards."
+          - "The initial bank contains enough cross-topic content to support meaningful implementation and testing of later focused and mixed assessment features."
+          - "Content remains bundled/version-controlled project content rather than runtime database seed implementation."
+          - "No backend, network source, or AI-generated-at-runtime content mechanism is introduced."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+
+      - key: E06-05
+        title: "Validate curriculum content readiness"
+
+        issue: >
+          Before E07 builds import and persistence around the curriculum, the
+          content definitions need to be checked as a coherent dataset.
+          Invalid identities, broken hierarchy references, malformed answer
+          definitions, or missing sources should be caught before persistence
+          code depends on them.
+
+        approach: >
+          Establish deterministic validation for the structured curriculum and
+          run it against the complete initial question bank. Validate identities,
+          hierarchy relationships, question invariants, source requirements,
+          lifecycle metadata, and minimum curriculum coverage. Keep validation
+          independent from the future database/import implementation so E07 can
+          reuse or invoke the same content rules.
+
+        acceptance_criteria:
+          - "Topic, Subtopic, and Question identities are unique within the bundled curriculum."
+          - "Every subtopic belongs to a valid topic."
+          - "Every question belongs to a valid curriculum location."
+          - "Every question has the required answer options and exactly one valid correct answer."
+          - "Every question has a non-empty explanation."
+          - "Every active question has at least one valid authoritative source reference."
+          - "Deprecated content can remain structurally valid without being treated as active practice content."
+          - "Validation detects malformed curriculum content deterministically."
+          - "The complete initial bundled curriculum passes validation."
+          - "The validation rules are covered by focused shared automated tests."
+          - "Validation does not require a database, repository, or E07 import implementation."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
 
 
   - key: E07

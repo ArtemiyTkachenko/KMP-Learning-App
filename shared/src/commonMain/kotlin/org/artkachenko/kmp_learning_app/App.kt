@@ -11,17 +11,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import org.jetbrains.compose.resources.stringResource
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.placeholder_detail_argument
+import kmp_learning_app.shared.generated.resources.placeholder_detail_interaction_count
 import kmp_learning_app.shared.generated.resources.placeholder_detail_title
 import kmp_learning_app.shared.generated.resources.placeholder_go_back
+import kmp_learning_app.shared.generated.resources.placeholder_record_interaction
 import kmp_learning_app.shared.generated.resources.placeholder_open_detail
 import kmp_learning_app.shared.generated.resources.placeholder_start_body
 import kmp_learning_app.shared.generated.resources.placeholder_start_title
@@ -51,6 +58,12 @@ internal fun AppShell(modifier: Modifier = Modifier) {
                 .fillMaxSize()
                 .padding(contentPadding)
                 .safeContentPadding(),
+            entryDecorators = listOf(
+                // Saveable state must be installed before the ViewModel decorator so each
+                // navigation entry owns the state registry used by its ViewModel store owner.
+                rememberSaveableStateHolderNavEntryDecorator(),
+                rememberViewModelStoreNavEntryDecorator(),
+            ),
             onBack = {
                 if (backStack.size > 1) {
                     backStack.removeAt(backStack.lastIndex)
@@ -65,8 +78,12 @@ internal fun AppShell(modifier: Modifier = Modifier) {
                     )
                 }
                 entry<AppRoute.PlaceholderDetail> { route ->
+                    val viewModel = viewModel {
+                        PlaceholderDetailViewModel(itemId = route.itemId)
+                    }
+
                     PlaceholderDetailDestination(
-                        route = route,
+                        viewModel = viewModel,
                         onBack = {
                             if (backStack.size > 1) {
                                 backStack.removeAt(backStack.lastIndex)
@@ -104,9 +121,11 @@ private fun PlaceholderStartDestination(onOpenDetail: () -> Unit) {
 
 @Composable
 private fun PlaceholderDetailDestination(
-    route: AppRoute.PlaceholderDetail,
+    viewModel: PlaceholderDetailViewModel,
     onBack: () -> Unit,
 ) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
     PlaceholderDestinationLayout {
         Text(
             text = stringResource(Res.string.placeholder_detail_title),
@@ -115,10 +134,25 @@ private fun PlaceholderDetailDestination(
         )
         Text(
             modifier = Modifier.padding(top = 12.dp),
-            text = stringResource(Res.string.placeholder_detail_argument, route.itemId),
+            text = stringResource(Res.string.placeholder_detail_argument, uiState.itemId),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onBackground,
         )
+        Text(
+            modifier = Modifier.padding(top = 12.dp),
+            text = stringResource(
+                Res.string.placeholder_detail_interaction_count,
+                uiState.interactionCount,
+            ),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Button(
+            modifier = Modifier.padding(top = 24.dp),
+            onClick = viewModel::recordInteraction,
+        ) {
+            Text(text = stringResource(Res.string.placeholder_record_interaction))
+        }
         Button(
             modifier = Modifier.padding(top = 24.dp),
             onClick = onBack,

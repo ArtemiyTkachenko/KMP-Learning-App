@@ -5,5 +5,7 @@
     <string name="placeholder_open_detail">Open placeholder detail</string>
     <string name="placeholder_detail_title">Placeholder detail</string>
     <string name="placeholder_detail_argument">Typed route argument: %1$s</string>
+    <string name="placeholder_detail_interaction_count">ViewModel interaction count: %1$d</string>
+    <string name="placeholder_record_interaction">Record interaction</string>
     <string name="placeholder_go_back">Back</string>
 </resources>

@@ -23,3 +23,17 @@ creation remains inside the Navigation 3 entry's `viewModel { ... }` call. That
 keeps construction policy centralized while preserving Navigation 3 entry-scoped
 ViewModel ownership: each back-stack entry receives its own ViewModelStore, and
 the ViewModel is cleared when that entry is removed.
+
+## Curriculum Content Model
+
+The curriculum content contract lives in shared `commonMain` code as immutable
+Kotlin models with flat Topic, Subtopic, and Question collections linked by
+stable string IDs. The flat shape is intentional: it keeps content identity
+independent from display text and avoids coupling the model to a future database
+or import format.
+
+Substantive content validation is deferred to E06-05 so a validator can report
+multiple authoring errors for a complete curriculum instead of failing object
+construction on the first malformed item. Serialization and import mechanics are
+deferred to E07, so the model deliberately avoids serialization annotations and
+persistence-specific metadata for now.

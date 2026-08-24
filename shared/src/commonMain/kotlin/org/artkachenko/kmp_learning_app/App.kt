@@ -12,6 +12,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -36,13 +37,18 @@ import kmp_learning_app.shared.generated.resources.placeholder_start_title
 @Composable
 @Preview
 fun App() {
+    val dependencies = remember { AppDependencies() }
+
     MaterialTheme {
-        AppShell()
+        AppShell(dependencies = dependencies)
     }
 }
 
 @Composable
-internal fun AppShell(modifier: Modifier = Modifier) {
+internal fun AppShell(
+    dependencies: AppDependencies,
+    modifier: Modifier = Modifier,
+) {
     val backStack = rememberNavBackStack(
         appNavigationSavedStateConfiguration,
         AppRoute.PlaceholderStart,
@@ -79,7 +85,7 @@ internal fun AppShell(modifier: Modifier = Modifier) {
                 }
                 entry<AppRoute.PlaceholderDetail> { route ->
                     val viewModel = viewModel {
-                        PlaceholderDetailViewModel(itemId = route.itemId)
+                        dependencies.createPlaceholderDetailViewModel(route.itemId)
                     }
 
                     PlaceholderDetailDestination(

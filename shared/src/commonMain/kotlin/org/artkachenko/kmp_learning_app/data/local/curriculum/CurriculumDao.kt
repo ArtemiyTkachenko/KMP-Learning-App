@@ -30,6 +30,12 @@ internal interface CurriculumDao {
     @Upsert
     suspend fun upsertQuestionSources(sources: List<QuestionSourceEntity>)
 
+    @Query("DELETE FROM question_correct_answer WHERE question_id IN (:questionIds)")
+    suspend fun deleteCorrectAnswersForQuestions(questionIds: List<String>)
+
+    @Query("DELETE FROM question_source WHERE question_id IN (:questionIds)")
+    suspend fun deleteQuestionSourcesForQuestions(questionIds: List<String>)
+
     @Query("SELECT * FROM topic WHERE id = :id")
     suspend fun getTopicById(id: String): TopicEntity?
 
@@ -47,4 +53,22 @@ internal interface CurriculumDao {
 
     @Query("SELECT * FROM question_source WHERE question_id = :questionId ORDER BY sort_order")
     suspend fun getSourcesForQuestion(questionId: String): List<QuestionSourceEntity>
+
+    @Query("SELECT COUNT(*) FROM topic")
+    suspend fun countTopics(): Int
+
+    @Query("SELECT COUNT(*) FROM subtopic")
+    suspend fun countSubtopics(): Int
+
+    @Query("SELECT COUNT(*) FROM question")
+    suspend fun countQuestions(): Int
+
+    @Query("SELECT COUNT(*) FROM answer_option")
+    suspend fun countAnswerOptions(): Int
+
+    @Query("SELECT COUNT(*) FROM question_correct_answer")
+    suspend fun countCorrectAnswers(): Int
+
+    @Query("SELECT COUNT(*) FROM question_source")
+    suspend fun countQuestionSources(): Int
 }

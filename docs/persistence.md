@@ -339,6 +339,19 @@ The schema is driven by known future access patterns:
 - load source references for a question;
 - retain and individually resolve `DEPRECATED` content for historical identity.
 
+Runtime reads are exposed through a shared repository boundary:
+
+```text
+Room
+  -> LocalCurriculumRepository
+  -> curriculum domain models
+```
+
+Normal practice queries return only content whose full hierarchy is active:
+`Question`, `Subtopic`, and `Topic` must all have `ACTIVE` status. Stable-ID
+question lookup is different: it may return `ACTIVE` or `DEPRECATED` questions
+so later historical attempts can still resolve the content they referenced.
+
 ## Content Lifecycle and Deletion
 
 Persist `ContentStatus.ACTIVE` and `ContentStatus.DEPRECATED` as readable `TEXT`

@@ -1,19 +1,24 @@
 package org.artkachenko.kmp_learning_app.curriculum.content
 
+import kotlinx.coroutines.test.runTest
+import org.artkachenko.kmp_learning_app.curriculum.validation.CurriculumValidator
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 internal class InitialCurriculumSmokeTest {
     @Test
-    fun initialCurriculumHasExpectedTopicTaxonomyAndQuestionCount() {
+    fun bundledInitialCurriculumHasExpectedTopicTaxonomyAndQuestionCount() = runTest {
+        val initialCurriculum = BundledCurriculumSource.load()
+
         assertEquals(17, initialCurriculum.topics.size)
         assertEquals(361, initialCurriculum.subtopics.size)
         assertEquals(90, initialCurriculum.questions.size)
     }
 
     @Test
-    fun initialQuestionDistributionMatchesE0604Targets() {
+    fun bundledInitialQuestionDistributionMatchesE0604Targets() = runTest {
+        val initialCurriculum = BundledCurriculumSource.load()
         val countsByTopic = initialCurriculum.questions
             .groupingBy { it.topicId }
             .eachCount()
@@ -43,21 +48,21 @@ internal class InitialCurriculumSmokeTest {
     }
 
     @Test
-    fun initialQuestionsUseKnownCurriculumLocationsAndContentShape() {
-        val topicIds = initialCurriculum.topics.map { it.id }.toSet()
-        val subtopicsById = initialCurriculum.subtopics.associateBy { it.id }
-        val questionIds = initialCurriculum.questions.map { it.id }
+    fun bundledInitialCurriculumPassesStructuralValidation() = runTest {
+        val initialCurriculum = BundledCurriculumSource.load()
 
-        assertEquals(questionIds.size, questionIds.toSet().size)
+        assertTrue(CurriculumValidator().validate(initialCurriculum).isEmpty())
+    }
+
+    @Test
+    fun bundledInitialQuestionsPreserveE0604ContentShape() = runTest {
+        val initialCurriculum = BundledCurriculumSource.load()
 
         initialCurriculum.questions.forEach { question ->
-            assertTrue(question.topicId in topicIds, "Unknown topicId: ${question.topicId}")
-            assertEquals(question.topicId, subtopicsById.getValue(question.subtopicId).topicId)
             assertTrue(question.answers.size >= 2, "Not enough answers: ${question.id}")
             assertTrue(question.correctAnswerIds.isNotEmpty(), "No correct answer: ${question.id}")
             assertTrue(question.explanation.isNotBlank(), "Blank explanation: ${question.id}")
             assertTrue(question.sources.isNotEmpty(), "No source: ${question.id}")
-            assertTrue(question.sources.all { it.title.isNotBlank() && it.url.isNotBlank() })
 
             val answerIds = question.answers.map { it.id }
             assertEquals(answerIds.size, answerIds.toSet().size, "Duplicate answer ID: ${question.id}")
@@ -69,7 +74,8 @@ internal class InitialCurriculumSmokeTest {
     }
 
     @Test
-    fun multipleCorrectAnswerQuestionsTellReaderToSelectAllThatApply() {
+    fun multipleCorrectAnswerQuestionsTellReaderToSelectAllThatApply() = runTest {
+        val initialCurriculum = BundledCurriculumSource.load()
         val multipleCorrectAnswerQuestions = initialCurriculum.questions
             .filter { it.correctAnswerIds.size > 1 }
 
@@ -81,4 +87,3 @@ internal class InitialCurriculumSmokeTest {
         )
     }
 }
-

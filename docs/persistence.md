@@ -17,6 +17,17 @@ The schema is designed around the current E06 content model:
 - `SourceReference`
 - `ContentStatus`
 
+Bundled curriculum content is now represented as JSON and decoded into
+`Curriculum` before validation or persistence:
+
+```text
+initial_curriculum.json
+  -> CurriculumJsonCodec
+  -> Curriculum
+  -> CurriculumValidator
+  -> later persistence import
+```
+
 ## Persistence Decision
 
 Room 3 is the selected persistence technology for this project. The current

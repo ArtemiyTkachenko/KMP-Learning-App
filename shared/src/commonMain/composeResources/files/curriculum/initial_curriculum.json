@@ -1,0 +1,5510 @@
+{
+  "topics": [
+    {
+      "id": "android_platform",
+      "name": "Android Platform & Application Model",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "lifecycle_navigation",
+      "name": "Lifecycle, State & Navigation",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_ui",
+      "name": "UI — Views & Jetpack Compose",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_language",
+      "name": "Kotlin Language & JVM Fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "async_reactive",
+      "name": "Coroutines, Flow & Reactive Programming",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "architecture",
+      "name": "Application Architecture & Design Principles",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "dependency_injection",
+      "name": "Dependency Injection",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "local_data",
+      "name": "Local Persistence & Offline Data",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "networking",
+      "name": "Networking & Serialization",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "background_work",
+      "name": "Background Work & OS Constraints",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "notifications",
+      "name": "Notifications & Push Messaging",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "testing",
+      "name": "Testing & Testability",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "performance",
+      "name": "Performance, Memory & Debugging",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "security",
+      "name": "Security, Privacy & Permissions",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "build_delivery",
+      "name": "Build System, Modularization & Delivery",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "mobile_system_design",
+      "name": "Mobile System Design",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp",
+      "name": "Kotlin Multiplatform & Compose Multiplatform",
+      "status": "ACTIVE"
+    }
+  ],
+  "subtopics": [
+    {
+      "id": "android_process_model",
+      "topicId": "android_platform",
+      "name": "Application and process model",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_components",
+      "topicId": "android_platform",
+      "name": "Android application components",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_context",
+      "topicId": "android_platform",
+      "name": "Context",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_intents",
+      "topicId": "android_platform",
+      "name": "Intents",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_manifest",
+      "topicId": "android_platform",
+      "name": "Manifest and application configuration",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_resources",
+      "topicId": "android_platform",
+      "name": "Android resources and qualifiers",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_main_thread",
+      "topicId": "android_platform",
+      "name": "Main thread, Looper, and Handler fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_ipc",
+      "topicId": "android_platform",
+      "name": "Android IPC fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "activity_lifecycle",
+      "topicId": "lifecycle_navigation",
+      "name": "Activity lifecycle",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fragment_lifecycle",
+      "topicId": "lifecycle_navigation",
+      "name": "Fragment and Fragment view lifecycle",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "configuration_changes",
+      "topicId": "lifecycle_navigation",
+      "name": "Configuration changes",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "process_death",
+      "topicId": "lifecycle_navigation",
+      "name": "Process death and recreation",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "viewmodel_lifecycle",
+      "topicId": "lifecycle_navigation",
+      "name": "ViewModel lifecycle",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "saved_state",
+      "topicId": "lifecycle_navigation",
+      "name": "Saved-state mechanisms",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "lifecycle_aware_apis",
+      "topicId": "lifecycle_navigation",
+      "name": "Lifecycle-aware APIs",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "navigation_fundamentals",
+      "topicId": "lifecycle_navigation",
+      "name": "Navigation and back-stack fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "navigation_2_vs_3",
+      "topicId": "lifecycle_navigation",
+      "name": "Navigation 2 vs Navigation 3",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "deep_links",
+      "topicId": "lifecycle_navigation",
+      "name": "Deep links",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "back_handling",
+      "topicId": "lifecycle_navigation",
+      "name": "Back handling and predictive back",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "views_fundamentals",
+      "topicId": "android_ui",
+      "name": "View and ViewGroup fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "xml_layouts",
+      "topicId": "android_ui",
+      "name": "XML layouts",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "view_rendering",
+      "topicId": "android_ui",
+      "name": "Measure, layout, and draw",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "recyclerview",
+      "topicId": "android_ui",
+      "name": "RecyclerView",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "custom_views",
+      "topicId": "android_ui",
+      "name": "Custom Views",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "view_events",
+      "topicId": "android_ui",
+      "name": "View event handling",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "view_binding",
+      "topicId": "android_ui",
+      "name": "ViewBinding and DataBinding awareness",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_fundamentals",
+      "topicId": "android_ui",
+      "name": "Compose fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_recomposition",
+      "topicId": "android_ui",
+      "name": "Composition and recomposition",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_state",
+      "topicId": "android_ui",
+      "name": "Compose state",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_state_hoisting",
+      "topicId": "android_ui",
+      "name": "State hoisting",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_udf",
+      "topicId": "android_ui",
+      "name": "Unidirectional data flow in Compose",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_side_effects",
+      "topicId": "android_ui",
+      "name": "Compose side-effect APIs",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_derived_state",
+      "topicId": "android_ui",
+      "name": "derivedStateOf and derived state",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_snapshot_system",
+      "topicId": "android_ui",
+      "name": "Compose snapshot-system fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_layouts_modifiers",
+      "topicId": "android_ui",
+      "name": "Layouts and Modifiers",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_lazy_layouts",
+      "topicId": "android_ui",
+      "name": "Lazy layouts",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_identity_keys",
+      "topicId": "android_ui",
+      "name": "Identity and keys",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_stability",
+      "topicId": "android_ui",
+      "name": "Stability and skippability",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "composition_local",
+      "topicId": "android_ui",
+      "name": "CompositionLocal",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_theming",
+      "topicId": "android_ui",
+      "name": "Material 3 and theming",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_accessibility",
+      "topicId": "android_ui",
+      "name": "Semantics and accessibility",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_previews",
+      "topicId": "android_ui",
+      "name": "Compose previews",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "views_compose_interop",
+      "topicId": "android_ui",
+      "name": "Views and Compose interoperability",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_variables",
+      "topicId": "kotlin_language",
+      "name": "val, var, and basic declarations",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_nullability",
+      "topicId": "kotlin_language",
+      "name": "Nullability",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_functions",
+      "topicId": "kotlin_language",
+      "name": "Functions and arguments",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_extension_functions",
+      "topicId": "kotlin_language",
+      "name": "Extension functions",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_classes",
+      "topicId": "kotlin_language",
+      "name": "Kotlin classes",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_data_classes",
+      "topicId": "kotlin_language",
+      "name": "Data classes",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_objects",
+      "topicId": "kotlin_language",
+      "name": "object and companion object",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_sealed_types",
+      "topicId": "kotlin_language",
+      "name": "Sealed classes and interfaces",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_interfaces_inheritance",
+      "topicId": "kotlin_language",
+      "name": "Interfaces and inheritance",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_visibility",
+      "topicId": "kotlin_language",
+      "name": "Visibility modifiers",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_properties",
+      "topicId": "kotlin_language",
+      "name": "Properties, accessors, and backing fields",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_delegation",
+      "topicId": "kotlin_language",
+      "name": "Delegation and delegated properties",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_generics",
+      "topicId": "kotlin_language",
+      "name": "Generics and variance",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_lambdas",
+      "topicId": "kotlin_language",
+      "name": "Lambdas and higher-order functions",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_inline_functions",
+      "topicId": "kotlin_language",
+      "name": "inline, noinline, and crossinline",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_reified_types",
+      "topicId": "kotlin_language",
+      "name": "Reified type parameters",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_collections",
+      "topicId": "kotlin_language",
+      "name": "Collections",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_sequences",
+      "topicId": "kotlin_language",
+      "name": "Sequences and lazy collection processing",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_equality",
+      "topicId": "kotlin_language",
+      "name": "Structural vs referential equality",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_exceptions",
+      "topicId": "kotlin_language",
+      "name": "Exception handling",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_scope_functions",
+      "topicId": "kotlin_language",
+      "name": "let/run/apply/also/with",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_java_interop",
+      "topicId": "kotlin_language",
+      "name": "Java interoperability",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "jvm_fundamentals",
+      "topicId": "kotlin_language",
+      "name": "JVM fundamentals relevant to Android",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_fundamentals",
+      "topicId": "async_reactive",
+      "name": "Coroutine and suspend fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_builders",
+      "topicId": "async_reactive",
+      "name": "launch and async",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_scope",
+      "topicId": "async_reactive",
+      "name": "CoroutineScope",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_context",
+      "topicId": "async_reactive",
+      "name": "CoroutineContext",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_dispatchers",
+      "topicId": "async_reactive",
+      "name": "Dispatchers",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_jobs",
+      "topicId": "async_reactive",
+      "name": "Job and parent-child relationships",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "structured_concurrency",
+      "topicId": "async_reactive",
+      "name": "Structured concurrency",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_cancellation",
+      "topicId": "async_reactive",
+      "name": "Cancellation",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_exceptions",
+      "topicId": "async_reactive",
+      "name": "Exception propagation and handling",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_supervision",
+      "topicId": "async_reactive",
+      "name": "SupervisorJob and supervisorScope",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_context_switching",
+      "topicId": "async_reactive",
+      "name": "withContext",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_parallelism",
+      "topicId": "async_reactive",
+      "name": "Concurrency and async/await",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "lifecycle_coroutines",
+      "topicId": "async_reactive",
+      "name": "Lifecycle-aware coroutine scopes",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_fundamentals",
+      "topicId": "async_reactive",
+      "name": "Flow fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_operators",
+      "topicId": "async_reactive",
+      "name": "Flow operators",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_collection",
+      "topicId": "async_reactive",
+      "name": "Flow collection",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_errors",
+      "topicId": "async_reactive",
+      "name": "Flow exception handling",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_context",
+      "topicId": "async_reactive",
+      "name": "flowOn and execution context",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_buffering",
+      "topicId": "async_reactive",
+      "name": "Buffering and conflation",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "stateflow",
+      "topicId": "async_reactive",
+      "name": "StateFlow",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sharedflow",
+      "topicId": "async_reactive",
+      "name": "SharedFlow",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "hot_vs_cold_streams",
+      "topicId": "async_reactive",
+      "name": "Hot vs cold streams",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_sharing",
+      "topicId": "async_reactive",
+      "name": "stateIn, shareIn, and sharing policies",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "livedata",
+      "topicId": "async_reactive",
+      "name": "LiveData",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "rxjava_fundamentals",
+      "topicId": "async_reactive",
+      "name": "RxJava/RxKotlin fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_vs_rxjava",
+      "topicId": "async_reactive",
+      "name": "Flow vs RxJava",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "separation_of_concerns",
+      "topicId": "architecture",
+      "name": "Separation of concerns",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "layered_architecture",
+      "topicId": "architecture",
+      "name": "Layered architecture",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "mvc",
+      "topicId": "architecture",
+      "name": "MVC",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "mvp",
+      "topicId": "architecture",
+      "name": "MVP",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "mvvm",
+      "topicId": "architecture",
+      "name": "MVVM",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "mvi",
+      "topicId": "architecture",
+      "name": "MVI",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "mvvm_vs_mvi",
+      "topicId": "architecture",
+      "name": "MVVM vs MVI",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "unidirectional_data_flow",
+      "topicId": "architecture",
+      "name": "Unidirectional data flow",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "repository_pattern",
+      "topicId": "architecture",
+      "name": "Repository pattern",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "use_cases",
+      "topicId": "architecture",
+      "name": "Use cases and when to introduce them",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "single_source_of_truth",
+      "topicId": "architecture",
+      "name": "Single source of truth",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "state_ownership",
+      "topicId": "architecture",
+      "name": "State ownership",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "clean_architecture",
+      "topicId": "architecture",
+      "name": "Clean Architecture",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "solid",
+      "topicId": "architecture",
+      "name": "SOLID principles",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "dependency_direction",
+      "topicId": "architecture",
+      "name": "Dependency direction and inversion",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "interface_boundaries",
+      "topicId": "architecture",
+      "name": "Interface boundaries",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "error_modeling",
+      "topicId": "architecture",
+      "name": "Error representation/modeling",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "architecture_tradeoffs",
+      "topicId": "architecture",
+      "name": "Architecture trade-offs and avoiding over-engineering",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "di_fundamentals",
+      "topicId": "dependency_injection",
+      "name": "Dependency injection fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "manual_di",
+      "topicId": "dependency_injection",
+      "name": "Manual dependency injection",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "constructor_injection",
+      "topicId": "dependency_injection",
+      "name": "Constructor injection",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "composition_root",
+      "topicId": "dependency_injection",
+      "name": "Composition root",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "dependency_graphs",
+      "topicId": "dependency_injection",
+      "name": "Dependency graphs",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "di_scopes",
+      "topicId": "dependency_injection",
+      "name": "Scopes and lifetimes",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "service_locator_vs_di",
+      "topicId": "dependency_injection",
+      "name": "Service locator vs dependency injection",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "dagger_fundamentals",
+      "topicId": "dependency_injection",
+      "name": "Dagger fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "dagger_modules",
+      "topicId": "dependency_injection",
+      "name": "Dagger modules",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "dagger_bindings",
+      "topicId": "dependency_injection",
+      "name": "@Provides and @Binds",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "dagger_components",
+      "topicId": "dependency_injection",
+      "name": "Components and subcomponents",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "dagger_scopes",
+      "topicId": "dependency_injection",
+      "name": "Dagger scopes",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "dagger_qualifiers",
+      "topicId": "dependency_injection",
+      "name": "Qualifiers",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "dagger_multibindings",
+      "topicId": "dependency_injection",
+      "name": "Multibindings",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "hilt_fundamentals",
+      "topicId": "dependency_injection",
+      "name": "Hilt fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "hilt_components",
+      "topicId": "dependency_injection",
+      "name": "Hilt components and lifecycle scopes",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "hilt_viewmodels",
+      "topicId": "dependency_injection",
+      "name": "Hilt ViewModels",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "hilt_modules",
+      "topicId": "dependency_injection",
+      "name": "Hilt modules and InstallIn",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "hilt_vs_dagger",
+      "topicId": "dependency_injection",
+      "name": "Hilt vs raw Dagger",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "koin_fundamentals",
+      "topicId": "dependency_injection",
+      "name": "Koin fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "koin_definitions",
+      "topicId": "dependency_injection",
+      "name": "single/factory definitions",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "koin_scopes",
+      "topicId": "dependency_injection",
+      "name": "Koin scopes",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "koin_viewmodels",
+      "topicId": "dependency_injection",
+      "name": "Koin ViewModel integration",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "koin_multiplatform",
+      "topicId": "dependency_injection",
+      "name": "Koin and Kotlin Multiplatform",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "di_framework_tradeoffs",
+      "topicId": "dependency_injection",
+      "name": "DI framework trade-offs",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "storage_selection",
+      "topicId": "local_data",
+      "name": "Choosing a storage mechanism",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "shared_preferences",
+      "topicId": "local_data",
+      "name": "SharedPreferences",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "datastore",
+      "topicId": "local_data",
+      "name": "DataStore",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "datastore_vs_sharedpreferences",
+      "topicId": "local_data",
+      "name": "DataStore vs SharedPreferences",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "file_storage",
+      "topicId": "local_data",
+      "name": "File storage",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sqlite_fundamentals",
+      "topicId": "local_data",
+      "name": "SQLite and relational-database fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "room_fundamentals",
+      "topicId": "local_data",
+      "name": "Room fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "room_entities",
+      "topicId": "local_data",
+      "name": "Room entities",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "room_dao",
+      "topicId": "local_data",
+      "name": "Room DAOs and queries",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "room_relationships",
+      "topicId": "local_data",
+      "name": "Room relationships",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "room_type_converters",
+      "topicId": "local_data",
+      "name": "Type converters",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "room_transactions",
+      "topicId": "local_data",
+      "name": "Transactions",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "room_migrations",
+      "topicId": "local_data",
+      "name": "Room migrations",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "room_flow",
+      "topicId": "local_data",
+      "name": "Room and Flow",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "caching",
+      "topicId": "local_data",
+      "name": "Caching",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "offline_first",
+      "topicId": "local_data",
+      "name": "Offline-first architecture",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "cache_invalidation",
+      "topicId": "local_data",
+      "name": "Cache invalidation",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "schema_migrations",
+      "topicId": "local_data",
+      "name": "Schema/version migration concepts",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "room_vs_sqldelight",
+      "topicId": "local_data",
+      "name": "Room vs SQLDelight",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "http_fundamentals",
+      "topicId": "networking",
+      "name": "HTTP fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "http_methods",
+      "topicId": "networking",
+      "name": "HTTP methods",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "http_status_codes",
+      "topicId": "networking",
+      "name": "HTTP status codes",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "rest",
+      "topicId": "networking",
+      "name": "REST concepts",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "http_idempotency",
+      "topicId": "networking",
+      "name": "Idempotency",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "pagination",
+      "topicId": "networking",
+      "name": "Pagination",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "network_timeouts",
+      "topicId": "networking",
+      "name": "Timeouts",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "network_retries",
+      "topicId": "networking",
+      "name": "Retries and backoff",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "tls_https",
+      "topicId": "networking",
+      "name": "HTTPS/TLS fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "okhttp",
+      "topicId": "networking",
+      "name": "OkHttp",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "okhttp_interceptors",
+      "topicId": "networking",
+      "name": "OkHttp interceptors",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "retrofit",
+      "topicId": "networking",
+      "name": "Retrofit",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "retrofit_coroutines",
+      "topicId": "networking",
+      "name": "Retrofit and coroutines",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "network_error_handling",
+      "topicId": "networking",
+      "name": "Network error handling",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "ktor_client",
+      "topicId": "networking",
+      "name": "Ktor Client",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "retrofit_vs_ktor",
+      "topicId": "networking",
+      "name": "Retrofit vs Ktor",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "json_fundamentals",
+      "topicId": "networking",
+      "name": "JSON fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "gson",
+      "topicId": "networking",
+      "name": "Gson",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "moshi",
+      "topicId": "networking",
+      "name": "Moshi",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlinx_serialization",
+      "topicId": "networking",
+      "name": "kotlinx.serialization",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "serialization_strategies",
+      "topicId": "networking",
+      "name": "Reflection vs generated/compiler-assisted serialization",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "custom_serialization",
+      "topicId": "networking",
+      "name": "Custom serializers/adapters",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "json_compatibility",
+      "topicId": "networking",
+      "name": "Missing, unknown, nullable, and default JSON fields",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "network_caching",
+      "topicId": "networking",
+      "name": "HTTP/network caching",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "websockets",
+      "topicId": "networking",
+      "name": "WebSockets",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "streaming",
+      "topicId": "networking",
+      "name": "Streaming concepts",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "authentication_tokens",
+      "topicId": "networking",
+      "name": "Authentication tokens",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "token_refresh",
+      "topicId": "networking",
+      "name": "Token refresh flows",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "background_execution",
+      "topicId": "background_work",
+      "name": "Android background execution model",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "services",
+      "topicId": "background_work",
+      "name": "Services",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "foreground_services",
+      "topicId": "background_work",
+      "name": "Foreground services",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "bound_services",
+      "topicId": "background_work",
+      "name": "Bound services",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "workmanager",
+      "topicId": "background_work",
+      "name": "WorkManager fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "workmanager_constraints",
+      "topicId": "background_work",
+      "name": "WorkManager constraints",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "workmanager_chaining",
+      "topicId": "background_work",
+      "name": "Work chaining",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "workmanager_retries",
+      "topicId": "background_work",
+      "name": "WorkManager retries",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "service_vs_workmanager",
+      "topicId": "background_work",
+      "name": "Service vs WorkManager",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "alarmmanager",
+      "topicId": "background_work",
+      "name": "AlarmManager",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "exact_alarms",
+      "topicId": "background_work",
+      "name": "Exact alarms",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "doze",
+      "topicId": "background_work",
+      "name": "Doze",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "app_standby",
+      "topicId": "background_work",
+      "name": "App Standby",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "battery_restrictions",
+      "topicId": "background_work",
+      "name": "Battery restrictions",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "background_limits",
+      "topicId": "background_work",
+      "name": "Background execution limits",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "background_process_death",
+      "topicId": "background_work",
+      "name": "Process-death implications",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "boot_restart_work",
+      "topicId": "background_work",
+      "name": "Work across reboot/restart",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "long_running_work",
+      "topicId": "background_work",
+      "name": "Long-running work",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "foreground_service_types",
+      "topicId": "background_work",
+      "name": "Foreground-service types and permissions",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "background_api_selection",
+      "topicId": "background_work",
+      "name": "Choosing the appropriate background API",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "notification_fundamentals",
+      "topicId": "notifications",
+      "name": "Android notification fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "notification_channels",
+      "topicId": "notifications",
+      "name": "Notification channels",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "notification_importance",
+      "topicId": "notifications",
+      "name": "Notification importance",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "notification_pending_intents",
+      "topicId": "notifications",
+      "name": "PendingIntent in notifications",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "notification_actions",
+      "topicId": "notifications",
+      "name": "Notification actions",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "notification_grouping",
+      "topicId": "notifications",
+      "name": "Notification grouping",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "notification_permission",
+      "topicId": "notifications",
+      "name": "Runtime notification permission",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fcm_fundamentals",
+      "topicId": "notifications",
+      "name": "Firebase Cloud Messaging fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fcm_tokens",
+      "topicId": "notifications",
+      "name": "FCM registration tokens",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fcm_notification_messages",
+      "topicId": "notifications",
+      "name": "Notification messages",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fcm_data_messages",
+      "topicId": "notifications",
+      "name": "Data messages",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fcm_app_state_behavior",
+      "topicId": "notifications",
+      "name": "Foreground/background behavior",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fcm_token_refresh",
+      "topicId": "notifications",
+      "name": "Token refresh",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fcm_message_handling",
+      "topicId": "notifications",
+      "name": "Message handling",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "notification_deep_links",
+      "topicId": "notifications",
+      "name": "Deep linking from notifications",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "push_delivery_constraints",
+      "topicId": "notifications",
+      "name": "Push delivery limitations",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fcm_priority",
+      "topicId": "notifications",
+      "name": "FCM message priority",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "push_system_architecture",
+      "topicId": "notifications",
+      "name": "Backend-to-FCM-to-device architecture",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "testing_strategy",
+      "topicId": "testing",
+      "name": "Test strategy",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "unit_testing",
+      "topicId": "testing",
+      "name": "Unit tests",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "integration_testing",
+      "topicId": "testing",
+      "name": "Integration tests",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "ui_testing",
+      "topicId": "testing",
+      "name": "UI tests",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "local_vs_instrumented_tests",
+      "topicId": "testing",
+      "name": "Local vs instrumented tests",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "junit",
+      "topicId": "testing",
+      "name": "JUnit",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "test_doubles",
+      "topicId": "testing",
+      "name": "Test doubles",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fakes_vs_mocks",
+      "topicId": "testing",
+      "name": "Fakes, mocks, and stubs",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "viewmodel_testing",
+      "topicId": "testing",
+      "name": "ViewModel testing",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_testing",
+      "topicId": "testing",
+      "name": "Coroutine testing",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_testing",
+      "topicId": "testing",
+      "name": "Flow testing",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "run_test",
+      "topicId": "testing",
+      "name": "runTest",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "virtual_time",
+      "topicId": "testing",
+      "name": "Virtual time",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "repository_testing",
+      "topicId": "testing",
+      "name": "Repository testing",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "room_testing",
+      "topicId": "testing",
+      "name": "Room/database testing",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_ui_testing",
+      "topicId": "testing",
+      "name": "Compose UI testing",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "espresso",
+      "topicId": "testing",
+      "name": "Espresso awareness",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "test_di",
+      "topicId": "testing",
+      "name": "Dependency replacement/injection in tests",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "test_determinism",
+      "topicId": "testing",
+      "name": "Deterministic tests",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "architecture_for_testability",
+      "topicId": "testing",
+      "name": "Architecture for testability",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "testing_boundaries",
+      "topicId": "testing",
+      "name": "What to test and where",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flaky_tests",
+      "topicId": "testing",
+      "name": "Flaky-test prevention/debugging",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_memory_model",
+      "topicId": "performance",
+      "name": "Android/JVM memory fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "memory_leaks",
+      "topicId": "performance",
+      "name": "Memory leaks",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "context_leaks",
+      "topicId": "performance",
+      "name": "Context leaks",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "lifecycle_leaks",
+      "topicId": "performance",
+      "name": "Activity/Fragment/listener leaks",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_leaks",
+      "topicId": "performance",
+      "name": "Coroutine lifetime leaks",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "garbage_collection",
+      "topicId": "performance",
+      "name": "Garbage collection fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "anr",
+      "topicId": "performance",
+      "name": "ANRs",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "main_thread_performance",
+      "topicId": "performance",
+      "name": "Main-thread performance",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "rendering_jank",
+      "topicId": "performance",
+      "name": "Rendering and jank",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "startup_performance",
+      "topicId": "performance",
+      "name": "App startup",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "lazy_initialization",
+      "topicId": "performance",
+      "name": "Lazy initialization",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "recyclerview_performance",
+      "topicId": "performance",
+      "name": "RecyclerView performance",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_performance",
+      "topicId": "performance",
+      "name": "Compose performance",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_recomposition_performance",
+      "topicId": "performance",
+      "name": "Avoiding unnecessary recomposition",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_profiler",
+      "topicId": "performance",
+      "name": "Android Studio profiling fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "cpu_profiling",
+      "topicId": "performance",
+      "name": "CPU profiling",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "memory_profiling",
+      "topicId": "performance",
+      "name": "Memory profiling",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "network_inspection",
+      "topicId": "performance",
+      "name": "Network inspection",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "layout_inspector",
+      "topicId": "performance",
+      "name": "Layout Inspector / Compose inspection",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "strictmode",
+      "topicId": "performance",
+      "name": "StrictMode",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "r8",
+      "topicId": "performance",
+      "name": "R8",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "baseline_profiles",
+      "topicId": "performance",
+      "name": "Baseline Profiles",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "macrobenchmark",
+      "topicId": "performance",
+      "name": "Macrobenchmark awareness",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_sandbox",
+      "topicId": "security",
+      "name": "Android application sandbox",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_permissions",
+      "topicId": "security",
+      "name": "Permission model",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "runtime_permissions",
+      "topicId": "security",
+      "name": "Runtime permissions",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "permission_ux",
+      "topicId": "security",
+      "name": "Permission-request UX",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "exported_components",
+      "topicId": "security",
+      "name": "Exported components",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "intent_security",
+      "topicId": "security",
+      "name": "Intent security",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "pending_intent_security",
+      "topicId": "security",
+      "name": "PendingIntent security",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "content_provider_security",
+      "topicId": "security",
+      "name": "ContentProvider security",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "secure_storage",
+      "topicId": "security",
+      "name": "Secure local storage",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_keystore",
+      "topicId": "security",
+      "name": "Android Keystore",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "encryption_fundamentals",
+      "topicId": "security",
+      "name": "Encryption fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "secret_management",
+      "topicId": "security",
+      "name": "API keys and secret management",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "network_security",
+      "topicId": "security",
+      "name": "Network security",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "certificate_pinning",
+      "topicId": "security",
+      "name": "Certificate pinning and trade-offs",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "auth_token_security",
+      "topicId": "security",
+      "name": "Authentication-token security",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "biometric_auth",
+      "topicId": "security",
+      "name": "Biometric authentication awareness",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "webview_security",
+      "topicId": "security",
+      "name": "WebView security",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sensitive_logging",
+      "topicId": "security",
+      "name": "Sensitive-data logging",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compromised_devices",
+      "topicId": "security",
+      "name": "Rooted/compromised-device limitations",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "privacy_principles",
+      "topicId": "security",
+      "name": "Privacy and data-minimization principles",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "gradle_fundamentals",
+      "topicId": "build_delivery",
+      "name": "Gradle fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "gradle_wrapper",
+      "topicId": "build_delivery",
+      "name": "Gradle Wrapper",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "gradle_plugins",
+      "topicId": "build_delivery",
+      "name": "Gradle plugins",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "dependency_configurations",
+      "topicId": "build_delivery",
+      "name": "Dependency configurations",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "version_catalogs",
+      "topicId": "build_delivery",
+      "name": "Version catalogs",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_gradle_plugin",
+      "topicId": "build_delivery",
+      "name": "Android Gradle Plugin",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_gradle_plugin",
+      "topicId": "build_delivery",
+      "name": "Kotlin Gradle plugin",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "build_variants",
+      "topicId": "build_delivery",
+      "name": "Build variants",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "build_types",
+      "topicId": "build_delivery",
+      "name": "Build types",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "product_flavors",
+      "topicId": "build_delivery",
+      "name": "Product flavors",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "source_sets",
+      "topicId": "build_delivery",
+      "name": "Source sets",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "dependency_resolution",
+      "topicId": "build_delivery",
+      "name": "Dependency resolution",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_modules",
+      "topicId": "build_delivery",
+      "name": "Application/library modules",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "feature_modularization",
+      "topicId": "build_delivery",
+      "name": "Feature modularization",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "module_dependency_direction",
+      "topicId": "build_delivery",
+      "name": "Module dependency direction",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "api_vs_implementation",
+      "topicId": "build_delivery",
+      "name": "api vs implementation",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "modularization_tradeoffs",
+      "topicId": "build_delivery",
+      "name": "Benefits and costs of modularization",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "apk_vs_aab",
+      "topicId": "build_delivery",
+      "name": "APK vs Android App Bundle",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "app_signing",
+      "topicId": "build_delivery",
+      "name": "Application signing",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "release_builds",
+      "topicId": "build_delivery",
+      "name": "Debug vs release",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "code_shrinking",
+      "topicId": "build_delivery",
+      "name": "Code shrinking/obfuscation",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "resource_shrinking",
+      "topicId": "build_delivery",
+      "name": "Resource shrinking",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "app_versioning",
+      "topicId": "build_delivery",
+      "name": "versionCode/versionName",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "ci_fundamentals",
+      "topicId": "build_delivery",
+      "name": "CI fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "cd_fundamentals",
+      "topicId": "build_delivery",
+      "name": "Delivery/release pipeline fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "requirements_analysis",
+      "topicId": "mobile_system_design",
+      "name": "Requirements clarification",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "nonfunctional_requirements",
+      "topicId": "mobile_system_design",
+      "name": "Non-functional requirements",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "system_decomposition",
+      "topicId": "mobile_system_design",
+      "name": "Client/system decomposition",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "system_data_flow",
+      "topicId": "mobile_system_design",
+      "name": "Data flow",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "local_remote_sources",
+      "topicId": "mobile_system_design",
+      "name": "Local vs remote sources of truth",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "system_caching",
+      "topicId": "mobile_system_design",
+      "name": "Caching strategy",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "offline_design",
+      "topicId": "mobile_system_design",
+      "name": "Offline behavior",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "data_synchronization",
+      "topicId": "mobile_system_design",
+      "name": "Data synchronization",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "conflict_resolution",
+      "topicId": "mobile_system_design",
+      "name": "Conflict resolution",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "system_pagination",
+      "topicId": "mobile_system_design",
+      "name": "Pagination design",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "system_retries",
+      "topicId": "mobile_system_design",
+      "name": "Error and retry design",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "background_sync",
+      "topicId": "mobile_system_design",
+      "name": "Background synchronization",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "push_driven_updates",
+      "topicId": "mobile_system_design",
+      "name": "Push-driven updates",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "session_management",
+      "topicId": "mobile_system_design",
+      "name": "Authentication/session handling",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "large_scale_modularization",
+      "topicId": "mobile_system_design",
+      "name": "Modularization at scale",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "client_scalability",
+      "topicId": "mobile_system_design",
+      "name": "Client-code scalability",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "mobile_resource_constraints",
+      "topicId": "mobile_system_design",
+      "name": "Battery/network/device constraints",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "observability",
+      "topicId": "mobile_system_design",
+      "name": "Logging/observability considerations",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "feature_flags",
+      "topicId": "mobile_system_design",
+      "name": "Feature flags",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "backward_compatibility",
+      "topicId": "mobile_system_design",
+      "name": "Backward compatibility",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "api_evolution",
+      "topicId": "mobile_system_design",
+      "name": "API evolution",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "rollout_strategy",
+      "topicId": "mobile_system_design",
+      "name": "Rollout and migrations",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "system_security",
+      "topicId": "mobile_system_design",
+      "name": "Security/privacy in system design",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "system_testing_strategy",
+      "topicId": "mobile_system_design",
+      "name": "Testing strategy for designed systems",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp_fundamentals",
+      "topicId": "kmp",
+      "name": "Kotlin Multiplatform fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp_targets",
+      "topicId": "kmp",
+      "name": "Targets",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp_source_sets",
+      "topicId": "kmp",
+      "name": "Source sets",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "commonmain",
+      "topicId": "kmp",
+      "name": "commonMain",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp_dependency_hierarchy",
+      "topicId": "kmp",
+      "name": "Source-set/dependency hierarchy",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "shared_vs_platform_code",
+      "topicId": "kmp",
+      "name": "What to share vs keep platform-specific",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "expect_actual",
+      "topicId": "kmp",
+      "name": "expect/actual",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp_platform_apis",
+      "topicId": "kmp",
+      "name": "Accessing platform APIs",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_native",
+      "topicId": "kmp",
+      "name": "Kotlin/Native awareness",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp_architecture",
+      "topicId": "kmp",
+      "name": "KMP architecture",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "shared_domain",
+      "topicId": "kmp",
+      "name": "Shared domain logic",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "shared_data",
+      "topicId": "kmp",
+      "name": "Shared data layer",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "shared_presentation",
+      "topicId": "kmp",
+      "name": "Shared presentation logic",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp_dependency_inversion",
+      "topicId": "kmp",
+      "name": "Cross-platform dependency inversion",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "platform_implementations",
+      "topicId": "kmp",
+      "name": "Platform-specific implementations",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_multiplatform",
+      "topicId": "kmp",
+      "name": "Compose Multiplatform fundamentals",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_multiplatform_resources",
+      "topicId": "kmp",
+      "name": "Compose Multiplatform Resources",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp_lifecycle_viewmodel",
+      "topicId": "kmp",
+      "name": "Multiplatform Lifecycle/ViewModel",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp_navigation",
+      "topicId": "kmp",
+      "name": "Multiplatform navigation",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "platform_ui_interop",
+      "topicId": "kmp",
+      "name": "Platform UI interoperability",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp_library_selection",
+      "topicId": "kmp",
+      "name": "Evaluating KMP library compatibility",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlinx_serialization_kmp",
+      "topicId": "kmp",
+      "name": "kotlinx.serialization in KMP",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "ktor_kmp",
+      "topicId": "kmp",
+      "name": "Ktor in KMP",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "room_kmp",
+      "topicId": "kmp",
+      "name": "Room KMP",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sqldelight",
+      "topicId": "kmp",
+      "name": "SQLDelight",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "koin_kmp",
+      "topicId": "kmp",
+      "name": "Koin in KMP",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp_tradeoffs",
+      "topicId": "kmp",
+      "name": "Practical KMP trade-offs",
+      "status": "ACTIVE"
+    }
+  ],
+  "questions": [
+    {
+      "id": "android_process_model_001",
+      "topicId": "android_platform",
+      "subtopicId": "android_process_model",
+      "text": "Why should an Android app not rely on regular in-memory singletons to preserve user progress after the app is backgrounded?",
+      "answers": [
+        {
+          "id": "android_process_model_001_a",
+          "text": "Because Android recreates every singleton on each Activity rotation even when the process remains alive."
+        },
+        {
+          "id": "android_process_model_001_b",
+          "text": "Because the app process can be killed while backgrounded, clearing ordinary process memory."
+        },
+        {
+          "id": "android_process_model_001_c",
+          "text": "Because singleton objects are stored in the manifest and cannot hold runtime data."
+        },
+        {
+          "id": "android_process_model_001_d",
+          "text": "Because Kotlin object declarations are automatically persisted only on Android API 26 and lower."
+        }
+      ],
+      "correctAnswerIds": [
+        "android_process_model_001_b"
+      ],
+      "explanation": "In-memory objects exist only inside the current app process. Android can kill a background process to reclaim resources, so user progress that must survive process death belongs in saved state or persistent storage.",
+      "sources": [
+        {
+          "title": "Processes and Threads Overview",
+          "url": "https://developer.android.com/guide/components/processes-and-threads"
+        },
+        {
+          "title": "Save UI States",
+          "url": "https://developer.android.com/topic/libraries/architecture/views/saving-states-views"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_components_001",
+      "topicId": "android_platform",
+      "subtopicId": "android_components",
+      "text": "Which Android component is designed to expose a structured interface for sharing app-managed data with other apps?",
+      "answers": [
+        {
+          "id": "android_components_001_a",
+          "text": "Activity"
+        },
+        {
+          "id": "android_components_001_b",
+          "text": "Service"
+        },
+        {
+          "id": "android_components_001_c",
+          "text": "ContentProvider"
+        },
+        {
+          "id": "android_components_001_d",
+          "text": "BroadcastReceiver"
+        }
+      ],
+      "correctAnswerIds": [
+        "android_components_001_c"
+      ],
+      "explanation": "A ContentProvider presents data through a standard provider interface. Activities own UI, services perform background work, and broadcast receivers react to broadcast events.",
+      "sources": [
+        {
+          "title": "Application Fundamentals",
+          "url": "https://developer.android.com/guide/components/fundamentals"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_context_001",
+      "topicId": "android_platform",
+      "subtopicId": "android_context",
+      "text": "A long-lived repository needs a Context only to access application resources. Which Context is safest to retain?",
+      "answers": [
+        {
+          "id": "android_context_001_a",
+          "text": "The current Activity context, because it always updates after configuration changes."
+        },
+        {
+          "id": "android_context_001_b",
+          "text": "The application context, because it is not tied to a specific Activity instance."
+        },
+        {
+          "id": "android_context_001_c",
+          "text": "A View context, because Views outlive their Activity by default."
+        },
+        {
+          "id": "android_context_001_d",
+          "text": "Any Context, because all Context implementations have the same lifecycle."
+        }
+      ],
+      "correctAnswerIds": [
+        "android_context_001_b"
+      ],
+      "explanation": "A long-lived object should not retain an Activity context because that can leak the Activity. The application context is tied to the process and is appropriate for app-wide resource access.",
+      "sources": [
+        {
+          "title": "Application Fundamentals",
+          "url": "https://developer.android.com/guide/components/fundamentals"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_intents_001",
+      "topicId": "android_platform",
+      "subtopicId": "android_intents",
+      "text": "What is the main difference between an explicit Intent and an implicit Intent?",
+      "answers": [
+        {
+          "id": "android_intents_001_a",
+          "text": "An explicit Intent names a target component; an implicit Intent describes an action to resolve."
+        },
+        {
+          "id": "android_intents_001_b",
+          "text": "An explicit Intent can only start services; an implicit Intent can only start activities."
+        },
+        {
+          "id": "android_intents_001_c",
+          "text": "An explicit Intent crosses process boundaries; an implicit Intent never can."
+        },
+        {
+          "id": "android_intents_001_d",
+          "text": "An explicit Intent requires a PendingIntent; an implicit Intent cannot use one."
+        }
+      ],
+      "correctAnswerIds": [
+        "android_intents_001_a"
+      ],
+      "explanation": "An explicit Intent identifies the target component directly. An implicit Intent describes an action or data so the system can resolve a matching component.",
+      "sources": [
+        {
+          "title": "Application Fundamentals",
+          "url": "https://developer.android.com/guide/components/fundamentals"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_main_thread_001",
+      "topicId": "android_platform",
+      "subtopicId": "android_main_thread",
+      "text": "Why should expensive disk or network work not run directly on Android's main thread?",
+      "answers": [
+        {
+          "id": "android_main_thread_001_a",
+          "text": "Because the main thread cannot allocate memory."
+        },
+        {
+          "id": "android_main_thread_001_b",
+          "text": "Because only background threads can access Kotlin suspend functions."
+        },
+        {
+          "id": "android_main_thread_001_c",
+          "text": "Because blocking the main thread prevents timely UI rendering and input processing."
+        },
+        {
+          "id": "android_main_thread_001_d",
+          "text": "Because Android automatically kills any app that opens a file on the main thread."
+        }
+      ],
+      "correctAnswerIds": [
+        "android_main_thread_001_c"
+      ],
+      "explanation": "The main thread processes UI work and input events. Blocking it with expensive operations can freeze rendering and input handling, leading to jank or ANRs.",
+      "sources": [
+        {
+          "title": "Processes and Threads Overview",
+          "url": "https://developer.android.com/guide/components/processes-and-threads"
+        },
+        {
+          "title": "Guide to App Performance",
+          "url": "https://developer.android.com/topic/performance"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_resources_001",
+      "topicId": "android_platform",
+      "subtopicId": "android_resources",
+      "text": "What is the purpose of Android resource qualifiers such as layout-land or values-night?",
+      "answers": [
+        {
+          "id": "android_resources_001_a",
+          "text": "They make resources private to a single Activity."
+        },
+        {
+          "id": "android_resources_001_b",
+          "text": "They generate Kotlin constants for dependency injection."
+        },
+        {
+          "id": "android_resources_001_c",
+          "text": "They disable configuration changes for matching screens."
+        },
+        {
+          "id": "android_resources_001_d",
+          "text": "They provide alternative resources that Android selects for the current configuration."
+        }
+      ],
+      "correctAnswerIds": [
+        "android_resources_001_d"
+      ],
+      "explanation": "Resource qualifiers let Android select alternative resources for the current device configuration, such as orientation, locale, density, or night mode.",
+      "sources": [
+        {
+          "title": "Application Fundamentals",
+          "url": "https://developer.android.com/guide/components/fundamentals"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "activity_lifecycle_001",
+      "topicId": "lifecycle_navigation",
+      "subtopicId": "activity_lifecycle",
+      "text": "Why is onPause() a poor place to perform a long database write or network request?",
+      "answers": [
+        {
+          "id": "activity_lifecycle_001_a",
+          "text": "Because onPause() is never called before another Activity starts."
+        },
+        {
+          "id": "activity_lifecycle_001_b",
+          "text": "Because onPause() should be brief and long work may not complete before the transition continues."
+        },
+        {
+          "id": "activity_lifecycle_001_c",
+          "text": "Because onPause() always runs on a background thread."
+        },
+        {
+          "id": "activity_lifecycle_001_d",
+          "text": "Because onPause() is called only after process death."
+        }
+      ],
+      "correctAnswerIds": [
+        "activity_lifecycle_001_b"
+      ],
+      "explanation": "onPause() execution is brief and should complete quickly. Longer shutdown or persistence work should use a more appropriate lifecycle point or background/persistence mechanism.",
+      "sources": [
+        {
+          "title": "The Activity Lifecycle",
+          "url": "https://developer.android.com/guide/components/activities/activity-lifecycle"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fragment_lifecycle_001",
+      "topicId": "lifecycle_navigation",
+      "subtopicId": "fragment_lifecycle",
+      "text": "In a Fragment that uses Views, why should view references normally be cleared in onDestroyView() rather than onDestroy()?",
+      "answers": [
+        {
+          "id": "fragment_lifecycle_001_a",
+          "text": "Because the Fragment's View lifecycle can end before the Fragment instance is destroyed."
+        },
+        {
+          "id": "fragment_lifecycle_001_b",
+          "text": "Because onDestroy() is never called for Fragments."
+        },
+        {
+          "id": "fragment_lifecycle_001_c",
+          "text": "Because View references are valid until the process dies."
+        },
+        {
+          "id": "fragment_lifecycle_001_d",
+          "text": "Because onDestroyView() runs only during configuration changes."
+        }
+      ],
+      "correctAnswerIds": [
+        "fragment_lifecycle_001_a"
+      ],
+      "explanation": "A Fragment instance can outlive its View hierarchy. Clearing View references when the view is destroyed prevents retaining obsolete Views and their Activity context.",
+      "sources": [
+        {
+          "title": "Fragment Lifecycle",
+          "url": "https://developer.android.com/guide/fragments/lifecycle"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "configuration_changes_001",
+      "topicId": "lifecycle_navigation",
+      "subtopicId": "configuration_changes",
+      "text": "What usually happens to an Activity during an unhandled configuration change such as rotation?",
+      "answers": [
+        {
+          "id": "configuration_changes_001_a",
+          "text": "The same Activity instance continues without lifecycle callbacks."
+        },
+        {
+          "id": "configuration_changes_001_b",
+          "text": "Only onResume() is called again."
+        },
+        {
+          "id": "configuration_changes_001_c",
+          "text": "The Activity is destroyed and a new instance is created."
+        },
+        {
+          "id": "configuration_changes_001_d",
+          "text": "The process is always killed before the Activity is recreated."
+        }
+      ],
+      "correctAnswerIds": [
+        "configuration_changes_001_c"
+      ],
+      "explanation": "By default, Android destroys and recreates the Activity for configuration changes. UI should be rebuilt from appropriate state rather than relying on old Activity fields.",
+      "sources": [
+        {
+          "title": "Activity State Changes",
+          "url": "https://developer.android.com/guide/components/activities/state-changes"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "process_death_001",
+      "topicId": "lifecycle_navigation",
+      "subtopicId": "process_death",
+      "text": "Why can a ViewModel preserve UI state across rotation but not by itself guarantee recovery after system-initiated process death?",
+      "answers": [
+        {
+          "id": "process_death_001_a",
+          "text": "Because ViewModels are serialized into the manifest only during rotation."
+        },
+        {
+          "id": "process_death_001_b",
+          "text": "Because ViewModels are scoped to a View and Views are never recreated."
+        },
+        {
+          "id": "process_death_001_c",
+          "text": "Because process death preserves Activity fields but not ViewModels."
+        },
+        {
+          "id": "process_death_001_d",
+          "text": "Because ViewModels are in-memory objects and process death clears that memory."
+        }
+      ],
+      "correctAnswerIds": [
+        "process_death_001_d"
+      ],
+      "explanation": "ViewModels are retained in memory across configuration changes, but memory is lost when the process is killed. State that must recover after process death needs saved state or persistent storage.",
+      "sources": [
+        {
+          "title": "Save UI States",
+          "url": "https://developer.android.com/topic/libraries/architecture/views/saving-states-views"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "saved_state_001",
+      "topicId": "lifecycle_navigation",
+      "subtopicId": "saved_state",
+      "text": "Which kind of state is a good candidate for saved-state APIs such as rememberSaveable or SavedStateHandle?",
+      "answers": [
+        {
+          "id": "saved_state_001_a",
+          "text": "Small transient UI state needed to restore the screen after recreation."
+        },
+        {
+          "id": "saved_state_001_b",
+          "text": "Large cached API responses that must be queried offline."
+        },
+        {
+          "id": "saved_state_001_c",
+          "text": "Open socket connections that should survive process death."
+        },
+        {
+          "id": "saved_state_001_d",
+          "text": "All repository data because saved state replaces local storage."
+        }
+      ],
+      "correctAnswerIds": [
+        "saved_state_001_a"
+      ],
+      "explanation": "Saved-state APIs are intended for small pieces of transient UI state needed to recreate the user's place. Large datasets or durable app data should use persistence.",
+      "sources": [
+        {
+          "title": "Save UI States",
+          "url": "https://developer.android.com/topic/libraries/architecture/views/saving-states-views"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "navigation_fundamentals_001",
+      "topicId": "lifecycle_navigation",
+      "subtopicId": "navigation_fundamentals",
+      "text": "What does a navigation back stack primarily represent?",
+      "answers": [
+        {
+          "id": "navigation_fundamentals_001_a",
+          "text": "A cache of every ViewModel created by the app."
+        },
+        {
+          "id": "navigation_fundamentals_001_b",
+          "text": "An ordered history of navigation entries used to determine the current and previous destinations."
+        },
+        {
+          "id": "navigation_fundamentals_001_c",
+          "text": "A list of all installed apps that can handle an Intent."
+        },
+        {
+          "id": "navigation_fundamentals_001_d",
+          "text": "A set of resources selected for the current configuration."
+        }
+      ],
+      "correctAnswerIds": [
+        "navigation_fundamentals_001_b"
+      ],
+      "explanation": "A back stack records destinations or entries in navigation order. Pushing a destination moves forward, and popping the top entry returns to the previous destination.",
+      "sources": [
+        {
+          "title": "Navigation",
+          "url": "https://developer.android.com/guide/navigation"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "back_handling_001",
+      "topicId": "lifecycle_navigation",
+      "subtopicId": "back_handling",
+      "text": "In a typical single-stack navigation flow, what should happen when the user presses Back from a detail destination that was pushed from a list destination?",
+      "answers": [
+        {
+          "id": "back_handling_001_a",
+          "text": "Push a new copy of the list destination."
+        },
+        {
+          "id": "back_handling_001_b",
+          "text": "Restart the application process."
+        },
+        {
+          "id": "back_handling_001_c",
+          "text": "Pop the detail entry so the previous list entry becomes current again."
+        },
+        {
+          "id": "back_handling_001_d",
+          "text": "Clear every ViewModel in the application."
+        }
+      ],
+      "correctAnswerIds": [
+        "back_handling_001_c"
+      ],
+      "explanation": "Back should remove the current top entry and reveal the previous entry. It should not create a second copy of the list destination or clear unrelated application state.",
+      "sources": [
+        {
+          "title": "Navigation",
+          "url": "https://developer.android.com/guide/navigation"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "views_fundamentals_001",
+      "topicId": "android_ui",
+      "subtopicId": "views_fundamentals",
+      "text": "In the classic Android View system, what is the role of a ViewGroup?",
+      "answers": [
+        {
+          "id": "views_fundamentals_001_a",
+          "text": "It stores app-wide singleton state for every screen."
+        },
+        {
+          "id": "views_fundamentals_001_b",
+          "text": "It contains child Views and participates in measuring and laying them out."
+        },
+        {
+          "id": "views_fundamentals_001_c",
+          "text": "It replaces the Activity lifecycle for UI code."
+        },
+        {
+          "id": "views_fundamentals_001_d",
+          "text": "It is a resource qualifier for tablet layouts."
+        }
+      ],
+      "correctAnswerIds": [
+        "views_fundamentals_001_b"
+      ],
+      "explanation": "A ViewGroup is a View that can contain child Views and is responsible for measuring and laying them out according to its layout rules.",
+      "sources": [
+        {
+          "title": "Application Fundamentals",
+          "url": "https://developer.android.com/guide/components/fundamentals"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "view_rendering_001",
+      "topicId": "android_ui",
+      "subtopicId": "view_rendering",
+      "text": "What is the high-level order of work in the classic Android View rendering pipeline?",
+      "answers": [
+        {
+          "id": "view_rendering_001_a",
+          "text": "Measure, layout, then draw."
+        },
+        {
+          "id": "view_rendering_001_b",
+          "text": "Draw, layout, then measure."
+        },
+        {
+          "id": "view_rendering_001_c",
+          "text": "Inflate, serialize, then persist."
+        },
+        {
+          "id": "view_rendering_001_d",
+          "text": "Compose, remember, then dispose."
+        }
+      ],
+      "correctAnswerIds": [
+        "view_rendering_001_a"
+      ],
+      "explanation": "The View system first measures sizes, then lays out positions, then draws. Custom Views must respect this separation to render correctly.",
+      "sources": [
+        {
+          "title": "Application Fundamentals",
+          "url": "https://developer.android.com/guide/components/fundamentals"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "recyclerview_001",
+      "topicId": "android_ui",
+      "subtopicId": "recyclerview",
+      "text": "Why does RecyclerView rely on ViewHolder reuse for large lists?",
+      "answers": [
+        {
+          "id": "recyclerview_001_a",
+          "text": "To make every list item share the same click listener identity."
+        },
+        {
+          "id": "recyclerview_001_b",
+          "text": "To persist each row automatically across process death."
+        },
+        {
+          "id": "recyclerview_001_c",
+          "text": "To prevent the adapter from ever receiving data changes."
+        },
+        {
+          "id": "recyclerview_001_d",
+          "text": "To reduce repeated View inflation and allocation while scrolling."
+        }
+      ],
+      "correctAnswerIds": [
+        "recyclerview_001_d"
+      ],
+      "explanation": "RecyclerView reuses item Views through ViewHolders so scrolling large datasets does not require inflating and allocating a new View hierarchy for every item that appears.",
+      "sources": [
+        {
+          "title": "Create Dynamic Lists with RecyclerView",
+          "url": "https://developer.android.com/develop/ui/views/layout/recyclerview"
+        },
+        {
+          "title": "Guide to App Performance",
+          "url": "https://developer.android.com/topic/performance"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_state_001",
+      "topicId": "android_ui",
+      "subtopicId": "compose_state",
+      "text": "Why should Compose UI be driven by observable state rather than directly mutating emitted UI nodes?",
+      "answers": [
+        {
+          "id": "compose_state_001_a",
+          "text": "Because Compose disables all mutable variables."
+        },
+        {
+          "id": "compose_state_001_b",
+          "text": "Because composables describe UI from state and are called again when observed state changes."
+        },
+        {
+          "id": "compose_state_001_c",
+          "text": "Because state objects are automatically written to Room."
+        },
+        {
+          "id": "compose_state_001_d",
+          "text": "Because recomposition happens only once per Activity lifetime."
+        }
+      ],
+      "correctAnswerIds": [
+        "compose_state_001_b"
+      ],
+      "explanation": "Compose is declarative. UI is described from current state, and state changes cause recomposition with new arguments instead of mutating previously emitted UI objects directly.",
+      "sources": [
+        {
+          "title": "State and Jetpack Compose",
+          "url": "https://developer.android.com/develop/ui/compose/state"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_recomposition_001",
+      "topicId": "android_ui",
+      "subtopicId": "compose_recomposition",
+      "text": "What can cause a composable that reads Compose state to recompose?",
+      "answers": [
+        {
+          "id": "compose_recomposition_001_a",
+          "text": "Only Activity recreation can cause recomposition."
+        },
+        {
+          "id": "compose_recomposition_001_b",
+          "text": "Only explicit calls to invalidate() on a View can cause recomposition."
+        },
+        {
+          "id": "compose_recomposition_001_c",
+          "text": "A change to observable state read by that composable."
+        },
+        {
+          "id": "compose_recomposition_001_d",
+          "text": "Only a Gradle rebuild can cause recomposition."
+        }
+      ],
+      "correctAnswerIds": [
+        "compose_recomposition_001_c"
+      ],
+      "explanation": "When a composable reads observable Compose state, changes to that state can invalidate the relevant composition and cause Compose to call the composable again with updated values.",
+      "sources": [
+        {
+          "title": "State and Jetpack Compose",
+          "url": "https://developer.android.com/develop/ui/compose/state"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_state_hoisting_001",
+      "topicId": "android_ui",
+      "subtopicId": "compose_state_hoisting",
+      "text": "What is the usual goal of state hoisting in Compose?",
+      "answers": [
+        {
+          "id": "compose_state_hoisting_001_a",
+          "text": "Move state to an appropriate owner and pass current value plus events down."
+        },
+        {
+          "id": "compose_state_hoisting_001_b",
+          "text": "Store every UI value in a global singleton."
+        },
+        {
+          "id": "compose_state_hoisting_001_c",
+          "text": "Prevent recomposition from ever happening."
+        },
+        {
+          "id": "compose_state_hoisting_001_d",
+          "text": "Move state into XML resources so it can be localized."
+        }
+      ],
+      "correctAnswerIds": [
+        "compose_state_hoisting_001_a"
+      ],
+      "explanation": "State hoisting moves state to an appropriate owner, often the lowest common ancestor that reads and writes it, which improves reuse, testability, and unidirectional data flow.",
+      "sources": [
+        {
+          "title": "Where to Hoist State",
+          "url": "https://developer.android.com/develop/ui/compose/state-hoisting"
+        },
+        {
+          "title": "State and Jetpack Compose",
+          "url": "https://developer.android.com/develop/ui/compose/state"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_side_effects_001",
+      "topicId": "android_ui",
+      "subtopicId": "compose_side_effects",
+      "text": "Which statements about Compose side-effect APIs are correct? Select all that apply.",
+      "answers": [
+        {
+          "id": "compose_side_effects_001_a",
+          "text": "LaunchedEffect launches a coroutine scoped to the composition for its key set."
+        },
+        {
+          "id": "compose_side_effects_001_b",
+          "text": "Side-effect APIs are required for every Text composable."
+        },
+        {
+          "id": "compose_side_effects_001_c",
+          "text": "DisposableEffect can clean up resources when the effect leaves composition or keys change."
+        },
+        {
+          "id": "compose_side_effects_001_d",
+          "text": "rememberCoroutineScope automatically runs its block during every recomposition."
+        }
+      ],
+      "correctAnswerIds": [
+        "compose_side_effects_001_a",
+        "compose_side_effects_001_c"
+      ],
+      "explanation": "Side-effect APIs run work that should be coordinated with composition lifecycle. LaunchedEffect launches a coroutine tied to composition keys, and DisposableEffect provides cleanup when its keys change or it leaves composition.",
+      "sources": [
+        {
+          "title": "Side-effects in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/side-effects"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_lazy_layouts_001",
+      "topicId": "android_ui",
+      "subtopicId": "compose_lazy_layouts",
+      "text": "Why are stable item keys important in Compose lazy lists when items can be inserted, removed, or reordered?",
+      "answers": [
+        {
+          "id": "compose_lazy_layouts_001_a",
+          "text": "They make every row render on a background thread."
+        },
+        {
+          "id": "compose_lazy_layouts_001_b",
+          "text": "They replace the need for state hoisting."
+        },
+        {
+          "id": "compose_lazy_layouts_001_c",
+          "text": "They automatically persist list contents to disk."
+        },
+        {
+          "id": "compose_lazy_layouts_001_d",
+          "text": "They preserve item identity across insertions, removals, and moves."
+        }
+      ],
+      "correctAnswerIds": [
+        "compose_lazy_layouts_001_d"
+      ],
+      "explanation": "Stable keys let Compose keep item identity across dataset changes. That helps preserve item state and avoid treating moved items as unrelated new items.",
+      "sources": [
+        {
+          "title": "Lists and Grids",
+          "url": "https://developer.android.com/develop/ui/compose/lists"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_stability_001",
+      "topicId": "android_ui",
+      "subtopicId": "compose_stability",
+      "text": "How can unstable parameter types affect Compose performance?",
+      "answers": [
+        {
+          "id": "compose_stability_001_a",
+          "text": "They make the app fail to compile on Android only."
+        },
+        {
+          "id": "compose_stability_001_b",
+          "text": "They can prevent Compose from skipping recomposition when inputs are effectively unchanged."
+        },
+        {
+          "id": "compose_stability_001_c",
+          "text": "They force all state into SavedStateHandle."
+        },
+        {
+          "id": "compose_stability_001_d",
+          "text": "They disable Material theming."
+        }
+      ],
+      "correctAnswerIds": [
+        "compose_stability_001_b"
+      ],
+      "explanation": "If Compose cannot know whether a parameter's value has changed safely, it may recompose more often instead of skipping work. Stable immutable models can improve skippability.",
+      "sources": [
+        {
+          "title": "Stability in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/performance/stability"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_accessibility_001",
+      "topicId": "android_ui",
+      "subtopicId": "compose_accessibility",
+      "text": "What is the purpose of semantics information in Compose?",
+      "answers": [
+        {
+          "id": "compose_accessibility_001_a",
+          "text": "To choose which Gradle variant builds the composable."
+        },
+        {
+          "id": "compose_accessibility_001_b",
+          "text": "To replace all content descriptions with bitmap snapshots."
+        },
+        {
+          "id": "compose_accessibility_001_c",
+          "text": "To expose UI meaning and actions to accessibility services and testing APIs."
+        },
+        {
+          "id": "compose_accessibility_001_d",
+          "text": "To make composables persist automatically after process death."
+        }
+      ],
+      "correctAnswerIds": [
+        "compose_accessibility_001_c"
+      ],
+      "explanation": "Semantics describe UI meaning and actions to accessibility services and tests. They help non-visual users and automation understand the composable tree.",
+      "sources": [
+        {
+          "title": "Accessibility in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/accessibility"
+        },
+        {
+          "title": "Testing Your Compose Layout",
+          "url": "https://developer.android.com/develop/ui/compose/testing"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_nullability_001",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_nullability",
+      "text": "What does Kotlin's type system express when a variable has nullable type String? instead of non-null type String?",
+      "answers": [
+        {
+          "id": "kotlin_nullability_001_a",
+          "text": "Both types can hold null; the difference is only documentation."
+        },
+        {
+          "id": "kotlin_nullability_001_b",
+          "text": "String is non-null, while String? is nullable."
+        },
+        {
+          "id": "kotlin_nullability_001_c",
+          "text": "String is nullable, while String? is non-null."
+        },
+        {
+          "id": "kotlin_nullability_001_d",
+          "text": "Nullability is checked only at runtime on Android."
+        }
+      ],
+      "correctAnswerIds": [
+        "kotlin_nullability_001_b"
+      ],
+      "explanation": "A non-null String type cannot hold null without unsafe interop or explicit tricks. Nullable types are written with a question mark, such as String?.",
+      "sources": [
+        {
+          "title": "Null Safety",
+          "url": "https://kotlinlang.org/docs/null-safety.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_data_classes_001",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_data_classes",
+      "text": "What does a Kotlin data class primarily generate from properties declared in its primary constructor?",
+      "answers": [
+        {
+          "id": "kotlin_data_classes_001_a",
+          "text": "Android Parcelable implementation for every property."
+        },
+        {
+          "id": "kotlin_data_classes_001_b",
+          "text": "A Room table and DAO."
+        },
+        {
+          "id": "kotlin_data_classes_001_c",
+          "text": "Value-oriented functions such as equals(), hashCode(), toString(), componentN(), and copy()."
+        },
+        {
+          "id": "kotlin_data_classes_001_d",
+          "text": "A sealed hierarchy and exhaustive when checks."
+        }
+      ],
+      "correctAnswerIds": [
+        "kotlin_data_classes_001_c"
+      ],
+      "explanation": "Data classes generate value-oriented members such as equals(), hashCode(), toString(), componentN(), and copy() based on primary constructor properties.",
+      "sources": [
+        {
+          "title": "Data Classes",
+          "url": "https://kotlinlang.org/docs/data-classes.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_objects_001",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_objects",
+      "text": "What is a Kotlin object declaration commonly used for?",
+      "answers": [
+        {
+          "id": "kotlin_objects_001_a",
+          "text": "Declaring a singleton instance."
+        },
+        {
+          "id": "kotlin_objects_001_b",
+          "text": "Declaring a class that must be instantiated with new."
+        },
+        {
+          "id": "kotlin_objects_001_c",
+          "text": "Creating a nullable primitive type."
+        },
+        {
+          "id": "kotlin_objects_001_d",
+          "text": "Generating a SQL table automatically."
+        }
+      ],
+      "correctAnswerIds": [
+        "kotlin_objects_001_a"
+      ],
+      "explanation": "An object declaration defines a singleton instance. It is useful for stateless utilities or shared objects, but its in-memory state is still tied to the process.",
+      "sources": [
+        {
+          "title": "Object Declarations and Expressions",
+          "url": "https://kotlinlang.org/docs/object-declarations.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_sealed_types_001",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_sealed_types",
+      "text": "Why are sealed classes or sealed interfaces useful for modeling UI states or results?",
+      "answers": [
+        {
+          "id": "kotlin_sealed_types_001_a",
+          "text": "They allow any module to add new direct subclasses at runtime."
+        },
+        {
+          "id": "kotlin_sealed_types_001_b",
+          "text": "They make every subclass serializable without a plugin."
+        },
+        {
+          "id": "kotlin_sealed_types_001_c",
+          "text": "They prevent all inheritance inside the same package."
+        },
+        {
+          "id": "kotlin_sealed_types_001_d",
+          "text": "They model a restricted set of known alternatives."
+        }
+      ],
+      "correctAnswerIds": [
+        "kotlin_sealed_types_001_d"
+      ],
+      "explanation": "A sealed hierarchy restricts known direct subtypes, allowing callers to handle a closed set of cases and enabling exhaustive when expressions in many situations.",
+      "sources": [
+        {
+          "title": "Sealed Classes and Interfaces",
+          "url": "https://kotlinlang.org/docs/sealed-classes.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_generics_001",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_generics",
+      "text": "In Kotlin generics, what does declaration-site variance with out T indicate?",
+      "answers": [
+        {
+          "id": "kotlin_generics_001_a",
+          "text": "The type parameter can only be used as a function argument."
+        },
+        {
+          "id": "kotlin_generics_001_b",
+          "text": "The type parameter is covariant and can be safely produced."
+        },
+        {
+          "id": "kotlin_generics_001_c",
+          "text": "The type parameter disables null-safety checks."
+        },
+        {
+          "id": "kotlin_generics_001_d",
+          "text": "The type parameter is erased only on Android."
+        }
+      ],
+      "correctAnswerIds": [
+        "kotlin_generics_001_b"
+      ],
+      "explanation": "An out type parameter is covariant and can be produced safely by the type. It should not be consumed in positions that would break type safety.",
+      "sources": [
+        {
+          "title": "Generics: In, Out, Where",
+          "url": "https://kotlinlang.org/docs/generics.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_reified_types_001",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_reified_types",
+      "text": "Why can an inline function with a reified type parameter check T at runtime?",
+      "answers": [
+        {
+          "id": "kotlin_reified_types_001_a",
+          "text": "Because all Kotlin generic types are normally reified on the JVM."
+        },
+        {
+          "id": "kotlin_reified_types_001_b",
+          "text": "Because reified type parameters are stored in Android resources."
+        },
+        {
+          "id": "kotlin_reified_types_001_c",
+          "text": "Because the inline function body is expanded at call sites with the concrete type available."
+        },
+        {
+          "id": "kotlin_reified_types_001_d",
+          "text": "Because reified works only for suspend functions."
+        }
+      ],
+      "correctAnswerIds": [
+        "kotlin_reified_types_001_c"
+      ],
+      "explanation": "Inlining substitutes the function body at call sites, allowing the compiler to make the actual type argument available for operations such as is checks or class references.",
+      "sources": [
+        {
+          "title": "Inline Functions",
+          "url": "https://kotlinlang.org/docs/inline-functions.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_equality_001",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_equality",
+      "text": "What is the difference between == and === in Kotlin?",
+      "answers": [
+        {
+          "id": "kotlin_equality_001_a",
+          "text": "== checks structural equality; === checks referential equality."
+        },
+        {
+          "id": "kotlin_equality_001_b",
+          "text": "== checks referential equality; === checks structural equality."
+        },
+        {
+          "id": "kotlin_equality_001_c",
+          "text": "Both operators always compile to the same JVM instruction."
+        },
+        {
+          "id": "kotlin_equality_001_d",
+          "text": "=== is only available for primitive numbers."
+        }
+      ],
+      "correctAnswerIds": [
+        "kotlin_equality_001_a"
+      ],
+      "explanation": "The == operator checks structural equality by calling equals with null-safety. The === operator checks referential equality, meaning whether two references point to the same object.",
+      "sources": [
+        {
+          "title": "Equality",
+          "url": "https://kotlinlang.org/docs/equality.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_scope_functions_001",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_scope_functions",
+      "text": "What is a practical risk of overusing Kotlin scope functions such as apply, also, let, run, and with?",
+      "answers": [
+        {
+          "id": "kotlin_scope_functions_001_a",
+          "text": "They disable null safety inside lambdas."
+        },
+        {
+          "id": "kotlin_scope_functions_001_b",
+          "text": "They make every lambda run on a background thread."
+        },
+        {
+          "id": "kotlin_scope_functions_001_c",
+          "text": "They turn immutable vals into mutable vars."
+        },
+        {
+          "id": "kotlin_scope_functions_001_d",
+          "text": "They can obscure receiver or argument meaning when nested or mixed heavily."
+        }
+      ],
+      "correctAnswerIds": [
+        "kotlin_scope_functions_001_d"
+      ],
+      "explanation": "Scope functions can reduce boilerplate, but excessive nesting or mixed receiver styles can make it unclear what this or it refers to and reduce readability.",
+      "sources": [
+        {
+          "title": "Scope Functions",
+          "url": "https://kotlinlang.org/docs/scope-functions.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_sequences_001",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_sequences",
+      "text": "When can Kotlin sequences be useful compared with eager collection operations?",
+      "answers": [
+        {
+          "id": "kotlin_sequences_001_a",
+          "text": "When every element must be eagerly copied after each operation."
+        },
+        {
+          "id": "kotlin_sequences_001_b",
+          "text": "When a multi-step pipeline can benefit from lazy evaluation and fewer intermediate collections."
+        },
+        {
+          "id": "kotlin_sequences_001_c",
+          "text": "When code must run only on Android's main thread."
+        },
+        {
+          "id": "kotlin_sequences_001_d",
+          "text": "When nullability checks need to be disabled."
+        }
+      ],
+      "correctAnswerIds": [
+        "kotlin_sequences_001_b"
+      ],
+      "explanation": "Sequences evaluate operations lazily, which can avoid intermediate collections in multi-step pipelines. They are not automatically faster for every small collection.",
+      "sources": [
+        {
+          "title": "Sequences",
+          "url": "https://kotlinlang.org/docs/sequences.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "jvm_fundamentals_001",
+      "topicId": "kotlin_language",
+      "subtopicId": "jvm_fundamentals",
+      "text": "Why does JVM type erasure matter when designing generic Kotlin APIs for Android?",
+      "answers": [
+        {
+          "id": "jvm_fundamentals_001_a",
+          "text": "Because erasure removes all objects from memory after compilation."
+        },
+        {
+          "id": "jvm_fundamentals_001_b",
+          "text": "Because erasure makes nullable types impossible."
+        },
+        {
+          "id": "jvm_fundamentals_001_c",
+          "text": "Because generic type arguments are generally not directly available at runtime."
+        },
+        {
+          "id": "jvm_fundamentals_001_d",
+          "text": "Because erasure applies only to Compose previews."
+        }
+      ],
+      "correctAnswerIds": [
+        "jvm_fundamentals_001_c"
+      ],
+      "explanation": "Generic type arguments are generally erased at runtime on the JVM, so APIs that need runtime type information often require an explicit class/token or an inline reified function.",
+      "sources": [
+        {
+          "title": "Generics: In, Out, Where",
+          "url": "https://kotlinlang.org/docs/generics.html"
+        },
+        {
+          "title": "Inline Functions",
+          "url": "https://kotlinlang.org/docs/inline-functions.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_fundamentals_001",
+      "topicId": "async_reactive",
+      "subtopicId": "coroutine_fundamentals",
+      "text": "What does a suspend function indicate in Kotlin?",
+      "answers": [
+        {
+          "id": "coroutine_fundamentals_001_a",
+          "text": "It always runs on a new operating-system thread."
+        },
+        {
+          "id": "coroutine_fundamentals_001_b",
+          "text": "It can suspend without blocking the thread and resume later."
+        },
+        {
+          "id": "coroutine_fundamentals_001_c",
+          "text": "It is automatically retried after exceptions."
+        },
+        {
+          "id": "coroutine_fundamentals_001_d",
+          "text": "It can be called from any regular function with no coroutine context."
+        }
+      ],
+      "correctAnswerIds": [
+        "coroutine_fundamentals_001_b"
+      ],
+      "explanation": "A suspend function can suspend execution without blocking the underlying thread and later resume. It still needs to be called from another suspend function or coroutine.",
+      "sources": [
+        {
+          "title": "Coroutine Basics",
+          "url": "https://kotlinlang.org/docs/coroutines-basics.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_builders_001",
+      "topicId": "async_reactive",
+      "subtopicId": "coroutine_builders",
+      "text": "When is async more appropriate than launch?",
+      "answers": [
+        {
+          "id": "coroutine_builders_001_a",
+          "text": "When the coroutine must ignore all cancellation."
+        },
+        {
+          "id": "coroutine_builders_001_b",
+          "text": "When the coroutine should never have a parent Job."
+        },
+        {
+          "id": "coroutine_builders_001_c",
+          "text": "When the caller needs a result represented by Deferred."
+        },
+        {
+          "id": "coroutine_builders_001_d",
+          "text": "When the code must run synchronously on the caller thread."
+        }
+      ],
+      "correctAnswerIds": [
+        "coroutine_builders_001_c"
+      ],
+      "explanation": "async returns a Deferred for a result that can be awaited. launch is better for fire-and-forget child work that does not directly produce a value.",
+      "sources": [
+        {
+          "title": "Coroutine Basics",
+          "url": "https://kotlinlang.org/docs/coroutines-basics.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "structured_concurrency_001",
+      "topicId": "async_reactive",
+      "subtopicId": "structured_concurrency",
+      "text": "What problem does structured concurrency address?",
+      "answers": [
+        {
+          "id": "structured_concurrency_001_a",
+          "text": "It keeps coroutine lifetimes tied to explicit scopes and parent-child relationships."
+        },
+        {
+          "id": "structured_concurrency_001_b",
+          "text": "It guarantees every coroutine runs on Dispatchers.Main."
+        },
+        {
+          "id": "structured_concurrency_001_c",
+          "text": "It disables exception propagation between child coroutines."
+        },
+        {
+          "id": "structured_concurrency_001_d",
+          "text": "It converts every Flow into LiveData."
+        }
+      ],
+      "correctAnswerIds": [
+        "structured_concurrency_001_a"
+      ],
+      "explanation": "Structured concurrency ties child coroutines to a parent scope so lifetimes, cancellation, and failure are managed predictably rather than leaving work running unowned.",
+      "sources": [
+        {
+          "title": "Coroutine Basics",
+          "url": "https://kotlinlang.org/docs/coroutines-basics.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_cancellation_001",
+      "topicId": "async_reactive",
+      "subtopicId": "coroutine_cancellation",
+      "text": "Why should long-running coroutine loops check for cancellation or call cancellable suspending functions?",
+      "answers": [
+        {
+          "id": "coroutine_cancellation_001_a",
+          "text": "Because cancellation always interrupts the CPU instruction currently running."
+        },
+        {
+          "id": "coroutine_cancellation_001_b",
+          "text": "Because cancelled coroutines are automatically restarted."
+        },
+        {
+          "id": "coroutine_cancellation_001_c",
+          "text": "Because cancellation only works for network requests."
+        },
+        {
+          "id": "coroutine_cancellation_001_d",
+          "text": "Because cancellation is cooperative and busy code must reach a cancellation check."
+        }
+      ],
+      "correctAnswerIds": [
+        "coroutine_cancellation_001_d"
+      ],
+      "explanation": "Coroutine cancellation is cooperative. Code that never suspends and never checks cancellation may keep running even after its Job is cancelled.",
+      "sources": [
+        {
+          "title": "Cancellation and Timeouts",
+          "url": "https://kotlinlang.org/docs/cancellation-and-timeouts.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_exceptions_001",
+      "topicId": "async_reactive",
+      "subtopicId": "coroutine_exceptions",
+      "text": "How does a regular Job parent usually react when one child coroutine fails with an uncaught exception?",
+      "answers": [
+        {
+          "id": "coroutine_exceptions_001_a",
+          "text": "It ignores the failure and lets all children continue."
+        },
+        {
+          "id": "coroutine_exceptions_001_b",
+          "text": "It is cancelled, and sibling children are cancelled as a consequence."
+        },
+        {
+          "id": "coroutine_exceptions_001_c",
+          "text": "It retries the failed child automatically."
+        },
+        {
+          "id": "coroutine_exceptions_001_d",
+          "text": "It converts the exception into null."
+        }
+      ],
+      "correctAnswerIds": [
+        "coroutine_exceptions_001_b"
+      ],
+      "explanation": "In regular structured concurrency, an uncaught child failure cancels the parent, which then cancels its other children. Supervision changes that behavior.",
+      "sources": [
+        {
+          "title": "Coroutine Exceptions Handling",
+          "url": "https://kotlinlang.org/docs/exception-handling.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_context_switching_001",
+      "topicId": "async_reactive",
+      "subtopicId": "coroutine_context_switching",
+      "text": "What is withContext commonly used for in Android coroutine code?",
+      "answers": [
+        {
+          "id": "coroutine_context_switching_001_a",
+          "text": "Creating an unstructured global coroutine."
+        },
+        {
+          "id": "coroutine_context_switching_001_b",
+          "text": "Launching two independent coroutines and returning immediately."
+        },
+        {
+          "id": "coroutine_context_switching_001_c",
+          "text": "Switching execution context for a scoped block of suspending work."
+        },
+        {
+          "id": "coroutine_context_switching_001_d",
+          "text": "Persisting coroutine state after process death."
+        }
+      ],
+      "correctAnswerIds": [
+        "coroutine_context_switching_001_c"
+      ],
+      "explanation": "withContext runs a block in a different coroutine context, commonly switching blocking IO work to an IO dispatcher while preserving structured execution.",
+      "sources": [
+        {
+          "title": "Coroutine Context and Dispatchers",
+          "url": "https://kotlinlang.org/docs/coroutine-context-and-dispatchers.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_fundamentals_001",
+      "topicId": "async_reactive",
+      "subtopicId": "flow_fundamentals",
+      "text": "What makes a basic Kotlin Flow cold?",
+      "answers": [
+        {
+          "id": "flow_fundamentals_001_a",
+          "text": "Its producer starts when the flow is collected."
+        },
+        {
+          "id": "flow_fundamentals_001_b",
+          "text": "It always stores the latest value in memory."
+        },
+        {
+          "id": "flow_fundamentals_001_c",
+          "text": "It emits only on Android's main thread."
+        },
+        {
+          "id": "flow_fundamentals_001_d",
+          "text": "It can have only one operator."
+        }
+      ],
+      "correctAnswerIds": [
+        "flow_fundamentals_001_a"
+      ],
+      "explanation": "A cold Flow does not run its producer until it is collected. Each collection can start the flow pipeline again.",
+      "sources": [
+        {
+          "title": "Asynchronous Flow",
+          "url": "https://kotlinlang.org/docs/coroutines-flow.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_context_001",
+      "topicId": "async_reactive",
+      "subtopicId": "flow_context",
+      "text": "What does flowOn affect in a Kotlin Flow pipeline?",
+      "answers": [
+        {
+          "id": "flow_context_001_a",
+          "text": "Only the terminal collector block."
+        },
+        {
+          "id": "flow_context_001_b",
+          "text": "Every coroutine in the application process."
+        },
+        {
+          "id": "flow_context_001_c",
+          "text": "Only exception handlers attached to the Activity."
+        },
+        {
+          "id": "flow_context_001_d",
+          "text": "The upstream part of the flow before the flowOn operator."
+        }
+      ],
+      "correctAnswerIds": [
+        "flow_context_001_d"
+      ],
+      "explanation": "flowOn changes the context of upstream flow operations. It does not change the collector's coroutine context downstream.",
+      "sources": [
+        {
+          "title": "Asynchronous Flow",
+          "url": "https://kotlinlang.org/docs/coroutines-flow.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "stateflow_001",
+      "topicId": "async_reactive",
+      "subtopicId": "stateflow",
+      "text": "When is StateFlow a good fit for exposing UI state from a ViewModel?",
+      "answers": [
+        {
+          "id": "stateflow_001_a",
+          "text": "When each collector must receive a different one-time event."
+        },
+        {
+          "id": "stateflow_001_b",
+          "text": "When the UI needs the latest state value and updates when it changes."
+        },
+        {
+          "id": "stateflow_001_c",
+          "text": "When the state must be stored in SQLite automatically."
+        },
+        {
+          "id": "stateflow_001_d",
+          "text": "When there should be no initial value."
+        }
+      ],
+      "correctAnswerIds": [
+        "stateflow_001_b"
+      ],
+      "explanation": "StateFlow represents observable state with a current value. That matches screen UI state that Compose or other UI layers can observe.",
+      "sources": [
+        {
+          "title": "StateFlow and SharedFlow",
+          "url": "https://developer.android.com/kotlin/flow/stateflow-and-sharedflow"
+        },
+        {
+          "title": "Where to Hoist State",
+          "url": "https://developer.android.com/develop/ui/compose/state-hoisting"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sharedflow_001",
+      "topicId": "async_reactive",
+      "subtopicId": "sharedflow",
+      "text": "Which statements about SharedFlow are correct? Select all that apply.",
+      "answers": [
+        {
+          "id": "sharedflow_001_a",
+          "text": "It is a hot flow."
+        },
+        {
+          "id": "sharedflow_001_b",
+          "text": "It must always have exactly one current value."
+        },
+        {
+          "id": "sharedflow_001_c",
+          "text": "It is collected only once globally and then completes forever."
+        },
+        {
+          "id": "sharedflow_001_d",
+          "text": "Its replay behavior is configurable."
+        }
+      ],
+      "correctAnswerIds": [
+        "sharedflow_001_a",
+        "sharedflow_001_d"
+      ],
+      "explanation": "SharedFlow is a hot flow that can broadcast emissions to active collectors. Depending on replay configuration, it may or may not replay past values to new collectors.",
+      "sources": [
+        {
+          "title": "StateFlow and SharedFlow",
+          "url": "https://developer.android.com/kotlin/flow/stateflow-and-sharedflow"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "separation_of_concerns_001",
+      "topicId": "architecture",
+      "subtopicId": "separation_of_concerns",
+      "text": "Why is separation of concerns important in Android architecture?",
+      "answers": [
+        {
+          "id": "separation_of_concerns_001_a",
+          "text": "It guarantees that every screen needs only one class."
+        },
+        {
+          "id": "separation_of_concerns_001_b",
+          "text": "It removes the need for tests."
+        },
+        {
+          "id": "separation_of_concerns_001_c",
+          "text": "It keeps responsibilities focused so changes and tests affect smaller parts of the app."
+        },
+        {
+          "id": "separation_of_concerns_001_d",
+          "text": "It requires all code to live in the data layer."
+        }
+      ],
+      "correctAnswerIds": [
+        "separation_of_concerns_001_c"
+      ],
+      "explanation": "Separating UI, state, data access, and business rules reduces coupling and makes each part easier to test, replace, and reason about.",
+      "sources": [
+        {
+          "title": "Guide to App Architecture",
+          "url": "https://developer.android.com/topic/architecture"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "unidirectional_data_flow_001",
+      "topicId": "architecture",
+      "subtopicId": "unidirectional_data_flow",
+      "text": "In unidirectional data flow, how do state and events usually move?",
+      "answers": [
+        {
+          "id": "unidirectional_data_flow_001_a",
+          "text": "State flows down to consumers, and events flow up to the state owner."
+        },
+        {
+          "id": "unidirectional_data_flow_001_b",
+          "text": "Events and state both mutate every UI element directly."
+        },
+        {
+          "id": "unidirectional_data_flow_001_c",
+          "text": "Only repositories are allowed to observe state."
+        },
+        {
+          "id": "unidirectional_data_flow_001_d",
+          "text": "State must always be stored in global mutable objects."
+        }
+      ],
+      "correctAnswerIds": [
+        "unidirectional_data_flow_001_a"
+      ],
+      "explanation": "State flows from the owner toward the UI, and events flow back toward the owner that can decide how state changes.",
+      "sources": [
+        {
+          "title": "Guide to App Architecture",
+          "url": "https://developer.android.com/topic/architecture"
+        },
+        {
+          "title": "State and Jetpack Compose",
+          "url": "https://developer.android.com/develop/ui/compose/state"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "repository_pattern_001",
+      "topicId": "architecture",
+      "subtopicId": "repository_pattern",
+      "text": "What role does a repository usually play in Android app architecture?",
+      "answers": [
+        {
+          "id": "repository_pattern_001_a",
+          "text": "It renders composables directly."
+        },
+        {
+          "id": "repository_pattern_001_b",
+          "text": "It coordinates access to one or more data sources behind a focused API."
+        },
+        {
+          "id": "repository_pattern_001_c",
+          "text": "It replaces the Activity lifecycle."
+        },
+        {
+          "id": "repository_pattern_001_d",
+          "text": "It must contain all navigation routes."
+        }
+      ],
+      "correctAnswerIds": [
+        "repository_pattern_001_b"
+      ],
+      "explanation": "A repository mediates app data operations and can coordinate local and remote data sources while exposing data to higher layers through a stable API.",
+      "sources": [
+        {
+          "title": "Data Layer",
+          "url": "https://developer.android.com/topic/architecture/data-layer"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "single_source_of_truth_001",
+      "topicId": "architecture",
+      "subtopicId": "single_source_of_truth",
+      "text": "What does single source of truth mean for a piece of application data?",
+      "answers": [
+        {
+          "id": "single_source_of_truth_001_a",
+          "text": "Every screen keeps its own independent mutable copy."
+        },
+        {
+          "id": "single_source_of_truth_001_b",
+          "text": "The network is always the source of truth, even offline."
+        },
+        {
+          "id": "single_source_of_truth_001_c",
+          "text": "Only XML resources can hold the data."
+        },
+        {
+          "id": "single_source_of_truth_001_d",
+          "text": "One owner is responsible for the data and exposes it to consumers."
+        }
+      ],
+      "correctAnswerIds": [
+        "single_source_of_truth_001_d"
+      ],
+      "explanation": "A single owner is responsible for changing and exposing that data. This avoids conflicting copies and makes updates traceable.",
+      "sources": [
+        {
+          "title": "Guide to App Architecture",
+          "url": "https://developer.android.com/topic/architecture"
+        },
+        {
+          "title": "Data Layer",
+          "url": "https://developer.android.com/topic/architecture/data-layer"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "state_ownership_001",
+      "topicId": "architecture",
+      "subtopicId": "state_ownership",
+      "text": "Why should UI state have a clear owner?",
+      "answers": [
+        {
+          "id": "state_ownership_001_a",
+          "text": "So state changes have one responsible place and can be exposed predictably."
+        },
+        {
+          "id": "state_ownership_001_b",
+          "text": "So every child composable can mutate the same backing field."
+        },
+        {
+          "id": "state_ownership_001_c",
+          "text": "So state can avoid lifecycle concerns entirely."
+        },
+        {
+          "id": "state_ownership_001_d",
+          "text": "So state never needs to be tested."
+        }
+      ],
+      "correctAnswerIds": [
+        "state_ownership_001_a"
+      ],
+      "explanation": "A clear owner controls mutation and exposes observable state, reducing accidental conflicting updates from multiple parts of the UI.",
+      "sources": [
+        {
+          "title": "Guide to App Architecture",
+          "url": "https://developer.android.com/topic/architecture"
+        },
+        {
+          "title": "Where to Hoist State",
+          "url": "https://developer.android.com/develop/ui/compose/state-hoisting"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "dependency_direction_001",
+      "topicId": "architecture",
+      "subtopicId": "dependency_direction",
+      "text": "What problem does dependency inversion help solve between domain logic and data implementations?",
+      "answers": [
+        {
+          "id": "dependency_direction_001_a",
+          "text": "It forces domain code to import every database class."
+        },
+        {
+          "id": "dependency_direction_001_b",
+          "text": "It removes all runtime dependencies from the app."
+        },
+        {
+          "id": "dependency_direction_001_c",
+          "text": "It keeps higher-level logic from depending directly on concrete implementation details."
+        },
+        {
+          "id": "dependency_direction_001_d",
+          "text": "It makes networking run faster by default."
+        }
+      ],
+      "correctAnswerIds": [
+        "dependency_direction_001_c"
+      ],
+      "explanation": "Dependency inversion lets higher-level policy depend on abstractions instead of concrete lower-level details, making implementations replaceable and tests easier.",
+      "sources": [
+        {
+          "title": "Guide to App Architecture",
+          "url": "https://developer.android.com/topic/architecture"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "architecture_tradeoffs_001",
+      "topicId": "architecture",
+      "subtopicId": "architecture_tradeoffs",
+      "text": "When is adding a use-case layer most defensible in an Android feature?",
+      "answers": [
+        {
+          "id": "architecture_tradeoffs_001_a",
+          "text": "Always, even when it only forwards one repository call unchanged."
+        },
+        {
+          "id": "architecture_tradeoffs_001_b",
+          "text": "When it contains meaningful business rules or orchestration that would otherwise be duplicated or misplaced."
+        },
+        {
+          "id": "architecture_tradeoffs_001_c",
+          "text": "Only when the UI is XML instead of Compose."
+        },
+        {
+          "id": "architecture_tradeoffs_001_d",
+          "text": "Never, because repositories must contain all business rules."
+        }
+      ],
+      "correctAnswerIds": [
+        "architecture_tradeoffs_001_b"
+      ],
+      "explanation": "A use-case layer earns its place when it centralizes meaningful reusable business rules or coordinates multiple dependencies. Adding one for trivial pass-through calls can create needless indirection.",
+      "sources": [
+        {
+          "title": "Guide to App Architecture",
+          "url": "https://developer.android.com/topic/architecture"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "constructor_injection_001",
+      "topicId": "dependency_injection",
+      "subtopicId": "constructor_injection",
+      "text": "Why is constructor injection often preferred for required dependencies?",
+      "answers": [
+        {
+          "id": "constructor_injection_001_a",
+          "text": "It makes required dependencies explicit at construction time."
+        },
+        {
+          "id": "constructor_injection_001_b",
+          "text": "It hides dependencies behind global mutable state."
+        },
+        {
+          "id": "constructor_injection_001_c",
+          "text": "It requires Android reflection for every object."
+        },
+        {
+          "id": "constructor_injection_001_d",
+          "text": "It prevents unit testing without instrumentation."
+        }
+      ],
+      "correctAnswerIds": [
+        "constructor_injection_001_a"
+      ],
+      "explanation": "Constructor injection makes dependencies explicit, allows immutable properties, and lets tests construct the class directly with fakes.",
+      "sources": [
+        {
+          "title": "Dependency Injection with Hilt",
+          "url": "https://developer.android.com/training/dependency-injection/hilt-android"
+        },
+        {
+          "title": "Dagger User Guide",
+          "url": "https://dagger.dev/dev-guide/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "composition_root_001",
+      "topicId": "dependency_injection",
+      "subtopicId": "composition_root",
+      "text": "What is the role of a composition root in manual dependency injection?",
+      "answers": [
+        {
+          "id": "composition_root_001_a",
+          "text": "It stores UI state for every composable."
+        },
+        {
+          "id": "composition_root_001_b",
+          "text": "It validates JSON schemas at runtime."
+        },
+        {
+          "id": "composition_root_001_c",
+          "text": "It centralizes construction and wiring of application dependencies."
+        },
+        {
+          "id": "composition_root_001_d",
+          "text": "It replaces stable IDs in content models."
+        }
+      ],
+      "correctAnswerIds": [
+        "composition_root_001_c"
+      ],
+      "explanation": "The composition root is where object graphs are assembled. Keeping wiring there avoids hidden lookups spread through feature code.",
+      "sources": [
+        {
+          "title": "Guide to App Architecture",
+          "url": "https://developer.android.com/topic/architecture"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "di_scopes_001",
+      "topicId": "dependency_injection",
+      "subtopicId": "di_scopes",
+      "text": "Which statements about DI scopes are correct? Select all that apply.",
+      "answers": [
+        {
+          "id": "di_scopes_001_a",
+          "text": "A scope always means the object lives forever."
+        },
+        {
+          "id": "di_scopes_001_b",
+          "text": "A scope controls the lifetime and sharing boundary of provided instances."
+        },
+        {
+          "id": "di_scopes_001_c",
+          "text": "A shorter-lived object can safely be retained by any longer-lived singleton without risk."
+        },
+        {
+          "id": "di_scopes_001_d",
+          "text": "Incorrect scoping can create leaks or unintended shared state."
+        }
+      ],
+      "correctAnswerIds": [
+        "di_scopes_001_b",
+        "di_scopes_001_d"
+      ],
+      "explanation": "A scope defines how long a provided instance is shared. Mis-scoping can cause unnecessary recreation or leaks when a long-lived object holds a short-lived dependency.",
+      "sources": [
+        {
+          "title": "Dependency Injection with Hilt",
+          "url": "https://developer.android.com/training/dependency-injection/hilt-android"
+        },
+        {
+          "title": "Dagger User Guide",
+          "url": "https://dagger.dev/dev-guide/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "service_locator_vs_di_001",
+      "topicId": "dependency_injection",
+      "subtopicId": "service_locator_vs_di",
+      "text": "What is a common downside of a service locator compared with explicit dependency injection?",
+      "answers": [
+        {
+          "id": "service_locator_vs_di_001_a",
+          "text": "It makes all dependencies visible in constructors."
+        },
+        {
+          "id": "service_locator_vs_di_001_b",
+          "text": "It can hide dependencies and lifecycle assumptions behind runtime lookup."
+        },
+        {
+          "id": "service_locator_vs_di_001_c",
+          "text": "It prevents any object from being shared."
+        },
+        {
+          "id": "service_locator_vs_di_001_d",
+          "text": "It is required by Kotlin Multiplatform."
+        }
+      ],
+      "correctAnswerIds": [
+        "service_locator_vs_di_001_b"
+      ],
+      "explanation": "A service locator hides dependency lookup inside implementation code, making dependencies less visible and often making tests and lifecycle boundaries harder to reason about.",
+      "sources": [
+        {
+          "title": "Guide to App Architecture",
+          "url": "https://developer.android.com/topic/architecture"
+        },
+        {
+          "title": "Koin Documentation",
+          "url": "https://insert-koin.io/docs/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "storage_selection_001",
+      "topicId": "local_data",
+      "subtopicId": "storage_selection",
+      "text": "Which storage option is usually appropriate for small key-value user preferences that must survive process death?",
+      "answers": [
+        {
+          "id": "storage_selection_001_a",
+          "text": "An Activity field."
+        },
+        {
+          "id": "storage_selection_001_b",
+          "text": "DataStore."
+        },
+        {
+          "id": "storage_selection_001_c",
+          "text": "A RecyclerView adapter."
+        },
+        {
+          "id": "storage_selection_001_d",
+          "text": "A Compose remember block only."
+        }
+      ],
+      "correctAnswerIds": [
+        "storage_selection_001_b"
+      ],
+      "explanation": "DataStore is a modern Jetpack option for small preference or typed data. Large relational datasets are a better fit for a database such as Room.",
+      "sources": [
+        {
+          "title": "Jetpack DataStore",
+          "url": "https://developer.android.com/topic/libraries/architecture/datastore"
+        },
+        {
+          "title": "Data Layer",
+          "url": "https://developer.android.com/topic/architecture/data-layer"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "room_dao_001",
+      "topicId": "local_data",
+      "subtopicId": "room_dao",
+      "text": "What is the responsibility of a Room DAO?",
+      "answers": [
+        {
+          "id": "room_dao_001_a",
+          "text": "Rendering database rows in Compose."
+        },
+        {
+          "id": "room_dao_001_b",
+          "text": "Declaring notification channels."
+        },
+        {
+          "id": "room_dao_001_c",
+          "text": "Defining database queries and access methods."
+        },
+        {
+          "id": "room_dao_001_d",
+          "text": "Choosing Gradle build variants."
+        }
+      ],
+      "correctAnswerIds": [
+        "room_dao_001_c"
+      ],
+      "explanation": "A DAO defines database access methods and queries for Room. Entities model tables; repositories decide how database data is used by the app.",
+      "sources": [
+        {
+          "title": "Save Data in a Local Database Using Room",
+          "url": "https://developer.android.com/training/data-storage/room"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "room_transactions_001",
+      "topicId": "local_data",
+      "subtopicId": "room_transactions",
+      "text": "Why are database transactions important when multiple related writes must succeed or fail together?",
+      "answers": [
+        {
+          "id": "room_transactions_001_a",
+          "text": "They provide atomicity for related operations."
+        },
+        {
+          "id": "room_transactions_001_b",
+          "text": "They force every query onto the main thread."
+        },
+        {
+          "id": "room_transactions_001_c",
+          "text": "They replace schema migrations."
+        },
+        {
+          "id": "room_transactions_001_d",
+          "text": "They automatically sync data to the network."
+        }
+      ],
+      "correctAnswerIds": [
+        "room_transactions_001_a"
+      ],
+      "explanation": "A transaction groups related operations atomically. If one part fails, the database can avoid committing a partially updated state.",
+      "sources": [
+        {
+          "title": "Save Data in a Local Database Using Room",
+          "url": "https://developer.android.com/training/data-storage/room"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "room_flow_001",
+      "topicId": "local_data",
+      "subtopicId": "room_flow",
+      "text": "What is useful about returning Flow from a Room query?",
+      "answers": [
+        {
+          "id": "room_flow_001_a",
+          "text": "It makes the query run without a database."
+        },
+        {
+          "id": "room_flow_001_b",
+          "text": "It guarantees network freshness."
+        },
+        {
+          "id": "room_flow_001_c",
+          "text": "It disables transactions for the DAO."
+        },
+        {
+          "id": "room_flow_001_d",
+          "text": "It lets collectors receive updated query results as data changes."
+        }
+      ],
+      "correctAnswerIds": [
+        "room_flow_001_d"
+      ],
+      "explanation": "Observable Room queries can emit updates when table data changes, letting UI observe local data and update from the database source of truth.",
+      "sources": [
+        {
+          "title": "Save Data in a Local Database Using Room",
+          "url": "https://developer.android.com/training/data-storage/room"
+        },
+        {
+          "title": "Build an Offline-first App",
+          "url": "https://developer.android.com/topic/architecture/data-layer/offline-first"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "offline_first_001",
+      "topicId": "local_data",
+      "subtopicId": "offline_first",
+      "text": "In an offline-first app, why is a local data source commonly treated as the source of truth?",
+      "answers": [
+        {
+          "id": "offline_first_001_a",
+          "text": "Because offline-first apps should never contact a server."
+        },
+        {
+          "id": "offline_first_001_b",
+          "text": "Because the app can remain usable and consistent when the network is unavailable."
+        },
+        {
+          "id": "offline_first_001_c",
+          "text": "Because local data is always more recent than remote data."
+        },
+        {
+          "id": "offline_first_001_d",
+          "text": "Because Android forbids caching network responses."
+        }
+      ],
+      "correctAnswerIds": [
+        "offline_first_001_b"
+      ],
+      "explanation": "The UI can read usable data without waiting for the network, while synchronization updates the local source when connectivity allows.",
+      "sources": [
+        {
+          "title": "Build an Offline-first App",
+          "url": "https://developer.android.com/topic/architecture/data-layer/offline-first"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "http_idempotency_001",
+      "topicId": "networking",
+      "subtopicId": "http_idempotency",
+      "text": "Why does HTTP idempotency matter when designing retry behavior?",
+      "answers": [
+        {
+          "id": "http_idempotency_001_a",
+          "text": "It means the request never reaches the server."
+        },
+        {
+          "id": "http_idempotency_001_b",
+          "text": "It means every method is safe to retry forever."
+        },
+        {
+          "id": "http_idempotency_001_c",
+          "text": "It helps determine whether retrying a request may repeat unintended side effects."
+        },
+        {
+          "id": "http_idempotency_001_d",
+          "text": "It applies only to WebSocket messages."
+        }
+      ],
+      "correctAnswerIds": [
+        "http_idempotency_001_c"
+      ],
+      "explanation": "Idempotent operations can be repeated with the same intended effect, making retries safer. Retrying non-idempotent operations such as many POST requests can duplicate side effects unless designed carefully.",
+      "sources": [
+        {
+          "title": "HTTP Semantics",
+          "url": "https://www.rfc-editor.org/rfc/rfc9110"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "network_timeouts_001",
+      "topicId": "networking",
+      "subtopicId": "network_timeouts",
+      "text": "Why should Android network clients configure timeouts?",
+      "answers": [
+        {
+          "id": "network_timeouts_001_a",
+          "text": "To make TLS optional."
+        },
+        {
+          "id": "network_timeouts_001_b",
+          "text": "To bound waiting time for network operations that may stall."
+        },
+        {
+          "id": "network_timeouts_001_c",
+          "text": "To force every response into the disk cache."
+        },
+        {
+          "id": "network_timeouts_001_d",
+          "text": "To make all HTTP methods idempotent."
+        }
+      ],
+      "correctAnswerIds": [
+        "network_timeouts_001_b"
+      ],
+      "explanation": "Timeouts bound how long the app waits for connection, reading, or writing. Without them, calls can hang too long and degrade user experience or resource usage.",
+      "sources": [
+        {
+          "title": "OkHttp Overview",
+          "url": "https://square.github.io/okhttp/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "okhttp_interceptors_001",
+      "topicId": "networking",
+      "subtopicId": "okhttp_interceptors",
+      "text": "What is a common use of an OkHttp interceptor?",
+      "answers": [
+        {
+          "id": "okhttp_interceptors_001_a",
+          "text": "Adding headers or observing/modifying requests and responses."
+        },
+        {
+          "id": "okhttp_interceptors_001_b",
+          "text": "Declaring Room entities."
+        },
+        {
+          "id": "okhttp_interceptors_001_c",
+          "text": "Rendering Compose layouts."
+        },
+        {
+          "id": "okhttp_interceptors_001_d",
+          "text": "Replacing Gradle dependency resolution."
+        }
+      ],
+      "correctAnswerIds": [
+        "okhttp_interceptors_001_a"
+      ],
+      "explanation": "Interceptors can observe, modify, and retry requests/responses. Common uses include adding headers, logging, and handling authentication concerns.",
+      "sources": [
+        {
+          "title": "OkHttp Overview",
+          "url": "https://square.github.io/okhttp/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "retrofit_coroutines_001",
+      "topicId": "networking",
+      "subtopicId": "retrofit_coroutines",
+      "text": "What is the benefit of declaring Retrofit service functions as suspend functions?",
+      "answers": [
+        {
+          "id": "retrofit_coroutines_001_a",
+          "text": "They make HTTP responses impossible to fail."
+        },
+        {
+          "id": "retrofit_coroutines_001_b",
+          "text": "They force the call to run on the main thread."
+        },
+        {
+          "id": "retrofit_coroutines_001_c",
+          "text": "They remove the need to parse response bodies."
+        },
+        {
+          "id": "retrofit_coroutines_001_d",
+          "text": "They integrate asynchronous calls with coroutine suspension."
+        }
+      ],
+      "correctAnswerIds": [
+        "retrofit_coroutines_001_d"
+      ],
+      "explanation": "Suspend service functions integrate network calls into coroutine code without blocking the calling thread, letting callers use structured coroutine handling.",
+      "sources": [
+        {
+          "title": "Retrofit",
+          "url": "https://square.github.io/retrofit/"
+        },
+        {
+          "title": "Coroutine Basics",
+          "url": "https://kotlinlang.org/docs/coroutines-basics.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlinx_serialization_001",
+      "topicId": "networking",
+      "subtopicId": "kotlinx_serialization",
+      "text": "What is a key difference between kotlinx.serialization and reflection-heavy JSON libraries?",
+      "answers": [
+        {
+          "id": "kotlinx_serialization_001_a",
+          "text": "It works only on Android and cannot be used in common code."
+        },
+        {
+          "id": "kotlinx_serialization_001_b",
+          "text": "It uses compiler-assisted serializers and supports Kotlin Multiplatform."
+        },
+        {
+          "id": "kotlinx_serialization_001_c",
+          "text": "It requires every model to be a Room entity."
+        },
+        {
+          "id": "kotlinx_serialization_001_d",
+          "text": "It serializes only XML resources."
+        }
+      ],
+      "correctAnswerIds": [
+        "kotlinx_serialization_001_b"
+      ],
+      "explanation": "kotlinx.serialization uses compiler-generated serializers for annotated models and is designed for Kotlin multiplatform use, rather than depending primarily on runtime reflection.",
+      "sources": [
+        {
+          "title": "Kotlin Serialization",
+          "url": "https://kotlinlang.org/docs/serialization.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "workmanager_constraints_001",
+      "topicId": "background_work",
+      "subtopicId": "workmanager_constraints",
+      "text": "A deferrable sync should survive process death and run only when network connectivity is available. Which API is the best fit?",
+      "answers": [
+        {
+          "id": "workmanager_constraints_001_a",
+          "text": "A raw Thread stored in a singleton."
+        },
+        {
+          "id": "workmanager_constraints_001_b",
+          "text": "A ViewModel coroutine."
+        },
+        {
+          "id": "workmanager_constraints_001_c",
+          "text": "WorkManager with a network constraint."
+        },
+        {
+          "id": "workmanager_constraints_001_d",
+          "text": "A composable side effect with no persistence."
+        }
+      ],
+      "correctAnswerIds": [
+        "workmanager_constraints_001_c"
+      ],
+      "explanation": "WorkManager is intended for deferrable persistent work and supports constraints such as required network connectivity.",
+      "sources": [
+        {
+          "title": "WorkManager",
+          "url": "https://developer.android.com/topic/libraries/architecture/workmanager"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "foreground_services_001",
+      "topicId": "background_work",
+      "subtopicId": "foreground_services",
+      "text": "When is a foreground service generally appropriate?",
+      "answers": [
+        {
+          "id": "foreground_services_001_a",
+          "text": "For user-noticeable ongoing work that must continue and be visible to the user."
+        },
+        {
+          "id": "foreground_services_001_b",
+          "text": "For any short database query from a ViewModel."
+        },
+        {
+          "id": "foreground_services_001_c",
+          "text": "For replacing every WorkManager task."
+        },
+        {
+          "id": "foreground_services_001_d",
+          "text": "For hiding background work from system restrictions."
+        }
+      ],
+      "correctAnswerIds": [
+        "foreground_services_001_a"
+      ],
+      "explanation": "Foreground services are for user-noticeable work that must continue while the app is not in the foreground and must show an ongoing notification.",
+      "sources": [
+        {
+          "title": "Background Work Overview",
+          "url": "https://developer.android.com/develop/background-work/background-tasks"
+        },
+        {
+          "title": "Foreground Service Types",
+          "url": "https://developer.android.com/develop/background-work/services/fgs/service-types"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "foreground_service_types_001",
+      "topicId": "background_work",
+      "subtopicId": "foreground_service_types",
+      "text": "For apps targeting modern Android versions, why do foreground service types matter?",
+      "answers": [
+        {
+          "id": "foreground_service_types_001_a",
+          "text": "They choose the app's launcher icon."
+        },
+        {
+          "id": "foreground_service_types_001_b",
+          "text": "They declare the foreground work category and related requirements."
+        },
+        {
+          "id": "foreground_service_types_001_c",
+          "text": "They make a service run without a notification."
+        },
+        {
+          "id": "foreground_service_types_001_d",
+          "text": "They replace runtime permissions."
+        }
+      ],
+      "correctAnswerIds": [
+        "foreground_service_types_001_b"
+      ],
+      "explanation": "Foreground service types declare the category of foreground work and can carry type-specific permissions and runtime prerequisites.",
+      "sources": [
+        {
+          "title": "Foreground Service Types",
+          "url": "https://developer.android.com/develop/background-work/services/fgs/service-types"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "background_limits_001",
+      "topicId": "background_work",
+      "subtopicId": "background_limits",
+      "text": "Why should Android apps choose background APIs with OS limits in mind?",
+      "answers": [
+        {
+          "id": "background_limits_001_a",
+          "text": "Because background restrictions apply only to debug builds."
+        },
+        {
+          "id": "background_limits_001_b",
+          "text": "Because every background task gets unlimited CPU time."
+        },
+        {
+          "id": "background_limits_001_c",
+          "text": "Because WorkManager cannot use constraints."
+        },
+        {
+          "id": "background_limits_001_d",
+          "text": "Because the OS restricts background execution to protect battery and system health."
+        }
+      ],
+      "correctAnswerIds": [
+        "background_limits_001_d"
+      ],
+      "explanation": "Android applies background execution and battery restrictions. Choosing the wrong API can make work unreliable, blocked, or wasteful.",
+      "sources": [
+        {
+          "title": "Background Work Overview",
+          "url": "https://developer.android.com/develop/background-work/background-tasks"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "notification_channels_001",
+      "topicId": "notifications",
+      "subtopicId": "notification_channels",
+      "text": "Why do Android notification channels matter?",
+      "answers": [
+        {
+          "id": "notification_channels_001_a",
+          "text": "They replace PendingIntent for notification taps."
+        },
+        {
+          "id": "notification_channels_001_b",
+          "text": "They are required only for FCM data messages."
+        },
+        {
+          "id": "notification_channels_001_c",
+          "text": "They give users category-level control over notification behavior."
+        },
+        {
+          "id": "notification_channels_001_d",
+          "text": "They store notification history in Room."
+        }
+      ],
+      "correctAnswerIds": [
+        "notification_channels_001_c"
+      ],
+      "explanation": "Notification channels group notifications into user-controllable categories. On supported Android versions, channel importance and settings affect how notifications appear.",
+      "sources": [
+        {
+          "title": "Notifications Overview",
+          "url": "https://developer.android.com/develop/ui/views/notifications"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "notification_permission_001",
+      "topicId": "notifications",
+      "subtopicId": "notification_permission",
+      "text": "For Android 13 and higher, what must most apps do before posting non-exempt notifications?",
+      "answers": [
+        {
+          "id": "notification_permission_001_a",
+          "text": "Declare only INTERNET permission."
+        },
+        {
+          "id": "notification_permission_001_b",
+          "text": "Request the POST_NOTIFICATIONS runtime permission."
+        },
+        {
+          "id": "notification_permission_001_c",
+          "text": "Start a bound service."
+        },
+        {
+          "id": "notification_permission_001_d",
+          "text": "Create a Room migration."
+        }
+      ],
+      "correctAnswerIds": [
+        "notification_permission_001_b"
+      ],
+      "explanation": "Android 13 introduced the POST_NOTIFICATIONS runtime permission for most non-exempt notifications. Apps should request it at an appropriate time.",
+      "sources": [
+        {
+          "title": "Notification Runtime Permission",
+          "url": "https://developer.android.com/develop/ui/views/notifications/notification-permission"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fcm_data_messages_001",
+      "topicId": "notifications",
+      "subtopicId": "fcm_data_messages",
+      "text": "What is a practical difference between FCM notification messages and data messages?",
+      "answers": [
+        {
+          "id": "fcm_data_messages_001_a",
+          "text": "Data messages carry custom payloads for app handling; notification messages can be displayed by the SDK depending on app state."
+        },
+        {
+          "id": "fcm_data_messages_001_b",
+          "text": "Data messages never reach Android devices."
+        },
+        {
+          "id": "fcm_data_messages_001_c",
+          "text": "Notification messages require Room."
+        },
+        {
+          "id": "fcm_data_messages_001_d",
+          "text": "Both message types are always handled identically in every app state."
+        }
+      ],
+      "correctAnswerIds": [
+        "fcm_data_messages_001_a"
+      ],
+      "explanation": "Notification messages can be handled/displayed by the SDK depending on app state, while data messages deliver custom key-value payloads for app code to handle.",
+      "sources": [
+        {
+          "title": "Firebase Cloud Messaging",
+          "url": "https://firebase.google.com/docs/cloud-messaging"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "testing_strategy_001",
+      "topicId": "testing",
+      "subtopicId": "testing_strategy",
+      "text": "Why should Android test strategy include more than only end-to-end UI tests?",
+      "answers": [
+        {
+          "id": "testing_strategy_001_a",
+          "text": "Because UI tests cannot interact with Android views."
+        },
+        {
+          "id": "testing_strategy_001_b",
+          "text": "Because focused lower-level tests are faster and isolate failures more precisely."
+        },
+        {
+          "id": "testing_strategy_001_c",
+          "text": "Because unit tests replace all integration tests."
+        },
+        {
+          "id": "testing_strategy_001_d",
+          "text": "Because Compose code cannot be tested."
+        }
+      ],
+      "correctAnswerIds": [
+        "testing_strategy_001_b"
+      ],
+      "explanation": "Lower-level tests are usually faster, more focused, and better at isolating failures. UI tests are valuable but slower and more brittle when used as the only safety net.",
+      "sources": [
+        {
+          "title": "Fundamentals of Testing Android Apps",
+          "url": "https://developer.android.com/training/testing/fundamentals"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "test_doubles_001",
+      "topicId": "testing",
+      "subtopicId": "test_doubles",
+      "text": "What is a common reason to use a fake implementation in a unit test?",
+      "answers": [
+        {
+          "id": "test_doubles_001_a",
+          "text": "To make the test depend on the production server."
+        },
+        {
+          "id": "test_doubles_001_b",
+          "text": "To hide all assertions."
+        },
+        {
+          "id": "test_doubles_001_c",
+          "text": "To replace a dependency with deterministic behavior under test."
+        },
+        {
+          "id": "test_doubles_001_d",
+          "text": "To force every test to be instrumented."
+        }
+      ],
+      "correctAnswerIds": [
+        "test_doubles_001_c"
+      ],
+      "explanation": "A fake can provide deterministic behavior for a dependency while preserving a realistic contract, making the class under test easier to exercise.",
+      "sources": [
+        {
+          "title": "Fundamentals of Testing Android Apps",
+          "url": "https://developer.android.com/training/testing/fundamentals"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "viewmodel_testing_001",
+      "topicId": "testing",
+      "subtopicId": "viewmodel_testing",
+      "text": "Why are ViewModels often good candidates for local unit tests?",
+      "answers": [
+        {
+          "id": "viewmodel_testing_001_a",
+          "text": "Their state transitions can often be tested without rendering UI."
+        },
+        {
+          "id": "viewmodel_testing_001_b",
+          "text": "They require a physical device for every assertion."
+        },
+        {
+          "id": "viewmodel_testing_001_c",
+          "text": "They cannot accept fake dependencies."
+        },
+        {
+          "id": "viewmodel_testing_001_d",
+          "text": "They are recreated after every function call."
+        }
+      ],
+      "correctAnswerIds": [
+        "viewmodel_testing_001_a"
+      ],
+      "explanation": "ViewModels can expose state and handle events without depending directly on rendering. With dependencies injected, their state transitions can be tested locally.",
+      "sources": [
+        {
+          "title": "Fundamentals of Testing Android Apps",
+          "url": "https://developer.android.com/training/testing/fundamentals"
+        },
+        {
+          "title": "Where to Hoist State",
+          "url": "https://developer.android.com/develop/ui/compose/state-hoisting"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_testing_001",
+      "topicId": "testing",
+      "subtopicId": "coroutine_testing",
+      "text": "What is the purpose of runTest in coroutine tests?",
+      "answers": [
+        {
+          "id": "coroutine_testing_001_a",
+          "text": "To run tests only on Android devices."
+        },
+        {
+          "id": "coroutine_testing_001_b",
+          "text": "To disable coroutine cancellation."
+        },
+        {
+          "id": "coroutine_testing_001_c",
+          "text": "To make all delays sleep the real thread."
+        },
+        {
+          "id": "coroutine_testing_001_d",
+          "text": "To test suspending code with a controlled coroutine test environment."
+        }
+      ],
+      "correctAnswerIds": [
+        "coroutine_testing_001_d"
+      ],
+      "explanation": "runTest provides a coroutine test scope and scheduler support so suspending code can be tested deterministically, including virtual-time behavior.",
+      "sources": [
+        {
+          "title": "Test Kotlin Coroutines on Android",
+          "url": "https://developer.android.com/kotlin/coroutines/test"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_ui_testing_001",
+      "topicId": "testing",
+      "subtopicId": "compose_ui_testing",
+      "text": "Why do Compose UI tests often query by semantics rather than implementation details?",
+      "answers": [
+        {
+          "id": "compose_ui_testing_001_a",
+          "text": "Because semantics are private compiler metadata."
+        },
+        {
+          "id": "compose_ui_testing_001_b",
+          "text": "Because semantics expose meaningful UI information for testing and accessibility."
+        },
+        {
+          "id": "compose_ui_testing_001_c",
+          "text": "Because semantics replace all assertions."
+        },
+        {
+          "id": "compose_ui_testing_001_d",
+          "text": "Because Compose tests cannot click buttons."
+        }
+      ],
+      "correctAnswerIds": [
+        "compose_ui_testing_001_b"
+      ],
+      "explanation": "Semantics represent user-visible meaning and actions. Querying semantics makes tests align better with accessibility and behavior than with internal layout structure.",
+      "sources": [
+        {
+          "title": "Testing Your Compose Layout",
+          "url": "https://developer.android.com/develop/ui/compose/testing"
+        },
+        {
+          "title": "Accessibility in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/accessibility"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "anr_001",
+      "topicId": "performance",
+      "subtopicId": "anr",
+      "text": "What is a common cause of an ANR in an Android app?",
+      "answers": [
+        {
+          "id": "anr_001_a",
+          "text": "Using immutable data classes."
+        },
+        {
+          "id": "anr_001_b",
+          "text": "Collecting a StateFlow from Compose."
+        },
+        {
+          "id": "anr_001_c",
+          "text": "Blocking the main thread with long-running work."
+        },
+        {
+          "id": "anr_001_d",
+          "text": "Using a version catalog."
+        }
+      ],
+      "correctAnswerIds": [
+        "anr_001_c"
+      ],
+      "explanation": "ANRs occur when the app does not respond to input or lifecycle-related work in time. Blocking the main thread with expensive work is a common cause.",
+      "sources": [
+        {
+          "title": "Guide to App Performance",
+          "url": "https://developer.android.com/topic/performance"
+        },
+        {
+          "title": "Processes and Threads Overview",
+          "url": "https://developer.android.com/guide/components/processes-and-threads"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "memory_leaks_001",
+      "topicId": "performance",
+      "subtopicId": "memory_leaks",
+      "text": "How can retaining an Activity reference in a singleton cause a memory leak?",
+      "answers": [
+        {
+          "id": "memory_leaks_001_a",
+          "text": "The singleton can keep the Activity reachable after its lifecycle should end."
+        },
+        {
+          "id": "memory_leaks_001_b",
+          "text": "The Activity becomes stored in Android resources."
+        },
+        {
+          "id": "memory_leaks_001_c",
+          "text": "The garbage collector never runs in Android apps."
+        },
+        {
+          "id": "memory_leaks_001_d",
+          "text": "The Activity is converted into a Service."
+        }
+      ],
+      "correctAnswerIds": [
+        "memory_leaks_001_a"
+      ],
+      "explanation": "A singleton can outlive an Activity instance. If it strongly references the Activity, the old Activity and its Views may remain reachable after they should be collected.",
+      "sources": [
+        {
+          "title": "Guide to App Performance",
+          "url": "https://developer.android.com/topic/performance"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_recomposition_performance_001",
+      "topicId": "performance",
+      "subtopicId": "compose_recomposition_performance",
+      "text": "What is a reasonable way to reduce unnecessary recomposition work in Compose?",
+      "answers": [
+        {
+          "id": "compose_recomposition_performance_001_a",
+          "text": "Store all UI state in global mutable variables."
+        },
+        {
+          "id": "compose_recomposition_performance_001_b",
+          "text": "Avoid using state anywhere in the UI."
+        },
+        {
+          "id": "compose_recomposition_performance_001_c",
+          "text": "Make every parameter nullable."
+        },
+        {
+          "id": "compose_recomposition_performance_001_d",
+          "text": "Use stable immutable models and keep state changes scoped to where they are needed."
+        }
+      ],
+      "correctAnswerIds": [
+        "compose_recomposition_performance_001_d"
+      ],
+      "explanation": "Stable immutable parameters and careful state ownership help Compose skip work when inputs have not changed. The goal is not to prevent recomposition entirely.",
+      "sources": [
+        {
+          "title": "Stability in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/performance/stability"
+        },
+        {
+          "title": "Where to Hoist State",
+          "url": "https://developer.android.com/develop/ui/compose/state-hoisting"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "startup_performance_001",
+      "topicId": "performance",
+      "subtopicId": "startup_performance",
+      "text": "Why should expensive initialization be treated carefully during app startup?",
+      "answers": [
+        {
+          "id": "startup_performance_001_a",
+          "text": "Because startup code cannot allocate objects."
+        },
+        {
+          "id": "startup_performance_001_b",
+          "text": "Because synchronous startup work can delay first draw and user interaction."
+        },
+        {
+          "id": "startup_performance_001_c",
+          "text": "Because startup work always runs after the app is closed."
+        },
+        {
+          "id": "startup_performance_001_d",
+          "text": "Because Android requires every dependency to be initialized in Application.onCreate()."
+        }
+      ],
+      "correctAnswerIds": [
+        "startup_performance_001_b"
+      ],
+      "explanation": "Too much synchronous startup work delays first draw and can hurt launch performance. Non-critical work should be deferred or made lazy where appropriate.",
+      "sources": [
+        {
+          "title": "App Startup Time",
+          "url": "https://developer.android.com/topic/performance/vitals/launch-time"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "runtime_permissions_001",
+      "topicId": "security",
+      "subtopicId": "runtime_permissions",
+      "text": "Why should an app request a runtime permission close to the user action that needs it?",
+      "answers": [
+        {
+          "id": "runtime_permissions_001_a",
+          "text": "Because permissions requested at startup are always ignored by Android."
+        },
+        {
+          "id": "runtime_permissions_001_b",
+          "text": "Because runtime permissions are granted automatically when requested later."
+        },
+        {
+          "id": "runtime_permissions_001_c",
+          "text": "Because contextual requests explain the purpose and improve user trust."
+        },
+        {
+          "id": "runtime_permissions_001_d",
+          "text": "Because permissions are stored only in a ViewModel."
+        }
+      ],
+      "correctAnswerIds": [
+        "runtime_permissions_001_c"
+      ],
+      "explanation": "Requesting permission in context helps users understand why access is needed and supports a better permission UX than requesting everything at startup.",
+      "sources": [
+        {
+          "title": "Permissions on Android",
+          "url": "https://developer.android.com/guide/topics/permissions/overview"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "exported_components_001",
+      "topicId": "security",
+      "subtopicId": "exported_components",
+      "text": "Why should exported Android components be reviewed carefully?",
+      "answers": [
+        {
+          "id": "exported_components_001_a",
+          "text": "Because other apps may be able to invoke them."
+        },
+        {
+          "id": "exported_components_001_b",
+          "text": "Because exported components cannot receive Intents."
+        },
+        {
+          "id": "exported_components_001_c",
+          "text": "Because exported components are always private to the app."
+        },
+        {
+          "id": "exported_components_001_d",
+          "text": "Because exporting a component disables all permissions."
+        }
+      ],
+      "correctAnswerIds": [
+        "exported_components_001_a"
+      ],
+      "explanation": "Exported components can be invoked by other apps. They need intentional permissions, input validation, and minimal exposure.",
+      "sources": [
+        {
+          "title": "Security Best Practices",
+          "url": "https://developer.android.com/privacy-and-security/security-best-practices"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sensitive_logging_001",
+      "topicId": "security",
+      "subtopicId": "sensitive_logging",
+      "text": "Why should access tokens, personal data, and secrets be excluded from logs?",
+      "answers": [
+        {
+          "id": "sensitive_logging_001_a",
+          "text": "Because logs cannot contain strings."
+        },
+        {
+          "id": "sensitive_logging_001_b",
+          "text": "Because Android automatically encrypts every log line."
+        },
+        {
+          "id": "sensitive_logging_001_c",
+          "text": "Because logging secrets improves crash triage safely."
+        },
+        {
+          "id": "sensitive_logging_001_d",
+          "text": "Because logs can expose sensitive data beyond the intended security boundary."
+        }
+      ],
+      "correctAnswerIds": [
+        "sensitive_logging_001_d"
+      ],
+      "explanation": "Logs can be retained, shared, or accessed during debugging and support. Sensitive data in logs increases privacy and account-compromise risk.",
+      "sources": [
+        {
+          "title": "Security Best Practices",
+          "url": "https://developer.android.com/privacy-and-security/security-best-practices"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "dependency_configurations_001",
+      "topicId": "build_delivery",
+      "subtopicId": "dependency_configurations",
+      "text": "Why does Gradle distinguish dependency configurations such as implementation, api, and runtimeOnly?",
+      "answers": [
+        {
+          "id": "dependency_configurations_001_a",
+          "text": "To choose the Android launcher icon."
+        },
+        {
+          "id": "dependency_configurations_001_b",
+          "text": "To model how dependencies are declared, resolved, and exposed."
+        },
+        {
+          "id": "dependency_configurations_001_c",
+          "text": "To replace source sets with XML resources."
+        },
+        {
+          "id": "dependency_configurations_001_d",
+          "text": "To make every dependency global to all modules."
+        }
+      ],
+      "correctAnswerIds": [
+        "dependency_configurations_001_b"
+      ],
+      "explanation": "Configurations define the role and scope of dependencies, such as compile classpath exposure, runtime-only use, or publication to consumers.",
+      "sources": [
+        {
+          "title": "Dependency Configurations",
+          "url": "https://docs.gradle.org/current/userguide/dependency_configurations.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "version_catalogs_001",
+      "topicId": "build_delivery",
+      "subtopicId": "version_catalogs",
+      "text": "What problem do Gradle version catalogs solve in a multi-module project?",
+      "answers": [
+        {
+          "id": "version_catalogs_001_a",
+          "text": "They compile Kotlin source files."
+        },
+        {
+          "id": "version_catalogs_001_b",
+          "text": "They replace dependency resolution with manual downloads."
+        },
+        {
+          "id": "version_catalogs_001_c",
+          "text": "They centralize dependency coordinates and versions behind reusable aliases."
+        },
+        {
+          "id": "version_catalogs_001_d",
+          "text": "They store runtime user preferences."
+        }
+      ],
+      "correctAnswerIds": [
+        "version_catalogs_001_c"
+      ],
+      "explanation": "Version catalogs centralize dependency and plugin coordinates so modules can use consistent aliases rather than duplicating literal versions.",
+      "sources": [
+        {
+          "title": "Version Catalogs",
+          "url": "https://docs.gradle.org/current/userguide/version_catalogs.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "apk_vs_aab_001",
+      "topicId": "build_delivery",
+      "subtopicId": "apk_vs_aab",
+      "text": "What is a key difference between an APK and an Android App Bundle?",
+      "answers": [
+        {
+          "id": "apk_vs_aab_001_a",
+          "text": "An APK is installable; an App Bundle is a publishing format used to generate optimized APKs."
+        },
+        {
+          "id": "apk_vs_aab_001_b",
+          "text": "An App Bundle is the only format that can run on an emulator directly."
+        },
+        {
+          "id": "apk_vs_aab_001_c",
+          "text": "An APK contains only source code and no resources."
+        },
+        {
+          "id": "apk_vs_aab_001_d",
+          "text": "They are identical files with different extensions."
+        }
+      ],
+      "correctAnswerIds": [
+        "apk_vs_aab_001_a"
+      ],
+      "explanation": "An APK is directly installable on a device. An Android App Bundle is a publishing format that lets Google Play generate optimized APKs for devices.",
+      "sources": [
+        {
+          "title": "About Android App Bundles",
+          "url": "https://developer.android.com/guide/app-bundle"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "offline_design_001",
+      "topicId": "mobile_system_design",
+      "subtopicId": "offline_design",
+      "text": "A news app must remain readable during poor connectivity. Which design choice best supports that requirement?",
+      "answers": [
+        {
+          "id": "offline_design_001_a",
+          "text": "Block the UI until every network request succeeds."
+        },
+        {
+          "id": "offline_design_001_b",
+          "text": "Read from a local source of truth and sync remote updates in the background."
+        },
+        {
+          "id": "offline_design_001_c",
+          "text": "Store all state only in Activity fields."
+        },
+        {
+          "id": "offline_design_001_d",
+          "text": "Disable caching to avoid stale data."
+        }
+      ],
+      "correctAnswerIds": [
+        "offline_design_001_b"
+      ],
+      "explanation": "An offline-first design reads from a local source of truth and synchronizes with the network when possible, keeping the UI useful during connectivity problems.",
+      "sources": [
+        {
+          "title": "Build an Offline-first App",
+          "url": "https://developer.android.com/topic/architecture/data-layer/offline-first"
+        },
+        {
+          "title": "Data Layer",
+          "url": "https://developer.android.com/topic/architecture/data-layer"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "background_sync_001",
+      "topicId": "mobile_system_design",
+      "subtopicId": "background_sync",
+      "text": "When designing background sync for mobile, which constraints should be considered? Select all that apply.",
+      "answers": [
+        {
+          "id": "background_sync_001_a",
+          "text": "Network availability and metering."
+        },
+        {
+          "id": "background_sync_001_b",
+          "text": "Battery and charging state."
+        },
+        {
+          "id": "background_sync_001_c",
+          "text": "Whether the feature uses a specific button color."
+        },
+        {
+          "id": "background_sync_001_d",
+          "text": "OS background execution limits and retry policy."
+        }
+      ],
+      "correctAnswerIds": [
+        "background_sync_001_a",
+        "background_sync_001_b",
+        "background_sync_001_d"
+      ],
+      "explanation": "Mobile sync design must account for network availability, battery, OS background limits, and retry behavior. Ignoring those constraints produces unreliable or wasteful sync.",
+      "sources": [
+        {
+          "title": "Build an Offline-first App",
+          "url": "https://developer.android.com/topic/architecture/data-layer/offline-first"
+        },
+        {
+          "title": "WorkManager",
+          "url": "https://developer.android.com/topic/libraries/architecture/workmanager"
+        },
+        {
+          "title": "Background Work Overview",
+          "url": "https://developer.android.com/develop/background-work/background-tasks"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "shared_vs_platform_code_001",
+      "topicId": "kmp",
+      "subtopicId": "shared_vs_platform_code",
+      "text": "What is a good rule of thumb when deciding what to put in Kotlin Multiplatform common code?",
+      "answers": [
+        {
+          "id": "shared_vs_platform_code_001_a",
+          "text": "Put every line of code in commonMain, even platform API calls."
+        },
+        {
+          "id": "shared_vs_platform_code_001_b",
+          "text": "Avoid common code entirely in KMP projects."
+        },
+        {
+          "id": "shared_vs_platform_code_001_c",
+          "text": "Share platform-independent logic and use platform source sets for platform APIs."
+        },
+        {
+          "id": "shared_vs_platform_code_001_d",
+          "text": "Use expect/actual for every class by default."
+        }
+      ],
+      "correctAnswerIds": [
+        "shared_vs_platform_code_001_c"
+      ],
+      "explanation": "Common code should hold behavior that is genuinely platform-independent or expressed through a useful common contract. Platform-specific UI or APIs should stay in platform source sets unless there is a good abstraction.",
+      "sources": [
+        {
+          "title": "Kotlin Multiplatform",
+          "url": "https://kotlinlang.org/docs/multiplatform.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "expect_actual_001",
+      "topicId": "kmp",
+      "subtopicId": "expect_actual",
+      "text": "What problem do expect and actual declarations solve in Kotlin Multiplatform?",
+      "answers": [
+        {
+          "id": "expect_actual_001_a",
+          "text": "They let common code depend on a common declaration with platform-specific implementations."
+        },
+        {
+          "id": "expect_actual_001_b",
+          "text": "They automatically convert Android Views into SwiftUI."
+        },
+        {
+          "id": "expect_actual_001_c",
+          "text": "They replace Gradle source sets."
+        },
+        {
+          "id": "expect_actual_001_d",
+          "text": "They serialize content models without annotations."
+        }
+      ],
+      "correctAnswerIds": [
+        "expect_actual_001_a"
+      ],
+      "explanation": "An expect declaration defines a common API, and each platform supplies the actual implementation. This is useful when shared code needs a platform-specific capability behind a common contract.",
+      "sources": [
+        {
+          "title": "Expected and Actual Declarations",
+          "url": "https://kotlinlang.org/docs/multiplatform-expect-actual.html"
+        }
+      ],
+      "status": "ACTIVE"
+    }
+  ]
+}

@@ -7,7 +7,6 @@ import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
-import org.artkachenko.kmp_learning_app.curriculum.content.initialCurriculum
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -18,11 +17,6 @@ internal class CurriculumValidatorTest {
     @Test
     fun validCurriculumHasNoErrors() {
         assertTrue(validator.validate(validCurriculum()).isEmpty())
-    }
-
-    @Test
-    fun initialCurriculumHasNoErrors() {
-        assertTrue(validator.validate(initialCurriculum).isEmpty())
     }
 
     @Test

@@ -109,8 +109,13 @@ Topic
                 +--< QuestionSource
 ```
 
-Exact Room annotations, index declarations, converters, drivers, and builders
-belong to E07-03.
+Room 3.0.1 is the implemented baseline for schema version 1.
+
+The authored `Curriculum` JSON uses ordered lists. SQLite row order is not
+defined unless it is modeled explicitly, so persisted authored order is stored
+with `sort_order` on ordered tables. This keeps display order independent from
+stable IDs such as `_a`, `_b`, and `_c`, which remain identities rather than
+ordering rules.
 
 ### Topic
 
@@ -121,6 +126,7 @@ Logical table: `topic`
 | `id` | `TEXT` | `PRIMARY KEY` |
 | `name` | `TEXT` | `NOT NULL` |
 | `status` | `TEXT` | `NOT NULL` |
+| `sort_order` | `INTEGER` | `NOT NULL` |
 
 `id` is the stable `Topic.id`. `status` stores readable `ContentStatus` names
 such as `ACTIVE` and `DEPRECATED`.
@@ -135,6 +141,7 @@ Logical table: `subtopic`
 | `topic_id` | `TEXT` | `NOT NULL` |
 | `name` | `TEXT` | `NOT NULL` |
 | `status` | `TEXT` | `NOT NULL` |
+| `sort_order` | `INTEGER` | `NOT NULL` |
 
 Relationship:
 
@@ -142,10 +149,10 @@ Relationship:
 subtopic.topic_id -> topic.id
 ```
 
-Expected query and index needs:
+Implemented query and index needs:
 
-- `subtopic(topic_id)`
 - `subtopic(topic_id, status)`
+- unique `subtopic(topic_id, id)` for the composite question relationship
 
 The later Room implementation may choose the exact index declarations, but these
 access patterns should be preserved.
@@ -162,6 +169,7 @@ Logical table: `question`
 | `text` | `TEXT` | `NOT NULL` |
 | `explanation` | `TEXT` | `NOT NULL` |
 | `status` | `TEXT` | `NOT NULL` |
+| `sort_order` | `INTEGER` | `NOT NULL` |
 
 Persist both `topic_id` and `subtopic_id`. This deliberately mirrors
 `Question.topicId` and `Question.subtopicId` so topic and subtopic filtering can
@@ -186,10 +194,11 @@ that belong to different curriculum locations. Implementing this with
 Room/SQLite may require an appropriate unique or indexed key on the Subtopic
 side. E07-03 owns the exact Room annotation syntax.
 
-Expected indexes:
+Implemented indexes:
 
 - `question(topic_id, status)`
 - `question(subtopic_id, status)`
+- `question(topic_id, subtopic_id)` for the composite foreign-key child columns
 
 ### Answer Option
 
@@ -200,6 +209,7 @@ Logical table: `answer_option`
 | `question_id` | `TEXT` | `NOT NULL` |
 | `id` | `TEXT` | `NOT NULL` |
 | `text` | `TEXT` | `NOT NULL` |
+| `sort_order` | `INTEGER` | `NOT NULL` |
 
 Primary key:
 
@@ -242,6 +252,9 @@ Correctness should not be stored as `AnswerOptionEntity.isCorrect`. A relation
 table directly represents `Question.correctAnswerIds: List<String>` and supports
 one or multiple correct answers without changing the schema.
 
+`question_correct_answer` does not have `sort_order` because correct-answer
+identity is set-like; answer display order belongs to `answer_option`.
+
 ### Sources
 
 Logical table: `question_source`
@@ -251,6 +264,7 @@ Logical table: `question_source`
 | `question_id` | `TEXT` | `NOT NULL` |
 | `url` | `TEXT` | `NOT NULL` |
 | `title` | `TEXT` | `NOT NULL` |
+| `sort_order` | `INTEGER` | `NOT NULL` |
 
 Primary key:
 
@@ -343,6 +357,12 @@ promise full production-ready database initialization for every target. Web,
 JS, and Wasm persistence may require additional browser or worker plumbing and
 should not expand the Android-focused MVP scope prematurely.
 
+E07-03 implements Android database creation with `BundledSQLiteDriver` and uses
+an in-memory JVM database with the same driver for persistence tests.
+`sqlite-bundled` is intentionally scoped to Android runtime and JVM tests
+because JS/Wasm require web-specific driver setup, such as a web-worker based
+SQLite driver, which is outside the Android-focused MVP database issue.
+
 ## Future Assessment-History Compatibility
 
 This issue does not define or implement assessment-history tables. The schema is
@@ -362,8 +382,8 @@ tables in E07-01.
 
 ## Migration and Schema History
 
-E07-03 should establish schema versioning from the first database version and
-enable version-controlled Room schema artifacts.
+E07-03 establishes schema version 1 and enables version-controlled Room schema
+artifacts.
 
 Destructive migration should not be the default production strategy. Migration
 tests should be added when schema versions actually change.
@@ -384,13 +404,6 @@ Deferred to E07-02:
 - bundled JSON serialization format;
 - serialization annotations or DTOs if needed;
 - resource/import representation.
-
-Deferred to E07-03:
-
-- Room and KSP dependencies;
-- entities, DAOs, database declaration, converters, indexes, and constraints;
-- platform-specific Room builders and SQLite drivers;
-- schema export configuration and first schema artifact.
 
 Deferred to E07-04 and later:
 

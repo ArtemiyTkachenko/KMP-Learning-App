@@ -8,7 +8,7 @@ internal val lifecycleNavigationQuestions = listOf(
         text = "Why is onPause() a poor place to perform a long database write or network request?",
         correctAnswerIds = listOf("activity_lifecycle_001_b"),
         explanation = "onPause() execution is brief and should complete quickly. Longer shutdown or persistence work should use a more appropriate lifecycle point or background/persistence mechanism.",
-        sources = listOf(androidFragmentLifecycleSource),
+        sources = listOf(androidActivityLifecycleSource),
         answers = listOf(
             answer("activity_lifecycle_001_a", "Because onPause() is never called before another Activity starts."),
             answer("activity_lifecycle_001_b", "Because onPause() should be brief and long work may not complete before the transition continues."),
@@ -23,7 +23,7 @@ internal val lifecycleNavigationQuestions = listOf(
         text = "In a Fragment that uses Views, why should view references normally be cleared in onDestroyView() rather than onDestroy()?",
         correctAnswerIds = listOf("fragment_lifecycle_001_a"),
         explanation = "A Fragment instance can outlive its View hierarchy. Clearing View references when the view is destroyed prevents retaining obsolete Views and their Activity context.",
-        sources = listOf(androidActivityLifecycleSource),
+        sources = listOf(androidFragmentLifecycleSource),
         answers = listOf(
             answer("fragment_lifecycle_001_a", "Because the Fragment's View lifecycle can end before the Fragment instance is destroyed."),
             answer("fragment_lifecycle_001_b", "Because onDestroy() is never called for Fragments."),

@@ -1,0 +1,80 @@
+package org.artkachenko.kmp_learning_app.curriculum.content
+
+internal val localDataQuestions = listOf(
+    question(
+        id = "storage_selection_001",
+        topicId = "local_data",
+        subtopicId = "storage_selection",
+        text = "Which storage option is usually appropriate for small key-value user preferences that must survive process death?",
+        correctAnswerIds = listOf("storage_selection_001_b"),
+        explanation = "DataStore is a modern Jetpack option for small preference or typed data. Large relational datasets are a better fit for a database such as Room.",
+        sources = listOf(datastoreSource, androidDataLayerSource),
+        answers = listOf(
+            answer("storage_selection_001_a", "An Activity field."),
+            answer("storage_selection_001_b", "DataStore."),
+            answer("storage_selection_001_c", "A RecyclerView adapter."),
+            answer("storage_selection_001_d", "A Compose remember block only."),
+        ),
+    ),
+    question(
+        id = "room_dao_001",
+        topicId = "local_data",
+        subtopicId = "room_dao",
+        text = "What is the responsibility of a Room DAO?",
+        correctAnswerIds = listOf("room_dao_001_c"),
+        explanation = "A DAO defines database access methods and queries for Room. Entities model tables; repositories decide how database data is used by the app.",
+        sources = listOf(roomSource),
+        answers = listOf(
+            answer("room_dao_001_a", "Rendering database rows in Compose."),
+            answer("room_dao_001_b", "Declaring notification channels."),
+            answer("room_dao_001_c", "Defining database queries and access methods."),
+            answer("room_dao_001_d", "Choosing Gradle build variants."),
+        ),
+    ),
+    question(
+        id = "room_transactions_001",
+        topicId = "local_data",
+        subtopicId = "room_transactions",
+        text = "Why are database transactions important when multiple related writes must succeed or fail together?",
+        correctAnswerIds = listOf("room_transactions_001_a"),
+        explanation = "A transaction groups related operations atomically. If one part fails, the database can avoid committing a partially updated state.",
+        sources = listOf(roomSource),
+        answers = listOf(
+            answer("room_transactions_001_a", "They provide atomicity for related operations."),
+            answer("room_transactions_001_b", "They force every query onto the main thread."),
+            answer("room_transactions_001_c", "They replace schema migrations."),
+            answer("room_transactions_001_d", "They automatically sync data to the network."),
+        ),
+    ),
+    question(
+        id = "room_flow_001",
+        topicId = "local_data",
+        subtopicId = "room_flow",
+        text = "What is useful about returning Flow from a Room query?",
+        correctAnswerIds = listOf("room_flow_001_d"),
+        explanation = "Observable Room queries can emit updates when table data changes, letting UI observe local data and update from the database source of truth.",
+        sources = listOf(roomSource, offlineFirstSource),
+        answers = listOf(
+            answer("room_flow_001_a", "It makes the query run without a database."),
+            answer("room_flow_001_b", "It guarantees network freshness."),
+            answer("room_flow_001_c", "It disables transactions for the DAO."),
+            answer("room_flow_001_d", "It lets collectors receive updated query results as data changes."),
+        ),
+    ),
+    question(
+        id = "offline_first_001",
+        topicId = "local_data",
+        subtopicId = "offline_first",
+        text = "In an offline-first app, why is a local data source commonly treated as the source of truth?",
+        correctAnswerIds = listOf("offline_first_001_b"),
+        explanation = "The UI can read usable data without waiting for the network, while synchronization updates the local source when connectivity allows.",
+        sources = listOf(offlineFirstSource),
+        answers = listOf(
+            answer("offline_first_001_a", "Because offline-first apps should never contact a server."),
+            answer("offline_first_001_b", "Because the app can remain usable and consistent when the network is unavailable."),
+            answer("offline_first_001_c", "Because local data is always more recent than remote data."),
+            answer("offline_first_001_d", "Because Android forbids caching network responses."),
+        ),
+    ),
+)
+

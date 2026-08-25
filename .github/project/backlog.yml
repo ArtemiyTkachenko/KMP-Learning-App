@@ -948,3 +948,210 @@ epics:
       performance concerns, and CI coverage across the implemented product.
 
     issues: []
+  - key: E07
+    github_title: "EPIC-07 Local Data & Content Import"
+
+    goal: >
+      Establish the local-first data layer for the application. Support
+      importing bundled structured interview content into local persistence,
+      validating that content, and providing the runtime data access required
+      by the rest of the application without introducing networking or backend
+      dependencies.
+
+    issues:
+      - key: E07-01
+        title: "Select persistence approach and define local data schema"
+
+        issue: >
+          The application needs a multiplatform persistence solution and an
+          explicit relational representation of the curriculum before database
+          implementation begins. Choosing a library without first considering
+          the data-access requirements and KMP boundaries could introduce
+          unnecessary complexity or constrain later assessment features.
+
+        approach: >
+          Compare Room KMP and SQLDelight against the needs of this project,
+          including Android relevance, KMP support, relational-query support,
+          testability, migrations, tooling, and platform-specific setup.
+          Select the persistence technology and define the initial local schema
+          for topics, subtopics, questions, answer options, source references,
+          and content lifecycle state. Preserve the stable identities introduced
+          in E06 and keep persistence concerns separate from the curriculum
+          domain models.
+
+        acceptance_criteria:
+          - "Room KMP and SQLDelight are compared against the project's concrete persistence requirements."
+          - "One persistence technology is selected and the rationale is documented."
+          - "The initial relational schema represents topics, subtopics, questions, answer options, source references, and content status."
+          - "Stable curriculum IDs remain the authoritative identities rather than database-generated content identities."
+          - "Question-to-topic and question-to-subtopic relationships can be represented and queried directly."
+          - "A question can persist one or more correct answer IDs."
+          - "The schema supports retaining deprecated content without requiring deletion."
+          - "The design supports later persistence of assessment history without implementing that history in this issue."
+          - "Platform-specific database creation boundaries are identified where required by the selected KMP library."
+          - "No database implementation, repository implementation, or import flow is added in this issue."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+
+      - key: E07-02
+        title: "Introduce bundled curriculum serialization"
+
+        issue: >
+          The initial curriculum currently exists as Kotlin source declarations.
+          The application needs a portable bundled-content representation before
+          content can be imported through the same path that future curriculum
+          updates will use.
+
+        approach: >
+          Introduce kotlinx.serialization for curriculum content and represent
+          the approved curriculum/question bank as bundled structured JSON.
+          Deserialize the bundled content into the existing E06 Curriculum
+          domain model and validate the result using CurriculumValidator.
+          Keep serialization separate from database persistence.
+
+        acceptance_criteria:
+          - "The curriculum content model can be serialized and deserialized using kotlinx.serialization."
+          - "The existing initial curriculum is represented as version-controlled bundled JSON content."
+          - "Bundled content deserializes into the existing Curriculum domain model."
+          - "Deserialized bundled content passes CurriculumValidator."
+          - "All existing stable Topic, Subtopic, Question, and AnswerOption identities are preserved."
+          - "Multiple-correct-answer questions remain representable."
+          - "ContentStatus values are preserved by serialization."
+          - "The Kotlin-authored E06 question bank is removed or reduced so there is one authoritative bundled curriculum source."
+          - "Serialization does not depend on a database, repository, Android-only API, network source, or backend."
+          - "Malformed serialized content is covered by focused tests where appropriate."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+
+      - key: E07-03
+        title: "Implement local curriculum database"
+
+        issue: >
+          Validated curriculum content needs durable local persistence before
+          the application can query it independently from the bundled source
+          representation.
+
+        approach: >
+          Implement the selected E07-01 database technology in the shared KMP
+          data layer. Define the database tables/entities and mappings required
+          for curriculum content, establish required relationships and indexes,
+          and provide the minimum database queries needed to persist and inspect
+          curriculum data. Keep domain models distinct from persistence models
+          where that separation provides a useful boundary.
+
+        acceptance_criteria:
+          - "The selected persistence library is configured for the current KMP targets."
+          - "Topics, subtopics, questions, answer options, source references, correct-answer relationships, and content status can be persisted."
+          - "Stable curriculum IDs are preserved in local persistence."
+          - "The database enforces or supports the intended relational hierarchy where appropriate."
+          - "Useful indexes are defined for expected topic, subtopic, question, and status queries."
+          - "Database creation works for the Android application."
+          - "Existing retained desktop/web development targets remain buildable where supported by the selected database approach."
+          - "Database schema or migration artifacts required by the selected library are version controlled."
+          - "Focused persistence tests verify representative inserts and reads."
+          - "No bundled-content import orchestration or repository API is implemented yet."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+
+      - key: E07-04
+        title: "Implement validated curriculum import and update flow"
+
+        issue: >
+          Bundled curriculum data must be imported into local persistence in a
+          deterministic way that supports first-run setup and later bundled
+          content updates without losing stable content identity.
+
+        approach: >
+          Implement the local import pipeline from bundled serialized curriculum
+          through deserialization and CurriculumValidator into the database.
+          Use stable IDs to insert or update content deterministically. Preserve
+          deprecated records so historical references can remain meaningful and
+          make repeated imports safe.
+
+        acceptance_criteria:
+          - "Bundled curriculum content is deserialized before persistence."
+          - "CurriculumValidator runs before any imported curriculum is accepted."
+          - "Invalid bundled curriculum is not partially persisted."
+          - "A fresh database can be populated from the bundled curriculum."
+          - "Repeated import of unchanged bundled content is idempotent."
+          - "Existing content is updated by stable identity rather than duplicated."
+          - "New bundled content can be inserted without resetting unrelated existing data."
+          - "Content marked DEPRECATED remains persisted and distinguishable from ACTIVE content."
+          - "The import flow does not silently delete curriculum content solely because it is no longer active."
+          - "Focused tests cover first import, repeat import, update behavior, malformed content, and deprecated content."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+
+      - key: E07-05
+        title: "Expose curriculum repositories and runtime queries"
+
+        issue: >
+          Later assessment and learning features need a stable application-facing
+          API for accessing curriculum content without depending directly on
+          database implementation details.
+
+        approach: >
+          Introduce shared repository boundaries over the local curriculum data
+          source and implement the runtime queries required by upcoming focused
+          practice and assessment features. Prefer APIs expressed in domain
+          models and keep persistence-specific types behind the data layer.
+
+        acceptance_criteria:
+          - "Application code can obtain active topics through a shared repository API."
+          - "Application code can obtain active subtopics for a topic."
+          - "Application code can obtain active questions by topic."
+          - "Application code can obtain active questions by subtopic."
+          - "A question can be retrieved by stable question ID."
+          - "Repository results use curriculum/domain models rather than exposing database-specific entities."
+          - "Deprecated content is excluded from normal active-practice queries while remaining individually retrievable where historical lookup requires it."
+          - "Repository behavior is covered by focused shared tests."
+          - "No assessment selection, scoring, attempt persistence, or UI behavior is implemented."
+          - "Dependency wiring remains simple; Koin is introduced only if the resulting dependency graph now provides a concrete reason to use it."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+
+      - key: E07-06
+        title: "Verify end-to-end local data and content path"
+
+        issue: >
+          The serialization, validation, import, persistence, and repository
+          layers need to be verified together before the assessment engine is
+          built on top of them.
+
+        approach: >
+          Add integration-oriented tests and minimal application wiring needed
+          to exercise the complete local-first content path from bundled
+          curriculum through validation and persistence to repository queries.
+          Verify failure behavior and repeat-import behavior as well as the
+          successful path.
+
+        acceptance_criteria:
+          - "A fresh local database can be initialized from the bundled curriculum."
+          - "The complete bundled curriculum passes validation before persistence."
+          - "All expected active topics can be queried after import."
+          - "Representative topic/subtopic/question queries return the expected domain content."
+          - "Repeated initialization/import does not create duplicate curriculum records."
+          - "Deprecated content remains stored but is excluded from normal active-content queries."
+          - "Malformed bundled curriculum fails without leaving a partially imported dataset."
+          - "The complete local-first content path is covered by automated tests."
+          - "The Android application can initialize the local data path without networking or a backend."
+          - "E07 leaves a stable runtime data boundary suitable for E08 assessment-engine development."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"

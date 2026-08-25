@@ -863,7 +863,7 @@ epics:
           - "Topic, Subtopic, and Question identities are unique within the bundled curriculum."
           - "Every subtopic belongs to a valid topic."
           - "Every question belongs to a valid curriculum location."
-          - "Every question has the required answer options and exactly one valid correct answer."
+          - "Every question has the required answer options and one or more valid correct answers."
           - "Every question has a non-empty explanation."
           - "Every active question has at least one valid authoritative source reference."
           - "Deprecated content can remain structurally valid without being treated as active practice content."

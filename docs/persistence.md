@@ -300,6 +300,31 @@ protect persisted relational integrity and prevent invalid foreign-key
 relationships. They are complementary; database constraints are not a
 replacement for content validation.
 
+## Import and Update Policy
+
+Bundled JSON is decoded into `Curriculum` and validated with
+`CurriculumValidator` before any database write begins. Accepted imports are
+then mapped into persistence rows and written in a single Room write
+transaction.
+
+Stable IDs are upserted. Incoming `Topic`, `Subtopic`, `Question`, and
+`AnswerOption` rows insert new identities or update existing identities, but
+absence from a later bundle is not a deletion signal. Missing rows are not
+automatically deleted or marked deprecated; curriculum retirement must be
+explicit through `ContentStatus.DEPRECATED`.
+
+Question-owned relation and metadata rows are synchronized only for incoming
+question IDs:
+
+- existing `question_correct_answer` rows for incoming questions are replaced by
+  the incoming correct-answer IDs;
+- existing `question_source` rows for incoming questions are replaced by the
+  incoming source list;
+- rows for unrelated persisted questions are retained.
+
+This keeps correctness and source metadata from accumulating stale rows while
+preserving stable curriculum identity and unrelated local content.
+
 ## Expected Query Patterns
 
 The schema is driven by known future access patterns:

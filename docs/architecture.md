@@ -51,12 +51,12 @@ out of the curriculum domain models.
 ## Assessment Domain
 
 The shared assessment model defines focused and mixed assessment configuration,
-question attempts, answer identity state, attempt lifecycle, and score summaries
-without depending on Room, Koin, Compose, Android, or `CurriculumRepository`.
-Later E08 work will use `CurriculumRepository` for question selection and will
-add scoring/session behavior and attempt persistence around these value models.
+question attempts, answer identity state, attempt lifecycle, timestamps, and
+score summaries without depending on Room, Koin, Compose, Android, or
+`CurriculumRepository`. E08 uses `CurriculumRepository` for question selection
+and keeps scoring/session behavior separate from persistence.
 Question selection follows `AssessmentConfig -> AssessmentQuestionSelector ->
 CurriculumRepository`; richer mixed-assessment balancing remains deferred to E10.
 The runtime `AssessmentSession` keeps the selected `Question` objects for
-scoring, while `TestAttempt` remains the stable-ID attempt record that later
-persistence can store without embedding curriculum content.
+scoring, while `TestAttempt` remains the stable-ID attempt record persisted by
+the local attempt store without embedding curriculum content.

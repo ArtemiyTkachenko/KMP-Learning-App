@@ -1,5 +1,7 @@
 package org.artkachenko.kmp_learning_app.assessment.session
 
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlin.uuid.Uuid
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScore
@@ -12,6 +14,7 @@ import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionS
 internal class AssessmentEngine(
     private val questionSelector: AssessmentQuestionSelector,
     private val generateAttemptId: () -> String = { Uuid.random().toString() },
+    private val now: () -> Instant = { Clock.System.now() },
 ) {
     suspend fun start(config: AssessmentConfig): AssessmentStartResult {
         val questions = questionSelector.select(config)
@@ -24,6 +27,7 @@ internal class AssessmentEngine(
                 QuestionAttempt(questionId = it.id)
             },
             status = AssessmentStatus.IN_PROGRESS,
+            startedAt = now(),
         )
 
         return AssessmentStartResult.Started(
@@ -116,6 +120,7 @@ internal class AssessmentEngine(
         return session.copy(
             attempt = session.attempt.copy(
                 status = AssessmentStatus.COMPLETED,
+                completedAt = now(),
                 score = score,
             ),
         )

@@ -15,5 +15,6 @@ internal fun createCurriculumDatabase(context: Context): CurriculumDatabase {
         name = dbFile.absolutePath,
     )
         .setDriver(BundledSQLiteDriver())
+        .addMigrations(MIGRATION_1_2)
         .build()
 }

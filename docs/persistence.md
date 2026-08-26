@@ -3,9 +3,9 @@
 ## Scope
 
 This document defines the E07 local persistence direction and logical schema for
-the Android interview curriculum. It is a design reference only: E07-01 does not
-add Room dependencies, database code, repositories, import logic, migrations, or
-runtime wiring.
+the Android interview curriculum. It started as the E07-01 design reference and
+now records the implemented local data path as the later E07 issues connect the
+database, importer, repository, and runtime initialization.
 
 The schema is designed around the current E06 content model:
 
@@ -25,7 +25,10 @@ initial_curriculum.json
   -> CurriculumJsonCodec
   -> Curriculum
   -> CurriculumValidator
-  -> later persistence import
+  -> CurriculumImporter
+  -> Room
+  -> LocalCurriculumRepository
+  -> CurriculumRepository
 ```
 
 ## Persistence Decision
@@ -428,12 +431,21 @@ tests should be added when schema versions actually change.
 
 ## Koin
 
-Do not introduce Koin for E07-01. Manual construction remains sufficient while
-the dependency graph is still small.
+Koin is used for the concrete runtime curriculum data graph introduced by E07:
 
-Koin should be revisited when later E07 work creates a real graph, likely around
-E07-05, with a database, importer/data source, repository implementations, and
-application-facing repositories.
+```text
+Android Application
+  -> Koin
+     -> CurriculumDatabase
+     -> CurriculumImporter
+     -> CurriculumDataInitializer
+     -> CurriculumRepository
+```
+
+The shared module defines the curriculum data module. Android supplies the
+platform database module using the application context and existing Room
+builder. The project uses Koin's classic DSL only; annotation processing,
+compiler plugins, Compose injection, and ViewModel DSLs remain deferred.
 
 ## Deferred Implementation Work
 

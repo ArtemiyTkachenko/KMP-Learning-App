@@ -60,3 +60,13 @@ CurriculumRepository`; richer mixed-assessment balancing remains deferred to E10
 The runtime `AssessmentSession` keeps the selected `Question` objects for
 scoring, while `TestAttempt` remains the stable-ID attempt record persisted by
 the local attempt store without embedding curriculum content.
+
+`AssessmentRepository` is the domain-facing boundary for durable
+`TestAttempt` snapshots. The local implementation delegates to
+`AssessmentAttemptStore`, keeping Room entities and DAOs below the repository
+interface. Retake creation is separate orchestration:
+`AssessmentRetakeService` loads a completed source attempt, starts a new
+assessment with the same `AssessmentConfig`, saves the new in-progress
+`TestAttempt`, and leaves the source attempt unchanged. Retakes intentionally
+use fresh selection without guaranteeing that questions differ from the
+original run.

@@ -70,3 +70,13 @@ assessment with the same `AssessmentConfig`, saves the new in-progress
 `TestAttempt`, and leaves the source attempt unchanged. Retakes intentionally
 use fresh selection without guaranteeing that questions differ from the
 original run.
+
+The completed E08 graph is composed with the same classic Koin DSL as the
+curriculum graph: `AssessmentQuestionSelector` depends on `CurriculumRepository`,
+`AssessmentEngine` depends on the selector, `AssessmentRepository` persists
+`TestAttempt` snapshots through `AssessmentAttemptStore`, and
+`AssessmentRetakeService` coordinates the repository plus engine. There is no
+separate assessment startup initializer because assessment services are lazy
+capabilities; Android still awaits curriculum import before entering `App()`.
+E09 and E10 should depend on `CurriculumRepository`, `AssessmentRepository`,
+`AssessmentEngine`, and `AssessmentRetakeService`, not Room DAOs or entities.

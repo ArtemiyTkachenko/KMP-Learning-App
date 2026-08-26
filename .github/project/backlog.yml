@@ -1308,7 +1308,213 @@ epics:
       review results and explanations, follow authoritative source references,
       and repeat focused practice.
 
-    issues: []
+    issues:
+      - key: E09-01
+        title: "Implement topic browser and real application start destination"
+
+        issue: >
+          The application still opens into the placeholder navigation flow.
+          Users need a real entry point for browsing the Android interview
+          curriculum before focused practice can be launched.
+
+        approach: >
+          Replace the placeholder start destination with a Compose topic browser
+          backed by a shared ViewModel and CurriculumRepository. Display active
+          Android interview topics using the existing persisted curriculum and
+          establish the real Navigation 3 routes required to enter a topic.
+          Keep the presentation KMP-common and use the existing E08 runtime
+          dependency graph rather than accessing Room directly.
+
+        acceptance_criteria:
+          - "The application start destination displays ACTIVE curriculum topics from CurriculumRepository."
+          - "Topic order follows the repository's authored curriculum order."
+          - "Each rendered topic uses stable Topic ID identity."
+          - "Selecting a topic navigates to a typed Navigation 3 topic route."
+          - "Loading, content, empty, and failure states are represented explicitly in presentation state."
+          - "The placeholder start/detail product flow is removed once the real topic flow replaces it."
+          - "The screen is implemented in shared Compose Multiplatform code."
+          - "The ViewModel depends on domain/repository boundaries rather than Room or DAO types."
+          - "Focused ViewModel and Compose tests cover the main rendering/navigation states."
+          - "No assessment-taking or result-review behavior is implemented yet."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+
+      - key: E09-02
+        title: "Implement subtopic browser and focused practice launch"
+
+        issue: >
+          After choosing a topic, users need to see its meaningful subtopics and
+          start practice scoped either to the entire topic or to one subtopic.
+
+        approach: >
+          Implement a topic detail/subtopic browser using CurriculumRepository.
+          Build presentation summaries from active subtopics and active
+          questions, filtering subtopics that currently contain no eligible
+          questions. Allow the user to start focused practice for either the
+          whole topic or a populated subtopic using AssessmentConfig.Focused.
+          Use a simple fixed MVP requested question count rather than building a
+          configuration wizard.
+
+        acceptance_criteria:
+          - "The selected topic is loaded by stable topic ID."
+          - "ACTIVE subtopics for the selected topic are displayed."
+          - "Subtopics with zero ACTIVE eligible questions are not presented as actionable practice targets."
+          - "Question availability is calculated without issuing one repository query per subtopic."
+          - "The user can start topic-wide focused practice."
+          - "The user can start subtopic-scoped focused practice."
+          - "Focused practice uses AssessmentConfig.Focused with the correct Topic or Subtopic scope."
+          - "The MVP requested question count is defined in one named place and is not duplicated as magic numbers."
+          - "If no eligible questions exist for a valid scope, the presentation handles the outcome explicitly."
+          - "Navigation passes stable IDs/configuration rather than Room objects or full curriculum objects."
+          - "Focused tests cover topic loading, populated-subtopic filtering, scope construction, and no-content behavior."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+
+      - key: E09-03
+        title: "Implement focused assessment session and question UI"
+
+        issue: >
+          The shared assessment engine can create and score sessions, but users
+          cannot yet interact with those sessions through the application.
+
+        approach: >
+          Implement the shared presentation state and Compose question-taking
+          screen for a focused AssessmentSession. Start sessions through
+          AssessmentEngine, show one question at a time, support single- and
+          multiple-answer selection, submit answers explicitly, persist updated
+          TestAttempt snapshots through AssessmentRepository, and advance
+          through the session without duplicating scoring logic in the UI.
+
+        acceptance_criteria:
+          - "A focused AssessmentConfig can be started through AssessmentEngine."
+          - "The screen displays the current question text and authored answer options in order."
+          - "Single-answer questions allow one selected option."
+          - "Multiple-answer questions allow multiple selected options."
+          - "UI answer state uses stable AnswerOption IDs."
+          - "Submitting delegates correctness evaluation to AssessmentEngine rather than reimplementing scoring in the ViewModel."
+          - "A submitted question cannot be edited after submission under the current MVP rules."
+          - "The presentation exposes assessment progress based on actual selected question count."
+          - "Moving between questions preserves submitted QuestionAttempt state."
+          - "Updated in-progress TestAttempt state is persisted through AssessmentRepository at meaningful checkpoints."
+          - "The final answered question leaves the session ready for explicit completion rather than silently creating a second scoring path."
+          - "Focused ViewModel tests cover single-answer, multiple-answer, submission, progression, persistence, and failure states."
+          - "Compose tests cover core answer-selection and progress behavior."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+
+      - key: E09-04
+        title: "Implement focused assessment completion and result review"
+
+        issue: >
+          Completing a focused assessment must produce a useful review experience
+          rather than only a numeric score. Users need to understand mistakes,
+          read explanations, and access the authoritative references bundled
+          with each question.
+
+        approach: >
+          Complete the active AssessmentSession through AssessmentEngine, persist
+          the completed TestAttempt, navigate using the stable attempt ID, and
+          implement a result/review screen that reconstructs historical question
+          content through AssessmentRepository plus CurriculumRepository.
+          Present the overall score and per-question correctness, selected
+          answers, correct answers, explanation, and authoritative sources.
+
+        acceptance_criteria:
+          - "An assessment can be explicitly completed once every question is answered."
+          - "The completed TestAttempt is persisted before the result flow is treated as successful."
+          - "Results display total questions, correct answers, and derived percentage."
+          - "The result route uses stable attempt identity rather than carrying the full AssessmentSession."
+          - "Historical Question content is resolved through CurriculumRepository.getQuestionById."
+          - "Each reviewed question shows the user's selected answer identities mapped to answer content."
+          - "Each reviewed question distinguishes correct and incorrect selections clearly."
+          - "The authored correct answer or answers are visible during review."
+          - "The authored explanation is displayed."
+          - "All authoritative SourceReference entries are displayed in authored order."
+          - "Source URLs can be opened using an appropriate multiplatform/platform boundary without embedding Android-only code in common UI."
+          - "DEPRECATED questions remain reviewable through stable-ID lookup."
+          - "Missing historical question content is handled explicitly rather than crashing."
+          - "Focused tests cover completion, persistence, historical reconstruction, explanations, and source presentation."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+
+      - key: E09-05
+        title: "Implement repeat focused practice flow"
+
+        issue: >
+          After reviewing a focused attempt, users need a direct way to practice
+          the same scope again while preserving the completed attempt as history.
+
+        approach: >
+          Integrate AssessmentRetakeService into the focused result flow. Create a
+          new assessment from the completed attempt's existing
+          AssessmentConfig, navigate to the new AssessmentSession, and preserve
+          the original result. Keep the E08 retake semantics unchanged: same
+          configuration, fresh selection, new attempt identity, overlap allowed.
+
+        acceptance_criteria:
+          - "A completed focused result exposes a repeat-practice action."
+          - "Repeat practice delegates to AssessmentRetakeService."
+          - "The new TestAttempt has a different stable ID from the source attempt."
+          - "The new attempt preserves the source AssessmentConfig."
+          - "The new attempt begins IN_PROGRESS with unanswered QuestionAttempts."
+          - "The newly created retake is already persisted before navigation into the new session."
+          - "The original completed attempt remains unchanged and can still be reviewed."
+          - "Fresh selection is used; exact question reuse is not required and overlap is allowed."
+          - "SourceAttemptNotFound and NoEligibleQuestions outcomes are represented explicitly."
+          - "No history-aware repetition avoidance or E10 balancing policy is added."
+          - "Focused tests cover successful retake, preserved source result, no-content behavior, and new-session navigation."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+
+      - key: E09-06
+        title: "Verify focused learning journey end to end"
+
+        issue: >
+          The complete focused-practice journey needs integration and UI
+          verification before the richer mixed-interview experience is added.
+
+        approach: >
+          Exercise the real topic browser, subtopic selection, focused assessment
+          engine, persistence, result reconstruction, explanation/source review,
+          and repeat-practice behavior together. Add targeted Compose/UI and
+          shared integration tests and remove remaining placeholder artifacts
+          that are no longer part of the product.
+
+        acceptance_criteria:
+          - "A user can navigate from the application start destination to an ACTIVE topic."
+          - "A user can browse populated subtopics."
+          - "Topic-wide focused practice can be started."
+          - "Subtopic-focused practice can be started."
+          - "Single- and multiple-answer questions can be answered through the UI."
+          - "Assessment progress and explicit completion work across the full flow."
+          - "The completed attempt survives a repository round trip."
+          - "Results show score, selected/correct answers, explanation, and sources."
+          - "A source link action reaches the platform URL-opening boundary."
+          - "Repeat practice creates a separate persisted attempt and enters a fresh session."
+          - "The source attempt remains reviewable."
+          - "No-content and missing-content states fail gracefully."
+          - "The main focused flow is covered by shared integration and targeted Compose tests."
+          - "Android assemble and normal CI checks pass."
+          - "The resulting E09 UI consumes stable E08 boundaries without direct Room/DAO access."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
 
 
   - key: E10

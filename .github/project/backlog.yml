@@ -1095,7 +1095,208 @@ epics:
       configurations, individual question attempts, test attempts, scoring,
       completion, and retakes through a common assessment model.
 
-    issues: []
+    issues:
+      - key: E08-01
+        title: "Define shared assessment domain model"
+
+        issue: >
+          Focused practice and mixed interviews need one shared assessment
+          vocabulary before selection, scoring, persistence, and UI flows are
+          implemented. Without an explicit domain model, later epics risk
+          creating separate focused-test and mixed-test implementations.
+
+        approach: >
+          Define the KMP-common assessment domain model for assessment
+          configuration, assessment identity, question state, submitted answers,
+          question results, test attempts, completion state, and scoring
+          summaries. Keep the model independent from Room and UI. Represent
+          focused and mixed assessments through a common configuration model
+          without implementing their product-specific selection policies yet.
+
+        acceptance_criteria:
+          - "A shared assessment configuration model can represent focused and mixed assessments."
+          - "Focused configuration can identify a topic or subtopic scope."
+          - "Mixed configuration can represent a requested question count without embedding E10-specific balancing logic."
+          - "A TestAttempt has its own stable attempt identity and represents one independent assessment run."
+          - "A QuestionAttempt belongs to one TestAttempt and identifies the stable Question ID."
+          - "Selected answers are represented by stable AnswerOption IDs rather than indexes."
+          - "QuestionAttempt can represent unanswered and answered state where required by the engine."
+          - "Assessment completion state is represented explicitly."
+          - "Scoring/result models support both single-answer and multiple-answer questions."
+          - "Retakes are modeled as new TestAttempt identities rather than mutation of previous history."
+          - "The model lives in shared/common code and has no Room, Android, Compose, or ViewModel dependencies."
+          - "Focused tests cover important model invariants and equality/value semantics."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+
+      - key: E08-02
+        title: "Implement assessment question selection"
+
+        issue: >
+          Assessment creation needs deterministic, testable selection behavior
+          over the active curriculum without coupling the engine to UI or
+          persistence implementation details.
+
+        approach: >
+          Implement a shared question-selection component that obtains eligible
+          questions through CurriculumRepository and produces the question set
+          required by an AssessmentConfig. Support focused topic/subtopic
+          selection and the generic mixed-assessment input required by E10.
+          Separate randomization from eligibility rules so tests can be
+          deterministic. Leave sophisticated mixed-topic balancing and
+          repetition avoidance to E10 unless they are truly generic primitives.
+
+        acceptance_criteria:
+          - "Focused topic selection uses active questions from CurriculumRepository."
+          - "Focused subtopic selection uses active questions from CurriculumRepository."
+          - "Requested question count is respected when enough eligible questions exist."
+          - "Selection never returns the same Question ID twice in one assessment."
+          - "Deprecated questions are not selected for new assessments."
+          - "Selection behavior for a requested count greater than the eligible pool is explicit and tested."
+          - "Randomization can be controlled or replaced in tests without global randomness."
+          - "The selector returns domain Questions or stable question identities without exposing Room types."
+          - "No scoring, attempt persistence, UI, or E10-specific topic-balancing policy is implemented."
+          - "Focused shared tests cover deterministic selection and edge cases."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+
+      - key: E08-03
+        title: "Implement assessment session and scoring engine"
+
+        issue: >
+          Selected questions need one shared engine for recording answers,
+          evaluating correctness, progressing through an assessment, and
+          producing a final result. Focused practice and mixed interviews should
+          not implement separate scoring/session logic.
+
+        approach: >
+          Implement a shared assessment engine that creates a TestAttempt from a
+          selected question set, records QuestionAttempt answers using stable
+          answer IDs, evaluates single- and multiple-answer questions, tracks
+          completion, and calculates assessment-level scoring. Keep the engine
+          pure/domain-oriented where practical and independent from Room and UI.
+
+        acceptance_criteria:
+          - "A new assessment session creates a distinct TestAttempt identity."
+          - "Answers are submitted using stable AnswerOption IDs."
+          - "Single-answer questions are evaluated correctly."
+          - "Multiple-answer questions require the correct answer set according to the agreed scoring rule."
+          - "Duplicate selected answer IDs do not incorrectly affect correctness."
+          - "An answer containing an incorrect additional option is not scored as fully correct."
+          - "QuestionAttempt records the submitted selection and correctness result."
+          - "The engine can determine whether the assessment is complete."
+          - "A completed assessment exposes total question count, correct count, and score/percentage."
+          - "Completing or scoring an assessment does not mutate curriculum Questions."
+          - "Focused and mixed configurations use the same assessment/session engine."
+          - "Pure shared tests cover scoring, progression, completion, invalid submissions, and multiple-answer behavior."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+
+      - key: E08-04
+        title: "Persist assessment attempts and selected answers"
+
+        issue: >
+          Completed and in-progress assessment attempts must survive beyond an
+          in-memory session so retakes, history, progress, and mistake review can
+          be built without losing the exact questions and answers associated
+          with each run.
+
+        approach: >
+          Extend the local Room schema with persistence for TestAttempt and
+          QuestionAttempt plus the selected-answer identities required to
+          reconstruct an attempt. Preserve the existing curriculum stable-ID
+          relationships. Add mappings and a narrow attempt persistence boundary
+          without implementing E11 statistics/history UI.
+
+        acceptance_criteria:
+          - "TestAttempt and QuestionAttempt are persisted as separate concepts."
+          - "Each TestAttempt has a unique stable attempt ID."
+          - "Each QuestionAttempt references its parent TestAttempt and stable Question ID."
+          - "Selected AnswerOption IDs can be persisted for each QuestionAttempt."
+          - "Multiple selected answers are representable without index-based identity."
+          - "Attempt completion state and scoring fields required by the domain model are persisted."
+          - "Historical attempts can continue referencing DEPRECATED curriculum questions."
+          - "A new Room schema version and migration from the existing E07 schema are implemented and tested."
+          - "Persistence mappings keep Room entities out of the assessment domain API."
+          - "Focused persistence tests verify save/read of single-answer and multi-answer attempts."
+          - "No progress aggregation, weak-area analysis, mistake-review UI, or E11 behavior is implemented."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+
+      - key: E08-05
+        title: "Implement assessment attempt repository and retake behavior"
+
+        issue: >
+          The assessment engine needs a stable persistence-facing boundary for
+          saving and retrieving attempts, and retakes need explicit semantics
+          that preserve prior history rather than overwriting it.
+
+        approach: >
+          Introduce an AssessmentRepository over the local attempt persistence
+          layer. Support saving an attempt, retrieving an attempt by ID, and
+          creating a retake as a new TestAttempt using the relevant prior
+          configuration while keeping the original attempt unchanged. Keep
+          broad history/statistics queries deferred to E11.
+
+        acceptance_criteria:
+          - "AssessmentRepository exposes domain models rather than Room entities."
+          - "A TestAttempt can be saved and retrieved by stable attempt ID."
+          - "QuestionAttempts and selected answer IDs are reconstructed correctly."
+          - "Saving/updating an in-progress attempt does not create duplicate QuestionAttempt rows."
+          - "A retake receives a new TestAttempt ID."
+          - "The original TestAttempt remains unchanged after creating a retake."
+          - "Retake preserves the assessment configuration needed to create another run."
+          - "Whether a retake reuses or reselects questions is explicit and tested according to the agreed domain rule."
+          - "No broad history feed, statistics aggregation, weak-area calculation, or mistake-review behavior is added."
+          - "Focused repository tests cover persistence round-trip and retake identity semantics."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+
+      - key: E08-06
+        title: "Verify shared assessment engine end to end"
+
+        issue: >
+          Before focused-practice and mixed-interview product flows are built,
+          the shared assessment components need to be verified together across
+          curriculum access, selection, scoring, persistence, and retakes.
+
+        approach: >
+          Add integration-oriented tests exercising CurriculumRepository,
+          assessment selection, the session/scoring engine, and
+          AssessmentRepository together. Verify both focused and generic mixed
+          configurations use the same underlying engine and that persisted
+          results can be reconstructed accurately.
+
+        acceptance_criteria:
+          - "A focused assessment can be created from active persisted curriculum questions."
+          - "A generic mixed assessment configuration can be created through the same assessment engine."
+          - "Selected questions can be answered and the assessment completed."
+          - "Single- and multiple-answer questions produce correct persisted results."
+          - "A completed assessment can be persisted and reconstructed without loss of answer identity or score."
+          - "A retake creates a separate persisted TestAttempt."
+          - "The original attempt remains available after the retake."
+          - "Deprecated questions are not selected for new assessments but remain resolvable for historical attempts."
+          - "The complete engine path remains shared/common and independent from Compose UI."
+          - "E08 leaves stable CurriculumRepository and AssessmentRepository boundaries ready for E09 and E10."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
 
 
   - key: E09

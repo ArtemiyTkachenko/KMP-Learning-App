@@ -47,3 +47,11 @@ report multiple authoring errors for a complete curriculum instead of failing
 object construction on the first malformed item. Serialization and local
 persistence are handled by the E07 data path while Room-specific metadata stays
 out of the curriculum domain models.
+
+## Assessment Domain
+
+The shared assessment model defines focused and mixed assessment configuration,
+question attempts, answer identity state, attempt lifecycle, and score summaries
+without depending on Room, Koin, Compose, Android, or `CurriculumRepository`.
+Later E08 work will use `CurriculumRepository` for question selection and will
+add scoring/session behavior and attempt persistence around these value models.

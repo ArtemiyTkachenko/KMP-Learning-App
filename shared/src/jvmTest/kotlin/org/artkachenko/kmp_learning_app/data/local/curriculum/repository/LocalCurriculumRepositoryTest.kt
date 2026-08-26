@@ -65,6 +65,21 @@ internal class LocalCurriculumRepositoryTest {
     }
 
     @Test
+    fun getActiveQuestionsRequiresActiveQuestionSubtopicAndTopicAcrossAllTopics() = runTest {
+        withRepository(activeQuestionFixture()) { repository ->
+            val questions = repository.getActiveQuestions()
+
+            assertEquals(listOf("question_z", "other_question", "question_a"), questions.map { it.id })
+            assertCompleteQuestion(
+                question = questions.first(),
+                expectedAnswerIds = listOf("question_z_answer_b", "question_z_answer_a"),
+                expectedCorrectAnswerIds = listOf("question_z_answer_a", "question_z_answer_b"),
+                expectedSourceUrls = listOf("https://example.com/question-z/source-b", "https://example.com/question-z/source-a"),
+            )
+        }
+    }
+
+    @Test
     fun getActiveQuestionsBySubtopicRequiresActiveQuestionSubtopicAndTopic() = runTest {
         withRepository(activeQuestionFixture()) { repository ->
             assertEquals(

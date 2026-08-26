@@ -9,6 +9,8 @@ internal interface CurriculumRepository {
 
     suspend fun getActiveSubtopics(topicId: String): List<Subtopic>
 
+    suspend fun getActiveQuestions(): List<Question>
+
     suspend fun getActiveQuestionsByTopic(topicId: String): List<Question>
 
     suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question>

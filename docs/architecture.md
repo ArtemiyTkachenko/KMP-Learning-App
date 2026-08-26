@@ -55,3 +55,5 @@ question attempts, answer identity state, attempt lifecycle, and score summaries
 without depending on Room, Koin, Compose, Android, or `CurriculumRepository`.
 Later E08 work will use `CurriculumRepository` for question selection and will
 add scoring/session behavior and attempt persistence around these value models.
+Question selection follows `AssessmentConfig -> AssessmentQuestionSelector ->
+CurriculumRepository`; richer mixed-assessment balancing remains deferred to E10.

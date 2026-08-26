@@ -74,6 +74,25 @@ internal interface CurriculumDao {
         JOIN subtopic s
             ON s.id = q.subtopic_id
             AND s.topic_id = q.topic_id
+        WHERE q.status = :activeStatus
+            AND s.status = :activeStatus
+            AND t.status = :activeStatus
+        ORDER BY q.sort_order
+        """,
+    )
+    suspend fun getActiveQuestions(
+        activeStatus: String,
+    ): List<QuestionEntity>
+
+    @Query(
+        """
+        SELECT q.*
+        FROM question q
+        JOIN topic t
+            ON t.id = q.topic_id
+        JOIN subtopic s
+            ON s.id = q.subtopic_id
+            AND s.topic_id = q.topic_id
         WHERE q.topic_id = :topicId
             AND q.status = :activeStatus
             AND s.status = :activeStatus

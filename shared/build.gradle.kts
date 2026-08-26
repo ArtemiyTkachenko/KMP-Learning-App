@@ -59,6 +59,7 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.uiTooling)
             implementation(libs.androidx.sqlite.bundled)
+            implementation(libs.koin.android)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -72,6 +73,8 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodelNavigation3)
             implementation(libs.androidx.room3.runtime)
             implementation(libs.jetbrains.navigation3.ui)
+            implementation(libs.koin.core)
+            implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.core)
             implementation(libs.kotlinx.serialization.json)
         }

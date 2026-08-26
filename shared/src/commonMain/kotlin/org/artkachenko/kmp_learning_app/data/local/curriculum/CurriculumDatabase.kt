@@ -4,6 +4,10 @@ import androidx.room3.ConstructedBy
 import androidx.room3.Database
 import androidx.room3.RoomDatabase
 import androidx.room3.RoomDatabaseConstructor
+import org.artkachenko.kmp_learning_app.data.local.assessment.AssessmentAttemptDao
+import org.artkachenko.kmp_learning_app.data.local.assessment.entity.QuestionAttemptEntity
+import org.artkachenko.kmp_learning_app.data.local.assessment.entity.QuestionAttemptSelectedAnswerEntity
+import org.artkachenko.kmp_learning_app.data.local.assessment.entity.TestAttemptEntity
 import org.artkachenko.kmp_learning_app.data.local.curriculum.entity.AnswerOptionEntity
 import org.artkachenko.kmp_learning_app.data.local.curriculum.entity.QuestionCorrectAnswerEntity
 import org.artkachenko.kmp_learning_app.data.local.curriculum.entity.QuestionEntity
@@ -19,13 +23,18 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.entity.TopicEntity
         AnswerOptionEntity::class,
         QuestionCorrectAnswerEntity::class,
         QuestionSourceEntity::class,
+        TestAttemptEntity::class,
+        QuestionAttemptEntity::class,
+        QuestionAttemptSelectedAnswerEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @ConstructedBy(CurriculumDatabaseConstructor::class)
 internal abstract class CurriculumDatabase : RoomDatabase() {
     abstract fun curriculumDao(): CurriculumDao
+
+    abstract fun assessmentAttemptDao(): AssessmentAttemptDao
 }
 
 @Suppress("KotlinNoActualForExpect")

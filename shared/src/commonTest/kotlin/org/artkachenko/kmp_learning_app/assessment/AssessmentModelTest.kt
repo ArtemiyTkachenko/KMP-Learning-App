@@ -1,6 +1,7 @@
 package org.artkachenko.kmp_learning_app.assessment
 
 import kotlin.math.abs
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -179,10 +180,12 @@ internal class AssessmentModelTest {
                 answeredAttempt("question_002"),
             ),
             status = AssessmentStatus.IN_PROGRESS,
+            startedAt = StartedAt,
         )
 
         assertEquals(AssessmentStatus.IN_PROGRESS, attempt.status)
         assertNull(attempt.score)
+        assertNull(attempt.completedAt)
     }
 
     @Test
@@ -193,6 +196,7 @@ internal class AssessmentModelTest {
                 config = AssessmentConfig.Mixed(questionCount = 1),
                 questionAttempts = listOf(QuestionAttempt("question_001")),
                 status = AssessmentStatus.IN_PROGRESS,
+                startedAt = StartedAt,
             )
         }
         assertFailsWith<IllegalArgumentException> {
@@ -201,6 +205,7 @@ internal class AssessmentModelTest {
                 config = AssessmentConfig.Mixed(questionCount = 1),
                 questionAttempts = emptyList(),
                 status = AssessmentStatus.IN_PROGRESS,
+                startedAt = StartedAt,
             )
         }
     }
@@ -216,6 +221,7 @@ internal class AssessmentModelTest {
                     QuestionAttempt("question_001"),
                 ),
                 status = AssessmentStatus.IN_PROGRESS,
+                startedAt = StartedAt,
             )
         }
     }
@@ -228,7 +234,22 @@ internal class AssessmentModelTest {
                 config = AssessmentConfig.Mixed(questionCount = 1),
                 questionAttempts = listOf(answeredAttempt("question_001")),
                 status = AssessmentStatus.IN_PROGRESS,
+                startedAt = StartedAt,
                 score = AssessmentScore(totalQuestions = 1, correctAnswers = 1),
+            )
+        }
+    }
+
+    @Test
+    fun inProgressAttemptMustNotHaveCompletedAt() {
+        assertFailsWith<IllegalArgumentException> {
+            TestAttempt(
+                id = "attempt_001",
+                config = AssessmentConfig.Mixed(questionCount = 1),
+                questionAttempts = listOf(answeredAttempt("question_001")),
+                status = AssessmentStatus.IN_PROGRESS,
+                startedAt = StartedAt,
+                completedAt = CompletedAt,
             )
         }
     }
@@ -241,6 +262,8 @@ internal class AssessmentModelTest {
                 config = AssessmentConfig.Mixed(questionCount = 1),
                 questionAttempts = listOf(QuestionAttempt("question_001")),
                 status = AssessmentStatus.COMPLETED,
+                startedAt = StartedAt,
+                completedAt = CompletedAt,
                 score = AssessmentScore(totalQuestions = 1, correctAnswers = 0),
             )
         }
@@ -250,6 +273,8 @@ internal class AssessmentModelTest {
                 config = AssessmentConfig.Mixed(questionCount = 1),
                 questionAttempts = listOf(answeredAttempt("question_001")),
                 status = AssessmentStatus.COMPLETED,
+                startedAt = StartedAt,
+                completedAt = CompletedAt,
             )
         }
         assertFailsWith<IllegalArgumentException> {
@@ -258,7 +283,35 @@ internal class AssessmentModelTest {
                 config = AssessmentConfig.Mixed(questionCount = 1),
                 questionAttempts = listOf(answeredAttempt("question_001")),
                 status = AssessmentStatus.COMPLETED,
+                startedAt = StartedAt,
+                completedAt = CompletedAt,
                 score = AssessmentScore(totalQuestions = 2, correctAnswers = 1),
+            )
+        }
+    }
+
+    @Test
+    fun completedAttemptRequiresCompletedAtNotBeforeStartedAt() {
+        assertFailsWith<IllegalArgumentException> {
+            TestAttempt(
+                id = "attempt_001",
+                config = AssessmentConfig.Mixed(questionCount = 1),
+                questionAttempts = listOf(answeredAttempt("question_001")),
+                status = AssessmentStatus.COMPLETED,
+                startedAt = CompletedAt,
+                completedAt = StartedAt,
+                score = AssessmentScore(totalQuestions = 1, correctAnswers = 1),
+            )
+        }
+        assertFailsWith<IllegalArgumentException> {
+            TestAttempt(
+                id = "attempt_001",
+                config = AssessmentConfig.Mixed(questionCount = 1),
+                questionAttempts = listOf(answeredAttempt("question_001")),
+                status = AssessmentStatus.COMPLETED,
+                startedAt = StartedAt,
+                completedAt = null,
+                score = AssessmentScore(totalQuestions = 1, correctAnswers = 1),
             )
         }
     }
@@ -273,10 +326,13 @@ internal class AssessmentModelTest {
                 answeredAttempt("question_002", isCorrect = false),
             ),
             status = AssessmentStatus.COMPLETED,
+            startedAt = StartedAt,
+            completedAt = CompletedAt,
             score = AssessmentScore(totalQuestions = 2, correctAnswers = 1),
         )
 
         assertEquals(AssessmentStatus.COMPLETED, attempt.status)
+        assertEquals(CompletedAt, attempt.completedAt)
         assertEquals(1, attempt.score?.correctAnswers)
     }
 
@@ -327,6 +383,11 @@ internal class AssessmentModelTest {
             ),
             questionAttempts = listOf(answeredAttempt("question_001")),
             status = AssessmentStatus.COMPLETED,
+            startedAt = StartedAt,
+            completedAt = CompletedAt,
             score = AssessmentScore(totalQuestions = 1, correctAnswers = 1),
         )
 }
+
+private val StartedAt = Instant.fromEpochMilliseconds(1_700_000_000_000)
+private val CompletedAt = Instant.fromEpochMilliseconds(1_700_000_060_000)

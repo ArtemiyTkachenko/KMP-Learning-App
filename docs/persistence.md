@@ -5,7 +5,8 @@
 This document defines the E07 local persistence direction and logical schema for
 the Android interview curriculum. It started as the E07-01 design reference and
 now records the implemented local data path as the later E07 issues connect the
-database, importer, repository, and runtime initialization.
+database, importer, repository, runtime initialization, and E08 assessment
+attempt persistence.
 
 The schema is designed around the current E06 content model:
 
@@ -71,6 +72,9 @@ Future Room persistence models should conceptually be separate:
 - `AnswerOptionEntity`
 - `QuestionCorrectAnswerEntity`
 - `QuestionSourceEntity`
+- `TestAttemptEntity`
+- `QuestionAttemptEntity`
+- `QuestionAttemptSelectedAnswerEntity`
 
 This keeps the domain contract independent from the database representation.
 Bundled content, database tables, and application-facing repository APIs are
@@ -112,7 +116,8 @@ Topic
                 +--< QuestionSource
 ```
 
-Room 3.0.1 is the implemented baseline for schema version 1.
+Room 3.0.1 is the implemented baseline. Schema version 1 contains curriculum
+content tables; schema version 2 adds assessment attempt history.
 
 The authored `Curriculum` JSON uses ordered lists. SQLite row order is not
 defined unless it is modeled explicitly, so persisted authored order is stored
@@ -404,30 +409,56 @@ an in-memory JVM database with the same driver for persistence tests.
 because JS/Wasm require web-specific driver setup, such as a web-worker based
 SQLite driver, which is outside the Android-focused MVP database issue.
 
-## Future Assessment-History Compatibility
+## Assessment Attempt History
 
-This issue does not define or implement assessment-history tables. The schema is
-intentionally compatible with later records such as:
+Schema version 2 persists assessment attempts:
 
 ```text
 TestAttempt
   -> QuestionAttempt
-       -> questionId
        -> selected answer IDs
 ```
 
-Stable `Question.id` values and per-question answer IDs make historical attempts
-meaningful after content updates. Do not add `TestAttemptEntity`,
-`QuestionAttemptEntity`, progress tables, statistics tables, or mistake-review
-tables in E07-01.
+`AssessmentSession` itself is not persisted. It is the runtime aggregate that
+keeps selected `Question` objects available for scoring while an assessment is
+running. Persistent history stores `TestAttempt`, ordered `QuestionAttempt`
+rows, and selected stable `AnswerOption` IDs.
+
+`test_attempt` stores:
+
+- `id` as the stable attempt identity;
+- `config_type`, `requested_question_count`, `scope_type`, and `scope_id` as
+  readable assessment configuration metadata;
+- `status` as `IN_PROGRESS` or `COMPLETED`;
+- nullable score columns for completed attempts;
+- `started_at_epoch_millis` and nullable `completed_at_epoch_millis`.
+
+`question_attempt` stores `(test_attempt_id, question_id)` as its primary key,
+references the parent attempt and stable curriculum `question.id`, and uses
+`sort_order` for the assessment question sequence. Nullable `is_correct`
+represents the current two-state answer model: `NULL` means unanswered, while
+`true` or `false` means answered.
+
+`question_attempt_selected_answer` stores one row per submitted answer ID using
+the primary key `(test_attempt_id, question_id, answer_id)`. It references both
+the parent `question_attempt` and `answer_option(question_id, id)`, so selected
+answer IDs remain scoped to the question that owned them. Selected answers are
+set-like, so no selected-answer order column is stored.
+
+Historical attempts reference stable curriculum IDs rather than copying question
+text, answer text, explanations, or sources. Deprecated curriculum rows are
+retained by the content lifecycle, so historical attempts can still resolve the
+questions and answers they referenced.
 
 ## Migration and Schema History
 
 E07-03 establishes schema version 1 and enables version-controlled Room schema
-artifacts.
+artifacts. E08-04 establishes schema version 2 and adds an explicit
+`MIGRATION_1_2` that creates only the assessment attempt tables and indexes.
 
 Destructive migration should not be the default production strategy. Migration
-tests should be added when schema versions actually change.
+tests validate the 1 -> 2 migration against Room's exported schema and verify
+existing curriculum rows remain intact.
 
 ## Koin
 

@@ -4,6 +4,7 @@ import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
 import kotlin.math.abs
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -46,6 +47,8 @@ internal class AssessmentEngineTest {
         assertEquals("attempt-1", session.attempt.id)
         assertEquals(config, session.attempt.config)
         assertEquals(AssessmentStatus.IN_PROGRESS, session.attempt.status)
+        assertEquals(StartedAt, session.attempt.startedAt)
+        assertNull(session.attempt.completedAt)
         assertNull(session.attempt.score)
         assertEquals(listOf("question_a", "question_b"), session.questions.map { it.id })
         assertEquals(listOf("question_a", "question_b"), session.attempt.questionAttempts.map { it.questionId })
@@ -332,6 +335,7 @@ internal class AssessmentEngineTest {
         val completed = engine().complete(session)
 
         assertEquals(AssessmentStatus.COMPLETED, completed.attempt.status)
+        assertEquals(StartedAt, completed.attempt.completedAt)
         assertEquals(3, completed.attempt.score?.totalQuestions)
         assertEquals(2, completed.attempt.score?.correctAnswers)
         assertTrue(abs(completed.attempt.score!!.percentage - 66.6666) < 0.001)
@@ -367,6 +371,18 @@ internal class AssessmentEngineTest {
     }
 
     @Test
+    fun completionRejectsClockGoingBeforeStartedAt() = runEngineTest {
+        val clockThatMovesBack =
+            engine(now = { Instant.fromEpochMilliseconds(StartedAt.toEpochMilliseconds() - 1_000) })
+
+        assertFailsWith<IllegalArgumentException> {
+            clockThatMovesBack.complete(
+                answerAll(sessionWith(question("question_a"))),
+            )
+        }
+    }
+
+    @Test
     fun submitAfterCompletionFails() = runEngineTest {
         val completed = engine().complete(
             answerAll(sessionWith(question("question_a"))),
@@ -394,6 +410,7 @@ internal class AssessmentEngineTest {
                         QuestionAttempt("question_a"),
                     ),
                     status = AssessmentStatus.IN_PROGRESS,
+                    startedAt = StartedAt,
                 ),
                 questions = questions,
             )
@@ -409,6 +426,7 @@ internal class AssessmentEngineTest {
                     config = AssessmentConfig.Mixed(questionCount = 1),
                     questionAttempts = listOf(QuestionAttempt("question_a")),
                     status = AssessmentStatus.IN_PROGRESS,
+                    startedAt = StartedAt,
                 ),
                 questions = emptyList(),
             )
@@ -423,6 +441,7 @@ internal class AssessmentEngineTest {
                         QuestionAttempt("question_b"),
                     ),
                     status = AssessmentStatus.IN_PROGRESS,
+                    startedAt = StartedAt,
                 ),
                 questions = listOf(
                     question("question_a"),
@@ -469,13 +488,16 @@ internal class AssessmentEngineTest {
         val repository = FakeCurriculumRepository()
         private var nextAttemptNumber = 1
 
-        fun engine(): AssessmentEngine =
+        fun engine(
+            now: () -> Instant = { StartedAt },
+        ): AssessmentEngine =
             AssessmentEngine(
                 questionSelector = AssessmentQuestionSelector(
                     curriculumRepository = repository,
                     randomize = { it },
                 ),
                 generateAttemptId = { "attempt-${nextAttemptNumber++}" },
+                now = now,
             )
 
         fun sessionWith(
@@ -491,6 +513,7 @@ internal class AssessmentEngineTest {
                         QuestionAttempt(questionId = it.id)
                     },
                     status = AssessmentStatus.IN_PROGRESS,
+                    startedAt = StartedAt,
                 ),
                 questions = questionList,
             )
@@ -575,3 +598,5 @@ internal class AssessmentEngineTest {
             status = ContentStatus.ACTIVE,
         )
 }
+
+private val StartedAt = Instant.fromEpochMilliseconds(1_700_000_000_000)

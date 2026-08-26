@@ -72,6 +72,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.androidx.lifecycle.viewmodelNavigation3)
             implementation(libs.androidx.room3.runtime)
+            implementation(libs.androidx.sqlite.async)
             implementation(libs.jetbrains.navigation3.ui)
             implementation(libs.koin.core)
             implementation(libs.kotlinx.coroutines.core)
@@ -85,6 +86,7 @@ kotlin {
             implementation(libs.wrappers.browser)
         }
         jvmTest.dependencies {
+            implementation(libs.androidx.room3.testing)
             implementation(libs.androidx.sqlite.bundled)
             implementation(libs.kotlinx.coroutines.test)
         }

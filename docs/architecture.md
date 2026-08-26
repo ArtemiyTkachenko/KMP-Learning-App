@@ -57,3 +57,6 @@ Later E08 work will use `CurriculumRepository` for question selection and will
 add scoring/session behavior and attempt persistence around these value models.
 Question selection follows `AssessmentConfig -> AssessmentQuestionSelector ->
 CurriculumRepository`; richer mixed-assessment balancing remains deferred to E10.
+The runtime `AssessmentSession` keeps the selected `Question` objects for
+scoring, while `TestAttempt` remains the stable-ID attempt record that later
+persistence can store without embedding curriculum content.

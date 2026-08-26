@@ -45,7 +45,7 @@ fun App() {
 }
 
 @Composable
-internal fun AppShell(
+private fun AppShell(
     dependencies: AppDependencies,
     modifier: Modifier = Modifier,
 ) {

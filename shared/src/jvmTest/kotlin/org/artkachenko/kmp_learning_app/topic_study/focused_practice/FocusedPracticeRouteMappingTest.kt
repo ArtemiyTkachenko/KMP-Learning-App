@@ -21,4 +21,11 @@ internal class FocusedPracticeRouteMappingTest {
         assertEquals(AssessmentScope.Subtopic("subtopic_a"), config.scope)
         assertEquals(6, config.questionCount)
     }
+
+    @Test
+    fun existingPracticeRouteCarriesOnlyStableAttemptId() {
+        val route = AppRoute.FocusedPracticeAttempt("retake-1")
+
+        assertEquals("retake-1", route.attemptId)
+    }
 }

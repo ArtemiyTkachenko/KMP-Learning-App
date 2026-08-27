@@ -82,6 +82,13 @@ internal class TopicStudyPresentationModuleTest {
                     )
                 },
             )
+            assertIs<FocusedPracticeViewModel>(
+                app.koin.get<FocusedPracticeViewModel> {
+                    parametersOf(FocusedPracticeLaunch.ExistingAttempt("attempt"))
+                },
+            )
+            assertIs<AssessmentSessionLoader>(app.koin.get<AssessmentSessionLoader>())
+            assertIs<AssessmentRetakeService>(app.koin.get<AssessmentRetakeService>())
             assertIs<FocusedResultViewModel>(
                 app.koin.get<FocusedResultViewModel> { parametersOf("attempt") },
             )

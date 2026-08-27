@@ -74,6 +74,8 @@ kotlin {
             implementation(libs.androidx.room3.runtime)
             implementation(libs.androidx.sqlite.async)
             implementation(libs.jetbrains.navigation3.ui)
+            implementation(libs.koin.compose)
+            implementation(libs.koin.compose.viewmodel)
             implementation(libs.koin.core)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.core)
@@ -81,12 +83,18 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
         }
         jsMain.dependencies {
             implementation(libs.wrappers.browser)
         }
+        jvmMain.dependencies {
+            implementation(libs.androidx.sqlite.bundled)
+        }
         jvmTest.dependencies {
             implementation(libs.androidx.room3.testing)
+            implementation(libs.compose.uiTestJunit4)
+            implementation(compose.desktop.currentOs)
             implementation(libs.androidx.sqlite.bundled)
             implementation(libs.kotlinx.coroutines.test)
         }

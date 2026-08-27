@@ -6,8 +6,10 @@ import kotlinx.serialization.Serializable
 @Serializable
 internal sealed interface AppRoute : NavKey {
     @Serializable
-    data object PlaceholderStart : AppRoute
+    data object Topics : AppRoute
 
     @Serializable
-    data class PlaceholderDetail(val itemId: String) : AppRoute
+    data class Topic(
+        val topicId: String,
+    ) : AppRoute
 }

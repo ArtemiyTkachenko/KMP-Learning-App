@@ -45,6 +45,7 @@ import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
 internal const val FocusedResultLoadingTag = "focused_result_loading"
+internal const val FocusedResultPracticeAgainTag = "focused_result_practice_again"
 
 @Composable
 internal fun FocusedResultScreen(
@@ -105,6 +106,7 @@ private fun ResultContent(
             Button(
                 onClick = onRepeatPractice,
                 enabled = state.repeatPracticeState != RepeatPracticeState.Creating,
+                modifier = Modifier.testTag(FocusedResultPracticeAgainTag),
             ) {
                 if (state.repeatPracticeState == RepeatPracticeState.Creating) {
                     CircularProgressIndicator()

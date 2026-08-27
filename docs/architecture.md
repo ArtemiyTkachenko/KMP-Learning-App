@@ -101,6 +101,16 @@ E09-05 exposes repeat practice from the result screen through
 `AssessmentEngine.start()` a second time. The source result remains below the
 retake in the back stack.
 
+The complete E09 focused-learning path is `TopicBrowser -> TopicDetail ->
+AssessmentConfig.Focused -> FocusedPractice -> AssessmentEngine`, with durable
+`TestAttempt` checkpoints through `AssessmentRepository`, explicit completion,
+and `FocusedPracticeResult(attemptId)` historical reconstruction. A repeat uses
+`AssessmentRetakeService`, then navigates by the persisted
+`FocusedPracticeAttempt(attemptId)` so `AssessmentSessionLoader` can restore the
+runtime-only session without creating a second attempt. Android and Desktop
+share this presentation and domain flow; Room and DAOs remain below the
+repository boundaries.
+
 Topic detail screens use a Material 3 top app bar for back navigation, with the
 navigation icon invoking the existing Navigation 3 back-stack pop. Detail and
 practice destinations should keep this phone-style toolbar affordance instead

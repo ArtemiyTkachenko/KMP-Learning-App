@@ -15,6 +15,8 @@ import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
+import org.koin.core.parameter.parametersOf
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
 
@@ -41,6 +43,9 @@ internal class TopicStudyPresentationModuleTest {
 
         try {
             assertIs<TopicBrowserViewModel>(app.koin.get<TopicBrowserViewModel>())
+            assertIs<TopicDetailViewModel>(
+                app.koin.get<TopicDetailViewModel> { parametersOf("topic") },
+            )
             advanceUntilIdle()
         } finally {
             app.close()

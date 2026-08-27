@@ -10,10 +10,10 @@ import org.koin.core.parameter.parametersOf
 
 @Composable
 internal fun FocusedPracticeDestination(
-    config: AssessmentConfig.Focused,
+    launch: FocusedPracticeLaunch,
     onBack: () -> Unit,
     onCompleted: (String) -> Unit,
-    viewModel: FocusedPracticeViewModel = koinViewModel { parametersOf(config) },
+    viewModel: FocusedPracticeViewModel = koinViewModel { parametersOf(launch) },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 

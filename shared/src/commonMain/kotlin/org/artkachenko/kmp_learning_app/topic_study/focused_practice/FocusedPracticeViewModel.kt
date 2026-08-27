@@ -7,16 +7,20 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
+import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSession
+import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoadResult
+import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentStartResult
 import org.artkachenko.kmp_learning_app.curriculum.Question
 
 internal class FocusedPracticeViewModel(
-    private val config: AssessmentConfig.Focused,
+    private val launch: FocusedPracticeLaunch,
     private val assessmentEngine: AssessmentEngine,
     private val assessmentRepository: AssessmentRepository,
+    private val assessmentSessionLoader: AssessmentSessionLoader,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<FocusedPracticeUiState>(FocusedPracticeUiState.Loading)
     val uiState: StateFlow<FocusedPracticeUiState> = _uiState.asStateFlow()
@@ -129,22 +133,9 @@ internal class FocusedPracticeViewModel(
 
         viewModelScope.launch {
             runCatching {
-                when (val result = assessmentEngine.start(config)) {
-                    AssessmentStartResult.NoEligibleQuestions -> FocusedPracticeUiState.NoQuestions
-                    is AssessmentStartResult.Started -> {
-                        assessmentRepository.save(result.session.attempt)
-                        session = result.session
-                        FocusedPracticeUiState.Content(
-                            attemptId = result.session.attempt.id,
-                            questionNumber = 1,
-                            totalQuestions = result.session.questions.size,
-                            question = result.session.questions.first().toUiModel(),
-                            selectedAnswerIds = emptySet(),
-                            canSubmit = false,
-                            isSubmitting = false,
-                            submissionFailed = false,
-                        )
-                    }
+                when (val requestedLaunch = launch) {
+                    is FocusedPracticeLaunch.New -> startNewAssessment(requestedLaunch.config)
+                    is FocusedPracticeLaunch.ExistingAttempt -> loadExistingAttempt(requestedLaunch.attemptId)
                 }
             }.onSuccess { state ->
                 _uiState.value = state
@@ -152,6 +143,51 @@ internal class FocusedPracticeViewModel(
                 _uiState.value = FocusedPracticeUiState.Error
             }
         }
+    }
+
+    private suspend fun startNewAssessment(config: AssessmentConfig.Focused): FocusedPracticeUiState =
+        when (val result = assessmentEngine.start(config)) {
+            AssessmentStartResult.NoEligibleQuestions -> FocusedPracticeUiState.NoQuestions
+            is AssessmentStartResult.Started -> {
+                assessmentRepository.save(result.session.attempt)
+                session = result.session
+                currentQuestionIndex = 0
+                result.session.toContentState()
+            }
+        }
+
+    private suspend fun loadExistingAttempt(attemptId: String): FocusedPracticeUiState {
+        val result = assessmentSessionLoader.load(attemptId)
+        val loadedSession = (result as? AssessmentSessionLoadResult.Loaded)?.session
+            ?: error("Unable to load focused practice attempt: $result")
+        check(loadedSession.attempt.config is AssessmentConfig.Focused) {
+            "Focused practice requires a focused assessment attempt."
+        }
+        session = loadedSession
+        currentQuestionIndex = loadedSession.attempt.questionAttempts.indexOfFirst {
+            it.answerState is QuestionAnswerState.Unanswered
+        }
+        if (currentQuestionIndex < 0) {
+            return FocusedPracticeUiState.ReadyToComplete(
+                attemptId = loadedSession.attempt.id,
+                totalQuestions = loadedSession.questions.size,
+            )
+        }
+        return loadedSession.toContentState()
+    }
+
+    private fun AssessmentSession.toContentState(): FocusedPracticeUiState.Content {
+        val question = questions[currentQuestionIndex]
+        return FocusedPracticeUiState.Content(
+            attemptId = attempt.id,
+            questionNumber = currentQuestionIndex + 1,
+            totalQuestions = questions.size,
+            question = question.toUiModel(),
+            selectedAnswerIds = emptySet(),
+            canSubmit = false,
+            isSubmitting = false,
+            submissionFailed = false,
+        )
     }
 
     private fun publishContent() {

@@ -12,7 +12,20 @@ internal sealed interface FocusedResultUiState {
         val correctAnswers: Int,
         val percentage: Double,
         val questions: List<ReviewQuestionItem>,
+        val repeatPracticeState: RepeatPracticeState = RepeatPracticeState.Idle,
     ) : FocusedResultUiState
+}
+
+internal sealed interface RepeatPracticeState {
+    data object Idle : RepeatPracticeState
+    data object Creating : RepeatPracticeState
+    data object SourceAttemptNotFound : RepeatPracticeState
+    data object NoEligibleQuestions : RepeatPracticeState
+    data object Error : RepeatPracticeState
+}
+
+internal sealed interface FocusedResultEvent {
+    data class RetakeCreated(val attemptId: String) : FocusedResultEvent
 }
 
 internal sealed interface ReviewQuestionItem {

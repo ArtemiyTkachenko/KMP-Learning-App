@@ -4,6 +4,7 @@ import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentReposito
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
+import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.data.local.assessment.repository.LocalAssessmentRepository
 import org.koin.dsl.module
 
@@ -36,6 +37,12 @@ internal val assessmentDataModule = module {
         AssessmentRetakeService(
             assessmentRepository = get(),
             assessmentEngine = get(),
+        )
+    }
+    single {
+        AssessmentSessionLoader(
+            assessmentRepository = get(),
+            curriculumRepository = get(),
         )
     }
 }

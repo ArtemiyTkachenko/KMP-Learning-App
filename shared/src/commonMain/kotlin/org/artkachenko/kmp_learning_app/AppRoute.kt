@@ -29,4 +29,9 @@ internal sealed interface AppRoute : NavKey {
     data class FocusedPracticeResult(
         val attemptId: String,
     ) : AppRoute
+
+    @Serializable
+    data class FocusedPracticeAttempt(
+        val attemptId: String,
+    ) : AppRoute
 }

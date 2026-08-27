@@ -20,7 +20,10 @@ import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
+import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.FocusedPracticeViewModel
+import org.artkachenko.kmp_learning_app.topic_study.focused_practice.FocusedPracticeLaunch
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
@@ -57,6 +60,8 @@ internal class TopicStudyPresentationModuleTest {
                         )
                     }
                     single<AssessmentRepository> { FakeAssessmentRepository() }
+                    single { AssessmentSessionLoader(get(), get()) }
+                    single { AssessmentRetakeService(get(), get()) }
                 },
                 topicStudyPresentationModule,
             )
@@ -70,10 +75,10 @@ internal class TopicStudyPresentationModuleTest {
             assertIs<FocusedPracticeViewModel>(
                 app.koin.get<FocusedPracticeViewModel> {
                     parametersOf(
-                        AssessmentConfig.Focused(
+                        FocusedPracticeLaunch.New(AssessmentConfig.Focused(
                             scope = AssessmentScope.Topic("topic"),
                             questionCount = 1,
-                        ),
+                        )),
                     )
                 },
             )

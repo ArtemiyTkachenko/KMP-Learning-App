@@ -21,6 +21,7 @@ import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
+import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
@@ -199,14 +200,42 @@ internal class FocusedPracticeViewModelTest {
         assertEquals(AssessmentStatus.COMPLETED, repository.savedAttempts.last().status)
     }
 
+    @Test
+    fun existingAttemptLoadsWithoutStartingOrInitialSavingAgain() = runViewModelTest {
+        val questions = listOf(question("retake-question", listOf("a")))
+        val repository = RecordingAssessmentRepository()
+        repository.savedAttempts += TestAttempt(
+            id = "retake-1",
+            config = AssessmentConfig.Focused(AssessmentScope.Topic("topic"), 10),
+            questionAttempts = listOf(org.artkachenko.kmp_learning_app.assessment.QuestionAttempt("retake-question")),
+            status = AssessmentStatus.IN_PROGRESS,
+            startedAt = Instant.fromEpochMilliseconds(1_000),
+        )
+        val curriculum = FakeCurriculumRepository(questions)
+        val viewModel = FocusedPracticeViewModel(
+            launch = FocusedPracticeLaunch.ExistingAttempt("retake-1"),
+            assessmentEngine = AssessmentEngine(
+                questionSelector = AssessmentQuestionSelector(curriculum, randomize = { it }),
+                generateAttemptId = { error("start must not be called") },
+                now = { Instant.fromEpochMilliseconds(2_000) },
+            ),
+            assessmentRepository = repository,
+            assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum),
+        )
+        advanceUntilIdle()
+
+        assertEquals("retake-1", content(viewModel).attemptId)
+        assertEquals(1, repository.savedAttempts.size)
+    }
+
     private fun viewModel(
         questions: List<Question>,
         repository: RecordingAssessmentRepository = RecordingAssessmentRepository(),
     ) = FocusedPracticeViewModel(
-        config = AssessmentConfig.Focused(
+        launch = FocusedPracticeLaunch.New(AssessmentConfig.Focused(
             scope = AssessmentScope.Topic("topic"),
             questionCount = 10,
-        ),
+        )),
         assessmentEngine = AssessmentEngine(
             questionSelector = AssessmentQuestionSelector(
                 curriculumRepository = FakeCurriculumRepository(questions),
@@ -216,6 +245,10 @@ internal class FocusedPracticeViewModelTest {
             now = { Instant.fromEpochMilliseconds(1_000) },
         ),
         assessmentRepository = repository,
+        assessmentSessionLoader = AssessmentSessionLoader(
+            assessmentRepository = repository,
+            curriculumRepository = FakeCurriculumRepository(questions),
+        ),
     )
 
     private fun content(viewModel: FocusedPracticeViewModel) =

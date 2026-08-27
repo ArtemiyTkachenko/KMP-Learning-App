@@ -1524,9 +1524,236 @@ epics:
       Deliver the primary interview-readiness experience by allowing users to
       take a mixed Android assessment covering multiple areas of the curriculum.
       Provide appropriate cross-topic question selection, an overall result,
-      topic-level performance information, and answer review.
+      topic-level performance information, answer review, and repeat interview
+      practice.
 
-    issues: []
+    issues:
+      - key: E10-01
+        title: "Implement balanced mixed interview question selection"
+
+        issue: >
+          Mixed assessments currently select from the entire active question
+          pool using a global shuffle. Because curriculum topics contain
+          different numbers of questions, this can over-represent larger topics
+          and produce an interview that does not provide useful cross-topic
+          coverage.
+
+        approach: >
+          Replace the generic Mixed selection branch with a deterministic,
+          testable coverage-first round-robin policy. Randomize the eligible
+          active question pool using the existing injected randomization
+          boundary, group questions by topic in randomized encounter order, and
+          select at most one question from each topic per round until the
+          requested count is reached or the eligible pool is exhausted. Keep
+          focused topic/subtopic selection unchanged.
+
+        acceptance_criteria:
+          - "AssessmentConfig.Mixed uses a cross-topic coverage-first selection policy."
+          - "Only ACTIVE eligible Questions returned by CurriculumRepository participate in selection."
+          - "Question IDs remain unique within one assessment."
+          - "When requested count is at least the number of populated topics, every populated topic contributes one question before any topic contributes a second question."
+          - "When requested count is smaller than the number of populated topics, selected questions come from distinct topics until the requested count is reached."
+          - "After one coverage round, additional questions are selected through subsequent rounds while available questions remain."
+          - "Topics with fewer questions are skipped cleanly once exhausted."
+          - "Requested question count remains a maximum when the eligible pool is smaller."
+          - "Randomization remains injectable and deterministic in tests."
+          - "Focused Topic and Subtopic selection behavior is unchanged."
+          - "No topic weights, difficulty weighting, historical performance weighting, or previous-attempt exclusion is introduced."
+          - "Focused shared tests cover balanced coverage, sparse topics, small requested counts, exhausted topics, and oversized requested counts."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+
+      - key: E10-02
+        title: "Generalize assessment-taking presentation for focused and mixed assessments"
+
+        issue: >
+          The E09 question-taking implementation is intentionally named and
+          constrained around focused practice, but Mixed interviews require the
+          same session lifecycle, answer-selection UI, persistence checkpoints,
+          explicit completion, and existing-attempt reconstruction. Duplicating
+          that implementation would create two assessment engines at the
+          presentation layer.
+
+        approach: >
+          Refactor the focused-practice presentation into a shared assessment-
+          taking presentation that accepts either Focused or Mixed
+          AssessmentConfig values and can also reopen an already-created
+          IN_PROGRESS attempt by stable attempt ID. Preserve route-specific
+          product wrappers/titles where useful while sharing the actual
+          ViewModel, session state, question UI, answer submission, persistence,
+          and completion behavior.
+
+        acceptance_criteria:
+          - "Focused and Mixed assessments use the same assessment-taking ViewModel/session implementation."
+          - "Focused and Mixed assessments use the same single-answer and multiple-answer question UI."
+          - "A new assessment launch can represent either AssessmentConfig.Focused or AssessmentConfig.Mixed."
+          - "An existing persisted IN_PROGRESS attempt can be reopened through stable attempt identity."
+          - "Existing-attempt loading derives and preserves the persisted AssessmentConfig rather than creating a new attempt."
+          - "Answer submission continues to delegate correctness to AssessmentEngine."
+          - "Initial creation, answer submission, and completion persistence checkpoints retain E09 semantics."
+          - "Actual selected question count remains the UI progress total."
+          - "AssessmentSession remains runtime-only and is not placed in navigation."
+          - "No separate MixedInterviewEngine, MixedQuestionViewModel, or duplicated scoring implementation is introduced."
+          - "All existing focused-practice behavior and tests remain valid after the refactor."
+          - "Android and Desktop continue sharing the same presentation implementation."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+
+      - key: E10-03
+        title: "Implement mixed Android interview entry and launch"
+
+        issue: >
+          The application currently enters through the Topic browser and exposes
+          only focused practice. Users need a prominent way to start the primary
+          mixed Android interview experience.
+
+        approach: >
+          Add a prominent Mixed Android Interview action to the application
+          start/Topics screen. Use one named MVP interview size of 20 requested
+          questions and navigate through a typed Mixed interview route carrying
+          only primitive configuration data. Convert that route to
+          AssessmentConfig.Mixed and launch it through the generalized shared
+          assessment-taking presentation.
+
+        acceptance_criteria:
+          - "The application start screen exposes a prominent Start Mixed Interview action."
+          - "The mixed interview MVP requested question count is defined once as 20."
+          - "No question-count configuration wizard is introduced."
+          - "Starting the interview creates AssessmentConfig.Mixed with the configured requested count."
+          - "Navigation carries primitive typed route data rather than AssessmentConfig, TestAttempt, AssessmentSession, or Question objects."
+          - "The mixed interview uses the same AssessmentEngine as focused practice."
+          - "The balanced E10-01 selector supplies the session Questions."
+          - "A successfully started Mixed attempt is persisted before its first question is treated as ready."
+          - "NoEligibleQuestions is represented explicitly."
+          - "Single-answer, multiple-answer, progress, save-before-advance, and explicit-completion behavior are inherited from the shared assessment presentation."
+          - "Focused Topic/Subtopic entry flows continue to work unchanged."
+          - "Compose and ViewModel/navigation tests cover mixed launch and no-content behavior."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+
+      - key: E10-04
+        title: "Implement mixed interview result and topic performance breakdown"
+
+        issue: >
+          A mixed interview needs more than the overall assessment score.
+          Because questions span multiple curriculum areas, users need to see
+          how they performed by topic while retaining the detailed answer,
+          explanation, and source review established by focused practice.
+
+        approach: >
+          Implement a Mixed result route using stable attempt identity. Reuse
+          the E09 historical attempt/question reconstruction and review
+          presentation where practical, and derive topic-level performance from
+          the completed TestAttempt plus stable historical Question identities.
+          Extend CurriculumRepository with stable Topic lookup if needed so
+          historical/deprecated topic names can be resolved without using active-
+          only queries. Keep topic statistics derived rather than persisted.
+
+        acceptance_criteria:
+          - "Completing a Mixed assessment persists the COMPLETED TestAttempt before result navigation."
+          - "Mixed result navigation carries only stable attempt identity."
+          - "Overall score uses the persisted AssessmentScore."
+          - "Result review preserves persisted QuestionAttempt order and stable selected-answer identities."
+          - "Selected answers, correct answers, Question correctness, explanation, and SourceReference entries remain reviewable."
+          - "Topic-level performance contains stable topic ID, topic name, question count, correct count, and derived percentage."
+          - "Topic-level counts are derived from the questions actually present in the completed attempt."
+          - "The sum of resolvable topic question counts matches the corresponding resolved review questions."
+          - "Historical Question content is resolved with CurriculumRepository.getQuestionById rather than ACTIVE-only selection APIs."
+          - "Historical Topic identity can be resolved without requiring the Topic to remain ACTIVE."
+          - "DEPRECATED historical Questions/Topics remain reviewable."
+          - "A missing historical Question is represented explicitly and does not crash the complete result screen."
+          - "Overall AssessmentScore remains authoritative even if some historical content cannot be resolved."
+          - "Focused and Mixed results reuse common review models/composables where this removes real duplication."
+          - "No topic statistics are persisted to Room."
+          - "Focused tests cover overall score, topic grouping, multiple topics, deprecated content, missing content, answer review, explanation, and source ordering."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+
+      - key: E10-05
+        title: "Implement repeat mixed interview flow"
+
+        issue: >
+          After reviewing a mixed interview, users need a direct way to run
+          another interview without mutating the completed attempt or creating a
+          second assessment engine.
+
+        approach: >
+          Integrate the existing AssessmentRetakeService with the Mixed result
+          flow. Preserve the completed source's AssessmentConfig.Mixed, perform
+          the balanced Mixed selection again, persist the newly created attempt,
+          and navigate by its new stable attempt ID into the generalized existing-
+          attempt assessment flow.
+
+        acceptance_criteria:
+          - "A completed Mixed result exposes a Practice Again action."
+          - "Practice Again delegates to AssessmentRetakeService."
+          - "The source AssessmentConfig.Mixed is preserved."
+          - "The retake receives a new stable TestAttempt ID."
+          - "The retake is persisted before navigation."
+          - "The retake begins IN_PROGRESS with unanswered QuestionAttempts, no score, and no completedAt timestamp."
+          - "The persisted retake is reopened by stable attempt ID without AssessmentEngine.start being called a second time."
+          - "The completed source attempt remains unchanged and reviewable."
+          - "Fresh balanced selection is performed for the new run."
+          - "Question overlap with the previous interview is permitted."
+          - "SourceAttemptNotFound and NoEligibleQuestions are represented explicitly."
+          - "No retake lineage fields, history-aware exclusion, or topic weighting are added."
+          - "Focused tests cover successful Mixed retake, duplicate-attempt prevention, source preservation, no-content behavior, and navigation."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
+
+
+      - key: E10-06
+        title: "Verify mixed Android interview journey end to end"
+
+        issue: >
+          The complete mixed-interview journey needs integration and UI
+          verification before progress/statistics and mistake-review behavior are
+          built on top of assessment history.
+
+        approach: >
+          Exercise the real application entry, balanced Mixed selection, shared
+          assessment-taking presentation, persistence, explicit completion,
+          overall result, topic-level breakdown, answer review, sources, and
+          repeat-interview flow together. Add targeted shared integration and
+          Compose tests while reusing the existing E09/E08 test infrastructure.
+
+        acceptance_criteria:
+          - "A user can start a Mixed Android Interview from the application start screen."
+          - "A 20-question request uses the coverage-first balanced Mixed selection policy."
+          - "Selected questions span the expected number of populated topics for the controlled fixture."
+          - "Mixed and Focused flows use the same underlying AssessmentEngine and assessment-taking presentation."
+          - "Single-answer and multiple-answer Questions work through the Mixed UI."
+          - "Actual progress and explicit completion work through the full flow."
+          - "The completed Mixed TestAttempt survives a repository round trip."
+          - "Results show overall score and detailed answer review."
+          - "Results show correct per-topic question totals, correct counts, and percentages."
+          - "Explanations and authoritative sources remain available."
+          - "A source action reaches the URI-opening boundary."
+          - "Practice Again creates one separate persisted Mixed attempt and enters it without duplicate creation."
+          - "The source Mixed result remains reviewable."
+          - "No-content, deprecated-content, and missing-content cases fail gracefully."
+          - "The final Koin graph resolves the complete Mixed presentation path."
+          - "Android assemble, Desktop build, shared checks, and normal CI checks pass."
+          - "Room remains schema version 2."
+          - "No E11 progress/statistics/mistake-review behavior is introduced."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
 
 
   - key: E11

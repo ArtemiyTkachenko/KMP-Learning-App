@@ -7,6 +7,13 @@
     <string name="topic_browser_retry">Retry</string>
     <string name="topic_detail_title">Topic: %1$s</string>
     <string name="topic_detail_back">Back</string>
+    <string name="topic_detail_heading">Topic</string>
+    <string name="topic_detail_available_questions">Available questions: %1$d</string>
+    <string name="topic_detail_no_questions">No practice questions are currently available.</string>
+    <string name="topic_detail_not_found">Topic not available</string>
+    <string name="topic_detail_start_practice">Start Practice</string>
+    <string name="topic_detail_subtopics">Subtopics</string>
+    <string name="focused_practice_title">Focused practice</string>
     <string name="desktop_startup_loading">Preparing local curriculum</string>
     <string name="desktop_startup_error">Local curriculum could not be initialized</string>
 </resources>

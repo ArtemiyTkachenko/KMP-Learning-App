@@ -114,9 +114,8 @@ internal class TopicBrowserScreenTest {
 
     @Test
     fun topicRouteUsesStableIdentityOnly() {
-        assertEquals(
-            AppRoute.Topic(topicId = "topic_stable_id"),
-            AppRoute.Topic(topicId = "topic_stable_id"),
-        )
+        val route = AppRoute.Topic(topicId = "topic_stable_id")
+
+        assertEquals("topic_stable_id", route.topicId)
     }
 }

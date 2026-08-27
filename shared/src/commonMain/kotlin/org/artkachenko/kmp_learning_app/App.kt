@@ -13,7 +13,9 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserDestination
-import org.artkachenko.kmp_learning_app.topic_study.topics.TopicDestination
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.FocusedPracticeDestination
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailDestination
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.toAppRoute
 
 @Composable
 fun App() {
@@ -61,13 +63,30 @@ private fun AppShell(
                     )
                 }
                 entry<AppRoute.Topic> { route ->
-                    TopicDestination(
+                    TopicDetailDestination(
                         topicId = route.topicId,
                         onBack = {
                             if (backStack.size > 1) {
                                 backStack.removeAt(backStack.lastIndex)
                             }
                         },
+                        onStartFocusedPractice = { config ->
+                            backStack.add(config.toAppRoute())
+                        },
+                    )
+                }
+                entry<AppRoute.FocusedTopicPractice> { route ->
+                    FocusedPracticeDestination(
+                        scopeLabel = route.topicId,
+                        questionCount = route.questionCount,
+                        onBack = { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) },
+                    )
+                }
+                entry<AppRoute.FocusedSubtopicPractice> { route ->
+                    FocusedPracticeDestination(
+                        scopeLabel = route.subtopicId,
+                        questionCount = route.questionCount,
+                        onBack = { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) },
                     )
                 }
             },

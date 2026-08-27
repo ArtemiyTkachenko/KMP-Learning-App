@@ -25,6 +25,7 @@ internal class FocusedPracticeScreenTest {
                     onSubmit = {},
                     onRetry = {},
                     onBack = {},
+                    onComplete = {},
                 )
             }
         }
@@ -45,6 +46,7 @@ internal class FocusedPracticeScreenTest {
                     onSubmit = { submitCount += 1 },
                     onRetry = {},
                     onBack = {},
+                    onComplete = {},
                 )
             }
         }
@@ -64,6 +66,7 @@ internal class FocusedPracticeScreenTest {
                     onSubmit = {},
                     onRetry = {},
                     onBack = {},
+                    onComplete = {},
                 )
             }
         }
@@ -80,6 +83,7 @@ internal class FocusedPracticeScreenTest {
                     onSubmit = {},
                     onRetry = {},
                     onBack = {},
+                    onComplete = {},
                 )
             }
         }
@@ -88,6 +92,7 @@ internal class FocusedPracticeScreenTest {
 
     @Test
     fun statesRenderWithoutExposingResults() = runComposeUiTest {
+        var completeCount = 0
         setContent {
             MaterialTheme {
                 FocusedPracticeScreen(
@@ -96,10 +101,23 @@ internal class FocusedPracticeScreenTest {
                     onSubmit = {},
                     onRetry = {},
                     onBack = {},
+                    onComplete = { completeCount += 1 },
                 )
             }
         }
         onNodeWithText("All questions answered. Ready to finish.").assertIsDisplayed()
+        onNodeWithTag(FocusedPracticeFinishTag).performClick()
+        assertEquals(1, completeCount)
+
+        setContent {
+            MaterialTheme {
+                FocusedPracticeScreen(
+                    state = FocusedPracticeUiState.ReadyToComplete("attempt", 3, isCompleting = true),
+                    onAnswerClick = {}, onSubmit = {}, onRetry = {}, onBack = {}, onComplete = {},
+                )
+            }
+        }
+        onNodeWithTag(FocusedPracticeFinishTag).assertIsNotEnabled()
 
         setContent {
             MaterialTheme {
@@ -109,6 +127,7 @@ internal class FocusedPracticeScreenTest {
                     onSubmit = {},
                     onRetry = {},
                     onBack = {},
+                    onComplete = {},
                 )
             }
         }

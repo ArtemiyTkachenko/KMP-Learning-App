@@ -23,6 +23,25 @@
     <string name="focused_practice_no_questions">No practice questions are currently available.</string>
     <string name="focused_practice_start_error">Practice could not be started.</string>
     <string name="focused_practice_ready">All questions answered. Ready to finish.</string>
+    <string name="focused_practice_finish">Finish and view results</string>
+    <string name="focused_practice_finishing">Saving results</string>
+    <string name="focused_practice_completion_save_error">Results could not be saved. Try again.</string>
+    <string name="focused_practice_results_opening">Opening results</string>
+    <string name="focused_result_title">Practice results</string>
+    <string name="focused_result_loading">Loading results</string>
+    <string name="focused_result_attempt_not_found">This assessment could not be found.</string>
+    <string name="focused_result_not_completed">This assessment is not complete yet.</string>
+    <string name="focused_result_error">Results could not be loaded.</string>
+    <string name="focused_result_retry">Retry</string>
+    <string name="focused_result_score">Score: %1$d / %2$d</string>
+    <string name="focused_result_percentage">%1$d%%</string>
+    <string name="focused_result_correct">Correct</string>
+    <string name="focused_result_incorrect">Incorrect</string>
+    <string name="focused_result_selected">Your answer</string>
+    <string name="focused_result_correct_answer">Correct answer</string>
+    <string name="focused_result_explanation">Explanation</string>
+    <string name="focused_result_source">Source: %1$s</string>
+    <string name="focused_result_missing_question">Question %1$s is no longer available.</string>
     <string name="desktop_startup_loading">Preparing local curriculum</string>
     <string name="desktop_startup_error">Local curriculum could not be initialized</string>
 </resources>

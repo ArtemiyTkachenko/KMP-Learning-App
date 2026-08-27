@@ -21,5 +21,11 @@ internal sealed interface FocusedPracticeUiState {
     data class ReadyToComplete(
         val attemptId: String,
         val totalQuestions: Int,
+        val isCompleting: Boolean = false,
+        val completionFailed: Boolean = false,
+    ) : FocusedPracticeUiState
+
+    data class CompletionSucceeded(
+        val attemptId: String,
     ) : FocusedPracticeUiState
 }

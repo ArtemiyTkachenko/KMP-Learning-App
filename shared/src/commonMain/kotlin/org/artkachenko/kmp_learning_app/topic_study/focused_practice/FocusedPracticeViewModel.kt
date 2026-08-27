@@ -91,6 +91,36 @@ internal class FocusedPracticeViewModel(
         }
     }
 
+    fun completeAssessment() {
+        val currentState = uiState.value as? FocusedPracticeUiState.ReadyToComplete ?: return
+        if (currentState.isCompleting) return
+
+        val originalSession = session ?: return
+        _uiState.value = currentState.copy(
+            isCompleting = true,
+            completionFailed = false,
+        )
+
+        viewModelScope.launch {
+            runCatching {
+                val completedSession = assessmentEngine.complete(originalSession)
+                assessmentRepository.save(completedSession.attempt)
+                completedSession
+            }.onSuccess { completedSession ->
+                session = completedSession
+                _uiState.value = FocusedPracticeUiState.CompletionSucceeded(
+                    attemptId = completedSession.attempt.id,
+                )
+            }.onFailure {
+                _uiState.value = FocusedPracticeUiState.ReadyToComplete(
+                    attemptId = originalSession.attempt.id,
+                    totalQuestions = originalSession.questions.size,
+                    completionFailed = true,
+                )
+            }
+        }
+    }
+
     private fun startAssessment() {
         _uiState.value = FocusedPracticeUiState.Loading
         session = null

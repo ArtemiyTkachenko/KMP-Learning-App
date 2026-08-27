@@ -24,4 +24,9 @@ internal sealed interface AppRoute : NavKey {
         val subtopicId: String,
         val questionCount: Int,
     ) : AppRoute
+
+    @Serializable
+    data class FocusedPracticeResult(
+        val attemptId: String,
+    ) : AppRoute
 }

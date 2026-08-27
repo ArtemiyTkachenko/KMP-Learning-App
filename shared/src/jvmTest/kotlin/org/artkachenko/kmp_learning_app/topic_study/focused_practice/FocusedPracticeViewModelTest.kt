@@ -15,6 +15,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
+import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
@@ -152,6 +153,50 @@ internal class FocusedPracticeViewModelTest {
         val saved = repository.savedAttempts.last()
         assertEquals(org.artkachenko.kmp_learning_app.assessment.AssessmentStatus.IN_PROGRESS, saved.status)
         assertEquals(null, saved.score)
+    }
+
+    @Test
+    fun completionExplicitlyCreatesAndPersistsCompletedAttempt() = runViewModelTest {
+        val repository = RecordingAssessmentRepository()
+        val viewModel = viewModel(listOf(question("single", listOf("a"))), repository)
+        advanceUntilIdle()
+
+        viewModel.selectAnswer("a")
+        viewModel.submitAnswer()
+        advanceUntilIdle()
+        viewModel.completeAssessment()
+        advanceUntilIdle()
+
+        assertIs<FocusedPracticeUiState.CompletionSucceeded>(viewModel.uiState.value)
+        val completed = repository.savedAttempts.last()
+        assertEquals(AssessmentStatus.COMPLETED, completed.status)
+        assertEquals(1, completed.score?.totalQuestions)
+        assertEquals(1, completed.score?.correctAnswers)
+        assertTrue(completed.completedAt != null)
+    }
+
+    @Test
+    fun completionFailureKeepsReadyStateAndCanBeRetried() = runViewModelTest {
+        val repository = RecordingAssessmentRepository()
+        val viewModel = viewModel(listOf(question("single", listOf("a"))), repository)
+        advanceUntilIdle()
+
+        viewModel.selectAnswer("a")
+        viewModel.submitAnswer()
+        advanceUntilIdle()
+        repository.failNextSave = true
+        viewModel.completeAssessment()
+        advanceUntilIdle()
+
+        val failed = assertIs<FocusedPracticeUiState.ReadyToComplete>(viewModel.uiState.value)
+        assertTrue(failed.completionFailed)
+        assertEquals(AssessmentStatus.IN_PROGRESS, repository.savedAttempts.last().status)
+        assertEquals(null, repository.savedAttempts.last().score)
+
+        viewModel.completeAssessment()
+        advanceUntilIdle()
+        assertIs<FocusedPracticeUiState.CompletionSucceeded>(viewModel.uiState.value)
+        assertEquals(AssessmentStatus.COMPLETED, repository.savedAttempts.last().status)
     }
 
     private fun viewModel(

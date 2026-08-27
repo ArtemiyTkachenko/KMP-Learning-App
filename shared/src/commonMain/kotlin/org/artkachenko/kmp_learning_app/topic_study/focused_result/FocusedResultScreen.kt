@@ -34,6 +34,11 @@ import kmp_learning_app.shared.generated.resources.focused_result_source
 import kmp_learning_app.shared.generated.resources.focused_result_selected
 import kmp_learning_app.shared.generated.resources.focused_result_correct_answer
 import kmp_learning_app.shared.generated.resources.focused_result_title
+import kmp_learning_app.shared.generated.resources.focused_result_practice_again
+import kmp_learning_app.shared.generated.resources.focused_result_practice_starting
+import kmp_learning_app.shared.generated.resources.focused_result_repeat_source_missing
+import kmp_learning_app.shared.generated.resources.focused_result_repeat_no_questions
+import kmp_learning_app.shared.generated.resources.focused_result_repeat_error
 import kmp_learning_app.shared.generated.resources.topic_detail_back
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicStudyTopAppBar
 import org.jetbrains.compose.resources.stringResource
@@ -47,6 +52,7 @@ internal fun FocusedResultScreen(
     onRetry: () -> Unit,
     onBack: () -> Unit,
     onSourceClick: (String) -> Unit,
+    onRepeatPractice: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -67,7 +73,7 @@ internal fun FocusedResultScreen(
                     Text(stringResource(Res.string.focused_result_retry))
                 }
             }
-            is FocusedResultUiState.Content -> ResultContent(state, onSourceClick, Modifier.weight(1f))
+            is FocusedResultUiState.Content -> ResultContent(state, onSourceClick, onRepeatPractice, Modifier.weight(1f))
         }
     }
 }
@@ -76,6 +82,7 @@ internal fun FocusedResultScreen(
 private fun ResultContent(
     state: FocusedResultUiState.Content,
     onSourceClick: (String) -> Unit,
+    onRepeatPractice: () -> Unit,
     modifier: Modifier,
 ) {
     LazyColumn(
@@ -88,6 +95,23 @@ private fun ResultContent(
                 style = MaterialTheme.typography.headlineSmall,
             )
             Text(stringResource(Res.string.focused_result_percentage, state.percentage.roundToInt()))
+            when (state.repeatPracticeState) {
+                RepeatPracticeState.Idle -> Unit
+                RepeatPracticeState.Creating -> Text(stringResource(Res.string.focused_result_practice_starting))
+                RepeatPracticeState.SourceAttemptNotFound -> Text(stringResource(Res.string.focused_result_repeat_source_missing), color = MaterialTheme.colorScheme.error)
+                RepeatPracticeState.NoEligibleQuestions -> Text(stringResource(Res.string.focused_result_repeat_no_questions), color = MaterialTheme.colorScheme.error)
+                RepeatPracticeState.Error -> Text(stringResource(Res.string.focused_result_repeat_error), color = MaterialTheme.colorScheme.error)
+            }
+            Button(
+                onClick = onRepeatPractice,
+                enabled = state.repeatPracticeState != RepeatPracticeState.Creating,
+            ) {
+                if (state.repeatPracticeState == RepeatPracticeState.Creating) {
+                    CircularProgressIndicator()
+                } else {
+                    Text(stringResource(Res.string.focused_result_practice_again))
+                }
+            }
         }
         items(state.questions) { item ->
             when (item) {

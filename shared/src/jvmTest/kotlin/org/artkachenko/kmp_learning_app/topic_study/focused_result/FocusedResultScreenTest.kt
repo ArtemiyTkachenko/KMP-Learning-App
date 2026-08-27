@@ -40,6 +40,7 @@ internal class FocusedResultScreenTest {
                         ),
                     ),
                     onRetry = {}, onBack = {}, onSourceClick = { openedUrl = it },
+                    onRepeatPractice = {},
                 )
             }
         }

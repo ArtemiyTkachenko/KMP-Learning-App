@@ -94,6 +94,13 @@ attempt-ID result route, and loads historical review through
 or missing historical questions are represented per review item without
 changing the durable score. Retake behavior remains deferred to E09-05.
 
+E09-05 exposes repeat practice from the result screen through
+`AssessmentRetakeService`. The service creates and persists a fresh attempt;
+`FocusedPracticeAttempt` then carries only its stable ID, and
+`AssessmentSessionLoader` reconstructs the runtime session without calling
+`AssessmentEngine.start()` a second time. The source result remains below the
+retake in the back stack.
+
 Topic detail screens use a Material 3 top app bar for back navigation, with the
 navigation icon invoking the existing Navigation 3 back-stack pop. Detail and
 practice destinations should keep this phone-style toolbar affordance instead

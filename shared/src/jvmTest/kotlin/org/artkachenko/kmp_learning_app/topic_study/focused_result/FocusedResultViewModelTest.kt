@@ -13,6 +13,8 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.async
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScore
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
@@ -21,6 +23,9 @@ import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
+import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
+import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
@@ -40,7 +45,7 @@ internal class FocusedResultViewModelTest {
         val questions = listOf(question("q3"), question("q1"), question("q2"))
         val repository = FakeAssessmentRepository(completedAttempt(questions.map { it.id }, 2))
         val curriculum = FakeCurriculumRepository(questions)
-        val viewModel = FocusedResultViewModel("attempt", repository, curriculum)
+        val viewModel = FocusedResultViewModel("attempt", repository, curriculum, retakeService(repository, questions))
         advanceUntilIdle()
 
         val state = assertIs<FocusedResultUiState.Content>(viewModel.uiState.value)
@@ -58,6 +63,7 @@ internal class FocusedResultViewModelTest {
             "attempt",
             FakeAssessmentRepository(completedAttempt(listOf("q"), 0, selectedIds = setOf("a", "b"))),
             FakeCurriculumRepository(listOf(q)),
+            retakeService(FakeAssessmentRepository(completedAttempt(listOf("q"), 0)), listOf(q)),
         )
         advanceUntilIdle()
 
@@ -77,6 +83,7 @@ internal class FocusedResultViewModelTest {
             "attempt",
             FakeAssessmentRepository(completedAttempt(listOf("missing", "q"), 1)),
             FakeCurriculumRepository(listOf(question("q"))),
+            retakeService(FakeAssessmentRepository(completedAttempt(listOf("q"), 1)), listOf(question("q"))),
         )
         advanceUntilIdle()
 
@@ -89,7 +96,7 @@ internal class FocusedResultViewModelTest {
     fun incompleteAndMissingAttemptsHaveExplicitStates() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val repo = FakeAssessmentRepository(null)
-        val missing = FocusedResultViewModel("attempt", repo, FakeCurriculumRepository(emptyList()))
+        val missing = FocusedResultViewModel("attempt", repo, FakeCurriculumRepository(emptyList()), retakeService(repo, emptyList()))
         advanceUntilIdle()
         assertIs<FocusedResultUiState.AttemptNotFound>(missing.uiState.value)
 
@@ -100,6 +107,22 @@ internal class FocusedResultViewModelTest {
         missing.retry()
         advanceUntilIdle()
         assertIs<FocusedResultUiState.NotCompleted>(missing.uiState.value)
+    }
+
+    @Test
+    fun repeatPracticeEmitsNewAttemptEvent() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val question = question("q")
+        val repository = FakeAssessmentRepository(completedAttempt(listOf("q"), 1))
+        val viewModel = FocusedResultViewModel(
+            "attempt", repository, FakeCurriculumRepository(listOf(question)), retakeService(repository, listOf(question)),
+        )
+        advanceUntilIdle()
+
+        val event = async { viewModel.events.first() }
+        viewModel.repeatPractice()
+        advanceUntilIdle()
+        assertEquals(FocusedResultEvent.RetakeCreated("retake"), event.await())
     }
 
     private fun completedAttempt(ids: List<String>, correct: Int, selectedIds: Set<String> = setOf("a")) = TestAttempt(
@@ -113,6 +136,19 @@ internal class FocusedResultViewModelTest {
     )
 
     private fun config() = AssessmentConfig.Focused(AssessmentScope.Topic("topic"), 10)
+
+    private fun retakeService(repository: FakeAssessmentRepository, questions: List<Question>) =
+        AssessmentRetakeService(
+            assessmentRepository = repository,
+            assessmentEngine = AssessmentEngine(
+                questionSelector = AssessmentQuestionSelector(
+                    curriculumRepository = FakeCurriculumRepository(questions),
+                    randomize = { it },
+                ),
+                generateAttemptId = { "retake" },
+                now = { Instant.fromEpochMilliseconds(2) },
+            ),
+        )
 
     private fun question(id: String, correctIds: List<String> = listOf("a"), selectedIds: Set<String> = setOf("a")) = Question(
         id = id, topicId = "topic", subtopicId = "subtopic", text = "Question $id",
@@ -130,9 +166,9 @@ internal class FocusedResultViewModelTest {
         val lookups = mutableListOf<String>()
         override suspend fun getActiveTopics(): List<Topic> = error("not used")
         override suspend fun getActiveSubtopics(topicId: String): List<Subtopic> = error("not used")
-        override suspend fun getActiveQuestions(): List<Question> = error("not used")
-        override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> = error("not used")
-        override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> = error("not used")
+        override suspend fun getActiveQuestions(): List<Question> = questions
+        override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> = questions
+        override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> = questions
         override suspend fun getQuestionById(questionId: String): Question? { lookups += questionId; return questions.firstOrNull { it.id == questionId } }
     }
 }

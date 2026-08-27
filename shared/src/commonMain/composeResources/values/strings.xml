@@ -14,6 +14,15 @@
     <string name="topic_detail_start_practice">Start Practice</string>
     <string name="topic_detail_subtopics">Subtopics</string>
     <string name="focused_practice_title">Focused practice</string>
+    <string name="focused_practice_question_progress">Question %1$d of %2$d</string>
+    <string name="focused_practice_select_one">Select one answer</string>
+    <string name="focused_practice_select_all">Select all that apply</string>
+    <string name="focused_practice_submit">Submit</string>
+    <string name="focused_practice_submitting">Submitting</string>
+    <string name="focused_practice_answer_save_error">Answer could not be saved. Try again.</string>
+    <string name="focused_practice_no_questions">No practice questions are currently available.</string>
+    <string name="focused_practice_start_error">Practice could not be started.</string>
+    <string name="focused_practice_ready">All questions answered. Ready to finish.</string>
     <string name="desktop_startup_loading">Preparing local curriculum</string>
     <string name="desktop_startup_error">Local curriculum could not be initialized</string>
 </resources>

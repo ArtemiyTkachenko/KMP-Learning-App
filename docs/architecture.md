@@ -28,11 +28,11 @@ MainActivity
 E08 assessment-engine work. Runtime reads should depend on that interface
 rather than on Room entities, DAOs, or the local repository implementation.
 
-ViewModel factories are supplied from the composition root, but actual ViewModel
-creation remains inside the Navigation 3 entry's `viewModel { ... }` call. That
-keeps construction policy centralized while preserving Navigation 3 entry-scoped
-ViewModel ownership: each back-stack entry receives its own ViewModelStore, and
-the ViewModel is cleared when that entry is removed.
+Shared presentation ViewModels are resolved from the Koin Compose module at the
+Navigation 3 destination boundary. Parameterized destinations pass only stable
+route data into their ViewModels, while Navigation 3 entry-scoped ViewModel
+ownership remains intact: each back-stack entry receives its own
+ViewModelStore, and the ViewModel is cleared when that entry is removed.
 
 ## Curriculum Content Model
 
@@ -80,6 +80,12 @@ separate assessment startup initializer because assessment services are lazy
 capabilities; Android still awaits curriculum import before entering `App()`.
 E09 and E10 should depend on `CurriculumRepository`, `AssessmentRepository`,
 `AssessmentEngine`, and `AssessmentRetakeService`, not Room DAOs or entities.
+
+Focused practice follows `FocusedPracticeViewModel -> AssessmentEngine ->
+AssessmentSession`, with the initial and per-answer `TestAttempt` snapshots
+saved through `AssessmentRepository` before the UI advances. The final answer
+leaves the attempt in `IN_PROGRESS` and exposes `ReadyToComplete`; explicit
+completion and result review belong to E09-04.
 
 Topic detail screens use a Material 3 top app bar for back navigation, with the
 navigation icon invoking the existing Navigation 3 back-stack pop. Detail and

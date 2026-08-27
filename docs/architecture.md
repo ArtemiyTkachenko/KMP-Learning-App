@@ -80,3 +80,8 @@ separate assessment startup initializer because assessment services are lazy
 capabilities; Android still awaits curriculum import before entering `App()`.
 E09 and E10 should depend on `CurriculumRepository`, `AssessmentRepository`,
 `AssessmentEngine`, and `AssessmentRetakeService`, not Room DAOs or entities.
+
+Topic detail screens use a Material 3 top app bar for back navigation, with the
+navigation icon invoking the existing Navigation 3 back-stack pop. Detail and
+practice destinations should keep this phone-style toolbar affordance instead
+of rendering a standalone text Back button in page content.

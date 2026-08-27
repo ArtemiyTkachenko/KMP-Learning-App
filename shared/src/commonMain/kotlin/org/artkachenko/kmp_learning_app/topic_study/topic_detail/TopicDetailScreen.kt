@@ -18,11 +18,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.topic_browser_retry
-import kmp_learning_app.shared.generated.resources.topic_detail_back
 import kmp_learning_app.shared.generated.resources.topic_detail_available_questions
+import kmp_learning_app.shared.generated.resources.topic_detail_heading
 import kmp_learning_app.shared.generated.resources.topic_detail_no_questions
 import kmp_learning_app.shared.generated.resources.topic_detail_not_found
 import kmp_learning_app.shared.generated.resources.topic_detail_start_practice
@@ -43,48 +45,54 @@ internal fun TopicDetailScreen(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    when (state) {
-        TopicDetailUiState.Loading -> {
-            CenteredState(modifier) {
-                CircularProgressIndicator(modifier = Modifier.testTag(TopicDetailLoadingTag))
-            }
-        }
+    Column(modifier = modifier.fillMaxSize()) {
+        TopicStudyTopAppBar(
+            title = when (state) {
+                is TopicDetailUiState.Content -> state.topic.name
+                is TopicDetailUiState.NoQuestions -> state.topic.name
+                else -> stringResource(Res.string.topic_detail_heading)
+            },
+            onBack = onBack,
+        )
 
-        is TopicDetailUiState.Content -> {
-            TopicContent(
-                state = state,
-                onBack = onBack,
-                onStartTopicPractice = onStartTopicPractice,
-                onStartSubtopicPractice = onStartSubtopicPractice,
-                modifier = modifier,
-            )
-        }
-
-        is TopicDetailUiState.NoQuestions -> {
-            CenteredState(modifier) {
-                Text(text = state.topic.name, style = MaterialTheme.typography.headlineSmall)
-                Text(
-                    text = stringResource(Res.string.topic_detail_no_questions),
-                    modifier = Modifier.padding(top = 12.dp),
-                )
-                BackButton(onBack)
-            }
-        }
-
-        TopicDetailUiState.NotFound -> {
-            CenteredState(modifier) {
-                Text(text = stringResource(Res.string.topic_detail_not_found))
-                BackButton(onBack)
-            }
-        }
-
-        TopicDetailUiState.Error -> {
-            CenteredState(modifier) {
-                Text(text = stringResource(Res.string.topic_browser_error))
-                Button(onClick = onRetry, modifier = Modifier.padding(top = 16.dp)) {
-                    Text(text = stringResource(Res.string.topic_browser_retry))
+        when (state) {
+            TopicDetailUiState.Loading -> {
+                CenteredState(Modifier.weight(1f)) {
+                    CircularProgressIndicator(modifier = Modifier.testTag(TopicDetailLoadingTag))
                 }
-                BackButton(onBack)
+            }
+
+            is TopicDetailUiState.Content -> {
+                TopicContent(
+                    state = state,
+                    onStartTopicPractice = onStartTopicPractice,
+                    onStartSubtopicPractice = onStartSubtopicPractice,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            is TopicDetailUiState.NoQuestions -> {
+                CenteredState(Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(Res.string.topic_detail_no_questions),
+                        modifier = Modifier.padding(top = 12.dp),
+                    )
+                }
+            }
+
+            TopicDetailUiState.NotFound -> {
+                CenteredState(Modifier.weight(1f)) {
+                    Text(text = stringResource(Res.string.topic_detail_not_found))
+                }
+            }
+
+            TopicDetailUiState.Error -> {
+                CenteredState(Modifier.weight(1f)) {
+                    Text(text = stringResource(Res.string.topic_browser_error))
+                    Button(onClick = onRetry, modifier = Modifier.padding(top = 16.dp)) {
+                        Text(text = stringResource(Res.string.topic_browser_retry))
+                    }
+                }
             }
         }
     }
@@ -93,7 +101,6 @@ internal fun TopicDetailScreen(
 @Composable
 private fun TopicContent(
     state: TopicDetailUiState.Content,
-    onBack: () -> Unit,
     onStartTopicPractice: () -> Unit,
     onStartSubtopicPractice: (String) -> Unit,
     modifier: Modifier,
@@ -103,12 +110,6 @@ private fun TopicContent(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            BackButton(onBack)
-            Text(
-                text = state.topic.name,
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(top = 8.dp),
-            )
             Text(
                 text = stringResource(
                     Res.string.topic_detail_available_questions,
@@ -177,12 +178,5 @@ private fun CenteredState(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         content()
-    }
-}
-
-@Composable
-private fun BackButton(onBack: () -> Unit) {
-    Button(onClick = onBack) {
-        Text(text = stringResource(Res.string.topic_detail_back))
     }
 }

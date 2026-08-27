@@ -87,6 +87,13 @@ saved through `AssessmentRepository` before the UI advances. The final answer
 leaves the attempt in `IN_PROGRESS` and exposes `ReadyToComplete`; explicit
 completion and result review belong to E09-04.
 
+E09-04 completes the retained session through `AssessmentEngine`, persists the
+completed attempt before replacing focused-practice navigation with a stable
+attempt-ID result route, and loads historical review through
+`AssessmentRepository` plus `CurriculumRepository.getQuestionById`. Deprecated
+or missing historical questions are represented per review item without
+changing the durable score. Retake behavior remains deferred to E09-05.
+
 Topic detail screens use a Material 3 top app bar for back navigation, with the
 navigation icon invoking the existing Navigation 3 back-stack pop. Detail and
 practice destinations should keep this phone-style toolbar affordance instead

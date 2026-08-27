@@ -24,8 +24,11 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.focused_practice_answer_save_error
+import kmp_learning_app.shared.generated.resources.focused_practice_completion_save_error
+import kmp_learning_app.shared.generated.resources.focused_practice_finish
 import kmp_learning_app.shared.generated.resources.focused_practice_no_questions
 import kmp_learning_app.shared.generated.resources.focused_practice_ready
+import kmp_learning_app.shared.generated.resources.focused_practice_finishing
 import kmp_learning_app.shared.generated.resources.focused_practice_select_all
 import kmp_learning_app.shared.generated.resources.focused_practice_select_one
 import kmp_learning_app.shared.generated.resources.focused_practice_start_error
@@ -33,12 +36,14 @@ import kmp_learning_app.shared.generated.resources.focused_practice_submit
 import kmp_learning_app.shared.generated.resources.focused_practice_submitting
 import kmp_learning_app.shared.generated.resources.focused_practice_title
 import kmp_learning_app.shared.generated.resources.focused_practice_question_progress
+import kmp_learning_app.shared.generated.resources.focused_practice_results_opening
 import kmp_learning_app.shared.generated.resources.topic_browser_retry
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicStudyTopAppBar
 import org.jetbrains.compose.resources.stringResource
 
 internal const val FocusedPracticeLoadingTag = "focused_practice_loading"
 internal const val FocusedPracticeSubmitTag = "focused_practice_submit"
+internal const val FocusedPracticeFinishTag = "focused_practice_finish"
 
 @Composable
 internal fun FocusedPracticeScreen(
@@ -47,6 +52,7 @@ internal fun FocusedPracticeScreen(
     onSubmit: () -> Unit,
     onRetry: () -> Unit,
     onBack: () -> Unit,
+    onComplete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -79,6 +85,30 @@ internal fun FocusedPracticeScreen(
 
             is FocusedPracticeUiState.ReadyToComplete -> MessageContent(Modifier.weight(1f)) {
                 Text(text = stringResource(Res.string.focused_practice_ready))
+                if (state.completionFailed) {
+                    Text(
+                        text = stringResource(Res.string.focused_practice_completion_save_error),
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 12.dp),
+                    )
+                }
+                Button(
+                    onClick = onComplete,
+                    enabled = !state.isCompleting,
+                    modifier = Modifier
+                        .padding(top = 16.dp)
+                        .testTag(FocusedPracticeFinishTag),
+                ) {
+                    if (state.isCompleting) {
+                        CircularProgressIndicator()
+                    } else {
+                        Text(text = stringResource(Res.string.focused_practice_finish))
+                    }
+                }
+            }
+
+            is FocusedPracticeUiState.CompletionSucceeded -> MessageContent(Modifier.weight(1f)) {
+                Text(text = stringResource(Res.string.focused_practice_results_opening))
             }
         }
     }

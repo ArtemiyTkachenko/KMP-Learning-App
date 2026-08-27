@@ -21,6 +21,7 @@ import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentReposito
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.FocusedPracticeViewModel
+import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
 import org.koin.core.parameter.parametersOf
@@ -75,6 +76,9 @@ internal class TopicStudyPresentationModuleTest {
                         ),
                     )
                 },
+            )
+            assertIs<FocusedResultViewModel>(
+                app.koin.get<FocusedResultViewModel> { parametersOf("attempt") },
             )
             advanceUntilIdle()
         } finally {

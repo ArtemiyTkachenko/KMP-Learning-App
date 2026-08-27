@@ -1,6 +1,7 @@
 package org.artkachenko.kmp_learning_app.topic_study.focused_practice
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
@@ -11,14 +12,21 @@ import org.koin.core.parameter.parametersOf
 internal fun FocusedPracticeDestination(
     config: AssessmentConfig.Focused,
     onBack: () -> Unit,
+    onCompleted: (String) -> Unit,
     viewModel: FocusedPracticeViewModel = koinViewModel { parametersOf(config) },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(state) {
+        val completion = state as? FocusedPracticeUiState.CompletionSucceeded ?: return@LaunchedEffect
+        onCompleted(completion.attemptId)
+    }
     FocusedPracticeScreen(
         state = state,
         onAnswerClick = viewModel::selectAnswer,
         onSubmit = viewModel::submitAnswer,
         onRetry = viewModel::retry,
         onBack = onBack,
+        onComplete = viewModel::completeAssessment,
     )
 }

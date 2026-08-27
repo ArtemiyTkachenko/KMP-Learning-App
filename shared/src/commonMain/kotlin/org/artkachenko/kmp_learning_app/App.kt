@@ -15,6 +15,7 @@ import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDe
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserDestination
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.FocusedPracticeDestination
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.toAssessmentConfig
+import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultDestination
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailDestination
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.toAppRoute
 
@@ -33,6 +34,13 @@ private fun AppShell(
         appNavigationSavedStateConfiguration,
         AppRoute.Topics,
     )
+    fun popBack() {
+        if (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
+    }
+    fun replaceTop(route: AppRoute) {
+        popBack()
+        backStack.add(route)
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -51,9 +59,7 @@ private fun AppShell(
                 rememberViewModelStoreNavEntryDecorator(),
             ),
             onBack = {
-                if (backStack.size > 1) {
-                    backStack.removeAt(backStack.lastIndex)
-                }
+                popBack()
             },
             entryProvider = entryProvider {
                 entry<AppRoute.Topics> {
@@ -67,9 +73,7 @@ private fun AppShell(
                     TopicDetailDestination(
                         topicId = route.topicId,
                         onBack = {
-                            if (backStack.size > 1) {
-                                backStack.removeAt(backStack.lastIndex)
-                            }
+                            popBack()
                         },
                         onStartFocusedPractice = { config ->
                             backStack.add(config.toAppRoute())
@@ -79,13 +83,25 @@ private fun AppShell(
                 entry<AppRoute.FocusedTopicPractice> { route ->
                     FocusedPracticeDestination(
                         config = route.toAssessmentConfig(),
-                        onBack = { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) },
+                        onBack = { popBack() },
+                        onCompleted = { attemptId ->
+                            replaceTop(AppRoute.FocusedPracticeResult(attemptId))
+                        },
                     )
                 }
                 entry<AppRoute.FocusedSubtopicPractice> { route ->
                     FocusedPracticeDestination(
                         config = route.toAssessmentConfig(),
-                        onBack = { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) },
+                        onBack = { popBack() },
+                        onCompleted = { attemptId ->
+                            replaceTop(AppRoute.FocusedPracticeResult(attemptId))
+                        },
+                    )
+                }
+                entry<AppRoute.FocusedPracticeResult> { route ->
+                    FocusedResultDestination(
+                        attemptId = route.attemptId,
+                        onBack = { popBack() },
                     )
                 }
             },

@@ -13,7 +13,8 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserDestination
-import org.artkachenko.kmp_learning_app.topic_study.topic_detail.FocusedPracticeDestination
+import org.artkachenko.kmp_learning_app.topic_study.focused_practice.FocusedPracticeDestination
+import org.artkachenko.kmp_learning_app.topic_study.focused_practice.toAssessmentConfig
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailDestination
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.toAppRoute
 
@@ -77,15 +78,13 @@ private fun AppShell(
                 }
                 entry<AppRoute.FocusedTopicPractice> { route ->
                     FocusedPracticeDestination(
-                        scopeLabel = route.topicId,
-                        questionCount = route.questionCount,
+                        config = route.toAssessmentConfig(),
                         onBack = { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) },
                     )
                 }
                 entry<AppRoute.FocusedSubtopicPractice> { route ->
                     FocusedPracticeDestination(
-                        scopeLabel = route.subtopicId,
-                        questionCount = route.questionCount,
+                        config = route.toAssessmentConfig(),
                         onBack = { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) },
                     )
                 }

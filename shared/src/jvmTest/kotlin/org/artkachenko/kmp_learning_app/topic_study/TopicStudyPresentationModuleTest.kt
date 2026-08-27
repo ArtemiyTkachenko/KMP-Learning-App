@@ -14,6 +14,13 @@ import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
+import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
+import org.artkachenko.kmp_learning_app.assessment.TestAttempt
+import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
+import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
+import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
+import org.artkachenko.kmp_learning_app.topic_study.focused_practice.FocusedPracticeViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
 import org.koin.core.parameter.parametersOf
@@ -36,6 +43,19 @@ internal class TopicStudyPresentationModuleTest {
                     single<CurriculumRepository> {
                         FakeCurriculumRepository()
                     }
+                    single {
+                        AssessmentQuestionSelector(
+                            curriculumRepository = get(),
+                            randomize = { it },
+                        )
+                    }
+                    single {
+                        AssessmentEngine(
+                            questionSelector = get(),
+                            generateAttemptId = { "attempt" },
+                        )
+                    }
+                    single<AssessmentRepository> { FakeAssessmentRepository() }
                 },
                 topicStudyPresentationModule,
             )
@@ -45,6 +65,16 @@ internal class TopicStudyPresentationModuleTest {
             assertIs<TopicBrowserViewModel>(app.koin.get<TopicBrowserViewModel>())
             assertIs<TopicDetailViewModel>(
                 app.koin.get<TopicDetailViewModel> { parametersOf("topic") },
+            )
+            assertIs<FocusedPracticeViewModel>(
+                app.koin.get<FocusedPracticeViewModel> {
+                    parametersOf(
+                        AssessmentConfig.Focused(
+                            scope = AssessmentScope.Topic("topic"),
+                            questionCount = 1,
+                        ),
+                    )
+                },
             )
             advanceUntilIdle()
         } finally {
@@ -70,5 +100,11 @@ internal class TopicStudyPresentationModuleTest {
 
         override suspend fun getQuestionById(questionId: String): Question? =
             error("Not used by TopicBrowserViewModel.")
+    }
+
+    private class FakeAssessmentRepository : AssessmentRepository {
+        override suspend fun save(attempt: TestAttempt) = Unit
+
+        override suspend fun getById(attemptId: String): TestAttempt? = null
     }
 }

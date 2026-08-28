@@ -1,8 +1,8 @@
-package org.artkachenko.kmp_learning_app.topic_study.focused_practice
+package org.artkachenko.kmp_learning_app.assessment_taking
 
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 
-internal data class FocusedQuestionUiModel(
+internal data class AssessmentQuestionUiModel(
     val id: String,
     val text: String,
     val answers: List<AnswerOption>,

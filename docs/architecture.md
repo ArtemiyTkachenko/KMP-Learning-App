@@ -81,11 +81,15 @@ capabilities; Android still awaits curriculum import before entering `App()`.
 E09 and E10 should depend on `CurriculumRepository`, `AssessmentRepository`,
 `AssessmentEngine`, and `AssessmentRetakeService`, not Room DAOs or entities.
 
-Focused practice follows `FocusedPracticeViewModel -> AssessmentEngine ->
-AssessmentSession`, with the initial and per-answer `TestAttempt` snapshots
-saved through `AssessmentRepository` before the UI advances. The final answer
-leaves the attempt in `IN_PROGRESS` and exposes `ReadyToComplete`; explicit
-completion and result review belong to E09-04.
+Assessment taking is shared by focused practice and mixed interviews through
+`AssessmentTakingViewModel -> AssessmentEngine -> AssessmentSession`.
+`AssessmentTakingLaunch.New` accepts either assessment configuration and saves
+the initial and per-answer `TestAttempt` snapshots through
+`AssessmentRepository` before the UI advances. `ExistingAttempt` reconstructs
+the runtime-only session from its stable attempt ID through
+`AssessmentSessionLoader`, with the persisted `TestAttempt.config` remaining
+authoritative. Product wrappers provide titles and navigation while reusing the
+same question, submission, progress, and explicit-completion state machine.
 
 E09-04 completes the retained session through `AssessmentEngine`, persists the
 completed attempt before replacing focused-practice navigation with a stable

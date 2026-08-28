@@ -32,6 +32,15 @@ Shared code belongs in `shared/src/commonMain` only when it is genuinely
 platform-independent. Platform-specific behavior belongs in the appropriate
 platform source set.
 
+## Runnable Hosts
+
+`:androidApp` and `:desktopApp` are runnable products. `iosApp` and `:webApp`
+currently only prove that the shared module compiles and links for those
+targets: neither host starts the Koin graph, and there is no local database
+builder for iOS, JS, or Wasm, so launching them fails at the first composition
+that resolves a ViewModel. See `docs/architecture.md` ("Runtime Host Coverage")
+and backlog issue E12-01.
+
 ## Android And Shared Boundaries
 
 `androidApp` owns Android application concerns such as the Activity entry point,
@@ -57,6 +66,12 @@ Useful foundation checks:
 ./gradlew :androidApp:assembleDebug
 ./gradlew :shared:check
 ./gradlew check
+```
+
+CI runs the Android, desktop, and web builds together with the shared checks:
+
+```sh
+./gradlew :androidApp:assembleDebug :desktopApp:assemble :webApp:assemble :shared:check
 ```
 
 Use `./gradlew build` when a full local build is needed across Android,

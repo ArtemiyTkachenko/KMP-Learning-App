@@ -34,6 +34,39 @@ route data into their ViewModels, while Navigation 3 entry-scoped ViewModel
 ownership remains intact: each back-stack entry receives its own
 ViewModelStore, and the ViewModel is cleared when that entry is removed.
 
+Android and Desktop share `AppRoot(initialize)` in shared `commonMain`. It owns
+the startup loading, failure, and retry states around the platform initializer
+and then enters `App()`. Hosts supply only their own initializer, so a failed
+initialization cannot leave a host without content. `App()` keeps its own
+`MaterialTheme` so it remains usable directly by hosts that bypass `AppRoot`.
+
+### Runtime Host Coverage
+
+`App()` compiles for every configured target, but only Android and Desktop are
+runnable products today:
+
+| Host | Koin graph started by | Database builder | Runnable |
+| --- | --- | --- | --- |
+| Android | `KmpLearningApplication` -> `startAndroidLocalDataGraph` | `CurriculumDatabase.android.kt` | yes |
+| Desktop (JVM) | `desktopApp/main.kt` -> `startDesktopLocalDataGraph` | `CurriculumDatabase.jvm.kt` | yes |
+| iOS | none | none | no |
+| Web (JS / Wasm) | none | none | no |
+
+`shared/src/iosMain/.../MainViewController.kt` and
+`webApp/src/webMain/.../main.kt` call `App()` directly without starting Koin, so
+the first composition of `TopicBrowserDestination` fails when `koinViewModel { }`
+cannot resolve `TopicBrowserViewModel`. There is also no Room database builder
+for iOS, JS, or Wasm: `sqlite-bundled` is scoped to the Android runtime and JVM
+tests, and the browser targets would need a separate persistence decision.
+
+These targets are kept on purpose. They prove shared common code stays free of
+Android-only APIs, and `:webApp:assemble` is part of CI. Making the hosts
+actually run is tracked as backlog issue E12-01 rather than being solved
+implicitly inside unrelated work.
+
+Note that Kotlin/Native iOS compilations are disabled on the Linux CI runner, so
+CI gives no iOS signal at all; iOS compilation is a local macOS check.
+
 ## Curriculum Content Model
 
 The curriculum content contract lives in shared `commonMain` code as immutable

@@ -65,22 +65,35 @@ internal class AssessmentRetakeServiceTest {
     }
 
     @Test
-    fun mixedRetakePreservesMixedConfig() = runRetakeTest {
+    fun mixedRetakePreservesConfigCreatesCleanAttemptAndUsesBalancedSelectionWithOverlap() = runRetakeTest {
         val source = completedSourceAttempt(
             config = AssessmentConfig.Mixed(questionCount = 3),
-            questionIds = listOf("question_a"),
+            questionIds = listOf("a1", "b1", "c1"),
         )
         assessmentRepository.attempts[source.id] = source
         curriculumRepository.activeQuestions = listOf(
-            question("question_c"),
-            question("question_d"),
+            question("a1", topicId = "topic-a"),
+            question("a2", topicId = "topic-a"),
+            question("b1", topicId = "topic-b"),
+            question("b2", topicId = "topic-b"),
+            question("c1", topicId = "topic-c"),
         )
 
         val result = service().createRetake(source.id)
 
         val created = assertIs<AssessmentRetakeResult.Created>(result).session
+        assertEquals("retake-1", created.attempt.id)
         assertEquals(source.config, created.attempt.config)
-        assertEquals(listOf("question_c", "question_d"), created.attempt.questionAttempts.map { it.questionId })
+        assertEquals(listOf("a1", "b1", "c1"), created.attempt.questionAttempts.map { it.questionId })
+        assertEquals(AssessmentStatus.IN_PROGRESS, created.attempt.status)
+        assertEquals(null, created.attempt.score)
+        assertEquals(null, created.attempt.completedAt)
+        assertEquals(
+            listOf(QuestionAnswerState.Unanswered, QuestionAnswerState.Unanswered, QuestionAnswerState.Unanswered),
+            created.attempt.questionAttempts.map { it.answerState },
+        )
+        assertEquals(source, assessmentRepository.getById(source.id))
+        assertEquals(created.attempt, assessmentRepository.getById(created.attempt.id))
     }
 
     @Test
@@ -127,6 +140,21 @@ internal class AssessmentRetakeServiceTest {
         )
         assessmentRepository.attempts[source.id] = source
         curriculumRepository.subtopicQuestions = emptyMap()
+
+        val result = service().createRetake(source.id)
+
+        assertEquals(AssessmentRetakeResult.NoEligibleQuestions, result)
+        assertEquals(0, assessmentRepository.saveCalls)
+        assertEquals(source, assessmentRepository.getById(source.id))
+    }
+
+    @Test
+    fun mixedRetakeWithoutActiveQuestionsDoesNotPersist() = runRetakeTest {
+        val source = completedSourceAttempt(
+            config = AssessmentConfig.Mixed(questionCount = 3),
+            questionIds = listOf("question_a"),
+        )
+        assessmentRepository.attempts[source.id] = source
 
         val result = service().createRetake(source.id)
 
@@ -269,10 +297,10 @@ internal class AssessmentRetakeServiceTest {
             ),
         )
 
-    private fun question(id: String): Question =
+    private fun question(id: String, topicId: String = "topic"): Question =
         Question(
             id = id,
-            topicId = "topic",
+            topicId = topicId,
             subtopicId = "subtopic",
             text = "$id?",
             answers = listOf(

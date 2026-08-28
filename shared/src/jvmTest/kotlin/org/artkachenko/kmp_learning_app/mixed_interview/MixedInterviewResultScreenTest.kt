@@ -3,9 +3,11 @@ package org.artkachenko.kmp_learning_app.mixed_interview
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
@@ -177,6 +179,74 @@ internal class MixedInterviewResultScreenTest {
         onNodeWithText("Interview results could not be loaded.").assertIsDisplayed()
         onNodeWithText("Retry").performClick()
         assertEquals(1, retries)
+    }
+
+    @Test
+    fun practiceAgainIsVisibleAndInvokesCallbackOnce() = runComposeUiTest {
+        var repeats = 0
+        setContent {
+            MaterialTheme {
+                MixedInterviewResultScreen(
+                    state = contentState(),
+                    onRetry = {},
+                    onBack = {},
+                    onSourceClick = {},
+                    onRepeatInterview = { repeats++ },
+                )
+            }
+        }
+
+        onNodeWithText("Practice Again").assertIsDisplayed().performClick()
+        assertEquals(1, repeats)
+    }
+
+    @Test
+    fun creatingDisablesActionShowsProgressAndKeepsResultVisible() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MixedInterviewResultScreen(
+                    state = contentState().copy(repeatInterviewState = RepeatInterviewState.Creating),
+                    onRetry = {},
+                    onBack = {},
+                    onSourceClick = {},
+                )
+            }
+        }
+
+        onNodeWithTag(MixedResultPracticeAgainTag).assertIsNotEnabled()
+        onNodeWithTag(MixedResultCreatingIndicatorTag).assertIsDisplayed()
+        onNodeWithText("Starting interview").assertIsDisplayed()
+        onNodeWithText("Score: 3 / 5").assertIsDisplayed()
+        onNodeWithText("Performance by topic").performScrollTo().assertIsDisplayed()
+        onNodeWithText("Authored explanation").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun retakeFailuresShowSpecificMessagesAndKeepResultVisible() = runComposeUiTest {
+        var repeatState: RepeatInterviewState by mutableStateOf(
+            RepeatInterviewState.SourceAttemptNotFound,
+        )
+        setContent {
+            MaterialTheme {
+                MixedInterviewResultScreen(
+                    state = contentState().copy(repeatInterviewState = repeatState),
+                    onRetry = {},
+                    onBack = {},
+                    onSourceClick = {},
+                )
+            }
+        }
+
+        onNodeWithText("The original interview is no longer available.").assertIsDisplayed()
+        onNodeWithText("Score: 3 / 5").assertIsDisplayed()
+
+        repeatState = RepeatInterviewState.NoEligibleQuestions
+        onNodeWithText("No interview questions are currently available.").assertIsDisplayed()
+        onNodeWithText("Practice Again").assertIsDisplayed()
+
+        repeatState = RepeatInterviewState.Error
+        onNodeWithText("Interview could not be started. Try again.").assertIsDisplayed()
+        onNodeWithText("Score: 3 / 5").assertIsDisplayed()
     }
 
     private fun contentState() = MixedInterviewResultUiState.Content(

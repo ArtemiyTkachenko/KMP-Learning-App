@@ -20,6 +20,11 @@
     <string name="mixed_result_question_review">Question review</string>
     <string name="mixed_result_topic_score">%1$d / %2$d correct</string>
     <string name="mixed_result_topic_unavailable">Topic unavailable</string>
+    <string name="mixed_result_practice_again">Practice Again</string>
+    <string name="mixed_result_practice_starting">Starting interview</string>
+    <string name="mixed_result_repeat_source_missing">The original interview is no longer available.</string>
+    <string name="mixed_result_repeat_no_questions">No interview questions are currently available.</string>
+    <string name="mixed_result_repeat_error">Interview could not be started. Try again.</string>
     <string name="topic_detail_title">Topic: %1$s</string>
     <string name="topic_detail_back">Back</string>
     <string name="topic_detail_heading">Topic</string>

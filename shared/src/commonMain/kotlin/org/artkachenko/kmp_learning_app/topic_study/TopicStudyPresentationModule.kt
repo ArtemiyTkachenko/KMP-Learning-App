@@ -49,6 +49,7 @@ internal val topicStudyPresentationModule = module {
             assessmentRepository = get(),
             curriculumRepository = get(),
             assessmentReviewLoader = get(),
+            assessmentRetakeService = get(),
         )
     }
 }

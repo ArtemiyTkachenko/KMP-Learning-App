@@ -6,6 +6,9 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -21,6 +24,12 @@ import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeResult
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
+import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
+import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
+import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoadResult
+import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
@@ -42,7 +51,7 @@ internal class MixedInterviewResultIntegrationTest {
     fun tearDown() = Dispatchers.resetMain()
 
     @Test
-    fun completedAttemptRoundTripBuildsResultFromStableHistoricalContent() = runTest {
+    fun completedAttemptCanCreateAndReconstructIndependentMixedRetake() = runTest {
         Dispatchers.setMain(Dispatchers.Unconfined)
         val database = Room.inMemoryDatabaseBuilder<CurriculumDatabase>()
             .setDriver(BundledSQLiteDriver())
@@ -54,7 +63,19 @@ internal class MixedInterviewResultIntegrationTest {
             )
             val curriculumRepository = LocalCurriculumRepository(database)
             val assessmentRepository = LocalAssessmentRepository(AssessmentAttemptStore(database))
-            assessmentRepository.save(completedAttempt())
+            val source = completedAttempt()
+            assessmentRepository.save(source)
+            val retakeService = AssessmentRetakeService(
+                assessmentRepository = assessmentRepository,
+                assessmentEngine = AssessmentEngine(
+                    questionSelector = AssessmentQuestionSelector(
+                        curriculumRepository = curriculumRepository,
+                        randomize = { it },
+                    ),
+                    generateAttemptId = { "mixed-retake" },
+                    now = { Instant.fromEpochMilliseconds(3) },
+                ),
+            )
 
             val persisted = assessmentRepository.getById("mixed-result")
             assertEquals(AssessmentScore(2, 1), persisted?.score)
@@ -64,6 +85,7 @@ internal class MixedInterviewResultIntegrationTest {
                 assessmentRepository = assessmentRepository,
                 curriculumRepository = curriculumRepository,
                 assessmentReviewLoader = AssessmentReviewLoader(curriculumRepository),
+                assessmentRetakeService = retakeService,
             )
             val state = assertIs<MixedInterviewResultUiState.Content>(
                 withContext(Dispatchers.Default) {
@@ -75,6 +97,26 @@ internal class MixedInterviewResultIntegrationTest {
             assertEquals(listOf("Active Topic", "Retired Topic"), state.topicPerformance.map { it.topicName })
             assertEquals(listOf(1, 0), state.topicPerformance.map { it.correctCount })
             assertEquals(2, state.topicPerformance.sumOf { it.questionCount })
+
+            val created = assertIs<AssessmentRetakeResult.Created>(
+                retakeService.createRetake(source.id),
+            ).session.attempt
+            assertNotEquals(source.id, created.id)
+            assertEquals(source.config, created.config)
+            assertEquals(AssessmentStatus.IN_PROGRESS, created.status)
+            assertTrue(created.questionAttempts.all {
+                it.answerState == QuestionAnswerState.Unanswered
+            })
+            assertNull(created.score)
+            assertNull(created.completedAt)
+            assertEquals(source, assessmentRepository.getById(source.id))
+            assertEquals(created, assessmentRepository.getById(created.id))
+
+            val loaded = assertIs<AssessmentSessionLoadResult.Loaded>(
+                AssessmentSessionLoader(assessmentRepository, curriculumRepository).load(created.id),
+            ).session
+            assertEquals(created, loaded.attempt)
+            assertEquals(created.questionAttempts.map { it.questionId }, loaded.questions.map { it.id })
         } finally {
             database.close()
         }

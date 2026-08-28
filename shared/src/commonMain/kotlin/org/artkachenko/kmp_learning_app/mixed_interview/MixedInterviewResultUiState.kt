@@ -15,7 +15,20 @@ internal sealed interface MixedInterviewResultUiState {
         val percentage: Double,
         val topicPerformance: List<TopicPerformanceUiModel>,
         val questions: List<ReviewQuestionItem>,
+        val repeatInterviewState: RepeatInterviewState = RepeatInterviewState.Idle,
     ) : MixedInterviewResultUiState
+}
+
+internal sealed interface RepeatInterviewState {
+    data object Idle : RepeatInterviewState
+    data object Creating : RepeatInterviewState
+    data object SourceAttemptNotFound : RepeatInterviewState
+    data object NoEligibleQuestions : RepeatInterviewState
+    data object Error : RepeatInterviewState
+}
+
+internal sealed interface MixedInterviewResultEvent {
+    data class RetakeCreated(val attemptId: String) : MixedInterviewResultEvent
 }
 
 internal data class TopicPerformanceUiModel(

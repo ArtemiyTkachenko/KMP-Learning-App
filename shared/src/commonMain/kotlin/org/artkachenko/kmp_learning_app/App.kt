@@ -15,6 +15,10 @@ import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDe
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserDestination
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.FocusedPracticeDestination
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingLaunch
+import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewCompletedDestination
+import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewDestination
+import org.artkachenko.kmp_learning_app.mixed_interview.mixedInterviewStartRoute
+import org.artkachenko.kmp_learning_app.mixed_interview.toAssessmentConfig
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.toAssessmentConfig
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultDestination
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailDestination
@@ -68,6 +72,24 @@ private fun AppShell(
                         onTopicClick = { topicId ->
                             backStack.add(AppRoute.Topic(topicId = topicId))
                         },
+                        onStartMixedInterview = {
+                            backStack.add(mixedInterviewStartRoute())
+                        },
+                    )
+                }
+                entry<AppRoute.MixedInterview> { route ->
+                    MixedInterviewDestination(
+                        config = route.toAssessmentConfig(),
+                        onBack = { popBack() },
+                        onCompleted = { attemptId ->
+                            replaceTop(AppRoute.MixedInterviewResult(attemptId))
+                        },
+                    )
+                }
+                entry<AppRoute.MixedInterviewResult> { route ->
+                    MixedInterviewCompletedDestination(
+                        attemptId = route.attemptId,
+                        onBack = { popBack() },
                     )
                 }
                 entry<AppRoute.Topic> { route ->

@@ -26,6 +26,7 @@ internal class TopicBrowserScreenTest {
                         ),
                     ),
                     onTopicClick = {},
+                    onStartMixedInterview = {},
                     onRetry = {},
                 )
             }
@@ -49,6 +50,7 @@ internal class TopicBrowserScreenTest {
                     onTopicClick = { topicId ->
                         clickedTopicId = topicId
                     },
+                    onStartMixedInterview = {},
                     onRetry = {},
                 )
             }
@@ -66,6 +68,7 @@ internal class TopicBrowserScreenTest {
                 TopicBrowserScreen(
                     state = TopicBrowserUiState.Loading,
                     onTopicClick = {},
+                    onStartMixedInterview = {},
                     onRetry = {},
                 )
             }
@@ -73,6 +76,7 @@ internal class TopicBrowserScreenTest {
 
         onNodeWithTag(TopicBrowserLoadingTag).assertIsDisplayed()
         onNodeWithText("Loading topics").assertIsDisplayed()
+        onNodeWithText("Start Mixed Interview").assertIsDisplayed()
     }
 
     @Test
@@ -82,6 +86,7 @@ internal class TopicBrowserScreenTest {
                 TopicBrowserScreen(
                     state = TopicBrowserUiState.Empty,
                     onTopicClick = {},
+                    onStartMixedInterview = {},
                     onRetry = {},
                 )
             }
@@ -99,6 +104,7 @@ internal class TopicBrowserScreenTest {
                 TopicBrowserScreen(
                     state = TopicBrowserUiState.Error,
                     onTopicClick = {},
+                    onStartMixedInterview = {},
                     onRetry = {
                         retryCount += 1
                     },
@@ -110,6 +116,30 @@ internal class TopicBrowserScreenTest {
         onNodeWithText("Retry").performClick()
 
         assertEquals(1, retryCount)
+    }
+
+    @Test
+    fun mixedInterviewEntryRendersAndInvokesStartOnce() = runComposeUiTest {
+        var startCount = 0
+
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(Topic("topic", "Topic")),
+                    ),
+                    onTopicClick = {},
+                    onStartMixedInterview = { startCount += 1 },
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("Mixed Android Interview").assertIsDisplayed()
+        onNodeWithText("20-question interview").assertIsDisplayed()
+        onNodeWithText("Start Mixed Interview").performClick()
+
+        assertEquals(1, startCount)
     }
 
     @Test

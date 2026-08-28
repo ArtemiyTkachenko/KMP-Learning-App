@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="topic_browser_heading">Android Interview Prep</string>
     <string name="topic_browser_title">Topics</string>
     <string name="topic_browser_loading">Loading topics</string>
     <string name="topic_browser_empty">No topics available</string>
     <string name="topic_browser_error">Topics could not be loaded</string>
     <string name="topic_browser_retry">Retry</string>
+    <string name="mixed_interview_title">Mixed Android Interview</string>
+    <string name="mixed_interview_description">Test your knowledge across Android topics.</string>
+    <string name="mixed_interview_question_count">%1$d-question interview</string>
+    <string name="mixed_interview_start">Start Mixed Interview</string>
+    <string name="mixed_interview_completed">Interview completed</string>
     <string name="topic_detail_title">Topic: %1$s</string>
     <string name="topic_detail_back">Back</string>
     <string name="topic_detail_heading">Topic</string>

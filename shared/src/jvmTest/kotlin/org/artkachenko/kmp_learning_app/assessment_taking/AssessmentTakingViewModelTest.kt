@@ -258,6 +258,21 @@ internal class AssessmentTakingViewModelTest {
     }
 
     @Test
+    fun newMixedAssessmentWithoutEligibleQuestionsShowsNoQuestions() = runViewModelTest {
+        val repository = RecordingAssessmentRepository()
+        val viewModel = viewModel(
+            questions = emptyList(),
+            repository = repository,
+            config = AssessmentConfig.Mixed(questionCount = 3),
+        )
+
+        advanceUntilIdle()
+
+        assertIs<AssessmentTakingUiState.NoQuestions>(viewModel.uiState.value)
+        assertTrue(repository.savedAttempts.isEmpty())
+    }
+
+    @Test
     fun mixedSubmissionUsesSharedEngineAndAdvances() = runViewModelTest {
         val repository = RecordingAssessmentRepository()
         val viewModel = viewModel(

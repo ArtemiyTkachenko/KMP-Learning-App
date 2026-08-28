@@ -26,12 +26,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
+import kmp_learning_app.shared.generated.resources.mixed_interview_description
+import kmp_learning_app.shared.generated.resources.mixed_interview_question_count
+import kmp_learning_app.shared.generated.resources.mixed_interview_start
+import kmp_learning_app.shared.generated.resources.mixed_interview_title
 import kmp_learning_app.shared.generated.resources.topic_browser_empty
 import kmp_learning_app.shared.generated.resources.topic_browser_error
+import kmp_learning_app.shared.generated.resources.topic_browser_heading
 import kmp_learning_app.shared.generated.resources.topic_browser_loading
 import kmp_learning_app.shared.generated.resources.topic_browser_retry
 import kmp_learning_app.shared.generated.resources.topic_browser_title
 import org.artkachenko.kmp_learning_app.curriculum.Topic
+import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewDefaults
 import org.jetbrains.compose.resources.stringResource
 
 internal const val TopicBrowserLoadingTag = "topic_browser_loading"
@@ -40,6 +46,7 @@ internal const val TopicBrowserLoadingTag = "topic_browser_loading"
 internal fun TopicBrowserScreen(
     state: TopicBrowserUiState,
     onTopicClick: (String) -> Unit,
+    onStartMixedInterview: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -49,23 +56,82 @@ internal fun TopicBrowserScreen(
             .padding(horizontal = 20.dp, vertical = 24.dp),
     ) {
         Text(
-            text = stringResource(Res.string.topic_browser_title),
+            text = stringResource(Res.string.topic_browser_heading),
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onBackground,
             fontWeight = FontWeight.SemiBold,
         )
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        when (state) {
-            TopicBrowserUiState.Loading -> LoadingState()
-            is TopicBrowserUiState.Content -> TopicList(
-                topics = state.topics,
-                onTopicClick = onTopicClick,
+        MixedInterviewEntry(onStart = onStartMixedInterview)
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = stringResource(Res.string.topic_browser_title),
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Box(modifier = Modifier.weight(1f)) {
+            when (state) {
+                TopicBrowserUiState.Loading -> LoadingState()
+                is TopicBrowserUiState.Content -> TopicList(
+                    topics = state.topics,
+                    onTopicClick = onTopicClick,
+                )
+                TopicBrowserUiState.Empty -> MessageState(
+                    text = stringResource(Res.string.topic_browser_empty),
+                )
+                TopicBrowserUiState.Error -> ErrorState(onRetry = onRetry)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MixedInterviewEntry(
+    onStart: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.small,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+        ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(Res.string.mixed_interview_title),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                fontWeight = FontWeight.SemiBold,
             )
-            TopicBrowserUiState.Empty -> MessageState(
-                text = stringResource(Res.string.topic_browser_empty),
+            Text(
+                text = stringResource(Res.string.mixed_interview_description),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
-            TopicBrowserUiState.Error -> ErrorState(onRetry = onRetry)
+            Text(
+                text = stringResource(
+                    Res.string.mixed_interview_question_count,
+                    MixedInterviewDefaults.QuestionCount,
+                ),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+            Button(
+                onClick = onStart,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(text = stringResource(Res.string.mixed_interview_start))
+            }
         }
     }
 }
@@ -193,6 +259,7 @@ private fun TopicBrowserScreenPreview() {
                 ),
             ),
             onTopicClick = {},
+            onStartMixedInterview = {},
             onRetry = {},
         )
     }

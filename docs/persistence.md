@@ -328,10 +328,24 @@ question IDs:
   the incoming correct-answer IDs;
 - existing `question_source` rows for incoming questions are replaced by the
   incoming source list;
+- existing `answer_option` rows for an incoming question are removed when that
+  question no longer authors them, unless a historical
+  `question_attempt_selected_answer` row still references the option;
 - rows for unrelated persisted questions are retained.
 
 This keeps correctness and source metadata from accumulating stale rows while
 preserving stable curriculum identity and unrelated local content.
+
+Stale answer options are deleted last inside the import transaction.
+`question_correct_answer` and `question_attempt_selected_answer` both hold
+`NO ACTION` foreign keys onto `answer_option(question_id, id)`, so an option can
+only be removed after the correct-answer rows for its question have been
+replaced, and only when no historical attempt selected it. An option that a past
+attempt selected is deliberately retained: keeping historical review resolvable
+matters more than hiding one option that a later bundle dropped, and deleting it
+would abort the whole import transaction and leave the application unable to
+start. Deletion is scoped per question because answer identity is the composite
+`(question_id, id)` rather than a globally unique answer ID.
 
 ## Expected Query Patterns
 

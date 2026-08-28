@@ -2,8 +2,16 @@ package org.artkachenko.kmp_learning_app.data.local.curriculum.importer
 
 import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import kotlin.time.Instant
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.SerializationException
+import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
+import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
+import org.artkachenko.kmp_learning_app.assessment.AssessmentScore
+import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
+import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
+import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
+import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
@@ -13,6 +21,7 @@ import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.content.BundledCurriculumSource
 import org.artkachenko.kmp_learning_app.curriculum.serialization.CurriculumJsonCodec
+import org.artkachenko.kmp_learning_app.data.local.assessment.AssessmentAttemptStore
 import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDao
 import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDatabase
 import kotlin.test.Test
@@ -357,6 +366,151 @@ internal class CurriculumImporterTest {
             val dao = database.curriculumDao()
             assertEquals(listOf("topic_a_answer_b"), dao.getCorrectAnswerIdsForQuestion("topic_a_question"))
             assertEquals(listOf("unrelated_answer_a"), dao.getCorrectAnswerIdsForQuestion("unrelated_question"))
+        }
+    }
+
+    @Test
+    fun answerOptionsRemovedFromCurriculumAreDeletedForIncomingQuestionsOnly() = runTest {
+        withTestDatabase { database ->
+            val threeAnswers = listOf(
+                AnswerOption("topic_a_answer_a", "topic_a answer A"),
+                AnswerOption("topic_a_answer_b", "topic_a answer B"),
+                AnswerOption("topic_a_answer_c", "topic_a answer C"),
+            )
+            assertEquals(
+                CurriculumImportResult.Imported,
+                CurriculumImporter(
+                    database,
+                    loadCurriculum = {
+                        curriculumOf(graph("topic_a", answers = threeAnswers), graph("unrelated"))
+                    },
+                ).importCurriculum(),
+            )
+
+            val result = CurriculumImporter(
+                database,
+                loadCurriculum = {
+                    curriculumOf(graph("topic_a", answers = threeAnswers.take(2)))
+                },
+            ).importCurriculum()
+
+            assertEquals(CurriculumImportResult.Imported, result)
+            val dao = database.curriculumDao()
+            assertEquals(
+                listOf("topic_a_answer_a", "topic_a_answer_b"),
+                dao.getAnswerOptionsForQuestion("topic_a_question").map { it.id },
+            )
+            assertEquals(
+                listOf("unrelated_answer_a", "unrelated_answer_b"),
+                dao.getAnswerOptionsForQuestion("unrelated_question").map { it.id },
+            )
+        }
+    }
+
+    @Test
+    fun answerOptionThatWasPreviouslyCorrectCanBeRemoved() = runTest {
+        withTestDatabase { database ->
+            val originalAnswers = listOf(
+                AnswerOption("topic_a_answer_a", "topic_a answer A"),
+                AnswerOption("topic_a_answer_b", "topic_a answer B"),
+            )
+            assertEquals(
+                CurriculumImportResult.Imported,
+                CurriculumImporter(
+                    database,
+                    loadCurriculum = {
+                        curriculumOf(
+                            graph(
+                                "topic_a",
+                                answers = originalAnswers,
+                                correctAnswerIds = listOf("topic_a_answer_a"),
+                            ),
+                        )
+                    },
+                ).importCurriculum(),
+            )
+
+            // topic_a_answer_a is dropped while it is still the persisted correct answer.
+            // question_correct_answer has a foreign key onto answer_option, so this fails
+            // unless stale options are deleted after correct answers are replaced.
+            val result = CurriculumImporter(
+                database,
+                loadCurriculum = {
+                    curriculumOf(
+                        graph(
+                            "topic_a",
+                            answers = listOf(
+                                AnswerOption("topic_a_answer_b", "topic_a answer B"),
+                                AnswerOption("topic_a_answer_c", "topic_a answer C"),
+                            ),
+                            correctAnswerIds = listOf("topic_a_answer_b"),
+                        ),
+                    )
+                },
+            ).importCurriculum()
+
+            assertEquals(CurriculumImportResult.Imported, result)
+            val dao = database.curriculumDao()
+            assertEquals(
+                listOf("topic_a_answer_b", "topic_a_answer_c"),
+                dao.getAnswerOptionsForQuestion("topic_a_question").map { it.id },
+            )
+            assertEquals(
+                listOf("topic_a_answer_b"),
+                dao.getCorrectAnswerIdsForQuestion("topic_a_question"),
+            )
+        }
+    }
+
+    @Test
+    fun answerOptionSelectedByHistoricalAttemptIsRetainedOnReimport() = runTest {
+        withTestDatabase { database ->
+            val threeAnswers = listOf(
+                AnswerOption("topic_a_answer_a", "topic_a answer A"),
+                AnswerOption("topic_a_answer_b", "topic_a answer B"),
+                AnswerOption("topic_a_answer_c", "topic_a answer C"),
+            )
+            assertEquals(
+                CurriculumImportResult.Imported,
+                CurriculumImporter(
+                    database,
+                    loadCurriculum = { curriculumOf(graph("topic_a", answers = threeAnswers)) },
+                ).importCurriculum(),
+            )
+            AssessmentAttemptStore(database).save(
+                TestAttempt(
+                    id = "historical_attempt",
+                    config = AssessmentConfig.Focused(AssessmentScope.Topic("topic_a"), 1),
+                    questionAttempts = listOf(
+                        QuestionAttempt(
+                            questionId = "topic_a_question",
+                            answerState = QuestionAnswerState.Answered(
+                                selectedAnswerIds = setOf("topic_a_answer_c"),
+                                isCorrect = false,
+                            ),
+                        ),
+                    ),
+                    status = AssessmentStatus.COMPLETED,
+                    startedAt = Instant.fromEpochMilliseconds(1),
+                    completedAt = Instant.fromEpochMilliseconds(2),
+                    score = AssessmentScore(totalQuestions = 1, correctAnswers = 0),
+                ),
+            )
+
+            val result = CurriculumImporter(
+                database,
+                loadCurriculum = {
+                    curriculumOf(graph("topic_a", answers = threeAnswers.take(2)))
+                },
+            ).importCurriculum()
+
+            assertEquals(CurriculumImportResult.Imported, result)
+            assertEquals(
+                listOf("topic_a_answer_a", "topic_a_answer_b", "topic_a_answer_c"),
+                database.curriculumDao()
+                    .getAnswerOptionsForQuestion("topic_a_question")
+                    .map { it.id },
+            )
         }
     }
 

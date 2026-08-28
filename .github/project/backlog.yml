@@ -1799,7 +1799,7 @@ epics:
           - "Existing getActiveSubtopics behavior remains unchanged."
           - "The existing CurriculumDao getSubtopicById query is reused rather than duplicated."
           - "No history, progress, or statistics tables are added."
-          - "Room remains schema version 2."
+          - "Room remains schema version 3."
           - "Real-Room tests cover empty history, multiple completed attempts, mixed/focused config reconstruction, ordering, selected answers, and exclusion of IN_PROGRESS attempts."
 
         priority: "P1"
@@ -2004,7 +2004,7 @@ epics:
           - "Presentation code does not depend directly on Room/DAO/entity types."
           - "Existing Focused and Mixed end-to-end assessment tests remain green."
           - "Android assemble, Desktop build, shared checks, and normal CI-equivalent checks pass."
-          - "Room remains schema version 2."
+          - "Room remains schema version 3."
           - "No resume, deletion, manual mastery, adaptive selection, streak, or gamification behavior is introduced."
 
         priority: "P2"

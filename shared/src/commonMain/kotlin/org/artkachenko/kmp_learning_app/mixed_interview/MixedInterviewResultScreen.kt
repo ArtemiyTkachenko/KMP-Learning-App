@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.assessment_review_percentage
@@ -23,7 +24,12 @@ import kmp_learning_app.shared.generated.resources.mixed_result_error
 import kmp_learning_app.shared.generated.resources.mixed_result_loading
 import kmp_learning_app.shared.generated.resources.mixed_result_not_completed
 import kmp_learning_app.shared.generated.resources.mixed_result_performance_by_topic
+import kmp_learning_app.shared.generated.resources.mixed_result_practice_again
+import kmp_learning_app.shared.generated.resources.mixed_result_practice_starting
 import kmp_learning_app.shared.generated.resources.mixed_result_question_review
+import kmp_learning_app.shared.generated.resources.mixed_result_repeat_error
+import kmp_learning_app.shared.generated.resources.mixed_result_repeat_no_questions
+import kmp_learning_app.shared.generated.resources.mixed_result_repeat_source_missing
 import kmp_learning_app.shared.generated.resources.mixed_result_retry
 import kmp_learning_app.shared.generated.resources.mixed_result_title
 import kmp_learning_app.shared.generated.resources.mixed_result_topic_score
@@ -37,12 +43,16 @@ import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicStudyTopAp
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
+internal const val MixedResultPracticeAgainTag = "mixed_result_practice_again"
+internal const val MixedResultCreatingIndicatorTag = "mixed_result_creating_indicator"
+
 @Composable
 internal fun MixedInterviewResultScreen(
     state: MixedInterviewResultUiState,
     onRetry: () -> Unit,
     onBack: () -> Unit,
     onSourceClick: (String) -> Unit,
+    onRepeatInterview: () -> Unit = {},
     failedSourceUrl: String? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -68,6 +78,7 @@ internal fun MixedInterviewResultScreen(
             is MixedInterviewResultUiState.Content -> MixedResultContent(
                 state = state,
                 onSourceClick = onSourceClick,
+                onRepeatInterview = onRepeatInterview,
                 failedSourceUrl = failedSourceUrl,
                 modifier = Modifier.weight(1f),
             )
@@ -79,6 +90,7 @@ internal fun MixedInterviewResultScreen(
 private fun MixedResultContent(
     state: MixedInterviewResultUiState.Content,
     onSourceClick: (String) -> Unit,
+    onRepeatInterview: () -> Unit,
     failedSourceUrl: String?,
     modifier: Modifier,
 ) {
@@ -93,6 +105,37 @@ private fun MixedResultContent(
                 percentage = state.percentage,
             )
             UnresolvedReviewQuestionsNotice(state.questions, state.totalQuestions)
+            when (state.repeatInterviewState) {
+                RepeatInterviewState.Idle -> Unit
+                RepeatInterviewState.Creating ->
+                    Text(stringResource(Res.string.mixed_result_practice_starting))
+                RepeatInterviewState.SourceAttemptNotFound ->
+                    Text(
+                        stringResource(Res.string.mixed_result_repeat_source_missing),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                RepeatInterviewState.NoEligibleQuestions ->
+                    Text(
+                        stringResource(Res.string.mixed_result_repeat_no_questions),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                RepeatInterviewState.Error ->
+                    Text(
+                        stringResource(Res.string.mixed_result_repeat_error),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+            }
+            Button(
+                onClick = onRepeatInterview,
+                enabled = state.repeatInterviewState != RepeatInterviewState.Creating,
+                modifier = Modifier.testTag(MixedResultPracticeAgainTag),
+            ) {
+                if (state.repeatInterviewState == RepeatInterviewState.Creating) {
+                    CircularProgressIndicator(Modifier.testTag(MixedResultCreatingIndicatorTag))
+                } else {
+                    Text(stringResource(Res.string.mixed_result_practice_again))
+                }
+            }
         }
         item {
             Text(

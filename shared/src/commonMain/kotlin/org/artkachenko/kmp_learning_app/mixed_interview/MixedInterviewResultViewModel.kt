@@ -2,13 +2,18 @@ package org.artkachenko.kmp_learning_app.mixed_interview
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeResult
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
@@ -18,11 +23,14 @@ internal class MixedInterviewResultViewModel(
     private val assessmentRepository: AssessmentRepository,
     private val curriculumRepository: CurriculumRepository,
     private val assessmentReviewLoader: AssessmentReviewLoader,
+    private val assessmentRetakeService: AssessmentRetakeService,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<MixedInterviewResultUiState>(
         MixedInterviewResultUiState.Loading,
     )
     val uiState: StateFlow<MixedInterviewResultUiState> = _uiState.asStateFlow()
+    private val _events = Channel<MixedInterviewResultEvent>(Channel.BUFFERED)
+    val events: Flow<MixedInterviewResultEvent> = _events.receiveAsFlow()
 
     init {
         require(attemptId.isNotBlank()) { "attemptId must not be blank." }
@@ -31,6 +39,35 @@ internal class MixedInterviewResultViewModel(
 
     fun retry() {
         load()
+    }
+
+    fun repeatInterview() {
+        val currentState = uiState.value as? MixedInterviewResultUiState.Content ?: return
+        if (currentState.repeatInterviewState == RepeatInterviewState.Creating) return
+        _uiState.value = currentState.copy(repeatInterviewState = RepeatInterviewState.Creating)
+        viewModelScope.launch {
+            runCatching { assessmentRetakeService.createRetake(attemptId) }
+                .onSuccess { result ->
+                    when (result) {
+                        is AssessmentRetakeResult.Created ->
+                            _events.send(
+                                MixedInterviewResultEvent.RetakeCreated(
+                                    result.session.attempt.id,
+                                ),
+                            )
+                        AssessmentRetakeResult.SourceAttemptNotFound ->
+                            setRepeatState(RepeatInterviewState.SourceAttemptNotFound)
+                        AssessmentRetakeResult.NoEligibleQuestions ->
+                            setRepeatState(RepeatInterviewState.NoEligibleQuestions)
+                    }
+                }
+                .onFailure { setRepeatState(RepeatInterviewState.Error) }
+        }
+    }
+
+    private fun setRepeatState(state: RepeatInterviewState) {
+        val currentState = uiState.value as? MixedInterviewResultUiState.Content ?: return
+        _uiState.value = currentState.copy(repeatInterviewState = state)
     }
 
     private fun load() {

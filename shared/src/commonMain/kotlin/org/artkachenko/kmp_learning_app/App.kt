@@ -99,6 +99,9 @@ private fun AppShell(
                     MixedInterviewResultDestination(
                         attemptId = route.attemptId,
                         onBack = { popBack() },
+                        onRetakeCreated = { attemptId ->
+                            backStack.add(AppRoute.MixedInterviewAttempt(attemptId))
+                        },
                     )
                 }
                 entry<AppRoute.Topic> { route ->

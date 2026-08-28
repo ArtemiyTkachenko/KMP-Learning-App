@@ -21,6 +21,8 @@ import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeResult
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
@@ -341,6 +343,54 @@ internal class AssessmentTakingViewModelTest {
     }
 
     @Test
+    fun mixedRetakeIsSelectedOnceThenReopenedWithoutStartingAgain() = runViewModelTest {
+        val questions = listOf(
+            question("q1", listOf("a"), topicId = "topic-a"),
+            question("q2", listOf("a"), topicId = "topic-b"),
+        )
+        val curriculum = FakeCurriculumRepository(questions)
+        val repository = RecordingAssessmentRepository()
+        val source = TestAttempt(
+            id = "source",
+            config = AssessmentConfig.Mixed(questionCount = 2),
+            questionAttempts = listOf(
+                QuestionAttempt("q1", QuestionAnswerState.Answered(setOf("a"), true)),
+                QuestionAttempt("q2", QuestionAnswerState.Answered(setOf("a"), true)),
+            ),
+            status = AssessmentStatus.COMPLETED,
+            startedAt = Instant.fromEpochMilliseconds(1_000),
+            completedAt = Instant.fromEpochMilliseconds(2_000),
+            score = AssessmentScore(2, 2),
+        )
+        repository.savedAttempts += source
+        var generatedIds = 0
+        val engine = AssessmentEngine(
+            questionSelector = AssessmentQuestionSelector(curriculum, randomize = { it }),
+            generateAttemptId = {
+                generatedIds++
+                if (generatedIds == 1) "retake" else error("start must not be called twice")
+            },
+            now = { Instant.fromEpochMilliseconds(3_000) },
+        )
+        val retake = assertIs<AssessmentRetakeResult.Created>(
+            AssessmentRetakeService(repository, engine).createRetake(source.id),
+        ).session.attempt
+        assertEquals(1, curriculum.activeQuestionCalls)
+
+        val viewModel = AssessmentTakingViewModel(
+            launch = AssessmentTakingLaunch.ExistingAttempt(retake.id),
+            assessmentEngine = engine,
+            assessmentRepository = repository,
+            assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum),
+        )
+        advanceUntilIdle()
+
+        assertEquals(retake.id, content(viewModel).attemptId)
+        assertEquals(1, curriculum.activeQuestionCalls)
+        assertEquals(1, generatedIds)
+    }
+
+    @Test
     fun existingMixedAttemptWithAllAnswersIsReadyToComplete() = runViewModelTest {
         val questions = listOf(question("q1", listOf("a"), topicId = "topic-a"))
         val repository = RecordingAssessmentRepository()
@@ -487,9 +537,14 @@ internal class AssessmentTakingViewModelTest {
     private class FakeCurriculumRepository(
         private val questions: List<Question>,
     ) : CurriculumRepository {
+        var activeQuestionCalls = 0
+
         override suspend fun getActiveTopics(): List<Topic> = listOf(Topic("topic", "Topic"))
         override suspend fun getActiveSubtopics(topicId: String): List<Subtopic> = emptyList()
-        override suspend fun getActiveQuestions(): List<Question> = questions
+        override suspend fun getActiveQuestions(): List<Question> {
+            activeQuestionCalls++
+            return questions
+        }
         override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> = questions
         override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> = questions
         override suspend fun getTopicById(topicId: String): Topic? = null

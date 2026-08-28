@@ -142,6 +142,15 @@ in attempt encounter order, and `CurriculumRepository.getTopicById` resolves
 historical names without ACTIVE filtering. Topic performance is derived in
 memory and is not persisted.
 
+Mixed interview repeats follow the same persisted-retake boundary as focused
+practice. The Mixed result delegates creation to `AssessmentRetakeService`,
+keeps the completed source result in the back stack, and pushes
+`MixedInterviewAttempt(retakeAttemptId)` only after the new attempt has been
+saved. That route reopens the persisted session through
+`AssessmentTakingLaunch.ExistingAttempt`, so balanced selection and
+`AssessmentEngine.start()` occur once during retake creation rather than again
+when the assessment screen opens.
+
 E09-04 completes the retained session through `AssessmentEngine`, persists the
 completed attempt before replacing focused-practice navigation with a stable
 attempt-ID result route, and loads historical review through

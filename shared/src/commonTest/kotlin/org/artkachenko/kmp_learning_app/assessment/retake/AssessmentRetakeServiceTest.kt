@@ -234,6 +234,8 @@ internal class AssessmentRetakeServiceTest {
 
         override suspend fun getById(attemptId: String): TestAttempt? =
             attempts[attemptId]
+
+        override suspend fun getCompletedAttempts(): List<TestAttempt> = emptyList()
     }
 
     private class FakeCurriculumRepository : CurriculumRepository {
@@ -266,6 +268,9 @@ internal class AssessmentRetakeServiceTest {
         }
 
         override suspend fun getTopicById(topicId: String): Topic? =
+            error("Not used by retake tests.")
+
+        override suspend fun getSubtopicById(subtopicId: String): Subtopic? =
             error("Not used by retake tests.")
 
         override suspend fun getQuestionById(questionId: String): Question? =

@@ -178,6 +178,7 @@ internal class FocusedResultViewModelTest {
     private class FakeAssessmentRepository(var attempt: TestAttempt?) : AssessmentRepository {
         override suspend fun save(attempt: TestAttempt) { this.attempt = attempt }
         override suspend fun getById(attemptId: String): TestAttempt? = attempt
+        override suspend fun getCompletedAttempts(): List<TestAttempt> = emptyList()
     }
 
     private class FakeCurriculumRepository(private val questions: List<Question>) : CurriculumRepository {
@@ -188,6 +189,7 @@ internal class FocusedResultViewModelTest {
         override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> = questions
         override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> = questions
         override suspend fun getTopicById(topicId: String): Topic? = null
+        override suspend fun getSubtopicById(subtopicId: String): Subtopic? = null
         override suspend fun getQuestionById(questionId: String): Question? { lookups += questionId; return questions.firstOrNull { it.id == questionId } }
     }
 }

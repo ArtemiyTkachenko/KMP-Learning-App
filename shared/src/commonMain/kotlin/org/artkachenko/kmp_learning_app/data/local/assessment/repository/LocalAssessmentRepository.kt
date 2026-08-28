@@ -13,4 +13,7 @@ internal class LocalAssessmentRepository(
 
     override suspend fun getById(attemptId: String): TestAttempt? =
         store.getById(attemptId)
+
+    override suspend fun getCompletedAttempts(): List<TestAttempt> =
+        store.getCompletedAttempts()
 }

@@ -71,6 +71,40 @@ internal class LocalCurriculumRepositoryTest {
     }
 
     @Test
+    fun getSubtopicByIdResolvesActiveDeprecatedAndDeprecatedParentHistory() = runTest {
+        withRepository(activeSubtopicFixture()) { repository ->
+            assertEquals(
+                Subtopic("active_topic_sub_a", "active_topic", "Active subtopic A"),
+                repository.getSubtopicById("active_topic_sub_a"),
+            )
+            assertEquals(
+                Subtopic(
+                    "active_topic_deprecated_sub",
+                    "active_topic",
+                    "Deprecated subtopic",
+                    ContentStatus.DEPRECATED,
+                ),
+                repository.getSubtopicById("active_topic_deprecated_sub"),
+            )
+            assertEquals(
+                Subtopic(
+                    "deprecated_active_subtopic",
+                    "deprecated_topic",
+                    "Deprecated topic child",
+                ),
+                repository.getSubtopicById("deprecated_active_subtopic"),
+            )
+            assertNull(repository.getSubtopicById("missing_subtopic"))
+
+            assertEquals(
+                listOf("active_topic_sub_b", "active_topic_sub_a"),
+                repository.getActiveSubtopics("active_topic").map { it.id },
+            )
+            assertEquals(emptyList(), repository.getActiveSubtopics("deprecated_topic"))
+        }
+    }
+
+    @Test
     fun getActiveQuestionsByTopicRequiresActiveQuestionSubtopicAndTopic() = runTest {
         withRepository(activeQuestionFixture()) { repository ->
             val questions = repository.getActiveQuestionsByTopic("active_topic")

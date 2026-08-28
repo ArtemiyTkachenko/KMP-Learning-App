@@ -17,5 +17,7 @@ internal interface CurriculumRepository {
 
     suspend fun getTopicById(topicId: String): Topic?
 
+    suspend fun getSubtopicById(subtopicId: String): Subtopic?
+
     suspend fun getQuestionById(questionId: String): Question?
 }

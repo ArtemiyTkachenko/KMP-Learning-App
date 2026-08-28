@@ -118,6 +118,31 @@ internal class LocalAssessmentRepositoryTest {
         }
     }
 
+    @Test
+    fun completedHistoryDelegatesToStoreAndExcludesInProgressAttempts() = runTest {
+        withTestDatabase { database ->
+            insertFixtureCurriculum(database)
+            val repository = localRepository(database)
+            val completed = completedAttempt(
+                id = "completed",
+                config = AssessmentConfig.Mixed(questionCount = 2),
+            )
+            val inProgress = TestAttempt(
+                id = "in_progress",
+                config = AssessmentConfig.Mixed(questionCount = 1),
+                questionAttempts = listOf(QuestionAttempt("question_a")),
+                status = AssessmentStatus.IN_PROGRESS,
+                startedAt = StartedAt,
+            )
+
+            repository.save(inProgress)
+            repository.save(completed)
+
+            assertEquals(listOf(completed), repository.getCompletedAttempts())
+            assertEquals(inProgress, repository.getById(inProgress.id))
+        }
+    }
+
     private fun localRepository(database: CurriculumDatabase): LocalAssessmentRepository =
         LocalAssessmentRepository(
             store = AssessmentAttemptStore(database),

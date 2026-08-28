@@ -134,6 +134,9 @@ internal class TopicStudyPresentationModuleTest {
         override suspend fun getTopicById(topicId: String): Topic? =
             error("Not used by TopicBrowserViewModel.")
 
+        override suspend fun getSubtopicById(subtopicId: String): Subtopic? =
+            error("Not used by TopicBrowserViewModel.")
+
         override suspend fun getQuestionById(questionId: String): Question? =
             error("Not used by TopicBrowserViewModel.")
     }
@@ -142,5 +145,7 @@ internal class TopicStudyPresentationModuleTest {
         override suspend fun save(attempt: TestAttempt) = Unit
 
         override suspend fun getById(attemptId: String): TestAttempt? = null
+
+        override suspend fun getCompletedAttempts(): List<TestAttempt> = emptyList()
     }
 }

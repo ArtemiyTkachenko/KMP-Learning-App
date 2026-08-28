@@ -114,6 +114,111 @@ internal class AssessmentAttemptStoreTest {
     }
 
     @Test
+    fun completedHistoryIsEmptyAndExcludesPersistedInProgressAttempts() = runTest {
+        withTestDatabase { database ->
+            insertAttemptFixtureCurriculum(database)
+            val store = AssessmentAttemptStore(database)
+            assertEquals(emptyList(), store.getCompletedAttempts())
+
+            val inProgress = TestAttempt(
+                id = "attempt_in_progress",
+                config = AssessmentConfig.Mixed(questionCount = 1),
+                questionAttempts = listOf(QuestionAttempt("question_a")),
+                status = AssessmentStatus.IN_PROGRESS,
+                startedAt = StartedAt,
+            )
+            store.save(inProgress)
+
+            assertEquals(emptyList(), store.getCompletedAttempts())
+            assertEquals(inProgress, store.getById(inProgress.id))
+        }
+    }
+
+    @Test
+    fun completedHistoryReconstructsConfigsChildrenScoresAndNewestFirstOrder() = runTest {
+        withTestDatabase { database ->
+            insertAttemptFixtureCurriculum(database)
+            val store = AssessmentAttemptStore(database)
+            val oldFocusedTopic = completedAttempt(
+                id = "old_focused_topic",
+                config = AssessmentConfig.Focused(
+                    scope = AssessmentScope.Topic("topic"),
+                    questionCount = 3,
+                ),
+                startedAt = StartedAt,
+                completedAt = instantAfter(1_000),
+                questionAttempts = listOf(
+                    answeredQuestionAttempt("question_c", "question_c_a"),
+                    answeredQuestionAttempt("question_a", "question_a_b", isCorrect = false),
+                    answeredQuestionAttempt("question_b", "question_b_a", "question_b_c"),
+                ),
+            )
+            val newestFocusedSubtopic = completedAttempt(
+                id = "new_focused_subtopic",
+                config = AssessmentConfig.Focused(
+                    scope = AssessmentScope.Subtopic("subtopic"),
+                    questionCount = 1,
+                ),
+                startedAt = instantAfter(2_000),
+                completedAt = instantAfter(3_000),
+            )
+            val middleMixed = completedAttempt(
+                id = "middle_mixed",
+                config = AssessmentConfig.Mixed(questionCount = 1),
+                startedAt = instantAfter(1_000),
+                completedAt = instantAfter(2_000),
+            )
+            val inProgress = TestAttempt(
+                id = "in_progress_mixed",
+                config = AssessmentConfig.Mixed(questionCount = 1),
+                questionAttempts = listOf(QuestionAttempt("question_b")),
+                status = AssessmentStatus.IN_PROGRESS,
+                startedAt = instantAfter(4_000),
+            )
+
+            listOf(oldFocusedTopic, inProgress, newestFocusedSubtopic, middleMixed)
+                .forEach { store.save(it) }
+
+            assertEquals(
+                listOf(newestFocusedSubtopic, middleMixed, oldFocusedTopic),
+                store.getCompletedAttempts(),
+            )
+            assertEquals(inProgress, store.getById(inProgress.id))
+        }
+    }
+
+    @Test
+    fun completedHistoryUsesStartedTimeThenStableIdToBreakCompletionTies() = runTest {
+        withTestDatabase { database ->
+            insertAttemptFixtureCurriculum(database)
+            val store = AssessmentAttemptStore(database)
+            val completedAt = instantAfter(2_000)
+            val earlierStarted = completedAttempt(
+                id = "attempt_z",
+                startedAt = StartedAt,
+                completedAt = completedAt,
+            )
+            val laterStartedB = completedAttempt(
+                id = "attempt_b",
+                startedAt = instantAfter(1_000),
+                completedAt = completedAt,
+            )
+            val laterStartedA = completedAttempt(
+                id = "attempt_a",
+                startedAt = instantAfter(1_000),
+                completedAt = completedAt,
+            )
+
+            listOf(earlierStarted, laterStartedB, laterStartedA).forEach { store.save(it) }
+
+            assertEquals(
+                listOf("attempt_a", "attempt_b", "attempt_z"),
+                store.getCompletedAttempts().map { it.id },
+            )
+        }
+    }
+
+    @Test
     fun savingUpdatedAttemptReplacesAttemptOwnedSnapshotOnly() = runTest {
         withTestDatabase { database ->
             insertAttemptFixtureCurriculum(database)
@@ -296,7 +401,34 @@ internal class AssessmentAttemptStoreTest {
                 isCorrect = isCorrect,
             ),
         )
+
+    private fun completedAttempt(
+        id: String,
+        config: AssessmentConfig = AssessmentConfig.Mixed(questionCount = 1),
+        startedAt: Instant,
+        completedAt: Instant,
+        questionAttempts: List<QuestionAttempt> = listOf(
+            answeredQuestionAttempt("question_a", "question_a_a"),
+        ),
+    ): TestAttempt =
+        TestAttempt(
+            id = id,
+            config = config,
+            questionAttempts = questionAttempts,
+            status = AssessmentStatus.COMPLETED,
+            startedAt = startedAt,
+            completedAt = completedAt,
+            score = AssessmentScore(
+                totalQuestions = questionAttempts.size,
+                correctAnswers = questionAttempts.count {
+                    (it.answerState as QuestionAnswerState.Answered).isCorrect
+                },
+            ),
+        )
 }
 
 private val StartedAt = Instant.fromEpochMilliseconds(1_700_000_000_000)
 private val CompletedAt = Instant.fromEpochMilliseconds(1_700_000_060_000)
+
+private fun instantAfter(milliseconds: Long): Instant =
+    Instant.fromEpochMilliseconds(StartedAt.toEpochMilliseconds() + milliseconds)

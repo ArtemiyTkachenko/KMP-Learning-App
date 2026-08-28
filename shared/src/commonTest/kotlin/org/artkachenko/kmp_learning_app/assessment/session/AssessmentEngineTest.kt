@@ -555,6 +555,9 @@ internal class AssessmentEngineTest {
         override suspend fun getTopicById(topicId: String): Topic? =
             error("Not used by AssessmentEngine.")
 
+        override suspend fun getSubtopicById(subtopicId: String): Subtopic? =
+            error("Not used by AssessmentEngine.")
+
         override suspend fun getQuestionById(questionId: String): Question? =
             error("Not used by AssessmentEngine.")
     }

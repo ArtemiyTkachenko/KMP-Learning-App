@@ -17,3 +17,8 @@ internal val appNavigationSavedStateConfiguration = SavedStateConfiguration {
         }
     }
 }
+
+internal fun <T> MutableList<T>.replaceTopWith(route: T) {
+    if (size > 1) removeAt(lastIndex)
+    add(route)
+}

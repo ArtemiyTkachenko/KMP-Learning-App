@@ -14,6 +14,21 @@ internal sealed interface AppRoute : NavKey {
     ) : AppRoute
 
     @Serializable
+    data class MixedInterview(
+        val questionCount: Int,
+    ) : AppRoute
+
+    @Serializable
+    data class MixedInterviewAttempt(
+        val attemptId: String,
+    ) : AppRoute
+
+    @Serializable
+    data class MixedInterviewResult(
+        val attemptId: String,
+    ) : AppRoute
+
+    @Serializable
     data class FocusedTopicPractice(
         val topicId: String,
         val questionCount: Int,

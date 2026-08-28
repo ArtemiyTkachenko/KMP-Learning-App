@@ -8,6 +8,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 internal fun TopicBrowserDestination(
     onTopicClick: (String) -> Unit,
+    onStartMixedInterview: () -> Unit,
     viewModel: TopicBrowserViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -15,6 +16,7 @@ internal fun TopicBrowserDestination(
     TopicBrowserScreen(
         state = state,
         onTopicClick = onTopicClick,
+        onStartMixedInterview = onStartMixedInterview,
         onRetry = viewModel::retry,
     )
 }

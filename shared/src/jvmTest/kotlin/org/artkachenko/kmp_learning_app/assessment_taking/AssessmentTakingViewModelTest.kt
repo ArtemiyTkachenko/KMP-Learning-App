@@ -14,6 +14,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
+import org.artkachenko.kmp_learning_app.assessment.AssessmentScore
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
@@ -258,6 +259,21 @@ internal class AssessmentTakingViewModelTest {
     }
 
     @Test
+    fun newMixedAssessmentWithoutEligibleQuestionsShowsNoQuestions() = runViewModelTest {
+        val repository = RecordingAssessmentRepository()
+        val viewModel = viewModel(
+            questions = emptyList(),
+            repository = repository,
+            config = AssessmentConfig.Mixed(questionCount = 3),
+        )
+
+        advanceUntilIdle()
+
+        assertIs<AssessmentTakingUiState.NoQuestions>(viewModel.uiState.value)
+        assertTrue(repository.savedAttempts.isEmpty())
+    }
+
+    @Test
     fun mixedSubmissionUsesSharedEngineAndAdvances() = runViewModelTest {
         val repository = RecordingAssessmentRepository()
         val viewModel = viewModel(
@@ -353,6 +369,41 @@ internal class AssessmentTakingViewModelTest {
 
         val state = assertIs<AssessmentTakingUiState.ReadyToComplete>(viewModel.uiState.value)
         assertEquals("mixed-ready", state.attemptId)
+        assertEquals(1, repository.savedAttempts.size)
+    }
+
+    @Test
+    fun restoredCompletedAttemptContinuesToResultWithoutStartingOrSaving() = runViewModelTest {
+        val repository = RecordingAssessmentRepository()
+        repository.savedAttempts += TestAttempt(
+            id = "mixed-completed",
+            config = AssessmentConfig.Mixed(questionCount = 20),
+            questionAttempts = listOf(
+                QuestionAttempt("q1", QuestionAnswerState.Answered(setOf("a"), isCorrect = true)),
+            ),
+            status = AssessmentStatus.COMPLETED,
+            startedAt = Instant.fromEpochMilliseconds(1_000),
+            completedAt = Instant.fromEpochMilliseconds(2_000),
+            score = AssessmentScore(totalQuestions = 1, correctAnswers = 1),
+        )
+        val curriculum = FakeCurriculumRepository(emptyList())
+        val viewModel = AssessmentTakingViewModel(
+            launch = AssessmentTakingLaunch.ExistingAttempt("mixed-completed"),
+            assessmentEngine = AssessmentEngine(
+                questionSelector = AssessmentQuestionSelector(curriculum, randomize = { it }),
+                generateAttemptId = { error("start must not be called") },
+                now = { Instant.fromEpochMilliseconds(3_000) },
+            ),
+            assessmentRepository = repository,
+            assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum),
+        )
+
+        advanceUntilIdle()
+
+        assertEquals(
+            AssessmentTakingUiState.CompletionSucceeded("mixed-completed"),
+            viewModel.uiState.value,
+        )
         assertEquals(1, repository.savedAttempts.size)
     }
 

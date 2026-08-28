@@ -56,7 +56,8 @@ score summaries without depending on Room, Koin, Compose, Android, or
 `CurriculumRepository`. E08 uses `CurriculumRepository` for question selection
 and keeps scoring/session behavior separate from persistence.
 Question selection follows `AssessmentConfig -> AssessmentQuestionSelector ->
-CurriculumRepository`; richer mixed-assessment balancing remains deferred to E10.
+CurriculumRepository`; Mixed selection uses coverage-first rounds across topics
+after randomized encounter ordering.
 The runtime `AssessmentSession` keeps the selected `Question` objects for
 scoring, while `TestAttempt` remains the stable-ID attempt record persisted by
 the local attempt store without embedding curriculum content.
@@ -90,6 +91,19 @@ the runtime-only session from its stable attempt ID through
 `AssessmentSessionLoader`, with the persisted `TestAttempt.config` remaining
 authoritative. Product wrappers provide titles and navigation while reusing the
 same question, submission, progress, and explicit-completion state machine.
+
+The Mixed Android Interview product starts from a prominent Topics-screen
+action and navigates with `MixedInterview(questionCount)` primitive route data.
+The route reconstructs `AssessmentConfig.Mixed` at its destination and delegates
+to `AssessmentTakingLaunch.New`, so balanced selection, initial persistence,
+answer checkpoints, actual selected-question progress, and explicit completion
+stay in the shared assessment path. After the initial attempt is persisted, the
+config route is replaced by `MixedInterviewAttempt(attemptId)` so saved
+navigation restores the existing session instead of creating another attempt.
+Focused starts use the same promotion to `FocusedPracticeAttempt(attemptId)`.
+Completion replaces the attempt entry with `MixedInterviewResult(attemptId)`;
+E10-03 provides only a handled completion shell, leaving score review and topic
+performance to E10-04.
 
 E09-04 completes the retained session through `AssessmentEngine`, persists the
 completed attempt before replacing focused-practice navigation with a stable

@@ -14,7 +14,7 @@ import androidx.navigation3.ui.NavDisplay
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserDestination
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.FocusedPracticeDestination
-import org.artkachenko.kmp_learning_app.topic_study.focused_practice.FocusedPracticeLaunch
+import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingLaunch
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.toAssessmentConfig
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultDestination
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailDestination
@@ -83,7 +83,7 @@ private fun AppShell(
                 }
                 entry<AppRoute.FocusedTopicPractice> { route ->
                     FocusedPracticeDestination(
-                        launch = FocusedPracticeLaunch.New(route.toAssessmentConfig()),
+                        launch = AssessmentTakingLaunch.New(route.toAssessmentConfig()),
                         onBack = { popBack() },
                         onCompleted = { attemptId ->
                             replaceTop(AppRoute.FocusedPracticeResult(attemptId))
@@ -92,7 +92,7 @@ private fun AppShell(
                 }
                 entry<AppRoute.FocusedSubtopicPractice> { route ->
                     FocusedPracticeDestination(
-                        launch = FocusedPracticeLaunch.New(route.toAssessmentConfig()),
+                        launch = AssessmentTakingLaunch.New(route.toAssessmentConfig()),
                         onBack = { popBack() },
                         onCompleted = { attemptId ->
                             replaceTop(AppRoute.FocusedPracticeResult(attemptId))
@@ -101,7 +101,7 @@ private fun AppShell(
                 }
                 entry<AppRoute.FocusedPracticeAttempt> { route ->
                     FocusedPracticeDestination(
-                        launch = FocusedPracticeLaunch.ExistingAttempt(route.attemptId),
+                        launch = AssessmentTakingLaunch.ExistingAttempt(route.attemptId),
                         onBack = { popBack() },
                         onCompleted = { attemptId ->
                             replaceTop(AppRoute.FocusedPracticeResult(attemptId))

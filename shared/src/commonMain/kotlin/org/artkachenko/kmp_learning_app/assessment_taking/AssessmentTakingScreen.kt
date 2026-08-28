@@ -1,4 +1,4 @@
-package org.artkachenko.kmp_learning_app.topic_study.focused_practice
+package org.artkachenko.kmp_learning_app.assessment_taking
 
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
@@ -23,31 +23,30 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
-import kmp_learning_app.shared.generated.resources.focused_practice_answer_save_error
-import kmp_learning_app.shared.generated.resources.focused_practice_completion_save_error
-import kmp_learning_app.shared.generated.resources.focused_practice_finish
-import kmp_learning_app.shared.generated.resources.focused_practice_no_questions
-import kmp_learning_app.shared.generated.resources.focused_practice_ready
-import kmp_learning_app.shared.generated.resources.focused_practice_finishing
-import kmp_learning_app.shared.generated.resources.focused_practice_select_all
-import kmp_learning_app.shared.generated.resources.focused_practice_select_one
-import kmp_learning_app.shared.generated.resources.focused_practice_start_error
-import kmp_learning_app.shared.generated.resources.focused_practice_submit
-import kmp_learning_app.shared.generated.resources.focused_practice_submitting
-import kmp_learning_app.shared.generated.resources.focused_practice_title
-import kmp_learning_app.shared.generated.resources.focused_practice_question_progress
-import kmp_learning_app.shared.generated.resources.focused_practice_results_opening
+import kmp_learning_app.shared.generated.resources.assessment_taking_answer_save_error
+import kmp_learning_app.shared.generated.resources.assessment_taking_completion_save_error
+import kmp_learning_app.shared.generated.resources.assessment_taking_finish
+import kmp_learning_app.shared.generated.resources.assessment_taking_no_questions
+import kmp_learning_app.shared.generated.resources.assessment_taking_question_progress
+import kmp_learning_app.shared.generated.resources.assessment_taking_ready
+import kmp_learning_app.shared.generated.resources.assessment_taking_results_opening
+import kmp_learning_app.shared.generated.resources.assessment_taking_select_all
+import kmp_learning_app.shared.generated.resources.assessment_taking_select_one
+import kmp_learning_app.shared.generated.resources.assessment_taking_start_error
+import kmp_learning_app.shared.generated.resources.assessment_taking_submit
+import kmp_learning_app.shared.generated.resources.assessment_taking_submitting
 import kmp_learning_app.shared.generated.resources.topic_browser_retry
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicStudyTopAppBar
 import org.jetbrains.compose.resources.stringResource
 
-internal const val FocusedPracticeLoadingTag = "focused_practice_loading"
-internal const val FocusedPracticeSubmitTag = "focused_practice_submit"
-internal const val FocusedPracticeFinishTag = "focused_practice_finish"
+internal const val AssessmentTakingLoadingTag = "focused_practice_loading"
+internal const val AssessmentTakingSubmitTag = "focused_practice_submit"
+internal const val AssessmentTakingFinishTag = "focused_practice_finish"
 
 @Composable
-internal fun FocusedPracticeScreen(
-    state: FocusedPracticeUiState,
+internal fun AssessmentTakingScreen(
+    title: String,
+    state: AssessmentTakingUiState,
     onAnswerClick: (String) -> Unit,
     onSubmit: () -> Unit,
     onRetry: () -> Unit,
@@ -57,37 +56,37 @@ internal fun FocusedPracticeScreen(
 ) {
     Column(modifier = modifier.fillMaxSize()) {
         TopicStudyTopAppBar(
-            title = stringResource(Res.string.focused_practice_title),
+            title = title,
             onBack = onBack,
         )
         when (state) {
-            FocusedPracticeUiState.Loading -> MessageContent(Modifier.weight(1f)) {
-                CircularProgressIndicator(modifier = Modifier.testTag(FocusedPracticeLoadingTag))
+            AssessmentTakingUiState.Loading -> MessageContent(Modifier.weight(1f)) {
+                CircularProgressIndicator(modifier = Modifier.testTag(AssessmentTakingLoadingTag))
             }
 
-            FocusedPracticeUiState.NoQuestions -> MessageContent(Modifier.weight(1f)) {
-                Text(text = stringResource(Res.string.focused_practice_no_questions))
+            AssessmentTakingUiState.NoQuestions -> MessageContent(Modifier.weight(1f)) {
+                Text(text = stringResource(Res.string.assessment_taking_no_questions))
             }
 
-            FocusedPracticeUiState.Error -> MessageContent(Modifier.weight(1f)) {
-                Text(text = stringResource(Res.string.focused_practice_start_error))
+            AssessmentTakingUiState.Error -> MessageContent(Modifier.weight(1f)) {
+                Text(text = stringResource(Res.string.assessment_taking_start_error))
                 Button(onClick = onRetry, modifier = Modifier.padding(top = 16.dp)) {
                     Text(text = stringResource(Res.string.topic_browser_retry))
                 }
             }
 
-            is FocusedPracticeUiState.Content -> QuestionContent(
+            is AssessmentTakingUiState.Content -> QuestionContent(
                 state = state,
                 onAnswerClick = onAnswerClick,
                 onSubmit = onSubmit,
                 modifier = Modifier.weight(1f),
             )
 
-            is FocusedPracticeUiState.ReadyToComplete -> MessageContent(Modifier.weight(1f)) {
-                Text(text = stringResource(Res.string.focused_practice_ready))
+            is AssessmentTakingUiState.ReadyToComplete -> MessageContent(Modifier.weight(1f)) {
+                Text(text = stringResource(Res.string.assessment_taking_ready))
                 if (state.completionFailed) {
                     Text(
-                        text = stringResource(Res.string.focused_practice_completion_save_error),
+                        text = stringResource(Res.string.assessment_taking_completion_save_error),
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(top = 12.dp),
                     )
@@ -97,18 +96,18 @@ internal fun FocusedPracticeScreen(
                     enabled = !state.isCompleting,
                     modifier = Modifier
                         .padding(top = 16.dp)
-                        .testTag(FocusedPracticeFinishTag),
+                        .testTag(AssessmentTakingFinishTag),
                 ) {
                     if (state.isCompleting) {
                         CircularProgressIndicator()
                     } else {
-                        Text(text = stringResource(Res.string.focused_practice_finish))
+                        Text(text = stringResource(Res.string.assessment_taking_finish))
                     }
                 }
             }
 
-            is FocusedPracticeUiState.CompletionSucceeded -> MessageContent(Modifier.weight(1f)) {
-                Text(text = stringResource(Res.string.focused_practice_results_opening))
+            is AssessmentTakingUiState.CompletionSucceeded -> MessageContent(Modifier.weight(1f)) {
+                Text(text = stringResource(Res.string.assessment_taking_results_opening))
             }
         }
     }
@@ -116,7 +115,7 @@ internal fun FocusedPracticeScreen(
 
 @Composable
 private fun QuestionContent(
-    state: FocusedPracticeUiState.Content,
+    state: AssessmentTakingUiState.Content,
     onAnswerClick: (String) -> Unit,
     onSubmit: () -> Unit,
     modifier: Modifier,
@@ -128,7 +127,7 @@ private fun QuestionContent(
         item {
             Text(
                 text = stringResource(
-                    Res.string.focused_practice_question_progress,
+                    Res.string.assessment_taking_question_progress,
                     state.questionNumber,
                     state.totalQuestions,
                 ),
@@ -143,9 +142,9 @@ private fun QuestionContent(
             Text(
                 text = stringResource(
                     if (state.question.selectionMode == AnswerSelectionMode.SINGLE) {
-                        Res.string.focused_practice_select_one
+                        Res.string.assessment_taking_select_one
                     } else {
-                        Res.string.focused_practice_select_all
+                        Res.string.assessment_taking_select_all
                     },
                 ),
                 modifier = Modifier.padding(top = 8.dp),
@@ -167,7 +166,7 @@ private fun QuestionContent(
         item {
             if (state.submissionFailed) {
                 Text(
-                    text = stringResource(Res.string.focused_practice_answer_save_error),
+                    text = stringResource(Res.string.assessment_taking_answer_save_error),
                     color = MaterialTheme.colorScheme.error,
                 )
             }
@@ -176,14 +175,14 @@ private fun QuestionContent(
                 enabled = state.canSubmit && !state.isSubmitting,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag(FocusedPracticeSubmitTag),
+                    .testTag(AssessmentTakingSubmitTag),
             ) {
                 Text(
                     text = stringResource(
                         if (state.isSubmitting) {
-                            Res.string.focused_practice_submitting
+                            Res.string.assessment_taking_submitting
                         } else {
-                            Res.string.focused_practice_submit
+                            Res.string.assessment_taking_submit
                         },
                     ),
                 )

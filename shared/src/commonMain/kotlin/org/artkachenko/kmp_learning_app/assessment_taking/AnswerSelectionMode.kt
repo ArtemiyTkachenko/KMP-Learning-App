@@ -1,4 +1,4 @@
-package org.artkachenko.kmp_learning_app.topic_study.focused_practice
+package org.artkachenko.kmp_learning_app.assessment_taking
 
 internal enum class AnswerSelectionMode {
     SINGLE,

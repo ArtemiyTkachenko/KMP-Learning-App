@@ -1,32 +1,22 @@
 package org.artkachenko.kmp_learning_app.topic_study.focused_practice
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
-import org.koin.compose.viewmodel.koinViewModel
-import org.koin.core.parameter.parametersOf
+import kmp_learning_app.shared.generated.resources.Res
+import kmp_learning_app.shared.generated.resources.focused_practice_title
+import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingDestination
+import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingLaunch
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun FocusedPracticeDestination(
-    launch: FocusedPracticeLaunch,
+    launch: AssessmentTakingLaunch,
     onBack: () -> Unit,
     onCompleted: (String) -> Unit,
-    viewModel: FocusedPracticeViewModel = koinViewModel { parametersOf(launch) },
 ) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
-
-    LaunchedEffect(state) {
-        val completion = state as? FocusedPracticeUiState.CompletionSucceeded ?: return@LaunchedEffect
-        onCompleted(completion.attemptId)
-    }
-    FocusedPracticeScreen(
-        state = state,
-        onAnswerClick = viewModel::selectAnswer,
-        onSubmit = viewModel::submitAnswer,
-        onRetry = viewModel::retry,
+    AssessmentTakingDestination(
+        title = stringResource(Res.string.focused_practice_title),
+        launch = launch,
         onBack = onBack,
-        onComplete = viewModel::completeAssessment,
+        onCompleted = onCompleted,
     )
 }

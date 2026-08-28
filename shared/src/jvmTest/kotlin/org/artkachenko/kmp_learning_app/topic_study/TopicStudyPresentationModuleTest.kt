@@ -22,8 +22,8 @@ import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionS
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
-import org.artkachenko.kmp_learning_app.topic_study.focused_practice.FocusedPracticeViewModel
-import org.artkachenko.kmp_learning_app.topic_study.focused_practice.FocusedPracticeLaunch
+import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingLaunch
+import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingViewModel
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
@@ -72,19 +72,26 @@ internal class TopicStudyPresentationModuleTest {
             assertIs<TopicDetailViewModel>(
                 app.koin.get<TopicDetailViewModel> { parametersOf("topic") },
             )
-            assertIs<FocusedPracticeViewModel>(
-                app.koin.get<FocusedPracticeViewModel> {
+            assertIs<AssessmentTakingViewModel>(
+                app.koin.get<AssessmentTakingViewModel> {
                     parametersOf(
-                        FocusedPracticeLaunch.New(AssessmentConfig.Focused(
+                        AssessmentTakingLaunch.New(AssessmentConfig.Focused(
                             scope = AssessmentScope.Topic("topic"),
                             questionCount = 1,
                         )),
                     )
                 },
             )
-            assertIs<FocusedPracticeViewModel>(
-                app.koin.get<FocusedPracticeViewModel> {
-                    parametersOf(FocusedPracticeLaunch.ExistingAttempt("attempt"))
+            assertIs<AssessmentTakingViewModel>(
+                app.koin.get<AssessmentTakingViewModel> {
+                    parametersOf(
+                        AssessmentTakingLaunch.New(AssessmentConfig.Mixed(questionCount = 1)),
+                    )
+                },
+            )
+            assertIs<AssessmentTakingViewModel>(
+                app.koin.get<AssessmentTakingViewModel> {
+                    parametersOf(AssessmentTakingLaunch.ExistingAttempt("attempt"))
                 },
             )
             assertIs<AssessmentSessionLoader>(app.koin.get<AssessmentSessionLoader>())

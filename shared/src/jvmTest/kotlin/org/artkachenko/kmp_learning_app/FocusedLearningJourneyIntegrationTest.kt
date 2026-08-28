@@ -43,8 +43,8 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDatabase
 import org.artkachenko.kmp_learning_app.data.local.curriculum.curriculumDataModule
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImporter
 import org.artkachenko.kmp_learning_app.data.local.curriculum.repository.LocalCurriculumRepository
-import org.artkachenko.kmp_learning_app.topic_study.focused_practice.FocusedPracticeFinishTag
-import org.artkachenko.kmp_learning_app.topic_study.focused_practice.FocusedPracticeSubmitTag
+import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingFinishTag
+import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingSubmitTag
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultPracticeAgainTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.SubtopicPracticeButtonTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicPracticeButtonTag
@@ -90,13 +90,13 @@ internal class FocusedLearningJourneyIntegrationTest {
 
             onNodeWithText("Single question").assertIsDisplayed()
             onNodeWithText("A").performClick()
-            onNodeWithTag(FocusedPracticeSubmitTag).performClick()
+            onNodeWithTag(AssessmentTakingSubmitTag).performClick()
             onNodeWithText("Multiple question").assertIsDisplayed()
             onNodeWithText("A").performClick()
             onNodeWithText("B").performClick()
-            onNodeWithTag(FocusedPracticeSubmitTag).performClick()
+            onNodeWithTag(AssessmentTakingSubmitTag).performClick()
             onNodeWithText("All questions answered. Ready to finish.").assertIsDisplayed()
-            onNodeWithTag(FocusedPracticeFinishTag).performClick()
+            onNodeWithTag(AssessmentTakingFinishTag).performClick()
 
             onNodeWithText("Score: 1 / 2").assertIsDisplayed()
             onNodeWithText("Single explanation").assertIsDisplayed()

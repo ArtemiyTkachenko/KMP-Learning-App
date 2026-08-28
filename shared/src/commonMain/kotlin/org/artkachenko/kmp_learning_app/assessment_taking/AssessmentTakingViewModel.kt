@@ -1,4 +1,4 @@
-package org.artkachenko.kmp_learning_app.topic_study.focused_practice
+package org.artkachenko.kmp_learning_app.assessment_taking
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -16,14 +16,14 @@ import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoad
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentStartResult
 import org.artkachenko.kmp_learning_app.curriculum.Question
 
-internal class FocusedPracticeViewModel(
-    private val launch: FocusedPracticeLaunch,
+internal class AssessmentTakingViewModel(
+    private val launch: AssessmentTakingLaunch,
     private val assessmentEngine: AssessmentEngine,
     private val assessmentRepository: AssessmentRepository,
     private val assessmentSessionLoader: AssessmentSessionLoader,
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow<FocusedPracticeUiState>(FocusedPracticeUiState.Loading)
-    val uiState: StateFlow<FocusedPracticeUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow<AssessmentTakingUiState>(AssessmentTakingUiState.Loading)
+    val uiState: StateFlow<AssessmentTakingUiState> = _uiState.asStateFlow()
 
     private var session: AssessmentSession? = null
     private var currentQuestionIndex = 0
@@ -38,7 +38,7 @@ internal class FocusedPracticeViewModel(
     }
 
     fun selectAnswer(answerId: String) {
-        val currentState = uiState.value as? FocusedPracticeUiState.Content ?: return
+        val currentState = uiState.value as? AssessmentTakingUiState.Content ?: return
         if (currentState.isSubmitting) return
 
         val question = session?.questions?.getOrNull(currentQuestionIndex) ?: return
@@ -55,7 +55,7 @@ internal class FocusedPracticeViewModel(
     }
 
     fun submitAnswer() {
-        val currentState = uiState.value as? FocusedPracticeUiState.Content ?: return
+        val currentState = uiState.value as? AssessmentTakingUiState.Content ?: return
         if (currentState.isSubmitting || pendingSelectedAnswerIds.isEmpty()) return
 
         val currentSession = session ?: return
@@ -77,7 +77,7 @@ internal class FocusedPracticeViewModel(
             }.onSuccess { updatedSession ->
                 session = updatedSession
                 if (currentQuestionIndex == updatedSession.questions.lastIndex) {
-                    _uiState.value = FocusedPracticeUiState.ReadyToComplete(
+                    _uiState.value = AssessmentTakingUiState.ReadyToComplete(
                         attemptId = updatedSession.attempt.id,
                         totalQuestions = updatedSession.questions.size,
                     )
@@ -96,7 +96,7 @@ internal class FocusedPracticeViewModel(
     }
 
     fun completeAssessment() {
-        val currentState = uiState.value as? FocusedPracticeUiState.ReadyToComplete ?: return
+        val currentState = uiState.value as? AssessmentTakingUiState.ReadyToComplete ?: return
         if (currentState.isCompleting) return
 
         val originalSession = session ?: return
@@ -112,11 +112,11 @@ internal class FocusedPracticeViewModel(
                 completedSession
             }.onSuccess { completedSession ->
                 session = completedSession
-                _uiState.value = FocusedPracticeUiState.CompletionSucceeded(
+                _uiState.value = AssessmentTakingUiState.CompletionSucceeded(
                     attemptId = completedSession.attempt.id,
                 )
             }.onFailure {
-                _uiState.value = FocusedPracticeUiState.ReadyToComplete(
+                _uiState.value = AssessmentTakingUiState.ReadyToComplete(
                     attemptId = originalSession.attempt.id,
                     totalQuestions = originalSession.questions.size,
                     completionFailed = true,
@@ -126,7 +126,7 @@ internal class FocusedPracticeViewModel(
     }
 
     private fun startAssessment() {
-        _uiState.value = FocusedPracticeUiState.Loading
+        _uiState.value = AssessmentTakingUiState.Loading
         session = null
         currentQuestionIndex = 0
         pendingSelectedAnswerIds = emptySet()
@@ -134,20 +134,20 @@ internal class FocusedPracticeViewModel(
         viewModelScope.launch {
             runCatching {
                 when (val requestedLaunch = launch) {
-                    is FocusedPracticeLaunch.New -> startNewAssessment(requestedLaunch.config)
-                    is FocusedPracticeLaunch.ExistingAttempt -> loadExistingAttempt(requestedLaunch.attemptId)
+                    is AssessmentTakingLaunch.New -> startNewAssessment(requestedLaunch.config)
+                    is AssessmentTakingLaunch.ExistingAttempt -> loadExistingAttempt(requestedLaunch.attemptId)
                 }
             }.onSuccess { state ->
                 _uiState.value = state
             }.onFailure {
-                _uiState.value = FocusedPracticeUiState.Error
+                _uiState.value = AssessmentTakingUiState.Error
             }
         }
     }
 
-    private suspend fun startNewAssessment(config: AssessmentConfig.Focused): FocusedPracticeUiState =
+    private suspend fun startNewAssessment(config: AssessmentConfig): AssessmentTakingUiState =
         when (val result = assessmentEngine.start(config)) {
-            AssessmentStartResult.NoEligibleQuestions -> FocusedPracticeUiState.NoQuestions
+            AssessmentStartResult.NoEligibleQuestions -> AssessmentTakingUiState.NoQuestions
             is AssessmentStartResult.Started -> {
                 assessmentRepository.save(result.session.attempt)
                 session = result.session
@@ -156,19 +156,16 @@ internal class FocusedPracticeViewModel(
             }
         }
 
-    private suspend fun loadExistingAttempt(attemptId: String): FocusedPracticeUiState {
+    private suspend fun loadExistingAttempt(attemptId: String): AssessmentTakingUiState {
         val result = assessmentSessionLoader.load(attemptId)
         val loadedSession = (result as? AssessmentSessionLoadResult.Loaded)?.session
-            ?: error("Unable to load focused practice attempt: $result")
-        check(loadedSession.attempt.config is AssessmentConfig.Focused) {
-            "Focused practice requires a focused assessment attempt."
-        }
+            ?: error("Unable to load assessment attempt: $result")
         session = loadedSession
         currentQuestionIndex = loadedSession.attempt.questionAttempts.indexOfFirst {
             it.answerState is QuestionAnswerState.Unanswered
         }
         if (currentQuestionIndex < 0) {
-            return FocusedPracticeUiState.ReadyToComplete(
+            return AssessmentTakingUiState.ReadyToComplete(
                 attemptId = loadedSession.attempt.id,
                 totalQuestions = loadedSession.questions.size,
             )
@@ -176,9 +173,9 @@ internal class FocusedPracticeViewModel(
         return loadedSession.toContentState()
     }
 
-    private fun AssessmentSession.toContentState(): FocusedPracticeUiState.Content {
+    private fun AssessmentSession.toContentState(): AssessmentTakingUiState.Content {
         val question = questions[currentQuestionIndex]
-        return FocusedPracticeUiState.Content(
+        return AssessmentTakingUiState.Content(
             attemptId = attempt.id,
             questionNumber = currentQuestionIndex + 1,
             totalQuestions = questions.size,
@@ -193,7 +190,7 @@ internal class FocusedPracticeViewModel(
     private fun publishContent() {
         val currentSession = session ?: return
         val question = currentSession.questions[currentQuestionIndex]
-        _uiState.value = FocusedPracticeUiState.Content(
+        _uiState.value = AssessmentTakingUiState.Content(
             attemptId = currentSession.attempt.id,
             questionNumber = currentQuestionIndex + 1,
             totalQuestions = currentSession.questions.size,
@@ -205,8 +202,8 @@ internal class FocusedPracticeViewModel(
         )
     }
 
-    private fun Question.toUiModel(): FocusedQuestionUiModel =
-        FocusedQuestionUiModel(
+    private fun Question.toUiModel(): AssessmentQuestionUiModel =
+        AssessmentQuestionUiModel(
             id = id,
             text = text,
             answers = answers,

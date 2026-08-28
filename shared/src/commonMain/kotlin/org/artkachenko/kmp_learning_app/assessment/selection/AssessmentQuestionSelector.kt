@@ -9,14 +9,48 @@ internal class AssessmentQuestionSelector(
     private val curriculumRepository: CurriculumRepository,
     private val randomize: (List<Question>) -> List<Question> = { it.shuffled() },
 ) {
-    suspend fun select(config: AssessmentConfig): List<Question> {
-        val eligibleQuestions = loadEligibleQuestions(config)
-            .distinctBy { it.id }
+    suspend fun select(config: AssessmentConfig): List<Question> =
+        when (config) {
+            is AssessmentConfig.Focused ->
+                randomizeUnique(loadEligibleQuestions(config))
+                    .take(config.questionCount)
+            is AssessmentConfig.Mixed ->
+                selectMixedQuestions(
+                    questions = loadEligibleQuestions(config),
+                    questionCount = config.questionCount,
+                )
+        }
 
-        return randomize(eligibleQuestions)
-            .distinctBy { it.id }
-            .take(config.questionCount)
+    private fun selectMixedQuestions(
+        questions: List<Question>,
+        questionCount: Int,
+    ): List<Question> {
+        val questionsByTopic = linkedMapOf<String, MutableList<Question>>()
+        randomizeUnique(questions).forEach { question ->
+            questionsByTopic
+                .getOrPut(question.topicId) { mutableListOf() }
+                .add(question)
+        }
+
+        val selected = mutableListOf<Question>()
+        var roundIndex = 0
+        while (selected.size < questionCount) {
+            var selectedInRound = false
+            for (topicQuestions in questionsByTopic.values) {
+                val question = topicQuestions.getOrNull(roundIndex) ?: continue
+                selected += question
+                selectedInRound = true
+                if (selected.size == questionCount) break
+            }
+            if (!selectedInRound) break
+            roundIndex++
+        }
+        return selected
     }
+
+    private fun randomizeUnique(questions: List<Question>): List<Question> =
+        randomize(questions.distinctBy { it.id })
+            .distinctBy { it.id }
 
     private suspend fun loadEligibleQuestions(
         config: AssessmentConfig,

@@ -68,6 +68,65 @@ internal class AssessmentQuestionSelectorTest {
     }
 
     @Test
+    fun mixedFirstRoundCoversTopicsBeforeRepeatingOne() = runSelectorTest {
+        repository.activeQuestions = mixedRoundFixture()
+
+        val selected = selector().select(AssessmentConfig.Mixed(questionCount = 3))
+
+        assertEquals(listOf("A1", "B1", "C1"), selected.map { it.id })
+    }
+
+    @Test
+    fun mixedSecondRoundContinuesInTopicEncounterOrder() = runSelectorTest {
+        repository.activeQuestions = mixedRoundFixture()
+
+        val selected = selector().select(AssessmentConfig.Mixed(questionCount = 5))
+
+        assertEquals(listOf("A1", "B1", "C1", "A2", "B2"), selected.map { it.id })
+    }
+
+    @Test
+    fun mixedOversizedRequestReturnsAllUniqueQuestionsInCoverageOrder() = runSelectorTest {
+        repository.activeQuestions = mixedRoundFixture()
+
+        val selected = selector().select(AssessmentConfig.Mixed(questionCount = 10))
+
+        assertEquals(listOf("A1", "B1", "C1", "A2", "B2", "A3"), selected.map { it.id })
+        assertUniqueQuestionIds(selected)
+    }
+
+    @Test
+    fun mixedRequestSmallerThanTopicCountUsesDistinctTopics() = runSelectorTest {
+        repository.activeQuestions = listOf(
+            question("A1", topicId = "A"),
+            question("B1", topicId = "B"),
+            question("C1", topicId = "C"),
+            question("D1", topicId = "D"),
+        )
+
+        val selected = selector().select(AssessmentConfig.Mixed(questionCount = 2))
+
+        assertEquals(listOf("A1", "B1"), selected.map { it.id })
+        assertEquals(2, selected.map { it.topicId }.toSet().size)
+    }
+
+    @Test
+    fun mixedSelectionSkipsExhaustedTopicsAcrossLaterRounds() = runSelectorTest {
+        repository.activeQuestions = listOf(
+            question("A1", topicId = "A"),
+            question("B1", topicId = "B"),
+            question("B2", topicId = "B"),
+            question("B3", topicId = "B"),
+            question("C1", topicId = "C"),
+            question("C2", topicId = "C"),
+        )
+
+        val selected = selector().select(AssessmentConfig.Mixed(questionCount = 6))
+
+        assertEquals(listOf("A1", "B1", "C1", "B2", "C2", "B3"), selected.map { it.id })
+    }
+
+    @Test
     fun requestedCountEqualToPoolReturnsWholeUniquePool() = runSelectorTest {
         repository.activeQuestions = questions("question_a", "question_b", "question_c")
 
@@ -126,13 +185,18 @@ internal class AssessmentQuestionSelectorTest {
 
     @Test
     fun randomizationIsInjectable() = runSelectorTest {
-        repository.activeQuestions = questions("question_a", "question_b", "question_c")
+        repository.activeQuestions = listOf(
+            question("A1", topicId = "A"),
+            question("B1", topicId = "B"),
+            question("A2", topicId = "A"),
+            question("C1", topicId = "C"),
+        )
 
         val selected = selector(
             randomize = { it.reversed() },
-        ).select(AssessmentConfig.Mixed(questionCount = 3))
+        ).select(AssessmentConfig.Mixed(questionCount = 4))
 
-        assertEquals(listOf("question_c", "question_b", "question_a"), selected.map { it.id })
+        assertEquals(listOf("C1", "A2", "B1", "A1"), selected.map { it.id })
     }
 
     @Test
@@ -210,13 +274,24 @@ internal class AssessmentQuestionSelectorTest {
     private fun questions(vararg ids: String): List<Question> =
         ids.map { question(it) }
 
+    private fun mixedRoundFixture(): List<Question> =
+        listOf(
+            question("A1", topicId = "A"),
+            question("A2", topicId = "A"),
+            question("B1", topicId = "B"),
+            question("C1", topicId = "C"),
+            question("B2", topicId = "B"),
+            question("A3", topicId = "A"),
+        )
+
     private fun question(
         id: String,
+        topicId: String = "${id}_topic",
         text: String = id,
     ): Question =
         Question(
             id = id,
-            topicId = "${id}_topic",
+            topicId = topicId,
             subtopicId = "${id}_subtopic",
             text = "$text?",
             answers = listOf(

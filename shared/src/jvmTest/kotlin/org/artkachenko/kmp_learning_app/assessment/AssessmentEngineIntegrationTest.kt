@@ -84,6 +84,20 @@ internal class AssessmentEngineIntegrationTest {
             assertTrue(session.questions.size <= 10)
             assertEquals(session.questions.size, session.questions.map { it.id }.toSet().size)
             assertTrue(session.questions.all { it.status == ContentStatus.ACTIVE })
+            val firstRoundSize = minOf(
+                session.questions.size,
+                curriculumRepository.getActiveQuestions()
+                    .map { it.topicId }
+                    .distinct()
+                    .size,
+            )
+            assertEquals(
+                firstRoundSize,
+                session.questions.take(firstRoundSize)
+                    .map { it.topicId }
+                    .distinct()
+                    .size,
+            )
             assertEquals(AssessmentStatus.IN_PROGRESS, session.attempt.status)
         }
     }

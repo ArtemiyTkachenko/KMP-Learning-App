@@ -1777,5 +1777,72 @@ epics:
       content-import reliability, Compose behavior, accessibility, relevant
       performance concerns, and CI coverage across the implemented product.
 
-    issues: []
+    issues:
+      - key: E12-01
+        title: "Make the iOS and web hosts start the shared application graph"
+
+        issue: >
+          The iOS and web hosts call the shared App() entry point but never start
+          Koin, and there is no local database builder for iOS, JS, or Wasm. Both
+          hosts therefore fail at the first composition that resolves a ViewModel,
+          so only Android and Desktop are runnable products even though all four
+          targets compile.
+
+        approach: >
+          Give the iOS and web hosts the startup shape Android and Desktop already
+          share: start the shared Koin graph at the host entry point, supply a
+          platform database builder, and route initialization through the shared
+          AppRoot loading, error, and retry states before entering App(). iOS can
+          use a native Room builder with the bundled SQLite driver. The browser
+          targets need an explicit persistence decision first, because the bundled
+          SQLite driver is scoped to the Android runtime and JVM tests. Keep the
+          shared presentation and domain layers unchanged.
+
+        acceptance_criteria:
+          - "The iOS entry point starts the shared Koin graph before composing the application."
+          - "The web entry point starts the shared Koin graph before composing the application."
+          - "A local database builder exists for the iOS targets."
+          - "A JS and Wasm persistence approach is implemented, or the web host is explicitly reduced to a documented non-persistent demo."
+          - "Both hosts route startup through the shared AppRoot loading, error, and retry states."
+          - "Launching the iOS application reaches the topic browser with bundled curriculum content."
+          - "Launching the web application reaches the topic browser, or fails with an explicit documented limitation."
+          - "Android and Desktop startup behavior is unchanged."
+          - "The runtime host coverage documentation matches the implemented state."
+
+        priority: "P2"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E12-02
+        title: "Author answer selection mode explicitly in curriculum content"
+
+        issue: >
+          The assessment-taking presentation decides whether a question accepts one
+          or several answers by inspecting how many correct answers it has. That
+          inference tells an attentive user whether a question has exactly one
+          correct answer before they answer it, and it silently changes a question
+          authored as multiple-choice into a single-choice question whenever its
+          content happens to carry one correct answer.
+
+        approach: >
+          Represent answer selection mode as authored curriculum content rather
+          than deriving it at the presentation layer. Add an explicit field to the
+          shared Question model, carry it through bundled JSON serialization and
+          validation, persist it alongside the other question columns with the
+          required schema migration, and drive the answering UI from the stored
+          value. Keep scoring behavior unchanged.
+
+        acceptance_criteria:
+          - "The shared Question model represents answer selection mode explicitly."
+          - "Bundled curriculum JSON carries the authored selection mode for every question."
+          - "Curriculum validation rejects a question whose selection mode contradicts its correct answers."
+          - "The selection mode is persisted and preserved across import and re-import."
+          - "A schema migration covers the new question column and is tested."
+          - "The assessment-taking UI derives selection mode from the authored value rather than the correct-answer count."
+          - "Question correctness and scoring behavior are unchanged."
+          - "Focused tests cover single-answer and multiple-answer questions through serialization, persistence, and presentation."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
 

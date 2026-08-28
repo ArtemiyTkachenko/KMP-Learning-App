@@ -4,20 +4,16 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
-        lifecycleScope.launch {
-            initializeAndroidLocalData()
-
-            setContent {
-                App()
-            }
+        // Content is set unconditionally so a failed initialization renders AppRoot's
+        // error and retry states instead of leaving the activity without any content.
+        setContent {
+            AppRoot { initializeAndroidLocalData() }
         }
     }
 }

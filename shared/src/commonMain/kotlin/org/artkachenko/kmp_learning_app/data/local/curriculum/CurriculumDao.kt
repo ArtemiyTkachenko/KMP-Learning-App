@@ -36,6 +36,40 @@ internal interface CurriculumDao {
     @Query("DELETE FROM question_source WHERE question_id IN (:questionIds)")
     suspend fun deleteQuestionSourcesForQuestions(questionIds: List<String>)
 
+    /**
+     * Removes answer options that the incoming curriculum no longer authors for [questionId].
+     *
+     * Scoped per question because answer identity is the composite (question_id, id):
+     * CurriculumValidator only enforces answer-id uniqueness within a question, so the
+     * same answer id may legitimately belong to a different question.
+     *
+     * Options that a historical attempt selected are kept. question_attempt_selected_answer
+     * has a NO ACTION foreign key onto answer_option(question_id, id), so deleting a
+     * referenced row would abort the whole import transaction and leave the app unable to
+     * start. The tradeoff is that such a retained option can still appear in a new
+     * assessment for that question; historical review integrity is worth more.
+     *
+     * [keepAnswerIds] is never empty: callers derive it from the answer options they just
+     * wrote, and CurriculumValidator requires at least two answers per question.
+     */
+    @Query(
+        """
+        DELETE FROM answer_option
+        WHERE question_id = :questionId
+            AND id NOT IN (:keepAnswerIds)
+            AND NOT EXISTS (
+                SELECT 1
+                FROM question_attempt_selected_answer selected
+                WHERE selected.question_id = answer_option.question_id
+                    AND selected.answer_id = answer_option.id
+            )
+        """,
+    )
+    suspend fun deleteAnswerOptionsForQuestionExcept(
+        questionId: String,
+        keepAnswerIds: List<String>,
+    )
+
     @Query("SELECT * FROM topic WHERE id = :id")
     suspend fun getTopicById(id: String): TopicEntity?
 

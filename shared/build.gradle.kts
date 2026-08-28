@@ -85,9 +85,6 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
         }
-        jsMain.dependencies {
-            implementation(libs.wrappers.browser)
-        }
         jvmMain.dependencies {
             implementation(libs.androidx.sqlite.bundled)
         }

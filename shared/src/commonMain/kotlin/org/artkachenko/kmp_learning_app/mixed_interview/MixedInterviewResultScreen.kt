@@ -32,6 +32,7 @@ import org.artkachenko.kmp_learning_app.assessment_review.AssessmentScoreSummary
 import org.artkachenko.kmp_learning_app.assessment_review.MissingReviewQuestion
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionCard
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
+import org.artkachenko.kmp_learning_app.assessment_review.UnresolvedReviewQuestionsNotice
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicStudyTopAppBar
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
@@ -42,6 +43,7 @@ internal fun MixedInterviewResultScreen(
     onRetry: () -> Unit,
     onBack: () -> Unit,
     onSourceClick: (String) -> Unit,
+    failedSourceUrl: String? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.fillMaxSize()) {
@@ -66,6 +68,7 @@ internal fun MixedInterviewResultScreen(
             is MixedInterviewResultUiState.Content -> MixedResultContent(
                 state = state,
                 onSourceClick = onSourceClick,
+                failedSourceUrl = failedSourceUrl,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -76,6 +79,7 @@ internal fun MixedInterviewResultScreen(
 private fun MixedResultContent(
     state: MixedInterviewResultUiState.Content,
     onSourceClick: (String) -> Unit,
+    failedSourceUrl: String?,
     modifier: Modifier,
 ) {
     LazyColumn(
@@ -88,6 +92,7 @@ private fun MixedResultContent(
                 totalQuestions = state.totalQuestions,
                 percentage = state.percentage,
             )
+            UnresolvedReviewQuestionsNotice(state.questions, state.totalQuestions)
         }
         item {
             Text(
@@ -106,7 +111,8 @@ private fun MixedResultContent(
         }
         items(state.questions) { item ->
             when (item) {
-                is ReviewQuestionItem.Available -> ReviewQuestionCard(item.question, onSourceClick)
+                is ReviewQuestionItem.Available ->
+                    ReviewQuestionCard(item.question, onSourceClick, failedSourceUrl)
                 is ReviewQuestionItem.Missing -> MissingReviewQuestion(item.questionId)
             }
         }

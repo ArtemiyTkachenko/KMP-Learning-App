@@ -31,6 +31,7 @@ import org.artkachenko.kmp_learning_app.assessment_review.AssessmentScoreSummary
 import org.artkachenko.kmp_learning_app.assessment_review.MissingReviewQuestion
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionCard
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
+import org.artkachenko.kmp_learning_app.assessment_review.UnresolvedReviewQuestionsNotice
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicStudyTopAppBar
 import org.jetbrains.compose.resources.stringResource
 
@@ -44,6 +45,7 @@ internal fun FocusedResultScreen(
     onBack: () -> Unit,
     onSourceClick: (String) -> Unit,
     onRepeatPractice: () -> Unit,
+    failedSourceUrl: String? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -64,7 +66,8 @@ internal fun FocusedResultScreen(
                     Text(stringResource(Res.string.focused_result_retry))
                 }
             }
-            is FocusedResultUiState.Content -> ResultContent(state, onSourceClick, onRepeatPractice, Modifier.weight(1f))
+            is FocusedResultUiState.Content ->
+                ResultContent(state, onSourceClick, onRepeatPractice, failedSourceUrl, Modifier.weight(1f))
         }
     }
 }
@@ -74,6 +77,7 @@ private fun ResultContent(
     state: FocusedResultUiState.Content,
     onSourceClick: (String) -> Unit,
     onRepeatPractice: () -> Unit,
+    failedSourceUrl: String?,
     modifier: Modifier,
 ) {
     LazyColumn(
@@ -86,6 +90,7 @@ private fun ResultContent(
                 totalQuestions = state.totalQuestions,
                 percentage = state.percentage,
             )
+            UnresolvedReviewQuestionsNotice(state.questions, state.totalQuestions)
             when (state.repeatPracticeState) {
                 RepeatPracticeState.Idle -> Unit
                 RepeatPracticeState.Creating -> Text(stringResource(Res.string.focused_result_practice_starting))
@@ -108,7 +113,8 @@ private fun ResultContent(
         items(state.questions) { item ->
             when (item) {
                 is ReviewQuestionItem.Missing -> MissingReviewQuestion(item.questionId)
-                is ReviewQuestionItem.Available -> ReviewQuestionCard(item.question, onSourceClick)
+                is ReviewQuestionItem.Available ->
+                    ReviewQuestionCard(item.question, onSourceClick, failedSourceUrl)
             }
         }
     }

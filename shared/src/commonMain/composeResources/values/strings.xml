@@ -56,11 +56,13 @@
     <string name="assessment_review_explanation">Explanation</string>
     <string name="assessment_review_source">Source: %1$s</string>
     <string name="assessment_review_missing_question">Question %1$s is no longer available.</string>
+    <string name="assessment_review_unresolved_questions">%1$d of %2$d questions are no longer available and are not included below.</string>
+    <string name="assessment_review_source_open_failed">This source could not be opened.</string>
     <string name="focused_result_practice_again">Practice Again</string>
     <string name="focused_result_practice_starting">Starting practice</string>
     <string name="focused_result_repeat_source_missing">The original attempt is no longer available.</string>
     <string name="focused_result_repeat_no_questions">No practice questions are currently available for this scope.</string>
     <string name="focused_result_repeat_error">Practice could not be started. Try again.</string>
-    <string name="desktop_startup_loading">Preparing local curriculum</string>
-    <string name="desktop_startup_error">Local curriculum could not be initialized</string>
+    <string name="app_startup_loading">Preparing local curriculum</string>
+    <string name="app_startup_error">Local curriculum could not be initialized</string>
 </resources>

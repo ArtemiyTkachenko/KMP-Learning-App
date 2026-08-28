@@ -36,6 +36,20 @@ internal class CurriculumImporter(
 
                 dao.deleteQuestionSourcesForQuestions(incomingQuestionIds)
                 dao.upsertQuestionSources(snapshot.sources)
+
+                // Stale answer options are removed last: question_correct_answer also has a
+                // foreign key onto answer_option(question_id, id), so an option that was
+                // correct in the previous bundle can only be deleted once its correct-answer
+                // rows have been replaced above. Grouping the just-written options keeps each
+                // keep-list non-empty and exactly matching what was persisted.
+                snapshot.answerOptions
+                    .groupBy { it.questionId }
+                    .forEach { (questionId, options) ->
+                        dao.deleteAnswerOptionsForQuestionExcept(
+                            questionId = questionId,
+                            keepAnswerIds = options.map { it.id },
+                        )
+                    }
             }
         }
 

@@ -27,8 +27,28 @@ internal interface AssessmentAttemptDao {
     @Query("SELECT * FROM test_attempt WHERE id = :id")
     suspend fun getTestAttemptById(id: String): TestAttemptEntity?
 
+    @Query(
+        """
+        SELECT *
+        FROM test_attempt
+        WHERE status = :completedStatus
+        ORDER BY completed_at_epoch_millis DESC, started_at_epoch_millis DESC, id ASC
+        """,
+    )
+    suspend fun getCompletedTestAttempts(completedStatus: String): List<TestAttemptEntity>
+
     @Query("SELECT * FROM question_attempt WHERE test_attempt_id = :attemptId ORDER BY sort_order")
     suspend fun getQuestionAttemptsForAttempt(attemptId: String): List<QuestionAttemptEntity>
+
+    @Query(
+        """
+        SELECT *
+        FROM question_attempt
+        WHERE test_attempt_id IN (:attemptIds)
+        ORDER BY test_attempt_id, sort_order
+        """,
+    )
+    suspend fun getQuestionAttemptsForAttempts(attemptIds: List<String>): List<QuestionAttemptEntity>
 
     @Query(
         """
@@ -39,6 +59,18 @@ internal interface AssessmentAttemptDao {
         """,
     )
     suspend fun getSelectedAnswersForAttempt(attemptId: String): List<QuestionAttemptSelectedAnswerEntity>
+
+    @Query(
+        """
+        SELECT *
+        FROM question_attempt_selected_answer
+        WHERE test_attempt_id IN (:attemptIds)
+        ORDER BY test_attempt_id, question_id, answer_id
+        """,
+    )
+    suspend fun getSelectedAnswersForAttempts(
+        attemptIds: List<String>,
+    ): List<QuestionAttemptSelectedAnswerEntity>
 
     @Query("SELECT COUNT(*) FROM test_attempt")
     suspend fun countTestAttempts(): Int

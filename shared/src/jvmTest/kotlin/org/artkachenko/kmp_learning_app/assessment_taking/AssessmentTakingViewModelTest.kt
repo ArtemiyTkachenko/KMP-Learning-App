@@ -548,6 +548,7 @@ internal class AssessmentTakingViewModelTest {
         override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> = questions
         override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> = questions
         override suspend fun getTopicById(topicId: String): Topic? = null
+        override suspend fun getSubtopicById(subtopicId: String): Subtopic? = null
         override suspend fun getQuestionById(questionId: String): Question? = questions.firstOrNull { it.id == questionId }
     }
 
@@ -566,5 +567,7 @@ internal class AssessmentTakingViewModelTest {
 
         override suspend fun getById(attemptId: String): TestAttempt? =
             savedAttempts.lastOrNull { it.id == attemptId }
+
+        override suspend fun getCompletedAttempts(): List<TestAttempt> = emptyList()
     }
 }

@@ -193,6 +193,9 @@ internal class TopicDetailViewModelTest {
         override suspend fun getTopicById(topicId: String): Topic? =
             topics.firstOrNull { it.id == topicId }
 
+        override suspend fun getSubtopicById(subtopicId: String): Subtopic? =
+            subtopics.firstOrNull { it.id == subtopicId }
+
         override suspend fun getQuestionById(questionId: String): Question? = error("Not used.")
     }
 }

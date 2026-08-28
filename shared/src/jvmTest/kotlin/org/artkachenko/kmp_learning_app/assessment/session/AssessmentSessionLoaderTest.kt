@@ -84,6 +84,7 @@ internal class AssessmentSessionLoaderTest {
     private class FakeAssessmentRepository(var attempt: TestAttempt?) : AssessmentRepository {
         override suspend fun save(attempt: TestAttempt) { this.attempt = attempt }
         override suspend fun getById(attemptId: String): TestAttempt? = attempt
+        override suspend fun getCompletedAttempts(): List<TestAttempt> = emptyList()
     }
 
     private class FakeCurriculumRepository(
@@ -95,6 +96,7 @@ internal class AssessmentSessionLoaderTest {
         override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> = emptyList()
         override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> = emptyList()
         override suspend fun getTopicById(topicId: String): Topic? = null
+        override suspend fun getSubtopicById(subtopicId: String): Subtopic? = null
         override suspend fun getQuestionById(questionId: String): Question? = questions.firstOrNull { it.id == questionId }
     }
 }

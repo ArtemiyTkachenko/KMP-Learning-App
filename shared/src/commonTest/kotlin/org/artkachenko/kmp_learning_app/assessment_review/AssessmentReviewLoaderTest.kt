@@ -134,6 +134,7 @@ internal class AssessmentReviewLoaderTest {
         override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> = error("Not used")
         override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> = error("Not used")
         override suspend fun getTopicById(topicId: String): Topic? = error("Not used")
+        override suspend fun getSubtopicById(subtopicId: String): Subtopic? = null
         override suspend fun getQuestionById(questionId: String): Question? =
             questions.firstOrNull { it.id == questionId }
     }

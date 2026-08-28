@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app.data.local.assessment
 
 import androidx.room3.withReadTransaction
 import androidx.room3.withWriteTransaction
+import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDatabase
 
@@ -31,6 +32,29 @@ internal class AssessmentAttemptStore(
                 questionAttempts = dao.getQuestionAttemptsForAttempt(attemptId),
                 selectedAnswers = dao.getSelectedAnswersForAttempt(attemptId),
             )
+        }
+    }
+
+    suspend fun getCompletedAttempts(): List<TestAttempt> {
+        val dao = database.assessmentAttemptDao()
+
+        return database.withReadTransaction {
+            val attempts = dao.getCompletedTestAttempts(AssessmentStatus.COMPLETED.name)
+            if (attempts.isEmpty()) return@withReadTransaction emptyList()
+
+            val attemptIds = attempts.map { it.id }
+            val questionAttemptsByAttempt = dao.getQuestionAttemptsForAttempts(attemptIds)
+                .groupBy { it.testAttemptId }
+            val selectedAnswersByAttempt = dao.getSelectedAnswersForAttempts(attemptIds)
+                .groupBy { it.testAttemptId }
+
+            attempts.map { attempt ->
+                toDomainTestAttempt(
+                    attempt = attempt,
+                    questionAttempts = questionAttemptsByAttempt[attempt.id].orEmpty(),
+                    selectedAnswers = selectedAnswersByAttempt[attempt.id].orEmpty(),
+                )
+            }
         }
     }
 }

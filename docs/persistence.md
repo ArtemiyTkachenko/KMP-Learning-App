@@ -438,7 +438,8 @@ SQLite driver, which is outside the Android-focused MVP database issue.
 
 ## Assessment Attempt History
 
-Schema version 2 persists assessment attempts:
+Schema version 2 introduced assessment attempts; the current schema remains
+version 3, which additionally preserves retired answer-option identity:
 
 ```text
 TestAttempt
@@ -477,15 +478,24 @@ text, answer text, explanations, or sources. Deprecated curriculum rows are
 retained by the content lifecycle, so historical attempts can still resolve the
 questions and answers they referenced.
 
+`AssessmentRepository.getCompletedAttempts()` reconstructs all persisted
+`COMPLETED` attempts newest first by completion time, then started time and
+stable ID. `IN_PROGRESS` attempts remain persisted and addressable by ID but are
+excluded from completed learning history. Historical naming uses unrestricted
+stable Topic, Subtopic, and Question repository lookups; current browsing and
+selection continue to use ACTIVE-only queries.
+
 ## Migration and Schema History
 
 E07-03 establishes schema version 1 and enables version-controlled Room schema
 artifacts. E08-04 establishes schema version 2 and adds an explicit
 `MIGRATION_1_2` that creates only the assessment attempt tables and indexes.
+Schema version 3 adds answer-option lifecycle status through `MIGRATION_2_3`.
+E11-01 adds history read queries only and does not change the schema.
 
 Destructive migration should not be the default production strategy. Migration
-tests validate the 1 -> 2 migration against Room's exported schema and verify
-existing curriculum rows remain intact.
+tests validate the migration chain against Room's exported schemas and verify
+existing curriculum and assessment rows remain intact.
 
 ## Koin
 

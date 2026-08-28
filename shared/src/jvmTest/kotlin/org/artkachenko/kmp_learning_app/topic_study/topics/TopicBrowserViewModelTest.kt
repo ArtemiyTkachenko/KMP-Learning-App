@@ -122,6 +122,9 @@ internal class TopicBrowserViewModelTest {
         override suspend fun getTopicById(topicId: String): Topic? =
             error("Not used by TopicBrowserViewModel.")
 
+        override suspend fun getSubtopicById(subtopicId: String): Subtopic? =
+            error("Not used by TopicBrowserViewModel.")
+
         override suspend fun getQuestionById(questionId: String): Question? =
             error("Not used by TopicBrowserViewModel.")
     }

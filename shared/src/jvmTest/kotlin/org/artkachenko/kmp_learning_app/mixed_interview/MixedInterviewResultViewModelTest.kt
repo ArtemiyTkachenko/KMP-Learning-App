@@ -93,7 +93,7 @@ internal class MixedInterviewResultViewModelTest {
     }
 
     @Test
-    fun successfulRepeatPersistsCleanRetakeBeforeEventAndPreservesSource() = runTest {
+    fun successfulRepeatPersistsBeforeEventPreservesSourceAndResetsAction() = runTest {
         setMain(testScheduler)
         val source = completedAttempt(listOf(answered("q1", true)), AssessmentScore(1, 1))
         val repository = FakeAssessmentRepository(source)
@@ -119,7 +119,7 @@ internal class MixedInterviewResultViewModelTest {
         assertNull(retake.score)
         assertNull(retake.completedAt)
         assertEquals(source, repository.getById(source.id))
-        assertEquals(RepeatInterviewState.Creating, content(viewModel).repeatInterviewState)
+        assertEquals(RepeatInterviewState.Idle, content(viewModel).repeatInterviewState)
     }
 
     @Test

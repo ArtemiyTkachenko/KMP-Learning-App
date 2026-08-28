@@ -49,12 +49,14 @@ internal class MixedInterviewResultViewModel(
             runCatching { assessmentRetakeService.createRetake(attemptId) }
                 .onSuccess { result ->
                     when (result) {
-                        is AssessmentRetakeResult.Created ->
+                        is AssessmentRetakeResult.Created -> {
+                            setRepeatState(RepeatInterviewState.Idle)
                             _events.send(
                                 MixedInterviewResultEvent.RetakeCreated(
                                     result.session.attempt.id,
                                 ),
                             )
+                        }
                         AssessmentRetakeResult.SourceAttemptNotFound ->
                             setRepeatState(RepeatInterviewState.SourceAttemptNotFound)
                         AssessmentRetakeResult.NoEligibleQuestions ->

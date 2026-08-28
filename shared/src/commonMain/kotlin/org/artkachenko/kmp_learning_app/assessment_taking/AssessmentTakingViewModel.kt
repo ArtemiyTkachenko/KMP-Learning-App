@@ -157,9 +157,15 @@ internal class AssessmentTakingViewModel(
         }
 
     private suspend fun loadExistingAttempt(attemptId: String): AssessmentTakingUiState {
-        val result = assessmentSessionLoader.load(attemptId)
-        val loadedSession = (result as? AssessmentSessionLoadResult.Loaded)?.session
-            ?: error("Unable to load assessment attempt: $result")
+        val loadedSession = when (val result = assessmentSessionLoader.load(attemptId)) {
+            is AssessmentSessionLoadResult.Loaded -> result.session
+            AssessmentSessionLoadResult.NotInProgress -> {
+                return AssessmentTakingUiState.CompletionSucceeded(attemptId)
+            }
+            AssessmentSessionLoadResult.AttemptNotFound,
+            is AssessmentSessionLoadResult.MissingQuestion ->
+                error("Unable to load assessment attempt: $result")
+        }
         session = loadedSession
         currentQuestionIndex = loadedSession.attempt.questionAttempts.indexOfFirst {
             it.answerState is QuestionAnswerState.Unanswered

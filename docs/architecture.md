@@ -97,9 +97,13 @@ action and navigates with `MixedInterview(questionCount)` primitive route data.
 The route reconstructs `AssessmentConfig.Mixed` at its destination and delegates
 to `AssessmentTakingLaunch.New`, so balanced selection, initial persistence,
 answer checkpoints, actual selected-question progress, and explicit completion
-stay in the shared assessment path. Completion replaces the taking entry with
-`MixedInterviewResult(attemptId)`; E10-03 provides only a handled completion
-shell, leaving score review and topic performance to E10-04.
+stay in the shared assessment path. After the initial attempt is persisted, the
+config route is replaced by `MixedInterviewAttempt(attemptId)` so saved
+navigation restores the existing session instead of creating another attempt.
+Focused starts use the same promotion to `FocusedPracticeAttempt(attemptId)`.
+Completion replaces the attempt entry with `MixedInterviewResult(attemptId)`;
+E10-03 provides only a handled completion shell, leaving score review and topic
+performance to E10-04.
 
 E09-04 completes the retained session through `AssessmentEngine`, persists the
 completed attempt before replacing focused-practice navigation with a stable

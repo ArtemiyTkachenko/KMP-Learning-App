@@ -5,6 +5,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import org.artkachenko.kmp_learning_app.AppRoute
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
+import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingLaunch
 
 internal class MixedInterviewRouteMappingTest {
     @Test
@@ -32,5 +33,15 @@ internal class MixedInterviewRouteMappingTest {
         val route = AppRoute.MixedInterviewResult(attemptId = "attempt-mixed")
 
         assertEquals("attempt-mixed", route.attemptId)
+    }
+
+    @Test
+    fun persistedAttemptRouteLoadsExistingAssessmentByStableIdentity() {
+        val route = AppRoute.MixedInterviewAttempt(attemptId = "attempt-mixed")
+
+        assertEquals(
+            AssessmentTakingLaunch.ExistingAttempt("attempt-mixed"),
+            route.toAssessmentTakingLaunch(),
+        )
     }
 }

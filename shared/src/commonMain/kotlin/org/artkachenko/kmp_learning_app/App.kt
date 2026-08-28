@@ -18,6 +18,7 @@ import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingLaunch
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewCompletedDestination
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewDestination
 import org.artkachenko.kmp_learning_app.mixed_interview.mixedInterviewStartRoute
+import org.artkachenko.kmp_learning_app.mixed_interview.toAssessmentTakingLaunch
 import org.artkachenko.kmp_learning_app.mixed_interview.toAssessmentConfig
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.toAssessmentConfig
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultDestination
@@ -42,11 +43,6 @@ private fun AppShell(
     fun popBack() {
         if (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
     }
-    fun replaceTop(route: AppRoute) {
-        popBack()
-        backStack.add(route)
-    }
-
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -79,10 +75,23 @@ private fun AppShell(
                 }
                 entry<AppRoute.MixedInterview> { route ->
                     MixedInterviewDestination(
-                        config = route.toAssessmentConfig(),
+                        launch = AssessmentTakingLaunch.New(route.toAssessmentConfig()),
                         onBack = { popBack() },
+                        onAttemptPersisted = { attemptId ->
+                            backStack.replaceTopWith(AppRoute.MixedInterviewAttempt(attemptId))
+                        },
                         onCompleted = { attemptId ->
-                            replaceTop(AppRoute.MixedInterviewResult(attemptId))
+                            backStack.replaceTopWith(AppRoute.MixedInterviewResult(attemptId))
+                        },
+                    )
+                }
+                entry<AppRoute.MixedInterviewAttempt> { route ->
+                    MixedInterviewDestination(
+                        launch = route.toAssessmentTakingLaunch(),
+                        onBack = { popBack() },
+                        onAttemptPersisted = {},
+                        onCompleted = { attemptId ->
+                            backStack.replaceTopWith(AppRoute.MixedInterviewResult(attemptId))
                         },
                     )
                 }
@@ -107,8 +116,11 @@ private fun AppShell(
                     FocusedPracticeDestination(
                         launch = AssessmentTakingLaunch.New(route.toAssessmentConfig()),
                         onBack = { popBack() },
+                        onAttemptPersisted = { attemptId ->
+                            backStack.replaceTopWith(AppRoute.FocusedPracticeAttempt(attemptId))
+                        },
                         onCompleted = { attemptId ->
-                            replaceTop(AppRoute.FocusedPracticeResult(attemptId))
+                            backStack.replaceTopWith(AppRoute.FocusedPracticeResult(attemptId))
                         },
                     )
                 }
@@ -116,8 +128,11 @@ private fun AppShell(
                     FocusedPracticeDestination(
                         launch = AssessmentTakingLaunch.New(route.toAssessmentConfig()),
                         onBack = { popBack() },
+                        onAttemptPersisted = { attemptId ->
+                            backStack.replaceTopWith(AppRoute.FocusedPracticeAttempt(attemptId))
+                        },
                         onCompleted = { attemptId ->
-                            replaceTop(AppRoute.FocusedPracticeResult(attemptId))
+                            backStack.replaceTopWith(AppRoute.FocusedPracticeResult(attemptId))
                         },
                     )
                 }
@@ -125,8 +140,9 @@ private fun AppShell(
                     FocusedPracticeDestination(
                         launch = AssessmentTakingLaunch.ExistingAttempt(route.attemptId),
                         onBack = { popBack() },
+                        onAttemptPersisted = {},
                         onCompleted = { attemptId ->
-                            replaceTop(AppRoute.FocusedPracticeResult(attemptId))
+                            backStack.replaceTopWith(AppRoute.FocusedPracticeResult(attemptId))
                         },
                     )
                 }

@@ -12,11 +12,20 @@ internal fun AssessmentTakingDestination(
     title: String,
     launch: AssessmentTakingLaunch,
     onBack: () -> Unit,
+    onAttemptPersisted: (String) -> Unit,
     onCompleted: (String) -> Unit,
     viewModel: AssessmentTakingViewModel = koinViewModel { parametersOf(launch) },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val persistedAttemptId = if (launch is AssessmentTakingLaunch.New) {
+        (state as? AssessmentTakingUiState.Content)?.attemptId
+    } else {
+        null
+    }
 
+    LaunchedEffect(persistedAttemptId) {
+        persistedAttemptId?.let(onAttemptPersisted)
+    }
     LaunchedEffect(state) {
         val completion = state as? AssessmentTakingUiState.CompletionSucceeded
             ?: return@LaunchedEffect

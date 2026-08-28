@@ -11,12 +11,14 @@ import org.jetbrains.compose.resources.stringResource
 internal fun FocusedPracticeDestination(
     launch: AssessmentTakingLaunch,
     onBack: () -> Unit,
+    onAttemptPersisted: (String) -> Unit,
     onCompleted: (String) -> Unit,
 ) {
     AssessmentTakingDestination(
         title = stringResource(Res.string.focused_practice_title),
         launch = launch,
         onBack = onBack,
+        onAttemptPersisted = onAttemptPersisted,
         onCompleted = onCompleted,
     )
 }

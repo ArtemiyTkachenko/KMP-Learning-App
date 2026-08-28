@@ -13,7 +13,7 @@ internal class InitialCurriculumSmokeTest {
 
         assertEquals(17, initialCurriculum.topics.size)
         assertEquals(361, initialCurriculum.subtopics.size)
-        assertEquals(90, initialCurriculum.questions.size)
+        assertEquals(180, initialCurriculum.questions.size)
     }
 
     @Test
@@ -25,23 +25,23 @@ internal class InitialCurriculumSmokeTest {
 
         assertEquals(
             mapOf(
-                "android_platform" to 6,
-                "lifecycle_navigation" to 7,
-                "android_ui" to 10,
-                "kotlin_language" to 10,
-                "async_reactive" to 10,
-                "architecture" to 7,
-                "dependency_injection" to 4,
-                "local_data" to 5,
-                "networking" to 5,
-                "background_work" to 4,
-                "notifications" to 3,
-                "testing" to 5,
-                "performance" to 4,
-                "security" to 3,
-                "build_delivery" to 3,
-                "mobile_system_design" to 2,
-                "kmp" to 2,
+                "android_platform" to 11,
+                "lifecycle_navigation" to 13,
+                "android_ui" to 18,
+                "kotlin_language" to 16,
+                "async_reactive" to 16,
+                "architecture" to 12,
+                "dependency_injection" to 8,
+                "local_data" to 11,
+                "networking" to 11,
+                "background_work" to 8,
+                "notifications" to 6,
+                "testing" to 11,
+                "performance" to 9,
+                "security" to 7,
+                "build_delivery" to 7,
+                "mobile_system_design" to 8,
+                "kmp" to 8,
             ),
             countsByTopic,
         )

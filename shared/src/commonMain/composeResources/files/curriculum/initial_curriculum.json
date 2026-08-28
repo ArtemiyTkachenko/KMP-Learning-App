@@ -3436,6 +3436,216 @@
       "status": "ACTIVE"
     },
     {
+      "id": "kotlin_lazy_thread_safety_mode",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_delegation",
+      "text": "A property declared with by lazy is first accessed from two threads at the same time. What does the default configuration guarantee?",
+      "answers": [
+        {
+          "id": "kotlin_lazy_thread_safety_mode_a",
+          "text": "The initializer runs on each thread, and the last result is retained."
+        },
+        {
+          "id": "kotlin_lazy_thread_safety_mode_c",
+          "text": "The initializer runs once, but only after the property is first written."
+        },
+        {
+          "id": "kotlin_lazy_thread_safety_mode_d",
+          "text": "The initializer runs on the main thread regardless of the caller."
+        },
+        {
+          "id": "kotlin_lazy_thread_safety_mode_b",
+          "text": "The initializer runs once, and both threads observe the same value."
+        }
+      ],
+      "correctAnswerIds": [
+        "kotlin_lazy_thread_safety_mode_b"
+      ],
+      "explanation": "lazy() defaults to LazyThreadSafetyMode.SYNCHRONIZED, so the initializer is guarded and runs a single time no matter how many threads race to the first read; every caller then sees that one value. LazyThreadSafetyMode.NONE removes the guard and is only safe when access is confined to one thread. Nothing about lazy ties initialization to a particular thread or to a prior write, which is what lateinit models instead.",
+      "sources": [
+        {
+          "title": "Delegated Properties",
+          "url": "https://kotlinlang.org/docs/delegated-properties.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_crossinline_non_local_return",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_inline_functions",
+      "text": "An inline function passes its lambda parameter into a Runnable that executes later. Why must that parameter be declared crossinline?",
+      "answers": [
+        {
+          "id": "kotlin_crossinline_non_local_return_a",
+          "text": "Because the lambda would otherwise permit a non-local return that cannot be honoured."
+        },
+        {
+          "id": "kotlin_crossinline_non_local_return_b",
+          "text": "Because the lambda must be stored in a field, which inlining would otherwise prevent."
+        },
+        {
+          "id": "kotlin_crossinline_non_local_return_c",
+          "text": "Because the lambda has to be compiled without inlining in order to run on another thread."
+        },
+        {
+          "id": "kotlin_crossinline_non_local_return_d",
+          "text": "Because the lambda must not capture variables declared in the enclosing function."
+        }
+      ],
+      "correctAnswerIds": [
+        "kotlin_crossinline_non_local_return_a"
+      ],
+      "explanation": "A lambda passed to an inline function may normally use a non-local return, returning from the enclosing function. That is impossible once the lambda is invoked from another execution context, because the enclosing frame may be gone. crossinline keeps the lambda inlined while forbidding non-local return. noinline is the different tool: it stops inlining altogether so the lambda becomes a real object that can be stored.",
+      "sources": [
+        {
+          "title": "Inline Functions",
+          "url": "https://kotlinlang.org/docs/inline-functions.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_extension_resolution_static",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_extension_functions",
+      "text": "A base class and its subclass each declare an extension function with the same name. A variable declared as the base type holds a subclass instance. Which extension is called?",
+      "answers": [
+        {
+          "id": "kotlin_extension_resolution_static_a",
+          "text": "The subclass extension, because the runtime type wins as it does for overrides."
+        },
+        {
+          "id": "kotlin_extension_resolution_static_b",
+          "text": "The base class extension, because extensions resolve on the declared type."
+        },
+        {
+          "id": "kotlin_extension_resolution_static_c",
+          "text": "The subclass extension, because the more specific declaration takes priority."
+        },
+        {
+          "id": "kotlin_extension_resolution_static_d",
+          "text": "Neither, because two extensions sharing a name is a compile-time error."
+        }
+      ],
+      "correctAnswerIds": [
+        "kotlin_extension_resolution_static_b"
+      ],
+      "explanation": "Extension functions are dispatched statically: the compiler picks one from the declared type of the expression, not the object's runtime type. That is the key difference from member functions, which are virtual and do follow the runtime type. Declaring extensions with the same name on a type and its subtype is legal, so nothing fails to compile.",
+      "sources": [
+        {
+          "title": "Extensions",
+          "url": "https://kotlinlang.org/docs/extensions.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_platform_type_null_check",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_java_interop",
+      "text": "Kotlin calls an unannotated Java method returning String and assigns the result to a non-null Kotlin variable. What does the compiler do?",
+      "answers": [
+        {
+          "id": "kotlin_platform_type_null_check_a",
+          "text": "It rejects the assignment, because a value coming from Java is treated as nullable."
+        },
+        {
+          "id": "kotlin_platform_type_null_check_b",
+          "text": "It accepts the assignment and lets a null propagate silently into later code."
+        },
+        {
+          "id": "kotlin_platform_type_null_check_c",
+          "text": "It accepts the assignment and inserts a runtime null check at that point."
+        },
+        {
+          "id": "kotlin_platform_type_null_check_d",
+          "text": "It accepts the assignment and reports later null checks as unnecessary code."
+        }
+      ],
+      "correctAnswerIds": [
+        "kotlin_platform_type_null_check_c"
+      ],
+      "explanation": "An unannotated Java type becomes a platform type, which Kotlin does not force you to resolve: the assignment compiles, and the compiler adds an intrinsic check so a null fails fast at the boundary rather than surfacing far away. The trade-off is that the compiler cannot prove the value is non-null, so the guarantee is a runtime check rather than a compile-time one. Annotating the Java side is what restores static checking.",
+      "sources": [
+        {
+          "title": "Java Interop",
+          "url": "https://kotlinlang.org/docs/java-interop.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_readonly_list_not_immutable",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_collections",
+      "text": "A function returns List<String> for a collection that was built as a MutableList and is still referenced elsewhere. What does the List type guarantee the caller?",
+      "answers": [
+        {
+          "id": "kotlin_readonly_list_not_immutable_a",
+          "text": "That the contents cannot change while the caller holds the reference."
+        },
+        {
+          "id": "kotlin_readonly_list_not_immutable_b",
+          "text": "That the caller received a defensive copy of the original collection."
+        },
+        {
+          "id": "kotlin_readonly_list_not_immutable_c",
+          "text": "Only that the caller cannot modify it through this reference."
+        },
+        {
+          "id": "kotlin_readonly_list_not_immutable_d",
+          "text": "That the underlying instance was created as an immutable collection."
+        }
+      ],
+      "correctAnswerIds": [
+        "kotlin_readonly_list_not_immutable_c"
+      ],
+      "explanation": "List is a read-only interface, not an immutable type. It removes the mutating methods from this reference, but the same object may still be held as a MutableList somewhere else and changed under the caller. Nothing is copied by the conversion. Code that needs a stable snapshot has to copy it explicitly or use a genuinely immutable collection.",
+      "sources": [
+        {
+          "title": "Collections Overview",
+          "url": "https://kotlinlang.org/docs/collections-overview.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_custom_getter_recomputes",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_properties",
+      "text": "A property is declared with a custom getter that filters a list, and it has no backing field. What happens each time the property is read?",
+      "answers": [
+        {
+          "id": "kotlin_custom_getter_recomputes_a",
+          "text": "The first result is cached and returned for subsequent reads."
+        },
+        {
+          "id": "kotlin_custom_getter_recomputes_b",
+          "text": "The getter runs once per instance while the object is constructed."
+        },
+        {
+          "id": "kotlin_custom_getter_recomputes_c",
+          "text": "The compiler generates a backing field to hold the computed value."
+        },
+        {
+          "id": "kotlin_custom_getter_recomputes_d",
+          "text": "The getter body runs again and produces a new result."
+        }
+      ],
+      "correctAnswerIds": [
+        "kotlin_custom_getter_recomputes_d"
+      ],
+      "explanation": "A property with a custom getter and no field assignment is a computed property: every read executes the getter. A backing field is only generated when the accessors actually reference field, so nothing is stored or cached here. That matters for a getter that filters or allocates, where repeated reads in a loop or a composable quietly repeat the work; by lazy is the tool when the result should be computed once.",
+      "sources": [
+        {
+          "title": "Properties",
+          "url": "https://kotlinlang.org/docs/properties.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
       "id": "coroutine_fundamentals_001",
       "topicId": "async_reactive",
       "subtopicId": "coroutine_fundamentals",
@@ -3791,6 +4001,216 @@
       "status": "ACTIVE"
     },
     {
+      "id": "coroutine_supervisor_scope_direct_children",
+      "topicId": "async_reactive",
+      "subtopicId": "coroutine_supervision",
+      "text": "Inside a supervisorScope, one coroutine launches its own child, and that inner child fails with an uncaught exception. What happens?",
+      "answers": [
+        {
+          "id": "coroutine_supervisor_scope_direct_children_a",
+          "text": "Both the failing coroutine and its siblings in the supervisorScope are cancelled."
+        },
+        {
+          "id": "coroutine_supervisor_scope_direct_children_b",
+          "text": "The outer coroutine is cancelled while its siblings keep running."
+        },
+        {
+          "id": "coroutine_supervisor_scope_direct_children_c",
+          "text": "Only the inner child is cancelled, and its parent coroutine continues."
+        },
+        {
+          "id": "coroutine_supervisor_scope_direct_children_d",
+          "text": "The supervisorScope rethrows at once without cancelling any coroutine."
+        }
+      ],
+      "correctAnswerIds": [
+        "coroutine_supervisor_scope_direct_children_b"
+      ],
+      "explanation": "Supervision applies only to the direct children of the supervisorScope. The inner launch is an ordinary child of the outer coroutine, so its failure cancels that outer coroutine normally; supervision then stops the failure spreading further, leaving the siblings alive. Expecting the inner failure to be contained at the point it happened is the usual mistake, and it is why a nested launch needs its own supervisor if it must fail independently.",
+      "sources": [
+        {
+          "title": "Coroutine Exceptions Handling",
+          "url": "https://kotlinlang.org/docs/exception-handling.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_io_dispatcher_blocking_calls",
+      "topicId": "async_reactive",
+      "subtopicId": "coroutine_dispatchers",
+      "text": "A repository makes a blocking file read. Why is Dispatchers.IO a better choice than Dispatchers.Default?",
+      "answers": [
+        {
+          "id": "coroutine_io_dispatcher_blocking_calls_b",
+          "text": "Because IO runs the work at a lower operating-system thread priority."
+        },
+        {
+          "id": "coroutine_io_dispatcher_blocking_calls_c",
+          "text": "Because Default rejects work that blocks its underlying thread."
+        },
+        {
+          "id": "coroutine_io_dispatcher_blocking_calls_d",
+          "text": "Because IO schedules the work onto one dedicated background thread."
+        },
+        {
+          "id": "coroutine_io_dispatcher_blocking_calls_a",
+          "text": "Because IO can grow to many threads, so blocking does not starve CPU work."
+        }
+      ],
+      "correctAnswerIds": [
+        "coroutine_io_dispatcher_blocking_calls_a"
+      ],
+      "explanation": "Dispatchers.Default is sized around the CPU count because it is meant for work that keeps a core busy. A blocking call occupies its thread without using a core, so running several on Default can exhaust the pool and stall unrelated computation. Dispatchers.IO is designed to expand well beyond the core count for exactly this. Neither dispatcher changes thread priority, and Default cannot detect that a call blocks.",
+      "sources": [
+        {
+          "title": "Coroutine Context and Dispatchers",
+          "url": "https://kotlinlang.org/docs/coroutine-context-and-dispatchers.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_conflate_vs_collect_latest",
+      "topicId": "async_reactive",
+      "subtopicId": "flow_buffering",
+      "text": "A flow emits faster than its collector can process. How do conflate() and collectLatest differ?",
+      "answers": [
+        {
+          "id": "flow_conflate_vs_collect_latest_a",
+          "text": "conflate cancels the running collector block; collectLatest drops older values."
+        },
+        {
+          "id": "flow_conflate_vs_collect_latest_b",
+          "text": "conflate buffers every value; collectLatest processes values in parallel."
+        },
+        {
+          "id": "flow_conflate_vs_collect_latest_c",
+          "text": "conflate drops older values; collectLatest cancels the running collector block."
+        },
+        {
+          "id": "flow_conflate_vs_collect_latest_d",
+          "text": "conflate suspends the producer; collectLatest suspends the collector instead."
+        }
+      ],
+      "correctAnswerIds": [
+        "flow_conflate_vs_collect_latest_c"
+      ],
+      "explanation": "Both stop a slow collector from backpressuring the producer, but they discard work differently. conflate keeps only the most recent unconsumed value and lets the current block finish, so processing completes for whichever values survive. collectLatest starts the block for every value and cancels it as soon as a newer one arrives, so a long block may never complete. Choosing between them depends on whether a partially processed value can safely be abandoned.",
+      "sources": [
+        {
+          "title": "Asynchronous Flow",
+          "url": "https://kotlinlang.org/docs/coroutines-flow.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_state_in_while_subscribed",
+      "topicId": "async_reactive",
+      "subtopicId": "flow_sharing",
+      "text": "A ViewModel exposes a database flow with stateIn(scope, SharingStarted.WhileSubscribed(5_000), initial). What does the 5_000 control?",
+      "answers": [
+        {
+          "id": "flow_state_in_while_subscribed_a",
+          "text": "How long a new collector waits before it receives the current value."
+        },
+        {
+          "id": "flow_state_in_while_subscribed_b",
+          "text": "How long the upstream keeps running after the last collector stops."
+        },
+        {
+          "id": "flow_state_in_while_subscribed_c",
+          "text": "How often the upstream flow re-emits its most recent value."
+        },
+        {
+          "id": "flow_state_in_while_subscribed_d",
+          "text": "How long the state holder retains values before discarding them."
+        }
+      ],
+      "correctAnswerIds": [
+        "flow_state_in_while_subscribed_b"
+      ],
+      "explanation": "WhileSubscribed keeps the upstream flow active only while something collects, and the timeout is the grace period after the last collector disappears. Sizing it to a few seconds means a configuration change does not tear down and restart a database query, while a genuine departure from the screen still stops the work. The value is not a polling interval and it does not delay delivery, since a new collector receives the cached state immediately.",
+      "sources": [
+        {
+          "title": "StateFlow and SharedFlow",
+          "url": "https://developer.android.com/kotlin/flow/stateflow-and-sharedflow"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_catch_upstream_only",
+      "topicId": "async_reactive",
+      "subtopicId": "flow_errors",
+      "text": "A flow chain ends with .catch { } followed by collect { }, and the collect block itself throws. Does catch handle that exception?",
+      "answers": [
+        {
+          "id": "flow_catch_upstream_only_a",
+          "text": "Yes, because catch handles any exception raised in the flow chain."
+        },
+        {
+          "id": "flow_catch_upstream_only_b",
+          "text": "No, because catch handles only exceptions thrown inside emit calls."
+        },
+        {
+          "id": "flow_catch_upstream_only_c",
+          "text": "Yes, because the collect block runs inside the catch operator's scope."
+        },
+        {
+          "id": "flow_catch_upstream_only_d",
+          "text": "No, because catch sees only exceptions from operators upstream of it."
+        }
+      ],
+      "correctAnswerIds": [
+        "flow_catch_upstream_only_d"
+      ],
+      "explanation": "catch is bound by exception transparency: it observes failures produced by the part of the chain declared above it, and the terminal collector is downstream. A throw inside collect propagates to the caller instead. Wrapping the collect body in try/catch, or moving that work into an operator placed above catch, is what brings it into scope. The restriction is deliberate, since a downstream failure would otherwise be silently swallowed by an upstream operator.",
+      "sources": [
+        {
+          "title": "Asynchronous Flow",
+          "url": "https://kotlinlang.org/docs/coroutines-flow.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_async_await_sequential",
+      "topicId": "async_reactive",
+      "subtopicId": "coroutine_parallelism",
+      "text": "Two independent network calls are written as val a = async { first() }.await() and then val b = async { second() }.await(). What is the effect?",
+      "answers": [
+        {
+          "id": "coroutine_async_await_sequential_a",
+          "text": "The calls run concurrently, because async starts each one eagerly."
+        },
+        {
+          "id": "coroutine_async_await_sequential_b",
+          "text": "The calls run sequentially, because each await suspends before the next."
+        },
+        {
+          "id": "coroutine_async_await_sequential_c",
+          "text": "The calls run concurrently, but the results are delivered in order."
+        },
+        {
+          "id": "coroutine_async_await_sequential_d",
+          "text": "The second call is skipped until the first Deferred has been cancelled."
+        }
+      ],
+      "correctAnswerIds": [
+        "coroutine_async_await_sequential_b"
+      ],
+      "explanation": "async does start the work immediately, but awaiting on the same line suspends until it finishes, so the second coroutine is not created until the first has returned. The concurrency is lost even though the code looks parallel. Starting both Deferreds first and awaiting them afterwards is what actually overlaps the calls, and it is why the total time drops from the sum of the two to roughly the slower one.",
+      "sources": [
+        {
+          "title": "Composing Suspending Functions",
+          "url": "https://kotlinlang.org/docs/composing-suspending-functions.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
       "id": "separation_of_concerns_001",
       "topicId": "architecture",
       "subtopicId": "separation_of_concerns",
@@ -4048,6 +4468,182 @@
       "status": "ACTIVE"
     },
     {
+      "id": "architecture_error_modeling_result_type",
+      "topicId": "architecture",
+      "subtopicId": "error_modeling",
+      "text": "A repository call can fail from network loss or from a rejected request. Why model that with a sealed result type rather than throwing?",
+      "answers": [
+        {
+          "id": "architecture_error_modeling_result_type_b",
+          "text": "Because exceptions cannot cross a suspend function boundary safely."
+        },
+        {
+          "id": "architecture_error_modeling_result_type_c",
+          "text": "Because a sealed type lets the data layer retry before the caller sees it."
+        },
+        {
+          "id": "architecture_error_modeling_result_type_d",
+          "text": "Because throwing prevents the ViewModel from running on the main thread."
+        },
+        {
+          "id": "architecture_error_modeling_result_type_a",
+          "text": "Because it makes the failure part of the signature the caller must handle."
+        }
+      ],
+      "correctAnswerIds": [
+        "architecture_error_modeling_result_type_a"
+      ],
+      "explanation": "Returning a sealed result makes the expected failures visible in the type, so the compiler forces the caller to decide what each branch means for the UI. Exceptions stay reasonable for genuinely exceptional conditions, but as ordinary control flow they are invisible at the call site and easy to miss. Exceptions do propagate correctly through suspend functions, and retry is a policy choice independent of how the outcome is represented.",
+      "sources": [
+        {
+          "title": "Data Layer",
+          "url": "https://developer.android.com/topic/architecture/data-layer"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "architecture_mvi_single_state",
+      "topicId": "architecture",
+      "subtopicId": "mvvm_vs_mvi",
+      "text": "A screen currently exposes several independent StateFlows. What does moving to a single immutable state object mainly buy?",
+      "answers": [
+        {
+          "id": "architecture_mvi_single_state_a",
+          "text": "It guarantees the screen recomposes fewer times for the same updates."
+        },
+        {
+          "id": "architecture_mvi_single_state_b",
+          "text": "It removes the need for the ViewModel to survive configuration change."
+        },
+        {
+          "id": "architecture_mvi_single_state_c",
+          "text": "It prevents the UI from rendering combinations that were never intended."
+        },
+        {
+          "id": "architecture_mvi_single_state_d",
+          "text": "It allows the UI to observe state without a lifecycle-aware collector."
+        }
+      ],
+      "correctAnswerIds": [
+        "architecture_mvi_single_state_c"
+      ],
+      "explanation": "Several independent streams can be observed part-way through a multi-field change, so the UI can briefly show a state the ViewModel never intended, such as a spinner beside loaded content. One immutable state value makes each emission a complete, consistent description of the screen. It is a correctness property rather than a performance one: a single object can even recompose more, which is why stability and state-read scoping still matter.",
+      "sources": [
+        {
+          "title": "UI Layer",
+          "url": "https://developer.android.com/topic/architecture/ui-layer"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "architecture_use_case_reuse",
+      "topicId": "architecture",
+      "subtopicId": "use_cases",
+      "text": "Two screens both need the same multi-repository logic for placing an order. What does moving it into a use case primarily achieve?",
+      "answers": [
+        {
+          "id": "architecture_use_case_reuse_a",
+          "text": "It removes the need for either ViewModel to handle errors from the call."
+        },
+        {
+          "id": "architecture_use_case_reuse_b",
+          "text": "It lets the domain logic be exercised without constructing either ViewModel."
+        },
+        {
+          "id": "architecture_use_case_reuse_c",
+          "text": "It moves the work off the main thread without a dispatcher change."
+        },
+        {
+          "id": "architecture_use_case_reuse_d",
+          "text": "It allows the repositories to be injected as singletons rather than scoped."
+        }
+      ],
+      "correctAnswerIds": [
+        "architecture_use_case_reuse_b"
+      ],
+      "explanation": "Extracting the orchestration gives it one home that both callers share and that can be tested directly with fake repositories, without a ViewModel, its saved state, or a main-thread rule. Errors still have to be handled by whoever presents them, and threading remains a dispatcher decision inside the suspending call. When only one caller exists and there is no real logic to hold, the extra layer is indirection rather than reuse.",
+      "sources": [
+        {
+          "title": "Domain Layer",
+          "url": "https://developer.android.com/topic/architecture/domain-layer"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "architecture_interface_boundary_ownership",
+      "topicId": "architecture",
+      "subtopicId": "interface_boundaries",
+      "text": "A domain layer defines a repository interface implemented in the data layer. Which module should the interface live in?",
+      "answers": [
+        {
+          "id": "architecture_interface_boundary_ownership_b",
+          "text": "The data layer, so the interface sits beside the implementation it describes."
+        },
+        {
+          "id": "architecture_interface_boundary_ownership_c",
+          "text": "A shared utility module, so neither layer depends on the other directly."
+        },
+        {
+          "id": "architecture_interface_boundary_ownership_d",
+          "text": "The presentation layer, because it decides which implementation is bound."
+        },
+        {
+          "id": "architecture_interface_boundary_ownership_a",
+          "text": "The domain layer, because the consumer owns the abstraction it depends on."
+        }
+      ],
+      "correctAnswerIds": [
+        "architecture_interface_boundary_ownership_a"
+      ],
+      "explanation": "Dependency inversion works only when the abstraction belongs to the side that consumes it: the domain declares what it needs, and the data layer depends inward to satisfy it. Placing the interface next to its implementation leaves the arrow pointing outward and the domain still coupled to the data module. A neutral module removes the compile-time coupling but scatters the contract away from the code whose needs define it.",
+      "sources": [
+        {
+          "title": "Guide to App Architecture",
+          "url": "https://developer.android.com/topic/architecture"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "architecture_solid_dependency_substitution",
+      "topicId": "architecture",
+      "subtopicId": "solid",
+      "text": "An analytics class takes a concrete FirebaseLogger. Which SOLID principles does depending on an interface instead most directly serve? Select all that apply.",
+      "answers": [
+        {
+          "id": "architecture_solid_dependency_substitution_a",
+          "text": "Dependency inversion, because the caller depends on an abstraction."
+        },
+        {
+          "id": "architecture_solid_dependency_substitution_b",
+          "text": "Single responsibility, because the class then performs only one task."
+        },
+        {
+          "id": "architecture_solid_dependency_substitution_c",
+          "text": "Open/closed, because a new logger extends behaviour without editing callers."
+        },
+        {
+          "id": "architecture_solid_dependency_substitution_d",
+          "text": "Interface segregation, because the logger exposes fewer methods to everyone."
+        }
+      ],
+      "correctAnswerIds": [
+        "architecture_solid_dependency_substitution_a",
+        "architecture_solid_dependency_substitution_c"
+      ],
+      "explanation": "Depending on an abstraction the caller owns is dependency inversion, and it is what lets a new implementation be introduced without modifying existing call sites, which is the open/closed goal. The change does not alter how many responsibilities the analytics class has, and it says nothing about whether the interface is narrow: segregation is about not forcing clients to depend on methods they never call, which is a separate decision about the interface's shape.",
+      "sources": [
+        {
+          "title": "Guide to App Architecture",
+          "url": "https://developer.android.com/topic/architecture"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
       "id": "constructor_injection_001",
       "topicId": "dependency_injection",
       "subtopicId": "constructor_injection",
@@ -4196,6 +4792,148 @@
         {
           "title": "Manual Dependency Injection",
           "url": "https://developer.android.com/training/dependency-injection/manual"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "di_hilt_viewmodel_scope",
+      "topicId": "dependency_injection",
+      "subtopicId": "hilt_viewmodels",
+      "text": "A ViewModel is annotated @HiltViewModel and injects a repository. What determines how long the injected repository instance lives?",
+      "answers": [
+        {
+          "id": "di_hilt_viewmodel_scope_a",
+          "text": "The ViewModel's own lifetime, because Hilt creates dependencies per ViewModel."
+        },
+        {
+          "id": "di_hilt_viewmodel_scope_b",
+          "text": "The scope annotation on the binding that provides the repository."
+        },
+        {
+          "id": "di_hilt_viewmodel_scope_c",
+          "text": "The Activity that first requested the ViewModel from its store."
+        },
+        {
+          "id": "di_hilt_viewmodel_scope_d",
+          "text": "The navigation entry the ViewModel is attached to at injection time."
+        }
+      ],
+      "correctAnswerIds": [
+        "di_hilt_viewmodel_scope_b"
+      ],
+      "explanation": "@HiltViewModel governs how the ViewModel itself is constructed and retained; the lifetime of what it receives is decided by that binding's own scope. An unscoped binding produces a new instance per injection, while @Singleton or @ActivityRetainedScoped shares one across a wider boundary. Conflating the two is the usual source of surprise, where a dependency expected to be per-screen is in fact shared process-wide.",
+      "sources": [
+        {
+          "title": "Dependency Injection with Hilt",
+          "url": "https://developer.android.com/training/dependency-injection/hilt-android"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "di_koin_factory_vs_single",
+      "topicId": "dependency_injection",
+      "subtopicId": "koin_definitions",
+      "text": "In a Koin module, what is the difference between declaring a dependency with single and with factory?",
+      "answers": [
+        {
+          "id": "di_koin_factory_vs_single_a",
+          "text": "single resolves at startup while factory resolves the first time it is requested."
+        },
+        {
+          "id": "di_koin_factory_vs_single_b",
+          "text": "single returns one shared instance while factory creates a new one per request."
+        },
+        {
+          "id": "di_koin_factory_vs_single_c",
+          "text": "single supports constructor parameters while factory requires a lambda."
+        },
+        {
+          "id": "di_koin_factory_vs_single_d",
+          "text": "single is validated at compile time while factory is resolved at runtime."
+        }
+      ],
+      "correctAnswerIds": [
+        "di_koin_factory_vs_single_b"
+      ],
+      "explanation": "The two keywords choose an instance-creation strategy: single keeps one instance for the container's lifetime and hands the same object to every consumer, while factory builds a fresh one on each resolution. Both are declared in the same DSL and both resolve at runtime, since Koin builds its graph without code generation. Choosing single for something holding per-screen state is how unintended sharing appears.",
+      "sources": [
+        {
+          "title": "Koin Definitions",
+          "url": "https://insert-koin.io/docs/reference/koin-core/definitions"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "di_constructor_injection_testability",
+      "topicId": "dependency_injection",
+      "subtopicId": "di_fundamentals",
+      "text": "Which properties follow from taking required collaborators as constructor parameters? Select all that apply.",
+      "answers": [
+        {
+          "id": "di_constructor_injection_testability_a",
+          "text": "A test can supply substitutes without touching any global registry."
+        },
+        {
+          "id": "di_constructor_injection_testability_b",
+          "text": "The dependencies are visible in the type, so callers see what is required."
+        },
+        {
+          "id": "di_constructor_injection_testability_c",
+          "text": "The framework can resolve the dependencies without any binding declaration."
+        },
+        {
+          "id": "di_constructor_injection_testability_d",
+          "text": "An object is fully formed once constructed, so it needs no init call."
+        }
+      ],
+      "correctAnswerIds": [
+        "di_constructor_injection_testability_a",
+        "di_constructor_injection_testability_b",
+        "di_constructor_injection_testability_d"
+      ],
+      "explanation": "Constructor injection makes requirements explicit in the signature, lets the collaborators be held in immutable properties so the object is usable the moment it exists, and allows a test to pass fakes directly. What it does not do is tell a container how to build anything: a framework still needs a binding or module declaring how each type is provided, which is why the two concerns are separate.",
+      "sources": [
+        {
+          "title": "Dependency Injection on Android",
+          "url": "https://developer.android.com/training/dependency-injection"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "di_framework_tradeoff_compile_vs_runtime",
+      "topicId": "dependency_injection",
+      "subtopicId": "di_framework_tradeoffs",
+      "text": "What is the practical consequence of choosing a reflection-free, compile-time DI framework over a runtime service-registry one?",
+      "answers": [
+        {
+          "id": "di_framework_tradeoff_compile_vs_runtime_b",
+          "text": "Scoped instances become available that a runtime container cannot express."
+        },
+        {
+          "id": "di_framework_tradeoff_compile_vs_runtime_c",
+          "text": "Dependencies no longer need to be declared, since the graph is inferred."
+        },
+        {
+          "id": "di_framework_tradeoff_compile_vs_runtime_d",
+          "text": "Circular dependencies are resolved automatically during code generation."
+        },
+        {
+          "id": "di_framework_tradeoff_compile_vs_runtime_a",
+          "text": "A missing binding surfaces as a build failure rather than at first resolution."
+        }
+      ],
+      "correctAnswerIds": [
+        "di_framework_tradeoff_compile_vs_runtime_a"
+      ],
+      "explanation": "Generating the graph at build time lets the tool verify that every requested type can be provided, so an incomplete graph stops compilation instead of throwing the first time that screen opens. The cost is build-time work and generated code. Both styles express scopes and both require bindings to be declared; neither resolves a genuine cycle for you, which remains a design problem to break.",
+      "sources": [
+        {
+          "title": "Dependency Injection on Android",
+          "url": "https://developer.android.com/training/dependency-injection"
         }
       ],
       "status": "ACTIVE"
@@ -4384,6 +5122,216 @@
       "status": "ACTIVE"
     },
     {
+      "id": "datastore_vs_sharedpreferences_async",
+      "topicId": "local_data",
+      "subtopicId": "datastore_vs_sharedpreferences",
+      "text": "Which advantage does DataStore have over SharedPreferences for reading a stored user setting?",
+      "answers": [
+        {
+          "id": "datastore_vs_sharedpreferences_async_b",
+          "text": "It encrypts the stored values so they cannot be read from device storage."
+        },
+        {
+          "id": "datastore_vs_sharedpreferences_async_c",
+          "text": "It writes synchronously so the value is durable before the call returns."
+        },
+        {
+          "id": "datastore_vs_sharedpreferences_async_d",
+          "text": "It stores arbitrary object graphs without a serializer being supplied."
+        },
+        {
+          "id": "datastore_vs_sharedpreferences_async_a",
+          "text": "It exposes reads as a Flow instead of a blocking call on the caller's thread."
+        }
+      ],
+      "correctAnswerIds": [
+        "datastore_vs_sharedpreferences_async_a"
+      ],
+      "explanation": "SharedPreferences reads go through a synchronous API that can block the calling thread, and its apply() reports no result. DataStore exposes data as a Flow and performs writes in a suspending call that surfaces failures, which is what makes it safe to use from coroutine code. It is not an encryption layer, and typed storage still requires a serializer that the caller provides.",
+      "sources": [
+        {
+          "title": "Jetpack DataStore",
+          "url": "https://developer.android.com/topic/libraries/architecture/datastore"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "room_migration_missing_path",
+      "topicId": "local_data",
+      "subtopicId": "room_migrations",
+      "text": "A Room database version is incremented and the app ships without a matching Migration. What happens on a device holding the older database?",
+      "answers": [
+        {
+          "id": "room_migration_missing_path_a",
+          "text": "Room opens the database and adds the new columns from the entity definitions."
+        },
+        {
+          "id": "room_migration_missing_path_b",
+          "text": "Room throws at open time, because no path from the stored version exists."
+        },
+        {
+          "id": "room_migration_missing_path_c",
+          "text": "Room silently recreates the database, discarding the stored rows."
+        },
+        {
+          "id": "room_migration_missing_path_d",
+          "text": "Room keeps the old schema and reports the mismatch on the first query."
+        }
+      ],
+      "correctAnswerIds": [
+        "room_migration_missing_path_b"
+      ],
+      "explanation": "Room compares the stored version with the compiled schema when the database opens and fails immediately if it cannot find a migration between them. Nothing is inferred from the entities, because Room cannot know how existing rows should be transformed. Destructive recreation is a behaviour the developer has to opt into explicitly, precisely because it loses data.",
+      "sources": [
+        {
+          "title": "Migrating Room Databases",
+          "url": "https://developer.android.com/training/data-storage/room/migrating-db-versions"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "room_relationship_no_foreign_key_join",
+      "topicId": "local_data",
+      "subtopicId": "room_relationships",
+      "text": "A Room entity uses @Relation to load a list of children with its parent. What does @Relation itself provide?",
+      "answers": [
+        {
+          "id": "room_relationship_no_foreign_key_join_a",
+          "text": "A database-level foreign key constraint enforcing referential integrity."
+        },
+        {
+          "id": "room_relationship_no_foreign_key_join_b",
+          "text": "A cascading delete that removes the children with their parent row."
+        },
+        {
+          "id": "room_relationship_no_foreign_key_join_c",
+          "text": "A single SQL join that returns parent and children in one statement."
+        },
+        {
+          "id": "room_relationship_no_foreign_key_join_d",
+          "text": "A convenience query that fetches the children and attaches them in memory."
+        }
+      ],
+      "correctAnswerIds": [
+        "room_relationship_no_foreign_key_join_d"
+      ],
+      "explanation": "@Relation tells Room to run an additional query for the related rows and assemble the object graph, which is why the annotated field must be a collection on a plain data class rather than on the entity itself. Constraints and cascading behaviour come from @ForeignKey, which is a separate and independent declaration, and the fetch is not one join.",
+      "sources": [
+        {
+          "title": "Room Relationships",
+          "url": "https://developer.android.com/training/data-storage/room/relationships"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "room_type_converter_scope",
+      "topicId": "local_data",
+      "subtopicId": "room_type_converters",
+      "text": "A Room entity stores a value of a type SQLite does not support. What does adding a @TypeConverter accomplish?",
+      "answers": [
+        {
+          "id": "room_type_converter_scope_a",
+          "text": "It teaches Room how to translate the type to and from a supported column type."
+        },
+        {
+          "id": "room_type_converter_scope_b",
+          "text": "It makes Room store the value as a serialized blob without further configuration."
+        },
+        {
+          "id": "room_type_converter_scope_c",
+          "text": "It registers the type so Room can query its fields inside a WHERE clause."
+        },
+        {
+          "id": "room_type_converter_scope_d",
+          "text": "It generates an additional table so the value is stored in normalized form."
+        }
+      ],
+      "correctAnswerIds": [
+        "room_type_converter_scope_a"
+      ],
+      "explanation": "A type converter is a pair of functions mapping an unsupported type onto one SQLite understands, so the column holds a primitive or text value and Room reconstructs the object on read. The stored form is whatever the converter produces rather than an automatic blob. Because the value lands in a single column, its internals are not addressable in SQL, which is why a field that must be filtered on belongs in its own column or table.",
+      "sources": [
+        {
+          "title": "Referencing Complex Data",
+          "url": "https://developer.android.com/training/data-storage/room/referencing-data"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "cache_invalidation_staleness_policy",
+      "topicId": "local_data",
+      "subtopicId": "cache_invalidation",
+      "text": "An offline-first repository caches a remote list locally. Which policy question most determines whether the UI can show stale data?",
+      "answers": [
+        {
+          "id": "cache_invalidation_staleness_policy_a",
+          "text": "Whether the cached rows are stored in Room or in an in-memory structure."
+        },
+        {
+          "id": "cache_invalidation_staleness_policy_b",
+          "text": "Whether the cache records when the data was fetched so freshness can be judged."
+        },
+        {
+          "id": "cache_invalidation_staleness_policy_c",
+          "text": "Whether the remote call runs on Dispatchers.IO rather than Dispatchers.Default."
+        },
+        {
+          "id": "cache_invalidation_staleness_policy_d",
+          "text": "Whether the local query returns a Flow rather than a one-shot suspend call."
+        }
+      ],
+      "correctAnswerIds": [
+        "cache_invalidation_staleness_policy_b"
+      ],
+      "explanation": "Deciding whether cached data may still be shown requires knowing how old it is, so the cache has to persist a fetch timestamp or equivalent marker against which a staleness rule can be applied. Where the rows live, which dispatcher performs the network call, and whether reads are observable all matter for other reasons, but none of them tells the app whether what it holds is still good enough to display.",
+      "sources": [
+        {
+          "title": "Build an Offline-first App",
+          "url": "https://developer.android.com/topic/architecture/data-layer/offline-first"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sqlite_index_read_write_tradeoff",
+      "topicId": "local_data",
+      "subtopicId": "sqlite_fundamentals",
+      "text": "A frequently filtered column gets an index. What is the main cost of that index?",
+      "answers": [
+        {
+          "id": "sqlite_index_read_write_tradeoff_a",
+          "text": "Reads of unindexed columns in the same table become measurably slower."
+        },
+        {
+          "id": "sqlite_index_read_write_tradeoff_b",
+          "text": "The table can no longer be modified inside a single transaction."
+        },
+        {
+          "id": "sqlite_index_read_write_tradeoff_c",
+          "text": "Writes do more work and the file grows, because the index is maintained."
+        },
+        {
+          "id": "sqlite_index_read_write_tradeoff_d",
+          "text": "Queries must name the index explicitly for the planner to consider it."
+        }
+      ],
+      "correctAnswerIds": [
+        "sqlite_index_read_write_tradeoff_c"
+      ],
+      "explanation": "An index is a second structure the database keeps in step with the table, so every insert, update, or delete touching the indexed column has to update it too, and the file grows. That is the trade the read speedup is bought with, and it is why indexes are added for queries that actually run rather than by default. The planner selects indexes on its own, and transactions are unaffected.",
+      "sources": [
+        {
+          "title": "Save Data in a Local Database Using Room",
+          "url": "https://developer.android.com/training/data-storage/room"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
       "id": "http_idempotency_001",
       "topicId": "networking",
       "subtopicId": "http_idempotency",
@@ -4563,6 +5511,216 @@
       "status": "ACTIVE"
     },
     {
+      "id": "okhttp_authenticator_token_refresh",
+      "topicId": "networking",
+      "subtopicId": "token_refresh",
+      "text": "An API returns 401 when an access token expires and the client should refresh it once and retry. Which OkHttp mechanism is designed for that?",
+      "answers": [
+        {
+          "id": "okhttp_authenticator_token_refresh_b",
+          "text": "An application interceptor, which inspects the response and reissues the call itself."
+        },
+        {
+          "id": "okhttp_authenticator_token_refresh_c",
+          "text": "A network interceptor, which rewrites the request before it reaches the connection."
+        },
+        {
+          "id": "okhttp_authenticator_token_refresh_d",
+          "text": "A call factory, which supplies a fresh request whenever a call is enqueued."
+        },
+        {
+          "id": "okhttp_authenticator_token_refresh_a",
+          "text": "An Authenticator, which OkHttp invokes after it receives an unauthorized response."
+        }
+      ],
+      "correctAnswerIds": [
+        "okhttp_authenticator_token_refresh_a"
+      ],
+      "explanation": "Authenticator is the hook OkHttp calls specifically when a response carries an authorization challenge, and returning a new request makes the client replay the call; OkHttp also tracks the attempts so a persistently failing refresh stops rather than looping. Retrying from an interceptor is possible but the interceptor has to manage concurrency and its own retry limit, which is exactly the bookkeeping Authenticator already handles.",
+      "sources": [
+        {
+          "title": "OkHttp Recipes: Handling Authentication",
+          "url": "https://github.com/square/okhttp/blob/master/docs/recipes.md"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "http_cache_control_revalidation",
+      "topicId": "networking",
+      "subtopicId": "network_caching",
+      "text": "A response carries Cache-Control: max-age=0, must-revalidate together with an ETag. What does the client do on the next request?",
+      "answers": [
+        {
+          "id": "http_cache_control_revalidation_a",
+          "text": "It serves the stored response directly, because an ETag marks it as reusable."
+        },
+        {
+          "id": "http_cache_control_revalidation_b",
+          "text": "It asks the server whether the stored response is still valid before reusing it."
+        },
+        {
+          "id": "http_cache_control_revalidation_c",
+          "text": "It skips the cache entirely and downloads the full body again."
+        },
+        {
+          "id": "http_cache_control_revalidation_d",
+          "text": "It reuses the stored response until the ETag value changes on the client."
+        }
+      ],
+      "correctAnswerIds": [
+        "http_cache_control_revalidation_b"
+      ],
+      "explanation": "max-age=0 makes the stored response stale immediately, and must-revalidate forbids serving it without checking. The client therefore sends a conditional request carrying the ETag, and the server answers 304 when nothing changed, so the body is not re-downloaded even though a round trip happens. That is the difference from no-store, which prevents caching altogether.",
+      "sources": [
+        {
+          "title": "OkHttp Caching",
+          "url": "https://github.com/square/okhttp/blob/master/docs/features/caching.md"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "json_unknown_keys_compatibility",
+      "topicId": "networking",
+      "subtopicId": "json_compatibility",
+      "text": "A backend adds a field to a JSON response that the Kotlin model does not declare. With kotlinx.serialization defaults, what happens when the client parses it?",
+      "answers": [
+        {
+          "id": "json_unknown_keys_compatibility_a",
+          "text": "The unknown key is ignored, because the parser skips fields with no property."
+        },
+        {
+          "id": "json_unknown_keys_compatibility_b",
+          "text": "Parsing fails, because the default configuration rejects unknown keys."
+        },
+        {
+          "id": "json_unknown_keys_compatibility_c",
+          "text": "The unknown key is stored so it can be re-emitted when the model is serialized."
+        },
+        {
+          "id": "json_unknown_keys_compatibility_d",
+          "text": "Parsing succeeds and the value is bound to the closest matching property name."
+        }
+      ],
+      "correctAnswerIds": [
+        "json_unknown_keys_compatibility_b"
+      ],
+      "explanation": "A default Json instance is strict and throws when it meets a key with no matching property, which surfaces a schema mismatch loudly but breaks a client the moment the server adds a field. Setting ignoreUnknownKeys = true is the deliberate opt-in that makes additive server changes safe. Nothing is retained for round-tripping, and no fuzzy name matching happens; only @SerialName controls the mapping.",
+      "sources": [
+        {
+          "title": "kotlinx.serialization JSON",
+          "url": "https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/json.md"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "pagination_keyset_vs_offset",
+      "topicId": "networking",
+      "subtopicId": "pagination",
+      "text": "A feed is paged with an offset while new items are being inserted at the top. Which problem does keyset pagination solve here?",
+      "answers": [
+        {
+          "id": "pagination_keyset_vs_offset_a",
+          "text": "It removes the need for the client to hold previously loaded pages in memory."
+        },
+        {
+          "id": "pagination_keyset_vs_offset_b",
+          "text": "It lets the server return every page in a single round trip."
+        },
+        {
+          "id": "pagination_keyset_vs_offset_c",
+          "text": "It stops items shifting between pages, which causes duplicates or gaps."
+        },
+        {
+          "id": "pagination_keyset_vs_offset_d",
+          "text": "It guarantees that pages arrive in the order the client requested them."
+        }
+      ],
+      "correctAnswerIds": [
+        "pagination_keyset_vs_offset_c"
+      ],
+      "explanation": "An offset names a position in a result set that changes as rows are inserted, so a row can move across the page boundary and be fetched twice or missed entirely. A keyset request instead says where to continue from by value, which stays meaningful under concurrent writes. It is a consistency fix rather than a transport or memory optimisation, and both styles still return one page per request.",
+      "sources": [
+        {
+          "title": "Paging Library Overview",
+          "url": "https://developer.android.com/topic/libraries/architecture/paging/v3-overview"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "network_error_transport_vs_http",
+      "topicId": "networking",
+      "subtopicId": "network_error_handling",
+      "text": "A Retrofit suspend call is wrapped in try/catch that handles IOException. Which failure does that catch NOT cover?",
+      "answers": [
+        {
+          "id": "network_error_transport_vs_http_a",
+          "text": "A connection that is reset part way through reading the response body."
+        },
+        {
+          "id": "network_error_transport_vs_http_b",
+          "text": "A DNS lookup that fails because the device has no network route."
+        },
+        {
+          "id": "network_error_transport_vs_http_c",
+          "text": "A server that replies 500 with a well-formed error body."
+        },
+        {
+          "id": "network_error_transport_vs_http_d",
+          "text": "A socket that exceeds the client's configured read timeout."
+        }
+      ],
+      "correctAnswerIds": [
+        "network_error_transport_vs_http_c"
+      ],
+      "explanation": "IOException covers transport failures: the request never completed, so there is no HTTP response to inspect. A 500 is a completed exchange, so the call returns normally and the status has to be examined, either through a Response wrapper or by letting Retrofit throw HttpException. Treating every failure as an IOException is what leads to server errors being reported to users as connectivity problems.",
+      "sources": [
+        {
+          "title": "Retrofit",
+          "url": "https://github.com/square/retrofit"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "tls_certificate_pinning_tradeoff",
+      "topicId": "networking",
+      "subtopicId": "tls_https",
+      "text": "An app pins its API server's certificate. What is the principal operational risk?",
+      "answers": [
+        {
+          "id": "tls_certificate_pinning_tradeoff_a",
+          "text": "Traffic is no longer encrypted once the pin is validated by the client."
+        },
+        {
+          "id": "tls_certificate_pinning_tradeoff_b",
+          "text": "Installed clients break when the server rotates to an unpinned certificate."
+        },
+        {
+          "id": "tls_certificate_pinning_tradeoff_c",
+          "text": "The system trust store is bypassed, so expired certificates are accepted."
+        },
+        {
+          "id": "tls_certificate_pinning_tradeoff_d",
+          "text": "Pinning applies to every host, so unrelated requests fail validation."
+        }
+      ],
+      "correctAnswerIds": [
+        "tls_certificate_pinning_tradeoff_b"
+      ],
+      "explanation": "Pinning narrows trust to a specific key or certificate, so it defends against a compromised or coerced certificate authority. The cost is coupling shipped clients to the server's certificate lifecycle: rotating without shipping the new pin first leaves installed apps unable to connect, which no server-side fix can undo. Pinning adds a check on top of normal validation rather than replacing it, and it is configured per host.",
+      "sources": [
+        {
+          "title": "Network Security Configuration",
+          "url": "https://developer.android.com/privacy-and-security/security-config"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
       "id": "workmanager_constraints_001",
       "topicId": "background_work",
       "subtopicId": "workmanager_constraints",
@@ -4707,6 +5865,148 @@
       "status": "ACTIVE"
     },
     {
+      "id": "workmanager_unique_work_policy",
+      "topicId": "background_work",
+      "subtopicId": "workmanager_chaining",
+      "text": "A sync is enqueued as unique work each time the app foregrounds, and a previous run may still be pending. Which policy keeps the pending run instead of replacing it?",
+      "answers": [
+        {
+          "id": "workmanager_unique_work_policy_a",
+          "text": "REPLACE, because it reconciles the request with the one already queued."
+        },
+        {
+          "id": "workmanager_unique_work_policy_b",
+          "text": "APPEND, because it defers the new request until the queue drains."
+        },
+        {
+          "id": "workmanager_unique_work_policy_c",
+          "text": "CANCEL_AND_REENQUEUE, because it restarts the work with the newer request."
+        },
+        {
+          "id": "workmanager_unique_work_policy_d",
+          "text": "KEEP, because it discards the new request when work is already scheduled."
+        }
+      ],
+      "correctAnswerIds": [
+        "workmanager_unique_work_policy_d"
+      ],
+      "explanation": "Unique work needs a policy for the collision, and KEEP is the one that treats an already-scheduled run as sufficient and drops the incoming request, which is what a periodic refresh usually wants. REPLACE cancels the existing work in favour of the new request, so a run that was about to execute is discarded, and APPEND queues the new request to run after the existing one rather than instead of it.",
+      "sources": [
+        {
+          "title": "Managing Work",
+          "url": "https://developer.android.com/topic/libraries/architecture/workmanager/how-to/managing-work"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "workmanager_retry_result_contract",
+      "topicId": "background_work",
+      "subtopicId": "workmanager_retries",
+      "text": "A Worker's network call fails with a timeout. What should doWork() return so WorkManager retries it under the configured backoff?",
+      "answers": [
+        {
+          "id": "workmanager_retry_result_contract_a",
+          "text": "Result.failure(), which marks the attempt unsuccessful so it is scheduled again."
+        },
+        {
+          "id": "workmanager_retry_result_contract_b",
+          "text": "Result.success() with output data describing the error for the next run."
+        },
+        {
+          "id": "workmanager_retry_result_contract_c",
+          "text": "It should throw the exception, so WorkManager records it and reschedules."
+        },
+        {
+          "id": "workmanager_retry_result_contract_d",
+          "text": "Result.retry(), which asks WorkManager to run the work again later."
+        }
+      ],
+      "correctAnswerIds": [
+        "workmanager_retry_result_contract_d"
+      ],
+      "explanation": "Result.retry() is the explicit request to run the work again, and WorkManager applies the request's backoff policy and delay before the next attempt. Result.failure() is terminal and stops the chain, which is right for an error no retry can fix, such as invalid input. An uncaught exception is treated as a failure rather than a retry request, so a transient error thrown out of doWork() is lost.",
+      "sources": [
+        {
+          "title": "Define Work Requests",
+          "url": "https://developer.android.com/topic/libraries/architecture/workmanager/how-to/define-work"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "background_exact_alarm_justification",
+      "topicId": "background_work",
+      "subtopicId": "exact_alarms",
+      "text": "A reminder feature wants to fire at a precise user-chosen time on modern Android. What does using an exact alarm require?",
+      "answers": [
+        {
+          "id": "background_exact_alarm_justification_a",
+          "text": "A permission the app must hold, since exact alarms are restricted use cases."
+        },
+        {
+          "id": "background_exact_alarm_justification_b",
+          "text": "A foreground service running while the alarm is pending so it is not deferred."
+        },
+        {
+          "id": "background_exact_alarm_justification_c",
+          "text": "A WorkManager request with an initial delay, which grants exact scheduling."
+        },
+        {
+          "id": "background_exact_alarm_justification_d",
+          "text": "A wake lock held from scheduling until the alarm is delivered to the receiver."
+        }
+      ],
+      "correctAnswerIds": [
+        "background_exact_alarm_justification_a"
+      ],
+      "explanation": "Exact alarms bypass the batching the system uses to save power, so recent platform versions gate them behind a permission and expect a user-facing justification such as an alarm clock or calendar reminder. Deferrable work should use an inexact alarm or WorkManager instead, neither of which promises a precise moment. Nothing needs to be kept running in the meantime, since AlarmManager delivers the alarm itself.",
+      "sources": [
+        {
+          "title": "Schedule Alarms",
+          "url": "https://developer.android.com/develop/background-work/services/alarms/schedule"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "background_api_selection_criteria",
+      "topicId": "background_work",
+      "subtopicId": "background_api_selection",
+      "text": "Which characteristics point towards WorkManager rather than a coroutine in a ViewModel scope? Select all that apply.",
+      "answers": [
+        {
+          "id": "background_api_selection_criteria_a",
+          "text": "The work must survive the user leaving the screen and the process being killed."
+        },
+        {
+          "id": "background_api_selection_criteria_b",
+          "text": "The work should run only when the device has an unmetered connection."
+        },
+        {
+          "id": "background_api_selection_criteria_c",
+          "text": "The work must update UI state that the current screen renders immediately."
+        },
+        {
+          "id": "background_api_selection_criteria_d",
+          "text": "The work should be retried with backoff if it fails while the app is closed."
+        }
+      ],
+      "correctAnswerIds": [
+        "background_api_selection_criteria_a",
+        "background_api_selection_criteria_b",
+        "background_api_selection_criteria_d"
+      ],
+      "explanation": "WorkManager exists for deferrable work that has to be guaranteed: it persists its queue so a run survives process death and reboot, it expresses constraints such as network type or charging, and it applies a backoff policy across attempts. Work whose only consumer is the visible screen has none of those needs, and driving it from WorkManager adds latency and indirection when a scope that dies with the screen is the correct owner.",
+      "sources": [
+        {
+          "title": "Background Work Overview",
+          "url": "https://developer.android.com/develop/background-work/background-tasks"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
       "id": "notification_channels_001",
       "topicId": "notifications",
       "subtopicId": "notification_channels",
@@ -4807,6 +6107,112 @@
         {
           "title": "Firebase Cloud Messaging",
           "url": "https://firebase.google.com/docs/cloud-messaging"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "notification_pending_intent_back_stack",
+      "topicId": "notifications",
+      "subtopicId": "notification_deep_links",
+      "text": "Tapping a notification opens a detail screen deep inside the app. What must be arranged so Back behaves as if the user navigated there?",
+      "answers": [
+        {
+          "id": "notification_pending_intent_back_stack_a",
+          "text": "The activity must be declared with a launch mode that clears the existing task."
+        },
+        {
+          "id": "notification_pending_intent_back_stack_b",
+          "text": "The notification must set an ongoing flag so the task is retained until dismissed."
+        },
+        {
+          "id": "notification_pending_intent_back_stack_c",
+          "text": "The PendingIntent must carry a synthesized back stack for the destination."
+        },
+        {
+          "id": "notification_pending_intent_back_stack_d",
+          "text": "The detail screen must finish itself so Back returns to the launcher."
+        }
+      ],
+      "correctAnswerIds": [
+        "notification_pending_intent_back_stack_c"
+      ],
+      "explanation": "Launching a deep destination directly leaves nothing beneath it, so Back exits the app rather than moving up the hierarchy. Building the parent chain into the PendingIntent, for example with TaskStackBuilder or a navigation deep link that constructs the stack, gives the user the destinations they would have passed through. Launch modes control task identity rather than synthesizing history.",
+      "sources": [
+        {
+          "title": "Start an Activity from a Notification",
+          "url": "https://developer.android.com/develop/ui/views/notifications/navigation"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fcm_app_state_delivery_behavior",
+      "topicId": "notifications",
+      "subtopicId": "fcm_app_state_behavior",
+      "text": "An FCM message containing only a notification payload arrives while the app is in the background. What happens?",
+      "answers": [
+        {
+          "id": "fcm_app_state_delivery_behavior_a",
+          "text": "The system tray displays it, and onMessageReceived is not called."
+        },
+        {
+          "id": "fcm_app_state_delivery_behavior_b",
+          "text": "onMessageReceived runs first so the app can decide whether to display it."
+        },
+        {
+          "id": "fcm_app_state_delivery_behavior_c",
+          "text": "The message is queued until the app returns to the foreground."
+        },
+        {
+          "id": "fcm_app_state_delivery_behavior_d",
+          "text": "The message is dropped, since notification payloads need a foreground app."
+        }
+      ],
+      "correctAnswerIds": [
+        "fcm_app_state_delivery_behavior_a"
+      ],
+      "explanation": "With a notification-only payload the SDK renders the message itself when the app is not in the foreground, and app code does not run, which is why display customisation and analytics cannot rely on that callback. In the foreground the same message is delivered to onMessageReceived instead. Including a data payload is what guarantees app code sees the message in both states.",
+      "sources": [
+        {
+          "title": "Receive Messages in an Android App",
+          "url": "https://firebase.google.com/docs/cloud-messaging/android/receive"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "notification_channel_user_control",
+      "topicId": "notifications",
+      "subtopicId": "notification_importance",
+      "text": "Which statements about notification channels and importance are correct? Select all that apply.",
+      "answers": [
+        {
+          "id": "notification_channel_user_control_a",
+          "text": "Importance set at creation determines the channel's initial interruption level."
+        },
+        {
+          "id": "notification_channel_user_control_b",
+          "text": "The user can change a channel's importance after the channel exists."
+        },
+        {
+          "id": "notification_channel_user_control_c",
+          "text": "The app can raise a channel's importance later by recreating the channel."
+        },
+        {
+          "id": "notification_channel_user_control_d",
+          "text": "Deleting and recreating a channel restores the app's original settings."
+        }
+      ],
+      "correctAnswerIds": [
+        "notification_channel_user_control_a",
+        "notification_channel_user_control_b"
+      ],
+      "explanation": "The app proposes an importance when it creates a channel, and from then on the setting belongs to the user, who may raise or lower it. The app cannot take it back: recreating the channel with the same id does not reset what the user chose, and deleting a channel does not give a clean slate either, since the system remembers settings for a channel id to prevent exactly that reset. Genuinely different behaviour needs a genuinely different channel.",
+      "sources": [
+        {
+          "title": "Create and Manage Notification Channels",
+          "url": "https://developer.android.com/develop/ui/views/notifications/channels"
         }
       ],
       "status": "ACTIVE"
@@ -4995,6 +6401,218 @@
       "status": "ACTIVE"
     },
     {
+      "id": "coroutine_virtual_time_delay_skipping",
+      "topicId": "testing",
+      "subtopicId": "virtual_time",
+      "text": "A suspending function under test calls delay(10_000). Inside runTest, how long does the test take?",
+      "answers": [
+        {
+          "id": "coroutine_virtual_time_delay_skipping_a",
+          "text": "Ten seconds, because delay suspends for its real duration in any scope."
+        },
+        {
+          "id": "coroutine_virtual_time_delay_skipping_b",
+          "text": "Effectively no time, because the scheduler advances virtual time past the delay."
+        },
+        {
+          "id": "coroutine_virtual_time_delay_skipping_c",
+          "text": "Ten seconds, unless the test explicitly replaces the dispatcher with a fake clock."
+        },
+        {
+          "id": "coroutine_virtual_time_delay_skipping_d",
+          "text": "Effectively no time, because runTest removes delay calls before executing."
+        }
+      ],
+      "correctAnswerIds": [
+        "coroutine_virtual_time_delay_skipping_b"
+      ],
+      "explanation": "runTest installs a TestCoroutineScheduler that models time rather than waiting on it: when every coroutine is idle and only waiting on a delay, the scheduler jumps the clock forward. The delay still happens in ordering terms, so code that depends on the sequence behaves correctly, but the wall-clock cost disappears. Nothing is stripped from the code, which is why a busy loop that never suspends still hangs the test.",
+      "sources": [
+        {
+          "title": "Test Kotlin Coroutines on Android",
+          "url": "https://developer.android.com/kotlin/coroutines/test"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_testing_hot_flow_never_completes",
+      "topicId": "testing",
+      "subtopicId": "flow_testing",
+      "text": "A test calls toList() on a ViewModel's StateFlow to assert the emitted states. What goes wrong?",
+      "answers": [
+        {
+          "id": "flow_testing_hot_flow_never_completes_a",
+          "text": "The collection never finishes, because a StateFlow does not complete on its own."
+        },
+        {
+          "id": "flow_testing_hot_flow_never_completes_b",
+          "text": "Only the initial value is returned, because StateFlow emits once per collector."
+        },
+        {
+          "id": "flow_testing_hot_flow_never_completes_c",
+          "text": "The call throws, because a StateFlow cannot be collected outside a composable."
+        },
+        {
+          "id": "flow_testing_hot_flow_never_completes_d",
+          "text": "The states arrive out of order, because StateFlow conflates its emissions."
+        }
+      ],
+      "correctAnswerIds": [
+        "flow_testing_hot_flow_never_completes_a"
+      ],
+      "explanation": "toList() is a terminal operator that waits for the flow to complete, and a StateFlow is hot and endless, so the test hangs until it times out. The fix is to bound the collection: take a known number of values, collect in a background coroutine that is cancelled by the test, or use a library built for the purpose. StateFlow does conflate, which is a separate reason a test may not observe every intermediate value.",
+      "sources": [
+        {
+          "title": "Testing Kotlin Flows on Android",
+          "url": "https://developer.android.com/kotlin/flow/test"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "room_testing_in_memory_database",
+      "topicId": "testing",
+      "subtopicId": "room_testing",
+      "text": "A DAO test builds its database with inMemoryDatabaseBuilder. What does that mainly provide?",
+      "answers": [
+        {
+          "id": "room_testing_in_memory_database_a",
+          "text": "A database that skips Room's schema validation so migrations need not exist."
+        },
+        {
+          "id": "room_testing_in_memory_database_b",
+          "text": "A fake implementation of the DAO, so no SQL is actually executed."
+        },
+        {
+          "id": "room_testing_in_memory_database_c",
+          "text": "A real database discarded at process end, so each test starts from a clean state."
+        },
+        {
+          "id": "room_testing_in_memory_database_d",
+          "text": "A database that runs queries synchronously, so suspend functions can be called directly."
+        }
+      ],
+      "correctAnswerIds": [
+        "room_testing_in_memory_database_c"
+      ],
+      "explanation": "An in-memory database is a genuine SQLite instance with the real schema and real query execution, so the DAO's SQL is actually verified; it simply lives in memory and disappears afterwards, which keeps tests isolated and fast without deleting files. It is not a fake, and it does not change threading: suspending DAO functions still need a coroutine, typically through runTest.",
+      "sources": [
+        {
+          "title": "Testing Your Database",
+          "url": "https://developer.android.com/training/data-storage/room/testing-db"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "local_vs_instrumented_test_placement",
+      "topicId": "testing",
+      "subtopicId": "local_vs_instrumented_tests",
+      "text": "Which pieces of work belong in a local JVM test rather than an instrumented test? Select all that apply.",
+      "answers": [
+        {
+          "id": "local_vs_instrumented_test_placement_a",
+          "text": "Asserting a ViewModel's state transitions with fake repositories."
+        },
+        {
+          "id": "local_vs_instrumented_test_placement_b",
+          "text": "Verifying that a Room migration produces the expected schema on a device."
+        },
+        {
+          "id": "local_vs_instrumented_test_placement_c",
+          "text": "Checking a mapper that converts a network model into a domain model."
+        },
+        {
+          "id": "local_vs_instrumented_test_placement_d",
+          "text": "Confirming that a runtime permission dialog appears and can be accepted."
+        }
+      ],
+      "correctAnswerIds": [
+        "local_vs_instrumented_test_placement_a",
+        "local_vs_instrumented_test_placement_c"
+      ],
+      "explanation": "Local tests run on the JVM and suit logic that does not need the Android runtime: state holders with substituted dependencies, mappers, and pure domain rules all qualify and run in milliseconds. Anything depending on real framework behaviour belongs on a device or emulator, including system permission UI. Room migrations sit in between and are commonly instrumented, since they exercise a real SQLite implementation and its schema handling.",
+      "sources": [
+        {
+          "title": "Fundamentals of Testing Android Apps",
+          "url": "https://developer.android.com/training/testing/fundamentals"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "test_dependency_substitution_constructor",
+      "topicId": "testing",
+      "subtopicId": "test_di",
+      "text": "A ViewModel obtains its repository through a global singleton object. Why does that make it awkward to test?",
+      "answers": [
+        {
+          "id": "test_dependency_substitution_constructor_a",
+          "text": "The test cannot supply a different implementation without mutating shared state."
+        },
+        {
+          "id": "test_dependency_substitution_constructor_b",
+          "text": "The ViewModel can no longer be constructed outside the Android runtime."
+        },
+        {
+          "id": "test_dependency_substitution_constructor_c",
+          "text": "The singleton makes the ViewModel's coroutines run on the main dispatcher."
+        },
+        {
+          "id": "test_dependency_substitution_constructor_d",
+          "text": "The repository is initialized lazily, so its first call always fails in tests."
+        }
+      ],
+      "correctAnswerIds": [
+        "test_dependency_substitution_constructor_a"
+      ],
+      "explanation": "When a class reaches out for its collaborators, the only way to substitute one is to change the global the class reads, which leaks between tests and forces careful ordering and teardown. Taking the repository as a constructor parameter lets each test pass its own fake and keeps the cases independent. The class usually remains constructible on the JVM either way, so it is the substitution mechanism rather than the runtime that is the problem.",
+      "sources": [
+        {
+          "title": "Dependency Injection in Tests",
+          "url": "https://developer.android.com/training/dependency-injection/hilt-testing"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flaky_test_shared_state_and_time",
+      "topicId": "testing",
+      "subtopicId": "flaky_tests",
+      "text": "Which practices most directly reduce flakiness in a suite that intermittently fails? Select all that apply.",
+      "answers": [
+        {
+          "id": "flaky_test_shared_state_and_time_a",
+          "text": "Replacing real waits with a controllable scheduler or clock."
+        },
+        {
+          "id": "flaky_test_shared_state_and_time_b",
+          "text": "Retrying each failed test automatically before reporting a failure."
+        },
+        {
+          "id": "flaky_test_shared_state_and_time_c",
+          "text": "Ensuring no state is shared between tests through singletons or files."
+        },
+        {
+          "id": "flaky_test_shared_state_and_time_d",
+          "text": "Running the whole suite on a single thread to remove all concurrency."
+        }
+      ],
+      "correctAnswerIds": [
+        "flaky_test_shared_state_and_time_a",
+        "flaky_test_shared_state_and_time_c"
+      ],
+      "explanation": "Flakiness usually comes from timing that varies between runs and from state that survives from one test to the next, so removing real waits and giving each test its own fixtures addresses the causes directly. Automatic retries hide the symptom and let a genuine intermittent bug reach production. Forcing everything onto one thread removes real concurrency from the code under test, which changes what is being verified rather than stabilising it.",
+      "sources": [
+        {
+          "title": "Fundamentals of Testing Android Apps",
+          "url": "https://developer.android.com/training/testing/fundamentals"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
       "id": "anr_001",
       "topicId": "performance",
       "subtopicId": "anr",
@@ -5143,6 +6761,182 @@
       "status": "ACTIVE"
     },
     {
+      "id": "performance_coroutine_scope_leak",
+      "topicId": "performance",
+      "subtopicId": "coroutine_leaks",
+      "text": "A repository launches work in GlobalScope when a screen requests a refresh. What is the main consequence?",
+      "answers": [
+        {
+          "id": "performance_coroutine_scope_leak_a",
+          "text": "The work runs at a lower priority, so results arrive after the screen is gone."
+        },
+        {
+          "id": "performance_coroutine_scope_leak_b",
+          "text": "The work is duplicated, because each caller creates its own global scope."
+        },
+        {
+          "id": "performance_coroutine_scope_leak_c",
+          "text": "The work blocks the main thread until the coroutine reaches a suspension point."
+        },
+        {
+          "id": "performance_coroutine_scope_leak_d",
+          "text": "The work outlives the screen and keeps its captured references reachable."
+        }
+      ],
+      "correctAnswerIds": [
+        "performance_coroutine_scope_leak_d"
+      ],
+      "explanation": "GlobalScope is tied to the process, so nothing cancels the coroutine when the screen goes away: it keeps running and keeps whatever it captured alive, which wastes work and can retain a destroyed Activity or ViewModel. Giving the work a scope that ends with its owner, such as viewModelScope, makes cancellation automatic. GlobalScope changes neither dispatcher nor priority, so the coroutine is not slower, just unowned.",
+      "sources": [
+        {
+          "title": "Coroutine Context and Dispatchers",
+          "url": "https://kotlinlang.org/docs/coroutine-context-and-dispatchers.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "performance_baseline_profile_purpose",
+      "topicId": "performance",
+      "subtopicId": "baseline_profiles",
+      "text": "What does shipping a Baseline Profile with an app improve?",
+      "answers": [
+        {
+          "id": "performance_baseline_profile_purpose_a",
+          "text": "It shrinks the APK by removing classes that the profile marks as unused."
+        },
+        {
+          "id": "performance_baseline_profile_purpose_c",
+          "text": "It moves class loading onto a background thread during application startup."
+        },
+        {
+          "id": "performance_baseline_profile_purpose_d",
+          "text": "It caches network responses needed by the first screen ahead of time."
+        },
+        {
+          "id": "performance_baseline_profile_purpose_b",
+          "text": "It reduces interpretation and just-in-time work on the first runs after install."
+        }
+      ],
+      "correctAnswerIds": [
+        "performance_baseline_profile_purpose_b"
+      ],
+      "explanation": "A Baseline Profile lists the classes and methods on critical paths so they can be compiled ahead of time when the app is installed, rather than being interpreted and progressively JIT-compiled during early runs. The gain shows up in startup and first-use jank. Removing unused code is R8's job, and the profile changes how code is compiled rather than which thread runs it.",
+      "sources": [
+        {
+          "title": "Baseline Profiles Overview",
+          "url": "https://developer.android.com/topic/performance/baselineprofiles/overview"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "performance_r8_minify_reflection",
+      "topicId": "performance",
+      "subtopicId": "r8",
+      "text": "After enabling R8 in release, an app crashes deserializing a model that works in debug. What is the most likely cause?",
+      "answers": [
+        {
+          "id": "performance_r8_minify_reflection_a",
+          "text": "R8 renamed or removed members the serializer resolves by name at runtime."
+        },
+        {
+          "id": "performance_r8_minify_reflection_b",
+          "text": "R8 reorders fields, so the serializer reads the values in the wrong sequence."
+        },
+        {
+          "id": "performance_r8_minify_reflection_c",
+          "text": "R8 strips the debug symbols the serializer needs to construct the class."
+        },
+        {
+          "id": "performance_r8_minify_reflection_d",
+          "text": "R8 disables reflection entirely, so no runtime type lookup can succeed."
+        }
+      ],
+      "correctAnswerIds": [
+        "performance_r8_minify_reflection_a"
+      ],
+      "explanation": "R8 shrinks and obfuscates based on what it can prove is reachable from code, and a member only referenced reflectively looks unused, so it is renamed or removed and the lookup fails at runtime. Keep rules, or a compiler-assisted serializer that does not depend on runtime names, are the fixes. R8 does not switch reflection off; the problem is that it cannot see through it.",
+      "sources": [
+        {
+          "title": "Guide to App Performance",
+          "url": "https://developer.android.com/topic/performance"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "performance_rendering_jank_causes",
+      "topicId": "performance",
+      "subtopicId": "rendering_jank",
+      "text": "Which conditions typically cause visible jank during scrolling? Select all that apply.",
+      "answers": [
+        {
+          "id": "performance_rendering_jank_causes_a",
+          "text": "Allocating heavily inside a frame, so collection pauses interrupt rendering."
+        },
+        {
+          "id": "performance_rendering_jank_causes_b",
+          "text": "Doing layout-heavy work per item so a frame exceeds its deadline."
+        },
+        {
+          "id": "performance_rendering_jank_causes_c",
+          "text": "Loading data on Dispatchers.IO while the list is being scrolled."
+        },
+        {
+          "id": "performance_rendering_jank_causes_d",
+          "text": "Rendering more frames per second than the display can present."
+        }
+      ],
+      "correctAnswerIds": [
+        "performance_rendering_jank_causes_a",
+        "performance_rendering_jank_causes_b"
+      ],
+      "explanation": "Jank appears when a frame misses its deadline, so anything that lengthens work on the frame-producing path matters: expensive per-item layout, and allocation churn whose collection pauses land mid-frame. Work moved to a background dispatcher is off that path and does not itself cause jank. Producing frames faster than the display can show them is bounded by the pipeline rather than being a source of stutter.",
+      "sources": [
+        {
+          "title": "Rendering and Jank",
+          "url": "https://developer.android.com/topic/performance/vitals/render"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "performance_strictmode_role",
+      "topicId": "performance",
+      "subtopicId": "strictmode",
+      "text": "What does enabling StrictMode's thread policy in a debug build accomplish?",
+      "answers": [
+        {
+          "id": "performance_strictmode_role_a",
+          "text": "It blocks disk and network calls on the main thread before they execute."
+        },
+        {
+          "id": "performance_strictmode_role_b",
+          "text": "It moves offending calls onto a background thread so the UI stays responsive."
+        },
+        {
+          "id": "performance_strictmode_role_c",
+          "text": "It reports main-thread disk and network access so the calls can be found."
+        },
+        {
+          "id": "performance_strictmode_role_d",
+          "text": "It fails the build when it detects a blocking call in application code."
+        }
+      ],
+      "correctAnswerIds": [
+        "performance_strictmode_role_c"
+      ],
+      "explanation": "StrictMode watches for policy violations at runtime and reports them, typically by logging or flashing the screen, so accidental disk and network work on the main thread becomes visible during development. It is a detector, not a guard: the offending call still runs, nothing is relocated for you, and because it is enabled programmatically in debug it has no effect on the build or on release behaviour.",
+      "sources": [
+        {
+          "title": "Guide to App Performance",
+          "url": "https://developer.android.com/topic/performance"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
       "id": "runtime_permissions_001",
       "topicId": "security",
       "subtopicId": "runtime_permissions",
@@ -5243,6 +7037,146 @@
         {
           "title": "Security Best Practices",
           "url": "https://developer.android.com/privacy-and-security/security-best-practices"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "security_pending_intent_mutability",
+      "topicId": "security",
+      "subtopicId": "pending_intent_security",
+      "text": "A notification supplies a PendingIntent to another app's process. Why does declaring FLAG_IMMUTABLE matter?",
+      "answers": [
+        {
+          "id": "security_pending_intent_mutability_b",
+          "text": "It encrypts the wrapped intent so the receiving app cannot read its extras."
+        },
+        {
+          "id": "security_pending_intent_mutability_c",
+          "text": "It restricts the PendingIntent to components declared inside the sending app."
+        },
+        {
+          "id": "security_pending_intent_mutability_d",
+          "text": "It causes the PendingIntent to expire once it has been delivered a single time."
+        },
+        {
+          "id": "security_pending_intent_mutability_a",
+          "text": "It stops the receiving app filling in fields the sender left unspecified."
+        }
+      ],
+      "correctAnswerIds": [
+        "security_pending_intent_mutability_a"
+      ],
+      "explanation": "A PendingIntent runs with the sending app's identity, so a mutable one lets whoever holds it complete unspecified parts of the wrapped intent and redirect that authority. FLAG_IMMUTABLE fixes the intent as written, which is why recent platform versions require the mutability to be stated explicitly. It is not encryption: the extras remain readable, and controlling the target component is a separate matter of naming it explicitly.",
+      "sources": [
+        {
+          "title": "PendingIntent",
+          "url": "https://developer.android.com/reference/android/app/PendingIntent"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "security_keystore_key_extraction",
+      "topicId": "security",
+      "subtopicId": "android_keystore",
+      "text": "An app stores a symmetric key in the Android Keystore rather than in its own file. What is the primary protection gained?",
+      "answers": [
+        {
+          "id": "security_keystore_key_extraction_a",
+          "text": "The key material can be backed up and restored on a new device securely."
+        },
+        {
+          "id": "security_keystore_key_extraction_b",
+          "text": "The key is versioned, so rotating it invalidates previously encrypted data."
+        },
+        {
+          "id": "security_keystore_key_extraction_c",
+          "text": "The key can be used for cryptographic operations but not read out of the system."
+        },
+        {
+          "id": "security_keystore_key_extraction_d",
+          "text": "The key is shared with other apps signed by the same certificate."
+        }
+      ],
+      "correctAnswerIds": [
+        "security_keystore_key_extraction_c"
+      ],
+      "explanation": "Keystore holds the key inside a system component, often hardware-backed, and exposes operations rather than bytes, so an attacker with access to app storage or a backup cannot extract it and use it elsewhere. That non-exportability is the point. Keys are deliberately not backed up for the same reason, sharing is not implied by signing, and rotation is a policy the app implements.",
+      "sources": [
+        {
+          "title": "Android Keystore System",
+          "url": "https://developer.android.com/privacy-and-security/keystore"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "security_permission_denied_forever",
+      "topicId": "security",
+      "subtopicId": "permission_ux",
+      "text": "A user denies a runtime permission twice, so the system stops showing the dialog. How should the app respond when the feature is next used?",
+      "answers": [
+        {
+          "id": "security_permission_denied_forever_a",
+          "text": "Request the permission again, since a repeated request re-enables the prompt."
+        },
+        {
+          "id": "security_permission_denied_forever_b",
+          "text": "Explain the impact and offer a route to system settings to grant it there."
+        },
+        {
+          "id": "security_permission_denied_forever_c",
+          "text": "Disable the whole screen until the permission has been granted."
+        },
+        {
+          "id": "security_permission_denied_forever_d",
+          "text": "Fall back to requesting a broader permission that covers the same capability."
+        }
+      ],
+      "correctAnswerIds": [
+        "security_permission_denied_forever_b"
+      ],
+      "explanation": "Once the system stops prompting, calling the request API again returns a denial without any user-visible dialog, so nothing changes and the feature silently fails. The app should explain what is unavailable and why, and let the user open settings if they want to grant it. Broadening the request does not bypass the state, and blocking unrelated functionality punishes a legitimate choice.",
+      "sources": [
+        {
+          "title": "Permissions on Android",
+          "url": "https://developer.android.com/guide/topics/permissions/overview"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "security_scoped_storage_media_access",
+      "topicId": "security",
+      "subtopicId": "privacy_principles",
+      "text": "An app needs to let the user attach one existing photo. Which approach best follows least-privilege on modern Android?",
+      "answers": [
+        {
+          "id": "security_scoped_storage_media_access_a",
+          "text": "Request broad media read permission so the gallery can be listed in-app."
+        },
+        {
+          "id": "security_scoped_storage_media_access_b",
+          "text": "Request legacy external storage access and read the file path directly."
+        },
+        {
+          "id": "security_scoped_storage_media_access_c",
+          "text": "Declare a permission for all files so future features need no further prompt."
+        },
+        {
+          "id": "security_scoped_storage_media_access_d",
+          "text": "Use a system picker, which returns the chosen item without a storage permission."
+        }
+      ],
+      "correctAnswerIds": [
+        "security_scoped_storage_media_access_d"
+      ],
+      "explanation": "A system picker runs outside the app and hands back only what the user selected, so the app gains access to one item and needs no broad permission at all. That is the least-privilege option and it avoids a prompt the user may refuse. Requesting media or all-files access grants standing visibility of content unrelated to the task, which is exactly what scoped storage was introduced to curtail.",
+      "sources": [
+        {
+          "title": "Access Media Files from Shared Storage",
+          "url": "https://developer.android.com/training/data-storage/shared/media"
         }
       ],
       "status": "ACTIVE"
@@ -5353,6 +7287,148 @@
       "status": "ACTIVE"
     },
     {
+      "id": "gradle_api_vs_implementation_leak",
+      "topicId": "build_delivery",
+      "subtopicId": "api_vs_implementation",
+      "text": "A library module exposes a type from another library in its public function signatures. Which configuration must it use for that dependency?",
+      "answers": [
+        {
+          "id": "gradle_api_vs_implementation_leak_b",
+          "text": "implementation, since consumers resolve transitive types at runtime anyway."
+        },
+        {
+          "id": "gradle_api_vs_implementation_leak_c",
+          "text": "compileOnly, because the consumer supplies the dependency at build time."
+        },
+        {
+          "id": "gradle_api_vs_implementation_leak_d",
+          "text": "runtimeOnly, because the type is needed only when the code executes."
+        },
+        {
+          "id": "gradle_api_vs_implementation_leak_a",
+          "text": "api, so the type is on the compile classpath of modules that consume it."
+        }
+      ],
+      "correctAnswerIds": [
+        "gradle_api_vs_implementation_leak_a"
+      ],
+      "explanation": "If a type appears in a module's public API, anything calling that API has to see the type at compile time, and only api puts it on the consumer's compile classpath. implementation deliberately hides the dependency, which is what keeps rebuilds narrow, so the consumer fails to compile against the exposed signature. compileOnly and runtimeOnly each omit one half of what is required here.",
+      "sources": [
+        {
+          "title": "Add Build Dependencies",
+          "url": "https://developer.android.com/build/dependencies"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "build_variants_flavor_vs_type",
+      "topicId": "build_delivery",
+      "subtopicId": "build_variants",
+      "text": "A team needs free and paid editions, each buildable as debug or release. How does the Android Gradle Plugin model this?",
+      "answers": [
+        {
+          "id": "build_variants_flavor_vs_type_a",
+          "text": "Two build types multiplied by two signing configurations, giving four variants."
+        },
+        {
+          "id": "build_variants_flavor_vs_type_b",
+          "text": "Two product flavors combined with the debug and release build types."
+        },
+        {
+          "id": "build_variants_flavor_vs_type_c",
+          "text": "Four separate modules, since a variant cannot vary code and configuration."
+        },
+        {
+          "id": "build_variants_flavor_vs_type_d",
+          "text": "Two source sets selected at runtime by a flag read from the manifest."
+        }
+      ],
+      "correctAnswerIds": [
+        "build_variants_flavor_vs_type_b"
+      ],
+      "explanation": "Product flavors express different editions of the product, while build types express how any edition is built, and the plugin produces a variant for each combination, so two flavors and two types give four. Build types are not the place for edition differences, nothing needs separate modules for this, and variant selection happens at build time rather than from a runtime flag.",
+      "sources": [
+        {
+          "title": "Configure Build Variants",
+          "url": "https://developer.android.com/build/build-variants"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "modularization_dependency_direction",
+      "topicId": "build_delivery",
+      "subtopicId": "module_dependency_direction",
+      "text": "Two feature modules both need the same user model and repository interface. What is the appropriate structure?",
+      "answers": [
+        {
+          "id": "modularization_dependency_direction_a",
+          "text": "Have one feature module depend on the other and export the shared types."
+        },
+        {
+          "id": "modularization_dependency_direction_b",
+          "text": "Duplicate the model in each feature so neither depends on the other."
+        },
+        {
+          "id": "modularization_dependency_direction_c",
+          "text": "Place the shared types in a core module that both feature modules depend on."
+        },
+        {
+          "id": "modularization_dependency_direction_d",
+          "text": "Move both features into the app module so the types are visible to each."
+        }
+      ],
+      "correctAnswerIds": [
+        "modularization_dependency_direction_c"
+      ],
+      "explanation": "Shared contracts belong in a module lower in the graph that features depend on, which keeps features siblings that can be built and tested independently. Making one feature depend on another couples their release cycles and tends to grow into a cycle. Duplication drifts, and collapsing features into the app module gives up the modular boundaries that motivated the split.",
+      "sources": [
+        {
+          "title": "Guide to Android App Modularization",
+          "url": "https://developer.android.com/topic/modularization"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "release_shrinking_responsibilities",
+      "topicId": "build_delivery",
+      "subtopicId": "code_shrinking",
+      "text": "Which outcomes does enabling code and resource shrinking for a release build produce? Select all that apply.",
+      "answers": [
+        {
+          "id": "release_shrinking_responsibilities_a",
+          "text": "Unreachable classes and methods are removed from the packaged output."
+        },
+        {
+          "id": "release_shrinking_responsibilities_b",
+          "text": "Unused resources can be stripped once resource shrinking is also enabled."
+        },
+        {
+          "id": "release_shrinking_responsibilities_c",
+          "text": "Remaining code is obfuscated unless that behaviour is explicitly turned off."
+        },
+        {
+          "id": "release_shrinking_responsibilities_d",
+          "text": "Reflective lookups continue to resolve, because names are preserved."
+        }
+      ],
+      "correctAnswerIds": [
+        "release_shrinking_responsibilities_a",
+        "release_shrinking_responsibilities_b",
+        "release_shrinking_responsibilities_c"
+      ],
+      "explanation": "Shrinking walks the reachability graph from declared entry points and drops what it cannot reach, resource shrinking does the equivalent for resources when enabled alongside it, and the surviving code is renamed by default. The one thing it cannot do is see through reflection: names change, so any member resolved by name at runtime must be protected with a keep rule or it will fail after the build succeeds.",
+      "sources": [
+        {
+          "title": "Shrink, Obfuscate, and Optimize Your App",
+          "url": "https://developer.android.com/build/shrink-code"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
       "id": "offline_design_001",
       "topicId": "mobile_system_design",
       "subtopicId": "offline_design",
@@ -5437,6 +7513,218 @@
       "status": "ACTIVE"
     },
     {
+      "id": "system_design_conflict_resolution_policy",
+      "topicId": "mobile_system_design",
+      "subtopicId": "conflict_resolution",
+      "text": "A note-taking app allows edits offline on two devices, and both sync the same note afterwards. Which decision most determines whether a user loses work?",
+      "answers": [
+        {
+          "id": "system_design_conflict_resolution_policy_a",
+          "text": "Whether the client retries the failed upload with exponential backoff."
+        },
+        {
+          "id": "system_design_conflict_resolution_policy_b",
+          "text": "Whether the local database stores the note in a single table or several."
+        },
+        {
+          "id": "system_design_conflict_resolution_policy_c",
+          "text": "Whether sync runs under a network constraint or on an unconstrained schedule."
+        },
+        {
+          "id": "system_design_conflict_resolution_policy_d",
+          "text": "Whether the merge policy is last-write-wins or preserves both versions."
+        }
+      ],
+      "correctAnswerIds": [
+        "system_design_conflict_resolution_policy_d"
+      ],
+      "explanation": "Concurrent offline edits create two valid histories, and the merge rule decides what survives: last-write-wins is simple and silently discards one edit, while keeping both, merging by field, or surfacing a conflict preserves the work at the cost of more complexity in the client and API. Retries, scheduling, and local schema all affect when and how sync happens, but none of them changes which version wins once both arrive.",
+      "sources": [
+        {
+          "title": "Build an Offline-first App",
+          "url": "https://developer.android.com/topic/architecture/data-layer/offline-first"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "system_design_observability_signals",
+      "topicId": "mobile_system_design",
+      "subtopicId": "observability",
+      "text": "Which signals most directly help diagnose why a sync feature fails only for some users in production? Select all that apply.",
+      "answers": [
+        {
+          "id": "system_design_observability_signals_a",
+          "text": "Structured logs recording the outcome and reason for each sync attempt."
+        },
+        {
+          "id": "system_design_observability_signals_b",
+          "text": "Crash reports covering unhandled exceptions raised during sync."
+        },
+        {
+          "id": "system_design_observability_signals_c",
+          "text": "A count of daily active users on the screen that triggers sync."
+        },
+        {
+          "id": "system_design_observability_signals_d",
+          "text": "Metrics broken down by app version and connectivity type."
+        }
+      ],
+      "correctAnswerIds": [
+        "system_design_observability_signals_a",
+        "system_design_observability_signals_b",
+        "system_design_observability_signals_d"
+      ],
+      "explanation": "Diagnosing a partial failure needs signals that separate the affected population from everyone else, so per-attempt outcomes, crashes, and metrics dimensioned by version and network are all actionable. A raw engagement count says how many people opened the screen but nothing about which attempts failed or why, so it cannot narrow the cause. Diagnostic value comes from dimensions that partition the failure, not volume.",
+      "sources": [
+        {
+          "title": "Guide to App Architecture",
+          "url": "https://developer.android.com/topic/architecture"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "system_design_api_backward_compatibility",
+      "topicId": "mobile_system_design",
+      "subtopicId": "api_evolution",
+      "text": "A server team wants to rename a JSON field consumed by shipped mobile clients. What makes this safe?",
+      "answers": [
+        {
+          "id": "system_design_api_backward_compatibility_b",
+          "text": "Renaming it and requiring clients to update through a forced upgrade."
+        },
+        {
+          "id": "system_design_api_backward_compatibility_c",
+          "text": "Renaming it and having clients ignore unknown fields when parsing."
+        },
+        {
+          "id": "system_design_api_backward_compatibility_d",
+          "text": "Renaming it behind a feature flag the server toggles per request."
+        },
+        {
+          "id": "system_design_api_backward_compatibility_a",
+          "text": "Emitting both the old and new field until the old clients fall out of use."
+        }
+      ],
+      "correctAnswerIds": [
+        "system_design_api_backward_compatibility_a"
+      ],
+      "explanation": "Installed clients cannot be changed, so the contract has to keep working for them: emitting both names makes the change additive and lets old and new clients coexist until usage of the old field drops. Ignoring unknown fields protects a client from additions but not from a field it needs disappearing. Forced upgrades are a blunt fallback, and a per-request flag still requires the client to have been built for the new shape.",
+      "sources": [
+        {
+          "title": "Build an Offline-first App",
+          "url": "https://developer.android.com/topic/architecture/data-layer/offline-first"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "system_design_source_of_truth_boundary",
+      "topicId": "mobile_system_design",
+      "subtopicId": "local_remote_sources",
+      "text": "A screen must render instantly on launch and reflect server changes within a minute. Which arrangement satisfies both?",
+      "answers": [
+        {
+          "id": "system_design_source_of_truth_boundary_a",
+          "text": "Query the network on launch and cache the response for the next launch."
+        },
+        {
+          "id": "system_design_source_of_truth_boundary_b",
+          "text": "Render from local storage and refresh it from the network in the background."
+        },
+        {
+          "id": "system_design_source_of_truth_boundary_c",
+          "text": "Render from an in-memory cache populated by the previous session's response."
+        },
+        {
+          "id": "system_design_source_of_truth_boundary_d",
+          "text": "Query the network and local storage together, rendering whichever returns first."
+        }
+      ],
+      "correctAnswerIds": [
+        "system_design_source_of_truth_boundary_b"
+      ],
+      "explanation": "Reading from a persistent local source makes the first frame independent of the network, and a background refresh that writes into that same source keeps one observable path so the UI updates when new data lands. Fetching on launch ties the first render to connectivity, an in-memory cache is empty after process death, and racing two sources yields nondeterministic content and duplicated update paths.",
+      "sources": [
+        {
+          "title": "Build an Offline-first App",
+          "url": "https://developer.android.com/topic/architecture/data-layer/offline-first"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "system_design_feature_flag_rollout",
+      "topicId": "mobile_system_design",
+      "subtopicId": "rollout_strategy",
+      "text": "Why does a remotely controlled flag around a risky rewrite help more than relying on a staged store rollout alone?",
+      "answers": [
+        {
+          "id": "system_design_feature_flag_rollout_a",
+          "text": "It removes the need to test the new path before shipping the release."
+        },
+        {
+          "id": "system_design_feature_flag_rollout_b",
+          "text": "It lets the new path be disabled without waiting for users to update."
+        },
+        {
+          "id": "system_design_feature_flag_rollout_c",
+          "text": "It guarantees the old and new paths produce identical results."
+        },
+        {
+          "id": "system_design_feature_flag_rollout_d",
+          "text": "It allows the release to skip review because the code is inactive."
+        }
+      ],
+      "correctAnswerIds": [
+        "system_design_feature_flag_rollout_b"
+      ],
+      "explanation": "A staged rollout limits how many users receive a build, but the code in an installed build cannot be changed, so recovering means halting the rollout and shipping again while affected users stay broken. A remote flag turns the new path off for everyone already on that version, which shortens recovery from days to minutes. It complements testing and staged release rather than replacing either.",
+      "sources": [
+        {
+          "title": "Guide to App Architecture",
+          "url": "https://developer.android.com/topic/architecture"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "system_design_pagination_state_ownership",
+      "topicId": "mobile_system_design",
+      "subtopicId": "system_pagination",
+      "text": "An endlessly scrolling list must survive rotation without refetching every page. Where should the loaded pages and the next-page key live?",
+      "answers": [
+        {
+          "id": "system_design_pagination_state_ownership_a",
+          "text": "In the composable, remembered so the list restores itself on recomposition."
+        },
+        {
+          "id": "system_design_pagination_state_ownership_b",
+          "text": "In the saved instance state, so the entire page contents are restored."
+        },
+        {
+          "id": "system_design_pagination_state_ownership_c",
+          "text": "In a state holder that survives configuration change, backed by local storage."
+        },
+        {
+          "id": "system_design_pagination_state_ownership_d",
+          "text": "In the network layer, which replays the previous responses after rotation."
+        }
+      ],
+      "correctAnswerIds": [
+        "system_design_pagination_state_ownership_c"
+      ],
+      "explanation": "Rotation destroys and recreates the UI, so paging state has to sit somewhere that outlives it; a retained state holder keeps the loaded pages and the continuation key in memory, and persisting them locally extends that across process death. Composable state alone dies with the UI, saved instance state is size-limited and unsuited to page contents, and a network layer that replays responses is a cache by another name without a defined owner.",
+      "sources": [
+        {
+          "title": "Paging Library Overview",
+          "url": "https://developer.android.com/topic/libraries/architecture/paging/v3-overview"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
       "id": "shared_vs_platform_code_001",
       "topicId": "kmp",
       "subtopicId": "shared_vs_platform_code",
@@ -5502,6 +7790,884 @@
         {
           "title": "Expected and Actual Declarations",
           "url": "https://kotlinlang.org/docs/multiplatform-expect-actual.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp_source_set_hierarchy_resolution",
+      "topicId": "kmp",
+      "subtopicId": "kmp_source_sets",
+      "text": "A KMP module targets Android, iOS, and JVM. Where should code that only the two iOS targets share be placed?",
+      "answers": [
+        {
+          "id": "kmp_source_set_hierarchy_resolution_a",
+          "text": "In commonMain, guarded at runtime by a check of the current platform."
+        },
+        {
+          "id": "kmp_source_set_hierarchy_resolution_b",
+          "text": "In an intermediate iosMain source set the iOS targets both depend on."
+        },
+        {
+          "id": "kmp_source_set_hierarchy_resolution_c",
+          "text": "Duplicated in iosArm64Main and iosSimulatorArm64Main to keep targets independent."
+        },
+        {
+          "id": "kmp_source_set_hierarchy_resolution_d",
+          "text": "In commonMain as an expect declaration with an actual for every target."
+        }
+      ],
+      "correctAnswerIds": [
+        "kmp_source_set_hierarchy_resolution_b"
+      ],
+      "explanation": "The default hierarchy creates intermediate source sets for groups of related targets, so iosMain is compiled once for both iOS targets and can use iOS APIs directly. Putting the code in commonMain is impossible when it touches platform APIs, and adding expect/actual for every target would force JVM and Android to supply implementations they have no use for. Duplicating per target compiles but doubles the maintenance for no benefit.",
+      "sources": [
+        {
+          "title": "Hierarchical Project Structure",
+          "url": "https://kotlinlang.org/docs/multiplatform-hierarchy.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp_expect_actual_vs_interface",
+      "topicId": "kmp",
+      "subtopicId": "kmp_dependency_inversion",
+      "text": "Shared code needs a platform-specific way to read a setting. When is a plain interface with injected implementations preferable to expect/actual?",
+      "answers": [
+        {
+          "id": "kmp_expect_actual_vs_interface_a",
+          "text": "When the implementation must be selected at compile time for each target."
+        },
+        {
+          "id": "kmp_expect_actual_vs_interface_c",
+          "text": "When the declaration is a top-level function rather than a class member."
+        },
+        {
+          "id": "kmp_expect_actual_vs_interface_d",
+          "text": "When only one platform actually needs a distinct implementation."
+        },
+        {
+          "id": "kmp_expect_actual_vs_interface_b",
+          "text": "When the shared code should be testable by substituting a fake at runtime."
+        }
+      ],
+      "correctAnswerIds": [
+        "kmp_expect_actual_vs_interface_b"
+      ],
+      "explanation": "expect/actual binds an implementation at compile time for each target, so shared code has no seam a test can substitute and there is no way to supply a fake. An interface satisfied by constructor injection keeps the platform detail out of shared code while remaining replaceable, which is why it is usually preferred unless something genuinely must be resolved per target. The choice is about substitutability rather than the shape of the declaration.",
+      "sources": [
+        {
+          "title": "Expected and Actual Declarations",
+          "url": "https://kotlinlang.org/docs/multiplatform-expect-actual.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp_android_library_not_multiplatform",
+      "topicId": "kmp",
+      "subtopicId": "kmp_library_selection",
+      "text": "A shared data layer in commonMain needs JSON parsing and HTTP. Why can a typical Android-only library not be used there?",
+      "answers": [
+        {
+          "id": "kmp_android_library_not_multiplatform_a",
+          "text": "Because commonMain compiles for every target, so it can only use multiplatform artifacts."
+        },
+        {
+          "id": "kmp_android_library_not_multiplatform_b",
+          "text": "Because Gradle forbids Android dependencies in a module with several targets."
+        },
+        {
+          "id": "kmp_android_library_not_multiplatform_c",
+          "text": "Because Android libraries are published without the metadata Kotlin needs to resolve them."
+        },
+        {
+          "id": "kmp_android_library_not_multiplatform_d",
+          "text": "Because commonMain is compiled before any platform source set is configured."
+        }
+      ],
+      "correctAnswerIds": [
+        "kmp_android_library_not_multiplatform_a"
+      ],
+      "explanation": "Code in commonMain has to compile for each declared target, so every dependency it uses must publish artifacts for all of them; an Android-only library has nothing for iOS or Native to link against. That is why multiplatform equivalents such as Ktor and kotlinx.serialization exist for this layer. The library can still be used from androidMain, where only the Android target compiles it.",
+      "sources": [
+        {
+          "title": "Kotlin Multiplatform",
+          "url": "https://kotlinlang.org/docs/multiplatform.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp_shared_layer_selection",
+      "topicId": "kmp",
+      "subtopicId": "kmp_architecture",
+      "text": "Which layers are usually the strongest candidates for sharing in a KMP app? Select all that apply.",
+      "answers": [
+        {
+          "id": "kmp_shared_layer_selection_a",
+          "text": "Domain rules and validation that depend on no platform API."
+        },
+        {
+          "id": "kmp_shared_layer_selection_b",
+          "text": "Data models and their serialization logic."
+        },
+        {
+          "id": "kmp_shared_layer_selection_c",
+          "text": "Repository logic coordinating local and remote sources."
+        },
+        {
+          "id": "kmp_shared_layer_selection_d",
+          "text": "Platform navigation and system permission handling."
+        }
+      ],
+      "correctAnswerIds": [
+        "kmp_shared_layer_selection_a",
+        "kmp_shared_layer_selection_b",
+        "kmp_shared_layer_selection_c"
+      ],
+      "explanation": "The layers worth sharing are the ones whose behaviour is identical everywhere: domain rules, model definitions with their serialization, and the coordination a repository performs between sources. Navigation and permissions are defined by each platform's own model and lifecycle, so forcing them behind a common abstraction produces a layer that fits neither well. Sharing is judged by whether the concept is platform-independent, not by how much code it moves.",
+      "sources": [
+        {
+          "title": "Kotlin Multiplatform on Android",
+          "url": "https://developer.android.com/kotlin/multiplatform"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp_compose_multiplatform_vs_jetpack",
+      "topicId": "kmp",
+      "subtopicId": "compose_multiplatform",
+      "text": "A team shares UI with Compose Multiplatform across Android and iOS. What remains platform-specific?",
+      "answers": [
+        {
+          "id": "kmp_compose_multiplatform_vs_jetpack_a",
+          "text": "The declarative composable functions, which must be rewritten for each target."
+        },
+        {
+          "id": "kmp_compose_multiplatform_vs_jetpack_b",
+          "text": "The state management model, which differs between Android and iOS runtimes."
+        },
+        {
+          "id": "kmp_compose_multiplatform_vs_jetpack_c",
+          "text": "The application entry point that hosts the shared composables on each platform."
+        },
+        {
+          "id": "kmp_compose_multiplatform_vs_jetpack_d",
+          "text": "The layout system, which delegates to native views on each target."
+        }
+      ],
+      "correctAnswerIds": [
+        "kmp_compose_multiplatform_vs_jetpack_c"
+      ],
+      "explanation": "Compose Multiplatform renders the same composables and uses the same state model on both platforms, so the shared UI code is genuinely shared. What each platform still owns is the host: an Activity on Android and a view controller on iOS, plus the platform bootstrap around them. The framework draws its own widgets rather than delegating to native views, which is what makes the rendering consistent across targets.",
+      "sources": [
+        {
+          "title": "Compose Multiplatform and Jetpack Compose",
+          "url": "https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-multiplatform-and-jetpack-compose.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp_tradeoff_when_not_to_share",
+      "topicId": "kmp",
+      "subtopicId": "kmp_tradeoffs",
+      "text": "When is limited duplication across platforms preferable to introducing a shared abstraction?",
+      "answers": [
+        {
+          "id": "kmp_tradeoff_when_not_to_share_a",
+          "text": "When platform behaviour differs enough that the abstraction fits neither."
+        },
+        {
+          "id": "kmp_tradeoff_when_not_to_share_b",
+          "text": "When the shared code would need a dependency published for every target."
+        },
+        {
+          "id": "kmp_tradeoff_when_not_to_share_c",
+          "text": "When one platform has substantially more users than the other."
+        },
+        {
+          "id": "kmp_tradeoff_when_not_to_share_d",
+          "text": "When the team wants each platform to keep its own release schedule."
+        }
+      ],
+      "correctAnswerIds": [
+        "kmp_tradeoff_when_not_to_share_a"
+      ],
+      "explanation": "A shared abstraction pays off when the underlying concept really is the same; when the platforms differ, the common contract accumulates flags and escape hatches until it is harder to follow than two direct implementations. Maximising shared code is not the goal, so deliberate duplication is a legitimate outcome. Needing a multiplatform dependency is an ordinary constraint rather than a reason to duplicate, and release cadence is a delivery matter.",
+      "sources": [
+        {
+          "title": "Kotlin Multiplatform",
+          "url": "https://kotlinlang.org/docs/multiplatform.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_manifest_component_exported",
+      "topicId": "android_platform",
+      "subtopicId": "android_manifest",
+      "text": "An app declares an activity that should be launchable only from inside the same app. Which manifest configuration best expresses that boundary?",
+      "answers": [
+        {
+          "id": "android_manifest_component_exported_a",
+          "text": "Declare the activity with android:exported=\"false\"."
+        },
+        {
+          "id": "android_manifest_component_exported_b",
+          "text": "Omit the intent filters but set android:exported=\"true\"."
+        },
+        {
+          "id": "android_manifest_component_exported_c",
+          "text": "Protect the activity with a normal custom permission."
+        },
+        {
+          "id": "android_manifest_component_exported_d",
+          "text": "Set the application element's debuggable flag to false."
+        }
+      ],
+      "correctAnswerIds": [
+        "android_manifest_component_exported_a"
+      ],
+      "explanation": "android:exported controls whether components of other applications can launch the activity. Removing intent filters changes implicit resolution, but an explicitly exported component remains externally reachable; debuggable and normal permissions express different concerns.",
+      "sources": [
+        {
+          "title": "App manifest overview",
+          "url": "https://developer.android.com/guide/topics/manifest/manifest-intro"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_ipc_binder_contract",
+      "topicId": "android_platform",
+      "subtopicId": "android_ipc",
+      "text": "A bound service must expose typed calls across app processes. Which Android mechanism is designed to define that Binder IPC contract?",
+      "answers": [
+        {
+          "id": "android_ipc_binder_contract_a",
+          "text": "AIDL, which generates Binder-compatible interfaces from a declared contract."
+        },
+        {
+          "id": "android_ipc_binder_contract_b",
+          "text": "A BroadcastReceiver, which returns synchronous method results to its caller."
+        },
+        {
+          "id": "android_ipc_binder_contract_c",
+          "text": "A ContentObserver, which serializes arbitrary method calls between processes."
+        },
+        {
+          "id": "android_ipc_binder_contract_d",
+          "text": "A Handler, which moves Messages across application sandboxes."
+        }
+      ],
+      "correctAnswerIds": [
+        "android_ipc_binder_contract_a"
+      ],
+      "explanation": "AIDL describes an interface that the build tools turn into Binder client and service code for cross-process calls. Broadcasts and observers communicate events or changes, while a Handler targets a Looper and does not itself cross a process boundary.",
+      "sources": [
+        {
+          "title": "Android Interface Definition Language",
+          "url": "https://developer.android.com/develop/background-work/services/aidl"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_looper_message_queue",
+      "topicId": "android_platform",
+      "subtopicId": "android_main_thread",
+      "text": "Why can posting work to a Handler associated with the main Looper still cause an ANR?",
+      "answers": [
+        {
+          "id": "android_looper_message_queue_a",
+          "text": "The Handler runs each callback on a dedicated Binder thread."
+        },
+        {
+          "id": "android_looper_message_queue_b",
+          "text": "The callback shares the main thread's message queue and can block later UI work."
+        },
+        {
+          "id": "android_looper_message_queue_c",
+          "text": "The Looper executes posted callbacks once the process enters the background."
+        },
+        {
+          "id": "android_looper_message_queue_d",
+          "text": "The callback bypasses the message queue and runs synchronously on the posting thread."
+        }
+      ],
+      "correctAnswerIds": [
+        "android_looper_message_queue_b"
+      ],
+      "explanation": "A Handler schedules callbacks on its Looper's thread. For the main Looper that is the UI thread, so a long callback prevents input, drawing, and lifecycle messages from being processed; posting is scheduling, not offloading.",
+      "sources": [
+        {
+          "title": "Processes and threads overview",
+          "url": "https://developer.android.com/guide/components/processes-and-threads"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_intent_filter_matching",
+      "topicId": "android_platform",
+      "subtopicId": "android_intents",
+      "text": "An implicit Intent is sent with an action and a URI. What determines whether an activity's intent filter is a match?",
+      "answers": [
+        {
+          "id": "android_intent_filter_matching_a",
+          "text": "The activity class name must equal the Intent action."
+        },
+        {
+          "id": "android_intent_filter_matching_b",
+          "text": "The package installer chooses the newest activity declaring any filter."
+        },
+        {
+          "id": "android_intent_filter_matching_c",
+          "text": "The filter's action, categories, and data must satisfy Intent resolution rules."
+        },
+        {
+          "id": "android_intent_filter_matching_d",
+          "text": "The receiving activity must have been started previously in the same task."
+        }
+      ],
+      "correctAnswerIds": [
+        "android_intent_filter_matching_c"
+      ],
+      "explanation": "Implicit intent resolution compares the Intent against the filter's action, category, and data declarations. Class names matter for explicit intents, while task history and installation order do not establish a filter match.",
+      "sources": [
+        {
+          "title": "Intents and intent filters",
+          "url": "https://developer.android.com/guide/components/intents-filters"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_context_theme_inflation",
+      "topicId": "android_platform",
+      "subtopicId": "android_context",
+      "text": "A reusable UI factory inflates a themed View. Which Context should it prefer when the View must inherit the current screen theme?",
+      "answers": [
+        {
+          "id": "android_context_theme_inflation_a",
+          "text": "The process-wide application Context."
+        },
+        {
+          "id": "android_context_theme_inflation_b",
+          "text": "A newly constructed base Context with no theme wrapper."
+        },
+        {
+          "id": "android_context_theme_inflation_c",
+          "text": "The ContentProvider's Context captured during startup."
+        },
+        {
+          "id": "android_context_theme_inflation_d",
+          "text": "The Activity or another appropriately themed Context."
+        }
+      ],
+      "correctAnswerIds": [
+        "android_context_theme_inflation_d"
+      ],
+      "explanation": "View inflation resolves theme attributes through the supplied Context, so a screen's themed Context is appropriate. Application Context is safer for long-lived non-UI work but does not necessarily carry the Activity theme.",
+      "sources": [
+        {
+          "title": "Context reference",
+          "url": "https://developer.android.com/reference/android/content/Context"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "viewmodel_destination_scope",
+      "topicId": "lifecycle_navigation",
+      "subtopicId": "viewmodel_lifecycle",
+      "text": "Two navigation destinations need independent screen state. What is the key reason to scope each ViewModel to its destination owner?",
+      "answers": [
+        {
+          "id": "viewmodel_destination_scope_a",
+          "text": "The ViewModel lifetime follows that destination's retained back-stack entry."
+        },
+        {
+          "id": "viewmodel_destination_scope_b",
+          "text": "The ViewModel is recreated after each recomposition of the destination."
+        },
+        {
+          "id": "viewmodel_destination_scope_c",
+          "text": "The ViewModel persists its repository data to disk on its own."
+        },
+        {
+          "id": "viewmodel_destination_scope_d",
+          "text": "The ViewModel becomes accessible to all destinations in the application."
+        }
+      ],
+      "correctAnswerIds": [
+        "viewmodel_destination_scope_a"
+      ],
+      "explanation": "A ViewModel is retained by its ViewModelStoreOwner and cleared when that owner is permanently removed. Destination scoping aligns state lifetime with the back-stack entry; it neither causes recomposition recreation nor provides automatic durable persistence.",
+      "sources": [
+        {
+          "title": "ViewModel overview",
+          "url": "https://developer.android.com/topic/libraries/architecture/viewmodel"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "lifecycle_repeat_on_lifecycle",
+      "topicId": "lifecycle_navigation",
+      "subtopicId": "lifecycle_aware_apis",
+      "text": "A Fragment collects a Flow to update its View. Which pattern stops collection when the View lifecycle is below STARTED and restarts it later?",
+      "answers": [
+        {
+          "id": "lifecycle_repeat_on_lifecycle_a",
+          "text": "Collect once in the Fragment constructor so it survives view recreation."
+        },
+        {
+          "id": "lifecycle_repeat_on_lifecycle_b",
+          "text": "Use viewLifecycleOwner.lifecycleScope with repeatOnLifecycle(STARTED)."
+        },
+        {
+          "id": "lifecycle_repeat_on_lifecycle_c",
+          "text": "Launch in GlobalScope and check isAdded before handling each value."
+        },
+        {
+          "id": "lifecycle_repeat_on_lifecycle_d",
+          "text": "Collect in onCreate and cancel the job in the Fragment's onDestroy."
+        }
+      ],
+      "correctAnswerIds": [
+        "lifecycle_repeat_on_lifecycle_b"
+      ],
+      "explanation": "repeatOnLifecycle launches the collection block while the chosen lifecycle is at least STARTED and cancels it below that state. Using the view lifecycle avoids updating a destroyed Fragment view; a process-wide or Fragment-lifetime scope outlives that UI.",
+      "sources": [
+        {
+          "title": "Use Kotlin coroutines with lifecycle-aware components",
+          "url": "https://developer.android.com/topic/libraries/architecture/coroutines"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "deep_link_app_link_verification",
+      "topicId": "lifecycle_navigation",
+      "subtopicId": "deep_links",
+      "text": "An HTTPS link should open directly in the verified app without a chooser when ownership is established. Which setup provides that association?",
+      "answers": [
+        {
+          "id": "deep_link_app_link_verification_a",
+          "text": "A custom URI scheme declared alongside a runtime permission request."
+        },
+        {
+          "id": "deep_link_app_link_verification_b",
+          "text": "A generic VIEW intent that the app broadcasts when it starts up."
+        },
+        {
+          "id": "deep_link_app_link_verification_c",
+          "text": "An App Link intent filter plus a Digital Asset Links file on the domain."
+        },
+        {
+          "id": "deep_link_app_link_verification_d",
+          "text": "A PendingIntent whose creator package matches the website's host name."
+        }
+      ],
+      "correctAnswerIds": [
+        "deep_link_app_link_verification_c"
+      ],
+      "explanation": "Verified Android App Links combine an HTTP(S) intent filter with a domain-hosted assetlinks.json statement that associates the site and app. A custom scheme has no equivalent domain ownership proof, and PendingIntent identity is unrelated.",
+      "sources": [
+        {
+          "title": "Verify Android App Links",
+          "url": "https://developer.android.com/training/app-links/verify-android-applinks"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "navigation3_back_stack_ownership",
+      "topicId": "lifecycle_navigation",
+      "subtopicId": "navigation_2_vs_3",
+      "text": "In Navigation 3, where should an app keep the navigation state that drives displayed destinations?",
+      "answers": [
+        {
+          "id": "navigation3_back_stack_ownership_a",
+          "text": "Inside each destination composable as private remember state."
+        },
+        {
+          "id": "navigation3_back_stack_ownership_b",
+          "text": "In the NavDisplay implementation as an inaccessible framework stack."
+        },
+        {
+          "id": "navigation3_back_stack_ownership_c",
+          "text": "In Activity intent extras rewritten on each navigation action."
+        },
+        {
+          "id": "navigation3_back_stack_ownership_d",
+          "text": "In app-owned state containing stable navigation keys."
+        }
+      ],
+      "correctAnswerIds": [
+        "navigation3_back_stack_ownership_d"
+      ],
+      "explanation": "Navigation 3 makes the back stack app-owned data, typically a state-backed list of navigation keys supplied to NavDisplay. Keeping it outside individual destinations makes navigation state explicit, saveable, and testable rather than hidden in UI instances.",
+      "sources": [
+        {
+          "title": "Navigation 3 overview",
+          "url": "https://developer.android.com/guide/navigation/navigation-3"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "saved_state_transient_inputs",
+      "topicId": "lifecycle_navigation",
+      "subtopicId": "saved_state",
+      "text": "Which value is the best candidate for SavedStateHandle rather than a database?",
+      "answers": [
+        {
+          "id": "saved_state_transient_inputs_a",
+          "text": "A search query needed to restore the screen after process death."
+        },
+        {
+          "id": "saved_state_transient_inputs_b",
+          "text": "A complete offline catalog containing many thousands of records."
+        },
+        {
+          "id": "saved_state_transient_inputs_c",
+          "text": "A long-lived audit log shared by several user accounts."
+        },
+        {
+          "id": "saved_state_transient_inputs_d",
+          "text": "A binary media cache managed with eviction policies."
+        }
+      ],
+      "correctAnswerIds": [
+        "saved_state_transient_inputs_a"
+      ],
+      "explanation": "Saved-state APIs are intended for small UI-element state needed to reconstruct the screen, such as a query or selected ID. Durable or large application data belongs in persistent storage and should be reloaded after recreation.",
+      "sources": [
+        {
+          "title": "Save UI states",
+          "url": "https://developer.android.com/topic/libraries/architecture/viewmodel/viewmodel-savedstate"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fragment_view_lifecycle_collection",
+      "topicId": "lifecycle_navigation",
+      "subtopicId": "fragment_lifecycle",
+      "text": "Why should a Fragment observe View-bound UI state with viewLifecycleOwner rather than the Fragment lifecycle?",
+      "answers": [
+        {
+          "id": "fragment_view_lifecycle_collection_a",
+          "text": "The Fragment lifecycle stops short of STARTED while its View exists."
+        },
+        {
+          "id": "fragment_view_lifecycle_collection_b",
+          "text": "The View lifecycle ends at onDestroyView even when the Fragment instance remains."
+        },
+        {
+          "id": "fragment_view_lifecycle_collection_c",
+          "text": "The View lifecycle survives process death longer than the Fragment lifecycle."
+        },
+        {
+          "id": "fragment_view_lifecycle_collection_d",
+          "text": "The View lifecycle stores emitted values in saved state for you."
+        }
+      ],
+      "correctAnswerIds": [
+        "fragment_view_lifecycle_collection_b"
+      ],
+      "explanation": "A Fragment can remain on the back stack after its View hierarchy is destroyed. Binding observation to viewLifecycleOwner stops View updates at onDestroyView and prevents stale references; it does not add persistence.",
+      "sources": [
+        {
+          "title": "Fragment lifecycle",
+          "url": "https://developer.android.com/guide/fragments/lifecycle"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_derived_state_threshold",
+      "topicId": "android_ui",
+      "subtopicId": "compose_derived_state",
+      "text": "A button is visible only when a LazyList has scrolled past its first item. Why can derivedStateOf be appropriate for the visibility flag?",
+      "answers": [
+        {
+          "id": "compose_derived_state_threshold_a",
+          "text": "It moves list-state reads to a background dispatcher."
+        },
+        {
+          "id": "compose_derived_state_threshold_b",
+          "text": "It persists the flag after process death."
+        },
+        {
+          "id": "compose_derived_state_threshold_c",
+          "text": "It updates the derived value only when the threshold changes."
+        },
+        {
+          "id": "compose_derived_state_threshold_d",
+          "text": "It prevents the LazyList itself from reading snapshot state."
+        }
+      ],
+      "correctAnswerIds": [
+        "compose_derived_state_threshold_c"
+      ],
+      "explanation": "The list position can change far more often than the Boolean threshold. derivedStateOf lets consumers update when the derived result changes, reducing unnecessary recompositions; it is not a threading or persistence API.",
+      "sources": [
+        {
+          "title": "Side-effects in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/side-effects"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_snapshot_flow_state",
+      "topicId": "android_ui",
+      "subtopicId": "compose_snapshot_system",
+      "text": "A LaunchedEffect must apply Flow operators to changes in a Compose State value. Which API creates the appropriate cold Flow?",
+      "answers": [
+        {
+          "id": "compose_snapshot_flow_state_a",
+          "text": "rememberSaveable"
+        },
+        {
+          "id": "compose_snapshot_flow_state_b",
+          "text": "produceState"
+        },
+        {
+          "id": "compose_snapshot_flow_state_c",
+          "text": "CompositionLocal"
+        },
+        {
+          "id": "compose_snapshot_flow_state_d",
+          "text": "snapshotFlow"
+        }
+      ],
+      "correctAnswerIds": [
+        "compose_snapshot_flow_state_d"
+      ],
+      "explanation": "snapshotFlow observes snapshot-state reads in its block and emits changed results to a cold Flow, allowing normal Flow operators in a coroutine. The other APIs retain state, produce Compose State, or provide values through composition.",
+      "sources": [
+        {
+          "title": "Side-effects in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/side-effects"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_launched_effect_key_restart",
+      "topicId": "android_ui",
+      "subtopicId": "compose_side_effects",
+      "text": "A LaunchedEffect loads details for itemId. What should happen when itemId changes and is used as the effect key?",
+      "answers": [
+        {
+          "id": "compose_launched_effect_key_restart_a",
+          "text": "Compose cancels the previous effect coroutine and launches one for the new key."
+        },
+        {
+          "id": "compose_launched_effect_key_restart_b",
+          "text": "Both effect coroutines remain active until the composable leaves composition."
+        },
+        {
+          "id": "compose_launched_effect_key_restart_c",
+          "text": "The existing coroutine continues and its captured itemId is updated in place."
+        },
+        {
+          "id": "compose_launched_effect_key_restart_d",
+          "text": "The effect restarts once the hosting Activity has been recreated."
+        }
+      ],
+      "correctAnswerIds": [
+        "compose_launched_effect_key_restart_a"
+      ],
+      "explanation": "LaunchedEffect is tied to its composition and keys. A key change cancels the running coroutine and launches the block again, which prevents old-key work from continuing as if it belonged to the new item.",
+      "sources": [
+        {
+          "title": "Side-effects in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/side-effects"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_modifier_order_padding_click",
+      "topicId": "android_ui",
+      "subtopicId": "compose_layouts_modifiers",
+      "text": "Why can swapping clickable() and padding() in a Compose Modifier chain change behavior?",
+      "answers": [
+        {
+          "id": "compose_modifier_order_padding_click_a",
+          "text": "Modifier order affects source formatting rather than runtime nodes."
+        },
+        {
+          "id": "compose_modifier_order_padding_click_b",
+          "text": "Each modifier wraps what follows, so order changes hit area and layout."
+        },
+        {
+          "id": "compose_modifier_order_padding_click_c",
+          "text": "padding() executes after input modifiers regardless of chain order."
+        },
+        {
+          "id": "compose_modifier_order_padding_click_d",
+          "text": "clickable() replaces the layout modifiers that precede it."
+        }
+      ],
+      "correctAnswerIds": [
+        "compose_modifier_order_padding_click_b"
+      ],
+      "explanation": "A modifier chain is ordered: each element wraps what follows. Placing padding before or after clickable can therefore include or exclude that space from the clickable region and alter constraints; Compose does not reorder the chain by category.",
+      "sources": [
+        {
+          "title": "Compose modifiers",
+          "url": "https://developer.android.com/develop/ui/compose/modifiers"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_composition_local_tradeoff",
+      "topicId": "android_ui",
+      "subtopicId": "composition_local",
+      "text": "A design-system colour is needed by many nested composables. What is the main trade-off of passing it through a CompositionLocal instead of a parameter?",
+      "answers": [
+        {
+          "id": "compose_composition_local_tradeoff_a",
+          "text": "It makes the dependency implicit, so a composable is harder to reason about."
+        },
+        {
+          "id": "compose_composition_local_tradeoff_b",
+          "text": "It prevents the value from changing after the composition has been created."
+        },
+        {
+          "id": "compose_composition_local_tradeoff_c",
+          "text": "It forces every reader of the value to recompose whenever any sibling changes."
+        },
+        {
+          "id": "compose_composition_local_tradeoff_d",
+          "text": "It restricts the value to types that Compose can save and restore."
+        }
+      ],
+      "correctAnswerIds": [
+        "compose_composition_local_tradeoff_a"
+      ],
+      "explanation": "A CompositionLocal provides a value implicitly down the tree, which removes parameter plumbing but hides the dependency from the function signature: callers cannot see what a composable needs, and testing or reusing it requires knowing which providers must be in scope. That is why the guidance reserves it for cross-cutting values with a sensible default. Reads are tracked individually, so only composables that actually read the value recompose.",
+      "sources": [
+        {
+          "title": "CompositionLocal",
+          "url": "https://developer.android.com/develop/ui/compose/compositionlocal"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_key_identity_lazy_state",
+      "topicId": "android_ui",
+      "subtopicId": "compose_identity_keys",
+      "text": "Items in a LazyColumn each hold state created with remember. The list is reordered and no key is supplied. What does the user observe?",
+      "answers": [
+        {
+          "id": "compose_key_identity_lazy_state_a",
+          "text": "Every row loses its state, because reordering recreates the whole list."
+        },
+        {
+          "id": "compose_key_identity_lazy_state_b",
+          "text": "State stays with the position, so a moved row shows another row's state."
+        },
+        {
+          "id": "compose_key_identity_lazy_state_c",
+          "text": "State follows the item, because Compose matches items by their contents."
+        },
+        {
+          "id": "compose_key_identity_lazy_state_d",
+          "text": "State is preserved and reapplied once the reorder animation completes."
+        }
+      ],
+      "correctAnswerIds": [
+        "compose_key_identity_lazy_state_b"
+      ],
+      "explanation": "Without a key, Compose identifies an item by its position in the layout, so remembered state belongs to the slot rather than the data. Reordering leaves the state where it was and the values appear attached to the wrong rows. Supplying a stable key ties identity to the item so its state travels with it. Compose never compares item contents to infer identity, which is exactly why the key parameter exists.",
+      "sources": [
+        {
+          "title": "Lists and Grids",
+          "url": "https://developer.android.com/develop/ui/compose/lists"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_view_interop_disposal",
+      "topicId": "android_ui",
+      "subtopicId": "views_compose_interop",
+      "text": "A Compose screen hosts a legacy View with AndroidView. Which statements about that interop boundary are correct? Select all that apply.",
+      "answers": [
+        {
+          "id": "compose_view_interop_disposal_a",
+          "text": "The factory lambda runs once, while update runs on relevant recompositions."
+        },
+        {
+          "id": "compose_view_interop_disposal_b",
+          "text": "The View is recreated from the factory on every recomposition of the composable."
+        },
+        {
+          "id": "compose_view_interop_disposal_c",
+          "text": "State the View owns is not tracked by Compose and must be driven through update."
+        },
+        {
+          "id": "compose_view_interop_disposal_d",
+          "text": "The hosted View participates in Compose's snapshot system automatically."
+        }
+      ],
+      "correctAnswerIds": [
+        "compose_view_interop_disposal_a",
+        "compose_view_interop_disposal_c"
+      ],
+      "explanation": "AndroidView keeps a real View in the hierarchy: the factory constructs it once and update pushes new values into it when the composable recomposes with changed inputs. The View keeps its own imperative state, which Compose neither observes nor restores, so anything that must react to state has to be applied in update. Treating the View as if it participated in snapshots is the usual source of stale interop UI.",
+      "sources": [
+        {
+          "title": "Compose Interoperability APIs",
+          "url": "https://developer.android.com/develop/ui/compose/migrate/interoperability-apis"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_udf_event_direction",
+      "topicId": "android_ui",
+      "subtopicId": "compose_udf",
+      "text": "In a unidirectional Compose screen, a child composable needs to change a value the parent owns. What should the child expose?",
+      "answers": [
+        {
+          "id": "compose_udf_event_direction_a",
+          "text": "A mutable state object it shares with the parent by reference."
+        },
+        {
+          "id": "compose_udf_event_direction_b",
+          "text": "A callback parameter the parent supplies to apply the change."
+        },
+        {
+          "id": "compose_udf_event_direction_c",
+          "text": "A CompositionLocal the parent reads after the child has written it."
+        },
+        {
+          "id": "compose_udf_event_direction_d",
+          "text": "A ViewModel reference so the child can update the state directly."
+        }
+      ],
+      "correctAnswerIds": [
+        "compose_udf_event_direction_b"
+      ],
+      "explanation": "Under unidirectional data flow the child receives the current value and reports intent upward through a lambda, leaving the owner to decide how state changes. That keeps the child stateless, previewable, and reusable, and it keeps mutation in one place. Handing the child a mutable object or its own ViewModel reference gives it a second path to write state, which is what makes conflicting updates hard to trace.",
+      "sources": [
+        {
+          "title": "Compose Architecture",
+          "url": "https://developer.android.com/develop/ui/compose/architecture"
         }
       ],
       "status": "ACTIVE"

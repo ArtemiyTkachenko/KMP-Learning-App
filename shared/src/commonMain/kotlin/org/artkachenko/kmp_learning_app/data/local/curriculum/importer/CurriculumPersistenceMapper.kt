@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.data.local.curriculum.importer
 
+import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
 import org.artkachenko.kmp_learning_app.data.local.curriculum.entity.AnswerOptionEntity
 import org.artkachenko.kmp_learning_app.data.local.curriculum.entity.QuestionCorrectAnswerEntity
@@ -45,6 +46,9 @@ internal fun Curriculum.toPersistenceSnapshot(): CurriculumPersistenceSnapshot =
                     id = answer.id,
                     text = answer.text,
                     sortOrder = index,
+                    // Every authored option is active. Upserting this also reactivates an
+                    // option that a previous bundle had retired and this one restores.
+                    status = ContentStatus.ACTIVE.name,
                 )
             }
         },

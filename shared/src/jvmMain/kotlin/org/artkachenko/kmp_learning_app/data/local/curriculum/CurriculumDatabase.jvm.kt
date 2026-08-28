@@ -23,6 +23,6 @@ internal fun createJvmCurriculumDatabase(): CurriculumDatabase {
         name = databaseFile.absolutePath,
     )
         .setDriver(BundledSQLiteDriver())
-        .addMigrations(MIGRATION_1_2)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
         .build()
 }

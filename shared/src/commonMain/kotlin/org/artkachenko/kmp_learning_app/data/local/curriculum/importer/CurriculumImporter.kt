@@ -1,6 +1,7 @@
 package org.artkachenko.kmp_learning_app.data.local.curriculum.importer
 
 import androidx.room3.withWriteTransaction
+import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
 import org.artkachenko.kmp_learning_app.curriculum.content.BundledCurriculumSource
 import org.artkachenko.kmp_learning_app.curriculum.validation.CurriculumValidator
@@ -45,9 +46,18 @@ internal class CurriculumImporter(
                 snapshot.answerOptions
                     .groupBy { it.questionId }
                     .forEach { (questionId, options) ->
+                        val keepAnswerIds = options.map { it.id }
                         dao.deleteAnswerOptionsForQuestionExcept(
                             questionId = questionId,
-                            keepAnswerIds = options.map { it.id },
+                            keepAnswerIds = keepAnswerIds,
+                        )
+                        // Whatever survived the delete is referenced by a historical
+                        // attempt. Retire it so it stays reviewable without being offered
+                        // as an extra choice in new assessments.
+                        dao.deprecateAnswerOptionsForQuestionExcept(
+                            questionId = questionId,
+                            keepAnswerIds = keepAnswerIds,
+                            deprecatedStatus = ContentStatus.DEPRECATED.name,
                         )
                     }
             }

@@ -3387,7 +3387,7 @@
       "correctAnswerIds": [
         "kotlin_sequences_001_b"
       ],
-      "explanation": "A sequence evaluates lazily and element by element, so a long chain of operations avoids materializing a list at every step. For a short chain over a small collection the eager version is usually faster, since sequences add per-element indirection. Sequences are also single-pass by nature and do not introduce concurrency.",
+      "explanation": "A sequence evaluates lazily and element by element, so a long chain of operations avoids materializing a list at every step. For a short chain over a small collection the eager version is usually faster, since sequences add per-element indirection. Iterating a sequence again normally re-executes the whole pipeline, and some implementations constrain themselves to a single iteration, so a result that is consumed repeatedly is better materialized into a list. Sequences introduce no concurrency.",
       "sources": [
         {
           "title": "Sequences",
@@ -5395,7 +5395,7 @@
       "id": "background_sync_001",
       "topicId": "mobile_system_design",
       "subtopicId": "background_sync",
-      "text": "When designing background sync for mobile, which constraints should be considered? Select all that apply.",
+      "text": "When designing background sync that the system may defer, which factors can the platform scheduler honour? Select all that apply.",
       "answers": [
         {
           "id": "background_sync_001_a",
@@ -5419,7 +5419,7 @@
         "background_sync_001_b",
         "background_sync_001_d"
       ],
-      "explanation": "Background sync must respect connectivity and metering, battery and charging state, and the platform's background execution limits, with a backoff policy for failures. Exact wall-clock timing is not something background sync can rely on: the system batches and defers deferrable work, so a design that needs precise timing is using the wrong mechanism.",
+      "explanation": "A deferrable scheduler decides when to run work, and it can act on connectivity and metering, battery and charging state, and the platform's background execution limits, applying a backoff policy between retries. It cannot promise a specific moment: deferrable work is batched and delayed, so a requirement for exact wall-clock execution has to be met by a different mechanism rather than by a sync constraint.",
       "sources": [
         {
           "title": "Build an Offline-first App",

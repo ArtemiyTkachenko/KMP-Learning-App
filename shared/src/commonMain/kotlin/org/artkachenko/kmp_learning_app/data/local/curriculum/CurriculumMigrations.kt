@@ -68,3 +68,21 @@ internal val MIGRATION_1_2 = Migration(
         """,
     )
 }
+
+/**
+ * Adds the answer-option lifecycle column.
+ *
+ * Every option stored before this version was authored by the bundled curriculum and
+ * therefore live, so existing rows default to ACTIVE. From this version on, an option
+ * the curriculum stops authoring is marked DEPRECATED when a historical attempt still
+ * references it, which keeps it out of new assessments while leaving it resolvable for
+ * review.
+ */
+internal val MIGRATION_2_3 = Migration(
+    startVersion = 2,
+    endVersion = 3,
+) { connection ->
+    connection.executeSQL(
+        "ALTER TABLE `answer_option` ADD COLUMN `status` TEXT NOT NULL DEFAULT 'ACTIVE'",
+    )
+}

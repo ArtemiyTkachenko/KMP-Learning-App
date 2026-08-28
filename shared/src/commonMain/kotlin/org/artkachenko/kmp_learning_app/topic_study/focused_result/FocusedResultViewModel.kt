@@ -10,16 +10,15 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
-import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeResult
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
-import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 
 internal class FocusedResultViewModel(
     private val attemptId: String,
     private val assessmentRepository: AssessmentRepository,
-    private val curriculumRepository: CurriculumRepository,
+    private val assessmentReviewLoader: AssessmentReviewLoader,
     private val assessmentRetakeService: AssessmentRetakeService,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<FocusedResultUiState>(FocusedResultUiState.Loading)
@@ -73,34 +72,7 @@ internal class FocusedResultViewModel(
                     return@runCatching FocusedResultUiState.NotCompleted
                 }
                 val score = requireNotNull(attempt.score)
-                val questions = attempt.questionAttempts.map { questionAttempt ->
-                    val question = curriculumRepository.getQuestionById(questionAttempt.questionId)
-                    if (question == null) {
-                        ReviewQuestionItem.Missing(questionAttempt.questionId)
-                    } else {
-                        val answerState = questionAttempt.answerState as? QuestionAnswerState.Answered
-                            ?: error("Completed attempt contains an unanswered question.")
-                        ReviewQuestionItem.Available(
-                            ReviewQuestionUiModel(
-                                questionId = question.id,
-                                text = question.text,
-                                isCorrect = answerState.isCorrect,
-                                answers = question.answers.map { answer ->
-                                    ReviewAnswerUiModel(
-                                        id = answer.id,
-                                        text = answer.text,
-                                        wasSelected = answer.id in answerState.selectedAnswerIds,
-                                        isCorrectAnswer = answer.id in question.correctAnswerIds,
-                                    )
-                                },
-                                explanation = question.explanation,
-                                sources = question.sources.map { source ->
-                                    ReviewSourceUiModel(source.title, source.url)
-                                },
-                            ),
-                        )
-                    }
-                }
+                val questions = assessmentReviewLoader.loadQuestions(attempt)
                 FocusedResultUiState.Content(
                     attemptId = attempt.id,
                     totalQuestions = score.totalQuestions,

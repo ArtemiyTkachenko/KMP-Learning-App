@@ -492,6 +492,7 @@ internal class AssessmentTakingViewModelTest {
         override suspend fun getActiveQuestions(): List<Question> = questions
         override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> = questions
         override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> = questions
+        override suspend fun getTopicById(topicId: String): Topic? = null
         override suspend fun getQuestionById(questionId: String): Question? = questions.firstOrNull { it.id == questionId }
     }
 

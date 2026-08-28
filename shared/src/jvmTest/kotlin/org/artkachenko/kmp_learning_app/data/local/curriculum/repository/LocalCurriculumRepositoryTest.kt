@@ -38,6 +38,28 @@ internal class LocalCurriculumRepositoryTest {
     }
 
     @Test
+    fun getTopicByIdReturnsActiveAndDeprecatedTopicsButNotUnknownTopics() = runTest {
+        withRepository(
+            curriculumOf(
+                graph("active_topic", topicName = "Active topic"),
+                graph(
+                    "deprecated_topic",
+                    topicName = "Deprecated topic",
+                    status = ContentStatus.DEPRECATED,
+                ),
+            ),
+        ) { repository ->
+            assertEquals("Active topic", repository.getTopicById("active_topic")?.name)
+            assertEquals(
+                Topic("deprecated_topic", "Deprecated topic", ContentStatus.DEPRECATED),
+                repository.getTopicById("deprecated_topic"),
+            )
+            assertNull(repository.getTopicById("missing_topic"))
+            assertEquals(listOf("active_topic"), repository.getActiveTopics().map { it.id })
+        }
+    }
+
+    @Test
     fun getActiveSubtopicsRequiresActiveSubtopicAndActiveParentTopic() = runTest {
         withRepository(activeSubtopicFixture()) { repository ->
             assertEquals(

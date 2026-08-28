@@ -28,6 +28,11 @@ internal class LocalCurriculumRepository(
             )
             .map { it.toDomain() }
 
+    override suspend fun getTopicById(topicId: String): Topic? =
+        database.curriculumDao()
+            .getTopicById(topicId)
+            ?.toDomain()
+
     override suspend fun getActiveQuestions(): List<Question> =
         database.withReadTransaction {
             val dao = database.curriculumDao()

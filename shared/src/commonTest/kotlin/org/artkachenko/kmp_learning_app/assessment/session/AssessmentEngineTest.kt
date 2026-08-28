@@ -552,6 +552,9 @@ internal class AssessmentEngineTest {
         override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> =
             subtopicQuestions[subtopicId].orEmpty()
 
+        override suspend fun getTopicById(topicId: String): Topic? =
+            error("Not used by AssessmentEngine.")
+
         override suspend fun getQuestionById(questionId: String): Question? =
             error("Not used by AssessmentEngine.")
     }

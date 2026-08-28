@@ -24,6 +24,8 @@ import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoad
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingLaunch
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingViewModel
+import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
+import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultViewModel
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
@@ -96,8 +98,12 @@ internal class TopicStudyPresentationModuleTest {
             )
             assertIs<AssessmentSessionLoader>(app.koin.get<AssessmentSessionLoader>())
             assertIs<AssessmentRetakeService>(app.koin.get<AssessmentRetakeService>())
+            assertIs<AssessmentReviewLoader>(app.koin.get<AssessmentReviewLoader>())
             assertIs<FocusedResultViewModel>(
                 app.koin.get<FocusedResultViewModel> { parametersOf("attempt") },
+            )
+            assertIs<MixedInterviewResultViewModel>(
+                app.koin.get<MixedInterviewResultViewModel> { parametersOf("attempt") },
             )
             advanceUntilIdle()
         } finally {
@@ -119,6 +125,9 @@ internal class TopicStudyPresentationModuleTest {
             error("Not used by TopicBrowserViewModel.")
 
         override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> =
+            error("Not used by TopicBrowserViewModel.")
+
+        override suspend fun getTopicById(topicId: String): Topic? =
             error("Not used by TopicBrowserViewModel.")
 
         override suspend fun getQuestionById(questionId: String): Question? =

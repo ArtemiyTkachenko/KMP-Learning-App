@@ -50,18 +50,16 @@ import org.artkachenko.kmp_learning_app.topic_study.topic_detail.SubtopicPractic
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicPracticeButtonTag
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.koin.compose.KoinApplication
+import org.koin.core.context.stopKoin
 import org.koin.dsl.koinConfiguration
 import org.koin.dsl.module
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 internal class FocusedLearningJourneyIntegrationTest {
-    private companion object {
-        val mainDispatcherLock = Any()
-    }
-
     @Test
     fun appDrivesTopicPracticeCompletionAndOneDurableRetake() {
-        synchronized(mainDispatcherLock) {
+        synchronized(appIntegrationMainDispatcherLock) {
+            stopKoin()
             Dispatchers.setMain(Dispatchers.Unconfined)
             lateinit var components: TestComponents
             var database: CurriculumDatabase? = null
@@ -126,6 +124,7 @@ internal class FocusedLearningJourneyIntegrationTest {
             )
                 }
             } finally {
+                stopKoin()
                 database?.close()
                 Dispatchers.resetMain()
             }
@@ -199,3 +198,5 @@ internal class FocusedLearningJourneyIntegrationTest {
         status = ContentStatus.ACTIVE,
     )
 }
+
+internal val appIntegrationMainDispatcherLock = Any()

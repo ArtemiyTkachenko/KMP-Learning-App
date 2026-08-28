@@ -1,0 +1,135 @@
+package org.artkachenko.kmp_learning_app.mixed_interview
+
+import androidx.room3.Room
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import kotlin.test.AfterTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.time.Instant
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
+import org.artkachenko.kmp_learning_app.assessment.AssessmentScore
+import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
+import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
+import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
+import org.artkachenko.kmp_learning_app.assessment.TestAttempt
+import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
+import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
+import org.artkachenko.kmp_learning_app.curriculum.Curriculum
+import org.artkachenko.kmp_learning_app.curriculum.Question
+import org.artkachenko.kmp_learning_app.curriculum.SourceReference
+import org.artkachenko.kmp_learning_app.curriculum.Subtopic
+import org.artkachenko.kmp_learning_app.curriculum.Topic
+import org.artkachenko.kmp_learning_app.data.local.assessment.AssessmentAttemptStore
+import org.artkachenko.kmp_learning_app.data.local.assessment.repository.LocalAssessmentRepository
+import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDatabase
+import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImportResult
+import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImporter
+import org.artkachenko.kmp_learning_app.data.local.curriculum.repository.LocalCurriculumRepository
+
+@OptIn(ExperimentalCoroutinesApi::class)
+internal class MixedInterviewResultIntegrationTest {
+    @AfterTest
+    fun tearDown() = Dispatchers.resetMain()
+
+    @Test
+    fun completedAttemptRoundTripBuildsResultFromStableHistoricalContent() = runTest {
+        Dispatchers.setMain(Dispatchers.Unconfined)
+        val database = Room.inMemoryDatabaseBuilder<CurriculumDatabase>()
+            .setDriver(BundledSQLiteDriver())
+            .build()
+        try {
+            assertEquals(
+                CurriculumImportResult.Imported,
+                CurriculumImporter(database, loadCurriculum = { curriculum() }).importCurriculum(),
+            )
+            val curriculumRepository = LocalCurriculumRepository(database)
+            val assessmentRepository = LocalAssessmentRepository(AssessmentAttemptStore(database))
+            assessmentRepository.save(completedAttempt())
+
+            val persisted = assessmentRepository.getById("mixed-result")
+            assertEquals(AssessmentScore(2, 1), persisted?.score)
+
+            val viewModel = MixedInterviewResultViewModel(
+                attemptId = "mixed-result",
+                assessmentRepository = assessmentRepository,
+                curriculumRepository = curriculumRepository,
+                assessmentReviewLoader = AssessmentReviewLoader(curriculumRepository),
+            )
+            val state = assertIs<MixedInterviewResultUiState.Content>(
+                withContext(Dispatchers.Default) {
+                    withTimeout(5_000) {
+                        viewModel.uiState.first { it !is MixedInterviewResultUiState.Loading }
+                    }
+                },
+            )
+            assertEquals(listOf("Active Topic", "Retired Topic"), state.topicPerformance.map { it.topicName })
+            assertEquals(listOf(1, 0), state.topicPerformance.map { it.correctCount })
+            assertEquals(2, state.topicPerformance.sumOf { it.questionCount })
+        } finally {
+            database.close()
+        }
+    }
+
+    private fun completedAttempt() = TestAttempt(
+        id = "mixed-result",
+        config = AssessmentConfig.Mixed(2),
+        questionAttempts = listOf(
+            QuestionAttempt("active-q", QuestionAnswerState.Answered(setOf("a"), true)),
+            QuestionAttempt("retired-q", QuestionAnswerState.Answered(setOf("b"), false)),
+        ),
+        status = AssessmentStatus.COMPLETED,
+        startedAt = Instant.fromEpochMilliseconds(1),
+        completedAt = Instant.fromEpochMilliseconds(2),
+        score = AssessmentScore(2, 1),
+    )
+
+    private fun curriculum() = Curriculum(
+        topics = listOf(
+            Topic("active", "Active Topic"),
+            Topic("retired", "Retired Topic", ContentStatus.DEPRECATED),
+        ),
+        subtopics = listOf(
+            Subtopic("active-sub", "active", "Active Subtopic"),
+            Subtopic("retired-sub", "retired", "Retired Subtopic", ContentStatus.DEPRECATED),
+        ),
+        questions = listOf(
+            question("active-q", "active", "active-sub"),
+            question(
+                "retired-q",
+                "retired",
+                "retired-sub",
+                ContentStatus.DEPRECATED,
+            ),
+        ),
+    )
+
+    private fun question(
+        id: String,
+        topicId: String,
+        subtopicId: String,
+        status: ContentStatus = ContentStatus.ACTIVE,
+    ) = Question(
+        id = id,
+        topicId = topicId,
+        subtopicId = subtopicId,
+        text = "Question $id",
+        answers = listOf(
+            AnswerOption("a", "Answer A"),
+            AnswerOption("b", "Answer B"),
+        ),
+        correctAnswerIds = listOf("a"),
+        explanation = "Explanation $id",
+        sources = listOf(SourceReference("Source", "https://example.com/$id")),
+        status = status,
+    )
+}

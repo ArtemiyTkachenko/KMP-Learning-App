@@ -94,6 +94,7 @@ internal class AssessmentSessionLoaderTest {
         override suspend fun getActiveQuestions(): List<Question> = emptyList()
         override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> = emptyList()
         override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> = emptyList()
+        override suspend fun getTopicById(topicId: String): Topic? = null
         override suspend fun getQuestionById(questionId: String): Question? = questions.firstOrNull { it.id == questionId }
     }
 }

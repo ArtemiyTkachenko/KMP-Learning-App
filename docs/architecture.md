@@ -102,8 +102,12 @@ config route is replaced by `MixedInterviewAttempt(attemptId)` so saved
 navigation restores the existing session instead of creating another attempt.
 Focused starts use the same promotion to `FocusedPracticeAttempt(attemptId)`.
 Completion replaces the attempt entry with `MixedInterviewResult(attemptId)`;
-E10-03 provides only a handled completion shell, leaving score review and topic
-performance to E10-04.
+the result loads the durable `AssessmentScore` from `AssessmentRepository` and
+uses `AssessmentReviewLoader` with `CurriculumRepository.getQuestionById` for
+ordered historical review. Resolved review Questions are grouped by `topicId`
+in attempt encounter order, and `CurriculumRepository.getTopicById` resolves
+historical names without ACTIVE filtering. Topic performance is derived in
+memory and is not persisted.
 
 E09-04 completes the retained session through `AssessmentEngine`, persists the
 completed attempt before replacing focused-practice navigation with a stable

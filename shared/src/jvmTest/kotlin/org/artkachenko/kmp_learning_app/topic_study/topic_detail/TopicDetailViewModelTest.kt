@@ -190,6 +190,9 @@ internal class TopicDetailViewModelTest {
             error("N+1 query must not be used.")
         }
 
+        override suspend fun getTopicById(topicId: String): Topic? =
+            topics.firstOrNull { it.id == topicId }
+
         override suspend fun getQuestionById(questionId: String): Question? = error("Not used.")
     }
 }

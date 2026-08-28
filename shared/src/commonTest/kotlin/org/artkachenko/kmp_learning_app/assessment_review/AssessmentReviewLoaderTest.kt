@@ -1,0 +1,140 @@
+package org.artkachenko.kmp_learning_app.assessment_review
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
+import kotlin.test.assertTrue
+import kotlin.time.Instant
+import kotlinx.coroutines.test.runTest
+import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
+import org.artkachenko.kmp_learning_app.assessment.AssessmentScore
+import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
+import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
+import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
+import org.artkachenko.kmp_learning_app.assessment.TestAttempt
+import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
+import org.artkachenko.kmp_learning_app.curriculum.Question
+import org.artkachenko.kmp_learning_app.curriculum.SourceReference
+import org.artkachenko.kmp_learning_app.curriculum.Subtopic
+import org.artkachenko.kmp_learning_app.curriculum.Topic
+import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+
+internal class AssessmentReviewLoaderTest {
+    @Test
+    fun mapsHistoricalReviewInAttemptAndAuthoredOrder() = runTest {
+        val questions = listOf(
+            question("q1", topicId = "compose"),
+            question("q2", topicId = "kotlin"),
+            question("q3", topicId = "coroutines"),
+        )
+        val attempt = completedAttempt(
+            listOf(
+                answered("q3", selectedIds = setOf("b"), isCorrect = false),
+                answered("q1", selectedIds = setOf("a", "b"), isCorrect = false),
+                answered("q2", selectedIds = setOf("a", "c"), isCorrect = true),
+            ),
+            correctAnswers = 1,
+        )
+
+        val items = AssessmentReviewLoader(FakeCurriculumRepository(questions))
+            .loadQuestions(attempt)
+
+        assertEquals(listOf("q3", "q1", "q2"), items.map { available(it).questionId })
+        val first = available(items.first())
+        assertEquals("coroutines", first.topicId)
+        assertFalse(first.isCorrect)
+        assertEquals(listOf("a", "b", "c"), first.answers.map { it.id })
+        assertTrue(first.answers.first { it.id == "b" }.wasSelected)
+        assertFalse(first.answers.first { it.id == "a" }.wasSelected)
+        assertTrue(first.answers.first { it.id == "a" }.isCorrectAnswer)
+        assertTrue(first.answers.first { it.id == "c" }.isCorrectAnswer)
+        assertEquals("Explanation q3", first.explanation)
+        assertEquals(listOf("Source B", "Source A"), first.sources.map { it.title })
+    }
+
+    @Test
+    fun deprecatedQuestionRemainsAvailable() = runTest {
+        val question = question("deprecated", status = ContentStatus.DEPRECATED)
+        val items = AssessmentReviewLoader(FakeCurriculumRepository(listOf(question)))
+            .loadQuestions(completedAttempt(listOf(answered("deprecated")), correctAnswers = 1))
+
+        assertEquals("deprecated", available(items.single()).questionId)
+    }
+
+    @Test
+    fun missingQuestionIsExplicitAndDoesNotStopSubsequentReview() = runTest {
+        val items = AssessmentReviewLoader(FakeCurriculumRepository(listOf(question("available"))))
+            .loadQuestions(
+                completedAttempt(
+                    listOf(answered("missing"), answered("available")),
+                    correctAnswers = 1,
+                ),
+            )
+
+        assertEquals("missing", assertIs<ReviewQuestionItem.Missing>(items.first()).questionId)
+        assertEquals("available", available(items[1]).questionId)
+    }
+
+    private fun available(item: ReviewQuestionItem): ReviewQuestionUiModel =
+        assertIs<ReviewQuestionItem.Available>(item).question
+
+    private fun answered(
+        questionId: String,
+        selectedIds: Set<String> = setOf("a", "c"),
+        isCorrect: Boolean = true,
+    ) = QuestionAttempt(
+        questionId,
+        QuestionAnswerState.Answered(selectedIds, isCorrect),
+    )
+
+    private fun completedAttempt(
+        questionAttempts: List<QuestionAttempt>,
+        correctAnswers: Int,
+    ) = TestAttempt(
+        id = "attempt",
+        config = AssessmentConfig.Mixed(questionAttempts.size),
+        questionAttempts = questionAttempts,
+        status = AssessmentStatus.COMPLETED,
+        startedAt = Instant.fromEpochMilliseconds(1),
+        completedAt = Instant.fromEpochMilliseconds(2),
+        score = AssessmentScore(questionAttempts.size, correctAnswers),
+    )
+
+    private fun question(
+        id: String,
+        topicId: String = "topic",
+        status: ContentStatus = ContentStatus.ACTIVE,
+    ) = Question(
+        id = id,
+        topicId = topicId,
+        subtopicId = "subtopic",
+        text = "Question $id",
+        answers = listOf(
+            AnswerOption("a", "Answer A"),
+            AnswerOption("b", "Answer B"),
+            AnswerOption("c", "Answer C"),
+        ),
+        correctAnswerIds = listOf("a", "c"),
+        explanation = "Explanation $id",
+        sources = listOf(
+            SourceReference("Source B", "https://example.com/b"),
+            SourceReference("Source A", "https://example.com/a"),
+        ),
+        status = status,
+    )
+
+    private class FakeCurriculumRepository(
+        private val questions: List<Question>,
+    ) : CurriculumRepository {
+        override suspend fun getActiveTopics(): List<Topic> = error("Not used")
+        override suspend fun getActiveSubtopics(topicId: String): List<Subtopic> = error("Not used")
+        override suspend fun getActiveQuestions(): List<Question> = error("Not used")
+        override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> = error("Not used")
+        override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> = error("Not used")
+        override suspend fun getTopicById(topicId: String): Topic? = error("Not used")
+        override suspend fun getQuestionById(questionId: String): Question? =
+            questions.firstOrNull { it.id == questionId }
+    }
+}

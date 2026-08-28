@@ -15,8 +15,8 @@ import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDe
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserDestination
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.FocusedPracticeDestination
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingLaunch
-import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewCompletedDestination
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewDestination
+import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultDestination
 import org.artkachenko.kmp_learning_app.mixed_interview.mixedInterviewStartRoute
 import org.artkachenko.kmp_learning_app.mixed_interview.toAssessmentTakingLaunch
 import org.artkachenko.kmp_learning_app.mixed_interview.toAssessmentConfig
@@ -96,7 +96,7 @@ private fun AppShell(
                     )
                 }
                 entry<AppRoute.MixedInterviewResult> { route ->
-                    MixedInterviewCompletedDestination(
+                    MixedInterviewResultDestination(
                         attemptId = route.attemptId,
                         onBack = { popBack() },
                     )

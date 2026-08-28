@@ -267,6 +267,9 @@ internal class AssessmentQuestionSelectorTest {
             return subtopicQuestions[subtopicId].orEmpty()
         }
 
+        override suspend fun getTopicById(topicId: String): Topic? =
+            error("Not used by AssessmentQuestionSelector.")
+
         override suspend fun getQuestionById(questionId: String): Question? =
             error("Not used by AssessmentQuestionSelector.")
     }

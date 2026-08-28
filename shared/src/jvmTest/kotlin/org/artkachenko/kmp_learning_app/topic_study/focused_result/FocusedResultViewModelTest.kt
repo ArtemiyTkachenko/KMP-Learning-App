@@ -26,6 +26,8 @@ import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentReposito
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
+import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
+import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
@@ -45,7 +47,12 @@ internal class FocusedResultViewModelTest {
         val questions = listOf(question("q3"), question("q1"), question("q2"))
         val repository = FakeAssessmentRepository(completedAttempt(questions.map { it.id }, 2))
         val curriculum = FakeCurriculumRepository(questions)
-        val viewModel = FocusedResultViewModel("attempt", repository, curriculum, retakeService(repository, questions))
+        val viewModel = FocusedResultViewModel(
+            "attempt",
+            repository,
+            AssessmentReviewLoader(curriculum),
+            retakeService(repository, questions),
+        )
         advanceUntilIdle()
 
         val state = assertIs<FocusedResultUiState.Content>(viewModel.uiState.value)
@@ -62,7 +69,7 @@ internal class FocusedResultViewModelTest {
         val viewModel = FocusedResultViewModel(
             "attempt",
             FakeAssessmentRepository(completedAttempt(listOf("q"), 0, selectedIds = setOf("a", "b"))),
-            FakeCurriculumRepository(listOf(q)),
+            reviewLoader(listOf(q)),
             retakeService(FakeAssessmentRepository(completedAttempt(listOf("q"), 0)), listOf(q)),
         )
         advanceUntilIdle()
@@ -82,7 +89,7 @@ internal class FocusedResultViewModelTest {
         val viewModel = FocusedResultViewModel(
             "attempt",
             FakeAssessmentRepository(completedAttempt(listOf("missing", "q"), 1)),
-            FakeCurriculumRepository(listOf(question("q"))),
+            reviewLoader(listOf(question("q"))),
             retakeService(FakeAssessmentRepository(completedAttempt(listOf("q"), 1)), listOf(question("q"))),
         )
         advanceUntilIdle()
@@ -96,7 +103,12 @@ internal class FocusedResultViewModelTest {
     fun incompleteAndMissingAttemptsHaveExplicitStates() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val repo = FakeAssessmentRepository(null)
-        val missing = FocusedResultViewModel("attempt", repo, FakeCurriculumRepository(emptyList()), retakeService(repo, emptyList()))
+        val missing = FocusedResultViewModel(
+            "attempt",
+            repo,
+            reviewLoader(emptyList()),
+            retakeService(repo, emptyList()),
+        )
         advanceUntilIdle()
         assertIs<FocusedResultUiState.AttemptNotFound>(missing.uiState.value)
 
@@ -115,7 +127,10 @@ internal class FocusedResultViewModelTest {
         val question = question("q")
         val repository = FakeAssessmentRepository(completedAttempt(listOf("q"), 1))
         val viewModel = FocusedResultViewModel(
-            "attempt", repository, FakeCurriculumRepository(listOf(question)), retakeService(repository, listOf(question)),
+            "attempt",
+            repository,
+            reviewLoader(listOf(question)),
+            retakeService(repository, listOf(question)),
         )
         advanceUntilIdle()
 
@@ -136,6 +151,9 @@ internal class FocusedResultViewModelTest {
     )
 
     private fun config() = AssessmentConfig.Focused(AssessmentScope.Topic("topic"), 10)
+
+    private fun reviewLoader(questions: List<Question>) =
+        AssessmentReviewLoader(FakeCurriculumRepository(questions))
 
     private fun retakeService(repository: FakeAssessmentRepository, questions: List<Question>) =
         AssessmentRetakeService(
@@ -169,6 +187,7 @@ internal class FocusedResultViewModelTest {
         override suspend fun getActiveQuestions(): List<Question> = questions
         override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> = questions
         override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> = questions
+        override suspend fun getTopicById(topicId: String): Topic? = null
         override suspend fun getQuestionById(questionId: String): Question? { lookups += questionId; return questions.firstOrNull { it.id == questionId } }
     }
 }

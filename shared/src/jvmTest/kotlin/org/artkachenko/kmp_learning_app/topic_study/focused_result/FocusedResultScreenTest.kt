@@ -8,6 +8,10 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import org.artkachenko.kmp_learning_app.assessment_review.ReviewAnswerUiModel
+import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
+import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionUiModel
+import org.artkachenko.kmp_learning_app.assessment_review.ReviewSourceUiModel
 
 @OptIn(ExperimentalTestApi::class)
 internal class FocusedResultScreenTest {
@@ -26,6 +30,7 @@ internal class FocusedResultScreenTest {
                             ReviewQuestionItem.Available(
                                 ReviewQuestionUiModel(
                                     questionId = "q1",
+                                    topicId = "topic",
                                     text = "Question text",
                                     isCorrect = true,
                                     answers = listOf(

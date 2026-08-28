@@ -1761,11 +1761,255 @@ epics:
 
     goal: >
       Turn persisted assessment history into useful learning feedback. Derive
-      overall, topic, and subtopic performance from real attempts, identify
-      weak areas, preserve useful attempt history, and provide a workflow for
-      reviewing previously incorrect questions and their explanations.
+      overall, topic, and subtopic performance from real attempts, identify weak
+      areas, preserve useful attempt history, and provide a workflow for reviewing
+      previously incorrect questions and their explanations.
 
-    issues: []
+    issues:
+      - key: E11-01
+        title: "Expose completed assessment history and stable subtopic lookup"
+
+        issue: >
+          Assessment history is persisted, but AssessmentRepository can currently
+          load only a single attempt by ID. Progress, statistics, attempt history,
+          and mistake review need access to all completed attempts. Historical
+          focused-attempt labels and subtopic statistics also require stable
+          Subtopic lookup independent of ACTIVE status.
+
+        approach: >
+          Extend AssessmentRepository with a completed-history query returning
+          fully reconstructed TestAttempt domain objects in deterministic
+          newest-first completion order. Add the required Room queries and store
+          mapping without introducing new persistence tables. Expose
+          CurriculumRepository.getSubtopicById using the existing unrestricted
+          DAO query so ACTIVE and DEPRECATED historical subtopics can both be
+          resolved.
+
+        acceptance_criteria:
+          - "AssessmentRepository exposes a completed-attempt history query."
+          - "Only COMPLETED TestAttempts are returned by the completed-history query."
+          - "IN_PROGRESS attempts remain persisted but are excluded from completed history."
+          - "Completed attempts are ordered by completedAt descending with a deterministic tie-breaker."
+          - "Returned TestAttempts contain their complete ordered QuestionAttempt data and selected AnswerOption IDs."
+          - "Focused and Mixed AssessmentConfig values survive history reconstruction unchanged."
+          - "AssessmentScore and timestamps survive history reconstruction unchanged."
+          - "CurriculumRepository exposes getSubtopicById(subtopicId)."
+          - "getSubtopicById returns ACTIVE and DEPRECATED Subtopics by stable ID."
+          - "Unknown Subtopic IDs return null."
+          - "Existing getActiveSubtopics behavior remains unchanged."
+          - "The existing CurriculumDao getSubtopicById query is reused rather than duplicated."
+          - "No history, progress, or statistics tables are added."
+          - "Room remains schema version 3."
+          - "Real-Room tests cover empty history, multiple completed attempts, mixed/focused config reconstruction, ordering, selected answers, and exclusion of IN_PROGRESS attempts."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+
+      - key: E11-02
+        title: "Derive learning progress statistics and weak areas"
+
+        issue: >
+          Completed assessment history contains enough information to derive
+          learning performance, but the application has no shared domain service
+          that converts attempts into overall, topic, and subtopic statistics or
+          identifies areas that need more practice.
+
+        approach: >
+          Introduce a shared LearningProgressService that loads completed attempts
+          from AssessmentRepository and derives all statistics in memory. Use
+          persisted AssessmentScore for overall totals and stable historical
+          Question, Topic, and Subtopic lookup for scoped performance. Aggregate
+          question occurrences across focused, mixed, and retake attempts without
+          persisting denormalized statistics.
+
+        acceptance_criteria:
+          - "LearningProgressService derives progress from completed TestAttempts only."
+          - "Focused, Mixed, and retake attempts all contribute using the same aggregation rules."
+          - "Overall completed-attempt count is derived."
+          - "Overall answered-question count is the sum of persisted completed AssessmentScore totals."
+          - "Overall correct-answer count is the sum of persisted completed AssessmentScore correct counts."
+          - "Overall accuracy is correctAnswers / answeredQuestions and is not an unweighted average of attempt percentages."
+          - "Repeated encounters with a Question across separate attempts count as separate performance observations."
+          - "Topic performance contains stable topic ID, resolved historical name where available, answered count, correct count, and derived percentage."
+          - "Subtopic performance contains stable subtopic ID, parent topic ID, resolved historical name where available, answered count, correct count, and derived percentage."
+          - "Topic and Subtopic aggregation uses persisted QuestionAnswerState.Answered.isCorrect rather than recalculating correctness."
+          - "Historical Questions are resolved with getQuestionById rather than ACTIVE-only APIs."
+          - "DEPRECATED Questions, Topics, and Subtopics contribute normally when stable lookup succeeds."
+          - "A missing historical Question still contributes to overall persisted statistics but is excluded from topic/subtopic statistics because its scope cannot be reconstructed."
+          - "Missing Topic/Subtopic metadata does not discard resolvable scoped counts."
+          - "Weak Topics require at least 3 answered observations and accuracy below 70%."
+          - "Weak Subtopics require at least 2 answered observations and accuracy below 70%."
+          - "Weak areas are sorted by lowest accuracy first, then larger observation count, then stable ID."
+          - "No recent-attempt weighting, time decay, difficulty weighting, or assessment-type weighting is introduced."
+          - "No statistics are persisted to Room."
+          - "Tests cover empty history, mixed+focused aggregation, repeated Questions, missing/deprecated content, weighted overall accuracy, topic/subtopic grouping, and weak-area thresholds."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+
+      - key: E11-03
+        title: "Implement progress dashboard and completed attempt history"
+
+        issue: >
+          Users currently finish assessments without a persistent place to see
+          their cumulative progress or reopen previous results. The application
+          needs a lightweight progress destination built from the derived history
+          and statistics introduced by E11-01 and E11-02.
+
+        approach: >
+          Add a Progress destination reachable from the application start screen.
+          Present overall statistics, weak-area highlights, topic performance,
+          and a newest-first completed-attempt history. Map history entries back
+          to the existing Focused or Mixed result routes by stable attempt ID.
+          Resolve focused Topic/Subtopic labels through historical curriculum
+          lookups rather than persisting display names.
+
+        acceptance_criteria:
+          - "The application start screen exposes a clear Progress action."
+          - "Progress navigation uses a typed AppRoute.Progress route."
+          - "The Progress screen has an explicit empty state when no completed assessments exist."
+          - "Overall completed attempts, answered Questions, correct answers, and accuracy are shown."
+          - "Weak-area highlights are shown when the E11-02 policy identifies qualifying areas."
+          - "Topic performance shows answered count, correct count, and percentage."
+          - "Completed attempt history is displayed newest first."
+          - "Each history row shows assessment type, score, completion time, and focused scope label where applicable."
+          - "Mixed attempts are identified as Mixed Android Interview."
+          - "Focused Topic attempts resolve their historical Topic name."
+          - "Focused Subtopic attempts resolve their historical Topic/Subtopic context."
+          - "Missing historical scope names use explicit fallback text rather than crashing."
+          - "Selecting a completed Mixed attempt opens the existing MixedInterviewResult(attemptId) route."
+          - "Selecting a completed Focused attempt opens the existing FocusedPracticeResult(attemptId) route."
+          - "Full TestAttempt objects are not placed in navigation."
+          - "The dashboard refreshes its snapshot when the destination is re-entered so newly completed assessments can appear."
+          - "No attempt deletion, resume flow, pagination, charts, streaks, or gamification are introduced."
+          - "Compose/ViewModel/navigation tests cover empty, populated, weak-area, history, fallback, and result-navigation behavior."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+
+      - key: E11-04
+        title: "Implement topic and subtopic performance drill-down"
+
+        issue: >
+          Overall progress and weak-area highlights identify where performance is
+          uneven, but users also need enough detail to understand which subtopics
+          are contributing to a Topic's result.
+
+        approach: >
+          Add a Topic performance detail destination driven by the E11-02 derived
+          statistics. Navigate using only stable topic identity and present the
+          Topic's aggregate performance together with its observed Subtopic
+          breakdown. Keep the feature read-only and derived from completed
+          history.
+
+        acceptance_criteria:
+          - "Selecting a Topic performance item can open a typed progress-detail route carrying only stable topic ID."
+          - "The screen shows the Topic's total answered count, correct count, and percentage."
+          - "Observed Subtopics are shown with answered count, correct count, and percentage."
+          - "Subtopic performance uses historical stable identity and supports DEPRECATED content."
+          - "Missing Topic/Subtopic display metadata uses an explicit fallback."
+          - "Subtopics with no historical observations are not fabricated into the result."
+          - "Weak Subtopics are visually identifiable using the E11-02 weak-area policy."
+          - "Topic and Subtopic statistics are not recalculated from current ACTIVE curriculum coverage."
+          - "The screen does not persist mastery, weak flags, or progress snapshots."
+          - "No custom charting library is introduced."
+          - "Compose/ViewModel tests cover multiple subtopics, weak/non-weak subtopics, deprecated metadata, missing metadata, and empty scoped history."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
+
+
+      - key: E11-05
+        title: "Implement unresolved mistake review workflow"
+
+        issue: >
+          Result screens allow users to review one completed assessment, but
+          there is no cross-attempt workflow for returning to Questions they are
+          still getting wrong. A useful mistake queue should reflect current
+          learning state rather than permanently retaining every historical
+          error.
+
+        approach: >
+          Derive an unresolved mistake queue from completed history. For each
+          stable Question ID, locate its most recent completed occurrence. Include
+          the Question only when that latest occurrence is incorrect; a later
+          correct answer therefore resolves the mistake automatically. Reuse the
+          existing historical Question-review models/components for selected
+          answers, correct answers, explanation, and sources. Keep the workflow
+          read-only and derived rather than introducing manual resolution state.
+
+        acceptance_criteria:
+          - "Progress exposes a Mistake Review action."
+          - "Mistake review uses completed attempts only."
+          - "Question occurrences are compared by completed-attempt recency using deterministic ordering."
+          - "A Question whose most recent completed occurrence is incorrect appears once in the unresolved mistake queue."
+          - "A Question whose most recent completed occurrence is correct does not appear, even if earlier attempts were incorrect."
+          - "Repeated incorrect occurrences do not create duplicate queue rows."
+          - "Mistake items are ordered by most recent incorrect occurrence first."
+          - "Each available mistake shows the Question, latest selected answers, authored correct answers, correctness state, explanation, and sources."
+          - "Existing assessment-review models/components are reused where practical rather than duplicating answer-review UI."
+          - "Source links continue through LocalUriHandler."
+          - "DEPRECATED historical Questions remain reviewable through stable lookup."
+          - "A missing historical Question is represented explicitly rather than crashing the queue."
+          - "The queue has an explicit empty state when there are no unresolved mistakes."
+          - "Mistakes from Focused, Mixed, and retake attempts follow the same rule."
+          - "No manual dismiss/resolved flag is persisted."
+          - "No arbitrary Question-ID AssessmentConfig or dedicated mistake-test engine is introduced."
+          - "No history-aware question selection or adaptive learning behavior is added."
+          - "Tests cover incorrect-only history, later-correct resolution, correct-then-incorrect reappearance, repeated mistakes, mixed/focused sources, missing/deprecated content, ordering, explanations, and source actions."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+
+      - key: E11-06
+        title: "Verify progress, history, and mistake review end to end"
+
+        issue: >
+          Progress aggregation, historical result access, scoped statistics, weak
+          areas, and mistake review need to be verified together using the real
+          persisted assessment model before final MVP hardening begins.
+
+        approach: >
+          Add integration-oriented JVM/Compose coverage using real in-memory Room,
+          real assessment/curriculum repositories, deterministic completed
+          attempts, and the production presentation graph. Exercise overall
+          progress, Topic/Subtopic aggregation, history navigation, weak-area
+          identification, and the unresolved-mistake lifecycle while retaining
+          the existing E09/E10 assessment journeys.
+
+        acceptance_criteria:
+          - "Multiple completed Focused and Mixed attempts survive real Room repository reconstruction."
+          - "IN_PROGRESS attempts do not affect progress, history, weak areas, or mistake review."
+          - "Overall statistics match persisted completed AssessmentScore data."
+          - "Topic and Subtopic statistics match persisted per-Question correctness."
+          - "Repeated Question occurrences are aggregated according to E11-02 rules."
+          - "Weak areas follow the configured evidence thresholds and accuracy threshold."
+          - "Progress history is newest first and opens the correct existing result screen."
+          - "A historical DEPRECATED Question/Topic/Subtopic remains usable in derived progress where stable lookup succeeds."
+          - "Missing Question content leaves overall totals intact and is handled gracefully in scoped statistics."
+          - "An incorrect Question appears in Mistake Review."
+          - "A later correct occurrence removes that Question from the unresolved mistake queue."
+          - "A still-later incorrect occurrence can make the Question unresolved again."
+          - "Mistake review shows answer review, explanation, and source information."
+          - "The complete E11 Koin graph resolves on shared JVM tests."
+          - "Presentation code does not depend directly on Room/DAO/entity types."
+          - "Existing Focused and Mixed end-to-end assessment tests remain green."
+          - "Android assemble, Desktop build, shared checks, and normal CI-equivalent checks pass."
+          - "Room remains schema version 3."
+          - "No resume, deletion, manual mastery, adaptive selection, streak, or gamification behavior is introduced."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
 
 
   - key: E12

@@ -53,6 +53,83 @@ internal class MixedInterviewResultScreenTest {
     }
 
     @Test
+    fun unresolvedQuestionsAreCalledOutWhenTheyDoNotMatchTheScoreTotal() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MixedInterviewResultScreen(
+                    state = contentState(),
+                    onRetry = {},
+                    onBack = {},
+                    onSourceClick = {},
+                )
+            }
+        }
+
+        // The persisted score counts 5 questions; only one review question resolves.
+        onNodeWithText("4 of 5 questions", substring = true)
+            .performScrollTo()
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun fullyResolvableReviewHidesTheUnresolvedNotice() = runComposeUiTest {
+        val resolvable = contentState().let { state ->
+            state.copy(
+                totalQuestions = 1,
+                questions = state.questions.filterIsInstance<ReviewQuestionItem.Available>(),
+            )
+        }
+        setContent {
+            MaterialTheme {
+                MixedInterviewResultScreen(
+                    state = resolvable,
+                    onRetry = {},
+                    onBack = {},
+                    onSourceClick = {},
+                )
+            }
+        }
+
+        onNodeWithText("questions are no longer available", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun failedSourceUrlShowsTheFailureInsideThatQuestionCard() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MixedInterviewResultScreen(
+                    state = contentState(),
+                    onRetry = {},
+                    onBack = {},
+                    onSourceClick = {},
+                    failedSourceUrl = "https://example.com/docs",
+                )
+            }
+        }
+
+        onNodeWithText("This source could not be opened.")
+            .performScrollTo()
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun unrelatedFailedSourceUrlLeavesTheCardUnchanged() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MixedInterviewResultScreen(
+                    state = contentState(),
+                    onRetry = {},
+                    onBack = {},
+                    onSourceClick = {},
+                    failedSourceUrl = "https://example.com/not-in-this-card",
+                )
+            }
+        }
+
+        onNodeWithText("This source could not be opened.").assertDoesNotExist()
+    }
+
+    @Test
     fun loadingAndUnavailableStatesRender() = runComposeUiTest {
         setContent {
             MaterialTheme {

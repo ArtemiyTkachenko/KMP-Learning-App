@@ -21,6 +21,8 @@ import kmp_learning_app.shared.generated.resources.assessment_review_percentage
 import kmp_learning_app.shared.generated.resources.assessment_review_score
 import kmp_learning_app.shared.generated.resources.assessment_review_selected
 import kmp_learning_app.shared.generated.resources.assessment_review_source
+import kmp_learning_app.shared.generated.resources.assessment_review_source_open_failed
+import kmp_learning_app.shared.generated.resources.assessment_review_unresolved_questions
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
@@ -40,10 +42,39 @@ internal fun AssessmentScoreSummary(
     }
 }
 
+/**
+ * Explains why the score above can exceed the questions listed below.
+ *
+ * [AssessmentScoreSummary] renders the persisted AssessmentScore and stays
+ * authoritative, while review items and any topic breakdown can only count
+ * questions whose curriculum content still resolves. The count is derived here
+ * rather than in each result ViewModel so both result screens share one rule.
+ */
+@Composable
+internal fun UnresolvedReviewQuestionsNotice(
+    questions: List<ReviewQuestionItem>,
+    totalQuestions: Int,
+    modifier: Modifier = Modifier,
+) {
+    val resolved = questions.count { it is ReviewQuestionItem.Available }
+    if (resolved >= totalQuestions) return
+
+    Text(
+        stringResource(
+            Res.string.assessment_review_unresolved_questions,
+            totalQuestions - resolved,
+            totalQuestions,
+        ),
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.error,
+    )
+}
+
 @Composable
 internal fun ReviewQuestionCard(
     question: ReviewQuestionUiModel,
     onSourceClick: (String) -> Unit,
+    failedSourceUrl: String? = null,
     modifier: Modifier = Modifier,
 ) {
     Card(modifier.fillMaxWidth()) {
@@ -80,6 +111,14 @@ internal fun ReviewQuestionCard(
                 Button(onClick = { onSourceClick(source.url) }) {
                     Text(stringResource(Res.string.assessment_review_source, source.title))
                 }
+            }
+            // Rendered inside the card the user just tapped: source buttons sit deep in a
+            // scrolling list, so a notice at the top of the screen would be out of view.
+            if (failedSourceUrl != null && question.sources.any { it.url == failedSourceUrl }) {
+                Text(
+                    stringResource(Res.string.assessment_review_source_open_failed),
+                    color = MaterialTheme.colorScheme.error,
+                )
             }
         }
     }

@@ -38,7 +38,7 @@ internal class LocalCurriculumRepository(
             val dao = database.curriculumDao()
             dao.getActiveQuestions(
                 activeStatus = activeStatus,
-            ).toDomainQuestions(dao)
+            ).toDomainQuestions(dao, includeRetiredAnswers = false)
         }
 
     override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> =
@@ -47,7 +47,7 @@ internal class LocalCurriculumRepository(
             dao.getActiveQuestionsForTopic(
                 topicId = topicId,
                 activeStatus = activeStatus,
-            ).toDomainQuestions(dao)
+            ).toDomainQuestions(dao, includeRetiredAnswers = false)
         }
 
     override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> =
@@ -56,24 +56,34 @@ internal class LocalCurriculumRepository(
             dao.getActiveQuestionsForSubtopic(
                 subtopicId = subtopicId,
                 activeStatus = activeStatus,
-            ).toDomainQuestions(dao)
+            ).toDomainQuestions(dao, includeRetiredAnswers = false)
         }
 
     override suspend fun getQuestionById(questionId: String): Question? =
         database.withReadTransaction {
             val dao = database.curriculumDao()
             val question = dao.getQuestionById(questionId) ?: return@withReadTransaction null
-            listOf(question).toDomainQuestions(dao).single()
+            // Historical resolver: retired options are included so an attempt that
+            // selected one can still be reviewed with its original answer text.
+            listOf(question).toDomainQuestions(dao, includeRetiredAnswers = true).single()
         }
 
     private suspend fun List<QuestionEntity>.toDomainQuestions(
         dao: CurriculumDao,
+        includeRetiredAnswers: Boolean,
     ): List<Question> {
         if (isEmpty()) return emptyList()
 
         val questionIds = map { it.id }
-        val answersByQuestion = dao.getAnswerOptionsForQuestions(questionIds)
-            .groupBy { it.questionId }
+        val answerOptions = if (includeRetiredAnswers) {
+            dao.getAnswerOptionsForQuestions(questionIds)
+        } else {
+            dao.getActiveAnswerOptionsForQuestions(
+                questionIds = questionIds,
+                activeStatus = activeStatus,
+            )
+        }
+        val answersByQuestion = answerOptions.groupBy { it.questionId }
         val correctAnswersByQuestion = dao.getCorrectAnswersForQuestions(questionIds)
             .groupBy { it.questionId }
         val sourcesByQuestion = dao.getSourcesForQuestions(questionIds)

@@ -100,4 +100,51 @@ internal class CurriculumDatabaseMigrationTest {
             }
         }
     }
+
+    @Test
+    fun migrationFromTwoToThreeMarksExistingAnswerOptionsActive() = runTest {
+        val databasePath = Files.createTempDirectory("curriculum-migration-test")
+            .resolve("curriculum.db")
+        val helper = MigrationTestHelper(
+            schemaDirectoryPath = Path.of("schemas").toAbsolutePath(),
+            databasePath = databasePath,
+            driver = BundledSQLiteDriver(),
+            databaseClass = CurriculumDatabase::class,
+            databaseFactory = { CurriculumDatabaseConstructor.initialize() },
+        )
+
+        helper.createDatabase(version = 2).use { connection ->
+            connection.executeSQL("INSERT INTO topic (id, name, status, sort_order) VALUES ('topic', 'Topic', 'ACTIVE', 0)")
+            connection.executeSQL(
+                """
+                INSERT INTO subtopic (id, topic_id, name, status, sort_order)
+                VALUES ('subtopic', 'topic', 'Subtopic', 'ACTIVE', 0)
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO question (id, topic_id, subtopic_id, text, explanation, status, sort_order)
+                VALUES ('question', 'topic', 'subtopic', 'Question?', 'Explanation.', 'ACTIVE', 0)
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO answer_option (question_id, id, text, sort_order)
+                VALUES ('question', 'answer_a', 'Answer A', 0)
+                """,
+            )
+        }
+
+        helper.runMigrationsAndValidate(
+            version = 3,
+            migrations = listOf(MIGRATION_2_3),
+        ).use { connection ->
+            // Every option stored before v3 was authored by the bundled curriculum, so
+            // the migration must leave it selectable rather than silently retiring it.
+            connection.prepare("SELECT status FROM answer_option WHERE id = 'answer_a'").use { statement ->
+                assertTrue(statement.step())
+                assertEquals("ACTIVE", statement.getText(0))
+            }
+        }
+    }
 }

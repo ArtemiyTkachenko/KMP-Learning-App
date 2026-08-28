@@ -24,6 +24,7 @@ import org.artkachenko.kmp_learning_app.curriculum.serialization.CurriculumJsonC
 import org.artkachenko.kmp_learning_app.data.local.assessment.AssessmentAttemptStore
 import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDao
 import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDatabase
+import org.artkachenko.kmp_learning_app.data.local.curriculum.repository.LocalCurriculumRepository
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -510,6 +511,74 @@ internal class CurriculumImporterTest {
                 database.curriculumDao()
                     .getAnswerOptionsForQuestion("topic_a_question")
                     .map { it.id },
+            )
+            assertEquals(
+                ContentStatus.DEPRECATED.name,
+                database.curriculumDao()
+                    .getAnswerOptionsForQuestion("topic_a_question")
+                    .single { it.id == "topic_a_answer_c" }
+                    .status,
+            )
+        }
+    }
+
+    @Test
+    fun retiredAnswerOptionLeavesActiveQuestionsButStaysReviewable() = runTest {
+        withTestDatabase { database ->
+            // Reproduces the upgrade path: a user answered with an option that a later
+            // bundle renames. The row survives for historical review, so it must not come
+            // back as an extra choice in new assessments.
+            val originalAnswers = listOf(
+                AnswerOption("topic_a_answer_a", "topic_a answer A"),
+                AnswerOption("topic_a_answer_b", "topic_a answer B"),
+                AnswerOption("topic_a_answer_c", "topic_a implausible filler"),
+            )
+            CurriculumImporter(
+                database,
+                loadCurriculum = { curriculumOf(graph("topic_a", answers = originalAnswers)) },
+            ).importCurriculum()
+            AssessmentAttemptStore(database).save(
+                TestAttempt(
+                    id = "historical_attempt",
+                    config = AssessmentConfig.Focused(AssessmentScope.Topic("topic_a"), 1),
+                    questionAttempts = listOf(
+                        QuestionAttempt(
+                            questionId = "topic_a_question",
+                            answerState = QuestionAnswerState.Answered(
+                                selectedAnswerIds = setOf("topic_a_answer_c"),
+                                isCorrect = false,
+                            ),
+                        ),
+                    ),
+                    status = AssessmentStatus.COMPLETED,
+                    startedAt = Instant.fromEpochMilliseconds(1),
+                    completedAt = Instant.fromEpochMilliseconds(2),
+                    score = AssessmentScore(totalQuestions = 1, correctAnswers = 0),
+                ),
+            )
+
+            // The filler is replaced by a differently-identified distractor.
+            val renamedAnswers = listOf(
+                AnswerOption("topic_a_answer_a", "topic_a answer A"),
+                AnswerOption("topic_a_answer_b", "topic_a answer B"),
+                AnswerOption("topic_a_answer_e", "topic_a plausible distractor"),
+            )
+            assertEquals(
+                CurriculumImportResult.Imported,
+                CurriculumImporter(
+                    database,
+                    loadCurriculum = { curriculumOf(graph("topic_a", answers = renamedAnswers)) },
+                ).importCurriculum(),
+            )
+
+            val repository = LocalCurriculumRepository(database)
+            assertEquals(
+                listOf("topic_a_answer_a", "topic_a_answer_b", "topic_a_answer_e"),
+                repository.getActiveQuestionsByTopic("topic_a").single().answers.map { it.id },
+            )
+            assertEquals(
+                listOf("topic_a_answer_a", "topic_a_answer_b", "topic_a_answer_c", "topic_a_answer_e"),
+                repository.getQuestionById("topic_a_question")?.answers?.map { it.id }?.sorted(),
             )
         }
     }

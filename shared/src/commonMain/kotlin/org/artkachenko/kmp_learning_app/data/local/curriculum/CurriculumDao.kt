@@ -70,6 +70,29 @@ internal interface CurriculumDao {
         keepAnswerIds: List<String>,
     )
 
+    /**
+     * Retires the answer options that survived [deleteAnswerOptionsForQuestionExcept]
+     * because a historical attempt still selects them.
+     *
+     * Renaming an AnswerOption id is a content operation, but the old row lives on in
+     * the database. Without this the retired option would keep appearing as an extra
+     * choice in new assessments, so it is marked DEPRECATED and filtered out of active
+     * curriculum queries while remaining resolvable through getQuestionById.
+     */
+    @Query(
+        """
+        UPDATE answer_option
+        SET status = :deprecatedStatus
+        WHERE question_id = :questionId
+            AND id NOT IN (:keepAnswerIds)
+        """,
+    )
+    suspend fun deprecateAnswerOptionsForQuestionExcept(
+        questionId: String,
+        keepAnswerIds: List<String>,
+        deprecatedStatus: String,
+    )
+
     @Query("SELECT * FROM topic WHERE id = :id")
     suspend fun getTopicById(id: String): TopicEntity?
 
@@ -165,6 +188,20 @@ internal interface CurriculumDao {
 
     @Query("SELECT * FROM answer_option WHERE question_id IN (:questionIds) ORDER BY question_id, sort_order")
     suspend fun getAnswerOptionsForQuestions(questionIds: List<String>): List<AnswerOptionEntity>
+
+    @Query(
+        """
+        SELECT *
+        FROM answer_option
+        WHERE question_id IN (:questionIds)
+            AND status = :activeStatus
+        ORDER BY question_id, sort_order
+        """,
+    )
+    suspend fun getActiveAnswerOptionsForQuestions(
+        questionIds: List<String>,
+        activeStatus: String,
+    ): List<AnswerOptionEntity>
 
     @Query("SELECT answer_id FROM question_correct_answer WHERE question_id = :questionId ORDER BY answer_id")
     suspend fun getCorrectAnswerIdsForQuestion(questionId: String): List<String>

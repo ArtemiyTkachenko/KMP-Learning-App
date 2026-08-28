@@ -17,6 +17,20 @@ Current Gradle modules:
 The iOS application lives in `iosApp` and embeds the shared Compose UI through
 the framework produced by `:shared`.
 
+## Documentation
+
+Project documentation lives in `docs/`:
+
+- `docs/architecture.md` - application composition, navigation, presentation
+  conventions, and which platform hosts are runnable.
+- `docs/persistence.md` - local data design, Room schema, and the curriculum
+  import and update policy.
+- `docs/curriculum.md` - the Android interview topic and subtopic taxonomy.
+- `docs/content-authoring.md` - the editorial contract for interview content:
+  the rules a question must satisfy.
+- `docs/question-authoring-playbook.md` - the method for meeting that contract:
+  distractor design, anti-cue audits, and pre-merge checks.
+
 ## Shared Source Sets
 
 The shared module currently defines these platform targets:

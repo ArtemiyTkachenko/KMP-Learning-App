@@ -336,6 +336,19 @@ question IDs:
 This keeps correctness and source metadata from accumulating stale rows while
 preserving stable curriculum identity and unrelated local content.
 
+Answer options carry their own `status` alongside topics, subtopics, and
+questions. An option the incoming curriculum no longer authors is deleted when
+nothing references it, and marked `DEPRECATED` when a historical
+`question_attempt_selected_answer` row still does. Retiring rather than deleting
+matters because renaming an `AnswerOption` id is a content edit but a data
+migration in the database: without a status the retired row would keep appearing
+as an extra choice in new assessments. Active curriculum queries therefore read
+through `getActiveAnswerOptionsForQuestions`, while
+`CurriculumRepository.getQuestionById` reads every option so a past attempt is
+still reviewable with the answer text the user actually saw. Re-adding an option
+in a later bundle reactivates it, because the import upserts every authored
+option as `ACTIVE`.
+
 Stale answer options are deleted last inside the import transaction.
 `question_correct_answer` and `question_attempt_selected_answer` both hold
 `NO ACTION` foreign keys onto `answer_option(question_id, id)`, so an option can

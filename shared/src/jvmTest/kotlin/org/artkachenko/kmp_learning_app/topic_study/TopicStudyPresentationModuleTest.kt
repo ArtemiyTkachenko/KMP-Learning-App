@@ -99,6 +99,10 @@ internal class TopicStudyPresentationModuleTest {
             assertIs<AssessmentSessionLoader>(app.koin.get<AssessmentSessionLoader>())
             assertIs<AssessmentRetakeService>(app.koin.get<AssessmentRetakeService>())
             assertIs<AssessmentReviewLoader>(app.koin.get<AssessmentReviewLoader>())
+            assertIs<CurriculumRepository>(app.koin.get<CurriculumRepository>())
+            assertIs<AssessmentRepository>(app.koin.get<AssessmentRepository>())
+            assertIs<AssessmentQuestionSelector>(app.koin.get<AssessmentQuestionSelector>())
+            assertIs<AssessmentEngine>(app.koin.get<AssessmentEngine>())
             assertIs<FocusedResultViewModel>(
                 app.koin.get<FocusedResultViewModel> { parametersOf("attempt") },
             )

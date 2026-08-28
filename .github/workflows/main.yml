@@ -34,5 +34,19 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Validate Android build and shared tests
-        run: ./gradlew --no-daemon :androidApp:assembleDebug :shared:check
+      # One Gradle invocation rather than several: a single configuration phase and
+      # one Kotlin/Native + JS/Wasm toolchain setup. org.gradle.parallel is not
+      # enabled, so the requested tasks run sequentially in command-line order,
+      # which avoids the toolchain contention AGENTS.md warns about. Cheap Android
+      # and desktop JVM compilation runs first so a plain compile break fails fast;
+      # :shared:check runs last because it is by far the longest.
+      #
+      # Note: Kotlin/Native iOS compilations are disabled on a Linux runner, so this
+      # job gives no iOS signal. iOS remains a local macOS check.
+      - name: Validate Android, Desktop, and Web builds and shared tests
+        run: >
+          ./gradlew --no-daemon
+          :androidApp:assembleDebug
+          :desktopApp:assemble
+          :webApp:assemble
+          :shared:check

@@ -34,38 +34,43 @@ route data into their ViewModels, while Navigation 3 entry-scoped ViewModel
 ownership remains intact: each back-stack entry receives its own
 ViewModelStore, and the ViewModel is cleared when that entry is removed.
 
-Android and Desktop share `AppRoot(initialize)` in shared `commonMain`. It owns
-the startup loading, failure, and retry states around the platform initializer
-and then enters `App()`. Hosts supply only their own initializer, so a failed
-initialization cannot leave a host without content. `App()` keeps its own
-`MaterialTheme` so it remains usable directly by hosts that bypass `AppRoot`.
+All runtime hosts share `AppRoot(initialize)` in shared `commonMain`. It owns the
+startup loading, failure, and retry states around the platform initializer and
+then enters `App()`. Hosts start Koin before composition and supply only their
+own initializer, so a failed initialization cannot leave a host without
+content. `App()` keeps its own `MaterialTheme` so it remains usable directly in
+tests and previews that bypass `AppRoot`.
 
 ### Runtime Host Coverage
 
-`App()` compiles for every configured target, but only Android and Desktop are
-runnable products today:
+`App()` and the common product graph are used by every configured runtime host:
 
 | Host | Koin graph started by | Database builder | Runnable |
 | --- | --- | --- | --- |
 | Android | `KmpLearningApplication` -> `startAndroidLocalDataGraph` | `CurriculumDatabase.android.kt` | yes |
 | Desktop (JVM) | `desktopApp/main.kt` -> `startDesktopLocalDataGraph` | `CurriculumDatabase.jvm.kt` | yes |
-| iOS | none | none | no |
-| Web (JS / Wasm) | none | none | no |
+| iOS | `MainViewController` -> `startIosLocalDataGraph` | `CurriculumDatabase.ios.kt`, bundled SQLite | yes |
+| Web JS | `webApp/main.kt` -> `startWebLocalDataGraph` | `CurriculumDatabase.web.kt`, SQLite worker/OPFS | yes |
+| Web Wasm | `webApp/main.kt` -> `startWebLocalDataGraph` | `CurriculumDatabase.web.kt`, SQLite worker/OPFS | yes |
 
-`shared/src/iosMain/.../MainViewController.kt` and
-`webApp/src/webMain/.../main.kt` call `App()` directly without starting Koin, so
-the first composition of `TopicBrowserDestination` fails when `koinViewModel { }`
-cannot resolve `TopicBrowserViewModel`. There is also no Room database builder
-for iOS, JS, or Wasm: `sqlite-bundled` is scoped to the Android runtime and JVM
-tests, and the browser targets would need a separate persistence decision.
+Each startup function installs `curriculumDataModule`, `assessmentDataModule`,
+and `topicStudyPresentationModule` plus exactly one platform database module.
+The host then composes its thin platform root, which delegates initialization to
+the common `AppRoot` state machine. Database creation and platform storage stay
+below the shared repository boundary; `App()` does not start Koin or select a
+database.
 
-These targets are kept on purpose. They prove shared common code stays free of
-Android-only APIs, and `:webApp:assemble` is part of CI. Making the hosts
-actually run is tracked as backlog issue E12-01 rather than being solved
-implicitly inside unrelated work.
+The JS and Wasm executables share the Room builder and Koin module in `webMain`.
+Only worker construction differs in `jsMain` and `wasmJsMain`. The repository's
+`sqliteWasmWorker` module packages the official-style SQLite WASM worker used by
+`WebWorkerSQLiteDriver`; the worker opens the stable `curriculum.db` in OPFS.
+The browser must support OPFS and SharedArrayBuffer in a secure,
+cross-origin-isolated context. The development webpack server supplies COOP and
+COEP headers; production hosting must do the same.
 
-Note that Kotlin/Native iOS compilations are disabled on the Linux CI runner, so
-CI gives no iOS signal at all; iOS compilation is a local macOS check.
+Kotlin/Native iOS compilations remain disabled on the Linux CI runner. iOS
+framework linking and simulator runtime verification are therefore local macOS
+checks rather than Linux CI guarantees.
 
 ## Curriculum Content Model
 

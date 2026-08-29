@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
+import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
@@ -94,8 +95,12 @@ internal class ProgressViewModel(
     ): List<CompletedAttemptUiModel> {
         val topicsById = mutableMapOf<String, Topic?>()
         val subtopicsById = mutableMapOf<String, Subtopic?>()
+        // LearningProgressService applies the same defensive filter before deriving its
+        // statistics. Mirroring it keeps the history consistent with completedAttemptCount
+        // and prevents one malformed row from turning the whole dashboard into Error.
+        val completedAttempts = attempts.filter { it.status == AssessmentStatus.COMPLETED }
 
-        return attempts.map { attempt ->
+        return completedAttempts.map { attempt ->
             val score = requireNotNull(attempt.score)
             val completedAt = requireNotNull(attempt.completedAt)
             when (val config = attempt.config) {

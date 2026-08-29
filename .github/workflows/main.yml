@@ -50,3 +50,13 @@ jobs:
           :desktopApp:assemble
           :webApp:assemble
           :shared:check
+
+      - name: Upload JVM test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jvm-test-report
+          path: |
+            shared/build/reports/tests/jvmTest/
+            shared/build/test-results/jvmTest/
+          if-no-files-found: ignore

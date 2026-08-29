@@ -12,14 +12,15 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
+import kmp_learning_app.shared.generated.resources.mistake_review_entry
 import kmp_learning_app.shared.generated.resources.mixed_interview_title
 import kmp_learning_app.shared.generated.resources.progress_accuracy
 import kmp_learning_app.shared.generated.resources.progress_completed_attempts
@@ -42,15 +43,19 @@ import kmp_learning_app.shared.generated.resources.progress_topic_unavailable
 import kmp_learning_app.shared.generated.resources.progress_weak_areas
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicStudyTopAppBar
 import org.jetbrains.compose.resources.stringResource
-import kotlin.math.roundToInt
 
 internal const val ProgressLoadingTag = "progress_loading"
+
+/** Stable per-row handle so tests can target a Topic card without depending on label uniqueness. */
+internal fun progressTopicCardTag(topicId: String): String = "progress_topic_card_$topicId"
 
 @Composable
 internal fun ProgressScreen(
     state: ProgressUiState,
     onBack: () -> Unit,
     onRetry: () -> Unit,
+    onReviewMistakes: () -> Unit,
+    onTopicClick: (String) -> Unit,
     onHistoryClick: (CompletedAssessmentType, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -72,6 +77,8 @@ internal fun ProgressScreen(
             }
             is ProgressUiState.Content -> ProgressContent(
                 state = state,
+                onReviewMistakes = onReviewMistakes,
+                onTopicClick = onTopicClick,
                 onHistoryClick = onHistoryClick,
                 modifier = Modifier.weight(1f),
             )
@@ -82,6 +89,8 @@ internal fun ProgressScreen(
 @Composable
 private fun ProgressContent(
     state: ProgressUiState.Content,
+    onReviewMistakes: () -> Unit,
+    onTopicClick: (String) -> Unit,
     onHistoryClick: (CompletedAssessmentType, String) -> Unit,
     modifier: Modifier,
 ) {
@@ -90,14 +99,24 @@ private fun ProgressContent(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            SectionTitle(stringResource(Res.string.progress_overall))
+            ProgressSectionTitle(stringResource(Res.string.progress_overall))
         }
         item {
             OverallSummary(state)
         }
+        item {
+            // The queue owns its own empty state, so the dashboard never computes a mistake count
+            // just to decide whether to offer this action.
+            OutlinedButton(
+                onClick = onReviewMistakes,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(Res.string.mistake_review_entry))
+            }
+        }
         if (state.weakAreas.isNotEmpty()) {
             item {
-                SectionTitle(stringResource(Res.string.progress_weak_areas))
+                ProgressSectionTitle(stringResource(Res.string.progress_weak_areas))
             }
             items(state.weakAreas, key = { "${it.type}:${it.stableId}" }) { area ->
                 WeakAreaCard(area)
@@ -107,15 +126,15 @@ private fun ProgressContent(
         // example after a curriculum import replaces the question IDs the history refers to.
         if (state.topics.isNotEmpty()) {
             item {
-                SectionTitle(stringResource(Res.string.progress_topic_performance))
+                ProgressSectionTitle(stringResource(Res.string.progress_topic_performance))
             }
             items(state.topics, key = ProgressTopicUiModel::topicId) { topic ->
-                TopicPerformanceCard(topic)
+                TopicPerformanceCard(topic) { onTopicClick(topic.topicId) }
             }
         }
         if (state.history.isNotEmpty()) {
             item {
-                SectionTitle(stringResource(Res.string.progress_history))
+                ProgressSectionTitle(stringResource(Res.string.progress_history))
             }
             items(state.history, key = CompletedAttemptUiModel::attemptId) { attempt ->
                 HistoryCard(attempt) {
@@ -160,7 +179,7 @@ private fun WeakAreaCard(area: WeakAreaUiModel) {
         area.title == null -> area.subtitle
         else -> area.subtitle ?: stringResource(Res.string.progress_topic_unavailable)
     }
-    PerformanceCard(
+    ProgressPerformanceCard(
         title = title,
         subtitle = subtitle,
         correctCount = area.correctCount,
@@ -170,37 +189,20 @@ private fun WeakAreaCard(area: WeakAreaUiModel) {
 }
 
 @Composable
-private fun TopicPerformanceCard(topic: ProgressTopicUiModel) {
-    PerformanceCard(
+private fun TopicPerformanceCard(
+    topic: ProgressTopicUiModel,
+    onClick: () -> Unit,
+) {
+    ProgressPerformanceCard(
         title = topic.topicName ?: stringResource(Res.string.progress_topic_unavailable),
         subtitle = null,
         correctCount = topic.correctCount,
         answeredCount = topic.answeredCount,
         percentage = topic.percentage,
+        modifier = Modifier
+            .testTag(progressTopicCardTag(topic.topicId))
+            .clickable(onClick = onClick),
     )
-}
-
-@Composable
-private fun PerformanceCard(
-    title: String,
-    subtitle: String?,
-    correctCount: Int,
-    answeredCount: Int,
-    percentage: Double,
-) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            subtitle?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-            Text(stringResource(Res.string.progress_score, correctCount, answeredCount))
-            Text(
-                stringResource(
-                    Res.string.progress_percentage,
-                    formatProgressPercentage(percentage),
-                ),
-            )
-        }
-    }
 }
 
 @Composable
@@ -257,32 +259,3 @@ private fun focusedScopeLabel(scope: FocusedScopeUiModel?): String? =
             )
         }
     }
-
-@Composable
-private fun SectionTitle(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(top = 8.dp),
-    )
-}
-
-@Composable
-private fun ProgressMessage(
-    modifier: Modifier,
-    content: @Composable () -> Unit,
-) {
-    Column(
-        modifier.fillMaxSize().padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        content()
-    }
-}
-
-internal fun formatProgressPercentage(percentage: Double): String {
-    val rounded = (percentage * 10.0).roundToInt() / 10.0
-    return if (rounded % 1.0 == 0.0) rounded.toInt().toString() else rounded.toString()
-}

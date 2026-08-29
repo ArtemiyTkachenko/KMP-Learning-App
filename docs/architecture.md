@@ -123,6 +123,32 @@ show attempts completed while another result or retake destination was open.
 History rows navigate by stable attempt ID to the existing focused or mixed
 result destinations; no progress snapshot or history summary is persisted.
 
+Topic performance rows open `AppRoute.ProgressTopic(topicId)`, carrying only
+stable topic identity. `ProgressTopicViewModel` selects that Topic and its
+observed Subtopics out of the same derived snapshot, so the drill-down never
+recalculates statistics or reads current ACTIVE curriculum coverage. Subtopics
+without completed observations are absent rather than fabricated, and weak
+Subtopics are flagged from the snapshot's existing policy result.
+
+Mistake review is derived, never persisted:
+
+    AssessmentRepository.getCompletedAttempts()   (newest first)
+        -> first occurrence per stable Question ID
+        -> that occurrence's persisted correctness
+        -> incorrect only
+        -> AssessmentReviewLoader.loadQuestion(...)
+        -> unresolved mistake queue
+
+Because completed history is already ordered newest first, the first occurrence
+of a Question ID is its latest one, so a later correct answer resolves the
+Question automatically and a later incorrect answer reopens it. This is
+deliberately narrower than `LearningProgressService`, which stays
+occurrence-based and counts every completed answer. Review content is
+reconstructed only for unresolved candidates, and a Question whose content no
+longer resolves stays in the queue as `ReviewQuestionItem.Missing`. No mistake,
+resolved, or dismissed state is stored; Room remains assessment-history
+persistence only.
+
 The completed E08 graph is composed with the same classic Koin DSL as the
 curriculum graph: `AssessmentQuestionSelector` depends on `CurriculumRepository`,
 `AssessmentEngine` depends on the selector, `AssessmentRepository` persists

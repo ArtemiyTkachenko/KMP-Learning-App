@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertSame
 
 internal class AppNavigationTest {
     @Test
@@ -82,6 +83,51 @@ internal class AppNavigationTest {
             ),
             backStack,
         )
+    }
+
+    @Test
+    fun mistakeReviewPushesFromProgressAndPopsBackToIt() {
+        val backStack = mutableListOf<AppRoute>(AppRoute.Topics, AppRoute.Progress)
+
+        backStack.add(AppRoute.MistakeReview)
+        assertEquals(
+            listOf(AppRoute.Topics, AppRoute.Progress, AppRoute.MistakeReview),
+            backStack,
+        )
+
+        backStack.removeAt(backStack.lastIndex)
+        assertEquals(AppRoute.Progress, backStack.last())
+    }
+
+    @Test
+    fun mistakeReviewRouteCarriesNoDerivedData() {
+        // The queue is derived from complete history, so the route needs no arguments and must
+        // never carry question IDs, attempts, or review models.
+        val route: AppRoute = AppRoute.MistakeReview
+
+        assertSame(AppRoute.MistakeReview, route)
+    }
+
+    @Test
+    fun progressTopicDrillDownPushesStableTopicIdAndPopsBackToProgress() {
+        val backStack = mutableListOf<AppRoute>(AppRoute.Topics, AppRoute.Progress)
+
+        backStack.add(AppRoute.ProgressTopic("topic_kotlin"))
+        assertEquals(
+            listOf(AppRoute.Topics, AppRoute.Progress, AppRoute.ProgressTopic("topic_kotlin")),
+            backStack,
+        )
+
+        backStack.removeAt(backStack.lastIndex)
+        assertEquals(AppRoute.Progress, backStack.last())
+    }
+
+    @Test
+    fun progressTopicRouteCarriesOnlyStableTopicIdentity() {
+        val route = AppRoute.ProgressTopic(topicId = "topic_stable_id")
+
+        assertEquals("topic_stable_id", route.topicId)
+        assertEquals(AppRoute.ProgressTopic("topic_stable_id"), route)
     }
 
     @Test

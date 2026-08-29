@@ -10,6 +10,8 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 internal fun ProgressDestination(
     onBack: () -> Unit,
+    onOpenTopic: (String) -> Unit,
+    onReviewMistakes: () -> Unit,
     onOpenFocusedResult: (String) -> Unit,
     onOpenMixedResult: (String) -> Unit,
     viewModel: ProgressViewModel = koinViewModel(),
@@ -24,6 +26,8 @@ internal fun ProgressDestination(
         state = state,
         onBack = onBack,
         onRetry = viewModel::refresh,
+        onReviewMistakes = onReviewMistakes,
+        onTopicClick = onOpenTopic,
         onHistoryClick = { assessmentType, attemptId ->
             when (assessmentType) {
                 CompletedAssessmentType.FOCUSED -> onOpenFocusedResult(attemptId)

@@ -5,7 +5,10 @@ import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailView
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingViewModel
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
+import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
+import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewViewModel
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultViewModel
+import org.artkachenko.kmp_learning_app.progress.ProgressTopicViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressViewModel
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
 import org.koin.core.module.dsl.viewModel
@@ -15,6 +18,19 @@ internal val topicStudyPresentationModule = module {
     single {
         AssessmentReviewLoader(
             curriculumRepository = get(),
+        )
+    }
+    single {
+        // AssessmentReviewLoader is already registered here, so the mistake queue joins the same
+        // module rather than introducing another one or moving the loader across a boundary.
+        MistakeReviewService(
+            assessmentRepository = get(),
+            assessmentReviewLoader = get(),
+        )
+    }
+    viewModel {
+        MistakeReviewViewModel(
+            mistakeReviewService = get(),
         )
     }
     viewModel {
@@ -27,6 +43,12 @@ internal val topicStudyPresentationModule = module {
             learningProgressService = get(),
             assessmentRepository = get(),
             curriculumRepository = get(),
+        )
+    }
+    viewModel { parameters ->
+        ProgressTopicViewModel(
+            topicId = parameters.get(),
+            learningProgressService = get(),
         )
     }
     viewModel { parameters ->

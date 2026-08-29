@@ -20,7 +20,9 @@ import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultDest
 import org.artkachenko.kmp_learning_app.mixed_interview.mixedInterviewStartRoute
 import org.artkachenko.kmp_learning_app.mixed_interview.toAssessmentTakingLaunch
 import org.artkachenko.kmp_learning_app.mixed_interview.toAssessmentConfig
+import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewDestination
 import org.artkachenko.kmp_learning_app.progress.ProgressDestination
+import org.artkachenko.kmp_learning_app.progress.ProgressTopicDestination
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.toAssessmentConfig
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultDestination
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailDestination
@@ -80,12 +82,29 @@ private fun AppShell(
                 entry<AppRoute.Progress> {
                     ProgressDestination(
                         onBack = { popBack() },
+                        onOpenTopic = { topicId ->
+                            backStack.add(AppRoute.ProgressTopic(topicId))
+                        },
+                        onReviewMistakes = {
+                            backStack.add(AppRoute.MistakeReview)
+                        },
                         onOpenFocusedResult = { attemptId ->
                             backStack.add(AppRoute.FocusedPracticeResult(attemptId))
                         },
                         onOpenMixedResult = { attemptId ->
                             backStack.add(AppRoute.MixedInterviewResult(attemptId))
                         },
+                    )
+                }
+                entry<AppRoute.ProgressTopic> { route ->
+                    ProgressTopicDestination(
+                        topicId = route.topicId,
+                        onBack = { popBack() },
+                    )
+                }
+                entry<AppRoute.MistakeReview> {
+                    MistakeReviewDestination(
+                        onBack = { popBack() },
                     )
                 }
                 entry<AppRoute.MixedInterview> { route ->

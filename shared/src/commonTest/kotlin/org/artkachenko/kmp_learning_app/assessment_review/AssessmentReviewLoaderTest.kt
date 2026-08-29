@@ -77,6 +77,40 @@ internal class AssessmentReviewLoaderTest {
         assertEquals("available", available(items[1]).questionId)
     }
 
+    @Test
+    fun singleOccurrenceMapsSelectedAnswersAndPersistedCorrectness() = runTest {
+        val loader = AssessmentReviewLoader(FakeCurriculumRepository(listOf(question("q1"))))
+
+        val item = loader.loadQuestion(answered("q1", selectedIds = setOf("b"), isCorrect = false))
+
+        val question = available(item)
+        assertEquals("q1", question.questionId)
+        assertEquals("Question q1", question.text)
+        assertFalse(question.isCorrect)
+        assertTrue(question.answers.first { it.id == "b" }.wasSelected)
+        assertFalse(question.answers.first { it.id == "a" }.wasSelected)
+        assertTrue(question.answers.first { it.id == "a" }.isCorrectAnswer)
+    }
+
+    @Test
+    fun singleOccurrencePreservesPersistedCorrectnessWhenItDisagreesWithAuthoredAnswers() = runTest {
+        val loader = AssessmentReviewLoader(FakeCurriculumRepository(listOf(question("q1"))))
+
+        // Selected the currently-correct answers but was persisted as incorrect: history wins.
+        val item = loader.loadQuestion(answered("q1", selectedIds = setOf("a", "c"), isCorrect = false))
+
+        assertFalse(available(item).isCorrect)
+    }
+
+    @Test
+    fun singleOccurrenceOfAnUnknownQuestionIsMissing() = runTest {
+        val loader = AssessmentReviewLoader(FakeCurriculumRepository(emptyList()))
+
+        val item = loader.loadQuestion(answered("gone"))
+
+        assertEquals(ReviewQuestionItem.Missing("gone"), item)
+    }
+
     private fun available(item: ReviewQuestionItem): ReviewQuestionUiModel =
         assertIs<ReviewQuestionItem.Available>(item).question
 

@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.room3.Room
@@ -48,6 +49,7 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.Curriculu
 import org.artkachenko.kmp_learning_app.data.local.curriculum.repository.LocalCurriculumRepository
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingFinishTag
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingSubmitTag
+import org.artkachenko.kmp_learning_app.progress.progressTopicCardTag
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultPracticeAgainTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.SubtopicPracticeButtonTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicPracticeButtonTag
@@ -131,6 +133,33 @@ internal class FocusedLearningJourneyIntegrationTest {
             waitUntil(timeoutMillis = 5_000) {
                 onAllNodesWithText("Score: 1 / 2").fetchSemanticsNodes().isNotEmpty()
             }
+            onNodeWithContentDescription("Back").performClick()
+            waitUntil(timeoutMillis = 5_000) {
+                onAllNodesWithText("1 completed assessments").fetchSemanticsNodes().isNotEmpty()
+            }
+
+            // Mistake review: the multiple-choice question was answered incorrectly and the single
+            // question correctly, so only the former is unresolved.
+            onNode(hasScrollAction()).performScrollToNode(hasText("Review mistakes"))
+            onNodeWithText("Review mistakes").performClick()
+            waitUntil(timeoutMillis = 5_000) {
+                onAllNodesWithText("Multiple question").fetchSemanticsNodes().isNotEmpty()
+            }
+            onNodeWithText("Multiple explanation").performScrollTo().assertIsDisplayed()
+            onNodeWithText("Single question").assertDoesNotExist()
+            onNodeWithContentDescription("Back").performClick()
+            waitUntil(timeoutMillis = 5_000) {
+                onAllNodesWithText("1 completed assessments").fetchSemanticsNodes().isNotEmpty()
+            }
+
+            // Topic drill-down. "Android" also labels the weak-area parent and the focused history
+            // row, so target the card by its stable tag rather than by text.
+            onNode(hasScrollAction()).performScrollToNode(hasText("Topic performance"))
+            onNodeWithTag(progressTopicCardTag("topic_android")).performClick()
+            waitUntil(timeoutMillis = 5_000) {
+                onAllNodesWithText("Core").fetchSemanticsNodes().isNotEmpty()
+            }
+            onNodeWithText("Weak area").assertIsDisplayed()
             onNodeWithContentDescription("Back").performClick()
             waitUntil(timeoutMillis = 5_000) {
                 onAllNodesWithText("1 completed assessments").fetchSemanticsNodes().isNotEmpty()

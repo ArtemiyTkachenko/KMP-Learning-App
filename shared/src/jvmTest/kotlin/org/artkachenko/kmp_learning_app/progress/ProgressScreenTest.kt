@@ -22,6 +22,8 @@ internal class ProgressScreenTest {
                     state = ProgressUiState.Loading,
                     onBack = {},
                     onRetry = {},
+                    onReviewMistakes = {},
+                    onTopicClick = {},
                     onHistoryClick = { _, _ -> },
                 )
             }
@@ -35,7 +37,7 @@ internal class ProgressScreenTest {
     fun emptyStateRendersGuidance() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                ProgressScreen(ProgressUiState.Empty, {}, {}, { _, _ -> })
+                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, { _, _ -> })
             }
         }
         onNodeWithText(
@@ -48,7 +50,7 @@ internal class ProgressScreenTest {
         var retryCount = 0
         setContent {
             MaterialTheme {
-                ProgressScreen(ProgressUiState.Error, {}, { retryCount += 1 }, { _, _ -> })
+                ProgressScreen(ProgressUiState.Error, {}, { retryCount += 1 }, {}, {}, { _, _ -> })
             }
         }
         onNodeWithText("Progress could not be loaded.").assertIsDisplayed()
@@ -57,7 +59,7 @@ internal class ProgressScreenTest {
     }
 
     @Test
-    fun contentRendersOverallWeakAreasTopicsAndFormatting() = runComposeUiTest {
+    fun contentRendersOverallStatisticsAndWeakAreaFallbacks() = runComposeUiTest {
         setContent {
             MaterialTheme {
                 ProgressScreen(
@@ -82,13 +84,11 @@ internal class ProgressScreenTest {
                                 40.0,
                             ),
                         ),
-                        topics = listOf(
-                            ProgressTopicUiModel("a", "Kotlin", 20, 14, 70.0),
-                            ProgressTopicUiModel("b", null, 3, 1, 33.333),
-                        ),
                     ),
                     onBack = {},
                     onRetry = {},
+                    onReviewMistakes = {},
+                    onTopicClick = {},
                     onHistoryClick = { _, _ -> },
                 )
             }
@@ -99,13 +99,38 @@ internal class ProgressScreenTest {
         onNodeWithText("21 correct answers").assertIsDisplayed()
         onNodeWithText("70% accuracy").assertIsDisplayed()
         onNodeWithText("Weak areas").assertIsDisplayed()
-        onNodeWithText("Topic performance").assertExists()
         onNodeWithText("State").assertIsDisplayed()
-        onAllNodesWithText("Topic unavailable").assertCountEquals(3)
+        onNodeWithText("66.7%").assertExists()
+        // A weak subtopic missing its parent name and a weak topic missing its own name both fall
+        // back rather than disappearing.
+        onAllNodesWithText("Topic unavailable").assertCountEquals(2)
+    }
+
+    @Test
+    fun topicPerformanceRowsRenderCountsPercentageAndNameFallback() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    state = contentState(
+                        topics = listOf(
+                            ProgressTopicUiModel("a", "Kotlin", 20, 14, 70.0),
+                            ProgressTopicUiModel("b", null, 3, 1, 33.333),
+                        ),
+                    ),
+                    onBack = {},
+                    onRetry = {},
+                    onReviewMistakes = {},
+                    onTopicClick = {},
+                    onHistoryClick = { _, _ -> },
+                )
+            }
+        }
+
+        onNodeWithText("Topic performance").assertExists()
         onNodeWithText("Kotlin").assertIsDisplayed()
         onNodeWithText("14 / 20 correct").assertExists()
         onNodeWithText("70%").assertExists()
-        onNodeWithText("66.7%").assertExists()
+        onNodeWithText("Topic unavailable").assertExists()
         onNodeWithText("33.3%").assertExists()
     }
 
@@ -113,7 +138,7 @@ internal class ProgressScreenTest {
     fun observationBasedSectionsAreAbsentWhenTheyHaveNoRows() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                ProgressScreen(contentState(), {}, {}, { _, _ -> })
+                ProgressScreen(contentState(), {}, {}, {}, {}, { _, _ -> })
             }
         }
 
@@ -123,6 +148,65 @@ internal class ProgressScreenTest {
         onNodeWithText("Weak areas").assertDoesNotExist()
         onNodeWithText("Topic performance").assertDoesNotExist()
         onNodeWithText("Assessment history").assertDoesNotExist()
+    }
+
+    @Test
+    fun reviewMistakesActionIsOfferedForContentAndInvokesTheCallbackOnce() = runComposeUiTest {
+        var reviewCount = 0
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    state = contentState(),
+                    onBack = {},
+                    onRetry = {},
+                    onReviewMistakes = { reviewCount += 1 },
+                    onTopicClick = {},
+                    onHistoryClick = { _, _ -> },
+                )
+            }
+        }
+
+        onNodeWithText("Review mistakes").assertIsDisplayed().performClick()
+
+        assertEquals(1, reviewCount)
+    }
+
+    @Test
+    fun reviewMistakesActionIsAbsentWhenNoAssessmentHasBeenCompleted() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, { _, _ -> })
+            }
+        }
+
+        // With zero completed assessments there cannot be an unresolved completed mistake.
+        onNodeWithText("Review mistakes").assertDoesNotExist()
+    }
+
+    @Test
+    fun topicPerformanceCardEmitsStableTopicIdOnce() = runComposeUiTest {
+        val clicked = mutableListOf<String>()
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    state = contentState(
+                        topics = listOf(
+                            ProgressTopicUiModel("topic_kotlin", "Kotlin", 20, 14, 70.0),
+                            ProgressTopicUiModel("topic_android", "Android", 10, 5, 50.0),
+                        ),
+                    ),
+                    onBack = {},
+                    onRetry = {},
+                    onReviewMistakes = {},
+                    onTopicClick = clicked::add,
+                    onHistoryClick = { _, _ -> },
+                )
+            }
+        }
+
+        onNodeWithText("Android").performClick()
+
+        assertEquals(listOf("topic_android"), clicked)
     }
 
     @Test
@@ -155,6 +239,8 @@ internal class ProgressScreenTest {
                     contentState(history = history),
                     onBack = {},
                     onRetry = {},
+                    onReviewMistakes = {},
+                    onTopicClick = {},
                     onHistoryClick = { type, id -> clicks += type to id },
                 )
             }
@@ -203,6 +289,8 @@ internal class ProgressScreenTest {
                     ),
                     onBack = {},
                     onRetry = {},
+                    onReviewMistakes = {},
+                    onTopicClick = {},
                     onHistoryClick = { _, _ -> },
                 )
             }

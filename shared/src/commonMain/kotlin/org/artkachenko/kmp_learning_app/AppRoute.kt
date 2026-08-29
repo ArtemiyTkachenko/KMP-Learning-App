@@ -12,6 +12,14 @@ internal sealed interface AppRoute : NavKey {
     data object Progress : AppRoute
 
     @Serializable
+    data class ProgressTopic(
+        val topicId: String,
+    ) : AppRoute
+
+    @Serializable
+    data object MistakeReview : AppRoute
+
+    @Serializable
     data class Topic(
         val topicId: String,
     ) : AppRoute

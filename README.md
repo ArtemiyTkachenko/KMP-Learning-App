@@ -48,12 +48,17 @@ platform source set.
 
 ## Runnable Hosts
 
-`:androidApp` and `:desktopApp` are runnable products. `iosApp` and `:webApp`
-currently only prove that the shared module compiles and links for those
-targets: neither host starts the Koin graph, and there is no local database
-builder for iOS, JS, or Wasm, so launching them fails at the first composition
-that resolves a ViewModel. See `docs/architecture.md` ("Runtime Host Coverage")
-and backlog issue E12-01.
+Android, Desktop, iOS, and both web targets are runtime hosts for the same
+shared application. Each host starts the shared Koin graph before composing
+`AppRoot`, then initializes the bundled curriculum through its platform Room
+database. Android, Desktop, and iOS use persistent local SQLite files. JS and
+Wasm use Room's SQLite web-worker driver with origin-scoped OPFS storage.
+
+The web host must be served from a secure, cross-origin-isolated context. Its
+development server supplies the required `Cross-Origin-Opener-Policy` and
+`Cross-Origin-Embedder-Policy` headers. Production hosting must preserve those
+headers for the SQLite WASM worker. See `docs/architecture.md` ("Runtime Host
+Coverage") and `docs/persistence.md` for the exact host and storage boundaries.
 
 ## Android And Shared Boundaries
 

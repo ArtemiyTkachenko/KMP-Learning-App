@@ -85,6 +85,9 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
         }
+        iosMain.dependencies {
+            implementation(libs.androidx.sqlite.bundled)
+        }
         jvmMain.dependencies {
             implementation(libs.androidx.sqlite.bundled)
         }
@@ -94,6 +97,10 @@ kotlin {
             implementation(compose.desktop.currentOs)
             implementation(libs.androidx.sqlite.bundled)
             implementation(libs.kotlinx.coroutines.test)
+        }
+        webMain.dependencies {
+            implementation(libs.androidx.sqlite.web)
+            implementation(project(":sqliteWasmWorker"))
         }
     }
 }

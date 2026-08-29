@@ -424,17 +424,37 @@ Expected platform-specific responsibilities:
 - Room database builder creation;
 - driver and environment-specific setup where required.
 
-Android is the required MVP runtime and primary validation platform. The design
-should remain compatible with the retained KMP targets, but E07-01 does not
-promise full production-ready database initialization for every target. Web,
-JS, and Wasm persistence may require additional browser or worker plumbing and
-should not expand the Android-focused MVP scope prematurely.
+Android remains the primary MVP target, but every configured application host
+now supplies a persistent `CurriculumDatabase` to the same shared repositories.
+All platform builders open schema version 3 and register `MIGRATION_1_2` and
+`MIGRATION_2_3`; curriculum and assessment history remain in one database.
 
-E07-03 implements Android database creation with `BundledSQLiteDriver` and uses
-an in-memory JVM database with the same driver for persistence tests.
-`sqlite-bundled` is intentionally scoped to Android runtime and JVM tests
-because JS/Wasm require web-specific driver setup, such as a web-worker based
-SQLite driver, which is outside the Android-focused MVP database issue.
+Android and Desktop use `BundledSQLiteDriver` with `curriculum.db` in the
+platform application data directory. JVM persistence tests use the same driver
+with in-memory Room databases.
+
+iOS also uses `BundledSQLiteDriver`. `createIosCurriculumDatabase()` resolves
+the application Documents directory through Foundation and opens the stable
+`curriculum.db` path there. The iOS Koin module owns one database instance, so
+`CurriculumRepository`, `AssessmentRepository`, and startup import all use the
+same persistent store. The iOS builder registers the existing migrations and
+does not use destructive fallback or a temporary/in-memory production path.
+
+JS and Wasm share `createWebCurriculumDatabase()` and
+`WebWorkerSQLiteDriver`. The repository-owned `:sqliteWasmWorker` module packages
+the SQLite WASM worker and keeps the small JS/Wasm Worker-construction difference
+outside shared persistence code. The worker opens `curriculum.db` with SQLite's
+OPFS VFS, so data is scoped to the site's origin and survives reloads and normal
+browser restarts. It is removed when the user clears that origin's site data.
+
+The web database requires a browser with OPFS and SharedArrayBuffer support and
+must run in a secure, cross-origin-isolated context. The webpack development
+server sends `Cross-Origin-Opener-Policy: same-origin` and
+`Cross-Origin-Embedder-Policy: require-corp`; production hosting must provide
+equivalent headers and serve the generated worker JavaScript and SQLite WASM
+asset with correct MIME types. Initialization or storage-capability failures
+flow through `AppRoot`'s existing Error/Retry state rather than silently falling
+back to an ephemeral database.
 
 ## Assessment Attempt History
 

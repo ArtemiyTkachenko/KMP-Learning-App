@@ -351,13 +351,21 @@ internal class ProgressLearningJourneyIntegrationTest {
     }
 
     private fun ComposeUiTest.scrollToText(text: String) {
+        waitForScrollableContent()
         onNode(hasScrollAction()).performScrollToNode(hasText(text))
     }
 
     private fun ComposeUiTest.scrollToTag(tag: String) {
+        waitForScrollableContent()
         onNode(hasScrollAction()).performScrollToNode(
             androidx.compose.ui.test.hasTestTag(tag),
         )
+    }
+
+    private fun ComposeUiTest.waitForScrollableContent() {
+        waitUntil(timeoutMillis = IntegrationWaitTimeoutMillis) {
+            onAllNodes(hasScrollAction()).fetchSemanticsNodes().size == 1
+        }
     }
 
     private data class TestComponents(

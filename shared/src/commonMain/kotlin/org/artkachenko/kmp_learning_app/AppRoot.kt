@@ -30,10 +30,9 @@ internal const val AppStartupRetryTag = "app_startup_retry"
 /**
  * Shared application root: initializes platform-local data, then enters [App].
  *
- * Android and Desktop both need loading, failure, and retry UI around
- * initialization, so the state machine lives here rather than being duplicated in
- * each host. [initialize] is the host's suspending initializer, for example
- * `initializeAndroidLocalData()` or `initializeDesktopLocalData()`.
+ * Runtime hosts need the same loading, failure, and retry UI around initialization,
+ * so the state machine lives here rather than being duplicated per platform.
+ * [initialize] is the host's suspending local-data initializer.
  */
 @Composable
 public fun AppRoot(initialize: suspend () -> Unit) {
@@ -50,9 +49,8 @@ public fun AppRoot(initialize: suspend () -> Unit) {
         }
     }
 
-    // AppRoot themes its own startup UI. App() keeps its own MaterialTheme because it
-    // is still a standalone entry point for hosts that do not route through AppRoot;
-    // the nested theme re-provides identical defaults, so rendering is unchanged.
+    // AppRoot themes its startup UI. App() retains its theme so direct test and preview
+    // composition keeps the same presentation defaults.
     MaterialTheme {
         when (state) {
             AppStartupState.Loading -> AppStartupLoading()

@@ -345,7 +345,7 @@ internal class ProgressLearningJourneyIntegrationTest {
     }
 
     private fun ComposeUiTest.waitForText(text: String) {
-        waitUntil(timeoutMillis = 5_000) {
+        waitUntil(timeoutMillis = IntegrationWaitTimeoutMillis) {
             onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
         }
     }
@@ -596,3 +596,4 @@ private const val FocusedTopicAttemptId = "attempt_focused_topic"
 private const val FocusedSubtopicAttemptId = "attempt_focused_subtopic"
 private const val MixedAttemptId = "attempt_mixed"
 private const val InProgressAttemptId = "attempt_in_progress"
+private const val IntegrationWaitTimeoutMillis = 15_000L

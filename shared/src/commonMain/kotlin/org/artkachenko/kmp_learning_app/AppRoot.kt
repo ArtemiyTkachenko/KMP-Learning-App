@@ -21,8 +21,9 @@ import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.app_startup_error
 import kmp_learning_app.shared.generated.resources.app_startup_loading
-import kmp_learning_app.shared.generated.resources.topic_browser_retry
+import kmp_learning_app.shared.generated.resources.app_retry
 import org.jetbrains.compose.resources.stringResource
+import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 
 internal const val AppStartupLoadingTag = "app_startup_loading"
 internal const val AppStartupRetryTag = "app_startup_retry"
@@ -51,7 +52,7 @@ public fun AppRoot(initialize: suspend () -> Unit) {
 
     // AppRoot themes its startup UI. App() retains its theme so direct test and preview
     // composition keeps the same presentation defaults.
-    MaterialTheme {
+    AppTheme {
         when (state) {
             AppStartupState.Loading -> AppStartupLoading()
             AppStartupState.Ready -> App()
@@ -92,7 +93,7 @@ private fun AppStartupError(onRetry: () -> Unit) {
         ) {
             Text(text = stringResource(Res.string.app_startup_error))
             Button(onClick = onRetry, modifier = Modifier.testTag(AppStartupRetryTag)) {
-                Text(text = stringResource(Res.string.topic_browser_retry))
+                Text(text = stringResource(Res.string.app_retry))
             }
         }
     }

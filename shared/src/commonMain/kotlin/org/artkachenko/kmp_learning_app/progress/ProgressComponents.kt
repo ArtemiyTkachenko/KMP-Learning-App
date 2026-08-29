@@ -2,14 +2,12 @@ package org.artkachenko.kmp_learning_app.progress
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -19,6 +17,8 @@ import kmp_learning_app.shared.generated.resources.progress_score
 import kmp_learning_app.shared.generated.resources.progress_weak_label
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
+import androidx.compose.material3.CardDefaults
+import androidx.compose.foundation.BorderStroke
 
 /**
  * Shared building blocks for the Progress dashboard and the Topic performance drill-down so the
@@ -34,12 +34,36 @@ internal fun ProgressPerformanceCard(
     modifier: Modifier = Modifier,
     isWeak: Boolean = false,
 ) {
-    Card(modifier.fillMaxWidth()) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            subtitle?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-            Text(stringResource(Res.string.progress_score, correctCount, answeredCount))
-            Text(stringResource(Res.string.progress_percentage, formatProgressPercentage(percentage)))
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            subtitle?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                stringResource(Res.string.progress_score, correctCount, answeredCount),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                stringResource(Res.string.progress_percentage, formatProgressPercentage(percentage)),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
             if (isWeak) {
                 Text(
                     text = stringResource(Res.string.progress_weak_label),
@@ -59,20 +83,6 @@ internal fun ProgressSectionTitle(text: String) {
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier.padding(top = 8.dp),
     )
-}
-
-@Composable
-internal fun ProgressMessage(
-    modifier: Modifier,
-    content: @Composable () -> Unit,
-) {
-    Column(
-        modifier.fillMaxSize().padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        content()
-    }
 }
 
 /**

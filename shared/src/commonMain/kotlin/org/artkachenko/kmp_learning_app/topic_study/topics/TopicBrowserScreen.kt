@@ -36,11 +36,16 @@ import kmp_learning_app.shared.generated.resources.topic_browser_empty
 import kmp_learning_app.shared.generated.resources.topic_browser_error
 import kmp_learning_app.shared.generated.resources.topic_browser_heading
 import kmp_learning_app.shared.generated.resources.topic_browser_loading
-import kmp_learning_app.shared.generated.resources.topic_browser_retry
 import kmp_learning_app.shared.generated.resources.topic_browser_title
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewDefaults
 import org.jetbrains.compose.resources.stringResource
+import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
+import org.artkachenko.kmp_learning_app.ui.ScreenError
+import org.artkachenko.kmp_learning_app.ui.ScreenLoading
+import org.artkachenko.kmp_learning_app.ui.ScreenMessage
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.BorderStroke
 
 internal const val TopicBrowserLoadingTag = "topic_browser_loading"
 
@@ -87,15 +92,21 @@ internal fun TopicBrowserScreen(
 
         Box(modifier = Modifier.weight(1f)) {
             when (state) {
-                TopicBrowserUiState.Loading -> LoadingState()
+                TopicBrowserUiState.Loading -> ScreenLoading(
+                    message = stringResource(Res.string.topic_browser_loading),
+                    testTag = TopicBrowserLoadingTag,
+                )
                 is TopicBrowserUiState.Content -> TopicList(
                     topics = state.topics,
                     onTopicClick = onTopicClick,
                 )
-                TopicBrowserUiState.Empty -> MessageState(
-                    text = stringResource(Res.string.topic_browser_empty),
+                TopicBrowserUiState.Empty -> ScreenMessage(
+                    message = stringResource(Res.string.topic_browser_empty),
                 )
-                TopicBrowserUiState.Error -> ErrorState(onRetry = onRetry)
+                TopicBrowserUiState.Error -> ScreenError(
+                    message = stringResource(Res.string.topic_browser_error),
+                    onRetry = onRetry,
+                )
             }
         }
     }
@@ -154,6 +165,7 @@ private fun TopicList(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         items(
@@ -173,16 +185,19 @@ private fun TopicRow(
     topic: Topic,
     onTopicClick: (String) -> Unit,
 ) {
+    // The container used to be `surface`, which is the same colour as the screen background,
+    // with a filled card's 0dp elevation and no outline - so the rows read as one flat block.
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
                 onTopicClick(topic.id)
             },
-        shape = MaterialTheme.shapes.small,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Row(
             modifier = Modifier
@@ -199,68 +214,10 @@ private fun TopicRow(
     }
 }
 
-@Composable
-private fun LoadingState() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .testTag(TopicBrowserLoadingTag),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            CircularProgressIndicator()
-            Text(
-                text = stringResource(Res.string.topic_browser_loading),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-        }
-    }
-}
-
-@Composable
-private fun MessageState(text: String) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-    }
-}
-
-@Composable
-private fun ErrorState(onRetry: () -> Unit) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Text(
-                text = stringResource(Res.string.topic_browser_error),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            Button(onClick = onRetry) {
-                Text(text = stringResource(Res.string.topic_browser_retry))
-            }
-        }
-    }
-}
-
 @Preview
 @Composable
 private fun TopicBrowserScreenPreview() {
-    MaterialTheme {
+    AppTheme {
         TopicBrowserScreen(
             state = TopicBrowserUiState.Content(
                 topics = listOf(

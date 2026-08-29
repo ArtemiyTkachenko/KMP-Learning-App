@@ -11,7 +11,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -20,7 +19,6 @@ import kmp_learning_app.shared.generated.resources.focused_result_attempt_not_fo
 import kmp_learning_app.shared.generated.resources.focused_result_error
 import kmp_learning_app.shared.generated.resources.focused_result_loading
 import kmp_learning_app.shared.generated.resources.focused_result_not_completed
-import kmp_learning_app.shared.generated.resources.focused_result_retry
 import kmp_learning_app.shared.generated.resources.focused_result_title
 import kmp_learning_app.shared.generated.resources.focused_result_practice_again
 import kmp_learning_app.shared.generated.resources.focused_result_practice_starting
@@ -32,8 +30,13 @@ import org.artkachenko.kmp_learning_app.assessment_review.MissingReviewQuestion
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionCard
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.assessment_review.UnresolvedReviewQuestionsNotice
-import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicStudyTopAppBar
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.layout.PaddingValues
+import kmp_learning_app.shared.generated.resources.focused_result_loading
+import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.ScreenError
+import org.artkachenko.kmp_learning_app.ui.ScreenLoading
+import org.artkachenko.kmp_learning_app.ui.ScreenMessage
 
 internal const val FocusedResultLoadingTag = "focused_result_loading"
 internal const val FocusedResultPracticeAgainTag = "focused_result_practice_again"
@@ -49,23 +52,26 @@ internal fun FocusedResultScreen(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        TopicStudyTopAppBar(stringResource(Res.string.focused_result_title), onBack)
+        AppTopBar(stringResource(Res.string.focused_result_title), onBack)
         when (state) {
-            FocusedResultUiState.Loading -> Message(Modifier.weight(1f)) {
-                CircularProgressIndicator(Modifier.testTag(FocusedResultLoadingTag))
-            }
-            FocusedResultUiState.AttemptNotFound -> Message(Modifier.weight(1f)) {
-                Text(stringResource(Res.string.focused_result_attempt_not_found))
-            }
-            FocusedResultUiState.NotCompleted -> Message(Modifier.weight(1f)) {
-                Text(stringResource(Res.string.focused_result_not_completed))
-            }
-            FocusedResultUiState.Error -> Message(Modifier.weight(1f)) {
-                Text(stringResource(Res.string.focused_result_error))
-                Button(onClick = onRetry, Modifier.padding(top = 16.dp)) {
-                    Text(stringResource(Res.string.focused_result_retry))
-                }
-            }
+            FocusedResultUiState.Loading -> ScreenLoading(
+                message = stringResource(Res.string.focused_result_loading),
+                testTag = FocusedResultLoadingTag,
+                modifier = Modifier.weight(1f),
+            )
+            FocusedResultUiState.AttemptNotFound -> ScreenMessage(
+                message = stringResource(Res.string.focused_result_attempt_not_found),
+                modifier = Modifier.weight(1f),
+            )
+            FocusedResultUiState.NotCompleted -> ScreenMessage(
+                message = stringResource(Res.string.focused_result_not_completed),
+                modifier = Modifier.weight(1f),
+            )
+            FocusedResultUiState.Error -> ScreenError(
+                message = stringResource(Res.string.focused_result_error),
+                onRetry = onRetry,
+                modifier = Modifier.weight(1f),
+            )
             is FocusedResultUiState.Content ->
                 ResultContent(state, onSourceClick, onRepeatPractice, failedSourceUrl, Modifier.weight(1f))
         }
@@ -81,7 +87,8 @@ private fun ResultContent(
     modifier: Modifier,
 ) {
     LazyColumn(
-        modifier = modifier.fillMaxSize().padding(16.dp),
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
@@ -120,9 +127,3 @@ private fun ResultContent(
     }
 }
 
-@Composable
-private fun Message(modifier: Modifier, content: @Composable () -> Unit) {
-    Column(modifier.fillMaxSize().padding(20.dp), Arrangement.Center, Alignment.CenterHorizontally) {
-        content()
-    }
-}

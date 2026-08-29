@@ -27,10 +27,11 @@ import org.artkachenko.kmp_learning_app.topic_study.focused_practice.toAssessmen
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultDestination
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailDestination
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.toAppRoute
+import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 
 @Composable
 fun App() {
-    MaterialTheme {
+    AppTheme {
         AppShell()
     }
 }

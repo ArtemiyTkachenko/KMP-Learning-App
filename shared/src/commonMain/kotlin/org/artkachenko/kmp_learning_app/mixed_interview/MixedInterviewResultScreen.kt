@@ -13,7 +13,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -30,7 +29,6 @@ import kmp_learning_app.shared.generated.resources.mixed_result_question_review
 import kmp_learning_app.shared.generated.resources.mixed_result_repeat_error
 import kmp_learning_app.shared.generated.resources.mixed_result_repeat_no_questions
 import kmp_learning_app.shared.generated.resources.mixed_result_repeat_source_missing
-import kmp_learning_app.shared.generated.resources.mixed_result_retry
 import kmp_learning_app.shared.generated.resources.mixed_result_title
 import kmp_learning_app.shared.generated.resources.mixed_result_topic_score
 import kmp_learning_app.shared.generated.resources.mixed_result_topic_unavailable
@@ -39,10 +37,15 @@ import org.artkachenko.kmp_learning_app.assessment_review.MissingReviewQuestion
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionCard
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.assessment_review.UnresolvedReviewQuestionsNotice
-import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicStudyTopAppBar
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
+import androidx.compose.foundation.layout.PaddingValues
+import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.ScreenError
+import org.artkachenko.kmp_learning_app.ui.ScreenLoading
+import org.artkachenko.kmp_learning_app.ui.ScreenMessage
 
+internal const val MixedResultLoadingTag = "mixed_result_loading"
 internal const val MixedResultPracticeAgainTag = "mixed_result_practice_again"
 internal const val MixedResultCreatingIndicatorTag = "mixed_result_creating_indicator"
 
@@ -57,24 +60,26 @@ internal fun MixedInterviewResultScreen(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.fillMaxSize()) {
-        TopicStudyTopAppBar(stringResource(Res.string.mixed_result_title), onBack)
+        AppTopBar(stringResource(Res.string.mixed_result_title), onBack)
         when (state) {
-            MixedInterviewResultUiState.Loading -> ResultMessage(Modifier.weight(1f)) {
-                CircularProgressIndicator()
-                Text(stringResource(Res.string.mixed_result_loading))
-            }
-            MixedInterviewResultUiState.AttemptNotFound -> ResultMessage(Modifier.weight(1f)) {
-                Text(stringResource(Res.string.mixed_result_attempt_not_found))
-            }
-            MixedInterviewResultUiState.NotCompleted -> ResultMessage(Modifier.weight(1f)) {
-                Text(stringResource(Res.string.mixed_result_not_completed))
-            }
-            MixedInterviewResultUiState.Error -> ResultMessage(Modifier.weight(1f)) {
-                Text(stringResource(Res.string.mixed_result_error))
-                Button(onClick = onRetry) {
-                    Text(stringResource(Res.string.mixed_result_retry))
-                }
-            }
+            MixedInterviewResultUiState.Loading -> ScreenLoading(
+                message = stringResource(Res.string.mixed_result_loading),
+                testTag = MixedResultLoadingTag,
+                modifier = Modifier.weight(1f),
+            )
+            MixedInterviewResultUiState.AttemptNotFound -> ScreenMessage(
+                message = stringResource(Res.string.mixed_result_attempt_not_found),
+                modifier = Modifier.weight(1f),
+            )
+            MixedInterviewResultUiState.NotCompleted -> ScreenMessage(
+                message = stringResource(Res.string.mixed_result_not_completed),
+                modifier = Modifier.weight(1f),
+            )
+            MixedInterviewResultUiState.Error -> ScreenError(
+                message = stringResource(Res.string.mixed_result_error),
+                onRetry = onRetry,
+                modifier = Modifier.weight(1f),
+            )
             is MixedInterviewResultUiState.Content -> MixedResultContent(
                 state = state,
                 onSourceClick = onSourceClick,
@@ -95,7 +100,8 @@ private fun MixedResultContent(
     modifier: Modifier,
 ) {
     LazyColumn(
-        modifier = modifier.fillMaxSize().padding(16.dp),
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
@@ -189,16 +195,3 @@ private fun TopicPerformanceCard(
     }
 }
 
-@Composable
-private fun ResultMessage(
-    modifier: Modifier,
-    content: @Composable () -> Unit,
-) {
-    Column(
-        modifier.fillMaxSize().padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        content()
-    }
-}

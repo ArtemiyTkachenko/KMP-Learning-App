@@ -11,7 +11,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,7 +21,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
-import kmp_learning_app.shared.generated.resources.topic_browser_retry
 import kmp_learning_app.shared.generated.resources.topic_detail_available_questions
 import kmp_learning_app.shared.generated.resources.topic_detail_heading
 import kmp_learning_app.shared.generated.resources.topic_detail_no_questions
@@ -31,6 +29,12 @@ import kmp_learning_app.shared.generated.resources.topic_detail_start_practice
 import kmp_learning_app.shared.generated.resources.topic_detail_subtopics
 import kmp_learning_app.shared.generated.resources.topic_browser_error
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.layout.PaddingValues
+import kmp_learning_app.shared.generated.resources.topic_detail_loading
+import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.ScreenError
+import org.artkachenko.kmp_learning_app.ui.ScreenLoading
+import org.artkachenko.kmp_learning_app.ui.ScreenMessage
 
 internal const val TopicDetailLoadingTag = "topic_detail_loading"
 internal const val TopicPracticeButtonTag = "topic_practice_button"
@@ -46,7 +50,7 @@ internal fun TopicDetailScreen(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        TopicStudyTopAppBar(
+        AppTopBar(
             title = when (state) {
                 is TopicDetailUiState.Content -> state.topic.name
                 is TopicDetailUiState.NoQuestions -> state.topic.name
@@ -56,11 +60,11 @@ internal fun TopicDetailScreen(
         )
 
         when (state) {
-            TopicDetailUiState.Loading -> {
-                CenteredState(Modifier.weight(1f)) {
-                    CircularProgressIndicator(modifier = Modifier.testTag(TopicDetailLoadingTag))
-                }
-            }
+            TopicDetailUiState.Loading -> ScreenLoading(
+                message = stringResource(Res.string.topic_detail_loading),
+                testTag = TopicDetailLoadingTag,
+                modifier = Modifier.weight(1f),
+            )
 
             is TopicDetailUiState.Content -> {
                 TopicContent(
@@ -71,29 +75,21 @@ internal fun TopicDetailScreen(
                 )
             }
 
-            is TopicDetailUiState.NoQuestions -> {
-                CenteredState(Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(Res.string.topic_detail_no_questions),
-                        modifier = Modifier.padding(top = 12.dp),
-                    )
-                }
-            }
+            is TopicDetailUiState.NoQuestions -> ScreenMessage(
+                message = stringResource(Res.string.topic_detail_no_questions),
+                modifier = Modifier.weight(1f),
+            )
 
-            TopicDetailUiState.NotFound -> {
-                CenteredState(Modifier.weight(1f)) {
-                    Text(text = stringResource(Res.string.topic_detail_not_found))
-                }
-            }
+            TopicDetailUiState.NotFound -> ScreenMessage(
+                message = stringResource(Res.string.topic_detail_not_found),
+                modifier = Modifier.weight(1f),
+            )
 
-            TopicDetailUiState.Error -> {
-                CenteredState(Modifier.weight(1f)) {
-                    Text(text = stringResource(Res.string.topic_browser_error))
-                    Button(onClick = onRetry, modifier = Modifier.padding(top = 16.dp)) {
-                        Text(text = stringResource(Res.string.topic_browser_retry))
-                    }
-                }
-            }
+            TopicDetailUiState.Error -> ScreenError(
+                message = stringResource(Res.string.topic_browser_error),
+                onRetry = onRetry,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }
@@ -106,7 +102,8 @@ private fun TopicContent(
     modifier: Modifier,
 ) {
     LazyColumn(
-        modifier = modifier.fillMaxSize().padding(horizontal = 20.dp),
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
@@ -167,16 +164,4 @@ private fun TopicContent(
     }
 }
 
-@Composable
-private fun CenteredState(
-    modifier: Modifier,
-    content: @Composable () -> Unit,
-) {
-    Column(
-        modifier = modifier.fillMaxSize().padding(20.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        content()
-    }
-}
+

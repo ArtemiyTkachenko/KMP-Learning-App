@@ -83,4 +83,34 @@ internal class AppNavigationTest {
             backStack,
         )
     }
+
+    @Test
+    fun progressAndHistoricalResultsPushStableRoutesAndPopBackToProgress() {
+        val backStack = mutableListOf<AppRoute>(AppRoute.Topics)
+
+        backStack.add(AppRoute.Progress)
+        assertEquals(listOf(AppRoute.Topics, AppRoute.Progress), backStack)
+
+        backStack.add(AppRoute.MixedInterviewResult("mixed-history"))
+        assertEquals(
+            listOf(
+                AppRoute.Topics,
+                AppRoute.Progress,
+                AppRoute.MixedInterviewResult("mixed-history"),
+            ),
+            backStack,
+        )
+        backStack.removeAt(backStack.lastIndex)
+        assertEquals(AppRoute.Progress, backStack.last())
+
+        backStack.add(AppRoute.FocusedPracticeResult("focused-history"))
+        assertEquals(
+            listOf(
+                AppRoute.Topics,
+                AppRoute.Progress,
+                AppRoute.FocusedPracticeResult("focused-history"),
+            ),
+            backStack,
+        )
+    }
 }

@@ -26,6 +26,8 @@ import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingLaunch
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingViewModel
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultViewModel
+import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
+import org.artkachenko.kmp_learning_app.progress.ProgressViewModel
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
@@ -64,6 +66,7 @@ internal class TopicStudyPresentationModuleTest {
                     single<AssessmentRepository> { FakeAssessmentRepository() }
                     single { AssessmentSessionLoader(get(), get()) }
                     single { AssessmentRetakeService(get(), get()) }
+                    single { LearningProgressService(get(), get()) }
                 },
                 topicStudyPresentationModule,
             )
@@ -109,6 +112,7 @@ internal class TopicStudyPresentationModuleTest {
             assertIs<MixedInterviewResultViewModel>(
                 app.koin.get<MixedInterviewResultViewModel> { parametersOf("attempt") },
             )
+            assertIs<ProgressViewModel>(app.koin.get<ProgressViewModel>())
             advanceUntilIdle()
         } finally {
             app.close()

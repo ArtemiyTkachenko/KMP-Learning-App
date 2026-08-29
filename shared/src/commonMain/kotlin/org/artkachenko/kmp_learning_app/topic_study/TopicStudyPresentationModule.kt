@@ -6,6 +6,7 @@ import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoad
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingViewModel
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultViewModel
+import org.artkachenko.kmp_learning_app.progress.ProgressViewModel
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -18,6 +19,13 @@ internal val topicStudyPresentationModule = module {
     }
     viewModel {
         TopicBrowserViewModel(
+            curriculumRepository = get(),
+        )
+    }
+    viewModel {
+        ProgressViewModel(
+            learningProgressService = get(),
+            assessmentRepository = get(),
             curriculumRepository = get(),
         )
     }

@@ -17,6 +17,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -30,6 +31,7 @@ import kmp_learning_app.shared.generated.resources.mixed_interview_description
 import kmp_learning_app.shared.generated.resources.mixed_interview_question_count
 import kmp_learning_app.shared.generated.resources.mixed_interview_start
 import kmp_learning_app.shared.generated.resources.mixed_interview_title
+import kmp_learning_app.shared.generated.resources.progress_entry
 import kmp_learning_app.shared.generated.resources.topic_browser_empty
 import kmp_learning_app.shared.generated.resources.topic_browser_error
 import kmp_learning_app.shared.generated.resources.topic_browser_heading
@@ -47,6 +49,7 @@ internal fun TopicBrowserScreen(
     state: TopicBrowserUiState,
     onTopicClick: (String) -> Unit,
     onStartMixedInterview: () -> Unit,
+    onOpenProgress: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -62,6 +65,14 @@ internal fun TopicBrowserScreen(
             fontWeight = FontWeight.SemiBold,
         )
         Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedButton(
+            onClick = onOpenProgress,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(Res.string.progress_entry))
+        }
+        Spacer(modifier = Modifier.height(12.dp))
 
         MixedInterviewEntry(onStart = onStartMixedInterview)
         Spacer(modifier = Modifier.height(24.dp))
@@ -260,6 +271,7 @@ private fun TopicBrowserScreenPreview() {
             ),
             onTopicClick = {},
             onStartMixedInterview = {},
+            onOpenProgress = {},
             onRetry = {},
         )
     }

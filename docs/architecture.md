@@ -114,6 +114,15 @@ including focused, mixed, and retake attempts; derived statistics are not
 persisted. A Topic is weak after at least 3 observations below 70% accuracy,
 and a Subtopic after at least 2 observations below 70% accuracy.
 
+The Progress dashboard is a shared presentation destination reached through
+the argument-free `AppRoute.Progress` route. `ProgressViewModel` maps the
+derived snapshot and newest-first completed history into display models,
+resolving focused scope labels through stable historical Topic/Subtopic lookup.
+The destination refreshes on lifecycle resume so retained navigation entries
+show attempts completed while another result or retake destination was open.
+History rows navigate by stable attempt ID to the existing focused or mixed
+result destinations; no progress snapshot or history summary is persisted.
+
 The completed E08 graph is composed with the same classic Koin DSL as the
 curriculum graph: `AssessmentQuestionSelector` depends on `CurriculumRepository`,
 `AssessmentEngine` depends on the selector, `AssessmentRepository` persists

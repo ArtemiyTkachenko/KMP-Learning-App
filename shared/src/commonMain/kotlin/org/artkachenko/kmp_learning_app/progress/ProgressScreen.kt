@@ -49,6 +49,9 @@ internal const val ProgressLoadingTag = "progress_loading"
 /** Stable per-row handle so tests can target a Topic card without depending on label uniqueness. */
 internal fun progressTopicCardTag(topicId: String): String = "progress_topic_card_$topicId"
 
+/** Stable per-row handle for completed attempts whose visible labels may be identical. */
+internal fun progressHistoryCardTag(attemptId: String): String = "progress_history_card_$attemptId"
+
 @Composable
 internal fun ProgressScreen(
     state: ProgressUiState,
@@ -211,7 +214,10 @@ private fun HistoryCard(
     onClick: () -> Unit,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(progressHistoryCardTag(attempt.attemptId))
+            .clickable(onClick = onClick),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(

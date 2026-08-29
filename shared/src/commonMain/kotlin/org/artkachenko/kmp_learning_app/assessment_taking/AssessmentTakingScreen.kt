@@ -35,9 +35,22 @@ import kmp_learning_app.shared.generated.resources.assessment_taking_select_one
 import kmp_learning_app.shared.generated.resources.assessment_taking_start_error
 import kmp_learning_app.shared.generated.resources.assessment_taking_submit
 import kmp_learning_app.shared.generated.resources.assessment_taking_submitting
-import kmp_learning_app.shared.generated.resources.topic_browser_retry
-import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicStudyTopAppBar
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.layout.PaddingValues
+import kmp_learning_app.shared.generated.resources.assessment_taking_loading
+import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.ScreenError
+import org.artkachenko.kmp_learning_app.ui.ScreenLoading
+import org.artkachenko.kmp_learning_app.ui.ScreenStatus
+import org.artkachenko.kmp_learning_app.ui.ScreenMessage
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.unit.Dp
 
 internal const val AssessmentTakingLoadingTag = "focused_practice_loading"
 internal const val AssessmentTakingSubmitTag = "focused_practice_submit"
@@ -55,25 +68,27 @@ internal fun AssessmentTakingScreen(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        TopicStudyTopAppBar(
+        AppTopBar(
             title = title,
             onBack = onBack,
         )
         when (state) {
-            AssessmentTakingUiState.Loading -> MessageContent(Modifier.weight(1f)) {
-                CircularProgressIndicator(modifier = Modifier.testTag(AssessmentTakingLoadingTag))
-            }
+            AssessmentTakingUiState.Loading -> ScreenLoading(
+                message = stringResource(Res.string.assessment_taking_loading),
+                testTag = AssessmentTakingLoadingTag,
+                modifier = Modifier.weight(1f),
+            )
 
-            AssessmentTakingUiState.NoQuestions -> MessageContent(Modifier.weight(1f)) {
-                Text(text = stringResource(Res.string.assessment_taking_no_questions))
-            }
+            AssessmentTakingUiState.NoQuestions -> ScreenMessage(
+                message = stringResource(Res.string.assessment_taking_no_questions),
+                modifier = Modifier.weight(1f),
+            )
 
-            AssessmentTakingUiState.Error -> MessageContent(Modifier.weight(1f)) {
-                Text(text = stringResource(Res.string.assessment_taking_start_error))
-                Button(onClick = onRetry, modifier = Modifier.padding(top = 16.dp)) {
-                    Text(text = stringResource(Res.string.topic_browser_retry))
-                }
-            }
+            AssessmentTakingUiState.Error -> ScreenError(
+                message = stringResource(Res.string.assessment_taking_start_error),
+                onRetry = onRetry,
+                modifier = Modifier.weight(1f),
+            )
 
             is AssessmentTakingUiState.Content -> QuestionContent(
                 state = state,
@@ -82,7 +97,7 @@ internal fun AssessmentTakingScreen(
                 modifier = Modifier.weight(1f),
             )
 
-            is AssessmentTakingUiState.ReadyToComplete -> MessageContent(Modifier.weight(1f)) {
+            is AssessmentTakingUiState.ReadyToComplete -> ScreenStatus(Modifier.weight(1f)) {
                 Text(text = stringResource(Res.string.assessment_taking_ready))
                 if (state.completionFailed) {
                     Text(
@@ -106,9 +121,10 @@ internal fun AssessmentTakingScreen(
                 }
             }
 
-            is AssessmentTakingUiState.CompletionSucceeded -> MessageContent(Modifier.weight(1f)) {
-                Text(text = stringResource(Res.string.assessment_taking_results_opening))
-            }
+            is AssessmentTakingUiState.CompletionSucceeded -> ScreenMessage(
+                message = stringResource(Res.string.assessment_taking_results_opening),
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }
@@ -121,23 +137,27 @@ private fun QuestionContent(
     modifier: Modifier,
 ) {
     LazyColumn(
-        modifier = modifier.fillMaxSize().padding(horizontal = 20.dp),
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
+            // Three distinct tiers: progress metadata, the question itself, and the supporting
+            // instruction. They previously shared bodyLarge/onSurface and read as one block.
             Text(
                 text = stringResource(
                     Res.string.assessment_taking_question_progress,
                     state.questionNumber,
                     state.totalQuestions,
                 ),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(top = 16.dp),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
             )
             Text(
                 text = state.question.text,
                 style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(top = 16.dp),
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(top = 12.dp),
             )
             Text(
                 text = stringResource(
@@ -147,6 +167,8 @@ private fun QuestionContent(
                         Res.string.assessment_taking_select_all
                     },
                 ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp),
             )
         }
@@ -191,6 +213,13 @@ private fun QuestionContent(
     }
 }
 
+/**
+ * One answer option.
+ *
+ * The row is the touch target and the selection surface: answers used to be bare rows separated
+ * only by 6dp, so they were hard to tell apart, and the control was centred against the whole
+ * block instead of the first line of a wrapping answer.
+ */
 @Composable
 private fun AnswerRow(
     answerText: String,
@@ -199,48 +228,77 @@ private fun AnswerRow(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(
-                if (mode == AnswerSelectionMode.SINGLE) {
-                    Modifier.selectable(
-                        selected = selected,
-                        enabled = enabled,
-                        role = Role.RadioButton,
-                        onClick = onClick,
-                    )
-                } else {
-                    Modifier.toggleable(
-                        value = selected,
-                        enabled = enabled,
-                        role = Role.Checkbox,
-                        onValueChange = { onClick() },
-                    )
-                },
-            )
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (mode == AnswerSelectionMode.SINGLE) {
-            RadioButton(selected = selected, onClick = null, enabled = enabled)
+    val selectionModifier = if (mode == AnswerSelectionMode.SINGLE) {
+        Modifier.selectable(
+            selected = selected,
+            enabled = enabled,
+            role = Role.RadioButton,
+            onClick = onClick,
+        )
+    } else {
+        Modifier.toggleable(
+            value = selected,
+            enabled = enabled,
+            role = Role.Checkbox,
+            onValueChange = { onClick() },
+        )
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth().then(selectionModifier),
+        shape = MaterialTheme.shapes.medium,
+        color = if (selected) {
+            MaterialTheme.colorScheme.secondaryContainer
         } else {
-            Checkbox(checked = selected, onCheckedChange = null, enabled = enabled)
+            MaterialTheme.colorScheme.surface
+        },
+        border = BorderStroke(
+            width = if (selected) 2.dp else 1.dp,
+            color = if (selected) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.outlineVariant
+            },
+        ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = AnswerRowMinHeight)
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            // The control's own 48dp minimum would push it below the first text line, so the
+            // enforcement is dropped here and the row above carries the touch target instead.
+            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                Box(
+                    modifier = Modifier.height(AnswerLineHeight),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (mode == AnswerSelectionMode.SINGLE) {
+                        RadioButton(selected = selected, onClick = null, enabled = enabled)
+                    } else {
+                        Checkbox(checked = selected, onCheckedChange = null, enabled = enabled)
+                    }
+                }
+            }
+            Text(
+                text = answerText,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (selected) {
+                    MaterialTheme.colorScheme.onSecondaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+                modifier = Modifier.padding(start = 12.dp),
+            )
         }
-        Text(text = answerText, modifier = Modifier.padding(start = 8.dp))
     }
 }
 
-@Composable
-private fun MessageContent(
-    modifier: Modifier,
-    content: @Composable () -> Unit,
-) {
-    Column(
-        modifier = modifier.fillMaxSize().padding(20.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        content()
-    }
-}
+private val AnswerRowMinHeight = 48.dp
+
+/** Matches the line height of [MaterialTheme.typography] bodyLarge so the control aligns to the
+ *  first line of a wrapping answer rather than to the middle of the block. */
+private val AnswerLineHeight = 24.dp
+

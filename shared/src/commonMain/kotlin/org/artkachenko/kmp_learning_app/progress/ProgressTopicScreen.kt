@@ -6,15 +6,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
-import kmp_learning_app.shared.generated.resources.progress_retry
 import kmp_learning_app.shared.generated.resources.progress_subtopic_unavailable
 import kmp_learning_app.shared.generated.resources.progress_topic_detail_title
 import kmp_learning_app.shared.generated.resources.progress_topic_empty
@@ -22,8 +19,12 @@ import kmp_learning_app.shared.generated.resources.progress_topic_error
 import kmp_learning_app.shared.generated.resources.progress_topic_loading
 import kmp_learning_app.shared.generated.resources.progress_topic_subtopics
 import kmp_learning_app.shared.generated.resources.progress_topic_unavailable
-import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicStudyTopAppBar
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.layout.PaddingValues
+import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.ScreenError
+import org.artkachenko.kmp_learning_app.ui.ScreenLoading
+import org.artkachenko.kmp_learning_app.ui.ScreenMessage
 
 internal const val ProgressTopicLoadingTag = "progress_topic_loading"
 
@@ -37,21 +38,22 @@ internal fun ProgressTopicScreen(
     Column(modifier.fillMaxSize()) {
         // The topic name is the aggregate card's title, so the bar keeps a stable label rather
         // than repeating it.
-        TopicStudyTopAppBar(stringResource(Res.string.progress_topic_detail_title), onBack)
+        AppTopBar(stringResource(Res.string.progress_topic_detail_title), onBack)
         when (state) {
-            ProgressTopicUiState.Loading -> ProgressMessage(Modifier.weight(1f)) {
-                CircularProgressIndicator(Modifier.testTag(ProgressTopicLoadingTag))
-                Text(stringResource(Res.string.progress_topic_loading))
-            }
-            ProgressTopicUiState.Empty -> ProgressMessage(Modifier.weight(1f)) {
-                Text(stringResource(Res.string.progress_topic_empty))
-            }
-            ProgressTopicUiState.Error -> ProgressMessage(Modifier.weight(1f)) {
-                Text(stringResource(Res.string.progress_topic_error))
-                Button(onClick = onRetry) {
-                    Text(stringResource(Res.string.progress_retry))
-                }
-            }
+            ProgressTopicUiState.Loading -> ScreenLoading(
+                message = stringResource(Res.string.progress_topic_loading),
+                testTag = ProgressTopicLoadingTag,
+                modifier = Modifier.weight(1f),
+            )
+            ProgressTopicUiState.Empty -> ScreenMessage(
+                message = stringResource(Res.string.progress_topic_empty),
+                modifier = Modifier.weight(1f),
+            )
+            ProgressTopicUiState.Error -> ScreenError(
+                message = stringResource(Res.string.progress_topic_error),
+                onRetry = onRetry,
+                modifier = Modifier.weight(1f),
+            )
             is ProgressTopicUiState.Content -> ProgressTopicContent(
                 state = state,
                 modifier = Modifier.weight(1f),
@@ -66,7 +68,8 @@ private fun ProgressTopicContent(
     modifier: Modifier,
 ) {
     LazyColumn(
-        modifier = modifier.fillMaxSize().padding(horizontal = 16.dp),
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {

@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_back">Back</string>
+    <string name="app_retry">Retry</string>
     <string name="topic_browser_heading">Android Interview Prep</string>
     <string name="topic_browser_title">Topics</string>
     <string name="topic_browser_loading">Loading topics</string>
     <string name="topic_browser_empty">No topics available</string>
     <string name="topic_browser_error">Topics could not be loaded</string>
-    <string name="topic_browser_retry">Retry</string>
     <string name="progress_entry">View progress</string>
     <string name="progress_title">Progress</string>
     <string name="progress_loading">Loading progress</string>
@@ -19,7 +20,6 @@
     <string name="progress_history">Assessment history</string>
     <string name="progress_empty">Complete an interview or focused practice session to start tracking your progress.</string>
     <string name="progress_error">Progress could not be loaded.</string>
-    <string name="progress_retry">Retry</string>
     <string name="progress_topic_unavailable">Topic unavailable</string>
     <string name="progress_subtopic_unavailable">Subtopic unavailable</string>
     <string name="progress_focused_practice">Focused practice</string>
@@ -39,7 +39,6 @@
     <string name="mistake_review_empty">No unresolved mistakes.</string>
     <string name="mistake_review_empty_detail">Questions disappear from this list after your most recent completed answer is correct.</string>
     <string name="mistake_review_error">Mistakes could not be loaded.</string>
-    <string name="mistake_review_retry">Retry</string>
     <string name="mixed_interview_title">Mixed Android Interview</string>
     <string name="mixed_interview_description">Test your knowledge across Android topics.</string>
     <string name="mixed_interview_question_count">%1$d-question interview</string>
@@ -49,7 +48,6 @@
     <string name="mixed_result_attempt_not_found">This interview could not be found.</string>
     <string name="mixed_result_not_completed">This interview is not complete yet.</string>
     <string name="mixed_result_error">Interview results could not be loaded.</string>
-    <string name="mixed_result_retry">Retry</string>
     <string name="mixed_result_performance_by_topic">Performance by topic</string>
     <string name="mixed_result_question_review">Question review</string>
     <string name="mixed_result_topic_score">%1$d / %2$d correct</string>
@@ -60,11 +58,11 @@
     <string name="mixed_result_repeat_no_questions">No interview questions are currently available.</string>
     <string name="mixed_result_repeat_error">Interview could not be started. Try again.</string>
     <string name="topic_detail_title">Topic: %1$s</string>
-    <string name="topic_detail_back">Back</string>
     <string name="topic_detail_heading">Topic</string>
     <string name="topic_detail_available_questions">Available questions: %1$d</string>
     <string name="topic_detail_no_questions">No practice questions are currently available.</string>
     <string name="topic_detail_not_found">Topic not available</string>
+    <string name="topic_detail_loading">Loading topic</string>
     <string name="topic_detail_start_practice">Start Practice</string>
     <string name="topic_detail_subtopics">Subtopics</string>
     <string name="focused_practice_title">Focused practice</string>
@@ -73,6 +71,7 @@
     <string name="assessment_taking_select_all">Select all that apply</string>
     <string name="assessment_taking_submit">Submit</string>
     <string name="assessment_taking_submitting">Submitting</string>
+    <string name="assessment_taking_loading">Preparing questions</string>
     <string name="assessment_taking_answer_save_error">Answer could not be saved. Try again.</string>
     <string name="assessment_taking_no_questions">No practice questions are currently available.</string>
     <string name="assessment_taking_start_error">Practice could not be started.</string>
@@ -85,11 +84,11 @@
     <string name="focused_result_attempt_not_found">This assessment could not be found.</string>
     <string name="focused_result_not_completed">This assessment is not complete yet.</string>
     <string name="focused_result_error">Results could not be loaded.</string>
-    <string name="focused_result_retry">Retry</string>
     <string name="assessment_review_score">Score: %1$d / %2$d</string>
     <string name="assessment_review_percentage">%1$d%</string>
     <string name="assessment_review_correct">Correct</string>
     <string name="assessment_review_incorrect">Incorrect</string>
+    <string name="assessment_review_partially_correct">Partially correct</string>
     <string name="assessment_review_selected">Your answer</string>
     <string name="assessment_review_correct_answer">Correct answer</string>
     <string name="assessment_review_explanation">Explanation</string>

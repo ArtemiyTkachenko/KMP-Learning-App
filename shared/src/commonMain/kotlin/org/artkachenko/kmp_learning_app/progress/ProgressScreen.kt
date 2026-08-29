@@ -10,7 +10,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -34,15 +33,18 @@ import kmp_learning_app.shared.generated.resources.progress_loading
 import kmp_learning_app.shared.generated.resources.progress_overall
 import kmp_learning_app.shared.generated.resources.progress_percentage
 import kmp_learning_app.shared.generated.resources.progress_questions_answered
-import kmp_learning_app.shared.generated.resources.progress_retry
 import kmp_learning_app.shared.generated.resources.progress_score
 import kmp_learning_app.shared.generated.resources.progress_subtopic_unavailable
 import kmp_learning_app.shared.generated.resources.progress_title
 import kmp_learning_app.shared.generated.resources.progress_topic_performance
 import kmp_learning_app.shared.generated.resources.progress_topic_unavailable
 import kmp_learning_app.shared.generated.resources.progress_weak_areas
-import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicStudyTopAppBar
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.layout.PaddingValues
+import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.ScreenError
+import org.artkachenko.kmp_learning_app.ui.ScreenLoading
+import org.artkachenko.kmp_learning_app.ui.ScreenMessage
 
 internal const val ProgressLoadingTag = "progress_loading"
 
@@ -63,21 +65,22 @@ internal fun ProgressScreen(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.fillMaxSize()) {
-        TopicStudyTopAppBar(stringResource(Res.string.progress_title), onBack)
+        AppTopBar(stringResource(Res.string.progress_title), onBack)
         when (state) {
-            ProgressUiState.Loading -> ProgressMessage(Modifier.weight(1f)) {
-                CircularProgressIndicator(Modifier.testTag(ProgressLoadingTag))
-                Text(stringResource(Res.string.progress_loading))
-            }
-            ProgressUiState.Empty -> ProgressMessage(Modifier.weight(1f)) {
-                Text(stringResource(Res.string.progress_empty))
-            }
-            ProgressUiState.Error -> ProgressMessage(Modifier.weight(1f)) {
-                Text(stringResource(Res.string.progress_error))
-                Button(onClick = onRetry) {
-                    Text(stringResource(Res.string.progress_retry))
-                }
-            }
+            ProgressUiState.Loading -> ScreenLoading(
+                message = stringResource(Res.string.progress_loading),
+                testTag = ProgressLoadingTag,
+                modifier = Modifier.weight(1f),
+            )
+            ProgressUiState.Empty -> ScreenMessage(
+                message = stringResource(Res.string.progress_empty),
+                modifier = Modifier.weight(1f),
+            )
+            ProgressUiState.Error -> ScreenError(
+                message = stringResource(Res.string.progress_error),
+                onRetry = onRetry,
+                modifier = Modifier.weight(1f),
+            )
             is ProgressUiState.Content -> ProgressContent(
                 state = state,
                 onReviewMistakes = onReviewMistakes,
@@ -98,7 +101,8 @@ private fun ProgressContent(
     modifier: Modifier,
 ) {
     LazyColumn(
-        modifier = modifier.fillMaxSize().padding(horizontal = 16.dp),
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {

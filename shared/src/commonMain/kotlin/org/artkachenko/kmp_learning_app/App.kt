@@ -20,6 +20,7 @@ import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultDest
 import org.artkachenko.kmp_learning_app.mixed_interview.mixedInterviewStartRoute
 import org.artkachenko.kmp_learning_app.mixed_interview.toAssessmentTakingLaunch
 import org.artkachenko.kmp_learning_app.mixed_interview.toAssessmentConfig
+import org.artkachenko.kmp_learning_app.progress.ProgressDestination
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.toAssessmentConfig
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultDestination
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailDestination
@@ -70,6 +71,20 @@ private fun AppShell(
                         },
                         onStartMixedInterview = {
                             backStack.add(mixedInterviewStartRoute())
+                        },
+                        onOpenProgress = {
+                            backStack.add(AppRoute.Progress)
+                        },
+                    )
+                }
+                entry<AppRoute.Progress> {
+                    ProgressDestination(
+                        onBack = { popBack() },
+                        onOpenFocusedResult = { attemptId ->
+                            backStack.add(AppRoute.FocusedPracticeResult(attemptId))
+                        },
+                        onOpenMixedResult = { attemptId ->
+                            backStack.add(AppRoute.MixedInterviewResult(attemptId))
                         },
                     )
                 }

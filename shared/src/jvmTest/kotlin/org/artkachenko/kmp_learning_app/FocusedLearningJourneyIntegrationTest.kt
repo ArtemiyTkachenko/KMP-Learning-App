@@ -3,11 +3,14 @@ package org.artkachenko.kmp_learning_app
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
@@ -115,6 +118,25 @@ internal class FocusedLearningJourneyIntegrationTest {
 
             onNodeWithContentDescription("Back").performClick()
             onNodeWithContentDescription("Back").performClick()
+
+            onNodeWithText("View progress").assertIsDisplayed().performClick()
+            waitUntil(timeoutMillis = 5_000) {
+                onAllNodesWithText("1 completed assessments").fetchSemanticsNodes().isNotEmpty()
+            }
+            onNodeWithText("2 questions answered").assertIsDisplayed()
+            onNodeWithText("1 correct answers").assertIsDisplayed()
+            onNodeWithText("50% accuracy").assertIsDisplayed()
+            onNode(hasScrollAction()).performScrollToNode(hasText("Focused practice"))
+            onNodeWithText("Focused practice").performClick()
+            waitUntil(timeoutMillis = 5_000) {
+                onAllNodesWithText("Score: 1 / 2").fetchSemanticsNodes().isNotEmpty()
+            }
+            onNodeWithContentDescription("Back").performClick()
+            waitUntil(timeoutMillis = 5_000) {
+                onAllNodesWithText("1 completed assessments").fetchSemanticsNodes().isNotEmpty()
+            }
+            onNodeWithContentDescription("Back").performClick()
+
             onNodeWithText("Android").assertIsDisplayed().performClick()
             onNodeWithTag(SubtopicPracticeButtonTag).performClick()
             onNodeWithText("Single question").assertIsDisplayed()

@@ -9,6 +9,7 @@ import org.koin.compose.viewmodel.koinViewModel
 internal fun TopicBrowserDestination(
     onTopicClick: (String) -> Unit,
     onStartMixedInterview: () -> Unit,
+    onOpenProgress: () -> Unit,
     viewModel: TopicBrowserViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -17,6 +18,7 @@ internal fun TopicBrowserDestination(
         state = state,
         onTopicClick = onTopicClick,
         onStartMixedInterview = onStartMixedInterview,
+        onOpenProgress = onOpenProgress,
         onRetry = viewModel::retry,
     )
 }

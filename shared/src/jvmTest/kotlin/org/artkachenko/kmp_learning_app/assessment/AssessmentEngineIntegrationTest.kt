@@ -33,6 +33,7 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.curriculumDataModu
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImportResult
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImporter
 import org.artkachenko.kmp_learning_app.data.local.curriculum.repository.LocalCurriculumRepository
+import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
 
@@ -271,6 +272,7 @@ internal class AssessmentEngineIntegrationTest {
                 assertIs<AssessmentEngine>(koin.get<AssessmentEngine>())
                 assertIs<AssessmentRepository>(koin.get<AssessmentRepository>())
                 assertIs<AssessmentRetakeService>(koin.get<AssessmentRetakeService>())
+                assertIs<LearningProgressService>(koin.get<LearningProgressService>())
             } finally {
                 app.close()
             }

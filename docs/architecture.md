@@ -105,6 +105,15 @@ assessment with the same `AssessmentConfig`, saves the new in-progress
 use fresh selection without guaranteeing that questions differ from the
 original run.
 
+Completed history feeds the shared `LearningProgressService`, which derives a
+`LearningProgressSnapshot` entirely in memory. Overall totals sum persisted
+`AssessmentScore` values, while Topic and Subtopic observations use persisted
+`QuestionAnswerState.Answered.isCorrect` values plus stable historical Question,
+Topic, and Subtopic lookup. Every completed occurrence counts equally,
+including focused, mixed, and retake attempts; derived statistics are not
+persisted. A Topic is weak after at least 3 observations below 70% accuracy,
+and a Subtopic after at least 2 observations below 70% accuracy.
+
 The completed E08 graph is composed with the same classic Koin DSL as the
 curriculum graph: `AssessmentQuestionSelector` depends on `CurriculumRepository`,
 `AssessmentEngine` depends on the selector, `AssessmentRepository` persists

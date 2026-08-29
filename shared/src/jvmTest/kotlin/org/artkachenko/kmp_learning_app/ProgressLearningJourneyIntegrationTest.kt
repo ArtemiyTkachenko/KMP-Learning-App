@@ -127,7 +127,7 @@ internal class ProgressLearningJourneyIntegrationTest {
                     onNodeWithText("Never observed").assertDoesNotExist()
                     assertTrue(onAllNodesWithText("Weak area").fetchSemanticsNodes().size >= 3)
                     onNodeWithContentDescription("Back").performClick()
-                    waitForText("3 completed assessments")
+                    waitForText("Progress")
 
                     scrollToTag(progressHistoryCardTag(MixedAttemptId))
                     onNodeWithTag(progressHistoryCardTag(MixedAttemptId)).performClick()

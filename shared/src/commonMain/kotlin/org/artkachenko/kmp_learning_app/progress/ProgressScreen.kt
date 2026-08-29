@@ -103,18 +103,24 @@ private fun ProgressContent(
                 WeakAreaCard(area)
             }
         }
-        item {
-            SectionTitle(stringResource(Res.string.progress_topic_performance))
+        // Observation-based sections can be empty even when overall statistics exist, for
+        // example after a curriculum import replaces the question IDs the history refers to.
+        if (state.topics.isNotEmpty()) {
+            item {
+                SectionTitle(stringResource(Res.string.progress_topic_performance))
+            }
+            items(state.topics, key = ProgressTopicUiModel::topicId) { topic ->
+                TopicPerformanceCard(topic)
+            }
         }
-        items(state.topics, key = ProgressTopicUiModel::topicId) { topic ->
-            TopicPerformanceCard(topic)
-        }
-        item {
-            SectionTitle(stringResource(Res.string.progress_history))
-        }
-        items(state.history, key = CompletedAttemptUiModel::attemptId) { attempt ->
-            HistoryCard(attempt) {
-                onHistoryClick(attempt.assessmentType, attempt.attemptId)
+        if (state.history.isNotEmpty()) {
+            item {
+                SectionTitle(stringResource(Res.string.progress_history))
+            }
+            items(state.history, key = CompletedAttemptUiModel::attemptId) { attempt ->
+                HistoryCard(attempt) {
+                    onHistoryClick(attempt.assessmentType, attempt.attemptId)
+                }
             }
         }
     }

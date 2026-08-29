@@ -174,11 +174,82 @@ internal class ProgressViewModelTest {
             subtopics = listOf(Subtopic("sub", "topic", "Subtopic")),
         )
 
+        // LearningProgressService resolves curriculum metadata during its own load, which is
+        // not what this test is about. The ViewModel reads the history second, so clearing the
+        // counters there leaves only the lookups the ViewModel's per-refresh cache controls.
+        context.assessment.onGetCompleted = { call ->
+            if (call == 2) context.curriculum.resetLookupCounts()
+            attempts
+        }
+
         context.viewModel.refresh()
         advanceUntilIdle()
 
-        assertEquals(2, context.curriculum.topicLookupCalls.getValue("topic"))
-        assertEquals(2, context.curriculum.subtopicLookupCalls.getValue("sub"))
+        assertEquals(1, context.curriculum.topicLookupCalls.getValue("topic"))
+        assertEquals(1, context.curriculum.subtopicLookupCalls.getValue("sub"))
+    }
+
+    @Test
+    fun overallStatisticsComeFromTheSnapshotRatherThanTheHistoryRows() = runTest {
+        setMain(testScheduler)
+        val snapshotAttempts = listOf(
+            completedAttempt("snapshot", AssessmentConfig.Mixed(10), observations("snap", 10, 7)),
+        )
+        val historyAttempts = listOf(
+            completedAttempt("history-a", AssessmentConfig.Mixed(2), observations("hist_a", 2, 0)),
+            completedAttempt("history-b", AssessmentConfig.Mixed(2), observations("hist_b", 2, 0)),
+        )
+        val context = TestContext(
+            questions = (snapshotAttempts + historyAttempts)
+                .flatMap(TestAttempt::questionAttempts)
+                .map { question(it.questionId, "topic", "subtopic") },
+            topics = listOf(Topic("topic", "Kotlin")),
+            subtopics = listOf(Subtopic("subtopic", "topic", "Core")),
+        )
+        // Deliberately let the snapshot and the history rows disagree: the service reads the
+        // history first, the ViewModel reads it again for the rows. Summing the rows would
+        // report 2 attempts, 4 answered, 0 correct, 0% instead of the snapshot's values.
+        context.assessment.onGetCompleted = { call ->
+            if (call == 1) snapshotAttempts else historyAttempts
+        }
+
+        context.viewModel.refresh()
+        advanceUntilIdle()
+
+        val content = content(context.viewModel)
+        assertEquals(1, content.completedAttemptCount)
+        assertEquals(10, content.answeredQuestionCount)
+        assertEquals(7, content.correctAnswerCount)
+        assertEquals(70.0, content.percentage)
+        assertEquals(listOf("history-a", "history-b"), content.history.map { it.attemptId })
+    }
+
+    @Test
+    fun historySkipsAttemptsThatAreNotCompleted() = runTest {
+        setMain(testScheduler)
+        val completed = historyAttempt("completed", AssessmentConfig.Mixed(1))
+        val inProgress = TestAttempt(
+            id = "in-progress",
+            config = AssessmentConfig.Mixed(1),
+            questionAttempts = listOf(QuestionAttempt("in-progress-q", QuestionAnswerState.Unanswered)),
+            status = AssessmentStatus.IN_PROGRESS,
+            startedAt = Instant.parse("2026-08-29T00:00:00Z"),
+        )
+        val context = TestContext(
+            attempts = listOf(inProgress, completed),
+            questions = listOf(question("completed-q", "topic", "sub")),
+            topics = listOf(Topic("topic", "Kotlin")),
+            subtopics = listOf(Subtopic("sub", "topic", "Core")),
+        )
+
+        context.viewModel.refresh()
+        advanceUntilIdle()
+
+        // A contract violation must not take the whole dashboard down, and history must stay
+        // consistent with the snapshot's completed attempt count.
+        val content = content(context.viewModel)
+        assertEquals(1, content.completedAttemptCount)
+        assertEquals(listOf("completed"), content.history.map { it.attemptId })
     }
 
     @Test
@@ -294,6 +365,11 @@ private class FakeCurriculumRepository(
     private val subtopicsById = subtopics.associateBy(Subtopic::id)
     val topicLookupCalls = mutableMapOf<String, Int>()
     val subtopicLookupCalls = mutableMapOf<String, Int>()
+
+    fun resetLookupCounts() {
+        topicLookupCalls.clear()
+        subtopicLookupCalls.clear()
+    }
 
     override suspend fun getActiveTopics(): List<Topic> = error("ACTIVE lookup must not be used.")
     override suspend fun getActiveSubtopics(topicId: String): List<Subtopic> =

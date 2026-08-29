@@ -99,6 +99,7 @@ internal class ProgressScreenTest {
         onNodeWithText("21 correct answers").assertIsDisplayed()
         onNodeWithText("70% accuracy").assertIsDisplayed()
         onNodeWithText("Weak areas").assertIsDisplayed()
+        onNodeWithText("Topic performance").assertExists()
         onNodeWithText("State").assertIsDisplayed()
         onAllNodesWithText("Topic unavailable").assertCountEquals(3)
         onNodeWithText("Kotlin").assertIsDisplayed()
@@ -109,14 +110,19 @@ internal class ProgressScreenTest {
     }
 
     @Test
-    fun weakSectionIsAbsentWhenNoWeakAreasExist() = runComposeUiTest {
+    fun observationBasedSectionsAreAbsentWhenTheyHaveNoRows() = runComposeUiTest {
         setContent {
             MaterialTheme {
                 ProgressScreen(contentState(), {}, {}, { _, _ -> })
             }
         }
 
+        // Overall statistics survive a curriculum import that orphans historical questions,
+        // so the derived sections must disappear rather than leave dangling headers.
+        onNodeWithText("3 completed assessments").assertIsDisplayed()
         onNodeWithText("Weak areas").assertDoesNotExist()
+        onNodeWithText("Topic performance").assertDoesNotExist()
+        onNodeWithText("Assessment history").assertDoesNotExist()
     }
 
     @Test
@@ -154,6 +160,7 @@ internal class ProgressScreenTest {
             }
         }
 
+        onNodeWithText("Assessment history").assertIsDisplayed()
         onNodeWithText("Mixed Android Interview").assertIsDisplayed().performClick()
         onNodeWithText("Focused practice").assertIsDisplayed().performClick()
         onNodeWithText("Kotlin · Coroutines").assertIsDisplayed()

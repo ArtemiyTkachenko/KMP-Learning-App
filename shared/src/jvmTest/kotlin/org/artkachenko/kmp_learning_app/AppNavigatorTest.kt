@@ -1,12 +1,17 @@
 package org.artkachenko.kmp_learning_app
 
+import androidx.compose.runtime.saveable.SaverScope
 import androidx.navigation3.runtime.NavKey
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 internal class AppNavigatorTest {
+    /** Every value this saver produces is a String, which every host can store. */
+    private val allowingScope = SaverScope { true }
+
     private fun navigator(): AppNavigator =
         AppNavigator(
             AppTopLevelDestination.entries.associateWith { mutableListOf<NavKey>(it.route) },
@@ -81,6 +86,42 @@ internal class AppNavigatorTest {
             listOf<NavKey>(AppRoute.Interview, AppRoute.MixedInterviewAttempt("attempt")),
             navigator.backStack,
         )
+    }
+
+    @Test
+    fun onlyAnAreaRootOutsideTopicsHandsBackToTheOuterHandler() {
+        val navigator = navigator()
+
+        // NavDisplay consumes back itself while the area has a detail on top, so the outer
+        // handler must stay disabled there or the two would both fire.
+        assertFalse(navigator.canLeaveArea, "Topics at its root closes the app")
+        navigator.push(AppRoute.Topic("lifecycle"))
+        assertFalse(navigator.canLeaveArea, "a detail is NavDisplay's to pop")
+
+        listOf(
+            AppTopLevelDestination.INTERVIEW,
+            AppTopLevelDestination.PROGRESS,
+            AppTopLevelDestination.MISTAKES,
+        ).forEach { area ->
+            navigator.select(area)
+            assertTrue(navigator.canLeaveArea, "$area at its root should return to Topics")
+
+            navigator.push(AppRoute.ProgressTopic("kotlin"))
+            assertFalse(navigator.canLeaveArea, "$area with a detail is NavDisplay's to pop")
+            navigator.popBack()
+        }
+    }
+
+    @Test
+    fun theAreaSaverRoundTripsAndSurvivesAnUnknownName() {
+        AppTopLevelDestination.entries.forEach { destination ->
+            val saved = with(AppTopLevelDestinationSaver) { allowingScope.save(destination) }
+            assertEquals(destination, AppTopLevelDestinationSaver.restore(requireNotNull(saved)))
+        }
+
+        // A removed or renamed area restores as null so rememberSaveable falls back to its
+        // initial value; valueOf would throw during restoration instead.
+        assertNull(AppTopLevelDestinationSaver.restore("RETIRED_AREA"))
     }
 
     @Test

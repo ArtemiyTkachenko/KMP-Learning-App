@@ -14,9 +14,11 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingLaunch
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewDestination
 import org.artkachenko.kmp_learning_app.mixed_interview.InterviewStartDestination
@@ -47,16 +49,8 @@ fun App() {
 private fun AppShell(
     modifier: Modifier = Modifier,
 ) {
-    // One stack per area, each remembered at its own call site so saved state does not collide.
-    val navigator = rememberAppNavigator(
-        topics = rememberNavBackStack(appNavigationSavedStateConfiguration, AppRoute.Topics),
-        interview = rememberNavBackStack(appNavigationSavedStateConfiguration, AppRoute.Interview),
-        progress = rememberNavBackStack(appNavigationSavedStateConfiguration, AppRoute.Progress),
-        mistakes = rememberNavBackStack(
-            appNavigationSavedStateConfiguration,
-            AppRoute.MistakeReview,
-        ),
-    )
+    // Owns one saveable back stack per area; see rememberAppNavigator for the explicit call sites.
+    val navigator = rememberAppNavigator()
     val backStack = navigator.backStack
     fun popBack() {
         navigator.popBack()
@@ -73,6 +67,22 @@ private fun AppShell(
         if (showsNavigation) shellViewModel.refresh()
     }
     val badges = mapOf(AppTopLevelDestination.MISTAKES to unresolvedMistakeCount)
+
+    // NavDisplay enables its own back handler only while the stack it was given has a previous
+    // entry, so at an area's root back reaches nothing and the host closes the app. This handler
+    // covers exactly that case. It is called unconditionally and gated by isBackEnabled, because
+    // the library invokes the last-composed *enabled* handler and a conditional call would reorder
+    // composition. NavDisplay's handler is composed deeper, and canLeaveArea is true exactly when
+    // NavDisplay's is disabled, so the two are mutually exclusive.
+    val areaBackState = rememberNavigationEventState(
+        currentInfo = NavigationEventInfo.None,
+        backInfo = if (navigator.canLeaveArea) listOf(NavigationEventInfo.None) else emptyList(),
+    )
+    NavigationBackHandler(
+        state = areaBackState,
+        isBackEnabled = navigator.canLeaveArea,
+        onBackCompleted = { navigator.popBack() },
+    )
 
     AppNavigationScaffold(
         selected = navigator.area,

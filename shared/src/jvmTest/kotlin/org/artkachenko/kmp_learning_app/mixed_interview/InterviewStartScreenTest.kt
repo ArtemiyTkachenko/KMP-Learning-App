@@ -1,12 +1,17 @@
 package org.artkachenko.kmp_learning_app.mixed_interview
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.runComposeUiTest
+import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -69,5 +74,26 @@ internal class InterviewStartScreenTest {
 
         onNodeWithText("Latest").assertIsDisplayed()
         onNodeWithText("Best").assertDoesNotExist()
+    }
+
+    @Test
+    fun historyRemainsReachableInACompactHeight() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                Box(Modifier.height(320.dp)) {
+                    InterviewStartScreen(
+                        onStartMixedInterview = {},
+                        history = InterviewHistoryUiModel(
+                            attemptCount = 4,
+                            latest = InterviewAttemptUiModel("latest", 5, 20, 25.0),
+                            best = InterviewAttemptUiModel("best", 18, 20, 90.0),
+                        ),
+                    )
+                }
+            }
+        }
+
+        onNodeWithText("Best").performScrollTo().assertIsDisplayed()
+        onNodeWithText("18 of 20 correct").assertIsDisplayed()
     }
 }

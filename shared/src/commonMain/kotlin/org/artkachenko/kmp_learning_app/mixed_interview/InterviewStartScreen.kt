@@ -3,10 +3,12 @@ package org.artkachenko.kmp_learning_app.mixed_interview
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -48,57 +50,67 @@ internal fun InterviewStartScreen(
     history: InterviewHistoryUiModel? = null,
     onOpenResult: (String) -> Unit = {},
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 20.dp, vertical = 24.dp),
+    // Scrollable rather than a fixed Column: with both a latest and a best result the heading,
+    // invitation, explanation, and two record cards overflow a compact window or a large font
+    // scale, and the lower cards were then unreachable.
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(
-            text = stringResource(Res.string.mixed_interview_title),
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-            ),
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+        item {
+            Text(
+                text = stringResource(Res.string.mixed_interview_title),
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                ),
             ) {
-                Text(
-                    text = stringResource(
-                        Res.string.mixed_interview_question_count,
-                        MixedInterviewDefaults.QuestionCount,
-                    ),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = stringResource(Res.string.mixed_interview_description),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-                Button(
-                    onClick = onStartMixedInterview,
-                    modifier = Modifier.fillMaxWidth().testTag(InterviewStartButtonTag),
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text(text = stringResource(Res.string.mixed_interview_start))
+                    Text(
+                        text = stringResource(
+                            Res.string.mixed_interview_question_count,
+                            MixedInterviewDefaults.QuestionCount,
+                        ),
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = stringResource(Res.string.mixed_interview_description),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                    Button(
+                        onClick = onStartMixedInterview,
+                        modifier = Modifier.fillMaxWidth().testTag(InterviewStartButtonTag),
+                    ) {
+                        Text(text = stringResource(Res.string.mixed_interview_start))
+                    }
                 }
             }
         }
-        Text(
-            text = stringResource(Res.string.mixed_interview_how_it_works),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        item {
+            Text(
+                text = stringResource(Res.string.mixed_interview_how_it_works),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         if (history != null) {
-            InterviewRecord(history = history, onOpenResult = onOpenResult)
+            item {
+                InterviewRecord(history = history, onOpenResult = onOpenResult)
+            }
         }
     }
 }

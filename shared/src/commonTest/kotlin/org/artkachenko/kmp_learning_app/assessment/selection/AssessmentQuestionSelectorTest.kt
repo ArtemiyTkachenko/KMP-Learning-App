@@ -3,6 +3,7 @@ package org.artkachenko.kmp_learning_app.assessment.selection
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
@@ -304,6 +305,7 @@ internal class AssessmentQuestionSelectorTest {
                 AnswerOption("${id}_answer_a", "Answer A"),
                 AnswerOption("${id}_answer_b", "Answer B"),
             ),
+            selectionMode = AnswerSelectionMode.SINGLE,
             correctAnswerIds = listOf("${id}_answer_a"),
             explanation = "$id explanation.",
             sources = listOf(

@@ -1,6 +1,7 @@
 package org.artkachenko.kmp_learning_app.data.local.curriculum.repository
 
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
@@ -38,6 +39,7 @@ internal fun QuestionEntity.toDomain(
         subtopicId = subtopicId,
         text = text,
         answers = answers.map { it.toDomain() },
+        selectionMode = AnswerSelectionMode.valueOf(selectionMode),
         correctAnswerIds = correctAnswerIds,
         explanation = explanation,
         sources = sources.map { it.toDomain() },

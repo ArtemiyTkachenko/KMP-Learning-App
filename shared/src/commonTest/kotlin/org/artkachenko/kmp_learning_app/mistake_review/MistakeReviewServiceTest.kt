@@ -17,6 +17,7 @@ import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentReposito
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
@@ -347,6 +348,7 @@ private fun question(
         subtopicId = "coroutines",
         text = "Question $id",
         answers = listOf(AnswerOption("${id}_a", "Answer A"), AnswerOption("${id}_b", "Answer B")),
+        selectionMode = AnswerSelectionMode.SINGLE,
         correctAnswerIds = listOf("${id}_a"),
         explanation = "Explanation $id",
         sources = listOf(SourceReference("Source $id", "https://example.com/$id")),

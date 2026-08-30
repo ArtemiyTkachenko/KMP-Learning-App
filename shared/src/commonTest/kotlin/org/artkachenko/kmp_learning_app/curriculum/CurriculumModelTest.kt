@@ -85,6 +85,7 @@ internal class CurriculumModelTest {
         subtopicId = subtopicId,
         text = "Which statement is correct?",
         answers = answers,
+        selectionMode = AnswerSelectionMode.SINGLE,
         correctAnswerIds = correctAnswerIds,
         explanation = "The selected answer matches the documented behavior.",
         sources = listOf(

@@ -20,6 +20,7 @@ import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentReposito
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
@@ -312,6 +313,7 @@ internal class AssessmentRetakeServiceTest {
                 AnswerOption(id = "${id}_a", text = "A"),
                 AnswerOption(id = "${id}_b", text = "B"),
             ),
+            selectionMode = AnswerSelectionMode.SINGLE,
             correctAnswerIds = listOf("${id}_a"),
             explanation = "$id explanation.",
             sources = listOf(

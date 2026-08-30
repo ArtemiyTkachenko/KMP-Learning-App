@@ -14,6 +14,7 @@ import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
@@ -150,6 +151,7 @@ internal class AssessmentReviewLoaderTest {
             AnswerOption("b", "Answer B"),
             AnswerOption("c", "Answer C"),
         ),
+        selectionMode = AnswerSelectionMode.MULTIPLE,
         correctAnswerIds = listOf("a", "c"),
         explanation = "Explanation $id",
         sources = listOf(

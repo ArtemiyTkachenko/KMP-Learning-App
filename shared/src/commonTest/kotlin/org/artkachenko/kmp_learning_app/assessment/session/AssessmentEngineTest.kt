@@ -20,6 +20,7 @@ import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
@@ -593,6 +594,7 @@ internal class AssessmentEngineTest {
                 AnswerOption("${id}_b", "Answer B"),
                 AnswerOption("${id}_c", "Answer C"),
             ),
+            selectionMode = AnswerSelectionMode.MULTIPLE,
             correctAnswerIds = correctAnswerIds,
             explanation = "$id explanation.",
             sources = listOf(

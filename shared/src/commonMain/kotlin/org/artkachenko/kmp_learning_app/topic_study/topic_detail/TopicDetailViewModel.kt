@@ -9,10 +9,12 @@ import kotlinx.coroutines.launch
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
 
 internal class TopicDetailViewModel(
     private val topicId: String,
     private val curriculumRepository: CurriculumRepository,
+    private val learningProgressService: LearningProgressService,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<TopicDetailUiState>(TopicDetailUiState.Loading)
     val uiState: StateFlow<TopicDetailUiState> = _uiState.asStateFlow()
@@ -55,13 +57,30 @@ internal class TopicDetailViewModel(
                     .firstOrNull { it.id == topicId }
                     ?: return@runCatching TopicDetailUiState.NotFound
 
+                // Study and progress were separate views of the same topic: this screen listed
+                // what is available to practise without ever saying how the learner is doing on
+                // it. The snapshot is consumed as-is, never recomputed here.
+                val snapshot = learningProgressService.load()
+                val topicAccuracy = snapshot.topics
+                    .firstOrNull { it.topicId == topic.id }
+                    ?.percentage
+                val subtopicAccuracy = snapshot.subtopics
+                    .filter { it.topicId == topic.id }
+                    .associate { it.subtopicId to it.percentage }
+
                 val subtopics = curriculumRepository.getActiveSubtopics(topic.id)
                 val questions = curriculumRepository.getActiveQuestionsByTopic(topic.id)
                 val questionCounts = questions.groupingBy { it.subtopicId }.eachCount()
                 val populatedSubtopics = subtopics.mapNotNull { subtopic ->
                     questionCounts[subtopic.id]
                         ?.takeIf { it > 0 }
-                        ?.let { count -> SubtopicPracticeItem(subtopic, count) }
+                        ?.let { count ->
+                            SubtopicPracticeItem(
+                                subtopic = subtopic,
+                                questionCount = count,
+                                accuracyPercentage = subtopicAccuracy[subtopic.id],
+                            )
+                        }
                 }
 
                 if (questions.isEmpty()) {
@@ -71,6 +90,7 @@ internal class TopicDetailViewModel(
                         topic = topic,
                         topicQuestionCount = questions.size,
                         subtopics = populatedSubtopics,
+                        accuracyPercentage = topicAccuracy,
                     )
                 }
             }.onSuccess { state ->

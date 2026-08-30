@@ -19,11 +19,13 @@ import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumReposito
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
 import org.artkachenko.kmp_learning_app.learning_progress.TopicPerformance
 import org.artkachenko.kmp_learning_app.learning_progress.WeakArea
+import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
 
 internal class ProgressViewModel(
     private val learningProgressService: LearningProgressService,
     private val assessmentRepository: AssessmentRepository,
     private val curriculumRepository: CurriculumRepository,
+    private val mistakeReviewService: MistakeReviewService,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<ProgressUiState>(ProgressUiState.Loading)
     val uiState: StateFlow<ProgressUiState> = _uiState.asStateFlow()
@@ -47,12 +49,17 @@ internal class ProgressViewModel(
         val snapshot = learningProgressService.load()
         val completedAttempts = assessmentRepository.getCompletedAttempts()
         if (snapshot.completedAttemptCount == 0) return ProgressUiState.Empty
+        // Reuses the mistake queue's own latest-occurrence rule instead of re-deriving it here,
+        // and asks only for the size so no review content is reconstructed. Handing over the
+        // history already loaded above keeps this refresh to two repository reads, not three.
+        val unresolvedMistakeCount = mistakeReviewService.countUnresolved(completedAttempts)
 
         return ProgressUiState.Content(
             completedAttemptCount = snapshot.completedAttemptCount,
             answeredQuestionCount = snapshot.answeredQuestionCount,
             correctAnswerCount = snapshot.correctAnswerCount,
             percentage = snapshot.percentage,
+            unresolvedMistakeCount = unresolvedMistakeCount,
             weakAreas = snapshot.weakAreas.map(::toUiModel),
             topics = snapshot.topics.map(::toUiModel),
             history = mapHistory(completedAttempts),

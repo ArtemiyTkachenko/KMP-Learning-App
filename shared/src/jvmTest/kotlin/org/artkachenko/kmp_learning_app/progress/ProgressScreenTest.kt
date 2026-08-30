@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -22,6 +23,7 @@ internal class ProgressScreenTest {
                     state = ProgressUiState.Loading,
                     onBack = {},
                     onRetry = {},
+                    onBrowseTopics = {},
                     onReviewMistakes = {},
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
@@ -37,7 +39,7 @@ internal class ProgressScreenTest {
     fun emptyStateRendersGuidance() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, { _, _ -> })
+                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, {}, { _, _ -> })
             }
         }
         onNodeWithText(
@@ -50,7 +52,7 @@ internal class ProgressScreenTest {
         var retryCount = 0
         setContent {
             MaterialTheme {
-                ProgressScreen(ProgressUiState.Error, {}, { retryCount += 1 }, {}, {}, { _, _ -> })
+                ProgressScreen(ProgressUiState.Error, {}, { retryCount += 1 }, {}, {}, {}, { _, _ -> })
             }
         }
         onNodeWithText("Progress could not be loaded.").assertIsDisplayed()
@@ -87,6 +89,7 @@ internal class ProgressScreenTest {
                     ),
                     onBack = {},
                     onRetry = {},
+                    onBrowseTopics = {},
                     onReviewMistakes = {},
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
@@ -94,10 +97,15 @@ internal class ProgressScreenTest {
             }
         }
 
-        onNodeWithText("3 completed assessments").assertIsDisplayed()
-        onNodeWithText("30 questions answered").assertIsDisplayed()
-        onNodeWithText("21 correct answers").assertIsDisplayed()
-        onNodeWithText("70% accuracy").assertIsDisplayed()
+        // Overall counts are label/value rows now, so assert the values too: asserting only the
+        // labels would pass no matter what numbers the state carried.
+        // Pair each value with its own label: two metrics can legitimately share a value, so a
+        // bare onNodeWithText("3") is both ambiguous and unable to say which row it checked.
+        onNode(hasText("Completed assessments") and hasText("3")).assertIsDisplayed()
+        onNode(hasText("Questions answered") and hasText("30")).assertIsDisplayed()
+        onNode(hasText("Correct answers") and hasText("21")).assertIsDisplayed()
+        onNodeWithText("accuracy overall").assertIsDisplayed()
+        onAllNodesWithText("70%").assertCountEquals(1)
         onNodeWithText("Weak areas").assertIsDisplayed()
         onNodeWithText("State").assertIsDisplayed()
         onNodeWithText("66.7%").assertExists()
@@ -119,6 +127,7 @@ internal class ProgressScreenTest {
                     ),
                     onBack = {},
                     onRetry = {},
+                    onBrowseTopics = {},
                     onReviewMistakes = {},
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
@@ -129,7 +138,8 @@ internal class ProgressScreenTest {
         onNodeWithText("Topic performance").assertExists()
         onNodeWithText("Kotlin").assertIsDisplayed()
         onNodeWithText("14 / 20 correct").assertExists()
-        onNodeWithText("70%").assertExists()
+        // The overall headline also reads 70%, so both nodes are expected here.
+        onAllNodesWithText("70%").assertCountEquals(2)
         onNodeWithText("Topic unavailable").assertExists()
         onNodeWithText("33.3%").assertExists()
     }
@@ -138,13 +148,13 @@ internal class ProgressScreenTest {
     fun observationBasedSectionsAreAbsentWhenTheyHaveNoRows() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                ProgressScreen(contentState(), {}, {}, {}, {}, { _, _ -> })
+                ProgressScreen(contentState(), {}, {}, {}, {}, {}, { _, _ -> })
             }
         }
 
         // Overall statistics survive a curriculum import that orphans historical questions,
         // so the derived sections must disappear rather than leave dangling headers.
-        onNodeWithText("3 completed assessments").assertIsDisplayed()
+        onNodeWithText("Completed assessments").assertIsDisplayed()
         onNodeWithText("Weak areas").assertDoesNotExist()
         onNodeWithText("Topic performance").assertDoesNotExist()
         onNodeWithText("Assessment history").assertDoesNotExist()
@@ -156,9 +166,10 @@ internal class ProgressScreenTest {
         setContent {
             MaterialTheme {
                 ProgressScreen(
-                    state = contentState(),
+                    state = contentState(unresolvedMistakeCount = 3),
                     onBack = {},
                     onRetry = {},
+                    onBrowseTopics = {},
                     onReviewMistakes = { reviewCount += 1 },
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
@@ -166,7 +177,7 @@ internal class ProgressScreenTest {
             }
         }
 
-        onNodeWithText("Review mistakes").assertIsDisplayed().performClick()
+        onNodeWithText("Review mistakes (3)").assertIsDisplayed().performClick()
 
         assertEquals(1, reviewCount)
     }
@@ -175,12 +186,46 @@ internal class ProgressScreenTest {
     fun reviewMistakesActionIsAbsentWhenNoAssessmentHasBeenCompleted() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, { _, _ -> })
+                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, {}, { _, _ -> })
             }
         }
 
         // With zero completed assessments there cannot be an unresolved completed mistake.
-        onNodeWithText("Review mistakes").assertDoesNotExist()
+        onNodeWithText("Review mistakes", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun nothingUnresolvedReportsTheAchievementInsteadOfOfferingTheAction() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    state = contentState(unresolvedMistakeCount = 0),
+                    onBack = {},
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onReviewMistakes = {},
+                    onTopicClick = {},
+                    onHistoryClick = { _, _ -> },
+                )
+            }
+        }
+
+        onNodeWithText("No unresolved mistakes — nice work.").assertIsDisplayed()
+        onNodeWithText("Review mistakes", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun emptyProgressOffersAWayToStartLearning() = runComposeUiTest {
+        var browsed = 0
+        setContent {
+            MaterialTheme {
+                ProgressScreen(ProgressUiState.Empty, {}, {}, { browsed += 1 }, {}, {}, { _, _ -> })
+            }
+        }
+
+        onNodeWithText("Browse topics").assertIsDisplayed().performClick()
+
+        assertEquals(1, browsed)
     }
 
     @Test
@@ -197,6 +242,7 @@ internal class ProgressScreenTest {
                     ),
                     onBack = {},
                     onRetry = {},
+                    onBrowseTopics = {},
                     onReviewMistakes = {},
                     onTopicClick = clicked::add,
                     onHistoryClick = { _, _ -> },
@@ -239,6 +285,7 @@ internal class ProgressScreenTest {
                     contentState(history = history),
                     onBack = {},
                     onRetry = {},
+                    onBrowseTopics = {},
                     onReviewMistakes = {},
                     onTopicClick = {},
                     onHistoryClick = { type, id -> clicks += type to id },
@@ -289,6 +336,7 @@ internal class ProgressScreenTest {
                     ),
                     onBack = {},
                     onRetry = {},
+                    onBrowseTopics = {},
                     onReviewMistakes = {},
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
@@ -300,14 +348,10 @@ internal class ProgressScreenTest {
         onNodeWithText("Subtopic unavailable").assertIsDisplayed()
     }
 
-    @Test
-    fun percentageFormattingUsesWholeNumbersOrOneDecimalPlace() {
-        assertEquals("75", formatProgressPercentage(75.0))
-        assertEquals("66.7", formatProgressPercentage(66.666))
-    }
 }
 
 private fun contentState(
+    unresolvedMistakeCount: Int = 0,
     weakAreas: List<WeakAreaUiModel> = emptyList(),
     topics: List<ProgressTopicUiModel> = emptyList(),
     history: List<CompletedAttemptUiModel> = emptyList(),
@@ -317,6 +361,7 @@ private fun contentState(
         answeredQuestionCount = 30,
         correctAnswerCount = 21,
         percentage = 70.0,
+        unresolvedMistakeCount = unresolvedMistakeCount,
         weakAreas = weakAreas,
         topics = topics,
         history = history,

@@ -26,6 +26,9 @@ internal fun ProgressDestination(
         state = state,
         onBack = onBack,
         onRetry = viewModel::refresh,
+        // Progress is always pushed from the topic browser, so leaving is how a learner gets
+        // there. Naming it separately keeps the button's label honest if that ever changes.
+        onBrowseTopics = onBack,
         onReviewMistakes = onReviewMistakes,
         onTopicClick = onOpenTopic,
         onHistoryClick = { assessmentType, attemptId ->

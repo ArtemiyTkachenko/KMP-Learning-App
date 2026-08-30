@@ -1,9 +1,11 @@
 package org.artkachenko.kmp_learning_app.topic_study.topics
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,13 +41,11 @@ import kmp_learning_app.shared.generated.resources.topic_browser_loading
 import kmp_learning_app.shared.generated.resources.topic_browser_title
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewDefaults
-import org.jetbrains.compose.resources.stringResource
-import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.BorderStroke
+import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
+import org.jetbrains.compose.resources.stringResource
 
 internal const val TopicBrowserLoadingTag = "topic_browser_loading"
 
@@ -66,7 +66,7 @@ internal fun TopicBrowserScreen(
         Text(
             text = stringResource(Res.string.topic_browser_heading),
             style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground,
+            color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.SemiBold,
         )
         Spacer(modifier = Modifier.height(16.dp))
@@ -85,7 +85,7 @@ internal fun TopicBrowserScreen(
         Text(
             text = stringResource(Res.string.topic_browser_title),
             style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onBackground,
+            color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.SemiBold,
         )
         Spacer(modifier = Modifier.height(12.dp))

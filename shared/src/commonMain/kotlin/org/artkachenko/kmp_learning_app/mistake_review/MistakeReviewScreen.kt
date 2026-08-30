@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app.mistake_review
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.mistake_review_description
 import kmp_learning_app.shared.generated.resources.mistake_review_empty
+import kmp_learning_app.shared.generated.resources.mistake_review_empty_action
 import kmp_learning_app.shared.generated.resources.mistake_review_empty_detail
 import kmp_learning_app.shared.generated.resources.mistake_review_error
 import kmp_learning_app.shared.generated.resources.mistake_review_loading
@@ -21,12 +23,14 @@ import kmp_learning_app.shared.generated.resources.mistake_review_title
 import org.artkachenko.kmp_learning_app.assessment_review.MissingReviewQuestion
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionCard
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
-import org.jetbrains.compose.resources.stringResource
-import androidx.compose.foundation.layout.PaddingValues
+import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.ScreenAction
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
+import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
+import org.jetbrains.compose.resources.stringResource
 
 internal const val MistakeReviewLoadingTag = "mistake_review_loading"
 
@@ -35,6 +39,7 @@ internal fun MistakeReviewScreen(
     state: MistakeReviewUiState,
     onBack: () -> Unit,
     onRetry: () -> Unit,
+    onBrowseTopics: () -> Unit,
     onSourceClick: (String) -> Unit,
     failedSourceUrl: String? = null,
     modifier: Modifier = Modifier,
@@ -47,10 +52,14 @@ internal fun MistakeReviewScreen(
                 testTag = MistakeReviewLoadingTag,
                 modifier = Modifier.weight(1f),
             )
-            MistakeReviewUiState.Empty -> ScreenMessage(
+            MistakeReviewUiState.Empty -> ScreenAction(
                 message = stringResource(Res.string.mistake_review_empty),
+                actionLabel = stringResource(Res.string.mistake_review_empty_action),
+                onAction = onBrowseTopics,
                 modifier = Modifier.weight(1f),
                 detail = stringResource(Res.string.mistake_review_empty_detail),
+                icon = AppIcons.CheckCircle,
+                iconTint = AppThemeExtras.semanticColors.correct,
             )
             MistakeReviewUiState.Error -> ScreenError(
                 message = stringResource(Res.string.mistake_review_error),

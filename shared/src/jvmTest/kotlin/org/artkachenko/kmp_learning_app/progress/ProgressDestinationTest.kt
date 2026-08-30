@@ -28,11 +28,13 @@ import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
+import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
+import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 internal class ProgressDestinationTest {
@@ -64,14 +66,14 @@ internal class ProgressDestinationTest {
 
         owner.moveTo(Lifecycle.State.RESUMED)
         waitForIdle()
-        onNodeWithText("1 completed assessments").assertIsDisplayed()
+        onNodeWithText("Completed assessments").assertIsDisplayed()
 
         repository.attempts = listOf(mixedAttempt("second"), mixedAttempt("first"))
         owner.moveTo(Lifecycle.State.CREATED)
         owner.moveTo(Lifecycle.State.RESUMED)
         waitForIdle()
 
-        onNodeWithText("2 completed assessments").assertIsDisplayed()
+        onNodeWithText("Completed assessments").assertIsDisplayed()
         assertEquals(2, onAllNodesWithText("Mixed Android Interview").fetchSemanticsNodes().size)
     }
 
@@ -130,6 +132,7 @@ private fun viewModel(repository: AssessmentRepository): ProgressViewModel {
         learningProgressService = LearningProgressService(repository, curriculum),
         assessmentRepository = repository,
         curriculumRepository = curriculum,
+        mistakeReviewService = MistakeReviewService(repository, AssessmentReviewLoader(curriculum)),
     )
 }
 

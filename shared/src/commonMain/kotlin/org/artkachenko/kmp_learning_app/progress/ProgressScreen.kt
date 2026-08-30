@@ -1,50 +1,64 @@
 package org.artkachenko.kmp_learning_app.progress
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
-import kmp_learning_app.shared.generated.resources.mistake_review_entry
+import kmp_learning_app.shared.generated.resources.mistake_review_entry_count
+import kmp_learning_app.shared.generated.resources.mistake_review_none
 import kmp_learning_app.shared.generated.resources.mixed_interview_title
-import kmp_learning_app.shared.generated.resources.progress_accuracy
-import kmp_learning_app.shared.generated.resources.progress_completed_attempts
-import kmp_learning_app.shared.generated.resources.progress_correct_answers
+import kmp_learning_app.shared.generated.resources.progress_accuracy_caption
+import kmp_learning_app.shared.generated.resources.progress_completed_attempts_label
+import kmp_learning_app.shared.generated.resources.progress_correct_answers_label
 import kmp_learning_app.shared.generated.resources.progress_empty
+import kmp_learning_app.shared.generated.resources.progress_empty_action
 import kmp_learning_app.shared.generated.resources.progress_error
 import kmp_learning_app.shared.generated.resources.progress_focused_practice
 import kmp_learning_app.shared.generated.resources.progress_focused_subtopic_scope
 import kmp_learning_app.shared.generated.resources.progress_history
 import kmp_learning_app.shared.generated.resources.progress_loading
 import kmp_learning_app.shared.generated.resources.progress_overall
-import kmp_learning_app.shared.generated.resources.progress_percentage
-import kmp_learning_app.shared.generated.resources.progress_questions_answered
+import kmp_learning_app.shared.generated.resources.progress_questions_answered_label
 import kmp_learning_app.shared.generated.resources.progress_score
 import kmp_learning_app.shared.generated.resources.progress_subtopic_unavailable
 import kmp_learning_app.shared.generated.resources.progress_title
 import kmp_learning_app.shared.generated.resources.progress_topic_performance
 import kmp_learning_app.shared.generated.resources.progress_topic_unavailable
 import kmp_learning_app.shared.generated.resources.progress_weak_areas
-import org.jetbrains.compose.resources.stringResource
-import androidx.compose.foundation.layout.PaddingValues
+import org.artkachenko.kmp_learning_app.ui.AccuracyHeadline
+import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.MetricRow
+import org.artkachenko.kmp_learning_app.ui.PerformanceCard
+import org.artkachenko.kmp_learning_app.ui.ScreenAction
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
+import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
+import org.jetbrains.compose.resources.stringResource
 
 internal const val ProgressLoadingTag = "progress_loading"
 
@@ -59,6 +73,7 @@ internal fun ProgressScreen(
     state: ProgressUiState,
     onBack: () -> Unit,
     onRetry: () -> Unit,
+    onBrowseTopics: () -> Unit,
     onReviewMistakes: () -> Unit,
     onTopicClick: (String) -> Unit,
     onHistoryClick: (CompletedAssessmentType, String) -> Unit,
@@ -72,9 +87,12 @@ internal fun ProgressScreen(
                 testTag = ProgressLoadingTag,
                 modifier = Modifier.weight(1f),
             )
-            ProgressUiState.Empty -> ScreenMessage(
+            ProgressUiState.Empty -> ScreenAction(
                 message = stringResource(Res.string.progress_empty),
+                actionLabel = stringResource(Res.string.progress_empty_action),
+                onAction = onBrowseTopics,
                 modifier = Modifier.weight(1f),
+                icon = AppIcons.Insights,
             )
             ProgressUiState.Error -> ScreenError(
                 message = stringResource(Res.string.progress_error),
@@ -112,14 +130,10 @@ private fun ProgressContent(
             OverallSummary(state)
         }
         item {
-            // The queue owns its own empty state, so the dashboard never computes a mistake count
-            // just to decide whether to offer this action.
-            OutlinedButton(
-                onClick = onReviewMistakes,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(Res.string.mistake_review_entry))
-            }
+            ReviewMistakesAction(
+                unresolvedCount = state.unresolvedMistakeCount,
+                onReviewMistakes = onReviewMistakes,
+            )
         }
         if (state.weakAreas.isNotEmpty()) {
             item {
@@ -152,24 +166,90 @@ private fun ProgressContent(
     }
 }
 
+/**
+ * Accuracy is the headline of the whole app, so it leads at display size with a meter behind it;
+ * the counts that support it become a scannable label/value column instead of four equal lines.
+ */
 @Composable
 private fun OverallSummary(state: ProgressUiState.Content) {
-    Card(Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
         Column(
             Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(stringResource(Res.string.progress_completed_attempts, state.completedAttemptCount))
-            Text(stringResource(Res.string.progress_questions_answered, state.answeredQuestionCount))
-            Text(stringResource(Res.string.progress_correct_answers, state.correctAnswerCount))
+            AccuracyHeadline(
+                percentage = state.percentage,
+                caption = stringResource(Res.string.progress_accuracy_caption),
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                MetricRow(
+                    label = stringResource(Res.string.progress_completed_attempts_label),
+                    value = state.completedAttemptCount.toString(),
+                )
+                MetricRow(
+                    label = stringResource(Res.string.progress_questions_answered_label),
+                    value = state.answeredQuestionCount.toString(),
+                )
+                MetricRow(
+                    label = stringResource(Res.string.progress_correct_answers_label),
+                    value = state.correctAnswerCount.toString(),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Carries the count so the action states what it is worth opening for. With nothing unresolved it
+ * stops being a call to action and reports the achievement instead.
+ */
+@Composable
+private fun ReviewMistakesAction(
+    unresolvedCount: Int,
+    onReviewMistakes: () -> Unit,
+) {
+    val semantic = AppThemeExtras.semanticColors
+    if (unresolvedCount == 0) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = AppIcons.CheckCircle,
+                contentDescription = null,
+                tint = semantic.correct,
+                modifier = Modifier.size(20.dp),
+            )
             Text(
-                stringResource(
-                    Res.string.progress_accuracy,
-                    formatProgressPercentage(state.percentage),
-                ),
-                fontWeight = FontWeight.SemiBold,
+                text = stringResource(Res.string.mistake_review_none),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        return
+    }
+
+    OutlinedButton(
+        onClick = onReviewMistakes,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Icon(
+            imageVector = AppIcons.Warning,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+        )
+        Text(
+            text = stringResource(Res.string.mistake_review_entry_count, unresolvedCount),
+            modifier = Modifier.padding(start = 8.dp),
+        )
     }
 }
 
@@ -192,6 +272,7 @@ private fun WeakAreaCard(area: WeakAreaUiModel) {
         correctCount = area.correctCount,
         answeredCount = area.answeredCount,
         percentage = area.percentage,
+        isWeak = true,
     )
 }
 
@@ -209,6 +290,7 @@ private fun TopicPerformanceCard(
         modifier = Modifier
             .testTag(progressTopicCardTag(topic.topicId))
             .clickable(onClick = onClick),
+        showChevron = true,
     )
 }
 
@@ -217,40 +299,24 @@ private fun HistoryCard(
     attempt: CompletedAttemptUiModel,
     onClick: () -> Unit,
 ) {
-    Card(
+    PerformanceCard(
+        title = when (attempt.assessmentType) {
+            CompletedAssessmentType.MIXED -> stringResource(Res.string.mixed_interview_title)
+            CompletedAssessmentType.FOCUSED -> stringResource(Res.string.progress_focused_practice)
+        },
+        detail = stringResource(
+            Res.string.progress_score,
+            attempt.correctAnswers,
+            attempt.totalQuestions,
+        ),
+        percentage = attempt.percentage,
         modifier = Modifier
-            .fillMaxWidth()
             .testTag(progressHistoryCardTag(attempt.attemptId))
             .clickable(onClick = onClick),
-    ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = when (attempt.assessmentType) {
-                    CompletedAssessmentType.MIXED -> stringResource(Res.string.mixed_interview_title)
-                    CompletedAssessmentType.FOCUSED ->
-                        stringResource(Res.string.progress_focused_practice)
-                },
-                style = MaterialTheme.typography.titleMedium,
-            )
-            focusedScopeLabel(attempt.focusedScope)?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium)
-            }
-            Text(
-                stringResource(
-                    Res.string.progress_score,
-                    attempt.correctAnswers,
-                    attempt.totalQuestions,
-                ),
-            )
-            Text(
-                stringResource(
-                    Res.string.progress_percentage,
-                    formatProgressPercentage(attempt.percentage),
-                ),
-            )
-            Text(attempt.completedAtText, style = MaterialTheme.typography.bodySmall)
-        }
-    }
+        subtitle = focusedScopeLabel(attempt.focusedScope),
+        caption = attempt.completedAtText,
+        showChevron = true,
+    )
 }
 
 @Composable

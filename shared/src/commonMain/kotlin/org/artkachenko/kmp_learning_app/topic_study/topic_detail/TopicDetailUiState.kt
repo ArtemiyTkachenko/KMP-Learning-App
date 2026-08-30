@@ -9,6 +9,8 @@ internal sealed interface TopicDetailUiState {
         val topic: Topic,
         val topicQuestionCount: Int,
         val subtopics: List<SubtopicPracticeItem>,
+        /** Observed accuracy for the whole topic, or null when it was never answered. */
+        val accuracyPercentage: Double? = null,
     ) : TopicDetailUiState
 
     data class NoQuestions(

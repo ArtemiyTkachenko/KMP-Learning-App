@@ -45,7 +45,7 @@ internal class CurriculumLocalDataPathTest {
             assertEquals("activity_lifecycle", lifecycleSubtopics.first().id)
 
             val lifecycleQuestions = repository.getActiveQuestionsByTopic("lifecycle_navigation")
-            assertEquals(13, lifecycleQuestions.size)
+            assertEquals(20, lifecycleQuestions.size)
             assertEquals("activity_lifecycle_001", lifecycleQuestions.first().id)
 
             val question = repository.getQuestionById("activity_lifecycle_001")
@@ -58,7 +58,7 @@ internal class CurriculumLocalDataPathTest {
             assertEquals(listOf("activity_lifecycle_001_b"), question.correctAnswerIds)
             assertEquals(1, question.sources.size)
             assertEquals("The Activity Lifecycle", question.sources.first().title)
-            assertEquals(180, database.curriculumDao().countQuestions())
+            assertEquals(270, database.curriculumDao().countQuestions())
         }
     }
 
@@ -97,10 +97,10 @@ internal class CurriculumLocalDataPathTest {
                 RowCounts(
                     topics = 17,
                     subtopics = 361,
-                    questions = 180,
-                    answerOptions = 720,
-                    correctAnswers = 201,
-                    questionSources = 204,
+                    questions = 270,
+                    answerOptions = 1_080,
+                    correctAnswers = 308,
+                    questionSources = 294,
                 ),
                 database.curriculumDao().countRows(),
             )

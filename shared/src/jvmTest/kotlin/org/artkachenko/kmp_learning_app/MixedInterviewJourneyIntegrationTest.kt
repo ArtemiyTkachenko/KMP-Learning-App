@@ -57,6 +57,7 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.curriculumDataModu
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImportResult
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImporter
 import org.artkachenko.kmp_learning_app.data.local.curriculum.repository.LocalCurriculumRepository
+import org.artkachenko.kmp_learning_app.mixed_interview.InterviewStartButtonTag
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewDefaults
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedResultPracticeAgainTag
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
@@ -91,12 +92,16 @@ internal class MixedInterviewJourneyIntegrationTest {
                     }
 
                     waitUntil(timeoutMillis = 5_000) {
-                        onAllNodesWithText("Start Mixed Interview").fetchSemanticsNodes().isNotEmpty()
+                        onAllNodesWithText("Topics").fetchSemanticsNodes().isNotEmpty()
                     }
+                    // The interview has its own destination now, reached from the navigation bar.
+                    onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.INTERVIEW))
+                        .performClick()
+                    waitForText("Start Mixed Interview")
                     onNodeWithText("Mixed Android Interview").assertIsDisplayed()
                     onNodeWithText("20-question interview").assertIsDisplayed()
                     assertEquals(20, MixedInterviewDefaults.QuestionCount)
-                    onNodeWithText("Start Mixed Interview").performClick()
+                    onNodeWithTag(InterviewStartButtonTag).performClick()
 
                     waitForText("Kotlin single question")
                     onNodeWithText("Kotlin single question").assertIsDisplayed()

@@ -2,12 +2,16 @@
 <resources>
     <string name="app_back">Back</string>
     <string name="app_retry">Retry</string>
-    <string name="topic_browser_heading">Android Interview Prep</string>
+    <string name="destination_topics">Topics</string>
+    <string name="destination_interview">Interview</string>
+    <string name="destination_progress">Progress</string>
+    <string name="destination_mistakes">Mistakes</string>
+    <string name="topic_browser_subtitle">Pick a topic to study or practise.</string>
+    <string name="mixed_interview_how_it_works">Questions are drawn across every topic, so a mixed interview is the closest thing to the real conversation.</string>
     <string name="topic_browser_title">Topics</string>
     <string name="topic_browser_loading">Loading topics</string>
     <string name="topic_browser_empty">No topics available</string>
     <string name="topic_browser_error">Topics could not be loaded</string>
-    <string name="progress_entry">View progress</string>
     <string name="progress_title">Progress</string>
     <string name="progress_loading">Loading progress</string>
     <string name="progress_overall">Overall progress</string>
@@ -32,7 +36,12 @@
     <string name="progress_topic_loading">Loading topic performance</string>
     <string name="progress_topic_empty">No completed answers have been recorded for this topic yet.</string>
     <string name="progress_topic_error">Topic performance could not be loaded.</string>
-    <string name="mistake_review_entry_count">Review mistakes (%1$d)</string>
+    <string name="mistake_review_unresolved_count">%1$d unresolved mistakes to review</string>
+    <string name="interview_history_title">Your interview record</string>
+    <string name="interview_history_attempts">%1$d completed</string>
+    <string name="interview_history_latest">Latest</string>
+    <string name="interview_history_best">Best</string>
+    <string name="interview_history_score">%1$d of %2$d correct</string>
     <string name="mistake_review_none">No unresolved mistakes — nice work.</string>
     <string name="mistake_review_empty_action">Browse topics</string>
     <string name="mistake_review_title">Mistake Review</string>

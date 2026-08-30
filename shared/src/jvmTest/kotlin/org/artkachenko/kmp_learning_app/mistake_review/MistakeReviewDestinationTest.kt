@@ -48,7 +48,7 @@ internal class MistakeReviewDestinationTest {
         setContent {
             CompositionLocalProvider(LocalUriHandler provides uriHandler) {
                 MaterialTheme {
-                    MistakeReviewDestination(onBack = {}, viewModel = destinationViewModel())
+                    MistakeReviewDestination(onBack = {}, onBrowseTopics = {}, viewModel = destinationViewModel())
                 }
             }
         }
@@ -67,7 +67,7 @@ internal class MistakeReviewDestinationTest {
         setContent {
             CompositionLocalProvider(LocalUriHandler provides uriHandler) {
                 MaterialTheme {
-                    MistakeReviewDestination(onBack = {}, viewModel = destinationViewModel())
+                    MistakeReviewDestination(onBack = {}, onBrowseTopics = {}, viewModel = destinationViewModel())
                 }
             }
         }

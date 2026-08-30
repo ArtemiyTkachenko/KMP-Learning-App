@@ -62,6 +62,20 @@ internal object AppIcons {
         }
     }
 
+    val Topics: ImageVector by lazy {
+        icon("Topics") {
+            moveTo(3f, 5f); horizontalLineTo(21f); verticalLineTo(7f); horizontalLineTo(3f); close()
+            moveTo(3f, 11f); horizontalLineTo(21f); verticalLineTo(13f); horizontalLineTo(3f); close()
+            moveTo(3f, 17f); horizontalLineTo(15f); verticalLineTo(19f); horizontalLineTo(3f); close()
+        }
+    }
+
+    val Interview: ImageVector by lazy {
+        icon("Interview", autoMirror = true) {
+            moveTo(8f, 5f); lineTo(19f, 12f); lineTo(8f, 19f); close()
+        }
+    }
+
     val Insights: ImageVector by lazy {
         icon("Insights") {
             moveTo(21f, 8f); horizontalLineTo(19f); verticalLineTo(20f); horizontalLineTo(21f); close()

@@ -37,7 +37,7 @@ internal const val MistakeReviewLoadingTag = "mistake_review_loading"
 @Composable
 internal fun MistakeReviewScreen(
     state: MistakeReviewUiState,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
     onRetry: () -> Unit,
     onBrowseTopics: () -> Unit,
     onSourceClick: (String) -> Unit,

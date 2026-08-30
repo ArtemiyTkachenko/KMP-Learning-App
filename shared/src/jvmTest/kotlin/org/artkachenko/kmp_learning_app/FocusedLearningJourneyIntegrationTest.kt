@@ -121,7 +121,7 @@ internal class FocusedLearningJourneyIntegrationTest {
             onNodeWithContentDescription("Back").performClick()
             onNodeWithContentDescription("Back").performClick()
 
-            onNodeWithText("View progress").assertIsDisplayed().performClick()
+            onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.PROGRESS)).performClick()
             waitUntil(timeoutMillis = 5_000) {
                 onAllNodesWithText("Completed assessments").fetchSemanticsNodes().isNotEmpty()
             }
@@ -145,15 +145,17 @@ internal class FocusedLearningJourneyIntegrationTest {
             // Mistake review: the multiple-choice question was answered incorrectly and the single
             // question correctly, so only the former is unresolved.
             onNode(hasScrollAction()).performScrollToNode(
-                hasText("Review mistakes", substring = true),
+                hasText("unresolved mistakes to review", substring = true),
             )
-            onNodeWithText("Review mistakes", substring = true).performClick()
+            onNodeWithText("1 unresolved mistakes to review").assertIsDisplayed()
+            onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.MISTAKES)).performClick()
             waitUntil(timeoutMillis = 5_000) {
                 onAllNodesWithText("Multiple question").fetchSemanticsNodes().isNotEmpty()
             }
             onNodeWithText("Multiple explanation").performScrollTo().assertIsDisplayed()
             onNodeWithText("Single question").assertDoesNotExist()
-            onNodeWithContentDescription("Back").performClick()
+            // Mistakes is its own area, so getting back to Progress is a navigation-bar switch.
+            onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.PROGRESS)).performClick()
             waitUntil(timeoutMillis = 5_000) {
                 onAllNodesWithText("Completed assessments").fetchSemanticsNodes().isNotEmpty()
             }
@@ -170,8 +172,11 @@ internal class FocusedLearningJourneyIntegrationTest {
             waitUntil(timeoutMillis = 5_000) {
                 onAllNodesWithText("Completed assessments").fetchSemanticsNodes().isNotEmpty()
             }
-            onNodeWithContentDescription("Back").performClick()
+            onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.TOPICS)).performClick()
 
+            waitUntil(timeoutMillis = 5_000) {
+                onAllNodesWithText("Android").fetchSemanticsNodes().isNotEmpty()
+            }
             onNodeWithText("Android").assertIsDisplayed().performClick()
             onNodeWithTag(SubtopicPracticeButtonTag).performClick()
             onNodeWithText("Single question").assertIsDisplayed()

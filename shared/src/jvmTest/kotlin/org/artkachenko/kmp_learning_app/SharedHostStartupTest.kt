@@ -3,6 +3,7 @@ package org.artkachenko.kmp_learning_app
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.room3.Room
@@ -32,8 +33,8 @@ import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultView
 import org.artkachenko.kmp_learning_app.progress.ProgressTopicViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressViewModel
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
-import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
@@ -143,11 +144,13 @@ internal class SharedHostStartupTest {
                     // Ready replaces the startup UI with the real App graph, whose Topic
                     // Browser resolves its ViewModel through Koin.
                     waitUntil(timeoutMillis = 30_000) {
-                        onAllNodesWithText("Android Interview Prep")
+                        onAllNodesWithText("Pick a topic to study or practise.")
                             .fetchSemanticsNodes()
                             .isNotEmpty()
                     }
-                    onNodeWithText("View progress").assertIsDisplayed()
+                    // The navigation bar is part of the shell a host reaches on startup.
+                    onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.TOPICS))
+                        .assertIsDisplayed()
 
                     // Topics come from the bundled curriculum imported by the same initializer
                     // every host runs, so a host reaching Ready reaches real content.

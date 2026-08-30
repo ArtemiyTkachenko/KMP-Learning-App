@@ -566,6 +566,10 @@ epics:
           - "Normal application UI composition lives in shared code rather than the Android platform module."
           - "Material 3 is established as the application UI component baseline."
           - "Compose Multiplatform Resources can be used from shared UI code."
+          # Superseded: the shell now adapts across the Material compact/medium
+          # breakpoint (navigation bar below 600.dp, navigation rail at or above it)
+          # because desktop and browser hosts run the same shared shell at widths a
+          # phone layout wastes. See docs/architecture.md.
           - "The application shell assumes a mobile layout without introducing tablet or desktop-specific UI patterns."
           - "No interview-preparation feature implementation is introduced as part of the shell."
 
@@ -1622,6 +1626,8 @@ epics:
           assessment-taking presentation.
 
         acceptance_criteria:
+          # Superseded: the interview is its own top-level area reached from the
+          # navigation bar rather than an action on a combined start screen.
           - "The application start screen exposes a prominent Start Mixed Interview action."
           - "The mixed interview MVP requested question count is defined once as 20."
           - "No question-count configuration wizard is introduced."
@@ -1732,6 +1738,7 @@ epics:
           Compose tests while reusing the existing E09/E08 test infrastructure.
 
         acceptance_criteria:
+          # Superseded: started from the Interview area in the navigation bar.
           - "A user can start a Mixed Android Interview from the application start screen."
           - "A 20-question request uses the coverage-first balanced Mixed selection policy."
           - "Selected questions span the expected number of populated topics for the controlled fixture."
@@ -1869,6 +1876,7 @@ epics:
           lookups rather than persisting display names.
 
         acceptance_criteria:
+          # Superseded: Progress is its own top-level area in the navigation bar.
           - "The application start screen exposes a clear Progress action."
           - "Progress navigation uses a typed AppRoute.Progress route."
           - "The Progress screen has an explicit empty state when no completed assessments exist."

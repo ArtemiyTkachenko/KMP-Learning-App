@@ -1,10 +1,12 @@
 package org.artkachenko.kmp_learning_app.topic_study
 
+import org.artkachenko.kmp_learning_app.AppShellViewModel
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingViewModel
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewViewModel
+import org.artkachenko.kmp_learning_app.mixed_interview.InterviewStartViewModel
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressTopicViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressViewModel
@@ -29,8 +31,18 @@ internal val topicStudyPresentationModule = module {
         )
     }
     viewModel {
+        AppShellViewModel(
+            mistakeReviewService = get(),
+        )
+    }
+    viewModel {
         MistakeReviewViewModel(
             mistakeReviewService = get(),
+        )
+    }
+    viewModel {
+        InterviewStartViewModel(
+            assessmentRepository = get(),
         )
     }
     viewModel {

@@ -94,8 +94,9 @@ internal class ProgressLearningJourneyIntegrationTest {
                         }
                     }
 
-                    waitForText("View progress")
-                    onNodeWithText("View progress").performClick()
+                    waitForText("Topics")
+                    onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.PROGRESS))
+                        .performClick()
                     waitForText("Completed assessments")
                     // The derived values, not just their labels.
                     onNode(hasText("Questions answered") and hasText("7")).assertIsDisplayed()
@@ -108,6 +109,9 @@ internal class ProgressLearningJourneyIntegrationTest {
                     scrollToText("Weak areas")
                     assertTrue(onAllNodesWithText("Android").fetchSemanticsNodes().isNotEmpty())
                     assertTrue(onAllNodesWithText("Lifecycle").fetchSemanticsNodes().isNotEmpty())
+                    // Scroll first: the navigation bar shortens the list, so a row further down
+                    // is no longer composed just because the section header is visible.
+                    scrollToText("State")
                     assertTrue(onAllNodesWithText("State").fetchSemanticsNodes().isNotEmpty())
 
                     onNode(hasScrollAction()).performScrollToNode(
@@ -153,8 +157,14 @@ internal class ProgressLearningJourneyIntegrationTest {
                     onNodeWithContentDescription("Back").performClick()
                     waitForText("Progress")
 
-                    scrollToTextStartingWith("Review mistakes")
-                    onNodeWithText("Review mistakes", substring = true).performClick()
+                    // The dashboard reports the size of the queue; opening it is the Mistakes
+                    // navigation item's job, and that item carries the same count as a badge.
+                    scrollToTextStartingWith("unresolved mistakes to review")
+                    onNodeWithText("2 unresolved mistakes to review").assertIsDisplayed()
+                    onNodeWithText("2", useUnmergedTree = true).assertIsDisplayed()
+                    onNodeWithTag(
+                        appNavigationBarItemTag(AppTopLevelDestination.MISTAKES),
+                    ).performClick()
                     waitForText("Lifecycle question")
                     onNodeWithText("Lifecycle question").assertIsDisplayed()
                     onNodeWithText("Newest lifecycle selection").performScrollTo().assertIsDisplayed()
@@ -359,7 +369,7 @@ internal class ProgressLearningJourneyIntegrationTest {
         onNode(hasScrollAction()).performScrollToNode(hasText(text))
     }
 
-    /** For rows whose label carries a trailing count, such as "Review mistakes (2)". */
+    /** For rows whose label carries a leading or trailing count. */
     private fun ComposeUiTest.scrollToTextStartingWith(text: String) {
         waitForScrollableContent()
         onNode(hasScrollAction()).performScrollToNode(hasText(text, substring = true))

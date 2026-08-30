@@ -11,7 +11,8 @@ import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 internal fun MistakeReviewDestination(
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
+    onBrowseTopics: () -> Unit,
     viewModel: MistakeReviewViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -22,7 +23,7 @@ internal fun MistakeReviewDestination(
         state = state,
         onBack = onBack,
         onRetry = viewModel::retry,
-        onBrowseTopics = onBack,
+        onBrowseTopics = onBrowseTopics,
         onSourceClick = { url ->
             // Matches the result destinations: openUri throws when no host handler can open the
             // URI, and the failure must stay visible instead of looking like a no-op.

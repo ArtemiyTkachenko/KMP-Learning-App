@@ -9,9 +9,9 @@ import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 internal fun ProgressDestination(
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
+    onBrowseTopics: () -> Unit,
     onOpenTopic: (String) -> Unit,
-    onReviewMistakes: () -> Unit,
     onOpenFocusedResult: (String) -> Unit,
     onOpenMixedResult: (String) -> Unit,
     viewModel: ProgressViewModel = koinViewModel(),
@@ -26,10 +26,7 @@ internal fun ProgressDestination(
         state = state,
         onBack = onBack,
         onRetry = viewModel::refresh,
-        // Progress is always pushed from the topic browser, so leaving is how a learner gets
-        // there. Naming it separately keeps the button's label honest if that ever changes.
-        onBrowseTopics = onBack,
-        onReviewMistakes = onReviewMistakes,
+        onBrowseTopics = onBrowseTopics,
         onTopicClick = onOpenTopic,
         onHistoryClick = { assessmentType, attemptId ->
             when (assessmentType) {

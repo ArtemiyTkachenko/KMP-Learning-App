@@ -1,31 +1,45 @@
 package org.artkachenko.kmp_learning_app.assessment_taking
 
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.toggleable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.assessment_taking_answer_save_error
 import kmp_learning_app.shared.generated.resources.assessment_taking_completion_save_error
 import kmp_learning_app.shared.generated.resources.assessment_taking_finish
+import kmp_learning_app.shared.generated.resources.assessment_taking_loading
 import kmp_learning_app.shared.generated.resources.assessment_taking_no_questions
 import kmp_learning_app.shared.generated.resources.assessment_taking_question_progress
 import kmp_learning_app.shared.generated.resources.assessment_taking_ready
@@ -35,26 +49,20 @@ import kmp_learning_app.shared.generated.resources.assessment_taking_select_one
 import kmp_learning_app.shared.generated.resources.assessment_taking_start_error
 import kmp_learning_app.shared.generated.resources.assessment_taking_submit
 import kmp_learning_app.shared.generated.resources.assessment_taking_submitting
-import org.jetbrains.compose.resources.stringResource
-import androidx.compose.foundation.layout.PaddingValues
-import kmp_learning_app.shared.generated.resources.assessment_taking_loading
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
-import org.artkachenko.kmp_learning_app.ui.ScreenStatus
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.material3.LocalMinimumInteractiveComponentSize
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.unit.Dp
+import org.artkachenko.kmp_learning_app.ui.ScreenStatus
+import org.jetbrains.compose.resources.stringResource
 
 internal const val AssessmentTakingLoadingTag = "focused_practice_loading"
 internal const val AssessmentTakingSubmitTag = "focused_practice_submit"
 internal const val AssessmentTakingFinishTag = "focused_practice_finish"
+
+internal const val AssessmentProgressMeterTag = "assessment_progress_meter"
+
+private const val AssessmentProgressAnimationMillis = 300
 
 @Composable
 internal fun AssessmentTakingScreen(
@@ -72,6 +80,14 @@ internal fun AssessmentTakingScreen(
             title = title,
             onBack = onBack,
         )
+        // Pinned under the bar rather than placed in the scrolling content: how far through the
+        // assessment the learner is should stay answerable while they read a long question.
+        if (state is AssessmentTakingUiState.Content) {
+            AssessmentProgressMeter(
+                questionNumber = state.questionNumber,
+                totalQuestions = state.totalQuestions,
+            )
+        }
         when (state) {
             AssessmentTakingUiState.Loading -> ScreenLoading(
                 message = stringResource(Res.string.assessment_taking_loading),
@@ -127,6 +143,31 @@ internal fun AssessmentTakingScreen(
             )
         }
     }
+}
+
+/**
+ * How much of the assessment is behind the learner. The counter alone gave the number but not the
+ * shape of it, so "3 of 20" and "3 of 5" read the same at a glance.
+ */
+@Composable
+private fun AssessmentProgressMeter(questionNumber: Int, totalQuestions: Int) {
+    val fraction = if (totalQuestions <= 0) {
+        0f
+    } else {
+        ((questionNumber - 1).coerceIn(0, totalQuestions).toFloat()) / totalQuestions
+    }
+    val animated by animateFloatAsState(
+        targetValue = fraction,
+        animationSpec = tween(AssessmentProgressAnimationMillis),
+        label = "assessmentProgress",
+    )
+    LinearProgressIndicator(
+        progress = { animated },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .testTag(AssessmentProgressMeterTag),
+    )
 }
 
 @Composable

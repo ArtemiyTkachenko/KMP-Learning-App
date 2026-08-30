@@ -3,6 +3,7 @@ package org.artkachenko.kmp_learning_app.progress
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithText
@@ -24,7 +25,6 @@ internal class ProgressScreenTest {
                     onBack = {},
                     onRetry = {},
                     onBrowseTopics = {},
-                    onReviewMistakes = {},
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
                 )
@@ -39,7 +39,7 @@ internal class ProgressScreenTest {
     fun emptyStateRendersGuidance() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, {}, { _, _ -> })
+                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, { _, _ -> })
             }
         }
         onNodeWithText(
@@ -52,7 +52,7 @@ internal class ProgressScreenTest {
         var retryCount = 0
         setContent {
             MaterialTheme {
-                ProgressScreen(ProgressUiState.Error, {}, { retryCount += 1 }, {}, {}, {}, { _, _ -> })
+                ProgressScreen(ProgressUiState.Error, {}, { retryCount += 1 }, {}, {}, { _, _ -> })
             }
         }
         onNodeWithText("Progress could not be loaded.").assertIsDisplayed()
@@ -90,7 +90,6 @@ internal class ProgressScreenTest {
                     onBack = {},
                     onRetry = {},
                     onBrowseTopics = {},
-                    onReviewMistakes = {},
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
                 )
@@ -128,7 +127,6 @@ internal class ProgressScreenTest {
                     onBack = {},
                     onRetry = {},
                     onBrowseTopics = {},
-                    onReviewMistakes = {},
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
                 )
@@ -148,7 +146,7 @@ internal class ProgressScreenTest {
     fun observationBasedSectionsAreAbsentWhenTheyHaveNoRows() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                ProgressScreen(contentState(), {}, {}, {}, {}, {}, { _, _ -> })
+                ProgressScreen(contentState(), {}, {}, {}, {}, { _, _ -> })
             }
         }
 
@@ -161,8 +159,7 @@ internal class ProgressScreenTest {
     }
 
     @Test
-    fun reviewMistakesActionIsOfferedForContentAndInvokesTheCallbackOnce() = runComposeUiTest {
-        var reviewCount = 0
+    fun theUnresolvedCountIsReportedWithoutDuplicatingTheMistakesDestination() = runComposeUiTest {
         setContent {
             MaterialTheme {
                 ProgressScreen(
@@ -170,32 +167,31 @@ internal class ProgressScreenTest {
                     onBack = {},
                     onRetry = {},
                     onBrowseTopics = {},
-                    onReviewMistakes = { reviewCount += 1 },
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
                 )
             }
         }
 
-        onNodeWithText("Review mistakes (3)").assertIsDisplayed().performClick()
-
-        assertEquals(1, reviewCount)
+        onNodeWithText("3 unresolved mistakes to review").assertIsDisplayed()
+        // The Mistakes navigation item owns opening the queue, so nothing here is clickable.
+        onNodeWithText("3 unresolved mistakes to review").assertHasNoClickAction()
     }
 
     @Test
-    fun reviewMistakesActionIsAbsentWhenNoAssessmentHasBeenCompleted() = runComposeUiTest {
+    fun theUnresolvedCountIsAbsentWhenNoAssessmentHasBeenCompleted() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, {}, { _, _ -> })
+                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, { _, _ -> })
             }
         }
 
         // With zero completed assessments there cannot be an unresolved completed mistake.
-        onNodeWithText("Review mistakes", substring = true).assertDoesNotExist()
+        onNodeWithText("unresolved mistakes", substring = true).assertDoesNotExist()
     }
 
     @Test
-    fun nothingUnresolvedReportsTheAchievementInsteadOfOfferingTheAction() = runComposeUiTest {
+    fun nothingUnresolvedReportsTheAchievementInsteadOfACount() = runComposeUiTest {
         setContent {
             MaterialTheme {
                 ProgressScreen(
@@ -203,7 +199,6 @@ internal class ProgressScreenTest {
                     onBack = {},
                     onRetry = {},
                     onBrowseTopics = {},
-                    onReviewMistakes = {},
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
                 )
@@ -211,7 +206,7 @@ internal class ProgressScreenTest {
         }
 
         onNodeWithText("No unresolved mistakes — nice work.").assertIsDisplayed()
-        onNodeWithText("Review mistakes", substring = true).assertDoesNotExist()
+        onNodeWithText("unresolved mistakes to review", substring = true).assertDoesNotExist()
     }
 
     @Test
@@ -219,7 +214,7 @@ internal class ProgressScreenTest {
         var browsed = 0
         setContent {
             MaterialTheme {
-                ProgressScreen(ProgressUiState.Empty, {}, {}, { browsed += 1 }, {}, {}, { _, _ -> })
+                ProgressScreen(ProgressUiState.Empty, {}, {}, { browsed += 1 }, {}, { _, _ -> })
             }
         }
 
@@ -243,7 +238,6 @@ internal class ProgressScreenTest {
                     onBack = {},
                     onRetry = {},
                     onBrowseTopics = {},
-                    onReviewMistakes = {},
                     onTopicClick = clicked::add,
                     onHistoryClick = { _, _ -> },
                 )
@@ -286,7 +280,6 @@ internal class ProgressScreenTest {
                     onBack = {},
                     onRetry = {},
                     onBrowseTopics = {},
-                    onReviewMistakes = {},
                     onTopicClick = {},
                     onHistoryClick = { type, id -> clicks += type to id },
                 )
@@ -337,7 +330,6 @@ internal class ProgressScreenTest {
                     onBack = {},
                     onRetry = {},
                     onBrowseTopics = {},
-                    onReviewMistakes = {},
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
                 )

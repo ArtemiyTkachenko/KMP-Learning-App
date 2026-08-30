@@ -33,11 +33,10 @@ import kmp_learning_app.shared.generated.resources.mixed_interview_description
 import kmp_learning_app.shared.generated.resources.mixed_interview_question_count
 import kmp_learning_app.shared.generated.resources.mixed_interview_start
 import kmp_learning_app.shared.generated.resources.mixed_interview_title
-import kmp_learning_app.shared.generated.resources.progress_entry
 import kmp_learning_app.shared.generated.resources.topic_browser_empty
 import kmp_learning_app.shared.generated.resources.topic_browser_error
-import kmp_learning_app.shared.generated.resources.topic_browser_heading
 import kmp_learning_app.shared.generated.resources.topic_browser_loading
+import kmp_learning_app.shared.generated.resources.topic_browser_subtitle
 import kmp_learning_app.shared.generated.resources.topic_browser_title
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewDefaults
@@ -53,8 +52,6 @@ internal const val TopicBrowserLoadingTag = "topic_browser_loading"
 internal fun TopicBrowserScreen(
     state: TopicBrowserUiState,
     onTopicClick: (String) -> Unit,
-    onStartMixedInterview: () -> Unit,
-    onOpenProgress: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -64,31 +61,17 @@ internal fun TopicBrowserScreen(
             .padding(horizontal = 20.dp, vertical = 24.dp),
     ) {
         Text(
-            text = stringResource(Res.string.topic_browser_heading),
+            text = stringResource(Res.string.topic_browser_title),
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.SemiBold,
         )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedButton(
-            onClick = onOpenProgress,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(Res.string.progress_entry))
-        }
-        Spacer(modifier = Modifier.height(12.dp))
-
-        MixedInterviewEntry(onStart = onStartMixedInterview)
-        Spacer(modifier = Modifier.height(24.dp))
-
         Text(
-            text = stringResource(Res.string.topic_browser_title),
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontWeight = FontWeight.SemiBold,
+            text = stringResource(Res.string.topic_browser_subtitle),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Box(modifier = Modifier.weight(1f)) {
             when (state) {
@@ -107,52 +90,6 @@ internal fun TopicBrowserScreen(
                     message = stringResource(Res.string.topic_browser_error),
                     onRetry = onRetry,
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun MixedInterviewEntry(
-    onStart: () -> Unit,
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.small,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-        ),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = stringResource(Res.string.mixed_interview_title),
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = stringResource(Res.string.mixed_interview_description),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-            Text(
-                text = stringResource(
-                    Res.string.mixed_interview_question_count,
-                    MixedInterviewDefaults.QuestionCount,
-                ),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-            Button(
-                onClick = onStart,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(text = stringResource(Res.string.mixed_interview_start))
             }
         }
     }
@@ -227,8 +164,6 @@ private fun TopicBrowserScreenPreview() {
                 ),
             ),
             onTopicClick = {},
-            onStartMixedInterview = {},
-            onOpenProgress = {},
             onRetry = {},
         )
     }

@@ -2,11 +2,11 @@
 
 ## Application Composition
 
-Shared UI dependencies that are local to the current Compose shell are still
-assembled manually at `App()` and passed into `AppShell()` as an explicit
-parameter object.
+`App()` wraps `AppShell()` in `AppTheme` and takes no dependencies of its own;
+everything the shell needs is either navigation state it owns or a ViewModel
+resolved from Koin at a destination boundary.
 
-The local curriculum data graph now uses Koin because E07 introduced concrete
+The local curriculum data graph uses Koin because E07 introduced concrete
 runtime dependencies that need platform-aware composition: `CurriculumDatabase`,
 `CurriculumImporter`, `CurriculumDataInitializer`, and
 `CurriculumRepository`. Koin is started by the Android `Application`, combines
@@ -27,6 +27,38 @@ MainActivity
 `CurriculumRepository` is the application-facing data boundary intended for
 E08 assessment-engine work. Runtime reads should depend on that interface
 rather than on Room entities, DAOs, or the local repository implementation.
+
+The shell exposes four areas — Topics, Interview, Progress, and Mistakes —
+through `AppTopLevelDestination`, which maps each to its `AppRoute`.
+
+`AppNavigator` owns navigation state and gives **each area its own back stack**. A
+single shared stack meant switching away from a detail discarded it, so returning to
+an area dropped the learner back at its root; per-area stacks leave each area exactly
+where it was left. Back leaves the current area's detail first, then returns to the
+start area (Topics), and only then reports the event unconsumed so the host can close
+the app. Re-selecting the area already shown returns it to its root.
+
+Which screens keep the navigation control is decided by `AppRoute.showsAreaNavigation()`:
+browsing screens — including the topic and progress-topic details — keep it, because
+hiding it on every detail trapped the learner inside an area until they pressed back.
+Screens that own the learner's full attention (an assessment in progress, and its
+result) hide it and rely on their own back affordance.
+
+`AppNavigationScaffold` places that control adaptively: below
+`AppNavigationRailBreakpoint` (600.dp, the Material compact/medium boundary) a
+`NavigationBar` runs along the bottom edge; at or above it a `NavigationRail` runs down
+the leading edge. The decision is made from the measured window width rather than from
+the platform, because the same host can be either size — a desktop or browser window can
+be dragged narrow.
+
+`AppShellViewModel` supplies the one piece of state the control itself needs: the
+unresolved mistake count, badged onto the Mistakes item. The Progress dashboard reports
+the same count as plain text rather than as a second button, so one destination has one
+control.
+
+Navigation motion is declared in `AppNavigationTransitions` rather than left to
+Navigation 3's defaults, which animate on Android but resolve to `EnterTransition.None`
+on desktop, iOS, and web.
 
 Shared presentation ViewModels are resolved from the Koin Compose module at the
 Navigation 3 destination boundary. Parameterized destinations pass only stable
@@ -126,7 +158,9 @@ resolving focused scope labels through stable historical Topic/Subtopic lookup.
 The destination refreshes on lifecycle resume so retained navigation entries
 show attempts completed while another result or retake destination was open.
 History rows navigate by stable attempt ID to the existing focused or mixed
-result destinations; no progress snapshot or history summary is persisted.
+result destinations; no progress snapshot or history summary is persisted. The
+dashboard reports the unresolved mistake count as plain text — the Mistakes
+navigation item, badged with the same count, owns opening the queue.
 
 Topic performance rows open `AppRoute.ProgressTopic(topicId)`, carrying only
 stable topic identity. `ProgressTopicViewModel` selects that Topic and its
@@ -172,10 +206,16 @@ the initial and per-answer `TestAttempt` snapshots through
 the runtime-only session from its stable attempt ID through
 `AssessmentSessionLoader`, with the persisted `TestAttempt.config` remaining
 authoritative. Product wrappers provide titles and navigation while reusing the
-same question, submission, progress, and explicit-completion state machine.
+same question, submission, progress, and explicit-completion state machine. The
+taking screen pins a linear meter under its top bar, driven by the same
+`questionNumber`/`totalQuestions` as the counter, so how far through the assessment
+the learner is stays answerable while they read a long question.
 
-The Mixed Android Interview product starts from a prominent Topics-screen
-action and navigates with `MixedInterview(questionCount)` primitive route data.
+The Mixed Android Interview product has its own top-level area. `InterviewStartScreen`
+leads with the start action and, once the learner has finished an interview, shows their
+latest and best results through `InterviewStartViewModel`; each opens the result it came
+from. Starting an interview navigates with `MixedInterview(questionCount)` primitive
+route data.
 The route reconstructs `AssessmentConfig.Mixed` at its destination and delegates
 to `AssessmentTakingLaunch.New`, so balanced selection, initial persistence,
 answer checkpoints, actual selected-question progress, and explicit completion

@@ -18,6 +18,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -79,7 +80,7 @@ internal fun AccuracyHeadline(
             modifier = Modifier.fillMaxWidth().height(8.dp),
             color = color,
             trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-            strokeCap = androidx.compose.ui.graphics.StrokeCap.Round,
+            strokeCap = StrokeCap.Round,
             gapSize = 0.dp,
             drawStopIndicator = {},
         )

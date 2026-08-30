@@ -1,7 +1,10 @@
 package org.artkachenko.kmp_learning_app
 
+import androidx.navigation3.runtime.NavKey
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlin.test.assertSame
 
 internal class AppNavigationTest {

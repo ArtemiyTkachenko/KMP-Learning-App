@@ -551,14 +551,17 @@ epics:
           The project has a working Kotlin Multiplatform foundation but needs
           a durable shared application root before product features are added.
           Platform entry points should remain thin while the normal application
-          UI and application-level composition live in shared code.
+          UI and application-level composition live in shared code. The shared
+          shell must also use the available width effectively when the same UI
+          runs on phone, desktop, and browser hosts.
 
         approach: >
           Establish a shared App entry point using Compose Multiplatform and
-          Material 3. Configure the basic mobile-oriented application container
-          and shared resource usage while keeping Android as the primary
-          execution target. Keep platform modules responsible only for the
-          platform-specific bootstrap required to host the shared application.
+          Material 3. Configure an adaptive application container that uses a
+          bottom navigation bar at compact widths and a navigation rail at wider
+          widths, while keeping Android as the primary execution target. Keep
+          platform modules responsible only for the platform-specific bootstrap
+          required to host the shared application.
 
         acceptance_criteria:
           - "A shared Compose Multiplatform App entry point exists."
@@ -566,7 +569,7 @@ epics:
           - "Normal application UI composition lives in shared code rather than the Android platform module."
           - "Material 3 is established as the application UI component baseline."
           - "Compose Multiplatform Resources can be used from shared UI code."
-          - "The application shell assumes a mobile layout without introducing tablet or desktop-specific UI patterns."
+          - "The shared shell uses compact-width bottom navigation and a navigation rail at wider widths without platform-specific presentation forks."
           - "No interview-preparation feature implementation is introduced as part of the shell."
 
         priority: "P1"
@@ -1609,20 +1612,20 @@ epics:
         title: "Implement mixed Android interview entry and launch"
 
         issue: >
-          The application currently enters through the Topic browser and exposes
-          only focused practice. Users need a prominent way to start the primary
-          mixed Android interview experience.
+          The application exposes focused practice through Topics, but users need
+          a prominent, persistent top-level area for the primary mixed Android
+          interview experience.
 
         approach: >
-          Add a prominent Mixed Android Interview action to the application
-          start/Topics screen. Use one named MVP interview size of 20 requested
-          questions and navigate through a typed Mixed interview route carrying
-          only primitive configuration data. Convert that route to
-          AssessmentConfig.Mixed and launch it through the generalized shared
-          assessment-taking presentation.
+          Add a dedicated Interview area to the shared top-level navigation and
+          place the prominent Mixed Android Interview action there. Use one named
+          MVP interview size of 20 requested questions and navigate through a
+          typed Mixed interview route carrying only primitive configuration data.
+          Convert that route to AssessmentConfig.Mixed and launch it through the
+          generalized shared assessment-taking presentation.
 
         acceptance_criteria:
-          - "The application start screen exposes a prominent Start Mixed Interview action."
+          - "Shared top-level navigation exposes an Interview area with a prominent Start Mixed Interview action."
           - "The mixed interview MVP requested question count is defined once as 20."
           - "No question-count configuration wizard is introduced."
           - "Starting the interview creates AssessmentConfig.Mixed with the configured requested count."
@@ -1720,19 +1723,21 @@ epics:
         title: "Verify mixed Android interview journey end to end"
 
         issue: >
-          The complete mixed-interview journey needs integration and UI
-          verification before progress/statistics and mistake-review behavior are
-          built on top of assessment history.
+          The complete mixed-interview journey from the dedicated top-level
+          Interview area needs integration and UI verification before
+          progress/statistics and mistake-review behavior are built on top of
+          assessment history.
 
         approach: >
-          Exercise the real application entry, balanced Mixed selection, shared
-          assessment-taking presentation, persistence, explicit completion,
-          overall result, topic-level breakdown, answer review, sources, and
-          repeat-interview flow together. Add targeted shared integration and
-          Compose tests while reusing the existing E09/E08 test infrastructure.
+          Exercise the real top-level Interview entry, balanced Mixed selection,
+          shared assessment-taking presentation, persistence, explicit
+          completion, overall result, topic-level breakdown, answer review,
+          sources, and repeat-interview flow together. Add targeted shared
+          integration and Compose tests while reusing the existing E09/E08 test
+          infrastructure.
 
         acceptance_criteria:
-          - "A user can start a Mixed Android Interview from the application start screen."
+          - "A user can open the top-level Interview area and start a Mixed Android Interview."
           - "A 20-question request uses the coverage-first balanced Mixed selection policy."
           - "Selected questions span the expected number of populated topics for the controlled fixture."
           - "Mixed and Focused flows use the same underlying AssessmentEngine and assessment-taking presentation."
@@ -1857,11 +1862,11 @@ epics:
         issue: >
           Users currently finish assessments without a persistent place to see
           their cumulative progress or reopen previous results. The application
-          needs a lightweight progress destination built from the derived history
-          and statistics introduced by E11-01 and E11-02.
+          needs a lightweight top-level Progress area built from the derived
+          history and statistics introduced by E11-01 and E11-02.
 
         approach: >
-          Add a Progress destination reachable from the application start screen.
+          Add Progress as a dedicated area in the shared top-level navigation.
           Present overall statistics, weak-area highlights, topic performance,
           and a newest-first completed-attempt history. Map history entries back
           to the existing Focused or Mixed result routes by stable attempt ID.
@@ -1869,7 +1874,7 @@ epics:
           lookups rather than persisting display names.
 
         acceptance_criteria:
-          - "The application start screen exposes a clear Progress action."
+          - "Shared top-level navigation exposes a clear Progress area."
           - "Progress navigation uses a typed AppRoute.Progress route."
           - "The Progress screen has an explicit empty state when no completed assessments exist."
           - "Overall completed attempts, answered Questions, correct answers, and accuracy are shown."
@@ -2089,4 +2094,3 @@ epics:
         priority: "P2"
         size: "M"
         initial_status: "Backlog"
-

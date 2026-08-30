@@ -27,8 +27,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
-import kmp_learning_app.shared.generated.resources.mistake_review_entry_count
 import kmp_learning_app.shared.generated.resources.mistake_review_none
+import kmp_learning_app.shared.generated.resources.mistake_review_unresolved_count
 import kmp_learning_app.shared.generated.resources.mixed_interview_title
 import kmp_learning_app.shared.generated.resources.progress_accuracy_caption
 import kmp_learning_app.shared.generated.resources.progress_completed_attempts_label
@@ -71,10 +71,9 @@ internal fun progressHistoryCardTag(attemptId: String): String = "progress_histo
 @Composable
 internal fun ProgressScreen(
     state: ProgressUiState,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
     onRetry: () -> Unit,
     onBrowseTopics: () -> Unit,
-    onReviewMistakes: () -> Unit,
     onTopicClick: (String) -> Unit,
     onHistoryClick: (CompletedAssessmentType, String) -> Unit,
     modifier: Modifier = Modifier,
@@ -101,7 +100,6 @@ internal fun ProgressScreen(
             )
             is ProgressUiState.Content -> ProgressContent(
                 state = state,
-                onReviewMistakes = onReviewMistakes,
                 onTopicClick = onTopicClick,
                 onHistoryClick = onHistoryClick,
                 modifier = Modifier.weight(1f),
@@ -113,7 +111,6 @@ internal fun ProgressScreen(
 @Composable
 private fun ProgressContent(
     state: ProgressUiState.Content,
-    onReviewMistakes: () -> Unit,
     onTopicClick: (String) -> Unit,
     onHistoryClick: (CompletedAssessmentType, String) -> Unit,
     modifier: Modifier,
@@ -130,10 +127,7 @@ private fun ProgressContent(
             OverallSummary(state)
         }
         item {
-            ReviewMistakesAction(
-                unresolvedCount = state.unresolvedMistakeCount,
-                onReviewMistakes = onReviewMistakes,
-            )
+            UnresolvedMistakeSummary(unresolvedCount = state.unresolvedMistakeCount)
         }
         if (state.weakAreas.isNotEmpty()) {
             item {
@@ -207,48 +201,33 @@ private fun OverallSummary(state: ProgressUiState.Content) {
 }
 
 /**
- * Carries the count so the action states what it is worth opening for. With nothing unresolved it
- * stops being a call to action and reports the achievement instead.
+ * Reports the size of the mistake queue without offering to open it. Opening it is the Mistakes
+ * navigation item's job, and that item carries the same count as a badge; a button here as well
+ * gave the learner two controls for one destination sitting a few millimetres apart.
  */
 @Composable
-private fun ReviewMistakesAction(
-    unresolvedCount: Int,
-    onReviewMistakes: () -> Unit,
-) {
+private fun UnresolvedMistakeSummary(unresolvedCount: Int) {
     val semantic = AppThemeExtras.semanticColors
-    if (unresolvedCount == 0) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = AppIcons.CheckCircle,
-                contentDescription = null,
-                tint = semantic.correct,
-                modifier = Modifier.size(20.dp),
-            )
-            Text(
-                text = stringResource(Res.string.mistake_review_none),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        return
-    }
-
-    OutlinedButton(
-        onClick = onReviewMistakes,
+    val resolved = unresolvedCount == 0
+    Row(
         modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            imageVector = AppIcons.Warning,
+            imageVector = if (resolved) AppIcons.CheckCircle else AppIcons.Warning,
             contentDescription = null,
-            modifier = Modifier.size(18.dp),
+            tint = if (resolved) semantic.correct else semantic.incorrect,
+            modifier = Modifier.size(20.dp),
         )
         Text(
-            text = stringResource(Res.string.mistake_review_entry_count, unresolvedCount),
-            modifier = Modifier.padding(start = 8.dp),
+            text = if (resolved) {
+                stringResource(Res.string.mistake_review_none)
+            } else {
+                stringResource(Res.string.mistake_review_unresolved_count, unresolvedCount)
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

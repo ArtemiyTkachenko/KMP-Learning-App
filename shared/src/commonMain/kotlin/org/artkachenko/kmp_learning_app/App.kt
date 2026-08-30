@@ -1,33 +1,42 @@
 package org.artkachenko.kmp_learning_app
 
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
-import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
-import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserDestination
-import org.artkachenko.kmp_learning_app.topic_study.focused_practice.FocusedPracticeDestination
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingLaunch
+import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewDestination
+import org.artkachenko.kmp_learning_app.mixed_interview.InterviewStartDestination
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewDestination
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultDestination
 import org.artkachenko.kmp_learning_app.mixed_interview.mixedInterviewStartRoute
-import org.artkachenko.kmp_learning_app.mixed_interview.toAssessmentTakingLaunch
 import org.artkachenko.kmp_learning_app.mixed_interview.toAssessmentConfig
-import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewDestination
+import org.artkachenko.kmp_learning_app.mixed_interview.toAssessmentTakingLaunch
 import org.artkachenko.kmp_learning_app.progress.ProgressDestination
 import org.artkachenko.kmp_learning_app.progress.ProgressTopicDestination
+import org.artkachenko.kmp_learning_app.topic_study.focused_practice.FocusedPracticeDestination
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.toAssessmentConfig
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultDestination
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailDestination
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.toAppRoute
+import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserDestination
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
+import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun App() {
@@ -40,16 +49,47 @@ fun App() {
 private fun AppShell(
     modifier: Modifier = Modifier,
 ) {
-    val backStack = rememberNavBackStack(
-        appNavigationSavedStateConfiguration,
-        AppRoute.Topics,
-    )
+    // Owns one saveable back stack per area; see rememberAppNavigator for the explicit call sites.
+    val navigator = rememberAppNavigator()
+    val backStack = navigator.backStack
     fun popBack() {
-        if (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
+        navigator.popBack()
     }
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
+
+    val currentRoute = navigator.currentRoute
+    val showsNavigation = currentRoute?.showsAreaNavigation() ?: true
+
+    val shellViewModel: AppShellViewModel = koinViewModel()
+    val unresolvedMistakeCount by shellViewModel.unresolvedMistakeCount.collectAsStateWithLifecycle()
+    // Recounted whenever a screen that shows the badge becomes current, which is the moment after
+    // an assessment ends and after the mistake queue is worked through.
+    LaunchedEffect(currentRoute, showsNavigation) {
+        if (showsNavigation) shellViewModel.refresh()
+    }
+    val badges = mapOf(AppTopLevelDestination.MISTAKES to unresolvedMistakeCount)
+
+    // NavDisplay enables its own back handler only while the stack it was given has a previous
+    // entry, so at an area's root back reaches nothing and the host closes the app. This handler
+    // covers exactly that case. It is called unconditionally and gated by isBackEnabled, because
+    // the library invokes the last-composed *enabled* handler and a conditional call would reorder
+    // composition. NavDisplay's handler is composed deeper, and canLeaveArea is true exactly when
+    // NavDisplay's is disabled, so the two are mutually exclusive.
+    val areaBackState = rememberNavigationEventState(
+        currentInfo = NavigationEventInfo.None,
+        backInfo = if (navigator.canLeaveArea) listOf(NavigationEventInfo.None) else emptyList(),
+    )
+    NavigationBackHandler(
+        state = areaBackState,
+        isBackEnabled = navigator.canLeaveArea,
+        onBackCompleted = { navigator.popBack() },
+    )
+
+    AppNavigationScaffold(
+        selected = navigator.area,
+        onSelect = navigator::select,
+        showsNavigation = showsNavigation,
+        modifier = modifier,
+        badges = badges,
     ) { contentPadding ->
         NavDisplay(
             backStack = backStack,
@@ -66,34 +106,38 @@ private fun AppShell(
             onBack = {
                 popBack()
             },
+            transitionSpec = appTransitionSpec(),
+            popTransitionSpec = appPopTransitionSpec(),
+            predictivePopTransitionSpec = appPredictivePopTransitionSpec(),
             entryProvider = entryProvider {
                 entry<AppRoute.Topics> {
                     TopicBrowserDestination(
                         onTopicClick = { topicId ->
-                            backStack.add(AppRoute.Topic(topicId = topicId))
+                            navigator.push(AppRoute.Topic(topicId = topicId))
                         },
+                    )
+                }
+                entry<AppRoute.Interview> {
+                    InterviewStartDestination(
                         onStartMixedInterview = {
-                            backStack.add(mixedInterviewStartRoute())
+                            navigator.push(mixedInterviewStartRoute())
                         },
-                        onOpenProgress = {
-                            backStack.add(AppRoute.Progress)
+                        onOpenResult = { attemptId ->
+                            navigator.push(AppRoute.MixedInterviewResult(attemptId))
                         },
                     )
                 }
                 entry<AppRoute.Progress> {
                     ProgressDestination(
-                        onBack = { popBack() },
+                        onBrowseTopics = { navigator.select(AppTopLevelDestination.TOPICS) },
                         onOpenTopic = { topicId ->
-                            backStack.add(AppRoute.ProgressTopic(topicId))
-                        },
-                        onReviewMistakes = {
-                            backStack.add(AppRoute.MistakeReview)
+                            navigator.push(AppRoute.ProgressTopic(topicId))
                         },
                         onOpenFocusedResult = { attemptId ->
-                            backStack.add(AppRoute.FocusedPracticeResult(attemptId))
+                            navigator.push(AppRoute.FocusedPracticeResult(attemptId))
                         },
                         onOpenMixedResult = { attemptId ->
-                            backStack.add(AppRoute.MixedInterviewResult(attemptId))
+                            navigator.push(AppRoute.MixedInterviewResult(attemptId))
                         },
                     )
                 }
@@ -105,7 +149,7 @@ private fun AppShell(
                 }
                 entry<AppRoute.MistakeReview> {
                     MistakeReviewDestination(
-                        onBack = { popBack() },
+                        onBrowseTopics = { navigator.select(AppTopLevelDestination.TOPICS) },
                     )
                 }
                 entry<AppRoute.MixedInterview> { route ->
@@ -113,10 +157,10 @@ private fun AppShell(
                         launch = AssessmentTakingLaunch.New(route.toAssessmentConfig()),
                         onBack = { popBack() },
                         onAttemptPersisted = { attemptId ->
-                            backStack.replaceTopWith(AppRoute.MixedInterviewAttempt(attemptId))
+                            navigator.replaceTop(AppRoute.MixedInterviewAttempt(attemptId))
                         },
                         onCompleted = { attemptId ->
-                            backStack.replaceTopWith(AppRoute.MixedInterviewResult(attemptId))
+                            navigator.replaceTop(AppRoute.MixedInterviewResult(attemptId))
                         },
                     )
                 }
@@ -126,7 +170,7 @@ private fun AppShell(
                         onBack = { popBack() },
                         onAttemptPersisted = {},
                         onCompleted = { attemptId ->
-                            backStack.replaceTopWith(AppRoute.MixedInterviewResult(attemptId))
+                            navigator.replaceTop(AppRoute.MixedInterviewResult(attemptId))
                         },
                     )
                 }
@@ -135,7 +179,7 @@ private fun AppShell(
                         attemptId = route.attemptId,
                         onBack = { popBack() },
                         onRetakeCreated = { attemptId ->
-                            backStack.add(AppRoute.MixedInterviewAttempt(attemptId))
+                            navigator.push(AppRoute.MixedInterviewAttempt(attemptId))
                         },
                     )
                 }
@@ -146,7 +190,7 @@ private fun AppShell(
                             popBack()
                         },
                         onStartFocusedPractice = { config ->
-                            backStack.add(config.toAppRoute())
+                            navigator.push(config.toAppRoute())
                         },
                     )
                 }
@@ -155,10 +199,10 @@ private fun AppShell(
                         launch = AssessmentTakingLaunch.New(route.toAssessmentConfig()),
                         onBack = { popBack() },
                         onAttemptPersisted = { attemptId ->
-                            backStack.replaceTopWith(AppRoute.FocusedPracticeAttempt(attemptId))
+                            navigator.replaceTop(AppRoute.FocusedPracticeAttempt(attemptId))
                         },
                         onCompleted = { attemptId ->
-                            backStack.replaceTopWith(AppRoute.FocusedPracticeResult(attemptId))
+                            navigator.replaceTop(AppRoute.FocusedPracticeResult(attemptId))
                         },
                     )
                 }
@@ -167,10 +211,10 @@ private fun AppShell(
                         launch = AssessmentTakingLaunch.New(route.toAssessmentConfig()),
                         onBack = { popBack() },
                         onAttemptPersisted = { attemptId ->
-                            backStack.replaceTopWith(AppRoute.FocusedPracticeAttempt(attemptId))
+                            navigator.replaceTop(AppRoute.FocusedPracticeAttempt(attemptId))
                         },
                         onCompleted = { attemptId ->
-                            backStack.replaceTopWith(AppRoute.FocusedPracticeResult(attemptId))
+                            navigator.replaceTop(AppRoute.FocusedPracticeResult(attemptId))
                         },
                     )
                 }
@@ -180,7 +224,7 @@ private fun AppShell(
                         onBack = { popBack() },
                         onAttemptPersisted = {},
                         onCompleted = { attemptId ->
-                            backStack.replaceTopWith(AppRoute.FocusedPracticeResult(attemptId))
+                            navigator.replaceTop(AppRoute.FocusedPracticeResult(attemptId))
                         },
                     )
                 }
@@ -189,7 +233,7 @@ private fun AppShell(
                         attemptId = route.attemptId,
                         onBack = { popBack() },
                         onRetakeCreated = { attemptId ->
-                            backStack.add(AppRoute.FocusedPracticeAttempt(attemptId))
+                            navigator.push(AppRoute.FocusedPracticeAttempt(attemptId))
                         },
                     )
                 }

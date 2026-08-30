@@ -54,8 +54,8 @@ internal class ProgressDestinationTest {
                 MaterialTheme {
                     ProgressDestination(
                         onBack = {},
+                        onBrowseTopics = {},
                         onOpenTopic = {},
-                        onReviewMistakes = {},
                         onOpenFocusedResult = {},
                         onOpenMixedResult = {},
                         viewModel = viewModel(repository),
@@ -95,8 +95,8 @@ internal class ProgressDestinationTest {
                 MaterialTheme {
                     ProgressDestination(
                         onBack = {},
+                        onBrowseTopics = {},
                         onOpenTopic = {},
-                        onReviewMistakes = {},
                         onOpenFocusedResult = focusedTargets::add,
                         onOpenMixedResult = mixedTargets::add,
                         viewModel = viewModel(repository),

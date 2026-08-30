@@ -1,9 +1,11 @@
 package org.artkachenko.kmp_learning_app.assessment_taking
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertRangeInfoEquals
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -237,6 +239,53 @@ internal class AssessmentTakingScreenTest {
         }
         onNodeWithText("Results could not be saved. Try again.").assertIsDisplayed()
         onNodeWithTag(AssessmentTakingFinishTag).assertIsDisplayed()
+    }
+
+    @Test
+    fun theProgressMeterTracksHowFarThroughTheAssessmentTheLearnerIs() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                AssessmentTakingScreen(
+                    title = "Focused practice",
+                    // Question 2 of 6 means one question is behind the learner, so the meter is
+                    // one sixth full rather than a third — it reports completion, not position.
+                    state = contentState(AnswerSelectionMode.SINGLE),
+                    onAnswerClick = {},
+                    onSubmit = {},
+                    onRetry = {},
+                    onBack = {},
+                    onComplete = {},
+                )
+            }
+        }
+
+        onNodeWithTag(AssessmentProgressMeterTag)
+            .assertIsDisplayed()
+            .assertRangeInfoEquals(ProgressBarRangeInfo(1f / 6f, 0f..1f))
+    }
+
+    @Test
+    fun screensWithoutAQuestionCarryNoProgressMeter() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                AssessmentTakingScreen(
+                    title = "Focused practice",
+                    state = AssessmentTakingUiState.ReadyToComplete(
+                        attemptId = "attempt",
+                        totalQuestions = 6,
+                        isCompleting = false,
+                        completionFailed = false,
+                    ),
+                    onAnswerClick = {},
+                    onSubmit = {},
+                    onRetry = {},
+                    onBack = {},
+                    onComplete = {},
+                )
+            }
+        }
+
+        onNodeWithTag(AssessmentProgressMeterTag).assertDoesNotExist()
     }
 
     private fun contentState(mode: AnswerSelectionMode) = AssessmentTakingUiState.Content(

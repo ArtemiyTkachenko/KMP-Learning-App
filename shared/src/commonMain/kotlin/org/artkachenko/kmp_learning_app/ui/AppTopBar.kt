@@ -18,16 +18,20 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun AppTopBar(
     title: String,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     TopAppBar(
         title = { Text(text = title) },
         navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(
-                    imageVector = AppIcons.ArrowBack,
-                    contentDescription = stringResource(Res.string.app_back),
-                )
+            // Null for a navigation-bar destination: there is nothing above it to go back to,
+            // and offering the affordance anyway would be a dead control.
+            if (onBack != null) {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        imageVector = AppIcons.ArrowBack,
+                        contentDescription = stringResource(Res.string.app_back),
+                    )
+                }
             }
         },
     )

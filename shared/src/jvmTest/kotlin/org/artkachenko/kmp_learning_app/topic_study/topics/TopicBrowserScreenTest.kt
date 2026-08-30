@@ -26,8 +26,6 @@ internal class TopicBrowserScreenTest {
                         ),
                     ),
                     onTopicClick = {},
-                    onStartMixedInterview = {},
-                    onOpenProgress = {},
                     onRetry = {},
                 )
             }
@@ -51,8 +49,6 @@ internal class TopicBrowserScreenTest {
                     onTopicClick = { topicId ->
                         clickedTopicId = topicId
                     },
-                    onStartMixedInterview = {},
-                    onOpenProgress = {},
                     onRetry = {},
                 )
             }
@@ -70,8 +66,6 @@ internal class TopicBrowserScreenTest {
                 TopicBrowserScreen(
                     state = TopicBrowserUiState.Loading,
                     onTopicClick = {},
-                    onStartMixedInterview = {},
-                    onOpenProgress = {},
                     onRetry = {},
                 )
             }
@@ -79,8 +73,10 @@ internal class TopicBrowserScreenTest {
 
         onNodeWithTag(TopicBrowserLoadingTag).assertIsDisplayed()
         onNodeWithText("Loading topics").assertIsDisplayed()
-        onNodeWithText("View progress").assertIsDisplayed()
-        onNodeWithText("Start Mixed Interview").assertIsDisplayed()
+        // The interview and progress entries are their own navigation-bar destinations now, so
+        // the topic list is only responsible for topics.
+        onNodeWithText("View progress").assertDoesNotExist()
+        onNodeWithText("Start Mixed Interview").assertDoesNotExist()
     }
 
     @Test
@@ -90,8 +86,6 @@ internal class TopicBrowserScreenTest {
                 TopicBrowserScreen(
                     state = TopicBrowserUiState.Empty,
                     onTopicClick = {},
-                    onStartMixedInterview = {},
-                    onOpenProgress = {},
                     onRetry = {},
                 )
             }
@@ -109,8 +103,6 @@ internal class TopicBrowserScreenTest {
                 TopicBrowserScreen(
                     state = TopicBrowserUiState.Error,
                     onTopicClick = {},
-                    onStartMixedInterview = {},
-                    onOpenProgress = {},
                     onRetry = {
                         retryCount += 1
                     },
@@ -122,52 +114,6 @@ internal class TopicBrowserScreenTest {
         onNodeWithText("Retry").performClick()
 
         assertEquals(1, retryCount)
-    }
-
-    @Test
-    fun mixedInterviewEntryRendersAndInvokesStartOnce() = runComposeUiTest {
-        var startCount = 0
-
-        setContent {
-            MaterialTheme {
-                TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
-                        topics = listOf(Topic("topic", "Topic")),
-                    ),
-                    onTopicClick = {},
-                    onStartMixedInterview = { startCount += 1 },
-                    onOpenProgress = {},
-                    onRetry = {},
-                )
-            }
-        }
-
-        onNodeWithText("Mixed Android Interview").assertIsDisplayed()
-        onNodeWithText("20-question interview").assertIsDisplayed()
-        onNodeWithText("Start Mixed Interview").performClick()
-
-        assertEquals(1, startCount)
-    }
-
-    @Test
-    fun progressEntryRendersAndInvokesCallbackOnce() = runComposeUiTest {
-        var openCount = 0
-
-        setContent {
-            MaterialTheme {
-                TopicBrowserScreen(
-                    state = TopicBrowserUiState.Error,
-                    onTopicClick = {},
-                    onStartMixedInterview = {},
-                    onOpenProgress = { openCount += 1 },
-                    onRetry = {},
-                )
-            }
-        }
-
-        onNodeWithText("View progress").assertIsDisplayed().performClick()
-
-        assertEquals(1, openCount)
     }
 
     @Test

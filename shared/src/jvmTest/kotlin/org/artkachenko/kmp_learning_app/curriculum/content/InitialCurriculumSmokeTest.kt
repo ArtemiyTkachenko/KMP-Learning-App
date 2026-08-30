@@ -1,6 +1,7 @@
 package org.artkachenko.kmp_learning_app.curriculum.content
 
 import kotlinx.coroutines.test.runTest
+import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.validation.CurriculumValidator
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -13,13 +14,22 @@ internal class InitialCurriculumSmokeTest {
 
         assertEquals(17, initialCurriculum.topics.size)
         assertEquals(361, initialCurriculum.subtopics.size)
-        assertEquals(270, initialCurriculum.questions.size)
+        assertEquals(309, initialCurriculum.questions.size)
+        assertEquals(
+            270,
+            initialCurriculum.questions.count { it.status == ContentStatus.ACTIVE },
+        )
+        assertEquals(
+            39,
+            initialCurriculum.questions.count { it.status == ContentStatus.DEPRECATED },
+        )
     }
 
     @Test
     fun bundledInitialQuestionDistributionMatchesCurrentTargets() = runTest {
         val initialCurriculum = BundledCurriculumSource.load()
         val countsByTopic = initialCurriculum.questions
+            .filter { it.status == ContentStatus.ACTIVE }
             .groupingBy { it.topicId }
             .eachCount()
 

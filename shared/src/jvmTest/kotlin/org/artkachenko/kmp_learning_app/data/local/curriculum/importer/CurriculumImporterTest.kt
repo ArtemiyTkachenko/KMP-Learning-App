@@ -42,7 +42,7 @@ internal class CurriculumImporterTest {
             val dao = database.curriculumDao()
             assertEquals(17, dao.countTopics())
             assertEquals(361, dao.countSubtopics())
-            assertEquals(270, dao.countQuestions())
+            assertEquals(309, dao.countQuestions())
 
             val singleAnswerQuestion = expectedCurriculum.questions.first { it.correctAnswerIds.size == 1 }
             val multipleAnswerQuestion = expectedCurriculum.questions.first { it.correctAnswerIds.size > 1 }

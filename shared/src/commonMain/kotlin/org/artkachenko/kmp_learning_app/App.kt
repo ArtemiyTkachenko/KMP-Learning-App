@@ -1,12 +1,8 @@
 package org.artkachenko.kmp_learning_app
 
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -93,10 +89,18 @@ private fun AppShell(
     ) { contentPadding ->
         NavDisplay(
             backStack = backStack,
+            // The shell's insets are applied exactly once, here, and then consumed so nothing
+            // deeper adds them a second time. Previously this padded by contentPadding and then
+            // by safeContentPadding: Scaffold reports its inset padding without consuming it, so
+            // both saw the same system bars and every screen was inset twice.
+            //
+            // contentPadding carries no top, which leaves the status bar unconsumed on purpose:
+            // each screen's TopAppBar pads for it and paints its container behind it, which is
+            // what puts the bar against the top edge of the window.
             modifier = Modifier
                 .fillMaxSize()
                 .padding(contentPadding)
-                .safeContentPadding(),
+                .consumeWindowInsets(contentPadding),
             entryDecorators = listOf(
                 // Saveable state must be installed before the ViewModel decorator so each
                 // navigation entry owns the state registry used by its ViewModel store owner.

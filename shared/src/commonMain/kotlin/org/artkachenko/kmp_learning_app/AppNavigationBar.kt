@@ -4,9 +4,13 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -123,6 +127,14 @@ internal fun AppNavigationScaffold(
             Scaffold(
                 modifier = Modifier.fillMaxSize(),
                 containerColor = MaterialTheme.colorScheme.background,
+                // The window's top edge is deliberately left out of the content padding: screens
+                // start with their own TopAppBar, which pads for the status bar and paints its
+                // container behind it. Padding the content here as well would push every bar a
+                // status bar's height down the screen. Bottom and horizontal insets stay, so a
+                // screen shown without the navigation bar still clears the gesture bar and a
+                // landscape display cutout.
+                contentWindowInsets = WindowInsets.safeDrawing
+                    .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
                 bottomBar = {
                     if (showsNavigation && !usesRail) {
                         AppNavigationBar(

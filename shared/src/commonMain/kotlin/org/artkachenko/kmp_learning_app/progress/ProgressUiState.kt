@@ -12,6 +12,7 @@ internal sealed interface ProgressUiState {
         val answeredQuestionCount: Int,
         val correctAnswerCount: Int,
         val percentage: Double,
+        val unresolvedMistakeCount: Int,
         val weakAreas: List<WeakAreaUiModel>,
         val topics: List<ProgressTopicUiModel>,
         val history: List<CompletedAttemptUiModel>,

@@ -3,6 +3,7 @@ package org.artkachenko.kmp_learning_app.mistake_review
 import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
+import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 
@@ -18,17 +19,40 @@ internal class MistakeReviewService(
     private val assessmentRepository: AssessmentRepository,
     private val assessmentReviewLoader: AssessmentReviewLoader,
 ) {
-    suspend fun load(): List<UnresolvedMistake> {
+    suspend fun load(): List<UnresolvedMistake> =
+        unresolvedCandidates().map { candidate ->
+            UnresolvedMistake(
+                questionId = candidate.questionAttempt.questionId,
+                sourceAttemptId = candidate.sourceAttemptId,
+                // Review content is reconstructed only for unresolved candidates, never for every
+                // historical occurrence.
+                reviewItem = assessmentReviewLoader.loadQuestion(candidate.questionAttempt),
+            )
+        }
+
+    /**
+     * How many Questions are unresolved, without reconstructing any review content.
+     *
+     * [completedAttempts] lets a caller that already holds newest-first completed history reuse it
+     * rather than making the repository read it again — the progress dashboard would otherwise read
+     * and rebuild the whole history a third time on every resume.
+     */
+    suspend fun countUnresolved(completedAttempts: List<TestAttempt>? = null): Int =
+        unresolvedCandidates(completedAttempts).size
+
+    private suspend fun unresolvedCandidates(
+        completedAttempts: List<TestAttempt>? = null,
+    ): List<Candidate> {
         // getCompletedAttempts() is contractually completed-only and already ordered newest first
         // (completedAt DESC, startedAt DESC, id ASC). The status filter mirrors the same defensive
         // check LearningProgressService applies; the order is consumed as-is and never re-sorted.
-        val completedAttempts = assessmentRepository.getCompletedAttempts()
+        val attempts = (completedAttempts ?: assessmentRepository.getCompletedAttempts())
             .filter { it.status == AssessmentStatus.COMPLETED }
 
         val seenQuestionIds = mutableSetOf<String>()
         val candidates = mutableListOf<Candidate>()
 
-        for (attempt in completedAttempts) {
+        for (attempt in attempts) {
             for (questionAttempt in attempt.questionAttempts) {
                 // Newest attempt first means the FIRST occurrence seen is the latest one; every
                 // older occurrence of the same Question is irrelevant to its current state.
@@ -43,15 +67,7 @@ internal class MistakeReviewService(
             }
         }
 
-        // Review content is reconstructed only for unresolved candidates, never for every
-        // historical occurrence.
-        return candidates.map { candidate ->
-            UnresolvedMistake(
-                questionId = candidate.questionAttempt.questionId,
-                sourceAttemptId = candidate.sourceAttemptId,
-                reviewItem = assessmentReviewLoader.loadQuestion(candidate.questionAttempt),
-            )
-        }
+        return candidates
     }
 }
 

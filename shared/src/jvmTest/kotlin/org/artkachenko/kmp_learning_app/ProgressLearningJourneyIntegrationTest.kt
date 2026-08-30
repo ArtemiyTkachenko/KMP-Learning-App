@@ -96,10 +96,14 @@ internal class ProgressLearningJourneyIntegrationTest {
 
                     waitForText("View progress")
                     onNodeWithText("View progress").performClick()
-                    waitForText("3 completed assessments")
-                    onNodeWithText("7 questions answered").assertIsDisplayed()
-                    onNodeWithText("3 correct answers").assertIsDisplayed()
-                    onNodeWithText("42.9% accuracy").assertIsDisplayed()
+                    waitForText("Completed assessments")
+                    // The derived values, not just their labels.
+                    onNode(hasText("Questions answered") and hasText("7")).assertIsDisplayed()
+                    onNode(hasText("Correct answers") and hasText("3")).assertIsDisplayed()
+                    onNodeWithText("accuracy overall").assertIsDisplayed()
+                    assertTrue(
+                        onAllNodesWithText("42.9%").fetchSemanticsNodes().isNotEmpty(),
+                    )
 
                     scrollToText("Weak areas")
                     assertTrue(onAllNodesWithText("Android").fetchSemanticsNodes().isNotEmpty())
@@ -149,8 +153,8 @@ internal class ProgressLearningJourneyIntegrationTest {
                     onNodeWithContentDescription("Back").performClick()
                     waitForText("Progress")
 
-                    scrollToText("Review mistakes")
-                    onNodeWithText("Review mistakes").performClick()
+                    scrollToTextStartingWith("Review mistakes")
+                    onNodeWithText("Review mistakes", substring = true).performClick()
                     waitForText("Lifecycle question")
                     onNodeWithText("Lifecycle question").assertIsDisplayed()
                     onNodeWithText("Newest lifecycle selection").performScrollTo().assertIsDisplayed()
@@ -353,6 +357,12 @@ internal class ProgressLearningJourneyIntegrationTest {
     private fun ComposeUiTest.scrollToText(text: String) {
         waitForScrollableContent()
         onNode(hasScrollAction()).performScrollToNode(hasText(text))
+    }
+
+    /** For rows whose label carries a trailing count, such as "Review mistakes (2)". */
+    private fun ComposeUiTest.scrollToTextStartingWith(text: String) {
+        waitForScrollableContent()
+        onNode(hasScrollAction()).performScrollToNode(hasText(text, substring = true))
     }
 
     private fun ComposeUiTest.scrollToTag(tag: String) {

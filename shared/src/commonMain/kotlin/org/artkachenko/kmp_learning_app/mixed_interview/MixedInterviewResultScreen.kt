@@ -1,7 +1,9 @@
 package org.artkachenko.kmp_learning_app.mixed_interview
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -9,15 +11,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
-import kmp_learning_app.shared.generated.resources.assessment_review_percentage
 import kmp_learning_app.shared.generated.resources.mixed_result_attempt_not_found
 import kmp_learning_app.shared.generated.resources.mixed_result_error
 import kmp_learning_app.shared.generated.resources.mixed_result_loading
@@ -32,18 +35,18 @@ import kmp_learning_app.shared.generated.resources.mixed_result_repeat_source_mi
 import kmp_learning_app.shared.generated.resources.mixed_result_title
 import kmp_learning_app.shared.generated.resources.mixed_result_topic_score
 import kmp_learning_app.shared.generated.resources.mixed_result_topic_unavailable
+import kotlin.math.roundToInt
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentScoreSummary
 import org.artkachenko.kmp_learning_app.assessment_review.MissingReviewQuestion
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionCard
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.assessment_review.UnresolvedReviewQuestionsNotice
-import org.jetbrains.compose.resources.stringResource
-import kotlin.math.roundToInt
-import androidx.compose.foundation.layout.PaddingValues
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.PerformanceCard
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
+import org.jetbrains.compose.resources.stringResource
 
 internal const val MixedResultLoadingTag = "mixed_result_loading"
 internal const val MixedResultPracticeAgainTag = "mixed_result_practice_again"
@@ -147,6 +150,8 @@ private fun MixedResultContent(
             Text(
                 stringResource(Res.string.mixed_result_performance_by_topic),
                 style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
         items(state.topicPerformance, key = { it.topicId }) { topic ->
@@ -156,6 +161,8 @@ private fun MixedResultContent(
             Text(
                 stringResource(Res.string.mixed_result_question_review),
                 style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
         items(state.questions) { item ->
@@ -172,26 +179,14 @@ private fun MixedResultContent(
 private fun TopicPerformanceCard(
     topic: TopicPerformanceUiModel,
 ) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                topic.topicName ?: stringResource(Res.string.mixed_result_topic_unavailable),
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                stringResource(
-                    Res.string.mixed_result_topic_score,
-                    topic.correctCount,
-                    topic.questionCount,
-                ),
-            )
-            Text(
-                stringResource(
-                    Res.string.assessment_review_percentage,
-                    topic.percentage.roundToInt(),
-                ),
-            )
-        }
-    }
+    PerformanceCard(
+        title = topic.topicName ?: stringResource(Res.string.mixed_result_topic_unavailable),
+        detail = stringResource(
+            Res.string.mixed_result_topic_score,
+            topic.correctCount,
+            topic.questionCount,
+        ),
+        percentage = topic.percentage,
+    )
 }
 

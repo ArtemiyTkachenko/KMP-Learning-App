@@ -271,6 +271,46 @@ internal class MistakeReviewServiceTest {
     }
 
     @Test
+    fun countUnresolvedAgreesWithTheQueueWithoutLoadingReviewContent() = runTest {
+        val curriculum = RecordingCurriculumRepository(defaultQuestions())
+        val service = MistakeReviewService(
+            assessmentRepository = HistoryRepository(
+                listOf(
+                    attempt("newest", "2026-08-29T12:00:00Z", "q1" to false, "q2" to true),
+                    attempt("oldest", "2026-08-29T10:00:00Z", "q3" to false),
+                ),
+            ),
+            assessmentReviewLoader = AssessmentReviewLoader(curriculum),
+        )
+
+        assertEquals(2, service.countUnresolved())
+        // The count is a pure pass over persisted correctness: no question content is rebuilt.
+        assertEquals(emptyList(), curriculum.questionLookups)
+        assertEquals(service.load().size, service.countUnresolved())
+    }
+
+    @Test
+    fun countUnresolvedReusesSuppliedHistoryInsteadOfReadingItAgain() = runTest {
+        val repository = HistoryRepository(
+            listOf(attempt("a1", "2026-08-29T10:00:00Z", "q1" to false)),
+        )
+        val service = MistakeReviewService(
+            assessmentRepository = repository,
+            assessmentReviewLoader = AssessmentReviewLoader(
+                RecordingCurriculumRepository(defaultQuestions()),
+            ),
+        )
+
+        val supplied = repository.getCompletedAttempts()
+        val readsAfterSupplying = repository.readCount
+
+        assertEquals(1, service.countUnresolved(supplied))
+        // The progress dashboard hands over history it already holds; re-reading it there would
+        // make the dashboard rebuild the whole attempt history a third time on every resume.
+        assertEquals(readsAfterSupplying, repository.readCount)
+    }
+
+    @Test
     fun historyOrderIsConsumedAsGivenWithoutReSorting() = runTest {
         val repository = HistoryRepository(
             listOf(

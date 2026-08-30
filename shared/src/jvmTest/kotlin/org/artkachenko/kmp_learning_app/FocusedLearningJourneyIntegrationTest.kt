@@ -5,10 +5,10 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
@@ -29,10 +29,12 @@ import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
-import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
+import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingFinishTag
+import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingSubmitTag
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
@@ -47,13 +49,11 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDatabase
 import org.artkachenko.kmp_learning_app.data.local.curriculum.curriculumDataModule
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImporter
 import org.artkachenko.kmp_learning_app.data.local.curriculum.repository.LocalCurriculumRepository
-import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingFinishTag
-import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingSubmitTag
 import org.artkachenko.kmp_learning_app.progress.progressTopicCardTag
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultPracticeAgainTag
+import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.SubtopicPracticeButtonTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicPracticeButtonTag
-import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.koin.compose.KoinApplication
 import org.koin.core.context.stopKoin
 import org.koin.dsl.koinConfiguration
@@ -123,11 +123,15 @@ internal class FocusedLearningJourneyIntegrationTest {
 
             onNodeWithText("View progress").assertIsDisplayed().performClick()
             waitUntil(timeoutMillis = 5_000) {
-                onAllNodesWithText("1 completed assessments").fetchSemanticsNodes().isNotEmpty()
+                onAllNodesWithText("Completed assessments").fetchSemanticsNodes().isNotEmpty()
             }
-            onNodeWithText("2 questions answered").assertIsDisplayed()
-            onNodeWithText("1 correct answers").assertIsDisplayed()
-            onNodeWithText("50% accuracy").assertIsDisplayed()
+            // The derived values, not just their labels: this is the end-to-end check that Room
+            // history reaches the dashboard with the right numbers.
+            onNode(hasText("Questions answered") and hasText("2")).assertIsDisplayed()
+            onNode(hasText("Correct answers") and hasText("1")).assertIsDisplayed()
+            // 50% is the overall headline here and also the topic and weak-area figures.
+            onNodeWithText("accuracy overall").assertIsDisplayed()
+            assertTrue(onAllNodesWithText("50%").fetchSemanticsNodes().isNotEmpty())
             onNode(hasScrollAction()).performScrollToNode(hasText("Focused practice"))
             onNodeWithText("Focused practice").performClick()
             waitUntil(timeoutMillis = 5_000) {
@@ -135,13 +139,15 @@ internal class FocusedLearningJourneyIntegrationTest {
             }
             onNodeWithContentDescription("Back").performClick()
             waitUntil(timeoutMillis = 5_000) {
-                onAllNodesWithText("1 completed assessments").fetchSemanticsNodes().isNotEmpty()
+                onAllNodesWithText("Completed assessments").fetchSemanticsNodes().isNotEmpty()
             }
 
             // Mistake review: the multiple-choice question was answered incorrectly and the single
             // question correctly, so only the former is unresolved.
-            onNode(hasScrollAction()).performScrollToNode(hasText("Review mistakes"))
-            onNodeWithText("Review mistakes").performClick()
+            onNode(hasScrollAction()).performScrollToNode(
+                hasText("Review mistakes", substring = true),
+            )
+            onNodeWithText("Review mistakes", substring = true).performClick()
             waitUntil(timeoutMillis = 5_000) {
                 onAllNodesWithText("Multiple question").fetchSemanticsNodes().isNotEmpty()
             }
@@ -149,7 +155,7 @@ internal class FocusedLearningJourneyIntegrationTest {
             onNodeWithText("Single question").assertDoesNotExist()
             onNodeWithContentDescription("Back").performClick()
             waitUntil(timeoutMillis = 5_000) {
-                onAllNodesWithText("1 completed assessments").fetchSemanticsNodes().isNotEmpty()
+                onAllNodesWithText("Completed assessments").fetchSemanticsNodes().isNotEmpty()
             }
 
             // Topic drill-down. "Android" also labels the weak-area parent and the focused history
@@ -162,7 +168,7 @@ internal class FocusedLearningJourneyIntegrationTest {
             onNodeWithText("Weak area").assertIsDisplayed()
             onNodeWithContentDescription("Back").performClick()
             waitUntil(timeoutMillis = 5_000) {
-                onAllNodesWithText("1 completed assessments").fetchSemanticsNodes().isNotEmpty()
+                onAllNodesWithText("Completed assessments").fetchSemanticsNodes().isNotEmpty()
             }
             onNodeWithContentDescription("Back").performClick()
 

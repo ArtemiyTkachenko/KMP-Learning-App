@@ -21,7 +21,7 @@ internal class MistakeReviewScreenTest {
     fun loadingStateRenders() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                MistakeReviewScreen(MistakeReviewUiState.Loading, {}, {}, {})
+                MistakeReviewScreen(MistakeReviewUiState.Loading, {}, {}, {}, {})
             }
         }
 
@@ -33,7 +33,7 @@ internal class MistakeReviewScreenTest {
     fun emptyStateExplainsTheResolutionRule() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                MistakeReviewScreen(MistakeReviewUiState.Empty, {}, {}, {})
+                MistakeReviewScreen(MistakeReviewUiState.Empty, {}, {}, {}, {})
             }
         }
 
@@ -48,7 +48,7 @@ internal class MistakeReviewScreenTest {
         var retryCount = 0
         setContent {
             MaterialTheme {
-                MistakeReviewScreen(MistakeReviewUiState.Error, {}, { retryCount += 1 }, {})
+                MistakeReviewScreen(MistakeReviewUiState.Error, {}, { retryCount += 1 }, {}, {})
             }
         }
 
@@ -65,6 +65,7 @@ internal class MistakeReviewScreenTest {
                     state = MistakeReviewUiState.Content(listOf(availableMistake("q1"))),
                     onBack = {},
                     onRetry = {},
+                    onBrowseTopics = {},
                     onSourceClick = {},
                 )
             }
@@ -94,6 +95,7 @@ internal class MistakeReviewScreenTest {
                     ),
                     onBack = {},
                     onRetry = {},
+                    onBrowseTopics = {},
                     onSourceClick = {},
                 )
             }
@@ -112,6 +114,7 @@ internal class MistakeReviewScreenTest {
                     ),
                     onBack = {},
                     onRetry = {},
+                    onBrowseTopics = {},
                     onSourceClick = {},
                 )
             }
@@ -130,6 +133,7 @@ internal class MistakeReviewScreenTest {
                     state = MistakeReviewUiState.Content(listOf(availableMistake("q1"))),
                     onBack = {},
                     onRetry = {},
+                    onBrowseTopics = {},
                     onSourceClick = clicked::add,
                 )
             }
@@ -148,6 +152,7 @@ internal class MistakeReviewScreenTest {
                     state = MistakeReviewUiState.Content(listOf(availableMistake("q1"))),
                     onBack = {},
                     onRetry = {},
+                    onBrowseTopics = {},
                     onSourceClick = {},
                     failedSourceUrl = "https://kotlinlang.org/q1",
                 )

@@ -10,9 +10,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
@@ -22,6 +22,7 @@ import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
+import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
@@ -30,6 +31,7 @@ import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
+import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class ProgressViewModelTest {
@@ -85,6 +87,29 @@ internal class ProgressViewModelTest {
         assertEquals(CompletedAssessmentType.MIXED, content.history.first().assessmentType)
         assertEquals(7, content.history.first().correctAnswers)
         assertEquals("2026-08-29T00:15:00Z", content.history.first().completedAtText)
+    }
+
+    @Test
+    fun unresolvedMistakeCountComesFromTheMistakeQueuesLatestOccurrenceRule() = runTest {
+        setMain(testScheduler)
+        // q1 was wrong then right, so it is resolved; q2 is still wrong. Only q2 should count.
+        val context = TestContext(
+            attempts = listOf(
+                completedAttempt("new", AssessmentConfig.Mixed(2), listOf("q1" to true, "q2" to false)),
+                completedAttempt("old", AssessmentConfig.Mixed(1), listOf("q1" to false)),
+            ),
+            questions = listOf(
+                question("q1", "topic", "subtopic"),
+                question("q2", "topic", "subtopic"),
+            ),
+            topics = listOf(Topic("topic", "Kotlin")),
+            subtopics = listOf(Subtopic("subtopic", "topic", "Core")),
+        )
+
+        context.viewModel.refresh()
+        advanceUntilIdle()
+
+        assertEquals(1, content(context.viewModel).unresolvedMistakeCount)
     }
 
     @Test
@@ -330,6 +355,7 @@ private class TestContext(
         learningProgressService = LearningProgressService(assessment, curriculum),
         assessmentRepository = assessment,
         curriculumRepository = curriculum,
+        mistakeReviewService = MistakeReviewService(assessment, AssessmentReviewLoader(curriculum)),
     )
 }
 

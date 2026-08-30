@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -20,21 +22,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
+import kmp_learning_app.shared.generated.resources.assessment_review_accuracy_caption
 import kmp_learning_app.shared.generated.resources.assessment_review_correct
 import kmp_learning_app.shared.generated.resources.assessment_review_correct_answer
 import kmp_learning_app.shared.generated.resources.assessment_review_explanation
 import kmp_learning_app.shared.generated.resources.assessment_review_incorrect
 import kmp_learning_app.shared.generated.resources.assessment_review_missing_question
 import kmp_learning_app.shared.generated.resources.assessment_review_partially_correct
-import kmp_learning_app.shared.generated.resources.assessment_review_percentage
 import kmp_learning_app.shared.generated.resources.assessment_review_score
 import kmp_learning_app.shared.generated.resources.assessment_review_selected
 import kmp_learning_app.shared.generated.resources.assessment_review_source
 import kmp_learning_app.shared.generated.resources.assessment_review_source_open_failed
 import kmp_learning_app.shared.generated.resources.assessment_review_unresolved_questions
+import org.artkachenko.kmp_learning_app.ui.AccuracyHeadline
+import org.artkachenko.kmp_learning_app.ui.AppIcons
+import org.artkachenko.kmp_learning_app.ui.StatusBadge
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.jetbrains.compose.resources.stringResource
-import kotlin.math.roundToInt
 
 @Composable
 internal fun AssessmentScoreSummary(
@@ -43,16 +47,24 @@ internal fun AssessmentScoreSummary(
     percentage: Double,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            stringResource(Res.string.assessment_review_score, correctAnswers, totalQuestions),
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Text(
-            stringResource(Res.string.assessment_review_percentage, percentage.roundToInt()),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        // The outcome of the assessment leads at display size instead of being a plain line of
+        // text the same weight as everything under it.
+        AccuracyHeadline(
+            percentage = percentage,
+            caption = stringResource(Res.string.assessment_review_accuracy_caption),
+            supporting = stringResource(
+                Res.string.assessment_review_score,
+                correctAnswers,
+                totalQuestions,
+            ),
+            modifier = Modifier.padding(16.dp),
         )
     }
 }
@@ -82,7 +94,8 @@ internal fun UnresolvedReviewQuestionsNotice(
         ),
         modifier = modifier,
         style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.error,
+        // A caveat about missing curriculum content, not a failure: full error red overstated it.
+        color = AppThemeExtras.semanticColors.partiallyCorrect,
     )
 }
 
@@ -148,7 +161,15 @@ internal fun ReviewQuestionCard(
                             onClick = { onSourceClick(source.url) },
                             contentPadding = SourceLinkPadding,
                         ) {
-                            Text(stringResource(Res.string.assessment_review_source, source.title))
+                            Icon(
+                                imageVector = AppIcons.OpenInNew,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Text(
+                                stringResource(Res.string.assessment_review_source, source.title),
+                                modifier = Modifier.padding(start = 6.dp),
+                            )
                         }
                     }
                 }
@@ -187,14 +208,7 @@ private fun QuestionOutcomeLabel(outcome: QuestionOutcome) {
         )
     }
 
-    Surface(shape = MaterialTheme.shapes.small, color = container) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelLarge,
-            color = content,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-        )
-    }
+    StatusBadge(text = text, contentColor = content, containerColor = container)
 }
 
 @Composable

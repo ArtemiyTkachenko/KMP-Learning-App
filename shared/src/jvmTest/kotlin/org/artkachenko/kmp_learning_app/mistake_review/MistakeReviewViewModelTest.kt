@@ -39,6 +39,7 @@ internal class MistakeReviewViewModelTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val viewModel = MistakeReviewViewModel(vmService(VmHistoryRepository(emptyList())))
 
+        viewModel.refresh()
         advanceUntilIdle()
 
         assertIs<MistakeReviewUiState.Empty>(viewModel.uiState.value)
@@ -55,6 +56,7 @@ internal class MistakeReviewViewModelTest {
         )
         val viewModel = MistakeReviewViewModel(vmService(repository))
 
+        viewModel.refresh()
         advanceUntilIdle()
 
         val content = assertIs<MistakeReviewUiState.Content>(viewModel.uiState.value)
@@ -70,6 +72,7 @@ internal class MistakeReviewViewModelTest {
         )
         val viewModel = MistakeReviewViewModel(vmService(repository))
 
+        viewModel.refresh()
         assertIs<MistakeReviewUiState.Loading>(viewModel.uiState.value)
 
         advanceUntilIdle()
@@ -85,10 +88,11 @@ internal class MistakeReviewViewModelTest {
         repository.failNextLoad = true
         val viewModel = MistakeReviewViewModel(vmService(repository))
 
+        viewModel.refresh()
         advanceUntilIdle()
         assertIs<MistakeReviewUiState.Error>(viewModel.uiState.value)
 
-        viewModel.retry()
+        viewModel.refresh()
         advanceUntilIdle()
         val content = assertIs<MistakeReviewUiState.Content>(viewModel.uiState.value)
         assertEquals(listOf("q1"), content.mistakes.map { it.questionId })

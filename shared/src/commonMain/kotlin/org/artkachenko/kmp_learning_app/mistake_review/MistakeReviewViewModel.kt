@@ -16,15 +16,7 @@ internal class MistakeReviewViewModel(
     val uiState: StateFlow<MistakeReviewUiState> = _uiState.asStateFlow()
     private var loadJob: Job? = null
 
-    init {
-        load()
-    }
-
-    fun retry() {
-        load()
-    }
-
-    private fun load() {
+    fun refresh() {
         loadJob?.cancel()
         _uiState.value = MistakeReviewUiState.Loading
         loadJob = viewModelScope.launch {

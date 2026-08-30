@@ -10,6 +10,10 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -38,6 +42,39 @@ internal class MistakeReviewDestinationTest {
     @AfterTest
     fun tearDown() {
         Dispatchers.resetMain()
+    }
+
+    @Test
+    fun resumeRefreshesTheRetainedQueueAfterHistoryChanges() = runComposeUiTest {
+        Dispatchers.setMain(Dispatchers.Unconfined)
+        val repository = MutableDestinationHistoryRepository(
+            listOf(destinationAttempt("first", "q1")),
+        )
+        val owner = MistakeReviewLifecycleOwner()
+        val viewModel = destinationViewModel(repository)
+
+        setContent {
+            CompositionLocalProvider(LocalLifecycleOwner provides owner) {
+                MaterialTheme {
+                    MistakeReviewDestination(
+                        onBack = {},
+                        onBrowseTopics = {},
+                        viewModel = viewModel,
+                    )
+                }
+            }
+        }
+
+        owner.moveTo(Lifecycle.State.RESUMED)
+        waitForIdle()
+        onNodeWithText("Question q1").assertIsDisplayed()
+
+        repository.attempts = listOf(destinationAttempt("second", "q2"))
+        owner.moveTo(Lifecycle.State.CREATED)
+        owner.moveTo(Lifecycle.State.RESUMED)
+        waitForIdle()
+
+        onNodeWithText("Question q2").assertIsDisplayed()
     }
 
     @Test
@@ -92,12 +129,54 @@ private class RecordingUriHandler(
     }
 }
 
-private fun destinationViewModel(): MistakeReviewViewModel =
+private fun destinationViewModel(
+    repository: AssessmentRepository = DestinationHistoryRepository,
+): MistakeReviewViewModel =
     MistakeReviewViewModel(
         MistakeReviewService(
-            assessmentRepository = DestinationHistoryRepository,
+            assessmentRepository = repository,
             assessmentReviewLoader = AssessmentReviewLoader(DestinationCurriculumRepository),
         ),
+    )
+
+private class MistakeReviewLifecycleOwner : LifecycleOwner {
+    private val registry = LifecycleRegistry.createUnsafe(this)
+
+    override val lifecycle: Lifecycle get() = registry
+
+    fun moveTo(state: Lifecycle.State) {
+        registry.currentState = state
+    }
+}
+
+private class MutableDestinationHistoryRepository(
+    var attempts: List<TestAttempt>,
+) : AssessmentRepository {
+    override suspend fun save(attempt: TestAttempt) = Unit
+
+    override suspend fun getById(attemptId: String): TestAttempt? =
+        attempts.firstOrNull { it.id == attemptId }
+
+    override suspend fun getCompletedAttempts(): List<TestAttempt> = attempts
+}
+
+private fun destinationAttempt(
+    id: String,
+    questionId: String,
+): TestAttempt =
+    TestAttempt(
+        id = id,
+        config = AssessmentConfig.Mixed(1),
+        questionAttempts = listOf(
+            QuestionAttempt(
+                questionId,
+                QuestionAnswerState.Answered(setOf("${questionId}_b"), isCorrect = false),
+            ),
+        ),
+        status = AssessmentStatus.COMPLETED,
+        startedAt = Instant.parse("2026-08-29T09:00:00Z"),
+        completedAt = Instant.parse("2026-08-29T10:00:00Z"),
+        score = AssessmentScore(1, 0),
     )
 
 private object DestinationHistoryRepository : AssessmentRepository {

@@ -15,17 +15,17 @@ internal class InitialCurriculumSmokeTest {
 
         assertEquals(17, initialCurriculum.topics.size)
         assertEquals(361, initialCurriculum.subtopics.size)
-        assertEquals(309, initialCurriculum.questions.size)
+        assertEquals(399, initialCurriculum.questions.size)
         assertEquals(
-            270,
+            360,
             initialCurriculum.questions.count { it.status == ContentStatus.ACTIVE },
         )
         assertEquals(
             39,
             initialCurriculum.questions.count { it.status == ContentStatus.DEPRECATED },
         )
-        assertEquals(277, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.SINGLE })
-        assertEquals(32, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.MULTIPLE })
+        assertEquals(353, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.SINGLE })
+        assertEquals(46, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.MULTIPLE })
     }
 
     @Test
@@ -38,23 +38,23 @@ internal class InitialCurriculumSmokeTest {
 
         assertEquals(
             mapOf(
-                "android_platform" to 15,
-                "lifecycle_navigation" to 20,
-                "android_ui" to 25,
-                "kotlin_language" to 22,
-                "async_reactive" to 28,
-                "architecture" to 18,
-                "dependency_injection" to 16,
-                "local_data" to 15,
-                "networking" to 15,
-                "background_work" to 11,
-                "notifications" to 8,
-                "testing" to 16,
-                "performance" to 15,
-                "security" to 10,
-                "build_delivery" to 13,
-                "mobile_system_design" to 12,
-                "kmp" to 11,
+                "android_platform" to 16,
+                "lifecycle_navigation" to 23,
+                "android_ui" to 26,
+                "kotlin_language" to 25,
+                "async_reactive" to 38,
+                "architecture" to 22,
+                "dependency_injection" to 23,
+                "local_data" to 21,
+                "networking" to 24,
+                "background_work" to 19,
+                "notifications" to 12,
+                "testing" to 22,
+                "performance" to 22,
+                "security" to 17,
+                "build_delivery" to 17,
+                "mobile_system_design" to 17,
+                "kmp" to 16,
             ),
             countsByTopic,
         )

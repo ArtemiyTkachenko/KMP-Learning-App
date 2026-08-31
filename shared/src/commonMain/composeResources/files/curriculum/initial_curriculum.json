@@ -13588,6 +13588,3329 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "flow_flat_map_latest_search_cancellation",
+      "topicId": "async_reactive",
+      "subtopicId": "flow_operators",
+      "text": "A search screen maps every new query string to a Flow of repository results. When the user types another character, the request already running for the previous query should stop. Which operator expresses that?",
+      "answers": [
+        {
+          "id": "flow_flat_map_latest_search_cancellation_a",
+          "text": "flatMapConcat, which waits for the previous inner flow to finish before starting the next one."
+        },
+        {
+          "id": "flow_flat_map_latest_search_cancellation_b",
+          "text": "flatMapLatest, which cancels the previous inner flow when a new query arrives."
+        },
+        {
+          "id": "flow_flat_map_latest_search_cancellation_c",
+          "text": "flatMapMerge, which runs the inner flows concurrently and interleaves their emissions."
+        },
+        {
+          "id": "flow_flat_map_latest_search_cancellation_d",
+          "text": "conflate, which drops intermediate query values when the collector falls behind."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "flow_flat_map_latest_search_cancellation_b"
+      ],
+      "explanation": "flatMapLatest cancels the inner flow it started for the previous upstream value each time a new one arrives, which is exactly search-as-you-type behaviour. flatMapConcat and flatMapMerge both let the earlier request keep running, sequentially or concurrently. conflate is a backpressure operator: it discards upstream values a slow collector has not reached yet, but it never cancels work that has already been started.",
+      "sources": [
+        {
+          "title": "kotlinx.coroutines: flatMapLatest",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/flat-map-latest.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_debounce_vs_distinct_until_changed",
+      "topicId": "async_reactive",
+      "subtopicId": "flow_operators",
+      "text": "A Flow of query strings feeds a search repository. What is the difference between applying debounce(300) to it and applying distinctUntilChanged() to it?",
+      "answers": [
+        {
+          "id": "flow_debounce_vs_distinct_until_changed_a",
+          "text": "debounce drops a value equal to the one before it, while distinctUntilChanged waits for a quiet period."
+        },
+        {
+          "id": "flow_debounce_vs_distinct_until_changed_b",
+          "text": "Both suppress duplicates; debounce compares values by identity and distinctUntilChanged compares with equals()."
+        },
+        {
+          "id": "flow_debounce_vs_distinct_until_changed_c",
+          "text": "debounce waits until emissions pause for the given time, while distinctUntilChanged drops a value equal to the previous one."
+        },
+        {
+          "id": "flow_debounce_vs_distinct_until_changed_d",
+          "text": "debounce emits at most one value per fixed window, while distinctUntilChanged removes every value the flow has emitted before."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "flow_debounce_vs_distinct_until_changed_c"
+      ],
+      "explanation": "debounce is time-based: it emits the latest value only after the upstream has stayed quiet for the timeout, so a burst of keystrokes collapses into one query. distinctUntilChanged is value-based and compares each emission only with the one immediately before it, so a value that reappears later still passes through. Emitting at most one value per fixed window is what sample() does, and neither operator keeps a history of every earlier value.",
+      "sources": [
+        {
+          "title": "kotlinx.coroutines: debounce",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/debounce.html"
+        },
+        {
+          "title": "kotlinx.coroutines: distinctUntilChanged",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/distinct-until-changed.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_combine_vs_zip_emission_rule",
+      "topicId": "async_reactive",
+      "subtopicId": "flow_operators",
+      "text": "One Flow emits the signed-in user and another emits a settings snapshot, and a screen state is built from both. How do combine and zip differ in when they produce a value?",
+      "answers": [
+        {
+          "id": "flow_combine_vs_zip_emission_rule_a",
+          "text": "After both flows emit once, combine uses their latest values when either emits; zip pairs their next unused values."
+        },
+        {
+          "id": "flow_combine_vs_zip_emission_rule_b",
+          "text": "combine emits only once both flows supply a new value; zip emits when either one emits, reusing the newest value."
+        },
+        {
+          "id": "flow_combine_vs_zip_emission_rule_c",
+          "text": "combine waits for both flows to complete and emits a single merged value; zip emits pairs as values arrive."
+        },
+        {
+          "id": "flow_combine_vs_zip_emission_rule_d",
+          "text": "Both emit on every upstream emission, but zip cancels the slower flow once the faster one has completed."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "flow_combine_vs_zip_emission_rule_a"
+      ],
+      "explanation": "combine first waits until every source has emitted at least one value. It then caches each source's most recent value and re-emits whenever any source changes, so a settings change alone still produces a fresh screen state. zip is strictly pairwise: it holds a value until the other flow has an unused one, which means a rarely emitting source throttles the whole pair — usually the wrong shape for UI state. Neither operator waits for all sources to complete before it can emit.",
+      "sources": [
+        {
+          "title": "kotlinx.coroutines: combine",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/combine.html"
+        },
+        {
+          "title": "kotlinx.coroutines: zip",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/zip.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_launch_in_on_each_scope",
+      "topicId": "async_reactive",
+      "subtopicId": "flow_collection",
+      "text": "A ViewModel reacts to every value of a repository Flow without suspending its own initialization. What does flow.onEach { }.launchIn(viewModelScope) actually do?",
+      "answers": [
+        {
+          "id": "flow_launch_in_on_each_scope_a",
+          "text": "It collects the flow on the calling thread and returns once the flow has completed."
+        },
+        {
+          "id": "flow_launch_in_on_each_scope_b",
+          "text": "It registers the onEach block as a listener that runs without any coroutine collecting the flow."
+        },
+        {
+          "id": "flow_launch_in_on_each_scope_c",
+          "text": "It starts a coroutine in that scope which collects the flow, and returns its Job immediately."
+        },
+        {
+          "id": "flow_launch_in_on_each_scope_d",
+          "text": "It turns the cold flow into a hot one that keeps emitting after the scope has been cancelled."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "flow_launch_in_on_each_scope_c"
+      ],
+      "explanation": "launchIn is shorthand for scope.launch { collect() }. The terminal operator is still collect, but it runs inside a new coroutine owned by the scope, so the call returns a Job straight away and cancelling the scope stops the collection. It does not make the flow hot — shareIn and stateIn do that — and a Flow produces nothing unless a collector is running.",
+      "sources": [
+        {
+          "title": "kotlinx.coroutines: launchIn",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/launch-in.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_collection_cancels_cold_producer",
+      "topicId": "async_reactive",
+      "subtopicId": "flow_collection",
+      "text": "A cold Flow wraps a long paged database read, and the coroutine collecting it is cancelled part way through. What happens to the producer block?",
+      "answers": [
+        {
+          "id": "flow_collection_cancels_cold_producer_a",
+          "text": "It stops at its next suspension point, because the producer runs inside the collector's coroutine."
+        },
+        {
+          "id": "flow_collection_cancels_cold_producer_b",
+          "text": "It runs to completion, because a cold flow's producer block is given its own independent Job."
+        },
+        {
+          "id": "flow_collection_cancels_cold_producer_c",
+          "text": "It stops at whatever statement it is executing, because cancellation interrupts the running thread."
+        },
+        {
+          "id": "flow_collection_cancels_cold_producer_d",
+          "text": "It keeps producing values that are discarded until the flow reaches its natural end."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "flow_collection_cancels_cold_producer_a"
+      ],
+      "explanation": "A cold Flow has no coroutine of its own: collect runs the producer in the collecting coroutine, so cancelling that coroutine cancels production too. Like all coroutine cancellation this is cooperative — the block stops when it next reaches a cancellable suspension point such as emit(), not in the middle of a CPU-bound statement, and nothing carries on in the background afterwards.",
+      "sources": [
+        {
+          "title": "Asynchronous Flow: Flow cancellation basics",
+          "url": "https://kotlinlang.org/docs/flow.html#flow-cancellation-basics"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "viewmodel_scope_cleared_cancellation",
+      "topicId": "async_reactive",
+      "subtopicId": "lifecycle_coroutines",
+      "text": "A ViewModel starts a large upload with viewModelScope.launch. The user leaves the screen for good and the ViewModel is cleared. What happens to that coroutine?",
+      "answers": [
+        {
+          "id": "viewmodel_scope_cleared_cancellation_a",
+          "text": "It keeps running to the end, because viewModelScope outlives the ViewModel that owns it."
+        },
+        {
+          "id": "viewmodel_scope_cleared_cancellation_b",
+          "text": "It is suspended while no UI observes it and resumes if that ViewModel is requested again."
+        },
+        {
+          "id": "viewmodel_scope_cleared_cancellation_c",
+          "text": "It is cancelled, because viewModelScope is cancelled when the ViewModel is cleared."
+        },
+        {
+          "id": "viewmodel_scope_cleared_cancellation_d",
+          "text": "It is cancelled only when it was launched on Dispatchers.Main rather than Dispatchers.IO."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "viewmodel_scope_cleared_cancellation_c"
+      ],
+      "explanation": "viewModelScope is bound to the ViewModel's lifetime and is cancelled when onCleared() runs, so every coroutine launched in it is cancelled with it. That is the point of the scope, and it is also why work the user expects to finish regardless of navigation — an upload, a purchase confirmation — belongs in WorkManager rather than a ViewModel. The dispatcher a coroutine runs on has no effect on whether its scope cancels it.",
+      "sources": [
+        {
+          "title": "Use Kotlin coroutines with lifecycle-aware components",
+          "url": "https://developer.android.com/topic/libraries/architecture/coroutines"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "callback_flow_await_close_registration",
+      "topicId": "async_reactive",
+      "subtopicId": "flow_fundamentals",
+      "text": "A listener-based location API is adapted into a Flow with callbackFlow. Why must the builder block end with awaitClose { }?",
+      "answers": [
+        {
+          "id": "callback_flow_await_close_registration_a",
+          "text": "It waits for the callback to deliver a first value before the flow is allowed to emit anything."
+        },
+        {
+          "id": "callback_flow_await_close_registration_b",
+          "text": "It keeps the flow open until the collector stops and gives the callback a place to unregister."
+        },
+        {
+          "id": "callback_flow_await_close_registration_c",
+          "text": "It converts the channel-based builder into a cold flow that can be collected more than once."
+        },
+        {
+          "id": "callback_flow_await_close_registration_d",
+          "text": "It buffers the callback's values so that a slow collector never causes an emission to be dropped."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "callback_flow_await_close_registration_b"
+      ],
+      "explanation": "The callbackFlow block finishes as soon as it has registered the listener, and the builder treats a block that returns while its channel is still open as a bug — it throws IllegalStateException pointing at awaitClose, because the alternative is a silent leak with the flow ended and the listener still registered. awaitClose suspends until the collector cancels or the channel closes, which keeps the subscription alive and gives the code one reliable place to unregister. Buffering is configured separately through the builder's capacity, and callbackFlow already returns a cold, re-collectable Flow.",
+      "sources": [
+        {
+          "title": "kotlinx.coroutines: callbackFlow",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/callback-flow.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_retry_when_conditional_attempts",
+      "topicId": "async_reactive",
+      "subtopicId": "flow_errors",
+      "text": "A Flow backed by a network call should be retried at most three times, and only when the failure is an IOException. Which operator expresses that condition?",
+      "answers": [
+        {
+          "id": "flow_retry_when_conditional_attempts_a",
+          "text": "retryWhen, whose predicate receives the cause and the attempt index and decides whether to resubscribe."
+        },
+        {
+          "id": "flow_retry_when_conditional_attempts_b",
+          "text": "catch, whose block receives the cause and can emit a fallback value but cannot restart the upstream."
+        },
+        {
+          "id": "flow_retry_when_conditional_attempts_c",
+          "text": "A try/catch wrapped around collect, which re-runs the terminal operator when it throws."
+        },
+        {
+          "id": "flow_retry_when_conditional_attempts_d",
+          "text": "flowOn, which moves the upstream onto another dispatcher and repeats a failed emission there."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "flow_retry_when_conditional_attempts_a"
+      ],
+      "explanation": "retryWhen gives the predicate both the throwable and the zero-based attempt index, so it can require the cause to be an IOException and stop after three attempts; retry(3) { it is IOException } is the shorthand for the same thing. catch is a genuine operator but it terminates the upstream error rather than resubscribing, and flowOn only changes the context the upstream runs in. A try/catch around collect catches the failure but does not re-run the flow by itself.",
+      "sources": [
+        {
+          "title": "kotlinx.coroutines: retryWhen",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/retry-when.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "shared_flow_replay_late_subscriber",
+      "topicId": "async_reactive",
+      "subtopicId": "sharedflow",
+      "text": "A MutableSharedFlow created with replay = 0 carries one-off UI events. A collector subscribes one second after an event was emitted. What does that collector receive?",
+      "answers": [
+        {
+          "id": "shared_flow_replay_late_subscriber_a",
+          "text": "The missed event, because emissions are queued until at least one collector consumes them."
+        },
+        {
+          "id": "shared_flow_replay_late_subscriber_b",
+          "text": "The missed event, because a SharedFlow always keeps its most recent value for a new subscriber."
+        },
+        {
+          "id": "shared_flow_replay_late_subscriber_c",
+          "text": "Nothing emitted before it subscribed, because with replay 0 only active collectors receive values."
+        },
+        {
+          "id": "shared_flow_replay_late_subscriber_d",
+          "text": "Nothing, and the flow also stops accepting emissions once its last collector goes away."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "shared_flow_replay_late_subscriber_c"
+      ],
+      "explanation": "A SharedFlow delivers a value to whichever collectors are subscribed at the moment it is emitted; the replay cache is the only thing a later subscriber can still see, and replay = 0 means there is none. Always retaining the latest value for new subscribers is StateFlow's behaviour, which is replay 1. A shared flow with no collectors neither queues values for a future one nor refuses further emissions.",
+      "sources": [
+        {
+          "title": "kotlinx.coroutines: SharedFlow",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-shared-flow/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "live_data_vs_state_flow_ui_state",
+      "topicId": "async_reactive",
+      "subtopicId": "livedata",
+      "text": "Select all that apply. A team replaces LiveData with StateFlow for exposing screen state from a ViewModel. Which statements about that change are correct?",
+      "answers": [
+        {
+          "id": "live_data_vs_state_flow_ui_state_a",
+          "text": "StateFlow requires an initial value, while LiveData can be observed before any value is set."
+        },
+        {
+          "id": "live_data_vs_state_flow_ui_state_b",
+          "text": "StateFlow can be collected only on the main thread, while LiveData may be observed from any thread."
+        },
+        {
+          "id": "live_data_vs_state_flow_ui_state_c",
+          "text": "StateFlow is not lifecycle-aware by itself, so UI collection needs a lifecycle-scoped collector."
+        },
+        {
+          "id": "live_data_vs_state_flow_ui_state_d",
+          "text": "StateFlow delivers every value assigned to it, while LiveData drops a value equal to the previous one."
+        }
+      ],
+      "selectionMode": "MULTIPLE",
+      "correctAnswerIds": [
+        "live_data_vs_state_flow_ui_state_a",
+        "live_data_vs_state_flow_ui_state_c"
+      ],
+      "explanation": "StateFlow is an ordinary hot flow that always holds a value, which is why an initial value is mandatory, and it knows nothing about Lifecycle — an Activity or Fragment has to collect it inside repeatOnLifecycle or flowWithLifecycle so a stopped UI is not updated, which LiveData handles itself. Collection is not restricted to the main thread; the dispatcher is chosen by the collecting coroutine. The last statement is backwards: StateFlow conflates and does not re-emit a value equal to the current one, whereas LiveData dispatches every setValue.",
+      "sources": [
+        {
+          "title": "StateFlow and SharedFlow",
+          "url": "https://developer.android.com/kotlin/flow/stateflow-and-sharedflow"
+        },
+        {
+          "title": "kotlinx.coroutines: StateFlow",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-state-flow/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "http_status_retry_classification",
+      "topicId": "networking",
+      "subtopicId": "http_status_codes",
+      "text": "Select all that apply. A sync client must decide which failed requests are worth retrying with backoff rather than reporting as a permanent failure. Which responses normally qualify?",
+      "answers": [
+        {
+          "id": "http_status_retry_classification_a",
+          "text": "503 Service Unavailable, which reports a temporary server-side condition."
+        },
+        {
+          "id": "http_status_retry_classification_b",
+          "text": "400 Bad Request, which reports that the request itself was malformed."
+        },
+        {
+          "id": "http_status_retry_classification_c",
+          "text": "429 Too Many Requests, which asks the caller to slow down and come back later."
+        },
+        {
+          "id": "http_status_retry_classification_d",
+          "text": "403 Forbidden, which reports that the authenticated caller lacks permission."
+        }
+      ],
+      "selectionMode": "MULTIPLE",
+      "correctAnswerIds": [
+        "http_status_retry_classification_a",
+        "http_status_retry_classification_c"
+      ],
+      "explanation": "A response is worth retrying when the condition it describes is expected to change without the client changing the request. A 503 explicitly describes a temporary server condition, while 429 asks the client to slow down; either can include a Retry-After header telling the client how long to wait. That does not make every 5xx response retryable: 501 Not Implemented and 505 HTTP Version Not Supported normally require a capability or protocol change. A 400 or 403 should not be retried blindly either, and a 401 is retried only after the token has actually been refreshed.",
+      "sources": [
+        {
+          "title": "RFC 9110: HTTP Semantics — 503 Service Unavailable",
+          "url": "https://www.rfc-editor.org/rfc/rfc9110.html#name-503-service-unavailable"
+        },
+        {
+          "title": "Cloud Storage: Retry strategy",
+          "url": "https://docs.cloud.google.com/storage/docs/retry-strategy"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "http_methods_safe_vs_idempotent",
+      "topicId": "networking",
+      "subtopicId": "http_methods",
+      "text": "Select all that apply. Which statements about HTTP method semantics are correct?",
+      "answers": [
+        {
+          "id": "http_methods_safe_vs_idempotent_a",
+          "text": "GET is both safe and idempotent, because it is not intended to change server state."
+        },
+        {
+          "id": "http_methods_safe_vs_idempotent_b",
+          "text": "POST is idempotent, because the server assigns the identifier of the created resource."
+        },
+        {
+          "id": "http_methods_safe_vs_idempotent_c",
+          "text": "DELETE is safe, because removing an already removed resource has no further effect."
+        },
+        {
+          "id": "http_methods_safe_vs_idempotent_d",
+          "text": "PUT is idempotent but not safe, because repeating it leaves the resource in the same state."
+        }
+      ],
+      "selectionMode": "MULTIPLE",
+      "correctAnswerIds": [
+        "http_methods_safe_vs_idempotent_a",
+        "http_methods_safe_vs_idempotent_d"
+      ],
+      "explanation": "Safe means a request is not intended to change state; idempotent means repeating an identical request has the same effect as making it once. GET is both. PUT and DELETE are idempotent but not safe, because they do change state and merely converge on the same result when repeated — so DELETE being harmless to repeat is not the same as being safe. POST is neither, which is why a retried POST can create duplicates unless the server deduplicates on a client-supplied key.",
+      "sources": [
+        {
+          "title": "RFC 9110: HTTP Semantics — Safe Methods",
+          "url": "https://www.rfc-editor.org/rfc/rfc9110.html#name-safe-methods"
+        },
+        {
+          "title": "RFC 9110: HTTP Semantics — Idempotent Methods",
+          "url": "https://www.rfc-editor.org/rfc/rfc9110.html#name-idempotent-methods"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "http_connection_reuse_multiplexing",
+      "topicId": "networking",
+      "subtopicId": "http_fundamentals",
+      "text": "A screen issues six small requests to the same host at once. Why does HTTP/2 usually finish them sooner than HTTP/1.1 over a high-latency mobile link?",
+      "answers": [
+        {
+          "id": "http_connection_reuse_multiplexing_a",
+          "text": "It compresses response bodies, so less data crosses the radio for the same payload."
+        },
+        {
+          "id": "http_connection_reuse_multiplexing_b",
+          "text": "It caches responses on the client by itself, so most of the requests skip the network."
+        },
+        {
+          "id": "http_connection_reuse_multiplexing_c",
+          "text": "It multiplexes concurrent streams on one connection without HTTP/1.1 response ordering."
+        },
+        {
+          "id": "http_connection_reuse_multiplexing_d",
+          "text": "It opens one connection per request in parallel, which removes the per-connection queue."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "http_connection_reuse_multiplexing_c"
+      ],
+      "explanation": "HTTP/1.1 can reuse persistent connections and pipeline multiple requests, so these calls do not necessarily serialize or each require a new TCP and TLS handshake. However, pipelined responses must be returned in request order, creating application-layer head-of-line blocking; clients commonly use multiple connections to gain concurrency. HTTP/2 instead interleaves largely independent streams on one connection, so a stalled response does not prevent progress on the others, and it also compresses headers. Body compression is available with either version, HTTP/2 adds no response cache of its own, and it does not open one connection per request.",
+      "sources": [
+        {
+          "title": "RFC 9113: HTTP/2 — Streams and Multiplexing",
+          "url": "https://www.rfc-editor.org/rfc/rfc9113.html#name-streams-and-multiplexing"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "network_retry_backoff_jitter",
+      "topicId": "networking",
+      "subtopicId": "network_retries",
+      "text": "After a backend outage every client retries its failed sync on the same fixed schedule, and the service collapses again as it comes back up. Which change addresses that most directly?",
+      "answers": [
+        {
+          "id": "network_retry_backoff_jitter_a",
+          "text": "Add randomised jitter to an exponential backoff so retries from different clients spread out."
+        },
+        {
+          "id": "network_retry_backoff_jitter_b",
+          "text": "Increase the fixed retry interval so that each client waits longer before its next attempt."
+        },
+        {
+          "id": "network_retry_backoff_jitter_c",
+          "text": "Raise the request timeout so a slow response is no longer counted as a failure to retry."
+        },
+        {
+          "id": "network_retry_backoff_jitter_d",
+          "text": "Retry immediately but cap the number of attempts that any single client is allowed to make."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "network_retry_backoff_jitter_a"
+      ],
+      "explanation": "The problem is correlation rather than attempt count: every client failed at the same instant, so any deterministic schedule brings them all back at the same instant. Exponential backoff spreads attempts over time and the random jitter breaks the synchronisation between clients. A longer fixed interval keeps them in lockstep and just moves the spike later, while timeouts and attempt caps limit one client without decorrelating the fleet.",
+      "sources": [
+        {
+          "title": "Cloud Storage: Retry strategy",
+          "url": "https://docs.cloud.google.com/storage/docs/retry-strategy"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "okhttp_client_instance_reuse_pooling",
+      "topicId": "networking",
+      "subtopicId": "okhttp",
+      "text": "A repository builds a fresh client with OkHttpClient.Builder() for every request it makes. What is the main consequence?",
+      "answers": [
+        {
+          "id": "okhttp_client_instance_reuse_pooling_a",
+          "text": "Each call pays a new connection setup, because the connection and thread pools belong to the client."
+        },
+        {
+          "id": "okhttp_client_instance_reuse_pooling_b",
+          "text": "Calls start failing after a few requests, because OkHttp permits one client instance per process."
+        },
+        {
+          "id": "okhttp_client_instance_reuse_pooling_c",
+          "text": "Interceptors stop running, because they are registered on a shared default client behind the scenes."
+        },
+        {
+          "id": "okhttp_client_instance_reuse_pooling_d",
+          "text": "Responses are never cached, because OkHttp disables caching for clients built at call time."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "okhttp_client_instance_reuse_pooling_a"
+      ],
+      "explanation": "OkHttp is designed around one shared client: the connection pool, the dispatcher's thread pools and the response cache all live on the instance. Building a client per call throws that state away, so every request repeats the TCP and TLS handshake and no idle connection is ever reused, which is expensive on mobile. Nothing limits how many clients may exist; the supported way to vary configuration is newBuilder(), which produces a client sharing the same pools and cache.",
+      "sources": [
+        {
+          "title": "OkHttp: OkHttpClient",
+          "url": "https://lysine.dev/okhttp/5.x/okhttp/okhttp3/-ok-http-client/"
+        },
+        {
+          "title": "OkHttp: Connections",
+          "url": "https://lysine.dev/okhttp/features/connections/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "websocket_idle_connection_heartbeat",
+      "topicId": "networking",
+      "subtopicId": "websockets",
+      "text": "A chat client holds a WebSocket open but has received no messages for a while. What is the protocol-level purpose of sending a Ping and expecting a Pong?",
+      "answers": [
+        {
+          "id": "websocket_idle_connection_heartbeat_a",
+          "text": "It can act as a keepalive and verify that the remote endpoint is still responsive."
+        },
+        {
+          "id": "websocket_idle_connection_heartbeat_b",
+          "text": "The protocol closes a connection once it reaches the maximum session length the RFC defines."
+        },
+        {
+          "id": "websocket_idle_connection_heartbeat_c",
+          "text": "Each frame has to be acknowledged by the receiver or the sender closes the connection itself."
+        },
+        {
+          "id": "websocket_idle_connection_heartbeat_d",
+          "text": "A WebSocket is torn down by the framework on every pause, so it exists only while a screen is resumed."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "websocket_idle_connection_heartbeat_a"
+      ],
+      "explanation": "RFC 6455 allows an endpoint to send a Ping after the connection is established, and requires the peer to answer with a Pong unless the connection is already closing. The RFC explicitly describes Ping as a keepalive or a check that the remote endpoint is responsive. If an expected Pong does not arrive, the application can apply its own timeout and reconnection policy. The protocol defines no maximum session length and no acknowledgement for every data frame, and platform backgrounding is a separate concern.",
+      "sources": [
+        {
+          "title": "RFC 6455: The WebSocket Protocol — Ping",
+          "url": "https://www.rfc-editor.org/rfc/rfc6455.html#section-5.5.2"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "auth_access_refresh_token_lifetime_split",
+      "topicId": "networking",
+      "subtopicId": "authentication_tokens",
+      "text": "An API issues a short-lived access token together with a long-lived refresh token. What does that split gain over issuing one long-lived access token?",
+      "answers": [
+        {
+          "id": "auth_access_refresh_token_lifetime_split_a",
+          "text": "The access token can be stored in plain text, because the refresh token protects it cryptographically."
+        },
+        {
+          "id": "auth_access_refresh_token_lifetime_split_b",
+          "text": "A stolen access token expires quickly, and the refresh token travels rarely and can be revoked."
+        },
+        {
+          "id": "auth_access_refresh_token_lifetime_split_c",
+          "text": "The user never sees a sign-in screen again, because a refresh token does not have to be renewed."
+        },
+        {
+          "id": "auth_access_refresh_token_lifetime_split_d",
+          "text": "Requests get faster, because the server validates a short token by looking it up in a session store."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "auth_access_refresh_token_lifetime_split_b"
+      ],
+      "explanation": "What changes is the window of damage. A leaked access token is useful only until it expires, typically minutes. The client retains the refresh token and sends it less often, only to the authorization server rather than to resource servers; the authorization server validates it and can revoke it to end the session. The split does nothing to make either token safe in plain text, and refresh tokens themselves expire or rotate, so the user is eventually asked to authenticate again.",
+      "sources": [
+        {
+          "title": "RFC 6749: OAuth 2.0 — Refresh Token",
+          "url": "https://www.rfc-editor.org/rfc/rfc6749#section-1.5"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "serialization_class_discriminator_mismatch",
+      "topicId": "networking",
+      "subtopicId": "custom_serialization",
+      "text": "An API returns several event shapes tagged by a \"kind\" field, modelled as a sealed interface whose subclasses are all @Serializable. Decoding fails because kotlinx.serialization looks for a field named \"type\". What is the appropriate fix?",
+      "answers": [
+        {
+          "id": "serialization_class_discriminator_mismatch_a",
+          "text": "Annotate every subclass with @Transient so the extra field is skipped while decoding."
+        },
+        {
+          "id": "serialization_class_discriminator_mismatch_b",
+          "text": "Enable ignoreUnknownKeys on the Json instance so the unrecognised field is dropped."
+        },
+        {
+          "id": "serialization_class_discriminator_mismatch_c",
+          "text": "Rename the Kotlin property holding the value to kind so encoder and decoder agree."
+        },
+        {
+          "id": "serialization_class_discriminator_mismatch_d",
+          "text": "Set classDiscriminator = \"kind\" on the Json instance so polymorphic decoding reads it."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "serialization_class_discriminator_mismatch_d"
+      ],
+      "explanation": "For a sealed hierarchy kotlinx.serialization generates a polymorphic serializer that writes and reads a class discriminator, whose key defaults to \"type\". When the API uses a different key the fix is configuration — classDiscriminator on the Json instance, or @JsonClassDiscriminator on the base type. ignoreUnknownKeys is the operator people reach for first, but it only stops unmapped keys from failing; it never tells the decoder which subclass to construct. The discriminator is not an ordinary property, so renaming one or marking it @Transient does not affect it.",
+      "sources": [
+        {
+          "title": "kotlinx.serialization: JSON class discriminator",
+          "url": "https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/json.md#class-discriminator-for-polymorphism"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "retrofit_vs_ktor_client_multiplatform",
+      "topicId": "networking",
+      "subtopicId": "retrofit_vs_ktor",
+      "text": "A shared data layer must issue HTTP calls from commonMain on both Android and iOS. Which difference between Retrofit and the Ktor client decides that choice?",
+      "answers": [
+        {
+          "id": "retrofit_vs_ktor_client_multiplatform_a",
+          "text": "Retrofit targets the JVM and Android, while Ktor's client is multiplatform with a per-target engine."
+        },
+        {
+          "id": "retrofit_vs_ktor_client_multiplatform_b",
+          "text": "Retrofit issues its calls synchronously, while the Ktor client is the one that supports suspension."
+        },
+        {
+          "id": "retrofit_vs_ktor_client_multiplatform_c",
+          "text": "Retrofit cannot use kotlinx.serialization, while the Ktor client accepts no other serializer."
+        },
+        {
+          "id": "retrofit_vs_ktor_client_multiplatform_d",
+          "text": "Retrofit needs an interface for each endpoint, while Ktor generates its client from an API schema."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "retrofit_vs_ktor_client_multiplatform_a"
+      ],
+      "explanation": "Retrofit is built on OkHttp and runs only where the JVM does, so commonMain in a Kotlin Multiplatform module cannot call it; Ktor exposes one common HttpClient API and plugs a platform engine in behind it, such as OkHttp on Android and Darwin on iOS. The remaining differences are not real: Retrofit supports suspend functions and a kotlinx.serialization converter, and Ktor's client is a hand-written request DSL rather than something generated from a schema.",
+      "sources": [
+        {
+          "title": "Ktor client engines",
+          "url": "https://ktor.io/docs/client-engines.html"
+        },
+        {
+          "title": "Retrofit",
+          "url": "https://lysine.dev/retrofit/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "background_started_service_restriction",
+      "topicId": "background_work",
+      "subtopicId": "background_execution",
+      "text": "On Android 8.0 and higher, an app targeting API 26 or higher is idle in the background and outside any temporary allowlist window. It calls startService() to begin a sync. What happens?",
+      "answers": [
+        {
+          "id": "background_started_service_restriction_a",
+          "text": "The service starts, but the system stops it after a few seconds unless it posts a notification."
+        },
+        {
+          "id": "background_started_service_restriction_b",
+          "text": "The call succeeds and the service is queued to run when the app next reaches the foreground."
+        },
+        {
+          "id": "background_started_service_restriction_c",
+          "text": "The call succeeds, because the background execution limits apply to implicit broadcasts instead."
+        },
+        {
+          "id": "background_started_service_restriction_d",
+          "text": "The call fails with an IllegalStateException, because a background app may not start a service."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "background_started_service_restriction_d"
+      ],
+      "explanation": "For apps targeting API 26 or higher, Android 8.0 introduced background execution limits: once an app is idle and outside a temporary allowlist window, it may not create a background service, and startService() throws IllegalStateException (or a subclass on newer releases). WorkManager is appropriate when the work can be deferred, which covers most syncs. For user-visible work, startForegroundService() followed promptly by startForeground() is the relevant API when current foreground-service start rules allow it. Implicit broadcasts are restricted by the same release, but the service restriction is separate from them.",
+      "sources": [
+        {
+          "title": "Android 8.0 background execution limits",
+          "url": "https://developer.android.com/about/versions/oreo/background"
+        },
+        {
+          "title": "Context.startService()",
+          "url": "https://developer.android.com/reference/android/content/Context#startService(android.content.Intent)"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "service_callbacks_run_on_main_thread",
+      "topicId": "background_work",
+      "subtopicId": "services",
+      "text": "A started Service performs a long HTTP download directly inside onStartCommand(), and the app's UI freezes while it runs. Why?",
+      "answers": [
+        {
+          "id": "service_callbacks_run_on_main_thread_a",
+          "text": "onStartCommand() blocks its caller until it returns, so the Activity that started it stalls."
+        },
+        {
+          "id": "service_callbacks_run_on_main_thread_b",
+          "text": "A Service has no thread of its own, and its callbacks run on the main thread of the process."
+        },
+        {
+          "id": "service_callbacks_run_on_main_thread_c",
+          "text": "A Service is bound to the component that started it and inherits that component's lifecycle."
+        },
+        {
+          "id": "service_callbacks_run_on_main_thread_d",
+          "text": "A Service runs at a lower scheduling priority, so the main thread waits for it to release the CPU."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "service_callbacks_run_on_main_thread_b"
+      ],
+      "explanation": "A Service is a component, not a thread. onCreate(), onStartCommand() and onDestroy() all run on the process's main thread, so blocking work inside them freezes the UI exactly as it would inside an Activity. Long work needs its own thread or a coroutine on a background dispatcher — the job IntentService used to do automatically. Starting a service is asynchronous and does not block the caller, and a started service is independent of whatever component started it.",
+      "sources": [
+        {
+          "title": "Services Overview",
+          "url": "https://developer.android.com/guide/components/services"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "foreground_service_start_notification_deadline",
+      "topicId": "background_work",
+      "subtopicId": "foreground_services",
+      "text": "A component calls startForegroundService() and the service then does some setup before promoting itself. What does the platform require of it?",
+      "answers": [
+        {
+          "id": "foreground_service_start_notification_deadline_a",
+          "text": "It may post the notification whenever ready; until then the service simply runs in the background."
+        },
+        {
+          "id": "foreground_service_start_notification_deadline_b",
+          "text": "It must first obtain the FOREGROUND_SERVICE permission from the user through a runtime prompt."
+        },
+        {
+          "id": "foreground_service_start_notification_deadline_c",
+          "text": "It must call startForeground() within the platform's timeout, or the system stops it and reports an error."
+        },
+        {
+          "id": "foreground_service_start_notification_deadline_d",
+          "text": "It may skip startForeground() as long as a foregroundServiceType is declared for it in the manifest."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "foreground_service_start_notification_deadline_c"
+      ],
+      "explanation": "startForegroundService() is a promise to the system that the service will promote itself, and the platform allows only a short window for startForeground() to post the ongoing notification. Missing it stops the service and surfaces as an ANR or a did-not-start-in-time error, so setup work has to happen after promotion rather than before it. Declaring a foregroundServiceType is an additional requirement on newer versions, not a substitute, and FOREGROUND_SERVICE is an install-time permission with no user prompt.",
+      "sources": [
+        {
+          "title": "Android 8.0 background execution limits: startForegroundService()",
+          "url": "https://developer.android.com/about/versions/oreo/background"
+        },
+        {
+          "title": "Foreground services",
+          "url": "https://developer.android.com/develop/background-work/services/fgs"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "bound_service_client_binding_lifetime",
+      "topicId": "background_work",
+      "subtopicId": "bound_services",
+      "text": "An Activity binds to a Service with bindService(), and nothing has ever called startService() on it. What determines how long that service lives?",
+      "answers": [
+        {
+          "id": "bound_service_client_binding_lifetime_a",
+          "text": "It lives while at least one client stays bound, and is destroyed when the last one unbinds."
+        },
+        {
+          "id": "bound_service_client_binding_lifetime_b",
+          "text": "It lives until it calls stopSelf(), because binding does not influence a service's lifetime."
+        },
+        {
+          "id": "bound_service_client_binding_lifetime_c",
+          "text": "It lives as long as the process does, because a bound service is a process-scoped singleton."
+        },
+        {
+          "id": "bound_service_client_binding_lifetime_d",
+          "text": "It lives until the bound Activity is stopped, because binding follows that Activity's lifecycle."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "bound_service_client_binding_lifetime_a"
+      ],
+      "explanation": "A purely bound service exists for its clients: the system creates it on the first bindService() and destroys it once the last client unbinds. That is why a component binding in onStart() must unbind in onStop() — the platform tracks bindings, not lifecycles, so a forgotten unbind keeps the service alive. stopSelf() ends a started service, and a service that is both started and bound survives until both conditions end.",
+      "sources": [
+        {
+          "title": "Bound Services",
+          "url": "https://developer.android.com/develop/background-work/services/bound-services"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "doze_maintenance_window_deferral",
+      "topicId": "background_work",
+      "subtopicId": "doze",
+      "text": "A device sits unplugged and motionless overnight. What does Doze do with an app's pending network work and standard alarms?",
+      "answers": [
+        {
+          "id": "doze_maintenance_window_deferral_a",
+          "text": "It cancels them, so the app has to reschedule everything the next time the user unlocks the device."
+        },
+        {
+          "id": "doze_maintenance_window_deferral_b",
+          "text": "It runs them at their normal times but throttles the app's network to a lower bandwidth ceiling."
+        },
+        {
+          "id": "doze_maintenance_window_deferral_c",
+          "text": "It defers them and releases them in periodic maintenance windows while the device remains idle."
+        },
+        {
+          "id": "doze_maintenance_window_deferral_d",
+          "text": "It leaves them alone, because Doze restricts only apps the user has not opened for several days."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "doze_maintenance_window_deferral_c"
+      ],
+      "explanation": "Doze batches work rather than discarding it. While the device is idle, network access is suspended and jobs, syncs and standard alarms are held back; the system then opens a maintenance window in which everything deferred runs, and those windows grow further apart the longer idle continues. Restricting a particular app according to how recently the user engaged with it is App Standby — a related mechanism that applies per app rather than per device.",
+      "sources": [
+        {
+          "title": "Optimize for Doze and App Standby",
+          "url": "https://developer.android.com/training/monitoring-device-state/doze-standby"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "alarm_manager_vs_workmanager_selection",
+      "topicId": "background_work",
+      "subtopicId": "alarmmanager",
+      "text": "One feature runs a nightly cleanup with no user-visible time, and another must show a reminder at a moment the user chose. Which mapping to AlarmManager and WorkManager fits?",
+      "answers": [
+        {
+          "id": "alarm_manager_vs_workmanager_selection_a",
+          "text": "Both with WorkManager, because its periodic work can be pinned to an exact clock time."
+        },
+        {
+          "id": "alarm_manager_vs_workmanager_selection_b",
+          "text": "Cleanup with WorkManager and reminder with AlarmManager, because only the reminder needs the clock."
+        },
+        {
+          "id": "alarm_manager_vs_workmanager_selection_c",
+          "text": "Both with AlarmManager, because it is the API that survives the app's process being killed."
+        },
+        {
+          "id": "alarm_manager_vs_workmanager_selection_d",
+          "text": "Cleanup with AlarmManager and reminder with WorkManager, because deferrable work needs a trigger."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "alarm_manager_vs_workmanager_selection_b"
+      ],
+      "explanation": "AlarmManager exists to fire something at a point on the user's clock or on elapsed time, which is what a chosen reminder needs; exact alarms sit behind a permission precisely because that costs battery. WorkManager exists for work that must eventually happen and can wait for constraints, and its periodic work has a flex interval rather than an exact instant. Durability does not separate them — both survive process death — so the deciding question is whether the user can perceive when the work runs.",
+      "sources": [
+        {
+          "title": "Schedule alarms",
+          "url": "https://developer.android.com/develop/background-work/services/alarms/schedule"
+        },
+        {
+          "title": "WorkManager",
+          "url": "https://developer.android.com/topic/libraries/architecture/workmanager"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "long_running_worker_set_foreground",
+      "topicId": "background_work",
+      "subtopicId": "long_running_work",
+      "text": "A CoroutineWorker uploading large videos regularly exceeds the execution limit and WorkManager stops it part way. What is the supported way to let it keep running?",
+      "answers": [
+        {
+          "id": "long_running_worker_set_foreground_a",
+          "text": "Extend the limit by setting a longer backoff delay on the WorkRequest before enqueuing it."
+        },
+        {
+          "id": "long_running_worker_set_foreground_b",
+          "text": "Return Result.retry() before the limit so WorkManager restarts the upload from the beginning."
+        },
+        {
+          "id": "long_running_worker_set_foreground_c",
+          "text": "Make it a long-running worker with setForeground(), which shows an ongoing notification."
+        },
+        {
+          "id": "long_running_worker_set_foreground_d",
+          "text": "Enqueue it as expedited work, which lifts the execution time limit for that request."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "long_running_worker_set_foreground_c"
+      ],
+      "explanation": "WorkManager gives a worker about ten minutes before stopping and rescheduling it. Work that genuinely needs longer must run as a long-running worker: CoroutineWorker exposes a suspending setForeground(), and ListenableWorker the equivalent setForegroundAsync(), which promotes the work to a foreground service with an ongoing notification — the user-visible cost of taking the extra time. Expedited work is about starting promptly and has its own quota rather than a longer runtime, and backoff only controls the delay before a retry, not how long an attempt may take.",
+      "sources": [
+        {
+          "title": "Support for long-running workers",
+          "url": "https://developer.android.com/develop/background-work/background-tasks/persistent/how-to/long-running"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "work_persistence_across_reboot",
+      "topicId": "background_work",
+      "subtopicId": "boot_restart_work",
+      "text": "A queued upload must still happen after the user restarts the phone. What explains why WorkManager satisfies that requirement and a coroutine does not?",
+      "answers": [
+        {
+          "id": "work_persistence_across_reboot_a",
+          "text": "WorkManager keeps a process alive across the restart so the pending coroutine can resume there."
+        },
+        {
+          "id": "work_persistence_across_reboot_b",
+          "text": "WorkManager writes the request into SharedPreferences that the app re-reads on its next launch."
+        },
+        {
+          "id": "work_persistence_across_reboot_c",
+          "text": "WorkManager registers a BOOT_COMPLETED receiver that the app itself must declare and implement."
+        },
+        {
+          "id": "work_persistence_across_reboot_d",
+          "text": "WorkManager records the request in its own database and reschedules it once the device reboots."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "work_persistence_across_reboot_d"
+      ],
+      "explanation": "WorkManager persists every enqueued request in an internal database, so the request outlives both process death and a reboot, and the library's own components re-schedule pending work when the device comes back up. A coroutine exists only in process memory and disappears when the process ends. No app keeps a process running across a restart, and the developer does not have to write the persistence or the boot receiver — that is the guarantee WorkManager is providing.",
+      "sources": [
+        {
+          "title": "WorkManager",
+          "url": "https://developer.android.com/topic/libraries/architecture/workmanager"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "hilt_entry_point_manual_access",
+      "topicId": "dependency_injection",
+      "subtopicId": "hilt_fundamentals",
+      "text": "A ContentProvider needs a dependency from Hilt's SingletonComponent, but @AndroidEntryPoint does not support providers. Which Hilt facility supplies it?",
+      "answers": [
+        {
+          "id": "hilt_entry_point_manual_access_a",
+          "text": "An @AndroidEntryPoint annotation on the provider, which Hilt accepts for all framework classes."
+        },
+        {
+          "id": "hilt_entry_point_manual_access_b",
+          "text": "An @EntryPoint interface obtained through EntryPointAccessors for the component that owns it."
+        },
+        {
+          "id": "hilt_entry_point_manual_access_c",
+          "text": "A @Module installed into the provider's own generated component, built when it is first used."
+        },
+        {
+          "id": "hilt_entry_point_manual_access_d",
+          "text": "A field marked @Inject, which Hilt populates while the system instantiates the provider."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "hilt_entry_point_manual_access_b"
+      ],
+      "explanation": "@AndroidEntryPoint covers a fixed set of framework classes, and ContentProvider is deliberately not among them — providers are created before the Application's onCreate() completes. @EntryPoint declares an interface listing the bindings needed, annotated @InstallIn for the component that holds them, and EntryPointAccessors retrieves an implementation from a Context. Hilt does not create a component per provider, and field injection there has nothing to inject from.",
+      "sources": [
+        {
+          "title": "Dependency injection with Hilt",
+          "url": "https://developer.android.com/training/dependency-injection/hilt-android"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "hilt_install_in_binding_visibility",
+      "topicId": "dependency_injection",
+      "subtopicId": "hilt_modules",
+      "text": "A Hilt module is annotated @InstallIn(ActivityComponent::class). What does that annotation decide?",
+      "answers": [
+        {
+          "id": "hilt_install_in_binding_visibility_a",
+          "text": "How long each binding's instance lives, regardless of any scope annotation on the provider."
+        },
+        {
+          "id": "hilt_install_in_binding_visibility_b",
+          "text": "That Hilt generates a separate component for every module installed with that annotation."
+        },
+        {
+          "id": "hilt_install_in_binding_visibility_c",
+          "text": "That the bindings are constructed when the Activity starts and released when it is stopped."
+        },
+        {
+          "id": "hilt_install_in_binding_visibility_d",
+          "text": "Which generated component receives the bindings, and therefore where they can be injected."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "hilt_install_in_binding_visibility_d"
+      ],
+      "explanation": "@InstallIn attaches a module to one of Hilt's generated components, which is what decides visibility: bindings in ActivityComponent are injectable into an Activity and the Fragments and Views under it, but not into an application-wide singleton. Lifetime is a separate decision expressed by a scope annotation such as @ActivityScoped — an unscoped binding installed there still produces a new instance per request. Hilt's component hierarchy is fixed, and modules join it rather than creating components.",
+      "sources": [
+        {
+          "title": "Hilt component scopes",
+          "url": "https://developer.android.com/training/dependency-injection/hilt-android#component-scopes"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "hilt_activity_retained_component_lifetime",
+      "topicId": "dependency_injection",
+      "subtopicId": "hilt_components",
+      "text": "A dependency is shared by an Activity and its Fragments and must keep the same instance across a rotation. Which Hilt component should hold it?",
+      "answers": [
+        {
+          "id": "hilt_activity_retained_component_lifetime_a",
+          "text": "ActivityComponent, which is recreated with the Activity and so starts fresh after a rotation."
+        },
+        {
+          "id": "hilt_activity_retained_component_lifetime_b",
+          "text": "FragmentComponent, whose bindings are shared upward with the Activity hosting the Fragment."
+        },
+        {
+          "id": "hilt_activity_retained_component_lifetime_c",
+          "text": "ActivityRetainedComponent, which is created with the Activity and survives configuration changes."
+        },
+        {
+          "id": "hilt_activity_retained_component_lifetime_d",
+          "text": "SingletonComponent, which is the one component whose bindings a Fragment is able to receive."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "hilt_activity_retained_component_lifetime_c"
+      ],
+      "explanation": "Hilt's components mirror Android lifetimes. ActivityComponent is destroyed and recreated with the Activity instance, so anything scoped to it is lost on rotation, while ActivityRetainedComponent uses the same retention mechanism as ViewModels and spans configuration changes; @ActivityRetainedScoped is its scope. SingletonComponent would also survive but makes the dependency application-wide for the rest of the process. Bindings flow down the hierarchy, never up from a Fragment to its Activity.",
+      "sources": [
+        {
+          "title": "Hilt generated components",
+          "url": "https://developer.android.com/training/dependency-injection/hilt-android#generated-components"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "hilt_vs_dagger_convention_tradeoff",
+      "topicId": "dependency_injection",
+      "subtopicId": "hilt_vs_dagger",
+      "text": "A team migrates an Android app from hand-written Dagger components to Hilt. What do they gain, and what do they give up?",
+      "answers": [
+        {
+          "id": "hilt_vs_dagger_convention_tradeoff_a",
+          "text": "They gain runtime resolution of the graph, and give up the compile-time errors Dagger reported."
+        },
+        {
+          "id": "hilt_vs_dagger_convention_tradeoff_b",
+          "text": "They gain a standard component hierarchy tied to Android lifetimes, and give up defining their own."
+        },
+        {
+          "id": "hilt_vs_dagger_convention_tradeoff_c",
+          "text": "They gain support for constructor injection, and give up the ability to declare modules at all."
+        },
+        {
+          "id": "hilt_vs_dagger_convention_tradeoff_d",
+          "text": "They gain smaller generated code, and give up the ability to scope a binding to a lifetime."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "hilt_vs_dagger_convention_tradeoff_b"
+      ],
+      "explanation": "Hilt is Dagger with the Android graph decided in advance: a fixed hierarchy from SingletonComponent down to FragmentComponent and ViewComponent, with entry points and scopes already named. That removes most of the wiring boilerplate and makes multi-module setups consistent, and the price is fitting the app into that hierarchy instead of designing one. Underneath it is still compile-time Dagger, still uses modules, and still supports scoping and constructor injection.",
+      "sources": [
+        {
+          "title": "Dependency injection with Hilt",
+          "url": "https://developer.android.com/training/dependency-injection/hilt-android"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "manual_di_graph_growth_cost",
+      "topicId": "dependency_injection",
+      "subtopicId": "manual_di",
+      "text": "A team wires every dependency by hand in an application-level container. Which cost grows fastest as the object graph gets larger?",
+      "answers": [
+        {
+          "id": "manual_di_graph_growth_cost_a",
+          "text": "Instances can no longer be scoped, because scoping needs a code-generating framework."
+        },
+        {
+          "id": "manual_di_graph_growth_cost_b",
+          "text": "Constructor injection has to give way to field injection as the number of classes grows."
+        },
+        {
+          "id": "manual_di_graph_growth_cost_c",
+          "text": "Every new dependency has to be threaded by hand through each construction site above it."
+        },
+        {
+          "id": "manual_di_graph_growth_cost_d",
+          "text": "Manual wiring stops working once one dependency has to be shared between two screens."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "manual_di_graph_growth_cost_c"
+      ],
+      "explanation": "Manual DI is a sound starting point and its mechanics — constructor parameters plus a container holding shared instances — keep working at any size. What grows is the clerical cost: adding a parameter deep in the graph forces an edit at every construction site above it, and the container turns into a long, order-sensitive file that is easy to get subtly wrong. A generator such as Dagger removes that work; it does not enable sharing, scoping or constructor injection, all of which handwritten code already expresses.",
+      "sources": [
+        {
+          "title": "Manual dependency injection",
+          "url": "https://developer.android.com/training/dependency-injection/manual"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "koin_multiplatform_common_module",
+      "topicId": "dependency_injection",
+      "subtopicId": "koin_multiplatform",
+      "text": "A Kotlin Multiplatform shared module needs a dependency container usable from commonMain on both Android and iOS. Why is Koin a candidate where Dagger and Hilt are not?",
+      "answers": [
+        {
+          "id": "koin_multiplatform_common_module_a",
+          "text": "Koin resolves dependencies by reflection, which Kotlin/Native supports better than code generation."
+        },
+        {
+          "id": "koin_multiplatform_common_module_b",
+          "text": "Koin generates one container per platform from a shared schema during the build."
+        },
+        {
+          "id": "koin_multiplatform_common_module_c",
+          "text": "Koin needs an Android Context, which the iOS target supplies through an expect declaration."
+        },
+        {
+          "id": "koin_multiplatform_common_module_d",
+          "text": "Koin declares its graph in ordinary Kotlin that compiles for every target, with no annotation processing."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "koin_multiplatform_common_module_d"
+      ],
+      "explanation": "Dagger and Hilt are annotation processors that emit JVM code, and Hilt is additionally tied to Android framework classes, so neither can process commonMain for an iOS target. Koin's modules are a plain Kotlin DSL evaluated at runtime, so they compile wherever Kotlin does — the trade-off being that a missing binding surfaces as a runtime failure rather than a compile error. Koin does not require a Context, does not generate per-platform containers, and does not rely on reflection to build its definitions.",
+      "sources": [
+        {
+          "title": "Koin for Kotlin Multiplatform",
+          "url": "https://insert-koin.io/docs/reference/koin-mp/kmp"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "dagger_generated_factory_no_reflection",
+      "topicId": "dependency_injection",
+      "subtopicId": "dagger_fundamentals",
+      "text": "A class declares @Inject on its constructor and is requested from a Dagger component. How is the instance actually produced?",
+      "answers": [
+        {
+          "id": "dagger_generated_factory_no_reflection_a",
+          "text": "Dagger emits a factory class during the build, which the generated component calls to construct it."
+        },
+        {
+          "id": "dagger_generated_factory_no_reflection_b",
+          "text": "Dagger reads the annotation at runtime and constructs the object reflectively on first request."
+        },
+        {
+          "id": "dagger_generated_factory_no_reflection_c",
+          "text": "Dagger rewrites the class's bytecode so its constructor resolves its own parameters from a registry."
+        },
+        {
+          "id": "dagger_generated_factory_no_reflection_d",
+          "text": "Dagger registers the constructor in a service locator the class queries when it is instantiated."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "dagger_generated_factory_no_reflection_a"
+      ],
+      "explanation": "Dagger is an annotation processor. For each @Inject constructor it generates a Factory, and for each @Component it generates an implementation that wires those factories together; all of it is ordinary source compiled alongside the app. That makes an unsatisfied dependency a compile error rather than a runtime graph failure. At runtime Dagger follows generated factory and provider calls instead of discovering the graph with reflection, giving it low, predictable overhead rather than zero overhead: dependency resolution, object creation, scopes and lazy providers can still require work. Dagger neither inspects annotations at runtime nor rewrites bytecode, and a service locator is the pattern it exists to replace.",
+      "sources": [
+        {
+          "title": "Dagger Developer Guide",
+          "url": "https://dagger.dev/dev-guide/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_sandbox_app_uid_isolation",
+      "topicId": "security",
+      "subtopicId": "android_sandbox",
+      "text": "Select all that apply. Which statements about the Android application sandbox are correct?",
+      "answers": [
+        {
+          "id": "android_sandbox_app_uid_isolation_a",
+          "text": "The sandbox is enforced by the Java runtime, so native code in an app runs outside of it."
+        },
+        {
+          "id": "android_sandbox_app_uid_isolation_b",
+          "text": "Each installed app is normally given its own Linux user ID, which owns its files and its process."
+        },
+        {
+          "id": "android_sandbox_app_uid_isolation_c",
+          "text": "An app can read another app's private data once the user grants it any dangerous permission."
+        },
+        {
+          "id": "android_sandbox_app_uid_isolation_d",
+          "text": "Files written into an app's internal storage directory are unreadable by other apps by default."
+        }
+      ],
+      "selectionMode": "MULTIPLE",
+      "correctAnswerIds": [
+        "android_sandbox_app_uid_isolation_b",
+        "android_sandbox_app_uid_isolation_d"
+      ],
+      "explanation": "The sandbox is a kernel-level construct: the system assigns each app a distinct UID and runs its process under it, so ordinary Linux file permissions keep one app's internal storage out of another's reach. Because the kernel enforces it rather than the runtime, native code sits inside the same sandbox as Kotlin code. Runtime permissions widen access to specific system resources such as the camera or contacts, and none of them opens another app's private directory.",
+      "sources": [
+        {
+          "title": "Application Sandbox",
+          "url": "https://source.android.com/docs/security/app-sandbox"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "permission_protection_level_prompt",
+      "topicId": "security",
+      "subtopicId": "android_permissions",
+      "text": "An app declares both INTERNET and ACCESS_FINE_LOCATION in its manifest, and only one of them ever produces a user prompt. Why?",
+      "answers": [
+        {
+          "id": "permission_protection_level_prompt_a",
+          "text": "INTERNET is a normal permission granted at install, while location is dangerous and asked at runtime."
+        },
+        {
+          "id": "permission_protection_level_prompt_b",
+          "text": "INTERNET is granted because the app targets a modern SDK, while location prompts on every API level."
+        },
+        {
+          "id": "permission_protection_level_prompt_c",
+          "text": "INTERNET is prompted once at first launch, while location is prompted before each individual use."
+        },
+        {
+          "id": "permission_protection_level_prompt_d",
+          "text": "INTERNET does not belong in the manifest at all, so nothing about it is ever shown to the user."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "permission_protection_level_prompt_a"
+      ],
+      "explanation": "Every permission carries a protection level. Normal permissions such as INTERNET describe low-risk capabilities, and the system grants them at install without involving the user; dangerous permissions such as ACCESS_FINE_LOCATION guard private user data, so they must be requested at runtime and can be revoked afterwards. The behaviour follows from the protection level rather than the target SDK or how often a dialog appears, and INTERNET still has to be declared in the manifest to be granted.",
+      "sources": [
+        {
+          "title": "Permissions on Android",
+          "url": "https://developer.android.com/guide/topics/permissions/overview"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "webview_javascript_interface_exposure",
+      "topicId": "security",
+      "subtopicId": "webview_security",
+      "text": "A WebView loads a page from a partner domain, and addJavascriptInterface() exposes an object with a getAuthToken() method to it. What is the risk?",
+      "answers": [
+        {
+          "id": "webview_javascript_interface_exposure_a",
+          "text": "The exposed object is serialized into the page, so the token ends up visible in the HTML source."
+        },
+        {
+          "id": "webview_javascript_interface_exposure_b",
+          "text": "The interface stays disabled unless the page is served over HTTPS, so the call silently returns null."
+        },
+        {
+          "id": "webview_javascript_interface_exposure_c",
+          "text": "Any script the WebView ends up running, including injected or redirected content, can call the method."
+        },
+        {
+          "id": "webview_javascript_interface_exposure_d",
+          "text": "The method is invoked on the main thread, so a slow implementation of it can produce an ANR."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "webview_javascript_interface_exposure_c"
+      ],
+      "explanation": "A JavaScript interface is a bridge from whatever the WebView happens to be executing into app code, and the WebView cannot distinguish first-party script from injected script, a redirect, or a compromised third-party resource already on the page. The documentation is explicit that the API should not be used unless you wrote all of the HTML and JavaScript in the WebView, so anything reachable through the exposed object has to be assumed reachable by an attacker — which rules out a token accessor. The danger is what the method can do, not where or when it runs.",
+      "sources": [
+        {
+          "title": "Build web apps in WebView: binding JavaScript code to Android code",
+          "url": "https://developer.android.com/develop/ui/views/layout/webapps/webview"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "network_security_config_cleartext_scope",
+      "topicId": "security",
+      "subtopicId": "network_security",
+      "text": "A debug build has to reach a development server over plain HTTP, while the release build should keep cleartext traffic blocked. Which configuration expresses that?",
+      "answers": [
+        {
+          "id": "network_security_config_cleartext_scope_a",
+          "text": "A Network Security Config in the debug variant permitting cleartext for that one host."
+        },
+        {
+          "id": "network_security_config_cleartext_scope_b",
+          "text": "Setting usesCleartextTraffic to true in the main manifest, which applies to debuggable builds."
+        },
+        {
+          "id": "network_security_config_cleartext_scope_c",
+          "text": "Adding the host to a trust-anchor list, which is what allows plain HTTP for a named domain."
+        },
+        {
+          "id": "network_security_config_cleartext_scope_d",
+          "text": "Disabling TLS verification inside an OkHttp interceptor added only to the debug source set."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "network_security_config_cleartext_scope_a"
+      ],
+      "explanation": "Cleartext HTTP is off by default for apps targeting Android 9 and later, and the Network Security Config is the mechanism for a scoped exception: a domain-config that sets cleartextTrafficPermitted for the development host, placed in the debug source set so release keeps the default. usesCleartextTraffic is a blunt manifest flag with no variant awareness, trust anchors decide which certificate authorities are trusted rather than whether HTTP is allowed at all, and turning off TLS verification addresses a different problem badly.",
+      "sources": [
+        {
+          "title": "Network security configuration",
+          "url": "https://developer.android.com/privacy-and-security/security-config"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "biometric_prompt_keystore_binding",
+      "topicId": "security",
+      "subtopicId": "biometric_auth",
+      "text": "An app decrypts a stored secret after BiometricPrompt reports success. Why is trusting that callback weaker than binding the key to authentication in the Keystore?",
+      "answers": [
+        {
+          "id": "biometric_prompt_keystore_binding_a",
+          "text": "The callback arrives on a background thread, so the result can land after the secret is read."
+        },
+        {
+          "id": "biometric_prompt_keystore_binding_b",
+          "text": "The callback is an in-app signal, while an auth-bound Keystore key stays unusable until authentication."
+        },
+        {
+          "id": "biometric_prompt_keystore_binding_c",
+          "text": "The callback reports success for any enrolled user, while a Keystore key is tied to a single finger."
+        },
+        {
+          "id": "biometric_prompt_keystore_binding_d",
+          "text": "The callback cannot be observed from Compose, so the result has to be cached inside a ViewModel."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "biometric_prompt_keystore_binding_b"
+      ],
+      "explanation": "A success callback is a branch in the app's own code, and anyone able to modify the app or hook the process can take that branch without authenticating. Creating the key with setUserAuthenticationRequired(true) moves the check into the Keystore itself: the cryptographic operation fails unless the platform has recorded a recent authentication, so skipping the UI does not yield the plaintext. Biometric-only keys that require authentication for every use are also invalidated by biometric enrolment changes by default, but this is configurable with setInvalidatedByBiometricEnrollment(false), not an inherent property of every authentication-bound key.",
+      "sources": [
+        {
+          "title": "Android Keystore: requiring user authentication",
+          "url": "https://developer.android.com/privacy-and-security/keystore#UserAuthentication"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "auth_token_device_storage_risk",
+      "topicId": "security",
+      "subtopicId": "auth_token_security",
+      "text": "An app must keep a refresh token on the device between launches. Which approach matches the realistic threat model for a mobile client?",
+      "answers": [
+        {
+          "id": "auth_token_device_storage_risk_a",
+          "text": "Ship it encrypted with a key compiled into the APK, so the token and its key travel together."
+        },
+        {
+          "id": "auth_token_device_storage_risk_b",
+          "text": "Keep it in shared external storage, where files sit outside the reach of other installed apps."
+        },
+        {
+          "id": "auth_token_device_storage_risk_c",
+          "text": "Keep it in app-private storage and rely on server-side revocation, which a compromised device cannot undo."
+        },
+        {
+          "id": "auth_token_device_storage_risk_d",
+          "text": "Obfuscate it inside SharedPreferences, since obfuscation prevents extraction from a device backup."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "auth_token_device_storage_risk_c"
+      ],
+      "explanation": "App-private storage is the right location because the sandbox keeps other apps out, but it protects against other apps rather than against the device owner or malware with root. What actually bounds the damage is that the server can revoke the refresh token and that the access tokens it mints are short-lived. A key compiled into the APK is recoverable by anyone who unpacks it, shared external storage is readable by other apps, and obfuscation is not encryption and does not stop a backup being inspected.",
+      "sources": [
+        {
+          "title": "Security tips: storing data",
+          "url": "https://developer.android.com/privacy-and-security/security-tips#UserData"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "root_detection_client_trust_boundary",
+      "topicId": "security",
+      "subtopicId": "compromised_devices",
+      "text": "A team adds root detection so the app refuses to run on rooted devices. What should they realistically expect that control to achieve?",
+      "answers": [
+        {
+          "id": "root_detection_client_trust_boundary_a",
+          "text": "It prevents the app's traffic from being inspected, because a proxy needs root to install its CA."
+        },
+        {
+          "id": "root_detection_client_trust_boundary_b",
+          "text": "It guarantees the integrity of local data, because the sandbox holds while the device is unrooted."
+        },
+        {
+          "id": "root_detection_client_trust_boundary_c",
+          "text": "It raises the effort for casual tampering, while the server still trusts nothing the client asserts."
+        },
+        {
+          "id": "root_detection_client_trust_boundary_d",
+          "text": "It removes the need for server-side authorization checks, since only trusted devices reach the API."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "root_detection_client_trust_boundary_c"
+      ],
+      "explanation": "Root detection runs inside the very environment it is trying to assess, so an attacker who controls the device also controls the answer — it is a signal and a source of friction, not a trust boundary. Every authorization decision that matters therefore still belongs on the server, which is the one place the attacker does not control; platform attestation such as the Play Integrity API is designed to be verified there for the same reason. Traffic inspection does not always require root, and no client-side check can guarantee the integrity of local data.",
+      "sources": [
+        {
+          "title": "Play Integrity API overview",
+          "url": "https://developer.android.com/google/play/integrity/overview"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "anr_broadcast_receiver_work_budget",
+      "topicId": "performance",
+      "subtopicId": "anr",
+      "text": "A BroadcastReceiver compresses a large file synchronously inside onReceive(), taking longer than the receiver timeout. Users see the app freeze whenever that broadcast arrives. What explains it?",
+      "answers": [
+        {
+          "id": "anr_broadcast_receiver_work_budget_a",
+          "text": "onReceive() runs on a binder thread, and the framework blocks the main thread until it returns."
+        },
+        {
+          "id": "anr_broadcast_receiver_work_budget_b",
+          "text": "The receiver is discarded after onReceive() returns, so the compression restarts on every broadcast."
+        },
+        {
+          "id": "anr_broadcast_receiver_work_budget_c",
+          "text": "onReceive() runs on the main thread with a short time budget, and exceeding it produces an ANR."
+        },
+        {
+          "id": "anr_broadcast_receiver_work_budget_d",
+          "text": "Broadcasts are delivered serially, so the app waits behind other apps' receivers before running its own."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "anr_broadcast_receiver_work_budget_c"
+      ],
+      "explanation": "onReceive() is normally invoked on the main thread of the app's process, and the system gives a receiver only a short time to finish before treating the app as unresponsive. Long synchronous computation there therefore blocks the UI and produces an ANR when it exceeds the timeout. For brief asynchronous work, goAsync() lets onReceive() return while work scheduled on another dispatcher or thread finishes within the receiver's remaining budget; substantial durable work belongs in a WorkManager request. Receivers do not normally run on a binder thread, and another app's receiver does not stall yours in this way.",
+      "sources": [
+        {
+          "title": "Broadcasts: effects on process state",
+          "url": "https://developer.android.com/guide/components/broadcasts#effects-process-state"
+        },
+        {
+          "title": "ANRs",
+          "url": "https://developer.android.com/topic/performance/vitals/anr"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "main_thread_ui_toolkit_single_thread",
+      "topicId": "performance",
+      "subtopicId": "main_thread_performance",
+      "text": "Why does the Android View toolkit require a View hierarchy to be modified only from the main thread?",
+      "answers": [
+        {
+          "id": "main_thread_ui_toolkit_single_thread_a",
+          "text": "The main thread holds a lock over the hierarchy, so another thread would block until it is released."
+        },
+        {
+          "id": "main_thread_ui_toolkit_single_thread_b",
+          "text": "The toolkit is not thread-safe, and confining it to one thread replaces locking on every operation."
+        },
+        {
+          "id": "main_thread_ui_toolkit_single_thread_c",
+          "text": "Only the main thread is permitted to allocate the native objects that back each View."
+        },
+        {
+          "id": "main_thread_ui_toolkit_single_thread_d",
+          "text": "Rendering happens on the main thread, so an update from elsewhere would be applied a frame late."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "main_thread_ui_toolkit_single_thread_b"
+      ],
+      "explanation": "The View system is not designed for concurrent access: hierarchy state, measurement, layout and invalidation assume ordered access from the UI thread, avoiding synchronization around every operation. Some off-thread operations that reach an attached ViewRootImpl throw CalledFromWrongThreadException, but not every View method performs that check. Unchecked access can appear to work while racing state or causing a later failure, so the absence of an immediate exception does not make it safe. A separate render thread in the drawing pipeline does not make View mutation thread-safe.",
+      "sources": [
+        {
+          "title": "Processes and threads: worker threads",
+          "url": "https://developer.android.com/guide/components/processes-and-threads#WorkerThreads"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "context_leak_retained_activity_references",
+      "topicId": "performance",
+      "subtopicId": "context_leaks",
+      "text": "Select all that apply. Which of these keep a destroyed Activity reachable and therefore leak it?",
+      "answers": [
+        {
+          "id": "context_leak_retained_activity_references_a",
+          "text": "A companion-object field assigned the Activity in onCreate() and never cleared afterwards."
+        },
+        {
+          "id": "context_leak_retained_activity_references_b",
+          "text": "An Activity-scoped ViewModel holding that screen's UI state in a StateFlow it exposes."
+        },
+        {
+          "id": "context_leak_retained_activity_references_c",
+          "text": "A listener registered on an app-wide singleton by an anonymous class that calls into the Activity."
+        },
+        {
+          "id": "context_leak_retained_activity_references_d",
+          "text": "A View inside the Activity's own layout holding that Activity as the Context it was inflated with."
+        }
+      ],
+      "selectionMode": "MULTIPLE",
+      "correctAnswerIds": [
+        "context_leak_retained_activity_references_a",
+        "context_leak_retained_activity_references_c"
+      ],
+      "explanation": "A leak is simply a reference chain from something long-lived to an object that should be gone. A static or companion field outlives every Activity in the process, and a listener that calls back into its Activity necessarily holds a reference to it, so handing one to an application-scoped object keeps that Activity alive until it is unregistered. A ViewModel holds no Context and is cleared with its owner, and a View referencing the Activity that inflated it points down the tree — it dies together with the Activity, not after it.",
+      "sources": [
+        {
+          "title": "Overview of memory management",
+          "url": "https://developer.android.com/topic/performance/memory-overview"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "lifecycle_leak_listener_unregistration",
+      "topicId": "performance",
+      "subtopicId": "lifecycle_leaks",
+      "text": "A Fragment registers a callback that updates one of its views on an application-scoped repository in onViewCreated(), and never removes it. What is the consequence?",
+      "answers": [
+        {
+          "id": "lifecycle_leak_listener_unregistration_a",
+          "text": "The callback is removed by the system as soon as the Fragment's view is destroyed."
+        },
+        {
+          "id": "lifecycle_leak_listener_unregistration_b",
+          "text": "The Fragment stops receiving callbacks after onStop() and resumes receiving them on restart."
+        },
+        {
+          "id": "lifecycle_leak_listener_unregistration_c",
+          "text": "The repository throws when it invokes a callback that belongs to an already destroyed Fragment."
+        },
+        {
+          "id": "lifecycle_leak_listener_unregistration_d",
+          "text": "The repository keeps the Fragment reachable, so each configuration change leaves a dead one behind."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "lifecycle_leak_listener_unregistration_d"
+      ],
+      "explanation": "A callback that touches the Fragment's views holds a reference to the Fragment, so registering it creates a chain from the long-lived repository down to a screen. A configuration change destroys that Fragment instance and creates a new one that registers again, so the repository accumulates callbacks, each pinning a dead Fragment and its views. Returning from the back stack is a different bug rather than the same one: the instance survives and only its view is rebuilt, so onViewCreated() registers a second callback that fires twice. Nothing unregisters on the app's behalf and nothing throws. The fix is to unregister in the matching teardown callback, or to expose the data as a Flow collected in a lifecycle-scoped collector so the subscription ends with the scope.",
+      "sources": [
+        {
+          "title": "Fragment lifecycle",
+          "url": "https://developer.android.com/guide/fragments/lifecycle"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_heap_limit_oom_large_allocation",
+      "topicId": "performance",
+      "subtopicId": "android_memory_model",
+      "text": "An app throws OutOfMemoryError while decoding large images even though the device reports several gigabytes of free RAM. Why?",
+      "answers": [
+        {
+          "id": "android_heap_limit_oom_large_allocation_a",
+          "text": "ART reserves memory for the system before an app starts, so free RAM is not offered to apps."
+        },
+        {
+          "id": "android_heap_limit_oom_large_allocation_b",
+          "text": "Each app process has a heap limit set by the device configuration, well below total system memory."
+        },
+        {
+          "id": "android_heap_limit_oom_large_allocation_c",
+          "text": "Bitmap memory is not garbage collected, so decoded images accumulate until the app is restarted."
+        },
+        {
+          "id": "android_heap_limit_oom_large_allocation_d",
+          "text": "The collector runs only while the device is idle, so a short burst of allocation overflows the heap."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "android_heap_limit_oom_large_allocation_b"
+      ],
+      "explanation": "Android caps how much heap a single app process may use. The cap is a device property, readable through ActivityManager.getMemoryClass(), and it sits deliberately far below physical RAM so that many apps can coexist and the system can keep several in memory. Reaching it throws OutOfMemoryError no matter how much the rest of the device has spare, which is why large images are downsampled to the size actually displayed instead of decoded at full resolution. Bitmap memory is reclaimable, and ART collects continuously rather than waiting for an idle device.",
+      "sources": [
+        {
+          "title": "Overview of memory management",
+          "url": "https://developer.android.com/topic/performance/memory-overview"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "recyclerview_diffutil_minimal_updates",
+      "topicId": "performance",
+      "subtopicId": "recyclerview_performance",
+      "text": "An adapter calls notifyDataSetChanged() after every refresh, and the list flickers and loses its item animations. What does moving to DiffUtil change?",
+      "answers": [
+        {
+          "id": "recyclerview_diffutil_minimal_updates_a",
+          "text": "It caches the previous list in the adapter, so RecyclerView reuses the old ViewHolders as they are."
+        },
+        {
+          "id": "recyclerview_diffutil_minimal_updates_b",
+          "text": "It computes the minimal set of item changes, so only affected rows are rebound and animated."
+        },
+        {
+          "id": "recyclerview_diffutil_minimal_updates_c",
+          "text": "It moves item binding off the main thread, so a long list no longer blocks the current frame."
+        },
+        {
+          "id": "recyclerview_diffutil_minimal_updates_d",
+          "text": "It replaces the LayoutManager's measurement pass with a cached one, so layout is skipped entirely."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "recyclerview_diffutil_minimal_updates_b"
+      ],
+      "explanation": "notifyDataSetChanged() tells RecyclerView that anything may have changed, so it rebinds every visible holder and can animate nothing, because it has no idea which item corresponds to which. DiffUtil compares the old and new lists and issues precise insert, remove, move and change notifications, so RecyclerView rebinds only what actually differs and its default item animations work again. ListAdapter and AsyncListDiffer additionally run the comparison off the main thread — the binding itself still happens there.",
+      "sources": [
+        {
+          "title": "DiffUtil",
+          "url": "https://developer.android.com/reference/androidx/recyclerview/widget/DiffUtil"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "cpu_profiling_sampling_vs_instrumented",
+      "topicId": "performance",
+      "subtopicId": "cpu_profiling",
+      "text": "A CPU profiler offers both sampled and instrumented call recording for a Java or Kotlin method trace. What is the trade-off between them?",
+      "answers": [
+        {
+          "id": "cpu_profiling_sampling_vs_instrumented_a",
+          "text": "Sampling records every call but covers the main thread; tracing covers all threads at the same cost."
+        },
+        {
+          "id": "cpu_profiling_sampling_vs_instrumented_b",
+          "text": "Sampling is exact but limited to native code; tracing is approximate and limited to managed code."
+        },
+        {
+          "id": "cpu_profiling_sampling_vs_instrumented_c",
+          "text": "Sampling needs a debuggable build; tracing works on release builds without any extra configuration."
+        },
+        {
+          "id": "cpu_profiling_sampling_vs_instrumented_d",
+          "text": "Sampling captures stacks at an interval with low overhead; tracing sees every call but distorts timing."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "cpu_profiling_sampling_vs_instrumented_d"
+      ],
+      "explanation": "A sampled recording captures the call stack at a fixed interval, so its cost stays roughly constant and a short or infrequently executed method can be missed altogether — which makes it the right tool for finding where wall-clock time concentrates. An instrumented trace hooks method entry and exit, so it sees every call and an exact call count, but the instrumentation is heavy enough to change the timings it is measuring. Neither technique is restricted to one thread or to one kind of code.",
+      "sources": [
+        {
+          "title": "Inspect CPU activity with the CPU Profiler",
+          "url": "https://developer.android.com/studio/profile/cpu-profiler"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fakes_vs_mocks_interaction_coupling",
+      "topicId": "testing",
+      "subtopicId": "fakes_vs_mocks",
+      "text": "A ViewModel test asserts with verify(repository).save(item) and breaks every time the ViewModel changes how it persists. What does replacing that mock with a fake repository change?",
+      "answers": [
+        {
+          "id": "fakes_vs_mocks_interaction_coupling_a",
+          "text": "The test can assert the item ended up stored, rather than that one particular call was made."
+        },
+        {
+          "id": "fakes_vs_mocks_interaction_coupling_b",
+          "text": "The test no longer needs the repository interface, because a fake can extend the concrete class."
+        },
+        {
+          "id": "fakes_vs_mocks_interaction_coupling_c",
+          "text": "The test verifies more, because a fake records each interaction that the mock would have recorded."
+        },
+        {
+          "id": "fakes_vs_mocks_interaction_coupling_d",
+          "text": "The test becomes an integration test, because a fake exercises the real persistence layer beneath."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "fakes_vs_mocks_interaction_coupling_a"
+      ],
+      "explanation": "verify() pins the interaction — which method, how often, with which arguments — so it fails when the implementation changes even though the observable behaviour did not. A fake is a working in-memory implementation of the same interface, which lets the test ask what the state is afterwards: the property the feature actually promises. That is the trade-off, not a free upgrade — a fake still needs the interface, records nothing on its own, and touches no real persistence.",
+      "sources": [
+        {
+          "title": "Use test doubles in Android",
+          "url": "https://developer.android.com/training/testing/fundamentals/test-doubles"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "run_test_advance_until_idle_pending_work",
+      "topicId": "testing",
+      "subtopicId": "run_test",
+      "text": "Inside runTest, a ViewModel receives StandardTestDispatcher(testScheduler) and launches work on it. The assertion runs before that work has happened. Which call makes the pending work run first?",
+      "answers": [
+        {
+          "id": "run_test_advance_until_idle_pending_work_a",
+          "text": "runBlocking { }, which suspends the test until the other coroutine's Job has completed."
+        },
+        {
+          "id": "run_test_advance_until_idle_pending_work_b",
+          "text": "advanceUntilIdle(), which runs everything the test scheduler has queued until nothing is left."
+        },
+        {
+          "id": "run_test_advance_until_idle_pending_work_c",
+          "text": "Thread.sleep() for a short interval, which gives the dispatcher time to pick the work up."
+        },
+        {
+          "id": "run_test_advance_until_idle_pending_work_d",
+          "text": "setMain(UnconfinedTestDispatcher()), which is required before any assertion inside runTest."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "run_test_advance_until_idle_pending_work_b"
+      ],
+      "explanation": "runTest exposes its virtual-time scheduler as testScheduler. Passing that scheduler to StandardTestDispatcher makes the injected dispatcher share the scheduler controlled by the TestScope, so advanceUntilIdle() drains its queued tasks and skips their delays before the assertion. advanceTimeBy() and runCurrent() give finer control over the same scheduler. A StandardTestDispatcher created with a separate scheduler would not be advanced by this call; real blocking or sleeping does not advance virtual time, and an UnconfinedTestDispatcher changes when coroutines start rather than being a prerequisite.",
+      "sources": [
+        {
+          "title": "kotlinx-coroutines-test",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-test/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "repository_test_cache_policy_fakes",
+      "topicId": "testing",
+      "subtopicId": "repository_testing",
+      "text": "A repository emits cached data first and then refreshes it from the network. Which setup exercises that policy most directly?",
+      "answers": [
+        {
+          "id": "repository_test_cache_policy_fakes_a",
+          "text": "A mock of the repository itself, verifying that its refresh method runs after each read."
+        },
+        {
+          "id": "repository_test_cache_policy_fakes_b",
+          "text": "A unit test of the ViewModel, asserting that its UI state eventually shows the refreshed data."
+        },
+        {
+          "id": "repository_test_cache_policy_fakes_c",
+          "text": "A fake remote source and an in-memory local source, asserting what the repository emits over time."
+        },
+        {
+          "id": "repository_test_cache_policy_fakes_d",
+          "text": "An instrumented test against the real API, asserting the final value matches what the server holds."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "repository_test_cache_policy_fakes_c"
+      ],
+      "explanation": "The behaviour under test is the repository's own decision-making, so both collaborators must be controllable and neither may be the class under test. Fakes let the test hold the network response, observe the cached emission, then release it and assert the refreshed one — that sequence is the policy. Mocking the repository tests nothing about it, a real network makes the result non-deterministic, and routing the assertion through the ViewModel adds a layer that can mask where the failure came from.",
+      "sources": [
+        {
+          "title": "Data layer: testing",
+          "url": "https://developer.android.com/topic/architecture/data-layer#testing"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_ui_test_clock_manual_advance",
+      "topicId": "testing",
+      "subtopicId": "ui_testing",
+      "text": "A Compose test must assert on a colour part-way through a 250 ms animation, but the default synchronization lets the animation finish before the assertion runs. What lets the test observe an intermediate frame?",
+      "answers": [
+        {
+          "id": "compose_ui_test_clock_manual_advance_a",
+          "text": "Call waitForIdle() before the assertion so the test re-reads the tree mid-animation."
+        },
+        {
+          "id": "compose_ui_test_clock_manual_advance_b",
+          "text": "Wrap the assertion in waitUntil() with a timeout shorter than the animation's duration."
+        },
+        {
+          "id": "compose_ui_test_clock_manual_advance_c",
+          "text": "Run the assertion inside runOnIdle() so that it executes while the animation is going."
+        },
+        {
+          "id": "compose_ui_test_clock_manual_advance_d",
+          "text": "Set mainClock.autoAdvance to false and step the clock forward with advanceTimeBy()."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "compose_ui_test_clock_manual_advance_d"
+      ],
+      "explanation": "The test rule advances the test clock and synchronizes before every action and assertion, which is what makes most Compose tests deterministic without explicit waiting — and it is also why a finite animation has already settled by the time an assertion runs. Taking the clock over with autoAdvance set to false freezes it, and advanceTimeBy() moves it a controlled amount so the assertion observes a chosen frame. waitForIdle() and runOnIdle() do the opposite and wait for the animation to finish first, while waitUntil() polls a condition without ever stopping the clock.",
+      "sources": [
+        {
+          "title": "Test animations in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/animation/testing"
+        },
+        {
+          "title": "Testing in Compose: synchronization",
+          "url": "https://developer.android.com/develop/ui/compose/testing/synchronization"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "testability_injected_time_source_seam",
+      "topicId": "testing",
+      "subtopicId": "architecture_for_testability",
+      "text": "A class decides whether a cached response is stale by calling System.currentTimeMillis() inside the method under test. Why is that hard to test, and what is the smallest fix?",
+      "answers": [
+        {
+          "id": "testability_injected_time_source_seam_a",
+          "text": "The call is slow; wrap it in a coroutine so the test can await the result deterministically."
+        },
+        {
+          "id": "testability_injected_time_source_seam_b",
+          "text": "The value is a Long; convert it to an Instant so the test can compare it with an expected date."
+        },
+        {
+          "id": "testability_injected_time_source_seam_c",
+          "text": "The call is unavailable in a JVM test; add a Robolectric shadow so that it returns a real value."
+        },
+        {
+          "id": "testability_injected_time_source_seam_d",
+          "text": "The test cannot control now; inject a time source the test sets to a fixed value."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "testability_injected_time_source_seam_d"
+      ],
+      "explanation": "The class has no seam: the value that decides the outcome comes from a global the test cannot set, so the test can only assert whatever happens to be true while it runs, and a boundary case such as an entry expiring exactly now is untestable. Taking the current time from an injected abstraction — a Clock, or simply a () -> Long — hands that decision to the test. The call is neither slow nor unavailable on the JVM, and changing its type does nothing to make it controllable.",
+      "sources": [
+        {
+          "title": "Dependency injection in Android",
+          "url": "https://developer.android.com/training/dependency-injection"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "unit_test_android_stub_not_mocked_error",
+      "topicId": "testing",
+      "subtopicId": "unit_testing",
+      "text": "A local JVM unit test exercises a class that calls android.text.TextUtils, and it fails with a \"not mocked\" error. What does that indicate?",
+      "answers": [
+        {
+          "id": "unit_test_android_stub_not_mocked_error_a",
+          "text": "The android.jar on the unit-test classpath is stubbed, so its methods throw unless configured otherwise."
+        },
+        {
+          "id": "unit_test_android_stub_not_mocked_error_b",
+          "text": "The test is missing the AndroidJUnit4 runner, which would supply real framework implementations."
+        },
+        {
+          "id": "unit_test_android_stub_not_mocked_error_c",
+          "text": "The class under test has to be instrumented, because a local test loads no Android classes at all."
+        },
+        {
+          "id": "unit_test_android_stub_not_mocked_error_d",
+          "text": "Code shrinking removed the method from the test classpath, so the call resolves to a stub instead."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "unit_test_android_stub_not_mocked_error_a"
+      ],
+      "explanation": "Local unit tests compile against a stubbed android.jar in which every method throws, so an accidental dependence on the framework is visible rather than silently returning a wrong default. The options are to keep the framework out of the class under test, which is usually the best outcome, to run the test with Robolectric, which provides working implementations on the JVM, or to move it to an instrumented test. returnDefaultValues silences the exception without addressing the dependency. Local tests do load Android classes — those classes simply have no behaviour.",
+      "sources": [
+        {
+          "title": "Build local unit tests",
+          "url": "https://developer.android.com/training/testing/local-tests"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "datastore_preferences_vs_proto",
+      "topicId": "local_data",
+      "subtopicId": "datastore",
+      "text": "A team adopts DataStore for local settings. What distinguishes Preferences DataStore from Proto DataStore?",
+      "answers": [
+        {
+          "id": "datastore_preferences_vs_proto_a",
+          "text": "Preferences writes synchronously on the calling thread, while Proto writes through a Flow."
+        },
+        {
+          "id": "datastore_preferences_vs_proto_b",
+          "text": "Preferences stores untyped key-value pairs, while Proto stores a schema-defined object with typed fields."
+        },
+        {
+          "id": "datastore_preferences_vs_proto_c",
+          "text": "Preferences is limited to primitives, while Proto persists arbitrary Kotlin classes with no schema."
+        },
+        {
+          "id": "datastore_preferences_vs_proto_d",
+          "text": "Preferences persists into a database file, while Proto keeps its data for the current process only."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "datastore_preferences_vs_proto_b"
+      ],
+      "explanation": "Both variants are the same asynchronous, transactional store; what differs is the shape of the data. Preferences DataStore holds keys and values with no schema, so a mistyped key or a wrong type only shows up at run time. Proto DataStore serializes a single object whose fields are declared in a schema, which buys compile-time type safety at the cost of defining that schema and evolving it compatibly. Neither writes on the caller's thread, and both persist to a file.",
+      "sources": [
+        {
+          "title": "DataStore",
+          "url": "https://developer.android.com/topic/libraries/architecture/datastore"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "shared_preferences_apply_vs_commit",
+      "topicId": "local_data",
+      "subtopicId": "shared_preferences",
+      "text": "A SharedPreferences editor can be finished with apply() or with commit(). What is the practical difference?",
+      "answers": [
+        {
+          "id": "shared_preferences_apply_vs_commit_a",
+          "text": "apply() queues the change until the next app launch; commit() makes it visible immediately."
+        },
+        {
+          "id": "shared_preferences_apply_vs_commit_b",
+          "text": "apply() writes to disk at once; commit() batches several edits together into one atomic write."
+        },
+        {
+          "id": "shared_preferences_apply_vs_commit_c",
+          "text": "apply() updates memory at once and writes to disk in the background; commit() writes before returning."
+        },
+        {
+          "id": "shared_preferences_apply_vs_commit_d",
+          "text": "apply() is safe from any thread, while commit() may be called only from the main thread."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "shared_preferences_apply_vs_commit_c"
+      ],
+      "explanation": "Both change the in-memory map atomically and immediately, so a subsequent read sees the new value either way. apply() then persists asynchronously and returns nothing, while commit() performs the disk write synchronously and returns a boolean — which is exactly why calling it on the main thread is the classic StrictMode violation. Neither defers the change to a later launch, and commit() is not restricted to the main thread; it is the one to keep off it.",
+      "sources": [
+        {
+          "title": "SharedPreferences.Editor",
+          "url": "https://developer.android.com/reference/android/content/SharedPreferences.Editor"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "room_compile_time_query_verification",
+      "topicId": "local_data",
+      "subtopicId": "room_fundamentals",
+      "text": "A developer mistypes a column name inside a Room @Query annotation. When does that mistake surface?",
+      "answers": [
+        {
+          "id": "room_compile_time_query_verification_a",
+          "text": "At run time on first execution, because the query string reaches SQLite unchanged."
+        },
+        {
+          "id": "room_compile_time_query_verification_b",
+          "text": "At run time when the database opens, because Room validates queries during its migration check."
+        },
+        {
+          "id": "room_compile_time_query_verification_c",
+          "text": "It does not, because Room quietly drops a projection column that it is unable to resolve."
+        },
+        {
+          "id": "room_compile_time_query_verification_d",
+          "text": "At build time, because Room verifies each query against the schema derived from the entities."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "room_compile_time_query_verification_d"
+      ],
+      "explanation": "Room's annotation processor knows the schema from the @Entity classes, so it parses and checks every @Query while compiling: a wrong column, a return type that does not match the projection, or an unbound parameter becomes a build error rather than a crash on a user's device. That verification is the main practical argument for Room over hand-written SQLite strings. Room does compare the on-device schema at open time, but that is the migration identity check, not query validation.",
+      "sources": [
+        {
+          "title": "Save data in a local database using Room",
+          "url": "https://developer.android.com/training/data-storage/room"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "cache_memory_and_disk_levels",
+      "topicId": "local_data",
+      "subtopicId": "caching",
+      "text": "Select all that apply. A feed repository caches responses both in an in-memory map and in a Room table. Which statements about that two-level cache are correct?",
+      "answers": [
+        {
+          "id": "cache_memory_and_disk_levels_a",
+          "text": "The in-memory level disappears when the process is killed, while the Room table survives it."
+        },
+        {
+          "id": "cache_memory_and_disk_levels_b",
+          "text": "The Room table removes the need to decide how long a cached entry stays valid."
+        },
+        {
+          "id": "cache_memory_and_disk_levels_c",
+          "text": "The in-memory level avoids a network call and a disk read on an immediately repeated request."
+        },
+        {
+          "id": "cache_memory_and_disk_levels_d",
+          "text": "The in-memory level is shared with other apps that happen to request the same resource."
+        }
+      ],
+      "selectionMode": "MULTIPLE",
+      "correctAnswerIds": [
+        "cache_memory_and_disk_levels_a",
+        "cache_memory_and_disk_levels_c"
+      ],
+      "explanation": "The two levels answer different questions. Memory is the fastest and is scoped to the process, so it goes away with process death, while the database survives restarts and reboots and is what lets the screen render instantly on a cold start. Neither level answers the freshness question — a staleness policy, a timestamp or a validator still has to decide when an entry must be refetched. And a cache inside an app is private to that app's sandbox; nothing about it is shared with other applications.",
+      "sources": [
+        {
+          "title": "Data layer: in-memory cache",
+          "url": "https://developer.android.com/topic/architecture/data-layer#in-memory-cache"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "file_storage_cache_dir_vs_files_dir",
+      "topicId": "local_data",
+      "subtopicId": "file_storage",
+      "text": "An app stores PDFs the user explicitly saved, and also thumbnails it can regenerate at any time. Which app-specific directories fit those two kinds of file?",
+      "answers": [
+        {
+          "id": "file_storage_cache_dir_vs_files_dir_a",
+          "text": "The PDFs in filesDir and the thumbnails in cacheDir, which the system may clear under pressure."
+        },
+        {
+          "id": "file_storage_cache_dir_vs_files_dir_b",
+          "text": "Both in cacheDir, because anything downloaded over the network is by definition a cached copy."
+        },
+        {
+          "id": "file_storage_cache_dir_vs_files_dir_c",
+          "text": "Both in filesDir, because cacheDir is readable by other apps and unsuitable for user content."
+        },
+        {
+          "id": "file_storage_cache_dir_vs_files_dir_d",
+          "text": "The PDFs in cacheDir and the thumbnails in filesDir, since generated data must survive a cleanup."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "file_storage_cache_dir_vs_files_dir_a"
+      ],
+      "explanation": "filesDir and cacheDir both live inside the app's private sandbox, so neither is visible to other apps; what differs is the promise the system makes about them. Files in cacheDir are declared expendable and may be deleted when storage runs low, which is right for anything the app can produce again. Content the user chose to keep belongs in filesDir, where it remains until the app deletes it or the user clears the app's data.",
+      "sources": [
+        {
+          "title": "Access app-specific files",
+          "url": "https://developer.android.com/training/data-storage/app-specific"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "room_vs_sqldelight_generation_direction",
+      "topicId": "local_data",
+      "subtopicId": "room_vs_sqldelight",
+      "text": "A shared Kotlin Multiplatform data layer must persist relational data on Android and iOS. What is the substantive difference between Room and SQLDelight for that job?",
+      "answers": [
+        {
+          "id": "room_vs_sqldelight_generation_direction_a",
+          "text": "Room supports observable queries as Flow, while SQLDelight can expose only one-shot reads."
+        },
+        {
+          "id": "room_vs_sqldelight_generation_direction_b",
+          "text": "Room generates its schema from annotated Kotlin classes; SQLDelight generates Kotlin from .sq files."
+        },
+        {
+          "id": "room_vs_sqldelight_generation_direction_c",
+          "text": "Room runs on any Kotlin target, while SQLDelight targets the JVM and requires a JDBC driver."
+        },
+        {
+          "id": "room_vs_sqldelight_generation_direction_d",
+          "text": "Room requires SQL to be written by hand, while SQLDelight derives statements from a Kotlin DSL."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "room_vs_sqldelight_generation_direction_b"
+      ],
+      "explanation": "The direction of code generation is the real difference. Room starts from Kotlin — @Entity classes and @Dao interfaces — and derives the schema and the query verification from them, while SQLDelight starts from SQL in .sq files and generates typed Kotlin APIs out of it, which keeps the dialect explicit. Both support Kotlin Multiplatform targets today and both can expose results as Flow, so the decision is really about which artefact should be the source of truth for the schema.",
+      "sources": [
+        {
+          "title": "Room in Kotlin Multiplatform projects",
+          "url": "https://developer.android.com/kotlin/multiplatform/room"
+        },
+        {
+          "title": "SQLDelight",
+          "url": "https://sqldelight.github.io/sqldelight/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "system_requirements_clarifying_constraint",
+      "topicId": "mobile_system_design",
+      "subtopicId": "requirements_analysis",
+      "text": "Select all that apply. You are asked to design the client for a photo feed. Which clarifying questions change the client architecture most?",
+      "answers": [
+        {
+          "id": "system_requirements_clarifying_constraint_a",
+          "text": "Whether the feed must render before the network responds on a cold start."
+        },
+        {
+          "id": "system_requirements_clarifying_constraint_b",
+          "text": "Which analytics events the product team wants recorded when a photo is opened."
+        },
+        {
+          "id": "system_requirements_clarifying_constraint_c",
+          "text": "Whether users can post while offline and expect the post to appear immediately."
+        },
+        {
+          "id": "system_requirements_clarifying_constraint_d",
+          "text": "Which image codec the backend uses when it stores the original uploaded files."
+        }
+      ],
+      "selectionMode": "MULTIPLE",
+      "correctAnswerIds": [
+        "system_requirements_clarifying_constraint_a",
+        "system_requirements_clarifying_constraint_c"
+      ],
+      "explanation": "The questions worth asking first are the ones whose answers change the shape of the client. Whether the feed must render before the network answers decides whether there is a local source of truth at all, and whether users can write offline decides whether there is a durable outbox, locally generated identifiers and conflict handling. Analytics requirements and the backend's storage format are real concerns, but the client's data flow looks the same whichever way they are answered.",
+      "sources": [
+        {
+          "title": "Build an offline-first app",
+          "url": "https://developer.android.com/topic/architecture/data-layer/offline-first"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "system_nonfunctional_freshness_budget",
+      "topicId": "mobile_system_design",
+      "subtopicId": "nonfunctional_requirements",
+      "text": "A background sync must keep data reasonably fresh on a metered connection without draining the battery. Which requirement should shape the design first?",
+      "answers": [
+        {
+          "id": "system_nonfunctional_freshness_budget_a",
+          "text": "How large each payload is, because compression removes the need to think about frequency."
+        },
+        {
+          "id": "system_nonfunctional_freshness_budget_b",
+          "text": "Which HTTP client is used, because its connection pooling decides the battery cost of a sync."
+        },
+        {
+          "id": "system_nonfunctional_freshness_budget_c",
+          "text": "How stale the data may be, because that sets how often the app has to wake the radio at all."
+        },
+        {
+          "id": "system_nonfunctional_freshness_budget_d",
+          "text": "How many requests run concurrently, because parallelism decides the total radio time used."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "system_nonfunctional_freshness_budget_c"
+      ],
+      "explanation": "On a mobile device the dominant cost is waking the cellular radio and holding it awake, not the number of bytes sent, so the acceptable staleness window is the requirement everything else follows from: it fixes the sync frequency, decides whether several pieces of work can be batched into one wake-up, and determines whether constraints such as unmetered or charging are acceptable. Payload size, client choice and concurrency all matter, but they optimise within a frequency the freshness requirement has already chosen.",
+      "sources": [
+        {
+          "title": "Optimize network access for battery",
+          "url": "https://developer.android.com/develop/connectivity/network-ops/network-access-optimization"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "system_retry_queue_poison_write",
+      "topicId": "mobile_system_design",
+      "subtopicId": "system_retries",
+      "text": "An offline app queues writes and replays them in order. One write is rejected by the server on every attempt, and the user's later edits stop syncing entirely. What does the design need?",
+      "answers": [
+        {
+          "id": "system_retry_queue_poison_write_a",
+          "text": "A longer backoff on that write, so the queue reaches it less often and progresses in between."
+        },
+        {
+          "id": "system_retry_queue_poison_write_b",
+          "text": "A larger queue, so later edits are not dropped while the failing write is still pending."
+        },
+        {
+          "id": "system_retry_queue_poison_write_c",
+          "text": "A retry that restarts from the head of the queue each time, so that no write is ever skipped."
+        },
+        {
+          "id": "system_retry_queue_poison_write_d",
+          "text": "An attempt cap that quarantines the failed write and dependents while unrelated writes continue."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "system_retry_queue_poison_write_d"
+      ],
+      "explanation": "A permanently failing item at the head of an ordered queue is a poison message: retrying it forever turns one bad write into a complete sync outage for that user. The design needs a dependency-aware terminal state. After an attempt or age limit, it should quarantine the failed write together with operations that causally depend on it, surface that chain when the user must resolve it, and let unrelated entities continue syncing. Sending a dependent rename after its create failed would only create another invalid request. Backoff slows the loop, and a bigger queue just postpones the same failure.",
+      "sources": [
+        {
+          "title": "Build an offline-first app",
+          "url": "https://developer.android.com/topic/architecture/data-layer/offline-first"
+        },
+        {
+          "title": "Pub/Sub: handling message failures",
+          "url": "https://docs.cloud.google.com/pubsub/docs/handling-failures"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "system_client_server_rule_placement",
+      "topicId": "mobile_system_design",
+      "subtopicId": "system_decomposition",
+      "text": "A pricing rule changes several times a quarter, and shipped app versions stay in use for months. Where should the rule be evaluated?",
+      "answers": [
+        {
+          "id": "system_client_server_rule_placement_a",
+          "text": "On the client, so each release can be tested against the exact rule that it will apply."
+        },
+        {
+          "id": "system_client_server_rule_placement_b",
+          "text": "On both, with the client recomputing the server's result so a mismatch can be detected."
+        },
+        {
+          "id": "system_client_server_rule_placement_c",
+          "text": "On the server, so a change reaches every installed client without needing an app release."
+        },
+        {
+          "id": "system_client_server_rule_placement_d",
+          "text": "On the client, with the server validating only the final total that it receives back."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "system_client_server_rule_placement_c"
+      ],
+      "explanation": "What decides the split is who can change the rule and how quickly the change propagates. Logic compiled into shipped binaries is frozen for as long as those versions remain installed, so a rule that moves quarterly would leave a long tail of clients computing the wrong price with no way to correct them. Evaluating on the server — with the client rendering what it is told, and caching the last answer for offline display — makes the change take effect at once. Recomputing on the client to cross-check only doubles the places that must be updated together.",
+      "sources": [
+        {
+          "title": "Guide to app architecture: common principles",
+          "url": "https://developer.android.com/topic/architecture#common-architectural-principles"
+        },
+        {
+          "title": "Firebase Remote Config use cases",
+          "url": "https://firebase.google.com/docs/remote-config/use-cases"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "feature_flag_offline_default_value",
+      "topicId": "mobile_system_design",
+      "subtopicId": "feature_flags",
+      "text": "A feature is gated by a remotely fetched flag, and the app launches offline before any fetch has ever succeeded. What must the design provide?",
+      "answers": [
+        {
+          "id": "feature_flag_offline_default_value_a",
+          "text": "A blocking fetch during startup, so the flag is known before the first screen is composed."
+        },
+        {
+          "id": "feature_flag_offline_default_value_b",
+          "text": "An in-app default plus the cached last-known value, so the flag resolves without a network call."
+        },
+        {
+          "id": "feature_flag_offline_default_value_c",
+          "text": "A fallback that turns the feature on, since a new path is safer than an outdated one."
+        },
+        {
+          "id": "feature_flag_offline_default_value_d",
+          "text": "A retry loop around the fetch, so that the flag arrives before the user can interact."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "feature_flag_offline_default_value_b"
+      ],
+      "explanation": "A remote flag introduces a network dependency into the launch path, and it must never be able to block or break a cold start. The pattern is an in-app default that makes the app behave sensibly with no configuration at all, plus persistence of the last fetched values so a returning user keeps the behaviour they had, while the fetch happens in the background and applies at the next opportunity. Blocking or retrying at startup trades a configuration problem for a launch failure, and defaulting a risky feature to on removes the kill switch the flag exists to provide.",
+      "sources": [
+        {
+          "title": "Get started with Firebase Remote Config",
+          "url": "https://firebase.google.com/docs/remote-config/get-started"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp_ios_target_framework_output",
+      "topicId": "kmp",
+      "subtopicId": "kmp_targets",
+      "text": "A shared Kotlin Multiplatform module declares an iOS target and configures binaries.framework for it. What does the build produce for the Xcode project to consume?",
+      "answers": [
+        {
+          "id": "kmp_ios_target_framework_output_a",
+          "text": "A JVM library that the iOS app loads through an embedded Kotlin runtime at launch."
+        },
+        {
+          "id": "kmp_ios_target_framework_output_b",
+          "text": "Swift source files generated from the Kotlin declarations and then compiled by Xcode."
+        },
+        {
+          "id": "kmp_ios_target_framework_output_c",
+          "text": "A native framework compiled by Kotlin/Native that Xcode links like any other framework."
+        },
+        {
+          "id": "kmp_ios_target_framework_output_d",
+          "text": "A JavaScript bundle that the iOS app evaluates inside a WebView-backed runtime."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "kmp_ios_target_framework_output_c"
+      ],
+      "explanation": "Declaring the target registers a Kotlin/Native compilation; configuring a framework binary is what makes the build emit one. It is compiled ahead of time into a binary framework — static or dynamic, often packaged as an XCFramework or delivered through CocoaPods or Swift Package Manager — which Xcode links exactly as it would a framework written in Objective-C or Swift. The Kotlin declarations are exposed through a generated Objective-C header, so there is no JVM in the iOS app, no generated Swift sources to compile, and no JavaScript runtime involved.",
+      "sources": [
+        {
+          "title": "Build final native binaries",
+          "url": "https://kotlinlang.org/docs/multiplatform-build-native-binaries.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "commonmain_platform_api_availability",
+      "topicId": "kmp",
+      "subtopicId": "commonmain",
+      "text": "Select all that apply. Which of these can be referenced directly from commonMain in a module targeting Android and iOS?",
+      "answers": [
+        {
+          "id": "commonmain_platform_api_availability_a",
+          "text": "java.time.Instant, for the date arithmetic that both platforms need."
+        },
+        {
+          "id": "commonmain_platform_api_availability_b",
+          "text": "kotlin.collections and the rest of the common Kotlin standard library."
+        },
+        {
+          "id": "commonmain_platform_api_availability_c",
+          "text": "android.util.Log, for the diagnostics that both platforms want to emit."
+        },
+        {
+          "id": "commonmain_platform_api_availability_d",
+          "text": "java.io.File, for reading a configuration file bundled with the app."
+        }
+      ],
+      "selectionMode": "MULTIPLE",
+      "correctAnswerIds": [
+        "commonmain_platform_api_availability_b"
+      ],
+      "explanation": "commonMain is compiled for every target, so it may reference only declarations that exist on all of them: the common Kotlin standard library and multiplatform libraries such as kotlinx.coroutines, kotlinx.serialization and kotlinx-datetime. Anything from the JDK, including java.time and java.io, and anything from the Android SDK exists on the JVM and Android targets alone, so naming it in commonMain fails to compile for iOS. Reaching such an API needs an expect/actual declaration or an interface implemented per platform.",
+      "sources": [
+        {
+          "title": "Kotlin Multiplatform project structure: source sets",
+          "url": "https://kotlinlang.org/docs/multiplatform-discover-project.html#source-sets"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp_shared_viewmodel_owner_platform",
+      "topicId": "kmp",
+      "subtopicId": "kmp_lifecycle_viewmodel",
+      "text": "A team shares androidx ViewModel classes from commonMain across Android and iOS. What still has to be supplied by each platform?",
+      "answers": [
+        {
+          "id": "kmp_shared_viewmodel_owner_platform_a",
+          "text": "The owner that creates and clears the ViewModel, whose lifetime belongs to a platform host."
+        },
+        {
+          "id": "kmp_shared_viewmodel_owner_platform_b",
+          "text": "The ViewModel base class itself, because androidx.lifecycle ships no multiplatform artifact."
+        },
+        {
+          "id": "kmp_shared_viewmodel_owner_platform_c",
+          "text": "The coroutine scope, because viewModelScope is defined only for the Android target."
+        },
+        {
+          "id": "kmp_shared_viewmodel_owner_platform_d",
+          "text": "The state holder, because StateFlow is unavailable outside the JVM and Android targets."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "kmp_shared_viewmodel_owner_platform_a"
+      ],
+      "explanation": "The lifecycle-viewmodel artifact is published for Kotlin Multiplatform, so the ViewModel class, viewModelScope and the clearing behaviour are all usable from commonMain. What stays inherently platform-specific is the owner that decides the lifetime: on Android a ViewModelStoreOwner supplied by an Activity, Fragment or navigation entry, and on iOS whatever the host controller does to create the instance and clear it when the screen goes away. StateFlow belongs to kotlinx.coroutines and works on every target.",
+      "sources": [
+        {
+          "title": "ViewModel in Kotlin Multiplatform",
+          "url": "https://developer.android.com/kotlin/multiplatform/viewmodel"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp_actual_typealias_platform_type",
+      "topicId": "kmp",
+      "subtopicId": "kmp_platform_apis",
+      "text": "Shared code declares an expect class, and one platform already has a class whose members satisfy that declaration exactly. What is the simplest valid actual declaration there?",
+      "answers": [
+        {
+          "id": "kmp_actual_typealias_platform_type_a",
+          "text": "An actual class that extends the existing platform class and overrides nothing of its own."
+        },
+        {
+          "id": "kmp_actual_typealias_platform_type_b",
+          "text": "An actual object that delegates to a fresh instance of the platform class on every call."
+        },
+        {
+          "id": "kmp_actual_typealias_platform_type_c",
+          "text": "An actual typealias naming the existing platform class, whose API matches the expectation."
+        },
+        {
+          "id": "kmp_actual_typealias_platform_type_d",
+          "text": "An actual interface that the existing platform class implements through an extension."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "kmp_actual_typealias_platform_type_c"
+      ],
+      "explanation": "actual typealias exists for exactly this case: when a platform already offers a type whose members satisfy the expected declaration, the actual can name it instead of wrapping it, and the compiler still checks that every expected member is present. Wrapping through subclassing or delegation compiles in some cases but adds a layer for no benefit and can fail outright if the platform type is final. An expect class also cannot be actualised as an object or an interface — the kind of declaration has to match.",
+      "sources": [
+        {
+          "title": "Expected and actual declarations",
+          "url": "https://kotlinlang.org/docs/multiplatform-expect-actual.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_multiplatform_generated_resources",
+      "topicId": "kmp",
+      "subtopicId": "compose_multiplatform_resources",
+      "text": "A Compose Multiplatform module keeps images and strings under composeResources. How does shared code in commonMain refer to them on Android, iOS and desktop?",
+      "answers": [
+        {
+          "id": "compose_multiplatform_generated_resources_a",
+          "text": "Through a generated Res object whose accessors resolve to the right asset for each platform."
+        },
+        {
+          "id": "compose_multiplatform_generated_resources_b",
+          "text": "Through android.R, which the Compose Multiplatform plugin makes available on every target."
+        },
+        {
+          "id": "compose_multiplatform_generated_resources_c",
+          "text": "Through a platform-specific expect/actual accessor written by hand for each supported target."
+        },
+        {
+          "id": "compose_multiplatform_generated_resources_d",
+          "text": "Through file paths passed as plain strings, since resource identifiers exist only on Android."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "compose_multiplatform_generated_resources_a"
+      ],
+      "explanation": "The Compose Multiplatform resources library generates a Res object from the composeResources directory at build time, and shared composables use entries such as Res.drawable.icon or Res.string.title straight from commonMain while the library loads the right asset for the running platform. That is the whole point of the mechanism: no android.R, no hand-written expect/actual per resource and no raw file paths — and qualifiers such as locale, density and theme are handled by the same generated accessors.",
+      "sources": [
+        {
+          "title": "Compose Multiplatform resources",
+          "url": "https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-multiplatform-resources.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "repository_observable_api_shape",
+      "topicId": "architecture",
+      "subtopicId": "repository_pattern",
+      "text": "A screen must reflect later local writes that other parts of the app make. Which repository API shape supports that, and why?",
+      "answers": [
+        {
+          "id": "repository_observable_api_shape_a",
+          "text": "A suspend function returning a snapshot, because the screen can call it again after each write."
+        },
+        {
+          "id": "repository_observable_api_shape_b",
+          "text": "A property holding the last value, because the screen can read it during every recomposition."
+        },
+        {
+          "id": "repository_observable_api_shape_c",
+          "text": "A Flow of the data, because the repository can emit again whenever its source of truth changes."
+        },
+        {
+          "id": "repository_observable_api_shape_d",
+          "text": "A suspend read plus a callback the repository invokes, because callbacks cost less than a Flow."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "repository_observable_api_shape_c"
+      ],
+      "explanation": "The requirement is that the screen learns about changes it did not itself initiate, so the repository has to be able to push. Returning a Flow lets the local source of truth — a Room query, a DataStore file — drive re-emission while the screen simply collects. A one-shot suspend read is correct at the instant it returns and stale immediately after, leaving the caller to guess when to repeat it. A callback API can work but re-implements what Flow already gives, including cancellation, and a plain property offers recomposition nothing to observe.",
+      "sources": [
+        {
+          "title": "Data layer",
+          "url": "https://developer.android.com/topic/architecture/data-layer"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "mvp_vs_mvvm_view_contract",
+      "topicId": "architecture",
+      "subtopicId": "mvp",
+      "text": "How does an MVP presenter's relationship with its view differ from an MVVM state holder's?",
+      "answers": [
+        {
+          "id": "mvp_vs_mvvm_view_contract_a",
+          "text": "A presenter observes state the view exposes, while a ViewModel holds a reference to the view."
+        },
+        {
+          "id": "mvp_vs_mvvm_view_contract_b",
+          "text": "A presenter runs on a background thread by definition, while a ViewModel runs on the main one."
+        },
+        {
+          "id": "mvp_vs_mvvm_view_contract_c",
+          "text": "A presenter holds a view interface and pushes updates in; a ViewModel exposes state the view observes."
+        },
+        {
+          "id": "mvp_vs_mvvm_view_contract_d",
+          "text": "A presenter owns the navigation stack, while a ViewModel is forbidden from triggering navigation."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "mvp_vs_mvvm_view_contract_c"
+      ],
+      "explanation": "The direction of the dependency separates them. A presenter is handed a view interface and calls methods on it, so it must not retain or invoke a detached view. That creates attach and detach bookkeeping even when another owner keeps the presenter alive across a configuration change. A ViewModel publishes observable state and knows nothing about the view, so it survives configuration changes and the view simply rebuilds itself from whatever state is current. Neither pattern dictates threading, and neither forbids modelling navigation.",
+      "sources": [
+        {
+          "title": "UI layer: state holders",
+          "url": "https://developer.android.com/topic/architecture/ui-layer#state-holders"
+        },
+        {
+          "title": "ViewModel overview",
+          "url": "https://developer.android.com/topic/libraries/architecture/viewmodel"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "clean_architecture_dependency_rule_tradeoff",
+      "topicId": "architecture",
+      "subtopicId": "clean_architecture",
+      "text": "Select all that apply. A team follows Clean Architecture's dependency rule and keeps the domain layer free of framework types. Which consequences follow?",
+      "answers": [
+        {
+          "id": "clean_architecture_dependency_rule_tradeoff_a",
+          "text": "The number of layers determines how fast the app builds, whatever the module structure is."
+        },
+        {
+          "id": "clean_architecture_dependency_rule_tradeoff_b",
+          "text": "The domain layer can be unit-tested with no Android dependency and no instrumentation."
+        },
+        {
+          "id": "clean_architecture_dependency_rule_tradeoff_c",
+          "text": "Business rules can no longer be plain Kotlin classes and have to become external configuration."
+        },
+        {
+          "id": "clean_architecture_dependency_rule_tradeoff_d",
+          "text": "A Room entity or framework-annotated transport DTO cannot double as the domain model, so mapping appears there."
+        }
+      ],
+      "selectionMode": "MULTIPLE",
+      "correctAnswerIds": [
+        "clean_architecture_dependency_rule_tradeoff_b",
+        "clean_architecture_dependency_rule_tradeoff_d"
+      ],
+      "explanation": "Pointing every dependency inward means the innermost layer names no framework type, so it compiles and runs in a plain JVM test — and in a multiplatform project it is exactly the layer that can be shared. The cost lands wherever a framework-annotated type would otherwise have been reused: a Room entity or framework-annotated transport DTO may not double as the domain model, so mapping code and extra types appear at that boundary. An unannotated, domain-owned type can still be deserialized by a suitable converter without requiring mapping. That is real work, worth paying when the domain has rules to protect and hard to justify when it does not. Build speed follows from module structure rather than layer count, and the rules stay ordinary Kotlin.",
+      "sources": [
+        {
+          "title": "Domain layer",
+          "url": "https://developer.android.com/topic/architecture/domain-layer"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "dependency_direction_domain_framework_types",
+      "topicId": "architecture",
+      "subtopicId": "dependency_direction",
+      "text": "A domain-layer use case accepts an android.net.Uri parameter and returns a Retrofit Response. Which problem does that most directly cause?",
+      "answers": [
+        {
+          "id": "dependency_direction_domain_framework_types_a",
+          "text": "The use case cannot be injected, because a DI framework has no binding for framework classes."
+        },
+        {
+          "id": "dependency_direction_domain_framework_types_b",
+          "text": "The use case stops being suspendable, because Retrofit types do not cross a coroutine boundary."
+        },
+        {
+          "id": "dependency_direction_domain_framework_types_c",
+          "text": "The domain layer gains a compile-time cycle with the data layer, so the module stops building."
+        },
+        {
+          "id": "dependency_direction_domain_framework_types_d",
+          "text": "The domain becomes coupled to Android and Retrofit, losing framework independence and portability."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "dependency_direction_domain_framework_types_d"
+      ],
+      "explanation": "The dependency rule exists so the innermost layer names nothing from the outer ones. Accepting a Uri requires the Android SDK and returning a Response ties the use case to Retrofit, so the domain module loses framework independence, cannot be shared unchanged with a non-Android target, and has to change whenever the transport contract changes. The use case can still be tested with appropriate Android-aware JVM or device infrastructure, so coupling does not mean untestability. The fix is to accept and return domain types and let the data layer do the mapping. Nothing here inherently breaks injection, coroutines or compilation, which is precisely why the design problem is easy to leave in place.",
+      "sources": [
+        {
+          "title": "Domain layer",
+          "url": "https://developer.android.com/topic/architecture/domain-layer"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "gradle_variant_source_set_override",
+      "topicId": "build_delivery",
+      "subtopicId": "source_sets",
+      "text": "An Android module has a drawable in src/debug/res/drawable whose file name matches one in src/main/res/drawable. What does the build do with them?",
+      "answers": [
+        {
+          "id": "gradle_variant_source_set_override_a",
+          "text": "The two are merged, and the debug copy's contents are combined with those of the main one."
+        },
+        {
+          "id": "gradle_variant_source_set_override_b",
+          "text": "The build fails with a duplicate resource error until one of the two files is renamed."
+        },
+        {
+          "id": "gradle_variant_source_set_override_c",
+          "text": "For the debug variant the debug copy replaces the main one; release keeps the main copy."
+        },
+        {
+          "id": "gradle_variant_source_set_override_d",
+          "text": "The main copy wins everywhere, because src/main takes precedence over variant source sets."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "gradle_variant_source_set_override_c"
+      ],
+      "explanation": "The Android Gradle Plugin assembles each variant from several source sets — main, the build type, the product flavour and their combinations — where the more specific set takes priority. A same-named drawable in src/debug therefore replaces the src/main one for debug builds and leaves release untouched, which is the mechanism behind debug-only launcher icons and stub implementations. Files under values/ are the instructive exception: two strings.xml files are merged, and the build type's entries override same-named entries from main rather than replacing the whole file. Either way the precedence is defined, so there is nothing for the build to report as a conflict.",
+      "sources": [
+        {
+          "title": "Build variants: source sets",
+          "url": "https://developer.android.com/build/build-variants#sourcesets"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "gradle_dependency_conflict_resolution",
+      "topicId": "build_delivery",
+      "subtopicId": "dependency_resolution",
+      "text": "Two libraries on one configuration transitively require different versions of the same dependency. What does Gradle do by default?",
+      "answers": [
+        {
+          "id": "gradle_dependency_conflict_resolution_a",
+          "text": "It selects the highest requested version and uses that one for the whole configuration."
+        },
+        {
+          "id": "gradle_dependency_conflict_resolution_b",
+          "text": "It fails the build and asks the developer to state which of the versions should be used."
+        },
+        {
+          "id": "gradle_dependency_conflict_resolution_c",
+          "text": "It keeps both versions on the classpath, isolated from one another by separate class loaders."
+        },
+        {
+          "id": "gradle_dependency_conflict_resolution_d",
+          "text": "It selects the version requested by whichever dependency is declared first in the build file."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "gradle_dependency_conflict_resolution_a"
+      ],
+      "explanation": "Gradle resolves a configuration to a single version per module, and its default conflict resolution takes the highest version any participant requested. That is usually convenient and occasionally wrong, which is why strict versions, dependency constraints and resolution strategies exist to override it — and why a dependency report is worth inspecting. A JVM classpath can physically contain JARs with duplicate class definitions; class-loader visibility and ordering then determine which definition is loaded and can cause linkage failures. Gradle's module conflict resolution provides a coherent dependency graph before that point, and build-file declaration order does not choose the winning module version.",
+      "sources": [
+        {
+          "title": "Understanding dependency resolution",
+          "url": "https://docs.gradle.org/current/userguide/dependency_resolution.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "play_app_signing_upload_key_roles",
+      "topicId": "build_delivery",
+      "subtopicId": "app_signing",
+      "text": "Select all that apply. An app is distributed using Play App Signing. Which statements about its keys are correct?",
+      "answers": [
+        {
+          "id": "play_app_signing_upload_key_roles_a",
+          "text": "The developer signs the bundle with an upload key, and Google Play signs the generated delivery APKs with the app signing key."
+        },
+        {
+          "id": "play_app_signing_upload_key_roles_b",
+          "text": "The app signing key is stored in the project repository so that continuous integration can sign releases."
+        },
+        {
+          "id": "play_app_signing_upload_key_roles_c",
+          "text": "Losing the upload key is recoverable, because Google Play can register a replacement for the app."
+        },
+        {
+          "id": "play_app_signing_upload_key_roles_d",
+          "text": "Play App Signing removes the need to sign the bundle at all, since Google Play signs the uploaded file."
+        }
+      ],
+      "selectionMode": "MULTIPLE",
+      "correctAnswerIds": [
+        "play_app_signing_upload_key_roles_a",
+        "play_app_signing_upload_key_roles_c"
+      ],
+      "explanation": "With Play App Signing, Google holds the key that signs the APKs users install, while the developer holds a separate upload key that proves who is uploading. Play verifies the app bundle's upload signature, generates the delivery APKs, and signs those APKs with the app signing key. This separation is why a lost upload key can be replaced through Play support, something that would be impossible for the key devices already trust. Neither key belongs in version control, and the bundle still has to be signed with the upload key before it can be uploaded.",
+      "sources": [
+        {
+          "title": "Sign your app: Play App Signing",
+          "url": "https://developer.android.com/studio/publish/app-signing"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "ksp_vs_kapt_build_cost",
+      "topicId": "build_delivery",
+      "subtopicId": "kotlin_gradle_plugin",
+      "text": "A project migrates its Room and Dagger annotation processing from kapt to KSP. Why does that usually shorten build times?",
+      "answers": [
+        {
+          "id": "ksp_vs_kapt_build_cost_a",
+          "text": "KSP runs its processors in parallel with compilation, while kapt runs them strictly afterwards."
+        },
+        {
+          "id": "ksp_vs_kapt_build_cost_b",
+          "text": "KSP caches its generated output remotely, while kapt regenerates everything on each build."
+        },
+        {
+          "id": "ksp_vs_kapt_build_cost_c",
+          "text": "KSP reads Kotlin directly, while kapt first generates Java stubs for every Kotlin source file."
+        },
+        {
+          "id": "ksp_vs_kapt_build_cost_d",
+          "text": "KSP skips annotation processing on incremental builds, while kapt reprocesses every source file."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "ksp_vs_kapt_build_cost_c"
+      ],
+      "explanation": "kapt is a bridge to Java annotation processing: before any processor can run, it generates Java stubs for all Kotlin sources so that javac-based processors can see the declarations, and that stub generation is usually the dominant cost. KSP is a Kotlin-native API, so processors read Kotlin declarations directly and the stub step disappears. Both support incremental processing, and neither runs concurrently with compilation nor caches generated output remotely on its own.",
+      "sources": [
+        {
+          "title": "Kotlin Symbol Processing API",
+          "url": "https://kotlinlang.org/docs/ksp-overview.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fcm_delivery_best_effort_signal",
+      "topicId": "notifications",
+      "subtopicId": "fcm_fundamentals",
+      "text": "A messaging app relies on FCM data messages to carry the full text of each new message to the client. Why is that a fragile design?",
+      "answers": [
+        {
+          "id": "fcm_delivery_best_effort_signal_a",
+          "text": "FCM strips any data payload beyond a few bytes, so only an identifier can be carried."
+        },
+        {
+          "id": "fcm_delivery_best_effort_signal_b",
+          "text": "FCM delivery is best effort, so a message can be dropped, collapsed or arrive late."
+        },
+        {
+          "id": "fcm_delivery_best_effort_signal_c",
+          "text": "FCM delivers a data message only while the app is in the foreground, losing background ones."
+        },
+        {
+          "id": "fcm_delivery_best_effort_signal_d",
+          "text": "FCM requires an acknowledgement for each message and redelivers one that is not acknowledged."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "fcm_delivery_best_effort_signal_b"
+      ],
+      "explanation": "FCM offers no delivery guarantee. A message that cannot be delivered is stored only until its time to live expires and is then discarded, and a pending message sharing a collapse key with a newer one is replaced by it. Treating the push as a signal — something changed, come and sync — and fetching the authoritative content over the app's own API keeps the client correct whatever FCM does. Data payloads are limited to a few kilobytes rather than a few bytes, data messages do reach a backgrounded app, and there is no client acknowledgement protocol.",
+      "sources": [
+        {
+          "title": "FCM: set the lifespan of a message",
+          "url": "https://firebase.google.com/docs/cloud-messaging/customize-messages/setting-message-lifespan"
+        },
+        {
+          "title": "FCM: non-collapsible and collapsible messages",
+          "url": "https://firebase.google.com/docs/cloud-messaging/customize-messages/collapsible-message-types"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fcm_message_handling_work_budget",
+      "topicId": "notifications",
+      "subtopicId": "fcm_message_handling",
+      "text": "onMessageReceived() in a FirebaseMessagingService starts a long download of the content the message refers to. What should it do instead?",
+      "answers": [
+        {
+          "id": "fcm_message_handling_work_budget_a",
+          "text": "Move the download to a coroutine on GlobalScope, since that outlives the callback itself."
+        },
+        {
+          "id": "fcm_message_handling_work_budget_b",
+          "text": "Nothing differently, because the callback already runs off the main thread with no time limit."
+        },
+        {
+          "id": "fcm_message_handling_work_budget_c",
+          "text": "Block inside the callback but raise the service's thread priority so that it finishes sooner."
+        },
+        {
+          "id": "fcm_message_handling_work_budget_d",
+          "text": "Enqueue a WorkManager request, because the callback has a short window before it may be stopped."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "fcm_message_handling_work_budget_d"
+      ],
+      "explanation": "The onMessageReceived() callback has a short execution window, and background execution limits can pause or terminate processing before it finishes, so work that depends on the network must not run inline — the documentation names fetching an image for a notification as exactly the case to avoid. Handing it to WorkManager makes the work durable: it survives the callback returning, the process dying and even a reboot, and it can wait for connectivity. A GlobalScope coroutine dies with the process, and thread priority does not lengthen the window.",
+      "sources": [
+        {
+          "title": "Receive messages in an Android app",
+          "url": "https://firebase.google.com/docs/cloud-messaging/android/receive"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "notification_channel_required_for_display",
+      "topicId": "notifications",
+      "subtopicId": "notification_fundamentals",
+      "text": "An app targeting a recent Android version posts a notification whose channel ID was never created. What does the user see?",
+      "answers": [
+        {
+          "id": "notification_channel_required_for_display_a",
+          "text": "The notification at default importance, because the system creates the missing channel."
+        },
+        {
+          "id": "notification_channel_required_for_display_b",
+          "text": "The notification in a system-generated \"Other\" channel that offers no user controls."
+        },
+        {
+          "id": "notification_channel_required_for_display_c",
+          "text": "Nothing, because the system does not display a notification whose channel does not exist."
+        },
+        {
+          "id": "notification_channel_required_for_display_d",
+          "text": "A system dialog asking them to let the app create the notification channel it needs."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "notification_channel_required_for_display_c"
+      ],
+      "explanation": "Since Android 8.0 every notification has to belong to a channel the app created beforehand, because the channel is what carries the user's settings for that category — importance, sound, vibration and whether it appears at all. Posting to an unknown channel is dropped without an error, which is why channel creation belongs in an early idempotent step such as Application.onCreate(). The system invents no channels, and creating one needs no permission; posting a notification does on Android 13 and later, which is a separate requirement.",
+      "sources": [
+        {
+          "title": "Create and manage notification channels",
+          "url": "https://developer.android.com/develop/ui/views/notifications/channels"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "notification_remote_input_reply_action",
+      "topicId": "notifications",
+      "subtopicId": "notification_actions",
+      "text": "Select all that apply. A messaging notification offers an inline reply from the notification shade. Which statements about that action are correct?",
+      "answers": [
+        {
+          "id": "notification_remote_input_reply_action_a",
+          "text": "The reply text reaches the app through a RemoteInput attached to the action's PendingIntent."
+        },
+        {
+          "id": "notification_remote_input_reply_action_b",
+          "text": "The action has to launch an Activity, because a notification cannot deliver input to a receiver."
+        },
+        {
+          "id": "notification_remote_input_reply_action_c",
+          "text": "The app should update the same notification after handling the reply so the user sees it was sent."
+        },
+        {
+          "id": "notification_remote_input_reply_action_d",
+          "text": "The reply is stored by the system and handed to the app the next time the user launches it."
+        }
+      ],
+      "selectionMode": "MULTIPLE",
+      "correctAnswerIds": [
+        "notification_remote_input_reply_action_a",
+        "notification_remote_input_reply_action_c"
+      ],
+      "explanation": "An inline reply is an ordinary notification action with a RemoteInput attached: the system collects the text and puts it into the Intent behind the action's PendingIntent, which the app reads with RemoteInput.getResultsFromIntent(). The target is normally a broadcast receiver or a service rather than an Activity, which is exactly why the user never leaves the screen they were on. The app then has to update or cancel that notification itself so the shade reflects what happened; nothing is deferred until the next launch.",
+      "sources": [
+        {
+          "title": "Create a notification: reply action",
+          "url": "https://developer.android.com/develop/ui/views/notifications/build-notification#reply-action"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_no_checked_exceptions_interop",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_exceptions",
+      "text": "Kotlin has no checked exceptions. What does that mean for a Kotlin function that is also called from Java or from Swift?",
+      "answers": [
+        {
+          "id": "kotlin_no_checked_exceptions_interop_a",
+          "text": "The exception is converted into a Result value at the interoperability boundary for the caller."
+        },
+        {
+          "id": "kotlin_no_checked_exceptions_interop_b",
+          "text": "The exception cannot cross that boundary at all and is swallowed by the Kotlin runtime."
+        },
+        {
+          "id": "kotlin_no_checked_exceptions_interop_c",
+          "text": "The caller gets no compiler-enforced signal, so @Throws is needed to declare it in the signature."
+        },
+        {
+          "id": "kotlin_no_checked_exceptions_interop_d",
+          "text": "The caller has to wrap every Kotlin call in try/catch, because the compiler treats them as checked."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "kotlin_no_checked_exceptions_interop_c"
+      ],
+      "explanation": "Kotlin removed checked exceptions, so a Kotlin signature says nothing about what may be thrown and a Kotlin caller is never forced to handle anything. That is workable inside Kotlin, but Java's catch-or-declare rule and Swift's throwing-function model both need the information: annotating the declaration with @Throws puts the exception into the generated signature, which is what makes a Kotlin/Native function usable as a throwing function from Swift. Exceptions do cross the boundary — an undeclared one simply arrives unannounced, and from Swift it terminates the app.",
+      "sources": [
+        {
+          "title": "Exceptions in Kotlin",
+          "url": "https://kotlinlang.org/docs/exceptions.html"
+        },
+        {
+          "title": "Interoperability with Swift/Objective-C: errors and exceptions",
+          "url": "https://kotlinlang.org/docs/native-objc-interop.html#errors-and-exceptions"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_lambda_with_receiver_dsl",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_lambdas",
+      "text": "A builder is declared as fun buildQuery(block: QueryBuilder.() -> Unit). What does the receiver in that function type give the caller?",
+      "answers": [
+        {
+          "id": "kotlin_lambda_with_receiver_dsl_a",
+          "text": "Inside the lambda the builder is the implicit this, so its members need no qualifier."
+        },
+        {
+          "id": "kotlin_lambda_with_receiver_dsl_b",
+          "text": "The lambda runs on the builder's own thread, so the calls inside it are serialised for safety."
+        },
+        {
+          "id": "kotlin_lambda_with_receiver_dsl_c",
+          "text": "The builder instance arrives as the lambda's single parameter, reachable there as it."
+        },
+        {
+          "id": "kotlin_lambda_with_receiver_dsl_d",
+          "text": "The lambda is inlined by the compiler, so no object is allocated for it at the call site."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "kotlin_lambda_with_receiver_dsl_a"
+      ],
+      "explanation": "A function type with a receiver makes that receiver the implicit this inside the lambda, so its members can be called with no qualifier — which is what produces the nested, declarative shape of Kotlin DSLs such as buildString or the Gradle Kotlin DSL. A plain (QueryBuilder) -> Unit would instead pass the builder as a parameter reached through it. Whether the lambda allocates an object is decided by the inline modifier rather than by the receiver, and a receiver says nothing at all about threading.",
+      "sources": [
+        {
+          "title": "Lambdas: function literals with receiver",
+          "url": "https://kotlinlang.org/docs/lambdas.html#function-literals-with-receiver"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_internal_module_visibility",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_visibility",
+      "text": "Select all that apply. Which statements about Kotlin's internal visibility modifier are correct?",
+      "answers": [
+        {
+          "id": "kotlin_internal_module_visibility_a",
+          "text": "An internal declaration is visible only inside the file that declares it."
+        },
+        {
+          "id": "kotlin_internal_module_visibility_b",
+          "text": "An internal declaration is visible to subclasses that live in another module."
+        },
+        {
+          "id": "kotlin_internal_module_visibility_c",
+          "text": "An internal declaration is visible everywhere inside the same compilation module."
+        },
+        {
+          "id": "kotlin_internal_module_visibility_d",
+          "text": "An internal declaration is hidden from Java code compiled in the same module."
+        }
+      ],
+      "selectionMode": "MULTIPLE",
+      "correctAnswerIds": [
+        "kotlin_internal_module_visibility_c"
+      ],
+      "explanation": "internal scopes a declaration to the compilation module — the set of files compiled together, such as one Gradle source set — so it is reachable from every package in that module but not from a module depending on it. Restricting visibility to a single file is what a top-level private does, and a subclass in another module can see protected members rather than internal ones. On the JVM internal compiles to public with a mangled name, so Java in the same module can technically reach it: the boundary is enforced by the Kotlin compiler, not by the bytecode.",
+      "sources": [
+        {
+          "title": "Visibility modifiers: modules",
+          "url": "https://kotlinlang.org/docs/visibility-modifiers.html#modules"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "process_death_reproducing_restoration",
+      "topicId": "lifecycle_navigation",
+      "subtopicId": "process_death",
+      "text": "A team wants to verify that a screen restores correctly after system-initiated process death. Which procedure actually reproduces that case?",
+      "answers": [
+        {
+          "id": "process_death_reproducing_restoration_a",
+          "text": "Enable \"Don't keep activities\", which destroys the process as soon as the app is backgrounded."
+        },
+        {
+          "id": "process_death_reproducing_restoration_b",
+          "text": "Background the app, terminate its process from the tooling, then return to it from Recents."
+        },
+        {
+          "id": "process_death_reproducing_restoration_c",
+          "text": "Rotate the device several times, which makes the system recreate the process on each rotation."
+        },
+        {
+          "id": "process_death_reproducing_restoration_d",
+          "text": "Call finish() on the Activity and then relaunch the app from its icon in the launcher."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "process_death_reproducing_restoration_b"
+      ],
+      "explanation": "Process death is the case where saved instance state is restored but everything the process held is gone. Reproducing it means genuinely killing the process while the task stays in Recents and then resuming that task — what the tooling's terminate action or adb shell am kill does. \"Don't keep activities\" destroys the Activity but leaves the process running, so application singletons, the dependency graph and any static cache are still populated when the screen is rebuilt — and depending on one of those is exactly the bug that survives this setting and then fails in the field. Rotation is a configuration change within the same process, and finishing the Activity ends the task instead of restoring it.",
+      "sources": [
+        {
+          "title": "Save UI states",
+          "url": "https://developer.android.com/topic/libraries/architecture/saving-states"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "activity_on_pause_vs_on_stop_visibility",
+      "topicId": "lifecycle_navigation",
+      "subtopicId": "activity_lifecycle",
+      "text": "A dialog-themed Activity is launched over an existing screen and covers only part of it. Which lifecycle callbacks does the Activity underneath receive?",
+      "answers": [
+        {
+          "id": "activity_on_pause_vs_on_stop_visibility_a",
+          "text": "onPause() and onStop(), because another Activity is now in the foreground above it."
+        },
+        {
+          "id": "activity_on_pause_vs_on_stop_visibility_b",
+          "text": "onStop() alone, because pausing applies when an Activity loses focus rather than visibility."
+        },
+        {
+          "id": "activity_on_pause_vs_on_stop_visibility_c",
+          "text": "None of them, because a dialog-themed Activity draws inside the existing Activity's window."
+        },
+        {
+          "id": "activity_on_pause_vs_on_stop_visibility_d",
+          "text": "onPause() alone, because it remains partly visible and is therefore not stopped."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "activity_on_pause_vs_on_stop_visibility_d"
+      ],
+      "explanation": "Visibility is what separates onPause() from onStop(). onPause() means the Activity has lost focus but may still be seen, which is exactly the situation under a partly transparent or dialog-themed Activity; onStop() follows only once it becomes completely hidden. That is why anything the user can still see should be released and reacquired around onStart() and onStop() rather than onResume() and onPause(), and why slow work in onPause() delays the new screen from appearing. A dialog-themed Activity is a separate Activity with its own window, not a view added to the old one.",
+      "sources": [
+        {
+          "title": "The activity lifecycle",
+          "url": "https://developer.android.com/guide/components/activities/activity-lifecycle"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fragment_back_stack_view_destroyed_binding",
+      "topicId": "lifecycle_navigation",
+      "subtopicId": "fragment_lifecycle",
+      "text": "Select all that apply. A Fragment is replaced by another one and added to the back stack. Which statements about it are correct?",
+      "answers": [
+        {
+          "id": "fragment_back_stack_view_destroyed_binding_a",
+          "text": "The Fragment instance is destroyed too, so its non-view fields are reinitialised on return."
+        },
+        {
+          "id": "fragment_back_stack_view_destroyed_binding_b",
+          "text": "Its view hierarchy is destroyed, so a view binding kept in a field points at detached views."
+        },
+        {
+          "id": "fragment_back_stack_view_destroyed_binding_c",
+          "text": "onDestroy() runs on it, so the Fragment is built from scratch when the user navigates back."
+        },
+        {
+          "id": "fragment_back_stack_view_destroyed_binding_d",
+          "text": "Its ViewModel is cleared, because clearing follows the Fragment's view lifecycle."
+        }
+      ],
+      "selectionMode": "MULTIPLE",
+      "correctAnswerIds": [
+        "fragment_back_stack_view_destroyed_binding_b"
+      ],
+      "explanation": "A Fragment placed on the back stack goes through onDestroyView() but not onDestroy(): the instance survives and its non-view fields keep their values, while the views are torn down and rebuilt when the user comes back. That asymmetry is the source of the classic leak — a binding or view reference held in a Fragment field outlives the views it points at, which is why it has to be cleared in onDestroyView() and why View-bound observation should use viewLifecycleOwner. A Fragment's ViewModel is cleared with the Fragment, not with its view.",
+      "sources": [
+        {
+          "title": "Fragment lifecycle",
+          "url": "https://developer.android.com/guide/fragments/lifecycle"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "process_importance_reclaim_order",
+      "topicId": "android_platform",
+      "subtopicId": "android_process_model",
+      "text": "Select all that apply. The system is low on memory and must reclaim some. Which statements about which app process it removes first are correct?",
+      "answers": [
+        {
+          "id": "process_importance_reclaim_order_a",
+          "text": "A purely cached process with no active components and no dependent clients is among the first candidates."
+        },
+        {
+          "id": "process_importance_reclaim_order_b",
+          "text": "Processes are reclaimed in the order they were started, with the oldest process killed first."
+        },
+        {
+          "id": "process_importance_reclaim_order_c",
+          "text": "A process running a foreground service is ranked well above a purely cached process."
+        },
+        {
+          "id": "process_importance_reclaim_order_d",
+          "text": "A process is spared as long as it still holds objects referenced from a static field."
+        }
+      ],
+      "selectionMode": "MULTIPLE",
+      "correctAnswerIds": [
+        "process_importance_reclaim_order_a",
+        "process_importance_reclaim_order_c"
+      ],
+      "explanation": "Android ranks every process by the most important active component or dependency associated with it — foreground, visible, service, then cached — and reclaims from the least important end. A process currently executing a BroadcastReceiver is foreground, even if it has no visible Activity or running service. A purely cached process with no active components or dependent clients sits at the bottom and can be removed at any moment, which is why in-memory state is no place for anything the user must not lose. A foreground service raises its process well above that level. Start order plays no part, and the app's own references have none either: the entire process goes, static fields included.",
+      "sources": [
+        {
+          "title": "Processes and app lifecycle",
+          "url": "https://developer.android.com/guide/components/activities/process-lifecycle"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "view_touch_event_intercept_gesture",
+      "topicId": "android_ui",
+      "subtopicId": "view_events",
+      "text": "A custom ViewGroup must take over a drag gesture that its children would otherwise consume. Which override expresses that?",
+      "answers": [
+        {
+          "id": "view_touch_event_intercept_gesture_a",
+          "text": "onTouchEvent(), returning false so the event travels past the children up to the parent."
+        },
+        {
+          "id": "view_touch_event_intercept_gesture_b",
+          "text": "dispatchTouchEvent() on each child, returning false to decline the event for that child."
+        },
+        {
+          "id": "view_touch_event_intercept_gesture_c",
+          "text": "setOnTouchListener() on the ViewGroup, which receives events before any child can see them."
+        },
+        {
+          "id": "view_touch_event_intercept_gesture_d",
+          "text": "onInterceptTouchEvent(), returning true once the gesture is recognised so later events come to it."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "correctAnswerIds": [
+        "view_touch_event_intercept_gesture_d"
+      ],
+      "explanation": "A touch event travels down the hierarchy through dispatchTouchEvent(), and every ViewGroup on the way is offered onInterceptTouchEvent(). Returning true there takes the gesture away from the children — they receive ACTION_CANCEL — and the rest of the stream goes to the parent's own onTouchEvent(). That is how a scrolling container claims a drag once the finger has moved far enough. Returning false from onTouchEvent() passes the event back up rather than forward to children, and a touch listener on the ViewGroup runs as part of that view's own handling, after interception has already been decided.",
+      "sources": [
+        {
+          "title": "Intercept touch events in a ViewGroup",
+          "url": "https://developer.android.com/develop/ui/views/touch-and-input/gestures/viewgroup"
+        }
+      ],
+      "status": "ACTIVE"
     }
   ]
 }

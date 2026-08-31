@@ -2470,7 +2470,6 @@ epics:
 
         acceptance_criteria:
           - "Question contains an explicit required level."
-          - "Bundled JSON explicitly authors the level for every Question."
           - "The field has no silent domain or serialization default."
           - "Curriculum validation accepts only supported values."
           - "QuestionEntity persists level."
@@ -2502,6 +2501,7 @@ epics:
         acceptance_criteria:
           - "Every ACTIVE Question is reviewed and assigned a level."
           - "Every DEPRECATED bundled Question also carries valid level metadata."
+          - "Bundled JSON explicitly authors the level for every Question."
           - "Classification follows the documented rubric."
           - "Question IDs and AnswerOption IDs remain stable."
           - "Correct-answer sets are not changed merely to fit a level."

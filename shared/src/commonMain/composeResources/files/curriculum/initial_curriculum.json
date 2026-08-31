@@ -13673,7 +13673,7 @@
       "answers": [
         {
           "id": "flow_combine_vs_zip_emission_rule_a",
-          "text": "combine emits when either flow emits, pairing the newest value of each; zip emits only once both supply a new value."
+          "text": "After both flows have emitted once, combine emits when either emits, using each flow's newest value; zip waits for each flow's next unused value."
         },
         {
           "id": "flow_combine_vs_zip_emission_rule_b",
@@ -13692,7 +13692,7 @@
       "correctAnswerIds": [
         "flow_combine_vs_zip_emission_rule_a"
       ],
-      "explanation": "combine caches the most recent value of each source and re-emits whenever any of them changes, so a settings change alone still produces a fresh screen state. zip is strictly pairwise: it holds a value until the other flow has an unused one, which means a rarely emitting source throttles the whole pair — usually the wrong shape for UI state. Neither operator waits for its sources to complete.",
+      "explanation": "combine first waits until every source has emitted at least one value. It then caches each source's most recent value and re-emits whenever any source changes, so a settings change alone still produces a fresh screen state. zip is strictly pairwise: it holds a value until the other flow has an unused one, which means a rarely emitting source throttles the whole pair — usually the wrong shape for UI state. Neither operator waits for all sources to complete before it can emit.",
       "sources": [
         {
           "title": "kotlinx.coroutines: combine",
@@ -15176,7 +15176,7 @@
       "correctAnswerIds": [
         "main_thread_ui_toolkit_single_thread_b"
       ],
-      "explanation": "The View system deliberately has no synchronization: measure, layout, draw and the state each view holds are written and read from a single thread, which is far cheaper than locking every operation and keeps ordering predictable. That invariant is why touching a View off the main thread throws CalledFromWrongThreadException — the framework checks the calling thread rather than serialising the call. There is no lock to wait on, and the heavy rendering work is handed to the render thread rather than done inline.",
+      "explanation": "The View system is not designed for concurrent access: hierarchy state, measurement, layout and invalidation assume ordered access from the UI thread, avoiding synchronization around every operation. Some off-thread operations that reach an attached ViewRootImpl throw CalledFromWrongThreadException, but not every View method performs that check. Unchecked access can appear to work while racing state or causing a later failure, so the absence of an immediate exception does not make it safe. A separate render thread in the drawing pipeline does not make View mutation thread-safe.",
       "sources": [
         {
           "title": "Processes and threads: worker threads",
@@ -16847,7 +16847,7 @@
       "answers": [
         {
           "id": "process_importance_reclaim_order_a",
-          "text": "A process hosting no visible component and no running service is among the first candidates."
+          "text": "A purely cached process with no active components and no dependent clients is among the first candidates."
         },
         {
           "id": "process_importance_reclaim_order_b",
@@ -16867,7 +16867,7 @@
         "process_importance_reclaim_order_a",
         "process_importance_reclaim_order_c"
       ],
-      "explanation": "Android ranks every process by an importance hierarchy derived from the components it currently hosts — foreground, visible, service, then cached — and reclaims from the least important end. A process holding nothing but cached Activities sits at the bottom and can be removed at any moment, which is why in-memory state is no place for anything the user must not lose; raising that ranking is precisely what a foreground service is for. Start order plays no part, and the app's own references have none either: the entire process goes, static fields included.",
+      "explanation": "Android ranks every process by the most important active component or dependency associated with it — foreground, visible, service, then cached — and reclaims from the least important end. A process currently executing a BroadcastReceiver is foreground, even if it has no visible Activity or running service. A purely cached process with no active components or dependent clients sits at the bottom and can be removed at any moment, which is why in-memory state is no place for anything the user must not lose. A foreground service raises its process well above that level. Start order plays no part, and the app's own references have none either: the entire process goes, static fields included.",
       "sources": [
         {
           "title": "Processes and app lifecycle",

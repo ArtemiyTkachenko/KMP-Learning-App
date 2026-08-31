@@ -29,9 +29,10 @@ or "is X already covered?".
 
 ### Staleness
 
-This snapshot describes commit `6972ae4` ("Question bank expansion") plus the
-uncommitted review fixes to six of its questions. Anything
-that adds, deprecates, or re-homes a question invalidates the numbers.
+The reproducible baseline is this document together with
+`shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json`
+from the same commit. Anything that adds, deprecates, or re-homes a question
+invalidates the numbers.
 **Regenerate it in the same PR that changes the bank** — see below. The prose
 sections (triage, concept coverage, notes) are human judgment and need editing
 by hand; the tables are generated.

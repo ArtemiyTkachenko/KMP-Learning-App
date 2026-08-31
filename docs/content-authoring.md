@@ -20,6 +20,12 @@ method for meeting them: where plausible distractors come from, the anti-cue
 audits a question must survive, and the checks to run before opening a PR. Where
 the two disagree, this guide wins.
 
+`docs/question-bank-coverage.md` records the current *state* of the bank: what
+each subtopic already holds, which gaps are real and which are deliberate, and
+the audit baselines a new batch must not degrade. Read it before planning an
+expansion so the coverage review does not have to be repeated, and regenerate
+its tables in the same PR that changes the bank.
+
 ## Model Context
 
 The content model uses the hierarchy:

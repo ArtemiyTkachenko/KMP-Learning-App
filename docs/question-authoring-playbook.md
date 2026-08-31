@@ -11,6 +11,9 @@ be the hardest one to follow and the easiest one to believe you had followed.
 Read the contract first. Where the two documents disagree, the contract wins.
 
 This playbook applies to authoring new questions and to reviewing existing ones.
+For *what the bank already covers* — per-subtopic counts, the concept index,
+which empty subtopics are intentional, and the current audit baselines — see
+`docs/question-bank-coverage.md` rather than re-reading the JSON.
 
 ## The failure mode this exists to prevent
 

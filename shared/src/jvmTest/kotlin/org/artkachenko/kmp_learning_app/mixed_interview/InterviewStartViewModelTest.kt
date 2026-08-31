@@ -4,7 +4,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
+import kotlin.test.assertIs
 import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -18,6 +18,9 @@ import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
+import kotlinx.coroutines.flow.StateFlow
+import org.artkachenko.kmp_learning_app.assessment.history.testCacheScope
+import org.artkachenko.kmp_learning_app.assessment.history.testHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 
 internal class InterviewStartViewModelTest {
@@ -35,31 +38,26 @@ internal class InterviewStartViewModelTest {
 
     @Test
     fun aLearnerWithNoInterviewsHasNoRecord() = runTest(dispatcher) {
-        val viewModel = InterviewStartViewModel(RecordingRepository(emptyList()))
-
-        viewModel.refresh()
+        val state = interviewState(RecordingRepository(emptyList()))
         testScheduler.advanceUntilIdle()
 
-        assertNull(viewModel.history.value)
+        assertIs<InterviewHistoryUiState.Empty>(state.value)
     }
 
     @Test
     fun focusedPracticeDoesNotCountAsAnInterview() = runTest(dispatcher) {
-        val viewModel = InterviewStartViewModel(
-            RecordingRepository(listOf(focusedAttempt("focused", correct = 9, total = 10))),
+        val state = interviewState(RecordingRepository(listOf(focusedAttempt("focused", correct = 9, total = 10))),
         )
-
-        viewModel.refresh()
         testScheduler.advanceUntilIdle()
 
-        assertNull(viewModel.history.value)
+        assertIs<InterviewHistoryUiState.Empty>(state.value)
     }
 
     @Test
     fun theLatestAndBestInterviewsAreReported() = runTest(dispatcher) {
         // Newest first, matching the repository's own ordering: the most recent interview went
         // worse than an earlier one, so latest and best have to be different attempts.
-        val viewModel = InterviewStartViewModel(
+        val state = interviewState(
             RecordingRepository(
                 listOf(
                     mixedAttempt("newest", correct = 5, total = 20),
@@ -68,11 +66,9 @@ internal class InterviewStartViewModelTest {
                 ),
             ),
         )
-
-        viewModel.refresh()
         testScheduler.advanceUntilIdle()
 
-        val history = requireNotNull(viewModel.history.value)
+        val history = assertIs<InterviewHistoryUiState.Content>(state.value).history
         assertEquals(3, history.attemptCount)
         assertEquals("newest", history.latest.attemptId)
         assertEquals(5, history.latest.correctAnswers)
@@ -82,27 +78,33 @@ internal class InterviewStartViewModelTest {
 
     @Test
     fun aSingleInterviewIsBothTheLatestAndTheBest() = runTest(dispatcher) {
-        val viewModel = InterviewStartViewModel(
+        val state = interviewState(
             RecordingRepository(listOf(mixedAttempt("only", correct = 7, total = 20))),
         )
-
-        viewModel.refresh()
         testScheduler.advanceUntilIdle()
 
-        val history = requireNotNull(viewModel.history.value)
+        val history = assertIs<InterviewHistoryUiState.Content>(state.value).history
         assertEquals("only", history.latest.attemptId)
         assertEquals("only", history.best.attemptId)
     }
 
     @Test
     fun aFailedReadLeavesTheScreenStartable() = runTest(dispatcher) {
-        val viewModel = InterviewStartViewModel(FailingRepository)
-
-        viewModel.refresh()
+        val state = interviewState(FailingRepository)
         testScheduler.advanceUntilIdle()
 
-        assertNull(viewModel.history.value)
+        assertIs<InterviewHistoryUiState.Empty>(state.value)
     }
+
+    /**
+     * The record is derived by [InterviewHistoryStateHolder], which outlives the ViewModel; the
+     * ViewModel only republishes it, so the behaviour is exercised on the holder.
+     */
+    private fun interviewState(repository: AssessmentRepository): StateFlow<InterviewHistoryUiState> {
+        val scope = testCacheScope()
+        return InterviewHistoryStateHolder(testHistoryStore(repository, scope), scope).state
+    }
+
 }
 
 private fun mixedAttempt(id: String, correct: Int, total: Int): TestAttempt =

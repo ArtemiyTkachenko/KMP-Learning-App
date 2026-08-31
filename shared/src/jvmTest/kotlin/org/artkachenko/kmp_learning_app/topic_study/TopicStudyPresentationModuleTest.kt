@@ -17,6 +17,8 @@ import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumReposito
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
+import org.artkachenko.kmp_learning_app.assessment.history.AppCoroutineScope
+import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
@@ -70,6 +72,10 @@ internal class TopicStudyPresentationModuleTest {
                     single { AssessmentSessionLoader(get(), get()) }
                     single { AssessmentRetakeService(get(), get()) }
                     single { LearningProgressService(get(), get()) }
+                    // The presentation module now depends on the app-scoped history cache; the
+                    // real one is declared alongside the assessment data module.
+                    single { AppCoroutineScope() }
+                    single { AssessmentHistoryStore(get(), get<AppCoroutineScope>()) }
                 },
                 topicStudyPresentationModule,
             )

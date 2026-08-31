@@ -27,6 +27,9 @@ import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.curriculum.Question
@@ -44,9 +47,11 @@ internal class ProgressDestinationTest {
     }
 
     @Test
-    fun resumeLoadsProgressAndReturningToTheDestinationPicksUpNewAttempts() = runComposeUiTest {
+    fun returningToTheDestinationShowsHistoryThatChangedWhileItWasAway() = runComposeUiTest {
         Dispatchers.setMain(Dispatchers.Unconfined)
         val repository = StubAssessmentRepository(listOf(mixedAttempt("first")))
+        val harness = harness(repository)
+        val store = harness.store
         val owner = TestLifecycleOwner()
 
         setContent {
@@ -58,7 +63,7 @@ internal class ProgressDestinationTest {
                         onOpenTopic = {},
                         onOpenFocusedResult = {},
                         onOpenMixedResult = {},
-                        viewModel = viewModel(repository),
+                        viewModel = harness.viewModel,
                     )
                 }
             }
@@ -68,7 +73,11 @@ internal class ProgressDestinationTest {
         waitForIdle()
         onNodeWithText("Completed assessments").assertIsDisplayed()
 
+        // The dashboard no longer re-reads on every resume: the shared cache is what changes, and
+        // it does so when something marks it stale. Leaving and returning must show the new data
+        // without the screen having asked for it.
         repository.attempts = listOf(mixedAttempt("second"), mixedAttempt("first"))
+        store.invalidate()
         owner.moveTo(Lifecycle.State.CREATED)
         owner.moveTo(Lifecycle.State.RESUMED)
         waitForIdle()
@@ -126,14 +135,30 @@ private class TestLifecycleOwner : LifecycleOwner {
     }
 }
 
-private fun viewModel(repository: AssessmentRepository): ProgressViewModel {
+private class ProgressHarness(val viewModel: ProgressViewModel, val store: AssessmentHistoryStore)
+
+private fun viewModel(repository: AssessmentRepository): ProgressViewModel =
+    harness(repository).viewModel
+
+private fun harness(repository: AssessmentRepository): ProgressHarness {
     val curriculum = StubCurriculumRepository()
-    return ProgressViewModel(
-        learningProgressService = LearningProgressService(repository, curriculum),
-        assessmentRepository = repository,
-        curriculumRepository = curriculum,
-        mistakeReviewService = MistakeReviewService(repository, AssessmentReviewLoader(curriculum)),
-    )
+    return run {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+        val store = AssessmentHistoryStore(repository, scope)
+        ProgressHarness(
+            ProgressViewModel(
+            historyStore = store,
+            stateHolder = ProgressStateHolder(
+                learningProgressService = LearningProgressService(repository, curriculum),
+                curriculumRepository = curriculum,
+                mistakeReviewService = MistakeReviewService(repository, AssessmentReviewLoader(curriculum)),
+                historyStore = store,
+                scope = scope,
+            ),
+            ),
+            store,
+        )
+    }
 }
 
 private class StubAssessmentRepository(

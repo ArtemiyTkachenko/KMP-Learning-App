@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -20,6 +21,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -41,6 +44,7 @@ import org.jetbrains.compose.resources.stringResource
 internal const val InterviewStartButtonTag = "interview_start"
 
 internal const val InterviewRecordTag = "interview_record"
+internal const val InterviewHistoryLoadingTag = "interview_history_loading"
 
 /**
  * The mixed interview's own destination.
@@ -52,7 +56,7 @@ internal const val InterviewRecordTag = "interview_record"
 internal fun InterviewStartScreen(
     onStartMixedInterview: () -> Unit,
     modifier: Modifier = Modifier,
-    history: InterviewHistoryUiModel? = null,
+    history: InterviewHistoryUiState = InterviewHistoryUiState.Loading,
     onOpenResult: (String) -> Unit = {},
 ) {
     // Scrollable rather than a fixed Column: with both a latest and a best result the heading,
@@ -116,9 +120,20 @@ internal fun InterviewStartScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        if (history != null) {
-            item {
-                InterviewRecord(history = history, onOpenResult = onOpenResult)
+        // Loading is distinct from "no record yet": rendering the empty shape while the read is in
+        // flight is what made the card appear underneath the learner a moment after arriving.
+        when (history) {
+            InterviewHistoryUiState.Loading -> item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.testTag(InterviewHistoryLoadingTag))
+                }
+            }
+            InterviewHistoryUiState.Empty -> Unit
+            is InterviewHistoryUiState.Content -> item {
+                InterviewRecord(history = history.history, onOpenResult = onOpenResult)
             }
         }
     }

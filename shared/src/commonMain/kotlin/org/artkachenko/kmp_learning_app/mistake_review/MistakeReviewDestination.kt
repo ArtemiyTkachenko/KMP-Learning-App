@@ -6,8 +6,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -20,10 +18,6 @@ internal fun MistakeReviewDestination(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val uriHandler = LocalUriHandler.current
     var failedSourceUrl by remember { mutableStateOf<String?>(null) }
-
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        viewModel.refresh()
-    }
 
     MistakeReviewScreen(
         state = state,

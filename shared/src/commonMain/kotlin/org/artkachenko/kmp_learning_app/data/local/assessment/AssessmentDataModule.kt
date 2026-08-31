@@ -3,6 +3,8 @@ package org.artkachenko.kmp_learning_app.data.local.assessment
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
+import org.artkachenko.kmp_learning_app.assessment.history.AppCoroutineScope
+import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.data.local.assessment.repository.LocalAssessmentRepository
@@ -25,6 +27,15 @@ internal val assessmentDataModule = module {
     single {
         AssessmentQuestionSelector(
             curriculumRepository = get(),
+        )
+    }
+
+    single { AppCoroutineScope() }
+
+    single {
+        AssessmentHistoryStore(
+            assessmentRepository = get(),
+            scope = get<AppCoroutineScope>(),
         )
     }
 

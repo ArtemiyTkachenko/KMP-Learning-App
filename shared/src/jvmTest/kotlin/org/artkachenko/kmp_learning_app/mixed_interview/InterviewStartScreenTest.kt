@@ -21,7 +21,7 @@ internal class InterviewStartScreenTest {
     fun aFirstVisitShowsTheInvitationWithoutAnEmptyRecord() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                InterviewStartScreen(onStartMixedInterview = {}, history = null)
+                InterviewStartScreen(onStartMixedInterview = {}, history = InterviewHistoryUiState.Empty)
             }
         }
 
@@ -36,7 +36,7 @@ internal class InterviewStartScreenTest {
             MaterialTheme {
                 InterviewStartScreen(
                     onStartMixedInterview = {},
-                    history = InterviewHistoryUiModel(
+                    history = historyState(
                         attemptCount = 4,
                         latest = InterviewAttemptUiModel("latest", 5, 20, 25.0),
                         best = InterviewAttemptUiModel("best", 18, 20, 90.0),
@@ -63,7 +63,7 @@ internal class InterviewStartScreenTest {
             MaterialTheme {
                 InterviewStartScreen(
                     onStartMixedInterview = {},
-                    history = InterviewHistoryUiModel(
+                    history = historyState(
                         attemptCount = 1,
                         latest = only,
                         best = only,
@@ -83,7 +83,7 @@ internal class InterviewStartScreenTest {
                 Box(Modifier.height(320.dp)) {
                     InterviewStartScreen(
                         onStartMixedInterview = {},
-                        history = InterviewHistoryUiModel(
+                        history = historyState(
                             attemptCount = 4,
                             latest = InterviewAttemptUiModel("latest", 5, 20, 25.0),
                             best = InterviewAttemptUiModel("best", 18, 20, 90.0),
@@ -97,3 +97,11 @@ internal class InterviewStartScreenTest {
         onNodeWithText("18 of 20 correct").assertIsDisplayed()
     }
 }
+
+/** Wraps the record in the state the screen takes, keeping these call sites unchanged in shape. */
+private fun historyState(
+    attemptCount: Int,
+    latest: InterviewAttemptUiModel,
+    best: InterviewAttemptUiModel,
+): InterviewHistoryUiState =
+    InterviewHistoryUiState.Content(InterviewHistoryUiModel(attemptCount, latest, best))

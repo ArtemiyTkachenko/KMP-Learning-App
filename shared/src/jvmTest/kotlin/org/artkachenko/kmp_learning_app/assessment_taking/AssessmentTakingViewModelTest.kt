@@ -20,6 +20,9 @@ import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeResult
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
@@ -266,6 +269,7 @@ internal class AssessmentTakingViewModelTest {
             ),
             assessmentRepository = repository,
             assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum),
+            historyStore = AssessmentHistoryStore(repository, backgroundScope),
         )
         advanceUntilIdle()
 
@@ -370,6 +374,7 @@ internal class AssessmentTakingViewModelTest {
             ),
             assessmentRepository = repository,
             assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum),
+            historyStore = AssessmentHistoryStore(repository, backgroundScope),
         )
 
         advanceUntilIdle()
@@ -423,6 +428,7 @@ internal class AssessmentTakingViewModelTest {
             assessmentEngine = engine,
             assessmentRepository = repository,
             assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum),
+            historyStore = AssessmentHistoryStore(repository, backgroundScope),
         )
         advanceUntilIdle()
 
@@ -454,6 +460,7 @@ internal class AssessmentTakingViewModelTest {
             ),
             assessmentRepository = repository,
             assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum),
+            historyStore = AssessmentHistoryStore(repository, backgroundScope),
         )
 
         advanceUntilIdle()
@@ -487,6 +494,7 @@ internal class AssessmentTakingViewModelTest {
             ),
             assessmentRepository = repository,
             assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum),
+            historyStore = AssessmentHistoryStore(repository, backgroundScope),
         )
 
         advanceUntilIdle()
@@ -546,6 +554,7 @@ internal class AssessmentTakingViewModelTest {
             assessmentRepository = repository,
             curriculumRepository = FakeCurriculumRepository(questions),
         ),
+        historyStore = AssessmentHistoryStore(repository, CoroutineScope(SupervisorJob())),
     )
 
     private fun content(viewModel: AssessmentTakingViewModel) =

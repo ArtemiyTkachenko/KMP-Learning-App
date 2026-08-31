@@ -1,6 +1,7 @@
 package org.artkachenko.kmp_learning_app.learning_progress
 
 import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
+import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.curriculum.Question
@@ -12,9 +13,14 @@ internal class LearningProgressService(
     private val assessmentRepository: AssessmentRepository,
     private val curriculumRepository: CurriculumRepository,
 ) {
-    suspend fun load(): LearningProgressSnapshot {
+    /**
+     * [completedAttempts] lets a caller that already holds newest-first completed history reuse it,
+     * as [MistakeReviewService] does, so the shared cache is read once per derivation rather than
+     * once per consumer.
+     */
+    suspend fun load(completedAttempts: List<TestAttempt>? = null): LearningProgressSnapshot {
         val completedAttempts =
-            assessmentRepository.getCompletedAttempts()
+            (completedAttempts ?: assessmentRepository.getCompletedAttempts())
                 .filter { it.status == AssessmentStatus.COMPLETED }
         val answeredQuestionCount = completedAttempts.sumOf { requireNotNull(it.score).totalQuestions }
         val correctAnswerCount = completedAttempts.sumOf { requireNotNull(it.score).correctAnswers }

@@ -28,6 +28,9 @@ import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
@@ -46,7 +49,7 @@ internal class MistakeReviewDestinationTest {
     }
 
     @Test
-    fun resumeRefreshesTheRetainedQueueAfterHistoryChanges() = runComposeUiTest {
+    fun returningToTheDestinationShowsAQueueThatChangedWhileItWasAway() = runComposeUiTest {
         Dispatchers.setMain(Dispatchers.Unconfined)
         val repository = MutableDestinationHistoryRepository(
             listOf(destinationAttempt("first", "q1")),
@@ -70,7 +73,11 @@ internal class MistakeReviewDestinationTest {
         waitForIdle()
         onNodeWithText("Question q1").assertIsDisplayed()
 
+        // The queue no longer re-reads on every resume: the shared cache is what changes, and it
+        // does so when something marks it stale. Leaving and returning must then show the new
+        // queue without the screen having asked for it.
         repository.attempts = listOf(destinationAttempt("second", "q2"))
+        viewModel.refresh()
         owner.moveTo(Lifecycle.State.CREATED)
         owner.moveTo(Lifecycle.State.RESUMED)
         waitForIdle()
@@ -133,12 +140,18 @@ private class RecordingUriHandler(
 private fun destinationViewModel(
     repository: AssessmentRepository = DestinationHistoryRepository,
 ): MistakeReviewViewModel =
-    MistakeReviewViewModel(
-        MistakeReviewService(
+    run {
+        val service = MistakeReviewService(
             assessmentRepository = repository,
             assessmentReviewLoader = AssessmentReviewLoader(DestinationCurriculumRepository),
-        ),
-    )
+        )
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+        val store = AssessmentHistoryStore(repository, scope)
+        MistakeReviewViewModel(
+            historyStore = store,
+            stateHolder = MistakeReviewStateHolder(service, store, scope),
+        )
+    }
 
 private class MistakeReviewLifecycleOwner : LifecycleOwner {
     private val registry = LifecycleRegistry.createUnsafe(this)

@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -56,12 +55,9 @@ private fun AppShell(
     val showsNavigation = currentRoute?.showsAreaNavigation() ?: true
 
     val shellViewModel: AppShellViewModel = koinViewModel()
+    // Derived from the shared history cache, so it follows an assessment completing rather than
+    // being recounted every time navigation moves between areas.
     val unresolvedMistakeCount by shellViewModel.unresolvedMistakeCount.collectAsStateWithLifecycle()
-    // Recounted whenever a screen that shows the badge becomes current, which is the moment after
-    // an assessment ends and after the mistake queue is worked through.
-    LaunchedEffect(currentRoute, showsNavigation) {
-        if (showsNavigation) shellViewModel.refresh()
-    }
     val badges = mapOf(AppTopLevelDestination.MISTAKES to unresolvedMistakeCount)
 
     // NavDisplay enables its own back handler only while the stack it was given has a previous

@@ -14536,7 +14536,7 @@
       "id": "long_running_worker_set_foreground",
       "topicId": "background_work",
       "subtopicId": "long_running_work",
-      "text": "A Worker uploading large videos regularly exceeds the execution limit and WorkManager stops it part way. What is the supported way to let it keep running?",
+      "text": "A CoroutineWorker uploading large videos regularly exceeds the execution limit and WorkManager stops it part way. What is the supported way to let it keep running?",
       "answers": [
         {
           "id": "long_running_worker_set_foreground_a",
@@ -14559,7 +14559,7 @@
       "correctAnswerIds": [
         "long_running_worker_set_foreground_c"
       ],
-      "explanation": "WorkManager gives a Worker about ten minutes before stopping and rescheduling it. Work that genuinely needs longer must run as a long-running worker: setForeground(), or getForegroundInfo() for a CoroutineWorker, promotes it to a foreground service with an ongoing notification — the user-visible cost of taking the extra time. Expedited work is about starting promptly and has its own quota rather than a longer runtime, and backoff only controls the delay before a retry, not how long an attempt may take.",
+      "explanation": "WorkManager gives a worker about ten minutes before stopping and rescheduling it. Work that genuinely needs longer must run as a long-running worker: CoroutineWorker exposes a suspending setForeground(), and ListenableWorker the equivalent setForegroundAsync(), which promotes the work to a foreground service with an ongoing notification — the user-visible cost of taking the extra time. Expedited work is about starting promptly and has its own quota rather than a longer runtime, and backoff only controls the delay before a retry, not how long an attempt may take.",
       "sources": [
         {
           "title": "Support for long-running workers",
@@ -15201,7 +15201,7 @@
         },
         {
           "id": "context_leak_retained_activity_references_c",
-          "text": "A listener registered on an app-wide singleton using an anonymous class declared in the Activity."
+          "text": "A listener registered on an app-wide singleton by an anonymous class that calls into the Activity."
         },
         {
           "id": "context_leak_retained_activity_references_d",
@@ -15213,7 +15213,7 @@
         "context_leak_retained_activity_references_a",
         "context_leak_retained_activity_references_c"
       ],
-      "explanation": "A leak is simply a reference chain from something long-lived to an object that should be gone. A static or companion field outlives every Activity in the process, and an anonymous class holds an implicit reference to the Activity that declared it, so handing one to an application-scoped object keeps the Activity alive until it is unregistered. A ViewModel holds no Context and is cleared with its owner, and a View referencing the Activity that inflated it points down the tree — it dies together with the Activity, not after it.",
+      "explanation": "A leak is simply a reference chain from something long-lived to an object that should be gone. A static or companion field outlives every Activity in the process, and a listener that calls back into its Activity necessarily holds a reference to it, so handing one to an application-scoped object keeps that Activity alive until it is unregistered. A ViewModel holds no Context and is cleared with its owner, and a View referencing the Activity that inflated it points down the tree — it dies together with the Activity, not after it.",
       "sources": [
         {
           "title": "Overview of memory management",
@@ -15475,34 +15475,38 @@
       "status": "ACTIVE"
     },
     {
-      "id": "compose_ui_test_animation_idling",
+      "id": "compose_ui_test_clock_manual_advance",
       "topicId": "testing",
       "subtopicId": "ui_testing",
-      "text": "A Compose test asserts on a node that appears while a continuously repeating animation is running, and the test hangs instead of failing. What is happening?",
+      "text": "A Compose test must assert on a colour part-way through a 250 ms animation, but the default synchronization lets the animation finish before the assertion runs. What lets the test observe an intermediate frame?",
       "answers": [
         {
-          "id": "compose_ui_test_animation_idling_a",
-          "text": "The test rule waits for the app to become idle, and an endless animation never lets that happen."
+          "id": "compose_ui_test_clock_manual_advance_a",
+          "text": "Call waitForIdle() before the assertion so the test re-reads the tree mid-animation."
         },
         {
-          "id": "compose_ui_test_animation_idling_b",
-          "text": "Compose tests do not synchronize by themselves, so each assertion needs an explicit wait first."
+          "id": "compose_ui_test_clock_manual_advance_b",
+          "text": "Wrap the assertion in waitUntil() with a timeout shorter than the animation's duration."
         },
         {
-          "id": "compose_ui_test_animation_idling_c",
-          "text": "Assertions run on the main thread, so the animation cannot progress while one is still pending."
+          "id": "compose_ui_test_clock_manual_advance_c",
+          "text": "Run the assertion inside runOnIdle() so that it executes while the animation is going."
         },
         {
-          "id": "compose_ui_test_animation_idling_d",
-          "text": "The node sits outside the merged semantics tree, so the framework keeps on searching for it."
+          "id": "compose_ui_test_clock_manual_advance_d",
+          "text": "Set mainClock.autoAdvance to false and step the clock forward with advanceTimeBy()."
         }
       ],
       "selectionMode": "SINGLE",
       "correctAnswerIds": [
-        "compose_ui_test_animation_idling_a"
+        "compose_ui_test_clock_manual_advance_d"
       ],
-      "explanation": "The Compose test rule synchronizes by advancing the test clock and waiting for composition and animations to settle, which is why most Compose tests need no explicit waiting at all. An animation that never finishes keeps the app permanently non-idle, so the rule waits indefinitely. The remedy is to take the clock over — autoAdvance set to false plus advanceTimeBy — or to express the condition directly with waitUntil. A node missing from the semantics tree makes an assertion fail rather than hang.",
+      "explanation": "The test rule advances the test clock and synchronizes before every action and assertion, which is what makes most Compose tests deterministic without explicit waiting — and it is also why a finite animation has already settled by the time an assertion runs. Taking the clock over with autoAdvance set to false freezes it, and advanceTimeBy() moves it a controlled amount so the assertion observes a chosen frame. waitForIdle() and runOnIdle() do the opposite and wait for the animation to finish first, while waitUntil() polls a condition without ever stopping the clock.",
       "sources": [
+        {
+          "title": "Test animations in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/animation/testing"
+        },
         {
           "title": "Testing in Compose: synchronization",
           "url": "https://developer.android.com/develop/ui/compose/testing/synchronization"
@@ -15996,7 +16000,7 @@
       "id": "kmp_ios_target_framework_output",
       "topicId": "kmp",
       "subtopicId": "kmp_targets",
-      "text": "A shared Kotlin Multiplatform module adds an iOS target. What does the build produce for the Xcode project to consume?",
+      "text": "A shared Kotlin Multiplatform module declares an iOS target and configures binaries.framework for it. What does the build produce for the Xcode project to consume?",
       "answers": [
         {
           "id": "kmp_ios_target_framework_output_a",
@@ -16019,7 +16023,7 @@
       "correctAnswerIds": [
         "kmp_ios_target_framework_output_c"
       ],
-      "explanation": "An iOS target is compiled ahead of time by Kotlin/Native into a binary framework — static or dynamic, often packaged as an XCFramework or delivered through CocoaPods or Swift Package Manager — and Xcode consumes it exactly as it would a framework written in Objective-C or Swift. The Kotlin declarations are exposed through a generated Objective-C header, so there is no JVM in the iOS app, no generated Swift sources to compile, and no JavaScript runtime involved.",
+      "explanation": "Declaring the target registers a Kotlin/Native compilation; configuring a framework binary is what makes the build emit one. It is compiled ahead of time into a binary framework — static or dynamic, often packaged as an XCFramework or delivered through CocoaPods or Swift Package Manager — which Xcode links exactly as it would a framework written in Objective-C or Swift. The Kotlin declarations are exposed through a generated Objective-C header, so there is no JVM in the iOS app, no generated Swift sources to compile, and no JavaScript runtime involved.",
       "sources": [
         {
           "title": "Build final native binaries",
@@ -16268,7 +16272,7 @@
         },
         {
           "id": "clean_architecture_dependency_rule_tradeoff_d",
-          "text": "Data and UI models have to be mapped to and from domain models at each layer boundary."
+          "text": "A Room entity or network DTO cannot double as the domain model, so mapping appears there."
         }
       ],
       "selectionMode": "MULTIPLE",
@@ -16276,7 +16280,7 @@
         "clean_architecture_dependency_rule_tradeoff_b",
         "clean_architecture_dependency_rule_tradeoff_d"
       ],
-      "explanation": "Pointing every dependency inward means the innermost layer names no framework type, so it compiles and runs in a plain JVM test — and in a multiplatform project it is exactly the layer that can be shared. The cost falls at every boundary: a network DTO and a database entity may no longer double as the domain model, so mapping code and extra types appear. That is real work, worth paying when the domain has rules to protect and hard to justify when it does not. Build speed follows from module structure rather than layer count, and the rules stay ordinary Kotlin.",
+      "explanation": "Pointing every dependency inward means the innermost layer names no framework type, so it compiles and runs in a plain JVM test — and in a multiplatform project it is exactly the layer that can be shared. The cost lands wherever a framework-annotated type would otherwise have been reused: a Room entity or a Retrofit DTO may not double as the domain model, so mapping code and extra types appear at that boundary. That is real work, worth paying when the domain has rules to protect and hard to justify when it does not. Build speed follows from module structure rather than layer count, and the rules stay ordinary Kotlin.",
       "sources": [
         {
           "title": "Domain layer",
@@ -16325,11 +16329,11 @@
       "id": "gradle_variant_source_set_override",
       "topicId": "build_delivery",
       "subtopicId": "source_sets",
-      "text": "An Android module has a file in src/debug/res that also exists under the same name in src/main/res. What does the build do with them?",
+      "text": "An Android module has a drawable in src/debug/res/drawable whose file name matches one in src/main/res/drawable. What does the build do with them?",
       "answers": [
         {
           "id": "gradle_variant_source_set_override_a",
-          "text": "The two are merged, and the values from the debug copy are appended to the main ones."
+          "text": "The two are merged, and the debug copy's contents are combined with those of the main one."
         },
         {
           "id": "gradle_variant_source_set_override_b",
@@ -16348,7 +16352,7 @@
       "correctAnswerIds": [
         "gradle_variant_source_set_override_c"
       ],
-      "explanation": "The Android Gradle Plugin assembles each variant from several source sets — main, the build type, the product flavour and their combinations — where the more specific set overrides the less specific one. A resource of the same name in src/debug therefore replaces the src/main version for debug builds and leaves release untouched, which is the mechanism behind debug-only network security configuration, launcher icons and stub implementations. Resources are overridden rather than merged, and the defined precedence means there is no conflict to report.",
+      "explanation": "The Android Gradle Plugin assembles each variant from several source sets — main, the build type, the product flavour and their combinations — where the more specific set takes priority. A same-named drawable in src/debug therefore replaces the src/main one for debug builds and leaves release untouched, which is the mechanism behind debug-only launcher icons and stub implementations. Files under values/ are the instructive exception: two strings.xml files are merged, and the build type's entries override same-named entries from main rather than replacing the whole file. Either way the precedence is defined, so there is nothing for the build to report as a conflict.",
       "sources": [
         {
           "title": "Build variants: source sets",

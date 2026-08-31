@@ -29,7 +29,8 @@ or "is X already covered?".
 
 ### Staleness
 
-This snapshot describes commit `6972ae4` ("Question bank expansion"). Anything
+This snapshot describes commit `6972ae4` ("Question bank expansion") plus the
+uncommitted review fixes to six of its questions. Anything
 that adds, deprecates, or re-homes a question invalidates the numbers.
 **Regenerate it in the same PR that changes the bank** — see below. The prose
 sections (triage, concept coverage, notes) are human judgment and need editing
@@ -114,7 +115,7 @@ its current output is reproduced under **Audit baselines** below.
 | MULTIPLE | 46 |
 | — of which exactly one correct answer | 3 |
 | Answer options | 1602 (393 questions with 4 options, 6 with 5) |
-| Source references | 453 across 278 unique URLs |
+| Source references | 454 across 279 unique URLs |
 
 Subtopic depth distribution: **78** subtopics have 0 questions, **220** have 1,
 **52** have 2, **8** have 3, **3** have 4.
@@ -171,7 +172,7 @@ absolutes: distractors 0.22/opt, correct 0.12/opt
 position: {0: 26%, 1: 27%, 2: 26%, 3: 19%, 4: 1%}
 ```
 
-All 278 unique source URLs returned HTTP 200 at the time of this snapshot.
+All 279 unique source URLs returned HTTP 200 at the time of this snapshot.
 
 These are the numbers a new batch must not degrade. In particular: **zero
 questions exceed the 10% correct-answer length limit**, and correct answers do
@@ -424,7 +425,7 @@ multiplatform ViewModel, library compatibility, sharing trade-offs.
   `selectionMode` stays inferable from the answer key.
 - **Every question in the bank has 4 options except 6 with 5.** Stay at 4 unless
   there is a specific reason.
-- **Source hosts, for reference:** developer.android.com 298 · kotlinlang.org 90
+- **Source hosts, for reference:** developer.android.com 299 · kotlinlang.org 90
   · lysine.dev 14 (OkHttp/Retrofit — `square.github.io` returns 404) ·
   dagger.dev 12 · firebase.google.com 12 · rfc-editor.org 7 · docs.gradle.org 6 ·
   and single-digit counts for insert-koin.io, ktor.io, sqldelight.github.io,
@@ -749,7 +750,7 @@ target subtopic here before authoring to avoid a near-duplicate.
 | `testing_strategy` — Test strategy | 1 | `testing_strategy_001` |
 | `unit_testing` — Unit tests | 1 | `unit_test_android_stub_not_mocked_error` |
 | `integration_testing` — Integration tests | 1 | `robolectric_vs_instrumented` |
-| `ui_testing` — UI tests | 1 | `compose_ui_test_animation_idling` |
+| `ui_testing` — UI tests | 1 | `compose_ui_test_clock_manual_advance` |
 | `local_vs_instrumented_tests` — Local vs instrumented tests | 1 | `local_vs_instrumented_test_placement` |
 | `junit` — JUnit | 0 | — |
 | `test_doubles` — Test doubles | 1 | `test_doubles_001` |
@@ -922,4 +923,3 @@ target subtopic here before authoring to avoid a near-duplicate.
 | `sqldelight` — SQLDelight | 0 | — |
 | `koin_kmp` — Koin in KMP | 0 | — |
 | `kmp_tradeoffs` — Practical KMP trade-offs | 1 | `kmp_tradeoff_when_not_to_share` |
-

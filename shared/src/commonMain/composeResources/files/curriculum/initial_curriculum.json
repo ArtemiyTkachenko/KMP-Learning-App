@@ -13990,7 +13990,7 @@
         "http_status_retry_classification_a",
         "http_status_retry_classification_c"
       ],
-      "explanation": "A response is worth retrying when the condition it describes can change without the client changing anything. 5xx responses and 429 are exactly that, and 429 often carries a Retry-After header telling the client how long to wait. A 400 or a 403 describes the request or the caller, so repeating the identical request produces the identical result and only spends battery and quota. 401 is the interesting middle case: it is retried only after the token has actually been refreshed.",
+      "explanation": "A response is worth retrying when the condition it describes is expected to change without the client changing the request. A 503 explicitly describes a temporary server condition, while 429 asks the client to slow down; either can include a Retry-After header telling the client how long to wait. That does not make every 5xx response retryable: 501 Not Implemented and 505 HTTP Version Not Supported normally require a capability or protocol change. A 400 or 403 should not be retried blindly either, and a 401 is retried only after the token has actually been refreshed.",
       "sources": [
         {
           "title": "RFC 9110: HTTP Semantics — 503 Service Unavailable",
@@ -15028,7 +15028,7 @@
       "correctAnswerIds": [
         "biometric_prompt_keystore_binding_b"
       ],
-      "explanation": "A success callback is a branch in the app's own code, and anyone able to modify the app or hook the process can take that branch without authenticating. Creating the key with setUserAuthenticationRequired(true) moves the check into the Keystore itself: the cryptographic operation fails unless the platform has recorded a recent authentication, so skipping the UI does not yield the plaintext. Keys are also invalidated when biometric enrolment changes, which is a separate protection the callback cannot offer.",
+      "explanation": "A success callback is a branch in the app's own code, and anyone able to modify the app or hook the process can take that branch without authenticating. Creating the key with setUserAuthenticationRequired(true) moves the check into the Keystore itself: the cryptographic operation fails unless the platform has recorded a recent authentication, so skipping the UI does not yield the plaintext. Biometric-only keys that require authentication for every use are also invalidated by biometric enrolment changes by default, but this is configurable with setInvalidatedByBiometricEnrollment(false), not an inherent property of every authentication-bound key.",
       "sources": [
         {
           "title": "Android Keystore: requiring user authentication",
@@ -15113,7 +15113,7 @@
       "id": "anr_broadcast_receiver_work_budget",
       "topicId": "performance",
       "subtopicId": "anr",
-      "text": "A BroadcastReceiver performs a network upload inside onReceive(), and users report the app freezing whenever that broadcast arrives. What explains it?",
+      "text": "A BroadcastReceiver compresses a large file synchronously inside onReceive(), taking longer than the receiver timeout. Users see the app freeze whenever that broadcast arrives. What explains it?",
       "answers": [
         {
           "id": "anr_broadcast_receiver_work_budget_a",
@@ -15121,7 +15121,7 @@
         },
         {
           "id": "anr_broadcast_receiver_work_budget_b",
-          "text": "The receiver is discarded after onReceive() returns, so the upload restarts on every broadcast."
+          "text": "The receiver is discarded after onReceive() returns, so the compression restarts on every broadcast."
         },
         {
           "id": "anr_broadcast_receiver_work_budget_c",
@@ -15136,7 +15136,7 @@
       "correctAnswerIds": [
         "anr_broadcast_receiver_work_budget_c"
       ],
-      "explanation": "onReceive() is invoked on the main thread of the app's process, and the system allows a receiver only a few seconds before treating it as unresponsive, so any I/O there both blocks the UI and risks an ANR. The work has to be handed off: goAsync() buys a short continuation on another thread, and anything substantial belongs in a WorkManager request. Receivers do not run on a binder thread, and another app's receiver does not stall yours in this way.",
+      "explanation": "onReceive() is normally invoked on the main thread of the app's process, and the system gives a receiver only a short time to finish before treating the app as unresponsive. Long synchronous computation there therefore blocks the UI and produces an ANR when it exceeds the timeout. For brief asynchronous work, goAsync() lets onReceive() return while work scheduled on another dispatcher or thread finishes within the receiver's remaining budget; substantial durable work belongs in a WorkManager request. Receivers do not normally run on a binder thread, and another app's receiver does not stall yours in this way.",
       "sources": [
         {
           "title": "Broadcasts: effects on process state",
@@ -15406,7 +15406,7 @@
       "id": "run_test_advance_until_idle_pending_work",
       "topicId": "testing",
       "subtopicId": "run_test",
-      "text": "Inside runTest, a ViewModel launches work on a StandardTestDispatcher, and the assertion runs before that work has happened. Which call makes the pending work run first?",
+      "text": "Inside runTest, a ViewModel receives StandardTestDispatcher(testScheduler) and launches work on it. The assertion runs before that work has happened. Which call makes the pending work run first?",
       "answers": [
         {
           "id": "run_test_advance_until_idle_pending_work_a",
@@ -15429,7 +15429,7 @@
       "correctAnswerIds": [
         "run_test_advance_until_idle_pending_work_b"
       ],
-      "explanation": "runTest installs a scheduler with virtual time, and a coroutine launched on a StandardTestDispatcher is queued rather than started eagerly. advanceUntilIdle() drains that queue, running the queued tasks and skipping their delays, so the assertion sees the settled state; advanceTimeBy() and runCurrent() give finer control over the same scheduler. Real blocking or sleeping achieves nothing because virtual time moves only when the test asks it to, and an UnconfinedTestDispatcher changes when coroutines start rather than being a prerequisite.",
+      "explanation": "runTest exposes its virtual-time scheduler as testScheduler. Passing that scheduler to StandardTestDispatcher makes the injected dispatcher share the scheduler controlled by the TestScope, so advanceUntilIdle() drains its queued tasks and skips their delays before the assertion. advanceTimeBy() and runCurrent() give finer control over the same scheduler. A StandardTestDispatcher created with a separate scheduler would not be advanced by this call; real blocking or sleeping does not advance virtual time, and an UnconfinedTestDispatcher changes when coroutines start rather than being a prerequisite.",
       "sources": [
         {
           "title": "kotlinx-coroutines-test",

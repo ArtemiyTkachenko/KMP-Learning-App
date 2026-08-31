@@ -13840,7 +13840,7 @@
       "correctAnswerIds": [
         "callback_flow_await_close_registration_b"
       ],
-      "explanation": "The callbackFlow block finishes as soon as it has registered the listener, and a finished producer closes the flow. awaitClose suspends until the collector cancels or the channel is closed, which both keeps the subscription alive and gives the code one reliable place to unregister the callback — leaking it otherwise. Buffering is configured separately through the builder's capacity, and callbackFlow already returns a cold, re-collectable Flow.",
+      "explanation": "The callbackFlow block finishes as soon as it has registered the listener, and the builder treats a block that returns while its channel is still open as a bug — it throws IllegalStateException pointing at awaitClose, because the alternative is a silent leak with the flow ended and the listener still registered. awaitClose suspends until the collector cancels or the channel closes, which keeps the subscription alive and gives the code one reliable place to unregister. Buffering is configured separately through the builder's capacity, and callbackFlow already returns a cold, re-collectable Flow.",
       "sources": [
         {
           "title": "kotlinx.coroutines: callbackFlow",
@@ -15226,7 +15226,7 @@
       "id": "lifecycle_leak_listener_unregistration",
       "topicId": "performance",
       "subtopicId": "lifecycle_leaks",
-      "text": "A Fragment registers a callback on an application-scoped repository in onViewCreated() and never removes it. What is the consequence?",
+      "text": "A Fragment registers a callback that updates one of its views on an application-scoped repository in onViewCreated(), and never removes it. What is the consequence?",
       "answers": [
         {
           "id": "lifecycle_leak_listener_unregistration_a",
@@ -15242,14 +15242,14 @@
         },
         {
           "id": "lifecycle_leak_listener_unregistration_d",
-          "text": "The repository keeps the Fragment reachable, so every recreation adds another live instance."
+          "text": "The repository keeps the Fragment reachable, so each configuration change leaves a dead one behind."
         }
       ],
       "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "lifecycle_leak_listener_unregistration_d"
       ],
-      "explanation": "Registering creates a reference from the long-lived repository to the Fragment. Fragments are recreated on every configuration change and on every return through the back stack, so the leak compounds: several dead Fragments accumulate, each still holding its views. Nothing unregisters callbacks on the app's behalf and nothing throws — the stale instance simply keeps receiving events. The fix is to unregister in the matching teardown callback, or to expose the data as a Flow collected inside a lifecycle-scoped collector so the subscription ends with the scope.",
+      "explanation": "A callback that touches the Fragment's views holds a reference to the Fragment, so registering it creates a chain from the long-lived repository down to a screen. A configuration change destroys that Fragment instance and creates a new one that registers again, so the repository accumulates callbacks, each pinning a dead Fragment and its views. Returning from the back stack is a different bug rather than the same one: the instance survives and only its view is rebuilt, so onViewCreated() registers a second callback that fires twice. Nothing unregisters on the app's behalf and nothing throws. The fix is to unregister in the matching teardown callback, or to expose the data as a Flow collected in a lifecycle-scoped collector so the subscription ends with the scope.",
       "sources": [
         {
           "title": "Fragment lifecycle",
@@ -16758,7 +16758,7 @@
       "correctAnswerIds": [
         "process_death_reproducing_restoration_b"
       ],
-      "explanation": "Process death is the case where saved instance state is restored but every in-memory object, ViewModels included, is gone. Reproducing it means genuinely killing the process while the task stays in Recents and then resuming that task — what the tooling's terminate action or adb shell am kill does. \"Don't keep activities\" destroys the Activity but keeps the process alive, so ViewModels survive and the bug stays hidden; rotation is a configuration change within the same process; and finishing the Activity ends the task instead of restoring it.",
+      "explanation": "Process death is the case where saved instance state is restored but everything the process held is gone. Reproducing it means genuinely killing the process while the task stays in Recents and then resuming that task — what the tooling's terminate action or adb shell am kill does. \"Don't keep activities\" destroys the Activity but leaves the process running, so application singletons, the dependency graph and any static cache are still populated when the screen is rebuilt — and depending on one of those is exactly the bug that survives this setting and then fails in the field. Rotation is a configuration change within the same process, and finishing the Activity ends the task instead of restoring it.",
       "sources": [
         {
           "title": "Save UI states",

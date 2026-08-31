@@ -349,6 +349,8 @@ machine-verifiable:
 - Topic and subtopic assignment is correct.
 - Stable `Question.id` and `AnswerOption.id` handling is appropriate.
 - Distractors are plausible and similar in style to the correct answer.
+- No correct answer is defensibly wrong under the question as written, and
+  every clause of the question stem is itself true.
 - Multiple-answer wording is explicit when more than one answer is correct.
 - `selectionMode` is explicitly authored and matches the intended interaction.
 - `MULTIPLE` wording clearly communicates multi-selection; `MULTIPLE` may still
@@ -357,6 +359,8 @@ machine-verifiable:
 - `correctAnswerIds` reflect the intended correct answer or answers.
 - Explanation teaches why the answer is correct and addresses useful
   misconceptions.
+- Every claim in the explanation is supported by a listed source, including
+  claims made about why a distractor is wrong.
 - Sources are authoritative, relevant, and specific to the tested claim.
 - Freshness and version sensitivity have been considered.
 - `ACTIVE` or `DEPRECATED` status is appropriate.

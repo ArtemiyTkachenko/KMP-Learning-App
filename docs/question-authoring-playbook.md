@@ -378,7 +378,186 @@ review removed — reappeared as extra choices for upgrading users. When a chang
 retires answer IDs at scale, verify that the active path excludes them and that
 the review path does not.
 
-## Part 9 — Pre-merge checklist
+## Part 9 — Claim precision
+
+Part 2 exists because an audit found the distractors were the weak point. The
+next large batch — 90 questions added in one PR — was reviewed after that lesson
+had been absorbed, and the finding was different. Nine defects were raised across
+two review rounds and **none of them was a distractor-plausibility problem**.
+Every one was a claim that was too broad, too vague, or simply wrong:
+
+| Cluster | Count | Example |
+| --- | --- | --- |
+| Keyed answer true only under an unstated condition | 4 | "an anonymous class declared in the Activity" leaks it — only if it captures it |
+| Explanation asserting something false or unsourceable | 4 | "ViewModels survive *Don't keep activities*" — they do not |
+| Stem premise false, or API named for the wrong type | 2 | stem said `Worker`, keyed option used `CoroutineWorker`'s `setForeground()` |
+
+(The clusters overlap; one question had two defects.)
+
+**The lesson: once the distractors are good, the remaining risk moves into the
+sentences you write most quickly** — the qualifying clause in a correct answer,
+the setup clause in a stem, and the last two sentences of an explanation. Those
+are the ones this part is about.
+
+### The keyed answer must be true under every reading of the stem
+
+Part 2 says no distractor may be defensibly correct. The mirror rule is just as
+important and is the single largest cluster above:
+
+> No keyed answer may be defensibly **wrong**.
+
+A candidate who knows the material and declines a keyed option is being marked
+incorrect for being right. That is worse than an easy question.
+
+Three that failed it:
+
+| Shipped | Why a knowledgeable candidate could decline it | Fixed to |
+| --- | --- | --- |
+| "Data and UI models have to be mapped to and from domain models at each layer boundary." | The dependency rule forbids the domain *naming* framework types; it does not mandate a separate model per layer. An outer layer may use a domain type directly. | "A Room entity or network DTO cannot double as the domain model, so mapping appears there." |
+| "A listener registered on an app-wide singleton using an anonymous class declared in the Activity." | An object expression retains the enclosing instance only when it references it. | "…by an anonymous class that calls into the Activity." |
+| Stem: "a file in `src/debug/res` that also exists under the same name in `src/main/res`" | A drawable is replaced; `values/strings.xml` is *merged* per resource name. Two different correct answers. | Stem names a drawable; the explanation uses `values/` as the contrast. |
+
+**The test.** Read the stem, then ask of every keyed option: *can a competent
+engineer construct a case, consistent with the stem, in which this is false?* If
+yes, either state the missing condition in the stem or narrow the option.
+Narrowing the option is usually better — it keeps the stem short and puts the
+precision where the marking happens.
+
+Watch particularly for `have to`, `must`, `always`, `every`, `cannot`, and `is
+required` in a keyed answer. Part 3 says absolutes belong in correct answers
+*where they are literally true*; this is the other half of that rule. An absolute
+that is merely usually true is a defect, not a style choice.
+
+### The stem's premise must itself be true
+
+A stem is not neutral scaffolding. Every clause in it is a claim the candidate
+is invited to accept, so a false premise teaches a wrong default even when the
+keyed answer is right.
+
+> "A shared Kotlin Multiplatform module **adds an iOS target**. What does the
+> build produce for the Xcode project to consume?"
+
+Adding a target registers a Kotlin/Native compilation; it produces no framework
+until `binaries.framework` is configured — as this repository's own
+`shared/build.gradle.kts` does. The answer set was fine; the setup was not. The
+stem now says the target is declared *and* the framework binary configured.
+
+### Name the exact type when you name an API
+
+If an option names a method, the stem must fix the receiver, because a learner
+who copies the option will try to compile it.
+
+> Stem: "A **Worker** uploading large videos…"
+>
+> Keyed option: "Make it a long-running worker with `setForeground()`…"
+
+`setForeground()` is `CoroutineWorker`'s suspending API. `Worker` and
+`ListenableWorker` use `setForegroundAsync(ForegroundInfo)`. The stem now says
+`CoroutineWorker`, which makes the keyed option exactly right.
+
+The same applies to a method named only in an explanation. The explanation for
+that question also offered `getForegroundInfo()` as the CoroutineWorker
+alternative, which is neither — it is the callback WorkManager invokes *on* the
+worker.
+
+### Every sentence of an explanation is a claim, including the ones about distractors
+
+The second-largest cluster, and the errors were concentrated in the closing
+sentences that disarm the distractors — written last, checked least, and rarely
+re-read against a source.
+
+| Shipped | Reality |
+| --- | --- |
+| "*Don't keep activities* … so ViewModels survive and the bug stays hidden." | `ComponentActivity` clears its `ViewModelStore` on destroy when it is not a configuration change, so they do not survive. |
+| "a finished producer closes the flow" | `callbackFlow` throws `IllegalStateException` when the block returns with the channel still open. |
+| "Fragments are recreated … on every return through the back stack" | A back-stacked Fragment loses its view, not its instance — and another question in the same batch said so. |
+
+Three rules follow.
+
+**Name the observable failure.** When the question is about something going
+wrong, say what the engineer will actually see: the exception type, the log line,
+the symptom. "Closes the flow" and "throws `IllegalStateException` telling you to
+call `awaitClose`" are not the same lesson, and only one of them is recognisable
+at 2am.
+
+**Delete what you cannot cite.** Part 7 governs explanations, not only answers. A
+claim that is true but unsupported by any listed source is still a defect,
+because nothing in review can check it. Two questions in this batch rested on
+widely-repeated behaviour that no primary document states; both were reframed
+onto documented behaviour rather than sourced to a blog. If the precise mechanism
+is not citable, find a different true statement that is — the question usually
+survives the change.
+
+**Distinguish "wrong" from "understated".** An explanation that is directionally
+right but soft is still teaching the wrong thing, and it reads as authoritative
+because it sits next to correct material.
+
+### Check the new question against its neighbours
+
+The back-stack error above is the one worth generalising: it was not wrong in
+isolation, it was wrong *relative to another question in the same PR*. Two
+questions teaching opposite things is worse than either being wrong alone,
+because the bank stops being trustworthy rather than merely incomplete.
+
+Semantic-duplicate scanning does not find these — contradictions score low on
+overall similarity precisely because the wording differs. What does find them is
+pairing questions that share **rare** vocabulary, which is a proxy for "these
+talk about the same narrow subject", and then reading each pair for agreement.
+
+Run from the repository root before opening the PR:
+
+```python
+import json, re, subprocess
+from collections import Counter
+
+PATH = 'shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json'
+BASE = 'main'          # the commit this PR branched from
+THRESHOLD = 5          # shared rare terms; lower to 4 to roughly double the list
+
+STOP = set('''a an the of to in for is are and or that this it its what which why how when does do
+with on at as be by from not but if then than can may must should will would there their they them
+these those into over under one two both each any all some more most other another such same own so
+no nor only just also very much many'''.split())
+tok = lambda t: {w for w in re.findall(r'[a-z][a-z-]{3,}', t.lower()) if w not in STOP}
+
+cur = json.load(open(PATH, encoding='utf-8'))
+base = json.loads(subprocess.run(['git', 'show', f'{BASE}:{PATH}'],
+                                 capture_output=True, text=True).stdout)
+old = {q['id'] for q in base['questions']}
+qs = [q for q in cur['questions'] if q['status'] == 'ACTIVE']
+new = {q['id'] for q in qs if q['id'] not in old}
+
+docs = [(q['id'], tok(q['text'] + ' ' + q['explanation'])) for q in qs]
+df = Counter(w for _, t in docs for w in t)
+
+pairs = []
+for i, a in enumerate(docs):
+    for b in docs[i + 1:]:
+        if a[0] not in new and b[0] not in new:
+            continue
+        shared = {w for w in a[1] & b[1] if 2 <= df[w] <= 12}
+        if len(shared) >= THRESHOLD:
+            pairs.append((len(shared), a[0], b[0], sorted(shared)))
+
+print(f'{len(pairs)} pairs to read\n')
+for n, x, y, shared in sorted(pairs, reverse=True):
+    print(f'{n}  {x}\n   {y}\n   {shared}\n')
+```
+
+Read each pair and ask one question: *do these two say anything incompatible
+about the shared subject?* Related questions are expected and fine — most pairs
+will be a definition and a scenario about the same API, which is exactly the
+distinct-depth the contract encourages. You are looking only for disagreement.
+
+On the 90-question batch, compared against the commit it branched from, this
+printed **33 pairs** — and the real contradiction was entry 22. That is a few
+minutes of reading against a defect that otherwise reached review.
+
+Point `BASE` at the actual branch point. Aiming it at a stale `main` marks
+already-merged questions as new and roughly doubles the list without adding
+signal.
+
+## Part 10 — Pre-merge checklist
 
 Structural (automated by the validator and existing tests):
 
@@ -396,6 +575,10 @@ Editorial (human review — the validator cannot check these):
 - [ ] Every distractor is a belief a real developer could hold
 - [ ] No off-topic technology, impossible behaviour, or invented API
 - [ ] No distractor is defensibly correct under the stem as written
+- [ ] No keyed answer is defensibly wrong under the stem as written
+- [ ] Every clause of the stem is itself true, including the setup
+- [ ] Any method named in an option or explanation belongs to the type the
+      stem specifies
 - [ ] All options share category, grammatical form, and register
 - [ ] Length audit passes; correct answer within ~10% of longest distractor
 - [ ] Absolute words are not a signal; correct answers use them where true
@@ -403,6 +586,10 @@ Editorial (human review — the validator cannot check these):
 - [ ] `MULTIPLE` stems say "Select all that apply."
 - [ ] `MULTIPLE` may legitimately contain exactly one correct answer
 - [ ] Explanation teaches and disarms the strongest distractor
+- [ ] Explanation names the observable failure, not a softer paraphrase
+- [ ] Every sentence of the explanation is supported by a listed source,
+      including the sentences about distractors
+- [ ] Neighbour scan (Part 9) read; no pair disagrees
 - [ ] Every source establishes its specific claim and returns 200
 - [ ] Answer IDs: preserved for wording changes, new for changed claims
 - [ ] Question count and per-topic distribution match the pinned tests, or those
@@ -440,6 +627,34 @@ remain available across app restarts?* (correct: `DataStore`)
 Every option is now a real persistence choice, each wrong for a distinct and
 teachable reason. The stem was also tightened from "survive process death" so
 that `SavedStateHandle` is unambiguously excluded.
+
+### Unsourceable claim → documented mechanism
+
+*A Compose test asserts on a node that appears while a continuously repeating
+animation is running, and the test hangs instead of failing. What is happening?*
+(correct: the rule waits for the app to be idle and an endless animation never
+lets that happen)
+
+The keyed answer is very likely true. It is also stated by no Android
+documentation — neither the synchronization page nor the animation-testing page
+mentions infinite animations at all, and the only supporting material is forum
+and blog writing. Under Part 7 that makes the question indefensible in review:
+nothing a reviewer can consult decides it.
+
+The fix was not a better source, because none exists. It was a different
+question about the same subtopic, resting on behaviour the docs *do* specify
+with a code sample:
+
+*A Compose test must assert on a colour part-way through a 250 ms animation, but
+the default synchronization lets the animation finish before the assertion runs.
+What lets the test observe an intermediate frame?* (correct: set
+`mainClock.autoAdvance` to false and step the clock with `advanceTimeBy()`)
+
+The distractors improved as a side effect — `waitForIdle()` and `runOnIdle()`
+both do the opposite of what is needed, and `waitUntil()` polls a condition
+without stopping the clock, so all three are real APIs failing for teachable
+reasons. When a claim cannot be cited, look for the adjacent question that can
+be; it is usually the better question anyway.
 
 ### The opposite concept as distractor set
 

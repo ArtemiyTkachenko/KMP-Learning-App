@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app.curriculum.serialization
 
 import kotlinx.serialization.SerializationException
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
 import org.artkachenko.kmp_learning_app.curriculum.Question
@@ -16,6 +17,23 @@ internal class CurriculumJsonCodecTest {
     @Test
     fun validCurriculumJsonDecodesSuccessfully() {
         assertEquals(sampleCurriculum(), CurriculumJsonCodec.decode(sampleCurriculumJson))
+    }
+
+    @Test
+    fun singleSelectionModeDecodes() {
+        val decoded = CurriculumJsonCodec.decode(
+            sampleCurriculumJson.replace("\"MULTIPLE\"", "\"SINGLE\""),
+        )
+
+        assertEquals(AnswerSelectionMode.SINGLE, decoded.questions.single().selectionMode)
+    }
+
+    @Test
+    fun multipleSelectionModeWithOneCorrectAnswerDecodes() {
+        val decoded = CurriculumJsonCodec.decode(sampleCurriculumJson)
+
+        assertEquals(AnswerSelectionMode.MULTIPLE, decoded.questions.single().selectionMode)
+        assertEquals(listOf("answer_a"), decoded.questions.single().correctAnswerIds)
     }
 
     @Test
@@ -96,6 +114,24 @@ internal class CurriculumJsonCodecTest {
     }
 
     @Test
+    fun missingSelectionModeFailsDecoding() {
+        assertFailsWith<SerializationException> {
+            CurriculumJsonCodec.decode(
+                sampleCurriculumJson.replace("\"selectionMode\":\"MULTIPLE\",", ""),
+            )
+        }
+    }
+
+    @Test
+    fun invalidSelectionModeFailsDecoding() {
+        assertFailsWith<SerializationException> {
+            CurriculumJsonCodec.decode(
+                sampleCurriculumJson.replace("\"MULTIPLE\"", "\"ALL\""),
+            )
+        }
+    }
+
+    @Test
     fun unexpectedPropertyFailsDecoding() {
         assertFailsWith<SerializationException> {
             CurriculumJsonCodec.decode(
@@ -109,6 +145,7 @@ internal class CurriculumJsonCodecTest {
 
     private fun sampleCurriculum(
         correctAnswerIds: List<String> = listOf("answer_a"),
+        selectionMode: AnswerSelectionMode = AnswerSelectionMode.MULTIPLE,
         status: ContentStatus = ContentStatus.ACTIVE,
     ) = Curriculum(
         topics = listOf(
@@ -127,6 +164,7 @@ internal class CurriculumJsonCodecTest {
                     AnswerOption(id = "answer_a", text = "First correct answer"),
                     AnswerOption(id = "answer_b", text = "Second correct answer"),
                 ),
+                selectionMode = selectionMode,
                 correctAnswerIds = correctAnswerIds,
                 explanation = "The listed answer IDs identify the correct answer options.",
                 sources = listOf(SourceReference(title = "Source", url = "https://example.com/source")),
@@ -136,5 +174,5 @@ internal class CurriculumJsonCodecTest {
     )
 
     private val sampleCurriculumJson =
-        """{"topics":[{"id":"topic_1","name":"Topic","status":"ACTIVE"}],"subtopics":[{"id":"subtopic_1","topicId":"topic_1","name":"Subtopic","status":"ACTIVE"}],"questions":[{"id":"question_1","topicId":"topic_1","subtopicId":"subtopic_1","text":"Which answers are correct? Select all that apply.","answers":[{"id":"answer_a","text":"First correct answer"},{"id":"answer_b","text":"Second correct answer"}],"correctAnswerIds":["answer_a"],"explanation":"The listed answer IDs identify the correct answer options.","sources":[{"title":"Source","url":"https://example.com/source"}],"status":"ACTIVE"}]}"""
+        """{"topics":[{"id":"topic_1","name":"Topic","status":"ACTIVE"}],"subtopics":[{"id":"subtopic_1","topicId":"topic_1","name":"Subtopic","status":"ACTIVE"}],"questions":[{"id":"question_1","topicId":"topic_1","subtopicId":"subtopic_1","text":"Which answers are correct? Select all that apply.","answers":[{"id":"answer_a","text":"First correct answer"},{"id":"answer_b","text":"Second correct answer"}],"selectionMode":"MULTIPLE","correctAnswerIds":["answer_a"],"explanation":"The listed answer IDs identify the correct answer options.","sources":[{"title":"Source","url":"https://example.com/source"}],"status":"ACTIVE"}]}"""
 }

@@ -41,6 +41,7 @@ internal class CurriculumDatabaseTest {
                     topicId = "kotlin_language",
                     subtopicId = "kotlin_generics",
                     text = "Which declarations are valid? Select all that apply.",
+                    selectionMode = "MULTIPLE",
                     explanation = "Generic variance controls how parameterized types relate to each other.",
                     status = "ACTIVE",
                     sortOrder = 0,
@@ -108,6 +109,7 @@ internal class CurriculumDatabaseTest {
                         topicId = "topic",
                         subtopicId = "subtopic",
                         text = "Question?",
+                        selectionMode = "SINGLE",
                         explanation = "Explanation.",
                         status = "ACTIVE",
                         sortOrder = 0,
@@ -170,6 +172,7 @@ internal class CurriculumDatabaseTest {
                             topicId = "android_ui",
                             subtopicId = "kotlin_generics",
                             text = "Invalid hierarchy?",
+                            selectionMode = "SINGLE",
                             explanation = "This should not persist.",
                             status = "ACTIVE",
                             sortOrder = 0,
@@ -189,8 +192,8 @@ internal class CurriculumDatabaseTest {
             dao.upsertSubtopics(listOf(SubtopicEntity("subtopic", "topic", "Subtopic", "ACTIVE", sortOrder = 0)))
             dao.upsertQuestions(
                 listOf(
-                    QuestionEntity("question_a", "topic", "subtopic", "Question A?", "Explanation A.", "ACTIVE", sortOrder = 0),
-                    QuestionEntity("question_b", "topic", "subtopic", "Question B?", "Explanation B.", "ACTIVE", sortOrder = 1),
+                    QuestionEntity("question_a", "topic", "subtopic", "Question A?", "SINGLE", "Explanation A.", "ACTIVE", sortOrder = 0),
+                    QuestionEntity("question_b", "topic", "subtopic", "Question B?", "SINGLE", "Explanation B.", "ACTIVE", sortOrder = 1),
                 ),
             )
             dao.upsertAnswerOptions(
@@ -255,6 +258,7 @@ internal class CurriculumDatabaseTest {
                     topicId = "kotlin_language",
                     subtopicId = "kotlin_generics",
                     text = "Which declarations are valid? Select all that apply.",
+                    selectionMode = "MULTIPLE",
                     explanation = "Generic variance controls how parameterized types relate to each other.",
                     status = "ACTIVE",
                     sortOrder = 0,

@@ -14,7 +14,7 @@ import kotlinx.coroutines.test.runTest
 
 internal class CurriculumDatabaseMigrationTest {
     @Test
-    fun migrationFromOneToTwoPreservesCurriculumAndCreatesAssessmentTables() = runTest {
+    fun migrationFromOneToFourPreservesCurriculumAndHistoricalAssessmentRows() = runTest {
         val databasePath = Files.createTempDirectory("curriculum-migration-test")
             .resolve("curriculum.db")
         val helper = MigrationTestHelper(
@@ -99,6 +99,20 @@ internal class CurriculumDatabaseMigrationTest {
                 assertEquals(1, statement.getLong(0).toInt())
             }
         }
+
+        helper.runMigrationsAndValidate(
+            version = 4,
+            migrations = listOf(MIGRATION_2_3, MIGRATION_3_4),
+        ).use { connection ->
+            connection.prepare("SELECT selection_mode FROM question WHERE id = 'question'").use { statement ->
+                assertTrue(statement.step())
+                assertEquals("SINGLE", statement.getText(0))
+            }
+            connection.prepare("SELECT COUNT(*) FROM question_attempt_selected_answer").use { statement ->
+                assertTrue(statement.step())
+                assertEquals(1, statement.getLong(0).toInt())
+            }
+        }
     }
 
     @Test
@@ -144,6 +158,84 @@ internal class CurriculumDatabaseMigrationTest {
             connection.prepare("SELECT status FROM answer_option WHERE id = 'answer_a'").use { statement ->
                 assertTrue(statement.step())
                 assertEquals("ACTIVE", statement.getText(0))
+            }
+        }
+    }
+
+    @Test
+    fun migrationFromThreeToFourDerivesLegacyModesAndPreservesQuestionData() = runTest {
+        val databasePath = Files.createTempDirectory("curriculum-migration-test")
+            .resolve("curriculum.db")
+        val helper = MigrationTestHelper(
+            schemaDirectoryPath = Path.of("schemas").toAbsolutePath(),
+            databasePath = databasePath,
+            driver = BundledSQLiteDriver(),
+            databaseClass = CurriculumDatabase::class,
+            databaseFactory = { CurriculumDatabaseConstructor.initialize() },
+        )
+
+        helper.createDatabase(version = 3).use { connection ->
+            connection.executeSQL("INSERT INTO topic (id, name, status, sort_order) VALUES ('topic', 'Topic', 'ACTIVE', 0)")
+            connection.executeSQL(
+                """
+                INSERT INTO subtopic (id, topic_id, name, status, sort_order)
+                VALUES ('subtopic', 'topic', 'Subtopic', 'ACTIVE', 0)
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO question (id, topic_id, subtopic_id, text, explanation, status, sort_order)
+                VALUES
+                    ('single_question', 'topic', 'subtopic', 'Single?', 'Single explanation.', 'ACTIVE', 0),
+                    ('multiple_question', 'topic', 'subtopic', 'Multiple?', 'Multiple explanation.', 'DEPRECATED', 1)
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO answer_option (question_id, id, text, sort_order, status)
+                VALUES
+                    ('single_question', 'single_a', 'Single A', 0, 'ACTIVE'),
+                    ('multiple_question', 'multiple_a', 'Multiple A', 0, 'ACTIVE'),
+                    ('multiple_question', 'multiple_b', 'Multiple B', 1, 'ACTIVE')
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO question_correct_answer (question_id, answer_id)
+                VALUES
+                    ('single_question', 'single_a'),
+                    ('multiple_question', 'multiple_a'),
+                    ('multiple_question', 'multiple_b')
+                """,
+            )
+        }
+
+        helper.runMigrationsAndValidate(
+            version = 4,
+            migrations = listOf(MIGRATION_3_4),
+        ).use { connection ->
+            connection.prepare(
+                "SELECT id, selection_mode, text, explanation, status, sort_order FROM question ORDER BY sort_order",
+            ).use { statement ->
+                assertTrue(statement.step())
+                assertEquals("single_question", statement.getText(0))
+                assertEquals("SINGLE", statement.getText(1))
+                assertEquals("Single?", statement.getText(2))
+                assertEquals("Single explanation.", statement.getText(3))
+                assertEquals("ACTIVE", statement.getText(4))
+                assertEquals(0, statement.getLong(5).toInt())
+
+                assertTrue(statement.step())
+                assertEquals("multiple_question", statement.getText(0))
+                assertEquals("MULTIPLE", statement.getText(1))
+                assertEquals("Multiple?", statement.getText(2))
+                assertEquals("Multiple explanation.", statement.getText(3))
+                assertEquals("DEPRECATED", statement.getText(4))
+                assertEquals(1, statement.getLong(5).toInt())
+            }
+            connection.prepare("SELECT COUNT(*) FROM question_correct_answer").use { statement ->
+                assertTrue(statement.step())
+                assertEquals(3, statement.getLong(0).toInt())
             }
         }
     }

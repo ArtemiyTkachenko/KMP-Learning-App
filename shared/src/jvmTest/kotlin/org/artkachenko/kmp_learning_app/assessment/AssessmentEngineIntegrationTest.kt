@@ -17,6 +17,7 @@ import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionS
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentStartResult
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
 import org.artkachenko.kmp_learning_app.curriculum.Question
@@ -418,6 +419,7 @@ internal class AssessmentEngineIntegrationTest {
                 AnswerOption(SingleAnswerB, "B"),
                 AnswerOption(SingleAnswerC, "C"),
             ),
+            selectionMode = AnswerSelectionMode.SINGLE,
             correctAnswerIds = listOf(SingleAnswerA),
             explanation = "A is the correct answer.",
             sources = listOf(
@@ -437,6 +439,7 @@ internal class AssessmentEngineIntegrationTest {
                 AnswerOption(MultiAnswerB, "B"),
                 AnswerOption(MultiAnswerC, "C"),
             ),
+            selectionMode = AnswerSelectionMode.MULTIPLE,
             correctAnswerIds = listOf(MultiAnswerA, MultiAnswerC),
             explanation = "A and C are correct.",
             sources = listOf(

@@ -27,6 +27,7 @@ import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionS
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
@@ -44,7 +45,7 @@ internal class AssessmentTakingViewModelTest {
     fun startsAndPersistsActualQuestionCount() = runViewModelTest {
         val questions = listOf(
             question("single", listOf("a")),
-            question("multi", listOf("a", "c")),
+            question("multi", listOf("a", "c"), selectionMode = AnswerSelectionMode.MULTIPLE),
         )
         val repository = RecordingAssessmentRepository()
         val viewModel = viewModel(questions, repository)
@@ -71,7 +72,9 @@ internal class AssessmentTakingViewModelTest {
 
     @Test
     fun multipleAnswerSelectionTogglesStableIds() = runViewModelTest {
-        val viewModel = viewModel(listOf(question("multi", listOf("a", "c"))))
+        val viewModel = viewModel(
+            listOf(question("multi", listOf("a", "c"), selectionMode = AnswerSelectionMode.MULTIPLE)),
+        )
         advanceUntilIdle()
 
         viewModel.selectAnswer("a")
@@ -79,6 +82,44 @@ internal class AssessmentTakingViewModelTest {
         assertEquals(setOf("a", "c"), content(viewModel).selectedAnswerIds)
         viewModel.selectAnswer("a")
         assertEquals(setOf("c"), content(viewModel).selectedAnswerIds)
+    }
+
+    @Test
+    fun authoredModesReachUiWithoutUsingCorrectAnswerCardinality() = runViewModelTest {
+        val single = viewModel(listOf(question("single", listOf("a"))))
+        advanceUntilIdle()
+        assertEquals(AnswerSelectionMode.SINGLE, content(single).question.selectionMode)
+
+        val multiple = viewModel(
+            listOf(
+                question(
+                    id = "multiple-one-correct",
+                    correctIds = listOf("a"),
+                    selectionMode = AnswerSelectionMode.MULTIPLE,
+                ),
+            ),
+        )
+        advanceUntilIdle()
+        assertEquals(AnswerSelectionMode.MULTIPLE, content(multiple).question.selectionMode)
+    }
+
+    @Test
+    fun multipleSelectionWithOneCorrectAnswerStillAllowsSeveralSelections() = runViewModelTest {
+        val viewModel = viewModel(
+            listOf(
+                question(
+                    id = "multiple-one-correct",
+                    correctIds = listOf("a"),
+                    selectionMode = AnswerSelectionMode.MULTIPLE,
+                ),
+            ),
+        )
+        advanceUntilIdle()
+
+        viewModel.selectAnswer("a")
+        viewModel.selectAnswer("b")
+
+        assertEquals(setOf("a", "b"), content(viewModel).selectedAnswerIds)
     }
 
     @Test
@@ -97,7 +138,7 @@ internal class AssessmentTakingViewModelTest {
         val viewModel = viewModel(
             questions = listOf(
                 question("single", listOf("a")),
-                question("multi", listOf("a", "c")),
+                question("multi", listOf("a", "c"), selectionMode = AnswerSelectionMode.MULTIPLE),
             ),
             repository = repository,
         )
@@ -519,6 +560,7 @@ internal class AssessmentTakingViewModelTest {
         id: String,
         correctIds: List<String>,
         topicId: String = "topic",
+        selectionMode: AnswerSelectionMode = AnswerSelectionMode.SINGLE,
     ) = Question(
         id = id,
         topicId = topicId,
@@ -529,6 +571,7 @@ internal class AssessmentTakingViewModelTest {
             AnswerOption("b", "Answer B"),
             AnswerOption("c", "Answer C"),
         ),
+        selectionMode = selectionMode,
         correctAnswerIds = correctIds,
         explanation = "Explanation",
         sources = listOf(SourceReference("Source", "https://example.com")),

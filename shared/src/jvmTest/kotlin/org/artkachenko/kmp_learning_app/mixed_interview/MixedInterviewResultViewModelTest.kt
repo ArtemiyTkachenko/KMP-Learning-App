@@ -34,6 +34,7 @@ import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
@@ -305,6 +306,7 @@ internal class MixedInterviewResultViewModelTest {
         subtopicId = "subtopic",
         text = "Question $id",
         answers = listOf(AnswerOption("a", "Answer A"), AnswerOption("b", "Answer B")),
+        selectionMode = AnswerSelectionMode.SINGLE,
         correctAnswerIds = listOf("a"),
         explanation = "Explanation $id",
         sources = listOf(SourceReference("Source $id", "https://example.com/$id")),

@@ -4,6 +4,7 @@ import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlinx.coroutines.test.runTest
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
 import org.artkachenko.kmp_learning_app.curriculum.Question
@@ -154,6 +155,7 @@ internal class LocalCurriculumRepositoryTest {
             topicId = "deprecated_topic",
             subtopicId = "deprecated_subtopic",
             status = ContentStatus.DEPRECATED,
+            selectionMode = AnswerSelectionMode.MULTIPLE,
             correctAnswerIds = listOf("deprecated_question_answer_a", "deprecated_question_answer_b"),
         )
         withRepository(
@@ -278,6 +280,7 @@ internal class LocalCurriculumRepositoryTest {
                         AnswerOption("question_z_answer_b", "Answer B"),
                         AnswerOption("question_z_answer_a", "Answer A"),
                     ),
+                    selectionMode = AnswerSelectionMode.MULTIPLE,
                     correctAnswerIds = listOf("question_z_answer_a", "question_z_answer_b"),
                     sources = listOf(
                         SourceReference("Source B", "https://example.com/question-z/source-b"),
@@ -333,6 +336,7 @@ internal class LocalCurriculumRepositoryTest {
             AnswerOption("${id}_answer_b", "Answer B"),
             AnswerOption("${id}_answer_a", "Answer A"),
         ),
+        selectionMode: AnswerSelectionMode = AnswerSelectionMode.SINGLE,
         correctAnswerIds: List<String> = listOf("${id}_answer_a"),
         sources: List<SourceReference> = listOf(
             SourceReference("Source B", "https://example.com/${id.dashCase()}/source-b"),
@@ -345,6 +349,7 @@ internal class LocalCurriculumRepositoryTest {
             subtopicId = subtopicId,
             text = "$id?",
             answers = answers,
+            selectionMode = selectionMode,
             correctAnswerIds = correctAnswerIds,
             explanation = "$id explanation.",
             sources = sources,

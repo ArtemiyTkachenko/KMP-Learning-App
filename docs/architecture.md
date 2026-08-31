@@ -118,6 +118,11 @@ object construction on the first malformed item. Serialization and local
 persistence are handled by the E07 data path while Room-specific metadata stays
 out of the curriculum domain models.
 
+`Question.selectionMode` is authored curriculum data and flows through local
+persistence into assessment presentation. It is deliberately independent from
+`correctAnswerIds`: interaction controls must not reveal answer-key cardinality,
+and scoring continues to compare selected and correct answer-ID sets exactly.
+
 ## Assessment Domain
 
 The shared assessment model defines focused and mixed assessment configuration,

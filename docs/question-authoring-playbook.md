@@ -262,17 +262,18 @@ supports its claim. Those need a human read.
 
 ## Part 4 — Correct answers
 
-- Exactly one defensibly correct option in a single-answer question.
+- Exactly one defensibly correct option in a `SINGLE` question.
 - State the claim plainly. Do not hedge it into safety — hedging is itself a cue.
 - Do not make it the most carefully worded option. If it reads as the only
   professionally written answer, that is a defect.
 - Verify it against current documentation before writing the distractors. Writing
   three good distractors around a wrong answer wastes the effort.
 
-## Part 5 — Multiple-answer questions
+## Part 5 — Multiple-selection questions
 
-Use these only when the content genuinely has several independently correct
-answers, never because distractors were hard to write.
+Use `MULTIPLE` when the candidate is intentionally allowed to select several
+options. This may legitimately produce one or several correct answers; the
+interaction mode must be authored independently from the answer-key count.
 
 - The stem must say **"Select all that apply."**
 - Every correct option must be independently true and every incorrect option
@@ -343,6 +344,11 @@ distractor, explanation, and source changes. A new ID plus deprecation of the ol
 question is for a changed concept or changed correct answer, and should be rare —
 the 90-question review needed none.
 
+Changing between `SINGLE` and `MULTIPLE` can materially change how the candidate
+interacts with a question. Review stable identity in that case; adding explicit
+metadata for an interaction that was already intended does not itself require a
+new ID.
+
 **Editing an answer.** This is the rule most easily got wrong:
 
 - Keep the `AnswerOption.id` when only the wording changes and the claim is the
@@ -377,6 +383,8 @@ Structural (automated by the validator and existing tests):
 - [ ] IDs unique; every `correctAnswerId` references a real option
 - [ ] At least two options, one correct answer, one source per question
 - [ ] `topicId` / `subtopicId` valid and consistent
+- [ ] `selectionMode` is explicitly authored
+- [ ] `SINGLE` does not contain several correct answers
 
 Editorial (human review — the validator cannot check these):
 
@@ -388,7 +396,9 @@ Editorial (human review — the validator cannot check these):
 - [ ] All options share category, grammatical form, and register
 - [ ] Length audit passes; correct answer within ~10% of longest distractor
 - [ ] Absolute words are not a signal; correct answers use them where true
-- [ ] Multi-answer stems say "Select all that apply."
+- [ ] Wording matches the authored selection interaction
+- [ ] `MULTIPLE` stems say "Select all that apply."
+- [ ] `MULTIPLE` may legitimately contain exactly one correct answer
 - [ ] Explanation teaches and disarms the strongest distractor
 - [ ] Every source establishes its specific claim and returns 200
 - [ ] Answer IDs: preserved for wording changes, new for changed claims

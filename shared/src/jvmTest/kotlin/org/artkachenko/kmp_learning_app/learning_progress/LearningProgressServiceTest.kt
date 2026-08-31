@@ -17,6 +17,7 @@ import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
@@ -383,6 +384,7 @@ private fun question(
             AnswerOption("${id}_b", "Answer B"),
             AnswerOption("answer_current", "Current answer"),
         ),
+        selectionMode = AnswerSelectionMode.SINGLE,
         correctAnswerIds = listOf(currentCorrectAnswerId),
         explanation = "Explanation",
         sources = listOf(SourceReference("Source", "https://example.com/$id")),

@@ -36,6 +36,7 @@ import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoad
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingFinishTag
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingSubmitTag
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
 import org.artkachenko.kmp_learning_app.curriculum.Question
@@ -243,17 +244,25 @@ internal class FocusedLearningJourneyIntegrationTest {
             Subtopic("subtopic_empty", "topic_android", "Empty"),
         ),
         questions = listOf(
-            question("question_single", "Single question", listOf("A"), "Single explanation", "Single source"),
-            question("question_multiple", "Multiple question", listOf("A", "C"), "Multiple explanation", "Multiple source"),
+            question("question_single", "Single question", AnswerSelectionMode.SINGLE, listOf("A"), "Single explanation", "Single source"),
+            question("question_multiple", "Multiple question", AnswerSelectionMode.MULTIPLE, listOf("A", "C"), "Multiple explanation", "Multiple source"),
         ),
     )
 
-    private fun question(id: String, text: String, correct: List<String>, explanation: String, sourceTitle: String) = Question(
+    private fun question(
+        id: String,
+        text: String,
+        selectionMode: AnswerSelectionMode,
+        correct: List<String>,
+        explanation: String,
+        sourceTitle: String,
+    ) = Question(
         id = id,
         topicId = "topic_android",
         subtopicId = "subtopic_core",
         text = text,
         answers = listOf(AnswerOption("A", "A"), AnswerOption("B", "B"), AnswerOption("C", "C")),
+        selectionMode = selectionMode,
         correctAnswerIds = correct,
         explanation = explanation,
         sources = listOf(SourceReference(sourceTitle, "https://example.com/$id")),

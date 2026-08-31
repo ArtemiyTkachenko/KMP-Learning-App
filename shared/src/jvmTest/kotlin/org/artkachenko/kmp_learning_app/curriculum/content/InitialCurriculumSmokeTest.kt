@@ -1,6 +1,7 @@
 package org.artkachenko.kmp_learning_app.curriculum.content
 
 import kotlinx.coroutines.test.runTest
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.validation.CurriculumValidator
 import kotlin.test.Test
@@ -23,6 +24,8 @@ internal class InitialCurriculumSmokeTest {
             39,
             initialCurriculum.questions.count { it.status == ContentStatus.DEPRECATED },
         )
+        assertEquals(277, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.SINGLE })
+        assertEquals(32, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.MULTIPLE })
     }
 
     @Test
@@ -84,14 +87,14 @@ internal class InitialCurriculumSmokeTest {
     }
 
     @Test
-    fun multipleCorrectAnswerQuestionsTellReaderToSelectAllThatApply() = runTest {
+    fun authoredMultipleQuestionsTellReaderToSelectAllThatApply() = runTest {
         val initialCurriculum = BundledCurriculumSource.load()
-        val multipleCorrectAnswerQuestions = initialCurriculum.questions
-            .filter { it.correctAnswerIds.size > 1 }
+        val multipleQuestions = initialCurriculum.questions
+            .filter { it.selectionMode == AnswerSelectionMode.MULTIPLE }
 
-        assertTrue(multipleCorrectAnswerQuestions.isNotEmpty())
+        assertTrue(multipleQuestions.isNotEmpty())
         assertTrue(
-            multipleCorrectAnswerQuestions.all {
+            multipleQuestions.all {
                 it.text.contains("Select all that apply.")
             },
         )

@@ -40,6 +40,7 @@ import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentReposito
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
 import org.artkachenko.kmp_learning_app.curriculum.Question
@@ -596,6 +597,7 @@ private fun fixtureQuestion(
     subtopicId = subtopicId,
     text = text,
     answers = answers,
+    selectionMode = AnswerSelectionMode.SINGLE,
     correctAnswerIds = listOf(correctAnswerId),
     explanation = explanation,
     sources = listOf(SourceReference(sourceTitle, sourceUrl)),

@@ -87,6 +87,27 @@ internal class AssessmentEngineTest {
     }
 
     @Test
+    fun eachStartedAttemptOrdersTheSameQuestionsAnswersDifferently() = runEngineTest {
+        // Position was a usable cue: a learner who met a Question before could recall where the
+        // correct option sat instead of reading the options. Exercised through start() so the
+        // production path is what is covered, not the ordering helper alone.
+        repository.activeQuestions = listOf(question("question_a"))
+        val engine = engine()
+
+        val orders = List(8) {
+            assertStarted(engine.start(AssessmentConfig.Mixed(questionCount = 1)))
+                .questions.single().answers.map { answer -> answer.id }
+        }
+
+        // Any two attempts can coincide by chance, so this asserts across a run: a fixed order
+        // would collapse to a single arrangement.
+        assertTrue(orders.toSet().size > 1, "every attempt used the same order: ${orders.first()}")
+        orders.forEach { order ->
+            assertEquals(setOf("question_a_a", "question_a_b", "question_a_c"), order.toSet())
+        }
+    }
+
+    @Test
     fun startReturnsNoEligibleQuestionsWhenSelectorReturnsEmptyList() = runEngineTest {
         repository.activeQuestions = emptyList()
 

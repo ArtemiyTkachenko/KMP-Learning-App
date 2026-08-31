@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
+import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSession
@@ -22,6 +23,7 @@ internal class AssessmentTakingViewModel(
     private val assessmentEngine: AssessmentEngine,
     private val assessmentRepository: AssessmentRepository,
     private val assessmentSessionLoader: AssessmentSessionLoader,
+    private val historyStore: AssessmentHistoryStore,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<AssessmentTakingUiState>(AssessmentTakingUiState.Loading)
     val uiState: StateFlow<AssessmentTakingUiState> = _uiState.asStateFlow()
@@ -110,6 +112,10 @@ internal class AssessmentTakingViewModel(
             runCatching {
                 val completedSession = assessmentEngine.complete(originalSession)
                 assessmentRepository.save(completedSession.attempt)
+                // The only transition that changes completed history, and so the one point the
+                // shared cache behind progress, the mistake queue, the interview record, and the
+                // navigation badge has to be marked stale. In-progress saves cannot affect them.
+                historyStore.invalidate()
                 completedSession
             }.onSuccess { completedSession ->
                 session = completedSession

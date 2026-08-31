@@ -1,6 +1,10 @@
 package org.artkachenko.kmp_learning_app.topic_study
 
 import org.artkachenko.kmp_learning_app.AppShellViewModel
+import org.artkachenko.kmp_learning_app.assessment.history.AppCoroutineScope
+import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewStateHolder
+import org.artkachenko.kmp_learning_app.mixed_interview.InterviewHistoryStateHolder
+import org.artkachenko.kmp_learning_app.progress.ProgressStateHolder
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingViewModel
@@ -30,19 +34,43 @@ internal val topicStudyPresentationModule = module {
             assessmentReviewLoader = get(),
         )
     }
+    single {
+        InterviewHistoryStateHolder(
+            historyStore = get(),
+            scope = get<AppCoroutineScope>(),
+        )
+    }
+    single {
+        MistakeReviewStateHolder(
+            mistakeReviewService = get(),
+            historyStore = get(),
+            scope = get<AppCoroutineScope>(),
+        )
+    }
+    single {
+        ProgressStateHolder(
+            learningProgressService = get(),
+            curriculumRepository = get(),
+            mistakeReviewService = get(),
+            historyStore = get(),
+            scope = get<AppCoroutineScope>(),
+        )
+    }
     viewModel {
         AppShellViewModel(
             mistakeReviewService = get(),
+            historyStore = get(),
         )
     }
     viewModel {
         MistakeReviewViewModel(
-            mistakeReviewService = get(),
+            historyStore = get(),
+            stateHolder = get(),
         )
     }
     viewModel {
         InterviewStartViewModel(
-            assessmentRepository = get(),
+            stateHolder = get(),
         )
     }
     viewModel {
@@ -52,10 +80,8 @@ internal val topicStudyPresentationModule = module {
     }
     viewModel {
         ProgressViewModel(
-            learningProgressService = get(),
-            assessmentRepository = get(),
-            curriculumRepository = get(),
-            mistakeReviewService = get(),
+            historyStore = get(),
+            stateHolder = get(),
         )
     }
     viewModel { parameters ->
@@ -77,6 +103,7 @@ internal val topicStudyPresentationModule = module {
             assessmentEngine = get(),
             assessmentRepository = get(),
             assessmentSessionLoader = get<AssessmentSessionLoader>(),
+            historyStore = get(),
         )
     }
     viewModel { parameters ->

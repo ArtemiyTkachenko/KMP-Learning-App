@@ -18,6 +18,9 @@ import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
+import kotlinx.coroutines.flow.StateFlow
+import org.artkachenko.kmp_learning_app.assessment.history.testCacheScope
+import org.artkachenko.kmp_learning_app.assessment.history.testHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
@@ -38,12 +41,10 @@ internal class MistakeReviewViewModelTest {
     @Test
     fun anEmptyQueueBecomesTheEmptyState() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
-        val viewModel = MistakeReviewViewModel(vmService(VmHistoryRepository(emptyList())))
-
-        viewModel.refresh()
+        val state = mistakeState(VmHistoryRepository(emptyList()))
         advanceUntilIdle()
 
-        assertIs<MistakeReviewUiState.Empty>(viewModel.uiState.value)
+        assertIs<MistakeReviewUiState.Empty>(state.value)
     }
 
     @Test
@@ -55,12 +56,10 @@ internal class MistakeReviewViewModelTest {
                 vmAttempt("oldest", "2026-08-29T10:00:00Z", "q2"),
             ),
         )
-        val viewModel = MistakeReviewViewModel(vmService(repository))
-
-        viewModel.refresh()
+        val state = mistakeState(repository)
         advanceUntilIdle()
 
-        val content = assertIs<MistakeReviewUiState.Content>(viewModel.uiState.value)
+        val content = assertIs<MistakeReviewUiState.Content>(state.value)
         // Recency ordering belongs to the service; the ViewModel must not re-sort it.
         assertEquals(listOf("q3", "q1", "q2"), content.mistakes.map { it.questionId })
     }
@@ -71,13 +70,11 @@ internal class MistakeReviewViewModelTest {
         val repository = VmHistoryRepository(
             listOf(vmAttempt("a1", "2026-08-29T10:00:00Z", "q1")),
         )
-        val viewModel = MistakeReviewViewModel(vmService(repository))
-
-        viewModel.refresh()
-        assertIs<MistakeReviewUiState.Loading>(viewModel.uiState.value)
+        val state = mistakeState(repository)
+        assertIs<MistakeReviewUiState.Loading>(state.value)
 
         advanceUntilIdle()
-        assertIs<MistakeReviewUiState.Content>(viewModel.uiState.value)
+        assertIs<MistakeReviewUiState.Content>(state.value)
     }
 
     @Test
@@ -87,16 +84,29 @@ internal class MistakeReviewViewModelTest {
             listOf(vmAttempt("a1", "2026-08-29T10:00:00Z", "q1")),
         )
         repository.failNextLoad = true
-        val viewModel = MistakeReviewViewModel(vmService(repository))
-
-        viewModel.refresh()
+        val scope = testCacheScope()
+        val store = testHistoryStore(repository, scope)
+        val state = MistakeReviewStateHolder(vmService(repository), store, scope).state
         advanceUntilIdle()
-        assertIs<MistakeReviewUiState.Error>(viewModel.uiState.value)
+        assertIs<MistakeReviewUiState.Error>(state.value)
 
-        viewModel.refresh()
+        // A retry marks the shared history stale, which every screen derived from it follows.
+        store.invalidate()
         advanceUntilIdle()
-        val content = assertIs<MistakeReviewUiState.Content>(viewModel.uiState.value)
+        val content = assertIs<MistakeReviewUiState.Content>(state.value)
         assertEquals(listOf("q1"), content.mistakes.map { it.questionId })
+    }
+    /**
+     * The queue is derived by [MistakeReviewStateHolder], which outlives the ViewModel; the
+     * ViewModel only republishes it, so the behaviour is exercised on the holder.
+     */
+    private fun mistakeState(repository: AssessmentRepository): StateFlow<MistakeReviewUiState> {
+        val scope = testCacheScope()
+        return MistakeReviewStateHolder(
+            mistakeReviewService = vmService(repository),
+            historyStore = testHistoryStore(repository, scope),
+            scope = scope,
+        ).state
     }
 }
 

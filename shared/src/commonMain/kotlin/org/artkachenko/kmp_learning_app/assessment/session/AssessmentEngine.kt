@@ -33,7 +33,9 @@ internal class AssessmentEngine(
         return AssessmentStartResult.Started(
             session = AssessmentSession(
                 attempt = attempt,
-                questions = questions,
+                // Question order stays as selected, because questionAttempts is matched to it by
+                // index; only the answers within each Question are reordered.
+                questions = questions.map { it.withAnswersOrderedFor(attempt.id) },
             ),
         )
     }

@@ -21,6 +21,9 @@ import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
@@ -42,7 +45,7 @@ internal class ProgressViewModelTest {
     }
 
     @Test
-    fun refreshMovesLoadingToEmptyWithoutAutomaticInitLoad() = runTest {
+    fun aDerivationMovesLoadingToEmptyOnASingleHistoryRead() = runTest {
         setMain(testScheduler)
         val context = TestContext()
 
@@ -53,7 +56,9 @@ internal class ProgressViewModelTest {
         advanceUntilIdle()
 
         assertIs<ProgressUiState.Empty>(context.viewModel.uiState.value)
-        assertEquals(2, context.assessment.getCompletedCalls)
+        // One derivation is now one read: the snapshot and the history rows share it, where the
+        // dashboard used to read the history once for each.
+        assertEquals(1, context.assessment.getCompletedCalls)
     }
 
     @Test
@@ -200,19 +205,24 @@ internal class ProgressViewModelTest {
             subtopics = listOf(Subtopic("sub", "topic", "Subtopic")),
         )
 
-        // LearningProgressService resolves curriculum metadata during its own load, which is
-        // not what this test is about. The ViewModel reads the history second, so clearing the
-        // counters there leaves only the lookups the ViewModel's per-refresh cache controls.
+        // The cache only re-derives when the history actually changes, so the second read has to
+        // return something different from the first.
         context.assessment.onGetCompleted = { call ->
-            if (call == 2) context.curriculum.resetLookupCounts()
-            attempts
+            if (call == 1) attempts.take(1) else attempts
         }
 
+        advanceUntilIdle()
+        // Clearing the counters after the first derivation leaves only the lookups the history
+        // mapping's own per-derivation cache controls.
+        context.curriculum.resetLookupCounts()
         context.viewModel.refresh()
         advanceUntilIdle()
 
-        assertEquals(1, context.curriculum.topicLookupCalls.getValue("topic"))
-        assertEquals(1, context.curriculum.subtopicLookupCalls.getValue("sub"))
+        // Four attempts share one topic and one subtopic. Without per-derivation caching each
+        // row would look them up again; two lookups is one from the progress snapshot and one
+        // from the history mapping, not one per row.
+        assertEquals(2, context.curriculum.topicLookupCalls.getValue("topic"))
+        assertEquals(2, context.curriculum.subtopicLookupCalls.getValue("sub"))
     }
 
     @Test
@@ -232,22 +242,22 @@ internal class ProgressViewModelTest {
             topics = listOf(Topic("topic", "Kotlin")),
             subtopics = listOf(Subtopic("subtopic", "topic", "Core")),
         )
-        // Deliberately let the snapshot and the history rows disagree: the service reads the
-        // history first, the ViewModel reads it again for the rows. Summing the rows would
-        // report 2 attempts, 4 answered, 0 correct, 0% instead of the snapshot's values.
-        context.assessment.onGetCompleted = { call ->
-            if (call == 1) snapshotAttempts else historyAttempts
-        }
+        // The snapshot and the rows are now derived from one shared read rather than the
+        // dashboard reading the history a second time, so they can no longer disagree - which is
+        // the point. What is worth pinning is that the read happens once per derivation.
+        context.assessment.onGetCompleted = { snapshotAttempts + historyAttempts }
 
-        context.viewModel.refresh()
         advanceUntilIdle()
+        val readsAfterFirstDerivation = context.assessment.getCompletedCalls
 
         val content = content(context.viewModel)
-        assertEquals(1, content.completedAttemptCount)
-        assertEquals(10, content.answeredQuestionCount)
-        assertEquals(7, content.correctAnswerCount)
-        assertEquals(70.0, content.percentage)
-        assertEquals(listOf("history-a", "history-b"), content.history.map { it.attemptId })
+        assertEquals(3, content.completedAttemptCount)
+        assertEquals(listOf("snapshot", "history-a", "history-b"), content.history.map { it.attemptId })
+        assertEquals(
+            1,
+            readsAfterFirstDerivation,
+            "the dashboard must derive its totals and its rows from a single history read",
+        )
     }
 
     @Test
@@ -307,7 +317,7 @@ internal class ProgressViewModelTest {
     }
 
     @Test
-    fun newerRefreshCancelsSuspendedLoadSoStaleResultCannotOverwriteIt() = runTest {
+    fun aStaleReadCompletingLateDoesNotOverwriteTheNewerResult() = runTest {
         setMain(testScheduler)
         val stale = historyAttempt("stale", AssessmentConfig.Mixed(1))
         val fresh = historyAttempt("fresh", AssessmentConfig.Mixed(1))
@@ -328,14 +338,12 @@ internal class ProgressViewModelTest {
             }
         }
 
-        context.viewModel.refresh()
         runCurrent()
         context.viewModel.refresh()
-        advanceUntilIdle()
-        assertEquals(listOf("fresh"), content(context.viewModel).history.map { it.attemptId })
-
         firstLoadGate.complete(Unit)
         advanceUntilIdle()
+
+        // A stale read completing after a newer one must not be what the screen is left showing.
         assertEquals(listOf("fresh"), content(context.viewModel).history.map { it.attemptId })
     }
 
@@ -352,12 +360,20 @@ private class TestContext(
 ) {
     val assessment = FakeAssessmentRepository(attempts)
     val curriculum = FakeCurriculumRepository(questions, topics, subtopics)
-    val viewModel = ProgressViewModel(
-        learningProgressService = LearningProgressService(assessment, curriculum),
-        assessmentRepository = assessment,
-        curriculumRepository = curriculum,
-        mistakeReviewService = MistakeReviewService(assessment, AssessmentReviewLoader(curriculum)),
-    )
+    val viewModel = run {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+        val store = AssessmentHistoryStore(assessment, scope)
+        ProgressViewModel(
+            historyStore = store,
+            stateHolder = ProgressStateHolder(
+                learningProgressService = LearningProgressService(assessment, curriculum),
+                curriculumRepository = curriculum,
+                mistakeReviewService = MistakeReviewService(assessment, AssessmentReviewLoader(curriculum)),
+                historyStore = store,
+                scope = scope,
+            ),
+        )
+    }
 }
 
 private class FakeAssessmentRepository(

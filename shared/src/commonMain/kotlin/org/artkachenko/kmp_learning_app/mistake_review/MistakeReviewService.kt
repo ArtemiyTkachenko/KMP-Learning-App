@@ -19,14 +19,21 @@ internal class MistakeReviewService(
     private val assessmentRepository: AssessmentRepository,
     private val assessmentReviewLoader: AssessmentReviewLoader,
 ) {
-    suspend fun load(): List<UnresolvedMistake> =
-        unresolvedCandidates().map { candidate ->
+    /**
+     * [completedAttempts] lets a caller that already holds newest-first completed history reuse it,
+     * exactly as [countUnresolved] does, so the shared cache is not re-read per screen.
+     */
+    suspend fun load(completedAttempts: List<TestAttempt>? = null): List<UnresolvedMistake> =
+        unresolvedCandidates(completedAttempts).map { candidate ->
             UnresolvedMistake(
                 questionId = candidate.questionAttempt.questionId,
                 sourceAttemptId = candidate.sourceAttemptId,
                 // Review content is reconstructed only for unresolved candidates, never for every
                 // historical occurrence.
-                reviewItem = assessmentReviewLoader.loadQuestion(candidate.questionAttempt),
+                reviewItem = assessmentReviewLoader.loadQuestion(
+                    attemptId = candidate.sourceAttemptId,
+                    questionAttempt = candidate.questionAttempt,
+                ),
             )
         }
 

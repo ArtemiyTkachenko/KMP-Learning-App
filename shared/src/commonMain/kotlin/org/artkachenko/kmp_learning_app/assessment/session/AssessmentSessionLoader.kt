@@ -20,7 +20,9 @@ internal class AssessmentSessionLoader(
             attempt.questionAttempts.forEach { questionAttempt ->
                 val question = curriculumRepository.getQuestionById(questionAttempt.questionId)
                     ?: return AssessmentSessionLoadResult.MissingQuestion(questionAttempt.questionId)
-                add(question)
+                // Derived from the attempt id, so resuming shows the same answer order the learner
+                // was already looking at rather than reshuffling under them.
+                add(question.withAnswersOrderedFor(attempt.id))
             }
         }
         return AssessmentSessionLoadResult.Loaded(

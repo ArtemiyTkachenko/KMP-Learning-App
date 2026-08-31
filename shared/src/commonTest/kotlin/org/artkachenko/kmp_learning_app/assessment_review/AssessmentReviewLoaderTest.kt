@@ -24,7 +24,7 @@ import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumReposito
 
 internal class AssessmentReviewLoaderTest {
     @Test
-    fun mapsHistoricalReviewInAttemptAndAuthoredOrder() = runTest {
+    fun mapsHistoricalReviewInAttemptOrder() = runTest {
         val questions = listOf(
             question("q1", topicId = "compose"),
             question("q2", topicId = "kotlin"),
@@ -46,7 +46,9 @@ internal class AssessmentReviewLoaderTest {
         val first = available(items.first())
         assertEquals("coroutines", first.topicId)
         assertFalse(first.isCorrect)
-        assertEquals(listOf("a", "b", "c"), first.answers.map { it.id })
+        // Every authored answer is present. Their order is derived from the attempt id rather
+        // than the authored order, so it is asserted as a set here and pinned in AnswerOrderTest.
+        assertEquals(setOf("a", "b", "c"), first.answers.map { it.id }.toSet())
         assertTrue(first.answers.first { it.id == "b" }.wasSelected)
         assertFalse(first.answers.first { it.id == "a" }.wasSelected)
         assertTrue(first.answers.first { it.id == "a" }.isCorrectAnswer)
@@ -82,7 +84,7 @@ internal class AssessmentReviewLoaderTest {
     fun singleOccurrenceMapsSelectedAnswersAndPersistedCorrectness() = runTest {
         val loader = AssessmentReviewLoader(FakeCurriculumRepository(listOf(question("q1"))))
 
-        val item = loader.loadQuestion(answered("q1", selectedIds = setOf("b"), isCorrect = false))
+        val item = loader.loadQuestion("attempt_1", answered("q1", selectedIds = setOf("b"), isCorrect = false))
 
         val question = available(item)
         assertEquals("q1", question.questionId)
@@ -98,7 +100,7 @@ internal class AssessmentReviewLoaderTest {
         val loader = AssessmentReviewLoader(FakeCurriculumRepository(listOf(question("q1"))))
 
         // Selected the currently-correct answers but was persisted as incorrect: history wins.
-        val item = loader.loadQuestion(answered("q1", selectedIds = setOf("a", "c"), isCorrect = false))
+        val item = loader.loadQuestion("attempt_1", answered("q1", selectedIds = setOf("a", "c"), isCorrect = false))
 
         assertFalse(available(item).isCorrect)
     }
@@ -107,7 +109,7 @@ internal class AssessmentReviewLoaderTest {
     fun singleOccurrenceOfAnUnknownQuestionIsMissing() = runTest {
         val loader = AssessmentReviewLoader(FakeCurriculumRepository(emptyList()))
 
-        val item = loader.loadQuestion(answered("gone"))
+        val item = loader.loadQuestion("attempt_1", answered("gone"))
 
         assertEquals(ReviewQuestionItem.Missing("gone"), item)
     }

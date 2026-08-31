@@ -12,6 +12,8 @@ import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
+import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
+import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
@@ -57,6 +59,35 @@ internal class AssessmentSessionLoaderTest {
         ).load("attempt")
         assertIs<AssessmentSessionLoadResult.Loaded>(loaded)
     }
+
+    @Test
+    fun resumingAnAttemptAndReviewingItShowTheSameAnswerOrder() = runTest {
+        // Answer order is derived from the attempt id, so the two paths that render a Question -
+        // taking it and reviewing it afterwards - must agree without either storing the order.
+        val curriculum = FakeCurriculumRepository(listOf(fourAnswerQuestion("q1")))
+
+        val resumed = AssessmentSessionLoader(
+            FakeAssessmentRepository(attempt(listOf("q1"))),
+            curriculum,
+        ).load("attempt")
+        val takingOrder = assertIs<AssessmentSessionLoadResult.Loaded>(resumed)
+            .session.questions.single().answers.map { it.id }
+
+        val reviewed = AssessmentReviewLoader(curriculum)
+            .loadQuestions(attempt(listOf("q1"), status = AssessmentStatus.COMPLETED))
+        val reviewOrder = assertIs<ReviewQuestionItem.Available>(reviewed.single())
+            .question.answers.map { it.id }
+
+        assertEquals(takingOrder, reviewOrder)
+        assertEquals(setOf("a", "b", "c", "d"), takingOrder.toSet())
+    }
+
+    private fun fourAnswerQuestion(id: String) = Question(
+        id, "topic", "subtopic", "Question",
+        listOf(AnswerOption("a", "A"), AnswerOption("b", "B"), AnswerOption("c", "C"), AnswerOption("d", "D")),
+        AnswerSelectionMode.SINGLE, listOf("a"),
+        "Explanation", listOf(SourceReference("Source", "url")), ContentStatus.ACTIVE,
+    )
 
     private fun attempt(ids: List<String>, status: AssessmentStatus = AssessmentStatus.IN_PROGRESS) = TestAttempt(
         id = "attempt",

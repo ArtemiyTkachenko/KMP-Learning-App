@@ -14308,7 +14308,7 @@
       "id": "background_started_service_restriction",
       "topicId": "background_work",
       "subtopicId": "background_execution",
-      "text": "On Android 8.0 and higher, an app that is in the background calls startService() to begin a sync. What happens?",
+      "text": "On Android 8.0 and higher, an app targeting API 26 or higher is idle in the background and outside any temporary allowlist window. It calls startService() to begin a sync. What happens?",
       "answers": [
         {
           "id": "background_started_service_restriction_a",
@@ -14331,7 +14331,7 @@
       "correctAnswerIds": [
         "background_started_service_restriction_d"
       ],
-      "explanation": "Android 8.0 introduced background execution limits: an app that is not in a foreground state may not create a background service, and startService() throws IllegalStateException. The supported alternatives are startForegroundService() followed promptly by startForeground() when the work is user-visible, or WorkManager when it can be deferred — which covers most syncs. Implicit broadcasts are restricted by the same release, but the service restriction is separate from them.",
+      "explanation": "For apps targeting API 26 or higher, Android 8.0 introduced background execution limits: once an app is idle and outside a temporary allowlist window, it may not create a background service, and startService() throws IllegalStateException (or a subclass on newer releases). WorkManager is appropriate when the work can be deferred, which covers most syncs. For user-visible work, startForegroundService() followed promptly by startForeground() is the relevant API when current foreground-service start rules allow it. Implicit broadcasts are restricted by the same release, but the service restriction is separate from them.",
       "sources": [
         {
           "title": "Android 8.0 background execution limits",
@@ -16239,7 +16239,7 @@
       "correctAnswerIds": [
         "mvp_vs_mvvm_view_contract_c"
       ],
-      "explanation": "The direction of the dependency separates them. A presenter is handed a view interface and calls methods on it, so it has to be attached and detached in step with the view and cannot outlive it — which is why MVP implementations spend so much effort on attach and detach bookkeeping. A ViewModel publishes observable state and knows nothing about the view, so it survives configuration changes and the view simply rebuilds itself from whatever state is current. Neither pattern dictates threading, and neither forbids modelling navigation.",
+      "explanation": "The direction of the dependency separates them. A presenter is handed a view interface and calls methods on it, so it must not retain or invoke a detached view. That creates attach and detach bookkeeping even when another owner keeps the presenter alive across a configuration change. A ViewModel publishes observable state and knows nothing about the view, so it survives configuration changes and the view simply rebuilds itself from whatever state is current. Neither pattern dictates threading, and neither forbids modelling navigation.",
       "sources": [
         {
           "title": "UI layer: state holders",
@@ -16272,7 +16272,7 @@
         },
         {
           "id": "clean_architecture_dependency_rule_tradeoff_d",
-          "text": "A Room entity or network DTO cannot double as the domain model, so mapping appears there."
+          "text": "A Room entity or framework-annotated transport DTO cannot double as the domain model, so mapping appears there."
         }
       ],
       "selectionMode": "MULTIPLE",
@@ -16280,7 +16280,7 @@
         "clean_architecture_dependency_rule_tradeoff_b",
         "clean_architecture_dependency_rule_tradeoff_d"
       ],
-      "explanation": "Pointing every dependency inward means the innermost layer names no framework type, so it compiles and runs in a plain JVM test — and in a multiplatform project it is exactly the layer that can be shared. The cost lands wherever a framework-annotated type would otherwise have been reused: a Room entity or a Retrofit DTO may not double as the domain model, so mapping code and extra types appear at that boundary. That is real work, worth paying when the domain has rules to protect and hard to justify when it does not. Build speed follows from module structure rather than layer count, and the rules stay ordinary Kotlin.",
+      "explanation": "Pointing every dependency inward means the innermost layer names no framework type, so it compiles and runs in a plain JVM test — and in a multiplatform project it is exactly the layer that can be shared. The cost lands wherever a framework-annotated type would otherwise have been reused: a Room entity or framework-annotated transport DTO may not double as the domain model, so mapping code and extra types appear at that boundary. An unannotated, domain-owned type can still be deserialized by a suitable converter without requiring mapping. That is real work, worth paying when the domain has rules to protect and hard to justify when it does not. Build speed follows from module structure rather than layer count, and the rules stay ordinary Kotlin.",
       "sources": [
         {
           "title": "Domain layer",
@@ -16405,7 +16405,7 @@
       "answers": [
         {
           "id": "play_app_signing_upload_key_roles_a",
-          "text": "The developer signs the bundle with an upload key, and Google Play re-signs it with the app signing key."
+          "text": "The developer signs the bundle with an upload key, and Google Play signs the generated delivery APKs with the app signing key."
         },
         {
           "id": "play_app_signing_upload_key_roles_b",
@@ -16425,7 +16425,7 @@
         "play_app_signing_upload_key_roles_a",
         "play_app_signing_upload_key_roles_c"
       ],
-      "explanation": "With Play App Signing, Google holds the key that signs what users install, while the developer holds a separate upload key that only proves who is uploading. Play verifies the upload signature, strips it and re-signs the artifact with the app signing key — which is exactly why a lost upload key can be replaced through Play support, something that would be impossible for the key devices already trust. Neither key belongs in version control, and the bundle still has to be signed with the upload key before it can be uploaded.",
+      "explanation": "With Play App Signing, Google holds the key that signs the APKs users install, while the developer holds a separate upload key that proves who is uploading. Play verifies the app bundle's upload signature, generates the delivery APKs, and signs those APKs with the app signing key. This separation is why a lost upload key can be replaced through Play support, something that would be impossible for the key devices already trust. Neither key belongs in version control, and the bundle still has to be signed with the upload key before it can be uploaded.",
       "sources": [
         {
           "title": "Sign your app: Play App Signing",

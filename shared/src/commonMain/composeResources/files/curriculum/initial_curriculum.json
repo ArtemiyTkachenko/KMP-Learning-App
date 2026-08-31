@@ -14160,11 +14160,11 @@
       "id": "websocket_idle_connection_heartbeat",
       "topicId": "networking",
       "subtopicId": "websockets",
-      "text": "A chat client holds a WebSocket open to receive live messages. Why does it still need heartbeats and reconnection logic on a mobile network?",
+      "text": "A chat client holds a WebSocket open but has received no messages for a while. What is the protocol-level purpose of sending a Ping and expecting a Pong?",
       "answers": [
         {
           "id": "websocket_idle_connection_heartbeat_a",
-          "text": "An idle connection may be dropped by the network or the radio without either endpoint being told."
+          "text": "It can act as a keepalive and verify that the remote endpoint is still responsive."
         },
         {
           "id": "websocket_idle_connection_heartbeat_b",
@@ -14183,7 +14183,7 @@
       "correctAnswerIds": [
         "websocket_idle_connection_heartbeat_a"
       ],
-      "explanation": "A WebSocket is one long-lived TCP connection, and carrier NATs, intermediate proxies and the device radio all reclaim idle connections silently. The client is then holding a socket that looks open and delivers nothing. Periodic Ping and Pong frames prove the path is alive and surface the dead connection quickly, after which reconnection with backoff restores the stream. The protocol defines no maximum session length and no per-frame acknowledgement, and what the platform does when an app is backgrounded is a separate constraint from the socket itself.",
+      "explanation": "RFC 6455 allows an endpoint to send a Ping after the connection is established, and requires the peer to answer with a Pong unless the connection is already closing. The RFC explicitly describes Ping as a keepalive or a check that the remote endpoint is responsive. If an expected Pong does not arrive, the application can apply its own timeout and reconnection policy. The protocol defines no maximum session length and no acknowledgement for every data frame, and platform backgrounding is a separate concern.",
       "sources": [
         {
           "title": "RFC 6455: The WebSocket Protocol — Ping",
@@ -14219,7 +14219,7 @@
       "correctAnswerIds": [
         "auth_access_refresh_token_lifetime_split_b"
       ],
-      "explanation": "What changes is the window of damage. A leaked access token is useful only until it expires, typically minutes, while the refresh token is sent far less often and is held by the authorization server, which can revoke it and end the session. The split does nothing to make either token safe in plain text, and refresh tokens themselves expire or rotate, so the user is eventually asked to authenticate again.",
+      "explanation": "What changes is the window of damage. A leaked access token is useful only until it expires, typically minutes. The client retains the refresh token and sends it less often, only to the authorization server rather than to resource servers; the authorization server validates it and can revoke it to end the session. The split does nothing to make either token safe in plain text, and refresh tokens themselves expire or rotate, so the user is eventually asked to authenticate again.",
       "sources": [
         {
           "title": "RFC 6749: OAuth 2.0 — Refresh Token",
@@ -14847,7 +14847,7 @@
       "correctAnswerIds": [
         "dagger_generated_factory_no_reflection_a"
       ],
-      "explanation": "Dagger is an annotation processor. For each @Inject constructor it generates a Factory, and for each @Component it generates an implementation that wires those factories together; all of it is ordinary source compiled alongside the app. That is why an unsatisfied dependency is a compile error rather than a crash, and why injection costs nothing at runtime beyond the constructor call. Dagger neither inspects annotations at runtime nor rewrites bytecode, and a service locator is the pattern it exists to replace.",
+      "explanation": "Dagger is an annotation processor. For each @Inject constructor it generates a Factory, and for each @Component it generates an implementation that wires those factories together; all of it is ordinary source compiled alongside the app. That makes an unsatisfied dependency a compile error rather than a runtime graph failure. At runtime Dagger follows generated factory and provider calls instead of discovering the graph with reflection, giving it low, predictable overhead rather than zero overhead: dependency resolution, object creation, scopes and lazy providers can still require work. Dagger neither inspects annotations at runtime nor rewrites bytecode, and a service locator is the pattern it exists to replace.",
       "sources": [
         {
           "title": "Dagger Developer Guide",
@@ -15900,14 +15900,14 @@
         },
         {
           "id": "system_retry_queue_poison_write_d",
-          "text": "A cap on attempts that moves the failed write aside so the rest of the queue can drain."
+          "text": "A cap on attempts that quarantines the failed write and its dependent chain while unrelated writes continue."
         }
       ],
       "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "system_retry_queue_poison_write_d"
       ],
-      "explanation": "A permanently failing item at the head of an ordered queue is a poison message: retrying it forever turns one bad write into a complete sync outage for that user. The design needs a terminal state — an attempt or age limit after which the write is parked somewhere separate, surfaced to the user when it needs a decision, and taken out of the path so everything behind it can drain. Backoff only slows the loop, and a bigger queue just postpones the same failure.",
+      "explanation": "A permanently failing item at the head of an ordered queue is a poison message: retrying it forever turns one bad write into a complete sync outage for that user. The design needs a dependency-aware terminal state. After an attempt or age limit, it should quarantine the failed write together with operations that causally depend on it, surface that chain when the user must resolve it, and let unrelated entities continue syncing. Sending a dependent rename after its create failed would only create another invalid request. Backoff slows the loop, and a bigger queue just postpones the same failure.",
       "sources": [
         {
           "title": "Build an offline-first app",
@@ -16309,14 +16309,14 @@
         },
         {
           "id": "dependency_direction_domain_framework_types_d",
-          "text": "The domain layer now depends on framework and transport details, so it is no longer testable alone."
+          "text": "The domain layer is coupled to Android and Retrofit, losing framework independence and multiplatform portability."
         }
       ],
       "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "dependency_direction_domain_framework_types_d"
       ],
-      "explanation": "The dependency rule exists so the innermost layer names nothing from the outer ones. Accepting a Uri pulls in the Android SDK and returning a Response ties the rule to one HTTP client, so the use case can no longer run in a plain JVM test, cannot be shared with a non-Android target, and has to change whenever the transport does. The fix is to accept and return domain types and let the data layer do the mapping. Nothing here breaks injection, coroutines or the build — which is precisely why the problem is easy to leave in place.",
+      "explanation": "The dependency rule exists so the innermost layer names nothing from the outer ones. Accepting a Uri requires the Android SDK and returning a Response ties the use case to Retrofit, so the domain module loses framework independence, cannot be shared unchanged with a non-Android target, and has to change whenever the transport contract changes. The use case can still be tested with appropriate Android-aware JVM or device infrastructure, so coupling does not mean untestability. The fix is to accept and return domain types and let the data layer do the mapping. Nothing here inherently breaks injection, coroutines or compilation, which is precisely why the design problem is easy to leave in place.",
       "sources": [
         {
           "title": "Domain layer",

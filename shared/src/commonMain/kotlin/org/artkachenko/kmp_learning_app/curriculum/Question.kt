@@ -9,6 +9,7 @@ internal data class Question(
     val subtopicId: String,
     val text: String,
     val answers: List<AnswerOption>,
+    val selectionMode: AnswerSelectionMode,
     val correctAnswerIds: List<String>,
     val explanation: String,
     val sources: List<SourceReference>,

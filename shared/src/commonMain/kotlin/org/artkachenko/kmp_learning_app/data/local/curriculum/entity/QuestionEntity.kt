@@ -36,6 +36,8 @@ internal data class QuestionEntity(
     @ColumnInfo(name = "subtopic_id")
     val subtopicId: String,
     val text: String,
+    @ColumnInfo(name = "selection_mode")
+    val selectionMode: String,
     val explanation: String,
     val status: String,
     @ColumnInfo(name = "sort_order")

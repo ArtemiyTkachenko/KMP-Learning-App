@@ -42,6 +42,7 @@ import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoad
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingFinishTag
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingSubmitTag
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
 import org.artkachenko.kmp_learning_app.curriculum.Question
@@ -331,6 +332,7 @@ internal class MixedInterviewJourneyIntegrationTest {
                 topicId = KotlinTopicId,
                 subtopicId = "kotlin_core",
                 text = "Kotlin single question",
+                selectionMode = AnswerSelectionMode.SINGLE,
                 correctAnswerIds = listOf("A"),
                 explanation = "Kotlin single explanation",
                 sourceTitle = "Kotlin docs",
@@ -341,6 +343,7 @@ internal class MixedInterviewJourneyIntegrationTest {
                 topicId = KotlinTopicId,
                 subtopicId = "kotlin_core",
                 text = "Kotlin second question",
+                selectionMode = AnswerSelectionMode.SINGLE,
                 correctAnswerIds = listOf("A"),
                 explanation = "Kotlin second explanation",
                 sourceTitle = "Kotlin language docs",
@@ -351,6 +354,7 @@ internal class MixedInterviewJourneyIntegrationTest {
                 topicId = ComposeTopicId,
                 subtopicId = "compose_core",
                 text = "Compose multiple question",
+                selectionMode = AnswerSelectionMode.MULTIPLE,
                 correctAnswerIds = listOf("A", "C"),
                 explanation = "Compose exact-set explanation",
                 sourceTitle = "Compose docs",
@@ -361,6 +365,7 @@ internal class MixedInterviewJourneyIntegrationTest {
                 topicId = CoroutinesTopicId,
                 subtopicId = "coroutines_core",
                 text = "Coroutines single question",
+                selectionMode = AnswerSelectionMode.SINGLE,
                 correctAnswerIds = listOf("A"),
                 explanation = "Coroutines single explanation",
                 sourceTitle = "Coroutines docs",
@@ -374,6 +379,7 @@ internal class MixedInterviewJourneyIntegrationTest {
         topicId: String,
         subtopicId: String,
         text: String,
+        selectionMode: AnswerSelectionMode,
         correctAnswerIds: List<String>,
         explanation: String,
         sourceTitle: String,
@@ -388,6 +394,7 @@ internal class MixedInterviewJourneyIntegrationTest {
             AnswerOption("B", "B"),
             AnswerOption("C", "C"),
         ),
+        selectionMode = selectionMode,
         correctAnswerIds = correctAnswerIds,
         explanation = explanation,
         sources = listOf(SourceReference(sourceTitle, sourceUrl)),

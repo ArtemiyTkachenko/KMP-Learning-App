@@ -21,6 +21,7 @@ import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
@@ -267,6 +268,7 @@ private fun topicQuestion(
         subtopicId = subtopicId,
         text = "Question $id",
         answers = listOf(AnswerOption("${id}_a", "Answer A"), AnswerOption("${id}_b", "Answer B")),
+        selectionMode = AnswerSelectionMode.SINGLE,
         correctAnswerIds = listOf("${id}_a"),
         explanation = "Explanation",
         sources = listOf(SourceReference("Source", "https://example.com/$id")),

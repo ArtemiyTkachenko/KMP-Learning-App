@@ -49,6 +49,7 @@ import kmp_learning_app.shared.generated.resources.assessment_taking_select_one
 import kmp_learning_app.shared.generated.resources.assessment_taking_start_error
 import kmp_learning_app.shared.generated.resources.assessment_taking_submit
 import kmp_learning_app.shared.generated.resources.assessment_taking_submitting
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
@@ -342,4 +343,3 @@ private val AnswerRowMinHeight = 48.dp
 /** Matches the line height of [MaterialTheme.typography] bodyLarge so the control aligns to the
  *  first line of a wrapping answer rather than to the middle of the block. */
 private val AnswerLineHeight = 24.dp
-

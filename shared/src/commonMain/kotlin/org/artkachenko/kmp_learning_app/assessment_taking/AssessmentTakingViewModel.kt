@@ -14,6 +14,7 @@ import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSession
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoadResult
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentStartResult
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.Question
 
 internal class AssessmentTakingViewModel(
@@ -213,10 +214,6 @@ internal class AssessmentTakingViewModel(
             id = id,
             text = text,
             answers = answers,
-            selectionMode = if (correctAnswerIds.size == 1) {
-                AnswerSelectionMode.SINGLE
-            } else {
-                AnswerSelectionMode.MULTIPLE
-            },
+            selectionMode = selectionMode,
         )
 }

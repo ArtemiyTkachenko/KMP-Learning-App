@@ -12,6 +12,7 @@ internal class CurriculumModelTest {
                 AnswerOption(id = "answer_b", text = "Incorrect answer"),
                 AnswerOption(id = "answer_c", text = "Second correct answer"),
             ),
+            selectionMode = AnswerSelectionMode.MULTIPLE,
             correctAnswerIds = listOf("answer_a", "answer_c"),
         )
 
@@ -77,6 +78,7 @@ internal class CurriculumModelTest {
             AnswerOption(id = "answer_a", text = "Correct answer"),
             AnswerOption(id = "answer_b", text = "Incorrect answer"),
         ),
+        selectionMode: AnswerSelectionMode = AnswerSelectionMode.SINGLE,
         correctAnswerIds: List<String> = listOf("answer_a"),
         status: ContentStatus = ContentStatus.ACTIVE,
     ) = Question(
@@ -85,6 +87,7 @@ internal class CurriculumModelTest {
         subtopicId = subtopicId,
         text = "Which statement is correct?",
         answers = answers,
+        selectionMode = selectionMode,
         correctAnswerIds = correctAnswerIds,
         explanation = "The selected answer matches the documented behavior.",
         sources = listOf(

@@ -175,6 +175,7 @@ Logical table: `question`
 | `topic_id` | `TEXT` | `NOT NULL` |
 | `subtopic_id` | `TEXT` | `NOT NULL` |
 | `text` | `TEXT` | `NOT NULL` |
+| `selection_mode` | `TEXT` | `NOT NULL` |
 | `explanation` | `TEXT` | `NOT NULL` |
 | `status` | `TEXT` | `NOT NULL` |
 | `sort_order` | `INTEGER` | `NOT NULL` |
@@ -426,8 +427,9 @@ Expected platform-specific responsibilities:
 
 Android remains the primary MVP target, but every configured application host
 now supplies a persistent `CurriculumDatabase` to the same shared repositories.
-All platform builders open schema version 3 and register `MIGRATION_1_2` and
-`MIGRATION_2_3`; curriculum and assessment history remain in one database.
+All platform builders open schema version 4 and register `MIGRATION_1_2`,
+`MIGRATION_2_3`, and `MIGRATION_3_4`; curriculum and assessment history remain
+in one database.
 
 Android and Desktop use `BundledSQLiteDriver` with `curriculum.db` in the
 platform application data directory. JVM persistence tests use the same driver
@@ -458,8 +460,9 @@ back to an ephemeral database.
 
 ## Assessment Attempt History
 
-Schema version 2 introduced assessment attempts; the current schema remains
-version 3, which additionally preserves retired answer-option identity:
+Schema version 2 introduced assessment attempts; the current schema is version
+4. Version 3 preserves retired answer-option identity, while version 4 persists
+authored question selection mode:
 
 ```text
 TestAttempt
@@ -511,6 +514,11 @@ E07-03 establishes schema version 1 and enables version-controlled Room schema
 artifacts. E08-04 establishes schema version 2 and adds an explicit
 `MIGRATION_1_2` that creates only the assessment attempt tables and indexes.
 Schema version 3 adds answer-option lifecycle status through `MIGRATION_2_3`.
+Schema version 4 adds `question.selection_mode` through `MIGRATION_3_4`. Because
+version 3 rows have no authored value, the migration reproduces the former UI
+behavior: one correct-answer row becomes `SINGLE`, while several become
+`MULTIPLE`. Subsequent bundled-content import makes the current authored value
+authoritative.
 E11-01 adds history read queries only and does not change the schema.
 
 Destructive migration should not be the default production strategy. Migration

@@ -86,3 +86,28 @@ internal val MIGRATION_2_3 = Migration(
         "ALTER TABLE `answer_option` ADD COLUMN `status` TEXT NOT NULL DEFAULT 'ACTIVE'",
     )
 }
+
+/**
+ * Preserves the interaction shown for legacy questions that had no authored mode.
+ * Current bundled content subsequently replaces this derived legacy value on import.
+ */
+internal val MIGRATION_3_4 = Migration(
+    startVersion = 3,
+    endVersion = 4,
+) { connection ->
+    connection.executeSQL(
+        "ALTER TABLE `question` ADD COLUMN `selection_mode` TEXT NOT NULL DEFAULT 'SINGLE'",
+    )
+    connection.executeSQL(
+        """
+        UPDATE `question`
+        SET `selection_mode` = 'MULTIPLE'
+        WHERE `id` IN (
+            SELECT `question_id`
+            FROM `question_correct_answer`
+            GROUP BY `question_id`
+            HAVING COUNT(*) > 1
+        )
+        """,
+    )
+}

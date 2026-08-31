@@ -13,6 +13,7 @@ import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
 import org.artkachenko.kmp_learning_app.curriculum.Question
@@ -44,8 +45,12 @@ internal class CurriculumImporterTest {
             assertEquals(361, dao.countSubtopics())
             assertEquals(309, dao.countQuestions())
 
-            val singleAnswerQuestion = expectedCurriculum.questions.first { it.correctAnswerIds.size == 1 }
-            val multipleAnswerQuestion = expectedCurriculum.questions.first { it.correctAnswerIds.size > 1 }
+            val singleAnswerQuestion = expectedCurriculum.questions.first {
+                it.selectionMode == AnswerSelectionMode.SINGLE
+            }
+            val multipleAnswerQuestion = expectedCurriculum.questions.first {
+                it.selectionMode == AnswerSelectionMode.MULTIPLE
+            }
 
             assertPersistedQuestionMatches(singleAnswerQuestion, dao)
             assertPersistedQuestionMatches(multipleAnswerQuestion, dao)
@@ -338,6 +343,7 @@ internal class CurriculumImporterTest {
                                     AnswerOption("topic_a_answer_a", "Answer A"),
                                     AnswerOption("topic_a_answer_b", "Answer B"),
                                 ),
+                                selectionMode = AnswerSelectionMode.MULTIPLE,
                                 correctAnswerIds = listOf("topic_a_answer_a", "topic_a_answer_b"),
                             ),
                             graph("unrelated"),
@@ -367,6 +373,39 @@ internal class CurriculumImporterTest {
             val dao = database.curriculumDao()
             assertEquals(listOf("topic_a_answer_b"), dao.getCorrectAnswerIdsForQuestion("topic_a_question"))
             assertEquals(listOf("unrelated_answer_a"), dao.getCorrectAnswerIdsForQuestion("unrelated_question"))
+        }
+    }
+
+    @Test
+    fun authoredSelectionModeSurvivesImportRepositoryReadAndReimport() = runTest {
+        withTestDatabase { database ->
+            val single = validCurriculum("topic_a")
+            assertEquals(
+                CurriculumImportResult.Imported,
+                CurriculumImporter(database, loadCurriculum = { single }).importCurriculum(),
+            )
+            assertEquals(
+                AnswerSelectionMode.SINGLE,
+                LocalCurriculumRepository(database).getQuestionById("topic_a_question")?.selectionMode,
+            )
+
+            val multipleWithOneCorrect = curriculumOf(
+                graph(
+                    id = "topic_a",
+                    selectionMode = AnswerSelectionMode.MULTIPLE,
+                    correctAnswerIds = listOf("topic_a_answer_a"),
+                ),
+            )
+            assertEquals(
+                CurriculumImportResult.Imported,
+                CurriculumImporter(database, loadCurriculum = { multipleWithOneCorrect }).importCurriculum(),
+            )
+
+            val entity = database.curriculumDao().getQuestionById("topic_a_question")
+            assertEquals("MULTIPLE", entity?.selectionMode)
+            val restored = LocalCurriculumRepository(database).getQuestionById("topic_a_question")
+            assertEquals(AnswerSelectionMode.MULTIPLE, restored?.selectionMode)
+            assertEquals(listOf("topic_a_answer_a"), restored?.correctAnswerIds)
         }
     }
 
@@ -601,6 +640,7 @@ internal class CurriculumImporterTest {
         dao: CurriculumDao,
     ) {
         assertEquals(question.text, dao.getQuestionById(question.id)?.text)
+        assertEquals(question.selectionMode.name, dao.getQuestionById(question.id)?.selectionMode)
         assertEquals(question.status.name, dao.getQuestionById(question.id)?.status)
         assertEquals(question.answers.map { it.id }, dao.getAnswerOptionsForQuestion(question.id).map { it.id })
         assertEquals(question.correctAnswerIds.sorted(), dao.getCorrectAnswerIdsForQuestion(question.id))
@@ -649,6 +689,7 @@ internal class CurriculumImporterTest {
             AnswerOption("${id}_answer_a", "$id answer A"),
             AnswerOption("${id}_answer_b", "$id answer B"),
         ),
+        selectionMode: AnswerSelectionMode = AnswerSelectionMode.SINGLE,
         correctAnswerIds: List<String> = listOf("${id}_answer_a"),
         sources: List<SourceReference> = listOf(
             SourceReference("$id source A", "https://example.com/$id/source-a"),
@@ -672,6 +713,7 @@ internal class CurriculumImporterTest {
                 subtopicId = "${id}_subtopic",
                 text = questionText,
                 answers = answers,
+                selectionMode = selectionMode,
                 correctAnswerIds = correctAnswerIds,
                 explanation = explanation,
                 sources = sources,

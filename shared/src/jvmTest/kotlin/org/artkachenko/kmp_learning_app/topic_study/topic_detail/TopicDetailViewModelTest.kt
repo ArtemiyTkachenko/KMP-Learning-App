@@ -23,6 +23,7 @@ import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
@@ -240,6 +241,7 @@ internal class TopicDetailViewModelTest {
         subtopicId = subtopicId,
         text = "Question $id",
         answers = listOf(AnswerOption("answer_a", "Answer A")),
+        selectionMode = AnswerSelectionMode.SINGLE,
         correctAnswerIds = listOf("answer_a"),
         explanation = "Explanation",
         sources = listOf(SourceReference("Source", "https://example.com")),

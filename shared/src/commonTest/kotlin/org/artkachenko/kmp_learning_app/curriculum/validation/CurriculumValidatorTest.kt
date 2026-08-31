@@ -1,6 +1,7 @@
 package org.artkachenko.kmp_learning_app.curriculum.validation
 
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
 import org.artkachenko.kmp_learning_app.curriculum.Question
@@ -166,6 +167,7 @@ internal class CurriculumValidatorTest {
                 question(correctAnswerIds = emptyList()),
                 question(
                     id = "duplicate_correct_answer_question",
+                    selectionMode = AnswerSelectionMode.MULTIPLE,
                     correctAnswerIds = listOf("answer_a", "answer_a"),
                 ),
                 question(
@@ -193,11 +195,61 @@ internal class CurriculumValidatorTest {
                         question(correctAnswerIds = listOf("answer_a")),
                         question(
                             id = "multi_correct_question",
+                            selectionMode = AnswerSelectionMode.MULTIPLE,
                             correctAnswerIds = listOf("answer_a", "answer_b"),
                         ),
                     ),
                 ),
             ).isEmpty(),
+        )
+    }
+
+    @Test
+    fun validatesSelectionModeAgainstCorrectAnswerCardinality() {
+        assertTrue(
+            validator.validate(
+                validCurriculum(
+                    questions = listOf(
+                        question(selectionMode = AnswerSelectionMode.SINGLE),
+                        question(
+                            id = "multiple_one_correct",
+                            selectionMode = AnswerSelectionMode.MULTIPLE,
+                        ),
+                        question(
+                            id = "multiple_two_correct",
+                            selectionMode = AnswerSelectionMode.MULTIPLE,
+                            correctAnswerIds = listOf("answer_a", "answer_b"),
+                        ),
+                    ),
+                ),
+            ).isEmpty(),
+        )
+
+        assertCodes(
+            validCurriculum(
+                questions = listOf(
+                    question(
+                        selectionMode = AnswerSelectionMode.SINGLE,
+                        correctAnswerIds = listOf("answer_a", "answer_b"),
+                    ),
+                ),
+            ),
+            CurriculumValidationErrorCode.SELECTION_MODE_CORRECT_ANSWER_MISMATCH,
+        )
+    }
+
+    @Test
+    fun multipleSelectionWithNoCorrectAnswersUsesExistingValidationError() {
+        assertCodes(
+            validCurriculum(
+                questions = listOf(
+                    question(
+                        selectionMode = AnswerSelectionMode.MULTIPLE,
+                        correctAnswerIds = emptyList(),
+                    ),
+                ),
+            ),
+            CurriculumValidationErrorCode.NO_CORRECT_ANSWERS,
         )
     }
 
@@ -357,6 +409,7 @@ internal class CurriculumValidatorTest {
             AnswerOption(id = "answer_a", text = "Correct answer"),
             AnswerOption(id = "answer_b", text = "Incorrect answer"),
         ),
+        selectionMode: AnswerSelectionMode = AnswerSelectionMode.SINGLE,
         correctAnswerIds: List<String> = listOf("answer_a"),
         explanation: String = "The correct answer matches the documented behavior.",
         sources: List<SourceReference> = listOf(SourceReference(title = "Source", url = "https://example.com/reference")),
@@ -367,6 +420,7 @@ internal class CurriculumValidatorTest {
         subtopicId = subtopicId,
         text = text,
         answers = answers,
+        selectionMode = selectionMode,
         correctAnswerIds = correctAnswerIds,
         explanation = explanation,
         sources = sources,

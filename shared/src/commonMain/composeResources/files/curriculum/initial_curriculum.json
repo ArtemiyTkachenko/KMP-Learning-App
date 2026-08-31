@@ -2278,6 +2278,7 @@
           "text": "Because onTrimMemory() clears static caches on the app's behalf when the system is under memory pressure."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "android_process_model_001_b"
       ],
@@ -2317,6 +2318,7 @@
           "text": "BroadcastReceiver"
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "android_components_001_c"
       ],
@@ -2352,6 +2354,7 @@
           "text": "Grant a temporary URI permission for that item in the Intent that hands it over."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "content_provider_uri_permission_grant_d"
       ],
@@ -2391,6 +2394,7 @@
           "text": "A ContextWrapper around the Activity, because wrapping removes the underlying Activity reference."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "android_context_001_b"
       ],
@@ -2426,6 +2430,7 @@
           "text": "An explicit Intent is resolved at compile time; an implicit Intent is resolved by the PackageManager."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "android_intents_001_a"
       ],
@@ -2461,6 +2466,7 @@
           "text": "Because StrictMode blocks disk and network access on the main thread in release builds."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "android_main_thread_001_c"
       ],
@@ -2500,6 +2506,7 @@
           "text": "They provide alternative resources that Android selects for the current configuration."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "android_resources_001_d"
       ],
@@ -2535,6 +2542,7 @@
           "text": "Because work started in onPause() is cancelled as soon as onStop() runs."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "activity_lifecycle_001_b"
       ],
@@ -2570,6 +2578,7 @@
           "text": "Because onDestroyView() is skipped when the Fragment goes onto the back stack."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "fragment_lifecycle_001_a"
       ],
@@ -2605,6 +2614,7 @@
           "text": "The system needs the back callback registered before the gesture to preview the destination."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "predictive_back_handler_registration_d"
       ],
@@ -2640,6 +2650,7 @@
           "text": "The process restarts so new resources can be loaded."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "configuration_changes_001_c"
       ],
@@ -2675,6 +2686,7 @@
           "text": "Because ViewModels are in-memory objects and process death clears that memory."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "process_death_001_d"
       ],
@@ -2710,6 +2722,7 @@
           "text": "They move to a new task, leaving the existing instance untouched."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "activity_launch_mode_task_stack_b"
       ],
@@ -2745,6 +2758,7 @@
           "text": "Authentication tokens that must persist across an app reinstall."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "saved_state_001_a"
       ],
@@ -2780,6 +2794,7 @@
           "text": "Saved state may hold only values the Activity declared in its manifest."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "saved_state_binder_transaction_limit_a"
       ],
@@ -2819,6 +2834,7 @@
           "text": "A saved-state bundle that is rewritten each time the user navigates forward."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "navigation_fundamentals_001_b"
       ],
@@ -2854,6 +2870,7 @@
           "text": "Clear the detail entry's saved state but leave it on the back stack."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "back_handling_001_c"
       ],
@@ -2889,6 +2906,7 @@
           "text": "Marking the sign-in destination as the graph's start destination."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "navigation_pop_up_to_inclusive_b"
       ],
@@ -2924,6 +2942,7 @@
           "text": "It measures each child directly and assigns final sizes, bypassing each child's onMeasure()."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "views_fundamentals_001_b"
       ],
@@ -2959,6 +2978,7 @@
           "text": "Layout, measure, then draw."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "view_rendering_001_a"
       ],
@@ -2994,6 +3014,7 @@
           "text": "Weighted children are excluded from view recycling, so each one is allocated again."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "view_nested_weight_double_measure_a"
       ],
@@ -3033,6 +3054,7 @@
           "text": "To reduce repeated View inflation and allocation while scrolling."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "recyclerview_001_d"
       ],
@@ -3072,6 +3094,7 @@
           "text": "Because Compose reuses node instances, so mutations would leak between recompositions."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_state_001_b"
       ],
@@ -3107,6 +3130,7 @@
           "text": "Make the navigation bar transparent so the button shows through it."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_edge_to_edge_insets_a"
       ],
@@ -3142,6 +3166,7 @@
           "text": "Any change to state read by a sibling composable in the same layout."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_recomposition_001_c"
       ],
@@ -3177,6 +3202,7 @@
           "text": "The lambda marks the modifier stable, letting Compose skip the whole composable."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_phases_deferred_state_read_c"
       ],
@@ -3212,6 +3238,7 @@
           "text": "Let a child own the state and expose it upward through a callback."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_state_hoisting_001_a"
       ],
@@ -3251,6 +3278,7 @@
           "text": "DisposableEffect can clean up resources when the effect leaves composition or keys change."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "compose_side_effects_001_a",
         "compose_side_effects_001_c"
@@ -3287,6 +3315,7 @@
           "text": "They preserve item identity across insertions, removals, and moves."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_lazy_layouts_001_d"
       ],
@@ -3322,6 +3351,7 @@
           "text": "It lets Compose reuse compositions only among items of the same kind."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_lazy_content_type_d"
       ],
@@ -3357,6 +3387,7 @@
           "text": "The compiler cannot generate a restartable group for the composable."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_stability_001_b"
       ],
@@ -3396,6 +3427,7 @@
           "text": "To register the composable with the Android View accessibility framework directly."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_accessibility_001_c"
       ],
@@ -3435,6 +3467,7 @@
           "text": "Nullability is enforced by the IDE inspector rather than by the compiler."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kotlin_nullability_001_b"
       ],
@@ -3470,6 +3503,7 @@
           "text": "Immutable properties, so a data class cannot declare a var in its constructor."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kotlin_data_classes_001_c"
       ],
@@ -3505,6 +3539,7 @@
           "text": "Declaring a value class that avoids allocation at runtime."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kotlin_objects_001_a"
       ],
@@ -3540,6 +3575,7 @@
           "text": "They model a closed set of known alternatives the compiler can enumerate."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kotlin_sealed_types_001_d"
       ],
@@ -3575,6 +3611,7 @@
           "text": "The type parameter must be a supertype of every argument passed in."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kotlin_generics_001_b"
       ],
@@ -3610,6 +3647,7 @@
           "text": "Neither read nor add, because a star projection erases the type entirely."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kotlin_star_projection_use_site_c"
       ],
@@ -3645,6 +3683,7 @@
           "text": "Because the JVM keeps runtime type information for all generic parameters."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kotlin_reified_types_001_c"
       ],
@@ -3680,6 +3719,7 @@
           "text": "=== compares hashCode() values, while == compares field contents."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kotlin_equality_001_a"
       ],
@@ -3715,6 +3755,7 @@
           "text": "They can obscure receiver or argument meaning when nested or mixed heavily."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kotlin_scope_functions_001_d"
       ],
@@ -3750,6 +3791,7 @@
           "text": "When the result must be iterated repeatedly without recomputing the pipeline."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kotlin_sequences_001_b"
       ],
@@ -3785,6 +3827,7 @@
           "text": "It runs the builder again from the start, because sequences are cold like flows."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kotlin_sequence_constrained_once_b"
       ],
@@ -3820,6 +3863,7 @@
           "text": "Because erasure loads a separate copy of a generic class per type argument."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "jvm_fundamentals_001_c"
       ],
@@ -3859,6 +3903,7 @@
           "text": "The initializer runs once, and both threads observe the same value."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kotlin_lazy_thread_safety_mode_b"
       ],
@@ -3894,6 +3939,7 @@
           "text": "Because the lambda must not capture variables declared in the enclosing function."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kotlin_crossinline_non_local_return_a"
       ],
@@ -3929,6 +3975,7 @@
           "text": "Neither, because two extensions sharing a name is a compile-time error."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kotlin_extension_resolution_static_b"
       ],
@@ -3964,6 +4011,7 @@
           "text": "It accepts the assignment and reports later null checks as unnecessary code."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kotlin_platform_type_null_check_c"
       ],
@@ -3999,6 +4047,7 @@
           "text": "That the underlying instance was created as an immutable collection."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kotlin_readonly_list_not_immutable_c"
       ],
@@ -4034,6 +4083,7 @@
           "text": "Every read runs the getter body again and produces a new result."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kotlin_custom_getter_recomputes_d"
       ],
@@ -4069,6 +4119,7 @@
           "text": "It can be called from an ordinary function without a coroutine context."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "coroutine_fundamentals_001_b"
       ],
@@ -4104,6 +4155,7 @@
           "text": "When the coroutine must run on a dispatcher different from the caller."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "coroutine_builders_001_c"
       ],
@@ -4139,6 +4191,7 @@
           "text": "When the scope completes, because a failing async child still cancels its parent."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "coroutine_async_exception_surfaces_at_await_d"
       ],
@@ -4178,6 +4231,7 @@
           "text": "It restarts a failed child coroutine inside the same parent scope."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "structured_concurrency_001_a"
       ],
@@ -4213,6 +4267,7 @@
           "text": "Because cancellation is cooperative and busy code only stops at a check."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "coroutine_cancellation_001_d"
       ],
@@ -4248,6 +4303,7 @@
           "text": "It suspends until a CoroutineExceptionHandler decides whether to cancel."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "coroutine_exceptions_001_b"
       ],
@@ -4283,6 +4339,7 @@
           "text": "Replacing the dispatcher for every coroutine in the current scope."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "coroutine_context_switching_001_c"
       ],
@@ -4318,6 +4375,7 @@
           "text": "It continues emitting after its last collector stops."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "flow_fundamentals_001_a"
       ],
@@ -4353,6 +4411,7 @@
           "text": "Every operator upstream of flowOn, but nothing downstream."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "flow_context_001_d"
       ],
@@ -4388,6 +4447,7 @@
           "text": "When the stream must start without an initial value."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "stateflow_001_b"
       ],
@@ -4427,6 +4487,7 @@
           "text": "Its replay cache size is configurable at construction."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "sharedflow_001_a",
         "sharedflow_001_d"
@@ -4463,6 +4524,7 @@
           "text": "When the latest value must be readable synchronously without collecting."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "flow_share_in_vs_state_in_a"
       ],
@@ -4498,6 +4560,7 @@
           "text": "The supervisorScope rethrows at once without cancelling any coroutine."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "coroutine_supervisor_scope_direct_children_b"
       ],
@@ -4533,6 +4596,7 @@
           "text": "Because IO can grow to many threads, so blocking does not starve CPU work."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "coroutine_io_dispatcher_blocking_calls_a"
       ],
@@ -4568,6 +4632,7 @@
           "text": "conflate suspends the producer; collectLatest suspends the collector instead."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "flow_conflate_vs_collect_latest_c"
       ],
@@ -4603,6 +4668,7 @@
           "text": "How long the state holder retains values before discarding them."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "flow_state_in_while_subscribed_b"
       ],
@@ -4638,6 +4704,7 @@
           "text": "No, because catch sees only exceptions from operators upstream of it."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "flow_catch_upstream_only_d"
       ],
@@ -4673,6 +4740,7 @@
           "text": "The second call is skipped until the first Deferred has been cancelled."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "coroutine_async_await_sequential_b"
       ],
@@ -4708,6 +4776,7 @@
           "text": "It requires each layer to depend on the layer directly above it."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "separation_of_concerns_001_c"
       ],
@@ -4743,6 +4812,7 @@
           "text": "Each UI component owns its state and synchronises peers directly."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "unidirectional_data_flow_001_a"
       ],
@@ -4782,6 +4852,7 @@
           "text": "It holds the UI state a screen renders after configuration change."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "repository_pattern_001_b"
       ],
@@ -4817,6 +4888,7 @@
           "text": "The Lifecycle buffered the navigation event and redelivered it on resume."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "architecture_ui_event_consumption_c"
       ],
@@ -4852,6 +4924,7 @@
           "text": "One owner is responsible for the data and exposes it to consumers."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "single_source_of_truth_001_d"
       ],
@@ -4887,6 +4960,7 @@
           "text": "So the UI layer can read state without observing it."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "state_ownership_001_a"
       ],
@@ -4926,6 +5000,7 @@
           "text": "It replaces compile-time dependencies with reflection-based lookup."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "dependency_direction_001_c"
       ],
@@ -4961,6 +5036,7 @@
           "text": "The network layer, which can keep fetching until the endpoint is exhausted."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "architecture_paging_ownership_b"
       ],
@@ -4996,6 +5072,7 @@
           "text": "When the team wants every repository call wrapped for the sake of consistency."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "architecture_tradeoffs_001_b"
       ],
@@ -5031,6 +5108,7 @@
           "text": "It converts checked exceptions into unchecked ones for Kotlin callers."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "architecture_error_mapping_boundary_a"
       ],
@@ -5066,6 +5144,7 @@
           "text": "Because it makes the failure part of the signature the caller must handle."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "architecture_error_modeling_result_type_a"
       ],
@@ -5101,6 +5180,7 @@
           "text": "It allows the UI to observe state without a lifecycle-aware collector."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "architecture_mvi_single_state_c"
       ],
@@ -5136,6 +5216,7 @@
           "text": "It allows the repositories to be injected as singletons rather than scoped."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "architecture_use_case_reuse_b"
       ],
@@ -5171,6 +5252,7 @@
           "text": "The domain layer, because the consumer owns the abstraction it depends on."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "architecture_interface_boundary_ownership_a"
       ],
@@ -5206,6 +5288,7 @@
           "text": "Interface segregation, because one abstraction now serves every caller regardless of what each one needs."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "architecture_solid_dependency_substitution_a",
         "architecture_solid_dependency_substitution_c"
@@ -5242,6 +5325,7 @@
           "text": "It allows optional dependencies to be omitted at construction."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "constructor_injection_001_a"
       ],
@@ -5281,6 +5365,7 @@
           "text": "It constructs the Activity itself and registers the instance with the system."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "hilt_field_injection_framework_classes_b"
       ],
@@ -5316,6 +5401,7 @@
           "text": "It caches constructed objects so each type is created only once."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "composition_root_001_c"
       ],
@@ -5351,6 +5437,7 @@
           "text": "Incorrect scoping can create leaks or unintended shared state."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "di_scopes_001_b",
         "di_scopes_001_d"
@@ -5391,6 +5478,7 @@
           "text": "It requires every dependency to be declared as a constructor parameter."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "service_locator_vs_di_001_b"
       ],
@@ -5426,6 +5514,7 @@
           "text": "The navigation entry the ViewModel is attached to at injection time."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "di_hilt_viewmodel_scope_b"
       ],
@@ -5461,6 +5550,7 @@
           "text": "single is validated at compile time while factory is resolved at runtime."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "di_koin_factory_vs_single_b"
       ],
@@ -5500,6 +5590,7 @@
           "text": "The class can be constructed without supplying its collaborators when a test does not exercise them."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "di_constructor_injection_testability_a",
         "di_constructor_injection_testability_b",
@@ -5537,6 +5628,7 @@
           "text": "A missing binding surfaces as a build failure rather than at first resolution."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "di_framework_tradeoff_compile_vs_runtime_a"
       ],
@@ -5572,6 +5664,7 @@
           "text": "A component dependency per feature, so the app resolves initializers lazily."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "dagger_multibinding_into_set_a"
       ],
@@ -5607,6 +5700,7 @@
           "text": "A file in the app's cacheDir, which the system may clear."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "storage_selection_001_b"
       ],
@@ -5646,6 +5740,7 @@
           "text": "Mapping database rows into domain models for the UI."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "room_dao_001_c"
       ],
@@ -5681,6 +5776,7 @@
           "text": "The writes are deferred until the app next moves to the background."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "room_transactions_001_a"
       ],
@@ -5716,6 +5812,7 @@
           "text": "It lets collectors receive updated query results as data changes."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "room_flow_001_d"
       ],
@@ -5755,6 +5852,7 @@
           "text": "It ensures the delete and the insert run in the order the method declares."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "room_transaction_dao_method_c"
       ],
@@ -5790,6 +5888,7 @@
           "text": "Because the server is treated as a cache in front of the local database."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "offline_first_001_b"
       ],
@@ -5825,6 +5924,7 @@
           "text": "It exposes reads as a Flow instead of a blocking call on the caller's thread."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "datastore_vs_sharedpreferences_async_a"
       ],
@@ -5860,6 +5960,7 @@
           "text": "Room keeps the old schema and reports the mismatch on the first query."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "room_migration_missing_path_b"
       ],
@@ -5895,6 +5996,7 @@
           "text": "A convenience query that fetches the children and attaches them in memory."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "room_relationship_no_foreign_key_join_d"
       ],
@@ -5930,6 +6032,7 @@
           "text": "It generates an additional table so the value is stored in normalized form."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "room_type_converter_scope_a"
       ],
@@ -5965,6 +6068,7 @@
           "text": "Whether the local query returns a Flow rather than a one-shot suspend call."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "cache_invalidation_staleness_policy_b"
       ],
@@ -6000,6 +6104,7 @@
           "text": "Queries must name the index explicitly for the planner to consider it."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "sqlite_index_read_write_tradeoff_c"
       ],
@@ -6035,6 +6140,7 @@
           "text": "It means the request is certain to succeed on a later attempt."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "http_idempotency_001_c"
       ],
@@ -6070,6 +6176,7 @@
           "text": "To stop idle pooled connections from being reused later."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "network_timeouts_001_b"
       ],
@@ -6105,6 +6212,7 @@
           "text": "Configuring the connection and read timeouts for the client."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "okhttp_interceptors_001_a"
       ],
@@ -6140,6 +6248,7 @@
           "text": "They integrate asynchronous calls with coroutine suspension."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "retrofit_coroutines_001_d"
       ],
@@ -6179,6 +6288,7 @@
           "text": "It requires each model to implement a serializer interface by hand."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kotlinx_serialization_001_b"
       ],
@@ -6214,6 +6324,7 @@
           "text": "An Authenticator, which OkHttp invokes after it receives an unauthorized response."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "okhttp_authenticator_token_refresh_a"
       ],
@@ -6249,6 +6360,7 @@
           "text": "It reuses the stored response until the ETag value changes on the client."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "http_cache_control_revalidation_b"
       ],
@@ -6284,6 +6396,7 @@
           "text": "Parsing succeeds and the value is bound to the closest matching property name."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "json_unknown_keys_compatibility_b"
       ],
@@ -6319,6 +6432,7 @@
           "text": "It guarantees that pages arrive in the order the client requested them."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "pagination_keyset_vs_offset_c"
       ],
@@ -6354,6 +6468,7 @@
           "text": "A socket that exceeds the client's configured read timeout."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "network_error_transport_vs_http_c"
       ],
@@ -6393,6 +6508,7 @@
           "text": "Pinning applies to every host, so unrelated requests fail validation."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "tls_certificate_pinning_tradeoff_b"
       ],
@@ -6428,6 +6544,7 @@
           "text": "A LaunchedEffect that starts when the screen appears."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "workmanager_constraints_001_c"
       ],
@@ -6463,6 +6580,7 @@
           "text": "For periodic polling that should continue while the screen is off."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "foreground_services_001_a"
       ],
@@ -6502,6 +6620,7 @@
           "text": "An exemption from Doze, so the work runs even while the device is idle."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "workmanager_expedited_work_c"
       ],
@@ -6537,6 +6656,7 @@
           "text": "They set the priority the scheduler gives to the service."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "foreground_service_types_001_b"
       ],
@@ -6572,6 +6692,7 @@
           "text": "The system defers background execution under Doze, standby buckets, and start limits."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "background_limits_001_d"
       ],
@@ -6607,6 +6728,7 @@
           "text": "KEEP, because it discards the new request when work is already scheduled."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "workmanager_unique_work_policy_d"
       ],
@@ -6642,6 +6764,7 @@
           "text": "Result.retry(), which asks WorkManager to run the work again later."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "workmanager_retry_result_contract_d"
       ],
@@ -6677,6 +6800,7 @@
           "text": "A wake lock held from scheduling until the alarm is delivered to the receiver."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "background_exact_alarm_justification_a"
       ],
@@ -6716,6 +6840,7 @@
           "text": "The work must finish before the current screen draws its next frame."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "background_api_selection_criteria_a",
         "background_api_selection_criteria_b",
@@ -6753,6 +6878,7 @@
           "text": "They set an importance the app can raise later without the user."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "notification_channels_001_c"
       ],
@@ -6788,6 +6914,7 @@
           "text": "Broadcast receivers may no longer be targeted by a PendingIntent at all."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "notification_trampoline_restriction_a"
       ],
@@ -6823,6 +6950,7 @@
           "text": "Raise the app's targetSdkVersion to re-enable notifications."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "notification_permission_001_b"
       ],
@@ -6858,6 +6986,7 @@
           "text": "Data messages are given higher delivery priority than notification messages."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "fcm_data_messages_001_a"
       ],
@@ -6893,6 +7022,7 @@
           "text": "They are sent at normal priority, which Doze batches until a maintenance window."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "fcm_message_priority_doze_d"
       ],
@@ -6928,6 +7058,7 @@
           "text": "The detail screen must finish itself so Back returns to the launcher."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "notification_pending_intent_back_stack_c"
       ],
@@ -6963,6 +7094,7 @@
           "text": "The message is dropped, since notification payloads need a foreground app."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "fcm_app_state_delivery_behavior_a"
       ],
@@ -6998,6 +7130,7 @@
           "text": "Deleting and recreating a channel restores the app's original settings."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "notification_channel_user_control_a",
         "notification_channel_user_control_b"
@@ -7034,6 +7167,7 @@
           "text": "Because end-to-end tests can run only on physical devices."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "testing_strategy_001_b"
       ],
@@ -7069,6 +7203,7 @@
           "text": "To skip the dependency entirely by returning null from it."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "test_doubles_001_c"
       ],
@@ -7104,6 +7239,7 @@
           "text": "They hold no state between events, so each test starts from clean state."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "viewmodel_testing_001_a"
       ],
@@ -7143,6 +7279,7 @@
           "text": "To test suspending code with a controlled coroutine test environment."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "coroutine_testing_001_d"
       ],
@@ -7178,6 +7315,7 @@
           "text": "Convert the StateFlow to a cold flow with asFlow() so collection terminates."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "flow_testing_turbine_bounded_collection_b"
       ],
@@ -7213,6 +7351,7 @@
           "text": "Because Compose provides no stable identifier for a composable function."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_ui_testing_001_b"
       ],
@@ -7252,6 +7391,7 @@
           "text": "A compiler plugin that strips framework calls out of the code under test."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "robolectric_vs_instrumented_c"
       ],
@@ -7287,6 +7427,7 @@
           "text": "Effectively no time, because runTest removes delay calls before executing."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "coroutine_virtual_time_delay_skipping_b"
       ],
@@ -7322,6 +7463,7 @@
           "text": "The states arrive out of order, because StateFlow conflates its emissions."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "flow_testing_hot_flow_never_completes_a"
       ],
@@ -7357,6 +7499,7 @@
           "text": "A database that runs queries synchronously, so suspend functions can be called directly."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "room_testing_in_memory_database_c"
       ],
@@ -7392,6 +7535,7 @@
           "text": "Checking a mapper that converts a network model into a domain model."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "local_vs_instrumented_test_placement_a",
         "local_vs_instrumented_test_placement_c"
@@ -7432,6 +7576,7 @@
           "text": "The repository is initialized lazily, so its first call always fails in tests."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "test_dependency_substitution_constructor_a"
       ],
@@ -7467,6 +7612,7 @@
           "text": "Running the whole suite on a single thread to remove all concurrency."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "flaky_test_shared_state_and_time_a",
         "flaky_test_shared_state_and_time_c"
@@ -7503,6 +7649,7 @@
           "text": "Holding a wake lock while the screen is off."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "anr_001_c"
       ],
@@ -7542,6 +7689,7 @@
           "text": "A hot start, dominated by re-running Application.onCreate() for the resumed process."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "performance_cold_warm_hot_start_a"
       ],
@@ -7577,6 +7725,7 @@
           "text": "The singleton keeps a weak reference that the collector ignores."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "memory_leaks_001_a"
       ],
@@ -7612,6 +7761,7 @@
           "text": "By running an instrumented journey that records the classes and methods it exercises."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "performance_baseline_profile_generation_d"
       ],
@@ -7651,6 +7801,7 @@
           "text": "Use stable models and scope state changes to where they are needed."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_recomposition_performance_001_d"
       ],
@@ -7690,6 +7841,7 @@
           "text": "Because content providers are initialized after the first frame is drawn."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "startup_performance_001_b"
       ],
@@ -7725,6 +7877,7 @@
           "text": "The work outlives the screen and keeps its captured references reachable."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "performance_coroutine_scope_leak_d"
       ],
@@ -7760,6 +7913,7 @@
           "text": "It reduces interpretation and just-in-time work on the first runs after install."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "performance_baseline_profile_purpose_b"
       ],
@@ -7795,6 +7949,7 @@
           "text": "R8 disables reflection entirely, so no runtime type lookup can succeed."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "performance_r8_minify_reflection_a"
       ],
@@ -7830,6 +7985,7 @@
           "text": "Doing layout-heavy work per item so a frame exceeds its deadline."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "performance_rendering_jank_causes_a",
         "performance_rendering_jank_causes_b"
@@ -7866,6 +8022,7 @@
           "text": "It fails the build when it detects a blocking call in application code."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "performance_strictmode_role_c"
       ],
@@ -7901,6 +8058,7 @@
           "text": "Because the system revokes permissions not requested in context."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "runtime_permissions_001_c"
       ],
@@ -7936,6 +8094,7 @@
           "text": "The permission is missing from the manifest and the request will fail."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "permission_rationale_state_machine_c"
       ],
@@ -7971,6 +8130,7 @@
           "text": "Because exported components bypass the app's own permission checks."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "exported_components_001_a"
       ],
@@ -8006,6 +8166,7 @@
           "text": "Log output is collected into bug reports and crash attachments, carrying the token outside the app."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "sensitive_logging_001_d"
       ],
@@ -8041,6 +8202,7 @@
           "text": "It stops the receiving app filling in fields the sender left unspecified."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "security_pending_intent_mutability_a"
       ],
@@ -8076,6 +8238,7 @@
           "text": "The key is shared with other apps signed by the same certificate."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "security_keystore_key_extraction_c"
       ],
@@ -8111,6 +8274,7 @@
           "text": "Fall back to requesting a broader permission that covers the same capability."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "security_permission_denied_forever_b"
       ],
@@ -8146,6 +8310,7 @@
           "text": "Use a system picker, which returns the chosen item without a storage permission."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "security_scoped_storage_media_access_d"
       ],
@@ -8181,6 +8346,7 @@
           "text": "To pin the version that transitive dependencies resolve to."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "dependency_configurations_001_b"
       ],
@@ -8216,6 +8382,7 @@
           "text": "buildSrc is evaluated after the modules it configures, so its settings arrive too late."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "gradle_convention_plugin_build_logic_c"
       ],
@@ -8251,6 +8418,7 @@
           "text": "They enforce that every module uses the same dependency set."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "version_catalogs_001_c"
       ],
@@ -8286,6 +8454,7 @@
           "text": "An App Bundle is an APK compressed with a different algorithm."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "apk_vs_aab_001_a"
       ],
@@ -8321,6 +8490,7 @@
           "text": "api, so the type is on the compile classpath of modules that consume it."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "gradle_api_vs_implementation_leak_a"
       ],
@@ -8356,6 +8526,7 @@
           "text": "Two source sets selected at runtime by a flag read from the manifest."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "build_variants_flavor_vs_type_b"
       ],
@@ -8391,6 +8562,7 @@
           "text": "Move both features into the app module so the types are visible to each."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "modularization_dependency_direction_c"
       ],
@@ -8426,6 +8598,7 @@
           "text": "Kotlin build scripts cannot be cached, only Groovy ones."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "gradle_configuration_cache_invalidation_b"
       ],
@@ -8465,6 +8638,7 @@
           "text": "Remaining code is obfuscated unless that behaviour is explicitly turned off."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "release_shrinking_responsibilities_a",
         "release_shrinking_responsibilities_b",
@@ -8502,6 +8676,7 @@
           "text": "Retry failed requests immediately until the network recovers."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "offline_design_001_b"
       ],
@@ -8541,6 +8716,7 @@
           "text": "Push a lightweight signal and let the client fetch the changed data."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "system_design_push_vs_poll_d"
       ],
@@ -8584,6 +8760,7 @@
           "text": "OS background execution limits and the retry policy."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "background_sync_001_a",
         "background_sync_001_b",
@@ -8629,6 +8806,7 @@
           "text": "Whether the merge policy is last-write-wins or preserves both versions."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "system_design_conflict_resolution_policy_d"
       ],
@@ -8668,6 +8846,7 @@
           "text": "Metrics broken down by app version and connectivity type."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "system_design_observability_signals_a",
         "system_design_observability_signals_b",
@@ -8705,6 +8884,7 @@
           "text": "Emitting both the old and new field until the old clients fall out of use."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "system_design_api_backward_compatibility_a"
       ],
@@ -8740,6 +8920,7 @@
           "text": "Query the network and local storage together, rendering whichever returns first."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "system_design_source_of_truth_boundary_b"
       ],
@@ -8775,6 +8956,7 @@
           "text": "It allows the release to skip review because the code is inactive."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "system_design_feature_flag_rollout_b"
       ],
@@ -8810,6 +8992,7 @@
           "text": "In the network layer, which replays the previous responses after rotation."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "system_design_pagination_state_ownership_c"
       ],
@@ -8845,6 +9028,7 @@
           "text": "Duplicate logic per platform so each target can diverge freely."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "shared_vs_platform_code_001_c"
       ],
@@ -8880,6 +9064,7 @@
           "text": "Both are exported as blocking calls that Swift must move off the main thread."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kmp_swift_interop_suspend_flow_a"
       ],
@@ -8915,6 +9100,7 @@
           "text": "They allow a common class to inherit from a platform-specific type."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "expect_actual_001_a"
       ],
@@ -8950,6 +9136,7 @@
           "text": "In commonMain as an expect declaration with an actual for every target."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kmp_source_set_hierarchy_resolution_b"
       ],
@@ -8985,6 +9172,7 @@
           "text": "When the shared code should be testable by substituting a fake at runtime."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kmp_expect_actual_vs_interface_b"
       ],
@@ -9020,6 +9208,7 @@
           "text": "Because commonMain is compiled before any platform source set is configured."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kmp_android_library_not_multiplatform_a"
       ],
@@ -9059,6 +9248,7 @@
           "text": "Repository logic coordinating local and remote sources."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "kmp_shared_layer_selection_a",
         "kmp_shared_layer_selection_b",
@@ -9096,6 +9286,7 @@
           "text": "The layout system, which delegates to native views on each target."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kmp_compose_multiplatform_vs_jetpack_c"
       ],
@@ -9131,6 +9322,7 @@
           "text": "When the team wants each platform to keep its own release schedule."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kmp_tradeoff_when_not_to_share_a"
       ],
@@ -9166,6 +9358,7 @@
           "text": "Set the application element's debuggable flag to false."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "android_manifest_component_exported_a"
       ],
@@ -9201,6 +9394,7 @@
           "text": "A Handler, which moves Messages across application sandboxes."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "android_ipc_binder_contract_a"
       ],
@@ -9236,6 +9430,7 @@
           "text": "The callback bypasses the message queue and runs synchronously on the posting thread."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "android_looper_message_queue_b"
       ],
@@ -9271,6 +9466,7 @@
           "text": "A filter that declares no data element matches any URI the Intent happens to carry."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "android_intent_filter_matching_c"
       ],
@@ -9306,6 +9502,7 @@
           "text": "The Activity or another appropriately themed Context."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "android_context_theme_inflation_d"
       ],
@@ -9341,6 +9538,7 @@
           "text": "The ViewModel becomes accessible to all destinations in the application."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "viewmodel_destination_scope_a"
       ],
@@ -9376,6 +9574,7 @@
           "text": "Collect in onCreate and cancel the job in the Fragment's onDestroy."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "lifecycle_repeat_on_lifecycle_b"
       ],
@@ -9411,6 +9610,7 @@
           "text": "A PendingIntent whose creator package matches the website's host name."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "deep_link_app_link_verification_c"
       ],
@@ -9446,6 +9646,7 @@
           "text": "In app-owned state containing stable navigation keys."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "navigation3_back_stack_ownership_d"
       ],
@@ -9481,6 +9682,7 @@
           "text": "A binary media cache managed with eviction policies."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "saved_state_transient_inputs_a"
       ],
@@ -9516,6 +9718,7 @@
           "text": "The View lifecycle stores emitted values in saved state for you."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "fragment_view_lifecycle_collection_b"
       ],
@@ -9551,6 +9754,7 @@
           "text": "It prevents the LazyList itself from reading snapshot state."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_derived_state_threshold_c"
       ],
@@ -9586,6 +9790,7 @@
           "text": "snapshotFlow"
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_snapshot_flow_state_d"
       ],
@@ -9621,6 +9826,7 @@
           "text": "The effect restarts once the hosting Activity has been recreated."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_launched_effect_key_restart_a"
       ],
@@ -9656,6 +9862,7 @@
           "text": "clickable() replaces the layout modifiers that precede it."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_modifier_order_padding_click_b"
       ],
@@ -9691,6 +9898,7 @@
           "text": "It restricts the value to types that Compose can save and restore."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_composition_local_tradeoff_a"
       ],
@@ -9726,6 +9934,7 @@
           "text": "State is preserved and reapplied once the reorder animation completes."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_key_identity_lazy_state_b"
       ],
@@ -9761,6 +9970,7 @@
           "text": "The hosted View participates in Compose's snapshot system automatically."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "compose_view_interop_disposal_a",
         "compose_view_interop_disposal_c"
@@ -9797,6 +10007,7 @@
           "text": "A ViewModel reference so the child can update the state directly."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_udf_event_direction_b"
       ],
@@ -9832,6 +10043,7 @@
           "text": "The Handler runs it immediately, while the Looper records it only for cancellation."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "handler_looper_message_queue_roles_a"
       ],
@@ -9867,6 +10079,7 @@
           "text": "Both calls use the same heap, but Binder adds lifecycle callbacks around each invocation."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "binder_ipc_marshalling_boundary_b"
       ],
@@ -9902,6 +10115,7 @@
           "text": "A started Service guarantees that its process cannot be killed by the system."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "android_component_process_lifetime_a",
         "android_component_process_lifetime_c"
@@ -9938,6 +10152,7 @@
           "text": "Remote Binder callbacks suspend the main thread, so posting avoids recursive service binding."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "binder_thread_pool_ui_handoff_b"
       ],
@@ -9973,6 +10188,7 @@
           "text": "The ViewModel is promoted to an application singleton until the task is removed."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "viewmodel_store_configuration_retention_c"
       ],
@@ -10008,6 +10224,7 @@
           "text": "They are cleared because the owner's ViewModelStore is permanently discarded."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "viewmodel_clear_owner_finish_d"
       ],
@@ -10043,6 +10260,7 @@
           "text": "The repository re-fetches the value in the ViewModel's init block, since saved state does not outlive the process."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "savedstatehandle_process_recreation_a"
       ],
@@ -10078,6 +10296,7 @@
           "text": "Keep the UI flag in the repository and business state in an Activity field."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "remember_saveable_vs_viewmodel_ownership_b"
       ],
@@ -10113,6 +10332,7 @@
           "text": "The first composable's composition, retained after its destination leaves the stack."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "navigation_graph_viewmodel_shared_scope_c"
       ],
@@ -10148,6 +10368,7 @@
           "text": "Its owner is destroyed, so entry-scoped ViewModels are cleared and a later entry is new."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "navigation_back_stack_entry_lifetime_d"
       ],
@@ -10183,6 +10404,7 @@
           "text": "A configuration change restores the old Activity object from a serialized heap snapshot."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "configuration_change_vs_process_recreation_a",
         "configuration_change_vs_process_recreation_b"
@@ -10219,6 +10441,7 @@
           "text": "Views derive state from composables, while Compose serializes a View hierarchy after each frame."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_vs_view_ui_model_c"
       ],
@@ -10254,6 +10477,7 @@
           "text": "Initial composition builds the layout tree; recomposition remeasures and redraws it on every state change."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "composition_vs_recomposition_a"
       ],
@@ -10289,6 +10513,7 @@
           "text": "rememberSaveable participates in saved-state restoration; remember survives recomposition only."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "remember_vs_remember_saveable_d"
       ],
@@ -10324,6 +10549,7 @@
           "text": "Moving a state read into a smaller child can narrow the recomposition scope."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "compose_state_read_recomposition_scope_a",
         "compose_state_read_recomposition_scope_b"
@@ -10360,6 +10586,7 @@
           "text": "Call neither method because property writes schedule measure and draw automatically."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "custom_view_invalidate_vs_request_layout_b"
       ],
@@ -10395,6 +10622,7 @@
           "text": "It serializes every remembered value when the Fragment is placed on the back stack."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_view_disposal_strategy_lifecycle_c"
       ],
@@ -10430,6 +10658,7 @@
           "text": "Stability stores the parameter in saved instance state and restores the prior rendered pixels."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_skipping_stable_parameter_contract_a"
       ],
@@ -10469,6 +10698,7 @@
           "text": "No, because strong skipping turns off skipping entirely for unstable parameter types."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_strong_skipping_instance_equality_b"
       ],
@@ -10504,6 +10734,7 @@
           "text": "Both see it, because copy() reuses every reference the caller does not replace."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "data_class_copy_is_shallow_d"
       ],
@@ -10539,6 +10770,7 @@
           "text": "A companion guarantees Java static methods, while a separate object always compiles as static fields."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "object_vs_companion_object_members_a"
       ],
@@ -10574,6 +10806,7 @@
           "text": "Use in T when the API consumes T values but does not return them as T."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "generic_in_out_variance_tradeoff_a",
         "generic_in_out_variance_tradeoff_b"
@@ -10610,6 +10843,7 @@
           "text": "Mark both lambdas noinline, since a lambda that escapes and a lambda that must not return both need a real function object."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "noinline_vs_crossinline_lambda_c"
       ],
@@ -10645,6 +10879,7 @@
           "text": "Sequence iteration adds dispatch overhead that may outweigh avoided intermediates."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "sequence_intermediate_allocation_tradeoff_d"
       ],
@@ -10680,6 +10915,7 @@
           "text": "The compiler removes the new subtype from common code until every platform restarts."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "sealed_when_exhaustive_evolution_b"
       ],
@@ -10715,6 +10951,7 @@
           "text": "The coroutine keeps polling on the thread but lowers that thread's scheduling priority."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "coroutine_vs_thread_suspension_b"
       ],
@@ -10750,6 +10987,7 @@
           "text": "The coroutine is cancelled as soon as the main thread handles its next message."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "coroutine_run_blocking_main_thread_c"
       ],
@@ -10789,6 +11027,7 @@
           "text": "Its Job prevents child failure, so ownership determines which exceptions become successful results."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "coroutine_scope_job_ownership_c"
       ],
@@ -10824,6 +11063,7 @@
           "text": "Cancellation propagates to the children, which resume cancellation at cooperative points."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "parent_cancellation_propagates_children_d"
       ],
@@ -10859,6 +11099,7 @@
           "text": "Use withContext for each child, because changing dispatchers suppresses exception propagation."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "coroutine_scope_vs_supervisor_scope_failure_b"
       ],
@@ -10894,6 +11135,7 @@
           "text": "A Job passed to launch is ignored, so the coroutine keeps the scope's original Job."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "coroutine_supervisor_job_child_context_noop_b"
       ],
@@ -10933,6 +11175,7 @@
           "text": "launch blocks the caller until save() returns, while async is the only suspending coroutine builder."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "launch_vs_async_unawaited_result_a"
       ],
@@ -10968,6 +11211,7 @@
           "text": "CancellationException carries the successful result that the parent reads after completion."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "cancellation_exception_rethrow_b"
       ],
@@ -11003,6 +11247,7 @@
           "text": "Replace the parent Job with SupervisorJob, which interrupts running threads on cancellation."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "cpu_loop_cooperative_cancellation_c"
       ],
@@ -11038,6 +11283,7 @@
           "text": "Wrap the call in withTimeout, which abandons the blocking method once its deadline passes."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "coroutine_run_interruptible_blocking_call_a"
       ],
@@ -11077,6 +11323,7 @@
           "text": "withContext disables cancellation for network calls, so it should be used only for non-cancellable work."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "suspending_api_dispatcher_assumption_b"
       ],
@@ -11112,6 +11359,7 @@
           "text": "It observes uncaught root-coroutine exceptions; async exposes failure when its Deferred is awaited."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "coroutine_exception_handler_root_boundary_d"
       ],
@@ -11147,6 +11395,7 @@
           "text": "A SharedFlow with replay zero, because it queues every command until one future collector appears."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "flow_vs_channel_delivery_model_b"
       ],
@@ -11182,6 +11431,7 @@
           "text": "SharedFlow is cold by default and starts a separate producer for each collector."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "stateflow_vs_sharedflow_current_value_a",
         "stateflow_vs_sharedflow_current_value_b"
@@ -11218,6 +11468,7 @@
           "text": "It turns the flow into a hot stream whose producer remains active without any collectors."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "flow_buffer_producer_consumer_concurrency_a"
       ],
@@ -11253,6 +11504,7 @@
           "text": "Owning Activity navigation and converting user gestures into destination routes."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "repository_vs_data_source_responsibility_b"
       ],
@@ -11288,6 +11540,7 @@
           "text": "A plain state holder class remembered alongside the component."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "architecture_state_holder_taxonomy_d"
       ],
@@ -11323,6 +11576,7 @@
           "text": "The ViewModel owns the cache policy and retry rules; the repository only issues the calls it is asked for."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "viewmodel_vs_repository_responsibility_c"
       ],
@@ -11358,6 +11612,7 @@
           "text": "Store payment completion only in the composable and make the snackbar repository state."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "durable_state_vs_one_off_event_a"
       ],
@@ -11393,6 +11648,7 @@
           "text": "Separate models remove serialization and migration work because every layer infers conversions."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "dto_entity_domain_model_boundary_a"
       ],
@@ -11428,6 +11684,7 @@
           "text": "A Fragment reference forces every repository call onto the main dispatcher until process death."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "viewmodel_activity_reference_lifetime_a"
       ],
@@ -11463,6 +11720,7 @@
           "text": "The extra layer changes every suspending repository function into a blocking function."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "domain_layer_passthrough_cost_c"
       ],
@@ -11498,6 +11756,7 @@
           "text": "Use @Binds on an abstract method to map an interface to an injectable implementation."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "dagger_inject_provides_binds_selection_a",
         "dagger_inject_provides_binds_selection_b"
@@ -11534,6 +11793,7 @@
           "text": "It starts Android components and injects fields without being installed in a graph."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "dagger_module_binding_declarations_a"
       ],
@@ -11569,6 +11829,7 @@
           "text": "A component dependency, because it merges both graphs into one binding set."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "dagger_component_dependency_vs_subcomponent_c"
       ],
@@ -11604,6 +11865,7 @@
           "text": "Choosing which coroutine dispatcher every injected suspend function executes on."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "dagger_component_graph_root_c"
       ],
@@ -11639,6 +11901,7 @@
           "text": "The subcomponent can add bindings and a shorter-lived scope below the parent."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "dagger_subcomponent_parent_binding_inheritance_a",
         "dagger_subcomponent_parent_binding_inheritance_c"
@@ -11675,6 +11938,7 @@
           "text": "It serializes module instances into resources and loads the selected binding graph from the APK."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "dagger_graph_assembly_generated_component_b"
       ],
@@ -11710,6 +11974,7 @@
           "text": "It generates a factory taking the id, while the graph supplies the rest."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "dagger_assisted_injection_viewmodel_d"
       ],
@@ -11749,6 +12014,7 @@
           "text": "When Android recreates the process, because component validation depends on saved state."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "dagger_compile_time_graph_validation_a"
       ],
@@ -11784,6 +12050,7 @@
           "text": "Use two unqualified bindings and let the generated component inspect parameter names."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "dagger_qualifier_same_type_bindings_c"
       ],
@@ -11819,6 +12086,7 @@
           "text": "The injected Activity caches it, even when the binding belongs to an application component."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "dagger_scope_component_instance_lifetime_b"
       ],
@@ -11854,6 +12122,7 @@
           "text": "Use SharedPreferences for notes and Room only for values that fit in one database row."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "datastore_vs_room_data_shape_a"
       ],
@@ -11889,6 +12158,7 @@
           "text": "The DAO method must be annotated @Transaction before Room will observe the table at all."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "room_flow_invalidation_requery_a"
       ],
@@ -11924,6 +12194,7 @@
           "text": "It blocks only new installations because existing databases skip version validation."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "room_destructive_migration_tradeoff_b"
       ],
@@ -11959,6 +12230,7 @@
           "text": "A failed attempt deletes the local edit so the next retry starts from remote state."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "offline_first_local_write_then_sync_a",
         "offline_first_local_write_then_sync_b"
@@ -11995,6 +12267,7 @@
           "text": "Retrofit maintains the connection pool and keep-alive behaviour; OkHttp converts response bodies into Kotlin types."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "retrofit_vs_okhttp_responsibilities_a"
       ],
@@ -12030,6 +12303,7 @@
           "text": "A network interceptor can observe intermediate network responses such as redirects."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "okhttp_application_vs_network_interceptor_a",
         "okhttp_application_vs_network_interceptor_b"
@@ -12066,6 +12340,7 @@
           "text": "The call timeout, which bounds the total duration of the call from start to finish."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "connect_read_write_timeout_distinction_c"
       ],
@@ -12101,6 +12376,7 @@
           "text": "It should block the caller thread until the server closes the connection normally."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "coroutine_http_call_cancellation_a"
       ],
@@ -12136,6 +12412,7 @@
           "text": "Meeting constraints starts work synchronously on the thread that reported the state change."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "workmanager_constraints_not_deadline_b"
       ],
@@ -12171,6 +12448,7 @@
           "text": "Enqueuing the upload as unique work guarantees at-most-once execution, so a retry never repeats an accepted effect."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "idempotent_worker_retry_design_c"
       ],
@@ -12206,6 +12484,7 @@
           "text": "The task should run at an exact clock time even when the app is idle."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "workmanager_vs_foreground_service_constraint_a",
         "workmanager_vs_foreground_service_constraint_b"
@@ -12242,6 +12521,7 @@
           "text": "The channel applies only before Android 8, while the runtime permission replaces it on Android 13+."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "notification_channel_vs_runtime_permission_a"
       ],
@@ -12277,6 +12557,7 @@
           "text": "Store one token in the APK because all installations of an app share the same token."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "fcm_token_rotation_server_mapping_a",
         "fcm_token_rotation_server_mapping_b"
@@ -12313,6 +12594,7 @@
           "text": "It makes every Flow cold and guarantees collection completes after the first emission."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "test_main_dispatcher_replacement_a"
       ],
@@ -12348,6 +12630,7 @@
           "text": "WhileSubscribed ignores test collectors because it accepts only LifecycleOwner subscriptions."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "flow_test_background_collector_statein_a"
       ],
@@ -12383,6 +12666,7 @@
           "text": "The modifier order on the parent, because clearAndSetSemantics runs before any child semantics are attached."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "compose_semantics_merged_tree_b"
       ],
@@ -12418,6 +12702,7 @@
           "text": "That Room ignores exported schemas and infers every historical column from current entities."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "room_migration_test_preserves_data_b"
       ],
@@ -12453,6 +12738,7 @@
           "text": "Read private fields after each line so implementation structure becomes part of the contract."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "contract_focused_tests_resist_refactor_a",
         "contract_focused_tests_resist_refactor_b"
@@ -12493,6 +12779,7 @@
           "text": "It reclaims objects only when their reference count reaches zero on every app thread."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "art_gc_reachability_b"
       ],
@@ -12528,6 +12815,7 @@
           "text": "GC reclaims Activities after a fixed delay, but leaked Views extend that delay by one frame."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "gc_does_not_prevent_reachable_leaks_a"
       ],
@@ -12563,6 +12851,7 @@
           "text": "Collecting a young region can delay the need to scan and compact the complete heap."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "art_generational_gc_short_lived_objects_a",
         "art_generational_gc_short_lived_objects_b"
@@ -12599,6 +12888,7 @@
           "text": "Its source-file package, because framework packages are the only valid roots in an app heap."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "heap_dump_path_to_gc_root_c"
       ],
@@ -12634,6 +12924,7 @@
           "text": "A missed deadline drops the frame silently, while an ANR is raised by the system watchdog whichever thread is blocked."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "jank_vs_anr_failure_scale_a"
       ],
@@ -12669,6 +12960,7 @@
           "text": "It compacts only native memory, so managed Java and Kotlin objects are never examined."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "system_gc_not_memory_fix_b"
       ],
@@ -12704,6 +12996,7 @@
           "text": "Splitting the value across several resources and reassembling it at runtime keeps it out of the packaged output."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "apk_embedded_api_secret_recoverable_a"
       ],
@@ -12739,6 +13032,7 @@
           "text": "The server password, because Keystore prevents the running app from ever using stored credentials."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "keystore_key_not_general_secret_storage_c"
       ],
@@ -12774,6 +13068,7 @@
           "text": "Allow any redirect URI if the Activity was reached through a verified app link."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "exported_component_external_input_validation_a",
         "exported_component_external_input_validation_b"
@@ -12810,6 +13105,7 @@
           "text": "Kotlin's internal visibility stops compiling in an application module, so every declaration has to be public."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "modularization_large_app_module_cost_b"
       ],
@@ -12845,6 +13141,7 @@
           "text": "Each module runs in its own Gradle daemon, so memory use grows linearly with the number of modules."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "over_modularization_tiny_module_cost_c"
       ],
@@ -12880,6 +13177,7 @@
           "text": "Duplicate the contract with unrelated types and cast between them in the app module."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "feature_siblings_shared_contract_module_a"
       ],
@@ -12915,6 +13213,7 @@
           "text": "implementation forces Gradle to compile the dependency once globally and reuse it across unrelated repositories."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "gradle_implementation_compile_avoidance_b"
       ],
@@ -12950,6 +13249,7 @@
           "text": "Feature boundaries align ownership and change locality; pure layer modules mix unrelated journeys."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "feature_vs_layer_module_tradeoff_d"
       ],
@@ -12985,6 +13285,7 @@
           "text": "Each module starts a dedicated Gradle daemon, guaranteeing linear memory growth and speedup."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "modularization_build_speed_not_guaranteed_a",
         "modularization_build_speed_not_guaranteed_b"
@@ -13021,6 +13322,7 @@
           "text": "Pause local editing until the complete queue succeeds so no dependencies need tracking."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "resilient_write_queue_dependency_order_a"
       ],
@@ -13056,6 +13358,7 @@
           "text": "It lets every account share one pagination key without partitioning cached rows by user."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "paged_cache_remote_key_transaction_b"
       ],
@@ -13091,6 +13394,7 @@
           "text": "To an unbounded Channel drained by the visible screen, so no message is handled twice."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "realtime_messages_persist_then_render_c"
       ],
@@ -13126,6 +13430,7 @@
           "text": "Use the display name as the sole partition key because it is unique and immutable."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "account_data_partition_logout_a",
         "account_data_partition_logout_b"
@@ -13162,6 +13467,7 @@
           "text": "Compose Multiplatform replaces platform bootstrap, while Kotlin Multiplatform requires native hosts for UI."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kmp_vs_compose_multiplatform_scope_a"
       ],
@@ -13197,6 +13503,7 @@
           "text": "When native UI is the only way a KMP project can call shared suspend functions or observe Flow."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kmp_shared_ui_platform_experience_tradeoff_b"
       ],
@@ -13232,6 +13539,7 @@
           "text": "Sharing between threads is no longer supported; each thread must own its objects."
         }
       ],
+      "selectionMode": "SINGLE",
       "correctAnswerIds": [
         "kmp_native_memory_model_b"
       ],
@@ -13267,6 +13575,7 @@
           "text": "ContentResolver adapter tests belong in an Android test source set with Android dependencies."
         }
       ],
+      "selectionMode": "MULTIPLE",
       "correctAnswerIds": [
         "kmp_common_vs_platform_test_placement_a",
         "kmp_common_vs_platform_test_placement_b"

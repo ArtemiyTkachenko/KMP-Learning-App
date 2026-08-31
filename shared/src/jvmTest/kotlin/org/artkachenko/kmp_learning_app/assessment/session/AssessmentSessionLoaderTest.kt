@@ -13,6 +13,7 @@ import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
@@ -77,7 +78,7 @@ internal class AssessmentSessionLoaderTest {
     )
 
     private fun question(id: String, status: ContentStatus = ContentStatus.ACTIVE) = Question(
-        id, "topic", "subtopic", "Question", listOf(AnswerOption("a", "A")), listOf("a"),
+        id, "topic", "subtopic", "Question", listOf(AnswerOption("a", "A")), AnswerSelectionMode.SINGLE, listOf("a"),
         "Explanation", listOf(SourceReference("Source", "url")), status,
     )
 

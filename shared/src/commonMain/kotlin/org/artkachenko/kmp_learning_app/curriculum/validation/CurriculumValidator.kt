@@ -1,6 +1,7 @@
 package org.artkachenko.kmp_learning_app.curriculum.validation
 
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
@@ -194,6 +195,18 @@ internal class CurriculumValidator {
     ) {
         if (question.correctAnswerIds.isEmpty()) {
             errors.add(error(CurriculumValidationErrorCode.NO_CORRECT_ANSWERS, question.id, "Question '${question.id}' must have at least one correct answer."))
+        }
+        if (
+            question.selectionMode == AnswerSelectionMode.SINGLE &&
+            question.correctAnswerIds.size > 1
+        ) {
+            errors.add(
+                error(
+                    CurriculumValidationErrorCode.SELECTION_MODE_CORRECT_ANSWER_MISMATCH,
+                    question.id,
+                    "Question '${question.id}' uses SINGLE selection mode but has multiple correct answers.",
+                ),
+            )
         }
 
         val duplicateCorrectAnswerIds = duplicateNonBlankValues(question.correctAnswerIds)

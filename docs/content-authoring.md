@@ -30,7 +30,7 @@ The content model uses the hierarchy:
 
 The Kotlin model stores these as flat collections linked by stable IDs. A
 question has `id`, `topicId`, `subtopicId`, `text`, `answers`,
-`correctAnswerIds`, `explanation`, `sources`, and `status`.
+`selectionMode`, `correctAnswerIds`, `explanation`, `sources`, and `status`.
 
 `SourceReference` contains a human-readable `title` and the actual `url`.
 `ContentStatus` supports `ACTIVE` and `DEPRECATED`.
@@ -45,10 +45,24 @@ question has `id`, `topicId`, `subtopicId`, `text`, `answers`,
   assumptions.
 - Make version, API-level, platform, or library assumptions explicit when they
   materially affect the correct answer.
-- If multiple answers are correct, the prompt must clearly say so, for example
+- If `selectionMode` is `MULTIPLE`, the prompt must clearly say so, for example
   "Select all that apply."
 - Prefer scenarios that reflect real Android engineering decisions over
   memorization-only prompts.
+
+## Answer Selection Mode
+
+Every question must explicitly author `selectionMode`:
+
+- `SINGLE` permits the candidate to hold one selected answer at a time. It must
+  have exactly one correct answer.
+- `MULTIPLE` permits the candidate to select several answers before submitting.
+  It may have one or more correct answers.
+
+`selectionMode` is an interaction rule, not a scoring rule. It must not be
+inferred from `correctAnswerIds.size`: doing so exposes hidden answer-key
+information through the input controls. A `MULTIPLE` question with one correct
+answer is valid and still uses multi-selection controls.
 
 ## Answer Options
 
@@ -165,6 +179,11 @@ changes:
 - The correct answer or answers change because the semantics changed.
 - The question becomes a substantially different scenario.
 - Historical answers would no longer mean the same thing after the rewrite.
+
+Changing a question between `SINGLE` and `MULTIPLE` changes its interaction
+semantics and should be considered when deciding whether its stable identity is
+still appropriate. Merely making the previously intended mode explicit does not
+require ID churn.
 
 ## Stable Answer Identity
 
@@ -306,6 +325,7 @@ deterministic validation rules such as:
 - Valid topic and subtopic references.
 - Hierarchy consistency between `topicId` and `subtopicId`.
 - `correctAnswerIds` referencing real answers.
+- `SINGLE` questions not containing several correct answers.
 - Non-empty required fields.
 - Required source presence.
 
@@ -324,6 +344,10 @@ machine-verifiable:
 - Stable `Question.id` and `AnswerOption.id` handling is appropriate.
 - Distractors are plausible and similar in style to the correct answer.
 - Multiple-answer wording is explicit when more than one answer is correct.
+- `selectionMode` is explicitly authored and matches the intended interaction.
+- `MULTIPLE` wording clearly communicates multi-selection; `MULTIPLE` may still
+  have exactly one correct answer.
+- `SINGLE` does not contain several correct answers.
 - `correctAnswerIds` reflect the intended correct answer or answers.
 - Explanation teaches why the answer is correct and addresses useful
   misconceptions.

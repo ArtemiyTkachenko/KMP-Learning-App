@@ -29,6 +29,7 @@ import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
@@ -171,6 +172,7 @@ internal class FocusedResultViewModelTest {
     private fun question(id: String, correctIds: List<String> = listOf("a"), selectedIds: Set<String> = setOf("a")) = Question(
         id = id, topicId = "topic", subtopicId = "subtopic", text = "Question $id",
         answers = listOf(AnswerOption("a", "Answer A"), AnswerOption("b", "Answer B"), AnswerOption("c", "Answer C")),
+        selectionMode = AnswerSelectionMode.SINGLE,
         correctAnswerIds = correctIds, explanation = "Explanation", sources = listOf(SourceReference("Source B", "b"), SourceReference("Source A", "a")),
         status = ContentStatus.ACTIVE,
     )

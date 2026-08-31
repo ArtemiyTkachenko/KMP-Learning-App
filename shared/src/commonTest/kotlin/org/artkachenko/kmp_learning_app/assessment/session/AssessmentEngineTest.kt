@@ -20,6 +20,7 @@ import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
@@ -152,8 +153,25 @@ internal class AssessmentEngineTest {
     }
 
     @Test
+    fun multipleSelectionWithOneCorrectAnswerStillUsesExactSetScoring() = runEngineTest {
+        val session = sessionWith(
+            question(
+                id = "multiple_one",
+                selectionMode = AnswerSelectionMode.MULTIPLE,
+                correctAnswerIds = listOf("multiple_one_a"),
+            ),
+        )
+
+        val correct = engine().submitAnswer(session, "multiple_one", listOf("multiple_one_a"))
+        assertAnswered(correct, "multiple_one", setOf("multiple_one_a"), isCorrect = true)
+
+        val withExtra = engine().submitAnswer(session, "multiple_one", listOf("multiple_one_a", "multiple_one_b"))
+        assertAnswered(withExtra, "multiple_one", setOf("multiple_one_a", "multiple_one_b"), isCorrect = false)
+    }
+
+    @Test
     fun multipleCorrectAnswersRequireExactSet() = runEngineTest {
-        val session = sessionWith(question("multi", correctAnswerIds = listOf("multi_a", "multi_c")))
+        val session = sessionWith(question("multi", selectionMode = AnswerSelectionMode.MULTIPLE, correctAnswerIds = listOf("multi_a", "multi_c")))
 
         val updated = engine().submitAnswer(session, "multi", listOf("multi_a", "multi_c"))
 
@@ -167,7 +185,7 @@ internal class AssessmentEngineTest {
 
     @Test
     fun multipleAnswerSubmissionOrderDoesNotMatter() = runEngineTest {
-        val session = sessionWith(question("multi", correctAnswerIds = listOf("multi_a", "multi_c")))
+        val session = sessionWith(question("multi", selectionMode = AnswerSelectionMode.MULTIPLE, correctAnswerIds = listOf("multi_a", "multi_c")))
 
         val updated = engine().submitAnswer(session, "multi", listOf("multi_c", "multi_a"))
 
@@ -181,7 +199,7 @@ internal class AssessmentEngineTest {
 
     @Test
     fun missingOneCorrectAnswerIsIncorrect() = runEngineTest {
-        val session = sessionWith(question("multi", correctAnswerIds = listOf("multi_a", "multi_c")))
+        val session = sessionWith(question("multi", selectionMode = AnswerSelectionMode.MULTIPLE, correctAnswerIds = listOf("multi_a", "multi_c")))
 
         val updated = engine().submitAnswer(session, "multi", listOf("multi_a"))
 
@@ -195,7 +213,7 @@ internal class AssessmentEngineTest {
 
     @Test
     fun incorrectAdditionalOptionIsIncorrect() = runEngineTest {
-        val session = sessionWith(question("multi", correctAnswerIds = listOf("multi_a", "multi_c")))
+        val session = sessionWith(question("multi", selectionMode = AnswerSelectionMode.MULTIPLE, correctAnswerIds = listOf("multi_a", "multi_c")))
 
         val updated = engine().submitAnswer(session, "multi", listOf("multi_a", "multi_b", "multi_c"))
 
@@ -209,7 +227,7 @@ internal class AssessmentEngineTest {
 
     @Test
     fun duplicateSubmittedAnswerIdsAreNormalizedBeforeScoring() = runEngineTest {
-        val session = sessionWith(question("multi", correctAnswerIds = listOf("multi_a", "multi_c")))
+        val session = sessionWith(question("multi", selectionMode = AnswerSelectionMode.MULTIPLE, correctAnswerIds = listOf("multi_a", "multi_c")))
 
         val updated = engine().submitAnswer(session, "multi", listOf("multi_a", "multi_a", "multi_c"))
 
@@ -581,6 +599,7 @@ internal class AssessmentEngineTest {
 
     private fun question(
         id: String,
+        selectionMode: AnswerSelectionMode = AnswerSelectionMode.SINGLE,
         correctAnswerIds: List<String> = listOf("${id}_a"),
     ): Question =
         Question(
@@ -593,6 +612,7 @@ internal class AssessmentEngineTest {
                 AnswerOption("${id}_b", "Answer B"),
                 AnswerOption("${id}_c", "Answer C"),
             ),
+            selectionMode = selectionMode,
             correctAnswerIds = correctAnswerIds,
             explanation = "$id explanation.",
             sources = listOf(

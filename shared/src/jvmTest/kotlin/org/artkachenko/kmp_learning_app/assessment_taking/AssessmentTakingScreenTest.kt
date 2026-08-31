@@ -13,6 +13,9 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
+import org.artkachenko.kmp_learning_app.curriculum.Question
+import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 
 @OptIn(ExperimentalTestApi::class)
 internal class AssessmentTakingScreenTest {
@@ -58,6 +61,40 @@ internal class AssessmentTakingScreenTest {
         onNodeWithText("Select all that apply").assertIsDisplayed()
         onNodeWithTag(AssessmentTakingSubmitTag).performClick()
         assertEquals(1, submitCount)
+    }
+
+    @Test
+    fun multipleQuestionWithOneCorrectAnswerRendersMultiSelectionAffordance() = runComposeUiTest {
+        val question = Question(
+            id = "multiple-one-correct",
+            topicId = "topic",
+            subtopicId = "subtopic",
+            text = "Select all that apply.",
+            answers = listOf(
+                AnswerOption("answer_a", "Answer A"),
+                AnswerOption("answer_b", "Answer B"),
+            ),
+            selectionMode = AnswerSelectionMode.MULTIPLE,
+            correctAnswerIds = listOf("answer_a"),
+            explanation = "Answer A is correct.",
+            sources = listOf(SourceReference("Source", "https://example.com")),
+        )
+        setContent {
+            MaterialTheme {
+                AssessmentTakingScreen(
+                    title = "Focused practice",
+                    // Only the authored interaction mode crosses into the UI model.
+                    state = contentState(question.selectionMode),
+                    onAnswerClick = {},
+                    onSubmit = {},
+                    onRetry = {},
+                    onBack = {},
+                    onComplete = {},
+                )
+            }
+        }
+
+        onNodeWithText("Select all that apply").assertIsDisplayed()
     }
 
     @Test

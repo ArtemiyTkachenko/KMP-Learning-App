@@ -8,6 +8,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.SerializationException
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
 import org.artkachenko.kmp_learning_app.curriculum.Question
@@ -248,6 +249,7 @@ internal class CurriculumLocalDataPathTest {
                 AnswerOption("${id}_answer_a", "Answer A"),
                 AnswerOption("${id}_answer_b", "Answer B"),
             ),
+            selectionMode = AnswerSelectionMode.SINGLE,
             correctAnswerIds = correctAnswerIds,
             explanation = "$id explanation.",
             sources = listOf(

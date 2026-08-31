@@ -13673,7 +13673,7 @@
       "answers": [
         {
           "id": "flow_combine_vs_zip_emission_rule_a",
-          "text": "After both flows have emitted once, combine emits when either emits, using each flow's newest value; zip waits for each flow's next unused value."
+          "text": "After both flows emit once, combine uses their latest values when either emits; zip pairs their next unused values."
         },
         {
           "id": "flow_combine_vs_zip_emission_rule_b",
@@ -14060,7 +14060,7 @@
         },
         {
           "id": "http_connection_reuse_multiplexing_c",
-          "text": "It multiplexes the six as concurrent streams on one connection, avoiding extra handshakes."
+          "text": "It multiplexes concurrent streams on one connection without HTTP/1.1 response ordering."
         },
         {
           "id": "http_connection_reuse_multiplexing_d",
@@ -14071,7 +14071,7 @@
       "correctAnswerIds": [
         "http_connection_reuse_multiplexing_c"
       ],
-      "explanation": "An HTTP/1.1 connection carries one request at a time, so a client either serialises the six calls or opens several connections and pays a TCP and TLS handshake for each — the dominant cost when round-trip times are high. HTTP/2 interleaves them as streams over a single connection and compresses headers. Body compression is negotiated with Content-Encoding on either version, HTTP/2 adds no cache of its own, and opening many parallel connections is the HTTP/1.1 workaround it replaces.",
+      "explanation": "HTTP/1.1 can reuse persistent connections and pipeline multiple requests, so these calls do not necessarily serialize or each require a new TCP and TLS handshake. However, pipelined responses must be returned in request order, creating application-layer head-of-line blocking; clients commonly use multiple connections to gain concurrency. HTTP/2 instead interleaves largely independent streams on one connection, so a stalled response does not prevent progress on the others, and it also compresses headers. Body compression is available with either version, HTTP/2 adds no response cache of its own, and it does not open one connection per request.",
       "sources": [
         {
           "title": "RFC 9113: HTTP/2 — Streams and Multiplexing",
@@ -15900,7 +15900,7 @@
         },
         {
           "id": "system_retry_queue_poison_write_d",
-          "text": "A cap on attempts that quarantines the failed write and its dependent chain while unrelated writes continue."
+          "text": "An attempt cap that quarantines the failed write and dependents while unrelated writes continue."
         }
       ],
       "selectionMode": "SINGLE",
@@ -16309,7 +16309,7 @@
         },
         {
           "id": "dependency_direction_domain_framework_types_d",
-          "text": "The domain layer is coupled to Android and Retrofit, losing framework independence and multiplatform portability."
+          "text": "The domain becomes coupled to Android and Retrofit, losing framework independence and portability."
         }
       ],
       "selectionMode": "SINGLE",
@@ -16388,7 +16388,7 @@
       "correctAnswerIds": [
         "gradle_dependency_conflict_resolution_a"
       ],
-      "explanation": "Gradle resolves a configuration to a single version per module, and its default conflict resolution takes the highest version any participant asked for, on the assumption that libraries stay backward compatible. That is usually convenient and occasionally wrong, which is why strict versions, dependency constraints and resolution strategies exist to override it — and why a version catalog plus a dependency report is worth having. A JVM classpath cannot carry two versions of the same class, and declaration order has no influence on the outcome.",
+      "explanation": "Gradle resolves a configuration to a single version per module, and its default conflict resolution takes the highest version any participant requested. That is usually convenient and occasionally wrong, which is why strict versions, dependency constraints and resolution strategies exist to override it — and why a dependency report is worth inspecting. A JVM classpath can physically contain JARs with duplicate class definitions; class-loader visibility and ordering then determine which definition is loaded and can cause linkage failures. Gradle's module conflict resolution provides a coherent dependency graph before that point, and build-file declaration order does not choose the winning module version.",
       "sources": [
         {
           "title": "Understanding dependency resolution",

@@ -169,8 +169,8 @@ the whole bank:
 
 ```
 correct-longest 150/356 (42%), mean ratio 1.03, over 10% limit: 0
-absolutes: distractors 0.22/opt, correct 0.12/opt
-position: {0: 26%, 1: 27%, 2: 26%, 3: 19%, 4: 1%}
+absolutes: distractors 0.22/opt, correct 0.11/opt
+position: {0: 26%, 1: 27%, 2: 26%, 3: 20%, 4: 1%}
 ```
 
 All 279 unique source URLs returned HTTP 200 at the time of this snapshot.

@@ -2094,3 +2094,917 @@ epics:
         priority: "P2"
         size: "M"
         initial_status: "Backlog"
+
+  - key: E13
+    github_title: "EPIC-13 UI & Discovery Polish"
+
+    goal: >
+      Improve the perceived quality and usability of the existing product
+      without changing its learning model. Resolve the remaining compact-layout
+      roughness, refine the shared visual hierarchy, make Topics and Subtopics
+      easier to discover, and add lightweight visual identity while preserving
+      the existing four-area navigation.
+
+    issues:
+      - key: E13-01
+        title: "Fix compact mobile content insets and navigation spacing"
+
+        issue: >
+          The compact/mobile layout still exposes inconsistent system-inset and
+          content spacing behavior, including excessive space above the Topics
+          header and an unwanted background band between screen content and the
+          bottom NavigationBar.
+
+        approach: >
+          Audit the compact Scaffold, NavDisplay, and screen inset ownership and
+          make each system inset have exactly one owner. Fix the Topics-screen
+          reproduction first while checking the other top-level destinations for
+          the same root cause. Preserve edge-to-edge behavior and the 600dp and
+          wider NavigationRail layout.
+
+        acceptance_criteria:
+          - "The Topics title sits at the intended design spacing below the status-bar safe area on compact Android layouts."
+          - "No status-bar or safeDrawing top inset is applied twice."
+          - "The Topics content viewport extends directly to the Scaffold-provided boundary above the bottom NavigationBar."
+          - "No artificial background band remains between the Topic list viewport and the NavigationBar."
+          - "The LazyColumn may retain intentional internal end-of-list content padding."
+          - "The NavigationBar continues to clear the Android gesture and navigation area."
+          - "NavigationRail behavior at 600dp and wider remains unchanged."
+          - "Other top-level screens are checked for the same root inset defect."
+          - "Compact and wide regression coverage is added where practical."
+          - "Android and shared builds remain green."
+
+        priority: "P1"
+        size: "S"
+        initial_status: "Backlog"
+
+      - key: E13-02
+        title: "Refine shared visual hierarchy and surface treatment"
+
+        issue: >
+          The application is functionally clear but relies heavily on similarly
+          outlined cards and has limited visual hierarchy between primary
+          information, supporting information, and interactive actions.
+
+        approach: >
+          Audit the shared Material3 presentation patterns and introduce a
+          restrained, consistent hierarchy using typography, spacing,
+          surfaceContainer roles, shape, and selective outlines. Apply the
+          smallest coherent refinements to the major shared learning surfaces
+          rather than redesigning every screen independently.
+
+        acceptance_criteria:
+          - "A consistent hierarchy exists for page background, primary cards, secondary information, selected state, and actionable surfaces."
+          - "Outlined cards are not used indiscriminately when spacing and surface hierarchy communicate grouping better."
+          - "Existing Material3 theme roles are preferred over ad-hoc colors."
+          - "Dark and light themes remain legible."
+          - "Existing navigation and product behavior are unchanged."
+          - "Touch targets and semantic accessibility are not regressed."
+          - "Compact and wide layouts remain usable."
+          - "Shared presentation components are reused where doing so reduces visual inconsistency without introducing an unnecessary design-system framework."
+          - "No decorative animation or visual effect is added without a functional purpose."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E13-03
+        title: "Add Topic and Subtopic search"
+
+        issue: >
+          As the curriculum grows, scrolling through the complete
+          Topic/Subtopic hierarchy becomes an increasingly inefficient way to
+          locate a particular subject.
+
+        approach: >
+          Add lightweight local search to the Topics experience. Match Topic and
+          Subtopic names against a normalized query and expose useful results
+          while keeping individual Question text out of search for the initial
+          version.
+
+        acceptance_criteria:
+          - "Topics exposes a clear search affordance."
+          - "Search matches Topic names case-insensitively."
+          - "Search matches Subtopic names case-insensitively."
+          - "Matching Subtopics preserve their parent Topic context."
+          - "Clearing the query restores the normal Topic-browsing experience."
+          - "A no-results state is explicit."
+          - "Search executes entirely against the local curriculum."
+          - "Individual Question text is not searched."
+          - "Selecting a Topic result opens the existing Topic flow."
+          - "Selecting a Subtopic result reaches its parent Topic context using stable identity, and any direct positioning carries stable IDs only."
+          - "Search does not introduce another top-level destination."
+          - "ViewModel and Compose tests cover Topic matches, Subtopic matches, mixed matches, case normalization, empty query, and no-result behavior."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E13-04
+        title: "Add lightweight Topic visual identity"
+
+        issue: >
+          Seventeen curriculum Topics are currently differentiated primarily by
+          text, which makes a long Topics list slower to visually scan than
+          necessary.
+
+        approach: >
+          Assign each existing Topic a restrained, theme-aware icon or visual
+          marker and integrate it into the Topic discovery surfaces. Keep the
+          system semantic and monochrome or theme-driven rather than introducing
+          seventeen arbitrary category colors.
+
+        acceptance_criteria:
+          - "Every ACTIVE Topic has an intentional visual identifier."
+          - "Topic identifiers are stable and deterministic."
+          - "Icons are theme-aware and accessible."
+          - "Icons do not become the sole carrier of Topic meaning."
+          - "The Topics screen remains readable at compact widths."
+          - "Visual identity can be reused by future Topic-performance surfaces."
+          - "No remote imagery or platform-specific assets are required."
+          - "No rainbow or category-color system is introduced merely for decoration."
+
+        priority: "P2"
+        size: "S"
+        initial_status: "Backlog"
+
+      - key: E13-05
+        title: "Verify polished discovery experience across compact and wide layouts"
+
+        issue: >
+          The cumulative EPIC-13 changes affect the main entry point and the
+          shared layout, so the result needs an integration-oriented pass rather
+          than relying only on isolated component tests.
+
+        approach: >
+          Exercise Topics browsing, search, Topic navigation, compact bottom
+          navigation, wide NavigationRail behavior, themes, and the key
+          accessibility semantics together.
+
+        acceptance_criteria:
+          - "Compact Topics browsing and search work end to end."
+          - "Wide Topics browsing and search work with the NavigationRail."
+          - "Topic and Subtopic search results navigate correctly."
+          - "Empty, no-result, and search-clear states work."
+          - "Topic visual identifiers render consistently."
+          - "Light and dark themes remain legible."
+          - "Existing Interview, Progress, and Mistakes navigation is unaffected."
+          - "Relevant Compose tests and Android, Desktop, and Web build checks pass."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
+
+  - key: E14
+    github_title: "EPIC-14 Coverage & Learning Analytics"
+
+    goal: >
+      Make Progress more informative without turning it into an analytics
+      dashboard. Distinguish accuracy from curriculum coverage, show whether
+      recent performance is improving, and surface the same useful context at
+      Topic and Subtopic level using derived assessment history rather than
+      persisted aggregate statistics.
+
+    issues:
+      - key: E14-01
+        title: "Derive unique-question curriculum coverage"
+
+        issue: >
+          Current progress describes how accurately the user answered observed
+          Questions, but it cannot distinguish high accuracy across broad
+          curriculum exposure from high accuracy after seeing only a small
+          subset of the question bank.
+
+        approach: >
+          Extend the derived learning-progress domain with unique-question
+          coverage. Define coverage against the current ACTIVE curriculum and
+          count each stable Question ID at most once for coverage even when it
+          appears across multiple attempts. Keep performance accuracy
+          occurrence-based as it is today.
+
+        acceptance_criteria:
+          - "Overall coverage exposes unique ACTIVE Questions attempted and total ACTIVE Questions."
+          - "Topic coverage exposes unique attempted and total ACTIVE Questions for that Topic."
+          - "Subtopic coverage exposes unique attempted and total ACTIVE Questions for that Subtopic."
+          - "Repeated attempts of the same Question do not inflate coverage."
+          - "Repeated attempts continue to count normally toward accuracy statistics."
+          - "DEPRECATED historical Questions remain valid for historical accuracy but do not inflate coverage of the current ACTIVE curriculum."
+          - "Missing historical Questions do not fabricate current curriculum coverage."
+          - "Adding new ACTIVE curriculum Questions may legitimately lower the coverage percentage without altering historical accuracy."
+          - "No coverage snapshot or table is persisted."
+          - "Tests cover repeated Questions, newly added Questions, deprecated content, missing historical content, and empty history."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E14-02
+        title: "Derive recent-performance and trend statistics"
+
+        issue: >
+          All-time accuracy can move very slowly after substantial history and
+          therefore does not clearly communicate whether the user's recent
+          interview performance is improving or declining.
+
+        approach: >
+          Add a deterministic derived recent-performance policy using completed
+          history. Choose and document a bounded recent window suitable for the
+          current local MVP, and expose enough ordered data for one concise
+          recent-performance trend.
+
+        acceptance_criteria:
+          - "A documented deterministic recent-performance window exists."
+          - "Recent accuracy is derived from completed history only."
+          - "Persisted per-Question correctness remains authoritative."
+          - "Recent performance does not replace or rewrite all-time accuracy."
+          - "A bounded ordered assessment and answer series is available for presentation."
+          - "Empty and insufficient-history cases are explicit."
+          - "Focused, Mixed, and retake attempts follow the same documented inclusion policy."
+          - "No time-decay weighting or opaque score is introduced."
+          - "No statistics are persisted."
+          - "Tests cover new users, short history, long history, mixed and focused history, and recent improvement or regression."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E14-03
+        title: "Upgrade the Progress dashboard with coverage and recent performance"
+
+        issue: >
+          The Progress dashboard currently reports cumulative correctness
+          effectively, but it cannot tell the user how much of the curriculum
+          has been explored or whether recent performance is trending
+          differently from lifetime performance.
+
+        approach: >
+          Present accuracy, coverage, and recent performance as distinct
+          concepts. Add at most one compact trend visualization when history is
+          sufficient, while keeping the dashboard readable and avoiding
+          decorative analytics.
+
+        acceptance_criteria:
+          - "Overall all-time accuracy remains visible."
+          - "Overall curriculum coverage is visible as unique attempted over ACTIVE total and an understandable percentage."
+          - "Recent performance is visible when sufficient history exists."
+          - "Recent performance is clearly labeled as recent rather than lifetime."
+          - "At most one purposeful trend visualization is added."
+          - "The trend has a non-chart textual interpretation or value available."
+          - "Empty and new-user states do not show meaningless zero charts."
+          - "Weak areas and completed history remain available."
+          - "Progress does not introduce streaks, XP, mastery scores, or gamification."
+          - "Compose and ViewModel tests cover empty, partial-coverage, broad-coverage, recent-trend, and insufficient-history states."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E14-04
+        title: "Enrich Topic and Subtopic surfaces with learning context"
+
+        issue: >
+          Topic discovery and Topic performance currently live somewhat
+          separately. Users should be able to understand both how much of a
+          Topic they have explored and how well they performed without
+          navigating through several unrelated views.
+
+        approach: >
+          Reuse the EPIC-14 derived coverage and performance to add restrained
+          Topic and Subtopic context to the existing discovery and detail
+          surfaces. Keep cards scannable and avoid turning every Topic row into
+          a miniature dashboard.
+
+        acceptance_criteria:
+          - "Topic-level presentation can show both accuracy and coverage where history exists."
+          - "Subtopic detail can show both accuracy and coverage where history exists."
+          - "Unseen Topics and Subtopics have a clear neutral state rather than a fake 0% performance."
+          - "Weak-area indicators remain derived from the existing weak policy."
+          - "Topic cards remain readable on compact devices."
+          - "Search from EPIC-13 remains usable with the enriched presentation."
+          - "Current ACTIVE coverage and historical accuracy semantics remain visibly distinguishable."
+          - "No persisted progress or mastery state is introduced."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E14-05
+        title: "Verify analytics semantics across evolving curriculum history"
+
+        issue: >
+          Coverage introduces a current-curriculum denominator while accuracy
+          remains historical, making lifecycle changes such as added and
+          deprecated Questions important to verify explicitly.
+
+        approach: >
+          Add integration-oriented coverage across real Room persistence, the
+          current curriculum, and history, including curriculum growth and
+          retirement scenarios.
+
+        acceptance_criteria:
+          - "Unique coverage survives real repository reconstruction."
+          - "Repeated Questions increase accuracy observations but not unique coverage."
+          - "New ACTIVE Questions expand the denominator without rewriting historical attempts."
+          - "DEPRECATED Questions leave historical accuracy intact."
+          - "Missing historical content remains handled gracefully."
+          - "Recent-performance ordering follows completed-history ordering."
+          - "The Progress UI presents consistent values from the derived domain."
+          - "Existing EPIC-11 progress and mistake behavior remains green."
+          - "Android, Desktop, Web, and shared checks pass."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
+
+  - key: E15
+    github_title: "EPIC-15 Curriculum Levels & Interview Depth"
+
+    goal: >
+      Introduce an explicit authored interview-depth dimension so the growing
+      question bank can distinguish foundational knowledge from applied
+      engineering reasoning and advanced or senior interview depth without
+      relying on a vague numeric difficulty score. The product vocabulary is
+      FOUNDATION, APPLIED, and ADVANCED rather than easy, medium, and hard.
+
+    issues:
+      - key: E15-01
+        title: "Define the Question-level authoring rubric"
+
+        issue: >
+          A level field is only useful if authors apply it consistently;
+          otherwise it becomes subjective metadata that cannot support reliable
+          filtering or practice.
+
+        approach: >
+          Define concrete editorial criteria and representative examples for
+          Foundation, Applied, and Advanced Questions across the Android and
+          Kotlin topics before modifying the Question schema. Use the product
+          vocabulary FOUNDATION, APPLIED, and ADVANCED consistently.
+
+        acceptance_criteria:
+          - "FOUNDATION is defined with observable authoring criteria."
+          - "APPLIED is defined with observable authoring criteria."
+          - "ADVANCED is defined with observable authoring criteria."
+          - "The rubric describes mechanism, scenario, and trade-off expectations rather than judging the learner."
+          - "Examples span multiple curriculum Topics."
+          - "The rubric explains ambiguous boundary cases."
+          - "Authors are instructed not to infer level solely from answer length or obscure trivia."
+          - "The rubric becomes part of the content-authoring contract."
+
+        priority: "P1"
+        size: "S"
+        initial_status: "Backlog"
+
+      - key: E15-02
+        title: "Author and persist Question interview level"
+
+        issue: >
+          Question content currently has no explicit interview-depth metadata,
+          preventing reliable level filtering or level-specific practice.
+
+        approach: >
+          Add a required authored QuestionLevel field using Foundation, Applied,
+          and Advanced. Carry it through serialization, validation, Room
+          persistence, import and re-import, stable lookup, and all persistent
+          platform builders with the required migration.
+
+        acceptance_criteria:
+          - "Question contains an explicit required level."
+          - "Bundled JSON explicitly authors the level for every Question."
+          - "The field has no silent domain or serialization default."
+          - "Curriculum validation accepts only supported values."
+          - "QuestionEntity persists level."
+          - "Import and re-import preserve the authored level."
+          - "A schema migration covers existing persisted Questions."
+          - "Legacy migration behavior is explicit and deterministic."
+          - "Android, JVM/Desktop, iOS, and Web builders register the migration."
+          - "Historical assessment attempt schema remains unchanged."
+          - "No assessment-selection behavior changes in this issue."
+          - "Serialization, persistence, and migration tests cover all three levels."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E15-03
+        title: "Classify the complete existing question bank"
+
+        issue: >
+          Adding the schema without deliberately classifying the existing
+          curriculum would leave the level model untrustworthy.
+
+        approach: >
+          Review every current Question against the authoring rubric and author
+          one of Foundation, Applied, or Advanced. Treat this as editorial
+          classification rather than automatically deriving level from Topic,
+          answer count, or Question length.
+
+        acceptance_criteria:
+          - "Every ACTIVE Question is reviewed and assigned a level."
+          - "Every DEPRECATED bundled Question also carries valid level metadata."
+          - "Classification follows the documented rubric."
+          - "Question IDs and AnswerOption IDs remain stable."
+          - "Correct-answer sets are not changed merely to fit a level."
+          - "No Questions are added or removed solely to balance level counts."
+          - "A report gives the level distribution overall and per Topic."
+          - "Ambiguous classifications are documented rather than silently guessed."
+          - "The bundled curriculum validates successfully."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E15-04
+        title: "Expose level-aware curriculum selection primitives"
+
+        issue: >
+          Future practice flows need to request eligible Questions by one or
+          several authored levels without duplicating curriculum filtering logic
+          in presentation.
+
+        approach: >
+          Expose the smallest shared curriculum and query boundary required to
+          filter eligible ACTIVE Questions by QuestionLevel while preserving the
+          existing Topic and Subtopic selection behavior.
+
+        acceptance_criteria:
+          - "ACTIVE Questions can be filtered by one or more levels."
+          - "Topic scope and level filtering can be combined."
+          - "Subtopic scope and level filtering can be combined."
+          - "Multiple selected levels use inclusive OR semantics."
+          - "Historical lookup by stable Question ID remains independent of ACTIVE filtering."
+          - "Presentation code does not manually filter database entities."
+          - "Existing unfiltered selection APIs remain compatible."
+          - "Focused tests cover each level and combined filters."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E15-05
+        title: "Verify Question-level metadata across all hosts and content flows"
+
+        issue: >
+          Level metadata crosses bundled content, Room, the KMP platform
+          builders, and future assessment selection, so it needs an end-to-end
+          compatibility check before targeted practice depends on it.
+
+        approach: >
+          Verify serialization, validation, migration, import and re-import,
+          repository filtering, and all runtime host builds together.
+
+        acceptance_criteria:
+          - "Fresh databases import all three levels correctly."
+          - "Migrated databases open successfully."
+          - "Re-import preserves the current authored levels."
+          - "Level-filtered repository results are correct."
+          - "Android, Desktop, and Web builds succeed."
+          - "The iOS link and build is verified where available."
+          - "Existing Focused, Mixed, and Progress journeys remain green."
+          - "No scoring, progress, or mistake semantics change."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
+
+  - key: E16
+    github_title: "EPIC-16 Custom & Targeted Practice"
+
+    goal: >
+      Turn existing curriculum metadata and learning history into practical
+      study controls. Let users choose a small set of meaningful dimensions,
+      namely scope, question count, interview level, and question source,
+      without building an overly configurable assessment engine. The supported
+      question sources are ALL, UNSEEN, WEAK_AREAS, and UNRESOLVED_MISTAKES.
+
+    issues:
+      - key: E16-01
+        title: "Define the extensible practice selection model"
+
+        issue: >
+          Focused practice currently selects from a Topic or Subtopic but does
+          not express level or history-aware source criteria. Adding each new
+          practice type as a separate assessment engine would fragment the
+          architecture.
+
+        approach: >
+          Define one explicit practice configuration and selection policy
+          capable of combining scope, question count, selected levels, and a
+          supported question source. Keep the Mixed Interview semantics
+          distinct.
+
+        acceptance_criteria:
+          - "Practice configuration represents Topic and Subtopic scope."
+          - "Practice configuration represents the requested question count."
+          - "Practice configuration represents one or more QuestionLevels."
+          - "Practice configuration represents ALL, UNSEEN, WEAK_AREAS, or UNRESOLVED_MISTAKES source semantics."
+          - "Unsupported or empty combinations return explicit no-content outcomes."
+          - "Selection continues to produce stable Question IDs and QuestionAttempts through the existing AssessmentEngine boundary."
+          - "Mixed Android Interview behavior is unchanged."
+          - "Scoring is unchanged."
+          - "Selection policy tests cover combination and no-content behavior."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E16-02
+        title: "Implement the Practice Builder UI"
+
+        issue: >
+          Users need a straightforward way to configure targeted practice
+          without navigating several specialized flows or being confronted with
+          an excessive number of settings.
+
+        approach: >
+          Add a focused practice setup surface exposing only meaningful
+          controls: scope, question count, one or more levels, and question
+          source. Provide sensible defaults and clear availability feedback.
+
+        acceptance_criteria:
+          - "Practice setup exposes question count."
+          - "Practice setup exposes Foundation, Applied, and Advanced selection."
+          - "At least one level must remain selected."
+          - "Practice setup exposes All, Unseen, Weak areas, and Mistakes sources when applicable."
+          - "Unavailable choices are handled explicitly rather than failing after Start."
+          - "The default setup remains quick to start."
+          - "The UI remains usable on compact screens."
+          - "Starting practice navigates using typed configuration and stable data rather than passing Questions through navigation."
+          - "Compose and ViewModel tests cover defaults, edits, unavailable selections, and start behavior."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E16-03
+        title: "Implement unseen-question practice"
+
+        issue: >
+          Coverage statistics can identify Questions the user has never
+          encountered, but there is no way to deliberately practice that unseen
+          portion of the curriculum.
+
+        approach: >
+          Use the EPIC-14 unique-question history to select eligible ACTIVE
+          Questions whose stable IDs have never appeared in completed assessment
+          history, constrained by practice scope and selected levels.
+
+        acceptance_criteria:
+          - "UNSEEN selects only ACTIVE Questions not observed in completed history."
+          - "Repeated observations do not affect unseen semantics."
+          - "Scope and level filters are respected."
+          - "IN_PROGRESS attempts do not mark a Question as completed or seen unless the established coverage policy explicitly says otherwise."
+          - "No-content is explicit when all eligible Questions have been seen."
+          - "Existing selection randomness and uniqueness conventions are preserved."
+          - "Tests cover partial coverage, full coverage, scope, levels, and empty history."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E16-04
+        title: "Implement weak-area practice"
+
+        issue: >
+          Weak Topics and Subtopics currently provide useful feedback but
+          require the user to manually translate that feedback into a practice
+          decision.
+
+        approach: >
+          Use the established LearningProgress weak-area policy to derive
+          eligible Questions from weak scopes and feed them into the common
+          practice selection model. Do not invent a second weakness algorithm.
+
+        acceptance_criteria:
+          - "WEAK_AREAS reuses the existing weak-area derivation."
+          - "Only qualifying weak Topics and Subtopics contribute eligibility."
+          - "ACTIVE Question content is used for new practice."
+          - "Selected Question levels are respected."
+          - "Question count is respected where enough eligible content exists."
+          - "A user with no qualifying weak areas receives an explicit no-content state."
+          - "No new mastery or weak persistence is introduced."
+          - "Tests cover weak Topic, weak Subtopic, no weak areas, overlap, and level filtering."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E16-05
+        title: "Implement unresolved-mistake practice"
+
+        issue: >
+          Mistake Review explains unresolved errors but remains read-only; users
+          must leave the queue and hope normal random practice selects the same
+          Questions again.
+
+        approach: >
+          Use the existing latest-occurrence unresolved-mistake semantics as an
+          eligible Question source for new practice. Keep the mistake queue
+          itself derived and avoid a manual resolved state.
+
+        acceptance_criteria:
+          - "UNRESOLVED_MISTAKES uses the same latest-occurrence rule as Mistake Review."
+          - "A later correct completed occurrence removes a Question from future mistake-practice eligibility."
+          - "A later incorrect occurrence can make it eligible again."
+          - "ACTIVE resolvable Questions can be selected for new practice."
+          - "Missing historical Question content is not selectable for a new assessment."
+          - "Level filters are respected where applicable."
+          - "Completing mistake practice naturally updates future unresolved state through normal completed history."
+          - "No manual resolved or dismissed flag is added."
+          - "Tests cover the incorrect to correct to incorrect lifecycle and selection."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E16-06
+        title: "Verify targeted practice end to end"
+
+        issue: >
+          The combined practice configuration must work through real selection,
+          AssessmentEngine persistence, assessment taking, results, history,
+          analytics, and subsequent practice decisions.
+
+        approach: >
+          Exercise representative All, Unseen, Weak, and Mistake practice flows
+          using real repositories and the production presentation graph.
+
+        acceptance_criteria:
+          - "Custom practice starts from the builder and persists one attempt."
+          - "Level filters affect eligibility as authored."
+          - "Unseen practice changes coverage after completion."
+          - "Weak-area practice contributes to normal progress statistics."
+          - "Mistake practice can resolve an unresolved Question through a later correct answer."
+          - "Existing Focused and Mixed flows remain compatible."
+          - "Retake and result behavior is not duplicated accidentally."
+          - "Progress and history remain coherent."
+          - "Android, Desktop, Web, and shared checks pass."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+  - key: E17
+    github_title: "EPIC-17 Guided Learning"
+
+    goal: >
+      Help the user choose a useful next study action without introducing opaque
+      AI or gamification. Derive simple, explainable recommendations from
+      unresolved mistakes, weak areas, curriculum coverage, and recent activity,
+      and route those recommendations into the practice capabilities built in
+      EPIC-16.
+
+    issues:
+      - key: E17-01
+        title: "Define a transparent learning recommendation policy"
+
+        issue: >
+          The application can increasingly describe progress and offer targeted
+          practice, but still leaves the user to manually decide which signal
+          should determine their next action.
+
+        approach: >
+          Define a small deterministic recommendation policy with explicit
+          precedence and human-readable rationale. Recommendations should map to
+          existing destinations or EPIC-16 practice presets.
+
+        acceptance_criteria:
+          - "Recommendation inputs are explicitly documented."
+          - "The policy can consider unresolved mistakes."
+          - "The policy can consider weak areas."
+          - "The policy can consider low or unseen coverage."
+          - "The policy can consider recent completed study context where useful."
+          - "Recommendation precedence is deterministic."
+          - "Every recommendation has a user-visible rationale."
+          - "No ML, LLM, opaque score, streak, or engagement optimization is introduced."
+          - "Empty and new-user behavior is explicit."
+          - "Unit tests cover precedence and tie cases."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E17-02
+        title: "Add Continue Studying"
+
+        issue: >
+          Returning users have no concise entry point back into the learning
+          context they were recently working on.
+
+        approach: >
+          Add a compact Continue Studying surface derived from recent completed
+          learning context. It should return the user to a useful Topic,
+          Subtopic, or practice context, not attempt to resume an abandoned
+          in-progress assessment.
+
+        acceptance_criteria:
+          - "Continue Studying is shown only when meaningful previous study context exists."
+          - "Context is derived from stable persisted history data."
+          - "Selecting it reaches the appropriate existing Topic or EPIC-16 practice setup."
+          - "It does not resume an IN_PROGRESS assessment."
+          - "Missing or deprecated historical metadata degrades gracefully."
+          - "The card remains compact and does not create a new top-level area."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E17-03
+        title: "Add Recommended Next with an explainable rationale"
+
+        issue: >
+          Progress signals are useful individually, but users still need to
+          inspect multiple screens to infer which action would currently deliver
+          the most study value.
+
+        approach: >
+          Present at most one primary Recommended Next action using the
+          transparent recommendation policy. Show the reason for the
+          recommendation and route to the existing target or practice
+          capability.
+
+        acceptance_criteria:
+          - "At most one primary recommendation is shown at a time."
+          - "Its rationale is visible in plain language."
+          - "Mistake, weak, and coverage recommendation types map to existing product flows."
+          - "A recommendation never creates a hidden new scoring or selection policy."
+          - "No recommendation is shown when no useful action can be justified."
+          - "New users receive an appropriate deterministic starting recommendation."
+          - "Compose and ViewModel tests cover the major recommendation types."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E17-04
+        title: "Add one-tap targeted-practice shortcuts"
+
+        issue: >
+          When Progress or Topic detail already identifies a clear learning
+          opportunity, forcing the user through the complete Practice Builder
+          every time adds avoidable friction.
+
+        approach: >
+          Allow contextual actions such as practice weak areas or practice
+          unseen questions to open the EPIC-16 practice capability with a
+          preconfigured preset that remains inspectable and editable before
+          starting when appropriate.
+
+        acceptance_criteria:
+          - "Shortcuts reuse the EPIC-16 configuration semantics."
+          - "Weak-area shortcuts do not reimplement weak selection."
+          - "Unseen shortcuts do not reimplement coverage."
+          - "Mistake shortcuts do not reimplement unresolved-mistake semantics."
+          - "Presets remain understandable to the user."
+          - "No separate assessment engines are introduced."
+          - "Relevant navigation and Compose tests pass."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E17-05
+        title: "Verify guided-learning behavior across user states"
+
+        issue: >
+          Recommendation behavior must remain useful for new users, partially
+          active users, and users with extensive history without becoming noisy
+          or contradictory.
+
+        approach: >
+          Test deterministic guidance with representative history, coverage, and
+          mistake states and verify its integration with the existing four-area
+          navigation.
+
+        acceptance_criteria:
+          - "New-user behavior is useful and non-misleading."
+          - "Unresolved mistakes receive the intended precedence."
+          - "Weak-area recommendations behave as documented."
+          - "Coverage recommendations behave as documented."
+          - "Continue Studying does not conflict with Recommended Next."
+          - "The recommendation rationale matches the actual policy decision."
+          - "EPIC-16 practice presets launched from guidance remain editable and valid."
+          - "Existing navigation and assessment journeys remain green."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
+
+  - key: E18
+    github_title: "EPIC-18 Saved Questions"
+
+    goal: >
+      Allow users to deliberately save Questions they want to revisit even when
+      they answered them correctly. Keep this lightweight and local, use stable
+      Question identity, and integrate it into the existing learning and review
+      flows without adding another top-level navigation area.
+
+    issues:
+      - key: E18-01
+        title: "Persist saved Question identity"
+
+        issue: >
+          Mistake state is derived from correctness, but users may want to
+          revisit an important Question regardless of whether it was answered
+          correctly.
+
+        approach: >
+          Add minimal local persistence for saved Question IDs with save time or
+          order where useful. Resolve display content through the existing
+          curriculum repository rather than snapshotting full Question content.
+
+        acceptance_criteria:
+          - "A Question can be saved by stable Question ID."
+          - "Saving the same Question repeatedly is idempotent."
+          - "A saved Question can be removed."
+          - "Saved state survives process restart."
+          - "Full Question content is not duplicated into the saved table."
+          - "ACTIVE and DEPRECATED stable lookup behavior is explicit."
+          - "Missing Question content is handled gracefully."
+          - "A tested Room migration covers the new persistence."
+          - "Android, JVM, iOS, and Web builders register the migration."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E18-02
+        title: "Add save and unsave actions to Question review surfaces"
+
+        issue: >
+          Saved Questions are useful only if users can capture them naturally
+          while encountering useful content.
+
+        approach: >
+          Add a consistent Save and Unsave affordance to the existing result and
+          mistake-review Question cards while preserving answer, explanation,
+          and source behavior.
+
+        acceptance_criteria:
+          - "Available review Questions expose Save and Unsave."
+          - "Saved state is visible and accessible."
+          - "The action does not interfere with source links or answer review."
+          - "Focused results support it."
+          - "Mixed results support it."
+          - "Mistake Review supports it."
+          - "Repeated taps do not create duplicate persistence."
+          - "Missing historical Question placeholders do not expose invalid save behavior."
+          - "Compose and persistence tests cover save and unsave."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E18-03
+        title: "Add a Saved Questions browsing surface"
+
+        issue: >
+          Persisting saved IDs without a place to revisit them does not complete
+          the study workflow.
+
+        approach: >
+          Add a Saved Questions destination reachable from an appropriate
+          existing learning surface rather than introducing a fifth top-level
+          navigation item. Resolve Question content by stable ID and reuse the
+          review presentation where practical.
+
+        acceptance_criteria:
+          - "A user can open Saved Questions from an existing logical area."
+          - "No new top-level navigation item is added."
+          - "Saved Questions are presented in deterministic order."
+          - "Question text, answers, explanation, and Sources are available where content resolves."
+          - "Save state can be removed from the browsing surface."
+          - "The empty state is explicit."
+          - "DEPRECATED saved Questions remain reviewable when resolvable."
+          - "Missing saved Question content is represented safely."
+          - "Existing assessment-review components are reused where practical."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E18-04
+        title: "Verify saved-question lifecycle and historical compatibility"
+
+        issue: >
+          Saved identity must remain robust as curriculum content changes and as
+          users save Questions from different assessment and review paths.
+
+        approach: >
+          Exercise save, unsave, and browse behavior using real persistence and
+          ACTIVE, DEPRECATED, and missing content.
+
+        acceptance_criteria:
+          - "Saved state survives repository and database reconstruction."
+          - "Duplicate saves remain one record."
+          - "Unsave removes the record."
+          - "Focused, Mixed, and Mistake Review all reference the same saved state."
+          - "DEPRECATED content behaves according to the documented policy."
+          - "Missing Question content does not crash Saved Questions."
+          - "Curriculum re-import does not erase unrelated saved identity."
+          - "All persistent host builders remain compatible."
+          - "Existing EPIC-11 and EPIC-16 behavior remains green."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"

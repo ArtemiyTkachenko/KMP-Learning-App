@@ -52,6 +52,19 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 import org.jetbrains.compose.resources.stringResource
 
 internal const val TopicBrowserLoadingTag = "topic_browser_loading"
+internal const val TopicBrowserHeaderTag = "topic_browser_header"
+internal const val TopicBrowserViewportTag = "topic_browser_viewport"
+
+/**
+ * Space between the top safe area and the heading.
+ *
+ * Design spacing only: the status-bar allowance is the window inset applied above it. The two are
+ * deliberately separate and additive. This was 24.dp back when the screen applied no inset and the
+ * heading ran under the status bar, so the value stood in for both; once the inset was added the
+ * old margin stacked on top of a safe area that is 54.dp on a current phone, leaving the heading
+ * most of an inch down the screen.
+ */
+private val TopicBrowserHeaderSpacing = 12.dp
 
 @Composable
 internal fun TopicBrowserScreen(
@@ -59,20 +72,26 @@ internal fun TopicBrowserScreen(
     onTopicClick: (String) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
+    topWindowInsets: WindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top),
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
-            // This screen carries its own heading instead of an AppTopBar, so there is no bar
-            // here to pad for the status bar; without this the heading sits underneath it.
-            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
-            .padding(horizontal = 20.dp, vertical = 24.dp),
+            // This screen carries its own heading instead of an AppTopBar, so it owns the top safe
+            // area; the shell leaves that inset unconsumed for exactly this reason. The bottom is
+            // not ours: the shell's Scaffold already ends this content at the top of the navigation
+            // bar, so bottom padding out here would show as a strip of background above it. Any
+            // scroll-end spacing belongs inside the list, as contentPadding.
+            .windowInsetsPadding(topWindowInsets)
+            .padding(horizontal = 20.dp)
+            .padding(top = TopicBrowserHeaderSpacing),
     ) {
         Text(
             text = stringResource(Res.string.topic_browser_title),
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.testTag(TopicBrowserHeaderTag),
         )
         Text(
             text = stringResource(Res.string.topic_browser_subtitle),
@@ -81,7 +100,7 @@ internal fun TopicBrowserScreen(
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        Box(modifier = Modifier.weight(1f)) {
+        Box(modifier = Modifier.weight(1f).testTag(TopicBrowserViewportTag)) {
             when (state) {
                 TopicBrowserUiState.Loading -> ScreenLoading(
                     message = stringResource(Res.string.topic_browser_loading),

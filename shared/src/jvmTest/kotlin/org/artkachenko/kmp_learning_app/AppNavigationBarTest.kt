@@ -1,6 +1,8 @@
 package org.artkachenko.kmp_learning_app
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -30,6 +32,60 @@ internal class AppNavigationBarTest {
         onNodeWithText("Interview").assertIsDisplayed()
         onNodeWithText("Progress").assertIsDisplayed()
         onNodeWithText("Mistakes").assertIsDisplayed()
+    }
+
+    @Test
+    fun shellOwnsTheBottomInsetAndLeavesTheTopToTheScreen() = runComposeUiTest {
+        // Each system inset must have exactly one owner. The shell deliberately excludes the top
+        // from its content insets so a screen without an AppTopBar can pad for the status bar
+        // itself, and it reports the whole bottom so no screen adds its own above the bar.
+        var contentPadding: PaddingValues? = null
+        setContent {
+            AppTheme {
+                Box(Modifier.size(400.dp, 800.dp)) {
+                    AppNavigationScaffold(
+                        selected = AppTopLevelDestination.TOPICS,
+                        onSelect = {},
+                        showsNavigation = true,
+                    ) { padding ->
+                        contentPadding = padding
+                        Box(Modifier.fillMaxSize())
+                    }
+                }
+            }
+        }
+
+        val padding = requireNotNull(contentPadding)
+        assertEquals(0.dp, padding.calculateTopPadding())
+        assertTrue(
+            padding.calculateBottomPadding() > 0.dp,
+            "the shell must reserve the navigation bar so screens do not",
+        )
+    }
+
+    @Test
+    fun aRailLayoutReservesNoBottomNavigationSpace() = runComposeUiTest {
+        // Beside a rail there is no bottom bar to clear, so the content must run to the window
+        // edge. This host reports no system insets, so the whole bottom padding should be zero.
+        var contentPadding: PaddingValues? = null
+        setContent {
+            AppTheme {
+                Box(Modifier.size(AppNavigationRailBreakpoint, 800.dp)) {
+                    AppNavigationScaffold(
+                        selected = AppTopLevelDestination.TOPICS,
+                        onSelect = {},
+                        showsNavigation = true,
+                    ) { padding ->
+                        contentPadding = padding
+                        Box(Modifier.fillMaxSize())
+                    }
+                }
+            }
+        }
+
+        val padding = requireNotNull(contentPadding)
+        assertEquals(0.dp, padding.calculateTopPadding())
+        assertEquals(0.dp, padding.calculateBottomPadding())
     }
 
     @Test

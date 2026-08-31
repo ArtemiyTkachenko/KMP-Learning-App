@@ -1,12 +1,18 @@
 package org.artkachenko.kmp_learning_app.topic_study.topics
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.artkachenko.kmp_learning_app.AppRoute
@@ -14,6 +20,85 @@ import org.artkachenko.kmp_learning_app.curriculum.Topic
 
 @OptIn(ExperimentalTestApi::class)
 internal class TopicBrowserScreenTest {
+    @Test
+    fun topSafeAreaAndHeaderSpacingAreEachAppliedOnce() = runComposeUiTest {
+        // The shell leaves the top inset unconsumed so this screen, which has no AppTopBar, owns
+        // it. The heading should therefore sit at safe area + the screen's own header spacing:
+        // not at twice the inset, and not flush against the safe area with the spacing dropped.
+        setContent {
+            MaterialTheme {
+                Box(Modifier.size(400.dp, 800.dp).testTag(TestRootTag)) {
+                    TopicBrowserScreen(
+                        state = TopicBrowserUiState.Empty,
+                        onTopicClick = {},
+                        onRetry = {},
+                        topWindowInsets = WindowInsets(top = TestTopInset),
+                    )
+                }
+            }
+        }
+
+        val rootTop = onNodeWithTag(TestRootTag).fetchSemanticsNode().boundsInRoot.top
+        val headerTop = onNodeWithTag(TopicBrowserHeaderTag).fetchSemanticsNode().boundsInRoot.top
+
+        assertEquals(
+            expected = rootTop + with(density) { (TestTopInset + TestHeaderSpacing).toPx() },
+            actual = headerTop,
+            absoluteTolerance = 0.5f,
+        )
+    }
+
+    @Test
+    fun headerSpacingDoesNotScaleWithTheTopInset() = runComposeUiTest {
+        // Guards against the inset being applied twice: doubling the inset must move the heading
+        // down by exactly one inset, not two.
+        setContent {
+            MaterialTheme {
+                Box(Modifier.size(400.dp, 800.dp).testTag(TestRootTag)) {
+                    TopicBrowserScreen(
+                        state = TopicBrowserUiState.Empty,
+                        onTopicClick = {},
+                        onRetry = {},
+                        topWindowInsets = WindowInsets(top = TestTopInset * 2),
+                    )
+                }
+            }
+        }
+        val headerTop = onNodeWithTag(TopicBrowserHeaderTag).fetchSemanticsNode().boundsInRoot.top
+        val rootTop = onNodeWithTag(TestRootTag).fetchSemanticsNode().boundsInRoot.top
+
+        assertEquals(
+            expected = rootTop + with(density) { (TestTopInset * 2 + TestHeaderSpacing).toPx() },
+            actual = headerTop,
+            absoluteTolerance = 0.5f,
+        )
+    }
+
+    @Test
+    fun contentViewportReachesTheBottomOfTheScreen() = runComposeUiTest {
+        // The shell's Scaffold already ends this content at the top of the navigation bar, so the
+        // screen must not hold any bottom padding outside the list: that shows as a strip of
+        // background above the bar. Scroll-end spacing lives inside the list instead.
+        setContent {
+            MaterialTheme {
+                Box(Modifier.size(400.dp, 800.dp).testTag(TestRootTag)) {
+                    TopicBrowserScreen(
+                        state = TopicBrowserUiState.Empty,
+                        onTopicClick = {},
+                        onRetry = {},
+                        topWindowInsets = WindowInsets(0.dp),
+                    )
+                }
+            }
+        }
+
+        val rootBottom = onNodeWithTag(TestRootTag).fetchSemanticsNode().boundsInRoot.bottom
+        val viewportBottom = onNodeWithTag(TopicBrowserViewportTag)
+            .fetchSemanticsNode().boundsInRoot.bottom
+
+        assertEquals(rootBottom, viewportBottom, absoluteTolerance = 0.5f)
+    }
+
     @Test
     fun contentRendersTopicNames() = runComposeUiTest {
         setContent {
@@ -123,3 +208,9 @@ internal class TopicBrowserScreenTest {
         assertEquals("topic_stable_id", route.topicId)
     }
 }
+
+private const val TestRootTag = "topic_browser_test_root"
+private val TestTopInset = 48.dp
+
+/** Mirrors TopicBrowserHeaderSpacing, which is private to the screen. */
+private val TestHeaderSpacing = 12.dp

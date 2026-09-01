@@ -22,6 +22,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
@@ -56,11 +57,16 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.curriculumDataModu
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImportResult
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImporter
 import org.artkachenko.kmp_learning_app.data.local.curriculum.repository.LocalCurriculumRepository
+import org.artkachenko.kmp_learning_app.learning_progress.CurriculumCoverage
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
+import org.artkachenko.kmp_learning_app.learning_progress.RecentTrendAvailability
+import org.artkachenko.kmp_learning_app.learning_progress.SubtopicCoverage
 import org.artkachenko.kmp_learning_app.learning_progress.SubtopicPerformance
+import org.artkachenko.kmp_learning_app.learning_progress.TopicCoverage
 import org.artkachenko.kmp_learning_app.learning_progress.TopicPerformance
 import org.artkachenko.kmp_learning_app.learning_progress.WeakArea
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
+import org.artkachenko.kmp_learning_app.progress.ProgressRecentTrendChartTag
 import org.artkachenko.kmp_learning_app.progress.progressHistoryCardTag
 import org.artkachenko.kmp_learning_app.progress.progressTopicCardTag
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
@@ -96,6 +102,15 @@ internal class ProgressLearningJourneyIntegrationTest {
                     }
 
                     waitForText("Topics")
+                    // The study surface joins the same two figures without collapsing them into
+                    // one score: current coverage of the Topic beside its all-time accuracy, both
+                    // read from a single derivation of the real snapshot.
+                    waitForText("3 of 3 explored")
+                    onNodeWithText("Android").assertIsDisplayed()
+                    onNodeWithText("40%").assertIsDisplayed()
+                    onNodeWithText("Not studied yet").assertDoesNotExist()
+                    assertTrue(onAllNodesWithText("Weak area").fetchSemanticsNodes().isNotEmpty())
+
                     onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.PROGRESS))
                         .performClick()
                     waitForText("Completed assessments")
@@ -106,6 +121,24 @@ internal class ProgressLearningJourneyIntegrationTest {
                     assertTrue(
                         onAllNodesWithText("42.9%").fetchSemanticsNodes().isNotEmpty(),
                     )
+
+                    // Coverage and recent performance answer different questions from the lifetime
+                    // accuracy above, and this fixture makes the difference visible: the learner
+                    // has met every current Question and answered fewer than half of them right.
+                    // The percentages alone cannot be told apart here — lifetime and recent are the
+                    // same 42.9% over three attempts — so each surface is asserted through wording
+                    // only it produces.
+                    scrollToText("Curriculum coverage")
+                    onNodeWithText("3 of 3 questions explored").assertIsDisplayed()
+                    scrollToText("Recent performance")
+                    onNodeWithText("Last 3 completed assessments").assertIsDisplayed()
+                    onNodeWithText("3 / 7 correct").assertIsDisplayed()
+                    scrollToTag(ProgressRecentTrendChartTag)
+                    // Oldest -> newest, in the order the domain produced, and every value taken
+                    // from persisted correctness rather than the current answer keys.
+                    onNodeWithContentDescription(
+                        "Recent assessment accuracy, oldest to newest: 0%, 100%, 50%.",
+                    ).assertIsDisplayed()
 
                     scrollToText("Weak areas")
                     assertTrue(onAllNodesWithText("Android").fetchSemanticsNodes().isNotEmpty())
@@ -134,7 +167,25 @@ internal class ProgressLearningJourneyIntegrationTest {
                     onNodeWithText("1 / 2 correct").assertIsDisplayed()
                     onNodeWithText("50%").assertIsDisplayed()
                     onNodeWithText("Never observed").assertDoesNotExist()
+                    // Current coverage sits beside the historical fraction on each card rather
+                    // than replacing it: "2 / 5 correct" counts every occurrence, "3 of 3" counts
+                    // each current Question once.
+                    onNodeWithText("3 of 3 current questions explored").assertIsDisplayed()
+                    onNodeWithText("2 of 2 current questions explored").assertIsDisplayed()
+                    onNodeWithText("1 of 1 current questions explored").assertIsDisplayed()
                     assertTrue(onAllNodesWithText("Weak area").fetchSemanticsNodes().size >= 3)
+                    onNodeWithContentDescription("Back").performClick()
+                    waitForText("Progress")
+
+                    // A Topic answered entirely on retired content keeps its historical accuracy
+                    // and simply has no current coverage to report.
+                    scrollToTag(progressTopicCardTag(LegacyTopicId))
+                    onNodeWithTag(progressTopicCardTag(LegacyTopicId)).performClick()
+                    waitForText("Legacy APIs")
+                    onNodeWithText("Legacy Android").assertIsDisplayed()
+                    assertTrue(onAllNodesWithText("0 / 1 correct").fetchSemanticsNodes().isNotEmpty())
+                    onNodeWithText("current questions explored", substring = true)
+                        .assertDoesNotExist()
                     onNodeWithContentDescription("Back").performClick()
                     waitForText("Progress")
 
@@ -160,6 +211,9 @@ internal class ProgressLearningJourneyIntegrationTest {
 
                     // The dashboard reports the size of the queue; opening it is the Mistakes
                     // navigation item's job, and that item carries the same count as a badge.
+                    // Coverage has no say in this: every current Question has been explored and
+                    // two mistakes are still unresolved, because resolution is decided solely by
+                    // the latest completed occurrence of each Question.
                     scrollToTextStartingWith("unresolved mistakes to review")
                     onNodeWithText("2 unresolved mistakes to review").assertIsDisplayed()
                     onNodeWithText("2", useUnmergedTree = true).assertIsDisplayed()
@@ -323,6 +377,47 @@ internal class ProgressLearningJourneyIntegrationTest {
                 }
             },
         )
+
+        // Coverage counts each stable Question of the CURRENT ACTIVE bank once, so the repeated
+        // Lifecycle Question contributes one unit here and three observations above, and the
+        // DEPRECATED Legacy Question is absent from the denominator entirely while keeping its
+        // historical performance row. The IN_PROGRESS attempt reaches none of this.
+        assertEquals(
+            CurriculumCoverage(attemptedQuestionCount = 3, totalQuestionCount = 3),
+            snapshot.coverage,
+        )
+        assertEquals(
+            listOf(
+                TopicCoverage(
+                    topicId = AndroidTopicId,
+                    attemptedQuestionCount = 3,
+                    totalQuestionCount = 3,
+                ),
+            ),
+            snapshot.topicCoverage,
+        )
+        assertEquals(
+            listOf(
+                SubtopicCoverage(AndroidTopicId, LifecycleSubtopicId, 2, 2),
+                SubtopicCoverage(AndroidTopicId, StateSubtopicId, 1, 1),
+            ),
+            snapshot.subtopicCoverage,
+        )
+
+        val recent = snapshot.recentPerformance
+        assertEquals(
+            listOf(FocusedTopicAttemptId, FocusedSubtopicAttemptId, MixedAttemptId),
+            recent.attemptSeries.map { it.attemptId },
+        )
+        assertEquals(7, recent.answeredQuestionCount)
+        assertEquals(3, recent.correctAnswerCount)
+        assertEquals(
+            3.0 / 7.0 * 100.0,
+            assertNotNull(recent.percentage),
+            absoluteTolerance = 0.000_001,
+        )
+        assertEquals(listOf(0.0, 100.0, 50.0), recent.attemptSeries.map { it.percentage })
+        assertEquals(RecentTrendAvailability.Available, recent.trendAvailability)
 
         val mistakes = components.mistakeService.load()
         assertEquals(listOf(LifecycleQuestionId, LegacyQuestionId), mistakes.map { it.questionId })

@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app.progress
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
@@ -10,6 +11,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runComposeUiTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -103,7 +105,8 @@ internal class ProgressScreenTest {
         onNode(hasText("Completed assessments") and hasText("3")).assertIsDisplayed()
         onNode(hasText("Questions answered") and hasText("30")).assertIsDisplayed()
         onNode(hasText("Correct answers") and hasText("21")).assertIsDisplayed()
-        onNodeWithText("accuracy overall").assertIsDisplayed()
+        // Now that a recent figure exists, the lifetime one has to say which of the two it is.
+        onNodeWithText("All-time accuracy").assertIsDisplayed()
         onAllNodesWithText("70%").assertCountEquals(1)
         onNodeWithText("Weak areas").assertIsDisplayed()
         onNodeWithText("State").assertIsDisplayed()
@@ -340,9 +343,275 @@ internal class ProgressScreenTest {
         onNodeWithText("Subtopic unavailable").assertIsDisplayed()
     }
 
+    @Test
+    fun coverageReportsItsDenominatorRatherThanABarePercentage() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    contentState(coverage = ProgressCoverageUiModel(25, 100, 25.0)),
+                    {},
+                    {},
+                    {},
+                    {},
+                    { _, _ -> },
+                )
+            }
+        }
+
+        onNodeWithText("Curriculum coverage").assertIsDisplayed()
+        onNodeWithText("25%").assertIsDisplayed()
+        // Coverage next to accuracy is two unexplained percentages unless the counts are visible,
+        // and the bar alone must never be the only place the figure appears.
+        onNodeWithText("25 of 100 questions explored").assertIsDisplayed()
+    }
+
+    @Test
+    fun broadCoverageStaysARestrainedCountAndPercentage() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    contentState(coverage = ProgressCoverageUiModel(90, 100, 90.0)),
+                    {},
+                    {},
+                    {},
+                    {},
+                    { _, _ -> },
+                )
+            }
+        }
+
+        onNodeWithText("90%").assertIsDisplayed()
+        onNodeWithText("90 of 100 questions explored").assertIsDisplayed()
+    }
+
+    @Test
+    fun anEmptyActiveBankIsReportedInsteadOfZeroPercentCoverage() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    contentState(coverage = ProgressCoverageUiModel(0, 0, null)),
+                    {},
+                    {},
+                    {},
+                    {},
+                    { _, _ -> },
+                )
+            }
+        }
+
+        // 0/0 is "nothing to cover", which is not the same claim as "0% covered".
+        onNodeWithText("No active curriculum available").assertIsDisplayed()
+        onNodeWithText("0 of 0 questions explored").assertDoesNotExist()
+    }
+
+    @Test
+    fun recentPerformanceIsPresentedApartFromLifetimeAccuracy() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    contentState(
+                        recentPerformance = recentState(
+                            attemptPercentages = listOf(60.0, 68.0, 72.0, 77.0, 81.0),
+                            correctAnswerCount = 41,
+                            answeredQuestionCount = 50,
+                        ),
+                    ),
+                    {},
+                    {},
+                    {},
+                    {},
+                    { _, _ -> },
+                )
+            }
+        }
+
+        onNodeWithText("Recent performance").assertIsDisplayed()
+        // The lifetime figure is 70%; only the recent surface may read 82%.
+        onNodeWithText("82%").assertIsDisplayed()
+        onNodeWithText("Last 5 completed assessments").assertIsDisplayed()
+        onNodeWithText("41 / 50 correct").assertIsDisplayed()
+        onNodeWithText("All-time accuracy").assertIsDisplayed()
+        onAllNodesWithText("70%").assertCountEquals(1)
+    }
+
+    @Test
+    fun oneCompletedAssessmentReadsAsASingularWindowWithNoTrend() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    contentState(
+                        recentPerformance = recentState(
+                            attemptPercentages = listOf(82.0),
+                            correctAnswerCount = 9,
+                            answeredQuestionCount = 11,
+                        ),
+                    ),
+                    {},
+                    {},
+                    {},
+                    {},
+                    { _, _ -> },
+                )
+            }
+        }
+
+        onNodeWithText("Last completed assessment").assertIsDisplayed()
+        onNodeWithText("9 / 11 correct").assertIsDisplayed()
+        onNodeWithTag(ProgressRecentTrendChartTag).assertDoesNotExist()
+        onNodeWithText("A trend appears after 3 completed assessments.").assertIsDisplayed()
+    }
+
+    @Test
+    fun twoCompletedAssessmentsKeepTheSummaryAndWithholdOnlyTheChart() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    contentState(
+                        recentPerformance = recentState(
+                            attemptPercentages = listOf(70.0, 90.0),
+                            correctAnswerCount = 16,
+                            answeredQuestionCount = 20,
+                        ),
+                    ),
+                    {},
+                    {},
+                    {},
+                    {},
+                    { _, _ -> },
+                )
+            }
+        }
+
+        // Two assessments are still real evidence, so hiding the whole surface would throw away
+        // information the learner has actually earned.
+        onNodeWithText("Recent performance").assertIsDisplayed()
+        onNodeWithText("80%").assertIsDisplayed()
+        onNodeWithText("Last 2 completed assessments").assertIsDisplayed()
+        onNodeWithTag(ProgressRecentTrendChartTag).assertDoesNotExist()
+        onNodeWithText("A trend appears after 3 completed assessments.").assertIsDisplayed()
+    }
+
+    @Test
+    fun theTrendChartAppearsAtThreeAttemptsAndDescribesThemOldestFirst() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    contentState(
+                        recentPerformance = recentState(
+                            attemptPercentages = listOf(60.0, 68.0, 72.0),
+                            correctAnswerCount = 20,
+                            answeredQuestionCount = 30,
+                        ),
+                    ),
+                    {},
+                    {},
+                    {},
+                    {},
+                    { _, _ -> },
+                )
+            }
+        }
+
+        onNodeWithText("A trend appears after 3 completed assessments.").assertDoesNotExist()
+        // The drawing carries no information of its own: everything it plots is also readable.
+        onNodeWithTag(ProgressRecentTrendChartTag)
+            .assertContentDescriptionEquals(
+                "Recent assessment accuracy, oldest to newest: 60%, 68%, 72%.",
+            )
+    }
+
+    @Test
+    fun theFiveAttemptWindowIsPlottedWhole() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    contentState(
+                        recentPerformance = recentState(
+                            attemptPercentages = listOf(60.0, 68.0, 72.0, 77.0, 81.0),
+                        ),
+                    ),
+                    {},
+                    {},
+                    {},
+                    {},
+                    { _, _ -> },
+                )
+            }
+        }
+
+        onNodeWithTag(ProgressRecentTrendChartTag)
+            .assertContentDescriptionEquals(
+                "Recent assessment accuracy, oldest to newest: 60%, 68%, 72%, 77%, 81%.",
+            )
+    }
+
+    @Test
+    fun aNewLearnerSeesGuidanceRatherThanAnAllZeroDashboard() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, { _, _ -> })
+            }
+        }
+
+        onNodeWithText(
+            "Complete an interview or focused practice session to start tracking your progress.",
+        ).assertIsDisplayed()
+        onNodeWithText("Curriculum coverage").assertDoesNotExist()
+        onNodeWithText("Recent performance").assertDoesNotExist()
+        onNodeWithTag(ProgressRecentTrendChartTag).assertDoesNotExist()
+        onNodeWithText("0%").assertDoesNotExist()
+    }
+
+    @Test
+    fun theNewSummariesDoNotDisplaceTheExistingDiagnosticSections() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    contentState(
+                        recentPerformance = recentState(listOf(60.0, 68.0, 72.0)),
+                        unresolvedMistakeCount = 2,
+                        weakAreas = listOf(
+                            WeakAreaUiModel(WeakAreaType.TOPIC, "topic", "Kotlin", null, 5, 2, 40.0),
+                        ),
+                        topics = listOf(ProgressTopicUiModel("topic", "Kotlin", 20, 14, 70.0)),
+                        history = listOf(
+                            CompletedAttemptUiModel(
+                                "mixed-id",
+                                CompletedAssessmentType.MIXED,
+                                null,
+                                20,
+                                15,
+                                75.0,
+                                "2026-08-29T00:15:00Z",
+                            ),
+                        ),
+                    ),
+                    {},
+                    {},
+                    {},
+                    {},
+                    { _, _ -> },
+                )
+            }
+        }
+
+        // The summaries push the diagnostics further down a scrolling list, which is the intended
+        // hierarchy; what must not happen is any of them dropping out of the screen altogether.
+        onNodeWithTag(ProgressContentTag)
+            .performScrollToNode(hasText("2 unresolved mistakes to review"))
+        onNodeWithText("2 unresolved mistakes to review").assertIsDisplayed()
+        onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("Weak areas"))
+        onNodeWithText("Weak areas").assertIsDisplayed()
+        onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("Topic performance"))
+        onNodeWithText("Topic performance").assertIsDisplayed()
+        onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("Assessment history"))
+        onNodeWithText("Assessment history").assertIsDisplayed()
+    }
 }
 
 private fun contentState(
+    coverage: ProgressCoverageUiModel = ProgressCoverageUiModel(25, 100, 25.0),
+    recentPerformance: ProgressRecentPerformanceUiModel? = null,
     unresolvedMistakeCount: Int = 0,
     weakAreas: List<WeakAreaUiModel> = emptyList(),
     topics: List<ProgressTopicUiModel> = emptyList(),
@@ -353,8 +622,35 @@ private fun contentState(
         answeredQuestionCount = 30,
         correctAnswerCount = 21,
         percentage = 70.0,
+        coverage = coverage,
+        recentPerformance = recentPerformance,
         unresolvedMistakeCount = unresolvedMistakeCount,
         weakAreas = weakAreas,
         topics = topics,
         history = history,
+    )
+
+/**
+ * A recent window whose accuracy differs from the 70% lifetime figure above, so an assertion can
+ * only pass by finding the right one of the two.
+ */
+private fun recentState(
+    attemptPercentages: List<Double>,
+    correctAnswerCount: Int = 41,
+    answeredQuestionCount: Int = 50,
+): ProgressRecentPerformanceUiModel =
+    ProgressRecentPerformanceUiModel(
+        attemptCount = attemptPercentages.size,
+        answeredQuestionCount = answeredQuestionCount,
+        correctAnswerCount = correctAnswerCount,
+        percentage = correctAnswerCount.toDouble() / answeredQuestionCount * 100.0,
+        trend = if (attemptPercentages.size >= 3) {
+            ProgressRecentTrendUiModel.Available(
+                attemptPercentages.mapIndexed { index, percentage ->
+                    ProgressRecentAttemptUiModel("attempt-$index", percentage)
+                },
+            )
+        } else {
+            ProgressRecentTrendUiModel.InsufficientHistory(requiredAttemptCount = 3)
+        },
     )

@@ -225,6 +225,39 @@ result destinations; no progress snapshot or history summary is persisted. The
 dashboard reports the unresolved mistake count as plain text — the Mistakes
 navigation item, badged with the same count, owns opening the queue.
 
+The dashboard presents the snapshot's three signals as three separate surfaces,
+because they answer three different questions and are routinely different
+numbers. All-time accuracy keeps the primary summary card and is now labelled as
+all-time rather than "overall", since an unqualified accuracy figure beside a
+recent one is ambiguous. Curriculum coverage and recent performance follow it as
+quieter tonal cards: important, but not three competing headlines. Coverage always
+prints its raw attempted/total counts beside the percentage, because coverage and
+accuracy differ substantially for normal learners and the denominator is what
+explains why; its meter uses the exact count ratio rather than the rounded display
+percentage, and a `null` percentage (an empty ACTIVE bank) reports that there is no
+curriculum to cover instead of drawing 0%. Recent performance prints the domain's
+question-weighted window accuracy — never the mean of the plotted attempts — with
+a grammatically singular or plural window label. The new-user Empty state is
+unchanged: a dashboard of zeroes is not a substitute for guidance.
+
+Recent performance carries the app's only trend visualization, a small Compose
+`Canvas` line chart in `RecentTrendChart`; no charting dependency was added for
+five points, and the drawing stays in `commonMain` like the rest of the UI. Two of
+its properties are load-bearing enough to be pinned by tests over the pure
+`trendPoints` helper rather than by inspecting a rendered chart. The vertical scale
+is fixed to 0-100% and never fitted to the observed values, because a 72/74/76
+series auto-scaled to its own range draws as a dramatic climb when nothing much
+happened. Horizontal spacing is uniform, because the recent window is defined by a
+count of assessments rather than by elapsed time, so the gaps carry no duration
+meaning. The chart appears only at the domain's `RecentTrendAvailability.Available`
+and the shorter cases say plainly that a trend appears after three assessments,
+rather than hiding the summary that one or two completed assessments legitimately
+support. It plots `attemptSeries` and not `answerSeries` — one visualization is the
+budget — draws no direction colouring or "improving"/"declining" label, since the
+domain deliberately exposes raw observations, and carries a semantic description
+listing every plotted percentage oldest-first so the drawing is never the only
+representation.
+
 Topic performance rows open `AppRoute.ProgressTopic(topicId)`, carrying only
 stable topic identity. `ProgressTopicViewModel` selects that Topic and its
 observed Subtopics out of the same derived snapshot, so the drill-down never

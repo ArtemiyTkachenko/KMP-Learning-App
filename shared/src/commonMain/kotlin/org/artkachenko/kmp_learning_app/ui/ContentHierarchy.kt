@@ -37,6 +37,31 @@ internal fun PrimarySummaryCard(
     }
 }
 
+/**
+ * Supporting summary content: the same shape language as [PrimarySummaryCard], one tonal step
+ * quieter and without an outline, so a screen can carry several summaries without any of them
+ * competing with its headline figure.
+ */
+@Composable
+internal fun SecondarySummaryCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            content = content,
+        )
+    }
+}
+
 /** Shared section hierarchy for scrollable learning and progress content. */
 @Composable
 internal fun SectionHeading(

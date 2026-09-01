@@ -4,6 +4,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.time.Instant
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -93,6 +94,202 @@ internal class ProgressViewModelTest {
         assertEquals(CompletedAssessmentType.MIXED, content.history.first().assessmentType)
         assertEquals(7, content.history.first().correctAnswers)
         assertEquals("2026-08-29T00:15:00Z", content.history.first().completedAtText)
+    }
+
+    @Test
+    fun partialCoverageCarriesTheAttemptedCountTheActiveTotalAndThePercentage() = runTest {
+        setMain(testScheduler)
+        // 25 of the 100 ACTIVE questions have been seen, and a second attempt re-answers one of
+        // them: coverage counts a stable Question ID once however often it was answered.
+        val seen = List(25) { "q_$it" to (it % 2 == 0) }
+        val context = TestContext(
+            attempts = listOf(
+                attemptAt("repeat", "2026-08-29T01:00:00Z", listOf(seen.first())),
+                attemptAt("first", "2026-08-29T00:00:00Z", seen),
+            ),
+            questions = List(100) { question("q_$it", "topic", "subtopic") },
+            topics = listOf(Topic("topic", "Kotlin")),
+            subtopics = listOf(Subtopic("subtopic", "topic", "Core")),
+        )
+
+        context.viewModel.refresh()
+        advanceUntilIdle()
+
+        assertEquals(
+            ProgressCoverageUiModel(
+                attemptedQuestionCount = 25,
+                totalQuestionCount = 100,
+                percentage = 25.0,
+            ),
+            content(context.viewModel).coverage,
+        )
+    }
+
+    @Test
+    fun broadCoverageIsMappedWithoutRoundingAwayTheCounts() = runTest {
+        setMain(testScheduler)
+        val seen = List(90) { "q_$it" to true }
+        val context = TestContext(
+            attempts = listOf(attemptAt("attempt", "2026-08-29T00:00:00Z", seen)),
+            questions = List(100) { question("q_$it", "topic", "subtopic") },
+            topics = listOf(Topic("topic", "Kotlin")),
+            subtopics = listOf(Subtopic("subtopic", "topic", "Core")),
+        )
+
+        context.viewModel.refresh()
+        advanceUntilIdle()
+
+        assertEquals(
+            ProgressCoverageUiModel(90, 100, 90.0),
+            content(context.viewModel).coverage,
+        )
+    }
+
+    @Test
+    fun recentPerformanceIsQuestionWeightedAndNotTheMeanOfItsAttempts() = runTest {
+        setMain(testScheduler)
+        // 1/1 and 10/20 is 11/21, not the 75% a mean of the two attempt percentages would give.
+        val context = TestContext(
+            attempts = listOf(
+                attemptAt("small", "2026-08-29T10:00:00Z", listOf("s_0" to true)),
+                attemptAt("large", "2026-08-29T09:00:00Z", List(20) { "l_$it" to (it < 10) }),
+            ),
+            questions = (List(20) { question("l_$it", "topic", "subtopic") } +
+                question("s_0", "topic", "subtopic")),
+            topics = listOf(Topic("topic", "Kotlin")),
+            subtopics = listOf(Subtopic("subtopic", "topic", "Core")),
+        )
+
+        context.viewModel.refresh()
+        advanceUntilIdle()
+
+        val recent = assertNotNull(content(context.viewModel).recentPerformance)
+        assertEquals(2, recent.attemptCount)
+        assertEquals(21, recent.answeredQuestionCount)
+        assertEquals(11, recent.correctAnswerCount)
+        assertEquals(11.0 / 21.0 * 100.0, recent.percentage)
+    }
+
+    @Test
+    fun theRecentWindowKeepsTheLatestFiveAttemptsOldestFirst() = runTest {
+        setMain(testScheduler)
+        // Six attempts, deliberately supplied newest-first, each with a distinguishable accuracy.
+        val correctCounts = mapOf(
+            "sixth" to 10, "fifth" to 9, "fourth" to 8, "third" to 7, "second" to 6, "first" to 5,
+        )
+        val hours = listOf("sixth", "fifth", "fourth", "third", "second", "first")
+        val attempts = hours.mapIndexed { index, id ->
+            attemptAt(
+                id = id,
+                completedAt = "2026-08-29T${(15 - index).toString().padStart(2, '0')}:00:00Z",
+                answers = List(10) { "${id}_q_$it" to (it < correctCounts.getValue(id)) },
+            )
+        }
+        val context = TestContext(
+            attempts = attempts,
+            questions = attempts.flatMap(TestAttempt::questionAttempts)
+                .map { question(it.questionId, "topic", "subtopic") },
+            topics = listOf(Topic("topic", "Kotlin")),
+            subtopics = listOf(Subtopic("subtopic", "topic", "Core")),
+        )
+
+        context.viewModel.refresh()
+        advanceUntilIdle()
+
+        val content = content(context.viewModel)
+        val trend = assertIs<ProgressRecentTrendUiModel.Available>(
+            assertNotNull(content.recentPerformance).trend,
+        )
+        assertEquals(
+            listOf("second", "third", "fourth", "fifth", "sixth"),
+            trend.attempts.map { it.attemptId },
+            "the series must reach presentation oldest -> newest",
+        )
+        assertEquals(listOf(60.0, 70.0, 80.0, 90.0, 100.0), trend.attempts.map { it.percentage })
+        // The recent window is the latest five; the lifetime figures still count all six.
+        assertEquals(6, content.completedAttemptCount)
+        assertEquals(60, content.answeredQuestionCount)
+        assertEquals(45, content.correctAnswerCount)
+        assertEquals(6, content.history.size)
+    }
+
+    @Test
+    fun aShortHistoryKeepsItsRecentSummaryAndReportsTheTrendAsUnavailable() = runTest {
+        setMain(testScheduler)
+        for (attemptCount in 1..2) {
+            val attempts = List(attemptCount) { index ->
+                attemptAt(
+                    id = "attempt-$index",
+                    completedAt = "2026-08-29T0$index:00:00Z",
+                    answers = listOf("attempt-${index}_q" to true),
+                )
+            }
+            val context = TestContext(
+                attempts = attempts,
+                questions = attempts.map { question("${it.id}_q", "topic", "subtopic") },
+                topics = listOf(Topic("topic", "Kotlin")),
+                subtopics = listOf(Subtopic("subtopic", "topic", "Core")),
+            )
+
+            context.viewModel.refresh()
+            advanceUntilIdle()
+
+            val recent = assertNotNull(content(context.viewModel).recentPerformance)
+            assertEquals(attemptCount, recent.attemptCount)
+            assertEquals(100.0, recent.percentage, "the summary is real evidence and must survive")
+            assertEquals(
+                ProgressRecentTrendUiModel.InsufficientHistory(requiredAttemptCount = 3),
+                recent.trend,
+            )
+        }
+    }
+
+    @Test
+    fun aThirdAttemptMakesTheTrendAvailable() = runTest {
+        setMain(testScheduler)
+        val attempts = List(3) { index ->
+            attemptAt(
+                id = "attempt-$index",
+                completedAt = "2026-08-29T0$index:00:00Z",
+                answers = listOf("attempt-${index}_q" to true),
+            )
+        }
+        val context = TestContext(
+            attempts = attempts,
+            questions = attempts.map { question("${it.id}_q", "topic", "subtopic") },
+            topics = listOf(Topic("topic", "Kotlin")),
+            subtopics = listOf(Subtopic("subtopic", "topic", "Core")),
+        )
+
+        context.viewModel.refresh()
+        advanceUntilIdle()
+
+        val trend = assertIs<ProgressRecentTrendUiModel.Available>(
+            assertNotNull(content(context.viewModel).recentPerformance).trend,
+        )
+        assertEquals(3, trend.attempts.size)
+    }
+
+    @Test
+    fun coverageAndRecentPerformanceAddNoReadOfTheirOwn() = runTest {
+        setMain(testScheduler)
+        val answers = List(4) { "q_$it" to (it < 3) }
+        val context = TestContext(
+            attempts = listOf(completedAttempt("attempt", AssessmentConfig.Mixed(4), answers)),
+            questions = answers.map { question(it.first, "topic", "subtopic") },
+            topics = listOf(Topic("topic", "Kotlin")),
+            subtopics = listOf(Subtopic("subtopic", "topic", "Core")),
+        )
+
+        advanceUntilIdle()
+
+        val content = content(context.viewModel)
+        // Both summaries come off the snapshot the derivation already produced, so the dashboard
+        // still reads the history once and the ACTIVE bank once per derivation.
+        assertEquals(ProgressCoverageUiModel(4, 4, 100.0), content.coverage)
+        assertNotNull(content.recentPerformance)
+        assertEquals(1, context.assessment.getCompletedCalls)
+        assertEquals(1, context.curriculum.activeQuestionCalls)
     }
 
     @Test
@@ -408,6 +605,7 @@ private class FakeCurriculumRepository(
     private val subtopicsById = subtopics.associateBy(Subtopic::id)
     val topicLookupCalls = mutableMapOf<String, Int>()
     val subtopicLookupCalls = mutableMapOf<String, Int>()
+    var activeQuestionCalls = 0
 
     fun resetLookupCounts() {
         topicLookupCalls.clear()
@@ -419,7 +617,10 @@ private class FakeCurriculumRepository(
         error("ACTIVE lookup must not be used.")
 
     /** LearningProgressService reads the ACTIVE bank once per load to derive curriculum coverage. */
-    override suspend fun getActiveQuestions(): List<Question> = questions
+    override suspend fun getActiveQuestions(): List<Question> {
+        activeQuestionCalls += 1
+        return questions
+    }
 
     override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> =
         error("ACTIVE lookup must not be used.")
@@ -463,6 +664,30 @@ private fun historyAttempt(
     id: String,
     config: AssessmentConfig,
 ): TestAttempt = completedAttempt(id, config, listOf("${id}-q" to true))
+
+/**
+ * A completed attempt with an explicit completion time, for the tests that care which attempts fall
+ * inside the recent window and in what order they reach presentation.
+ */
+private fun attemptAt(
+    id: String,
+    completedAt: String,
+    answers: List<Pair<String, Boolean>>,
+): TestAttempt =
+    TestAttempt(
+        id = id,
+        config = AssessmentConfig.Mixed(answers.size),
+        questionAttempts = answers.map { (questionId, isCorrect) ->
+            QuestionAttempt(
+                questionId,
+                QuestionAnswerState.Answered(setOf("${questionId}_answer"), isCorrect),
+            )
+        },
+        status = AssessmentStatus.COMPLETED,
+        startedAt = Instant.parse(completedAt),
+        completedAt = Instant.parse(completedAt),
+        score = AssessmentScore(answers.size, answers.count { it.second }),
+    )
 
 private fun observations(
     prefix: String,

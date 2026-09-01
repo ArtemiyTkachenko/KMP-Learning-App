@@ -14,7 +14,10 @@ import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.learning_progress.CurriculumCoverage
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
+import org.artkachenko.kmp_learning_app.learning_progress.RecentPerformance
+import org.artkachenko.kmp_learning_app.learning_progress.RecentTrendAvailability
 import org.artkachenko.kmp_learning_app.learning_progress.TopicPerformance
 import org.artkachenko.kmp_learning_app.learning_progress.WeakArea
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
@@ -59,10 +62,49 @@ internal class ProgressStateHolder(
             answeredQuestionCount = snapshot.answeredQuestionCount,
             correctAnswerCount = snapshot.correctAnswerCount,
             percentage = snapshot.percentage,
+            // Both of these are read straight off the snapshot the derivation above already
+            // produced. Neither the window nor the ACTIVE denominator is recomputed here, so
+            // presentation cannot disagree with the domain and adds no repository read of its own.
+            coverage = toUiModel(snapshot.coverage),
+            recentPerformance = toUiModel(snapshot.recentPerformance),
             unresolvedMistakeCount = unresolvedMistakeCount,
             weakAreas = snapshot.weakAreas.map(::toUiModel),
             topics = snapshot.topics.map(::toUiModel),
             history = mapHistory(completedAttempts),
+        )
+    }
+
+    private fun toUiModel(coverage: CurriculumCoverage): ProgressCoverageUiModel =
+        ProgressCoverageUiModel(
+            attemptedQuestionCount = coverage.attemptedQuestionCount,
+            totalQuestionCount = coverage.totalQuestionCount,
+            percentage = coverage.percentage,
+        )
+
+    /**
+     * `null` when the window holds no answered question at all, so the dashboard omits the surface
+     * instead of claiming a recent 0%.
+     */
+    private fun toUiModel(recent: RecentPerformance): ProgressRecentPerformanceUiModel? {
+        val percentage = recent.percentage ?: return null
+        return ProgressRecentPerformanceUiModel(
+            attemptCount = recent.attemptCount,
+            answeredQuestionCount = recent.answeredQuestionCount,
+            correctAnswerCount = recent.correctAnswerCount,
+            percentage = percentage,
+            trend = when (val availability = recent.trendAvailability) {
+                is RecentTrendAvailability.InsufficientHistory ->
+                    ProgressRecentTrendUiModel.InsufficientHistory(availability.requiredAttemptCount)
+                RecentTrendAvailability.Available -> ProgressRecentTrendUiModel.Available(
+                    // Kept in the domain's oldest -> newest order so the chart reads past -> present.
+                    attempts = recent.attemptSeries.map {
+                        ProgressRecentAttemptUiModel(
+                            attemptId = it.attemptId,
+                            percentage = it.percentage,
+                        )
+                    },
+                )
+            },
         )
     }
 

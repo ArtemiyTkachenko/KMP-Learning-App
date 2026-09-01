@@ -7,17 +7,21 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.mistake_review_none
@@ -26,6 +30,9 @@ import kmp_learning_app.shared.generated.resources.mixed_interview_title
 import kmp_learning_app.shared.generated.resources.progress_accuracy_caption
 import kmp_learning_app.shared.generated.resources.progress_completed_attempts_label
 import kmp_learning_app.shared.generated.resources.progress_correct_answers_label
+import kmp_learning_app.shared.generated.resources.progress_coverage_count
+import kmp_learning_app.shared.generated.resources.progress_coverage_title
+import kmp_learning_app.shared.generated.resources.progress_coverage_unavailable
 import kmp_learning_app.shared.generated.resources.progress_empty
 import kmp_learning_app.shared.generated.resources.progress_empty_action
 import kmp_learning_app.shared.generated.resources.progress_error
@@ -35,6 +42,12 @@ import kmp_learning_app.shared.generated.resources.progress_history
 import kmp_learning_app.shared.generated.resources.progress_loading
 import kmp_learning_app.shared.generated.resources.progress_overall
 import kmp_learning_app.shared.generated.resources.progress_questions_answered_label
+import kmp_learning_app.shared.generated.resources.progress_recent_title
+import kmp_learning_app.shared.generated.resources.progress_recent_trend_description
+import kmp_learning_app.shared.generated.resources.progress_recent_trend_insufficient
+import kmp_learning_app.shared.generated.resources.progress_recent_trend_title
+import kmp_learning_app.shared.generated.resources.progress_recent_window_one
+import kmp_learning_app.shared.generated.resources.progress_recent_window_other
 import kmp_learning_app.shared.generated.resources.progress_score
 import kmp_learning_app.shared.generated.resources.progress_subtopic_unavailable
 import kmp_learning_app.shared.generated.resources.progress_title
@@ -50,11 +63,16 @@ import org.artkachenko.kmp_learning_app.ui.PrimarySummaryCard
 import org.artkachenko.kmp_learning_app.ui.ScreenAction
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
-import org.artkachenko.kmp_learning_app.ui.ScreenMessage
+import org.artkachenko.kmp_learning_app.ui.SecondarySummaryCard
+import org.artkachenko.kmp_learning_app.ui.accuracyColor
+import org.artkachenko.kmp_learning_app.ui.formatAccuracy
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.jetbrains.compose.resources.stringResource
 
 internal const val ProgressLoadingTag = "progress_loading"
+
+/** The scrolling dashboard itself, so tests can reach sections below the fold. */
+internal const val ProgressContentTag = "progress_content"
 
 /** Stable per-row handle so tests can target a Topic card without depending on label uniqueness. */
 internal fun progressTopicCardTag(topicId: String): String = "progress_topic_card_$topicId"
@@ -110,7 +128,7 @@ private fun ProgressContent(
     modifier: Modifier,
 ) {
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().testTag(ProgressContentTag),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -119,6 +137,17 @@ private fun ProgressContent(
         }
         item {
             OverallSummary(state)
+        }
+        // Coverage and recent performance sit under the headline as quieter summaries: they answer
+        // different questions from all-time accuracy, so they must be separate surfaces, but making
+        // all three equally dominant would leave the screen with no headline at all.
+        item {
+            CurriculumCoverageSummary(state.coverage)
+        }
+        state.recentPerformance?.let { recent ->
+            item {
+                RecentPerformanceSummary(recent)
+            }
         }
         item {
             UnresolvedMistakeSummary(unresolvedCount = state.unresolvedMistakeCount)
@@ -182,6 +211,138 @@ private fun OverallSummary(state: ProgressUiState.Content) {
         }
     }
 }
+
+/**
+ * How much of the current question bank the learner has seen — a different question from how
+ * accurately they answered it, and one the percentage alone cannot answer, so the raw counts are
+ * always shown beside it and the meter is never the only representation.
+ *
+ * The figure is deliberately not tinted with [accuracyColor]: colouring 30% coverage red would read
+ * as a bad score, when it only means most of the bank is still ahead of the learner.
+ */
+@Composable
+private fun CurriculumCoverageSummary(coverage: ProgressCoverageUiModel) {
+    SecondarySummaryCard {
+        Text(
+            text = stringResource(Res.string.progress_coverage_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        val percentage = coverage.percentage
+        if (percentage == null) {
+            // 0/0 is "nothing to cover", not 0% covered, so say that rather than draw an empty bar.
+            Text(
+                text = stringResource(Res.string.progress_coverage_unavailable),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Text(
+                text = formatAccuracy(percentage),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = stringResource(
+                    Res.string.progress_coverage_count,
+                    coverage.attemptedQuestionCount,
+                    coverage.totalQuestionCount,
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            LinearProgressIndicator(
+                // The exact count ratio, not the rounded percentage above it.
+                progress = {
+                    (coverage.attemptedQuestionCount.toFloat() / coverage.totalQuestionCount)
+                        .coerceIn(0f, 1f)
+                },
+                modifier = Modifier.fillMaxWidth().height(8.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                strokeCap = StrokeCap.Round,
+                gapSize = 0.dp,
+                drawStopIndicator = {},
+            )
+        }
+    }
+}
+
+/**
+ * The latest few assessments, kept visibly apart from the lifetime figures above: all-time accuracy
+ * moves very slowly once history is long, so a learner who has improved needs a second, explicitly
+ * labelled signal rather than a reweighted first one.
+ *
+ * The percentage is the domain's question-weighted accuracy across the whole window, not the mean of
+ * the plotted attempts — a 1/1 attempt and a 10/20 attempt make 11/21, not 75%.
+ */
+@Composable
+private fun RecentPerformanceSummary(recent: ProgressRecentPerformanceUiModel) {
+    SecondarySummaryCard {
+        Text(
+            text = stringResource(Res.string.progress_recent_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = formatAccuracy(recent.percentage),
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = accuracyColor(recent.percentage),
+        )
+        Text(
+            text = recentWindowLabel(recent.attemptCount),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = stringResource(
+                Res.string.progress_score,
+                recent.correctAnswerCount,
+                recent.answeredQuestionCount,
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        when (val trend = recent.trend) {
+            // Still real evidence, so the summary above stays; only the trajectory is withheld, and
+            // as a plain statement rather than a warning about something the learner did wrong.
+            is ProgressRecentTrendUiModel.InsufficientHistory -> Text(
+                text = stringResource(
+                    Res.string.progress_recent_trend_insufficient,
+                    trend.requiredAttemptCount,
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            is ProgressRecentTrendUiModel.Available -> {
+                Text(
+                    text = stringResource(Res.string.progress_recent_trend_title),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                val percentages = trend.attempts.map(ProgressRecentAttemptUiModel::percentage)
+                RecentTrendChart(
+                    percentages = percentages,
+                    description = stringResource(
+                        Res.string.progress_recent_trend_description,
+                        percentages.joinToString(transform = ::formatAccuracy),
+                    ),
+                    modifier = Modifier.testTag(ProgressRecentTrendChartTag),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun recentWindowLabel(attemptCount: Int): String =
+    if (attemptCount == 1) {
+        stringResource(Res.string.progress_recent_window_one)
+    } else {
+        stringResource(Res.string.progress_recent_window_other, attemptCount)
+    }
 
 /**
  * Reports the size of the mistake queue without offering to open it. Opening it is the Mistakes

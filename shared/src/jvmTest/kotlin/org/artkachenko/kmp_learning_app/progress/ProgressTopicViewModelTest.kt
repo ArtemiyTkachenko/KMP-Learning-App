@@ -4,6 +4,8 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
@@ -133,6 +135,107 @@ internal class ProgressTopicViewModelTest {
     }
 
     @Test
+    fun currentCoverageJoinsOntoTopicAndSubtopicPerformanceByStableId() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        // kotlin holds four ACTIVE questions across two Subtopics. kotlin_co_1 was answered twice,
+        // so accuracy counts three occurrences in coroutines while coverage counts two of its
+        // three current questions.
+        val context = topicTestContext(
+            answers = listOf(
+                answer("kotlin_co_1", true),
+                answer("kotlin_co_2", true),
+                answer("kotlin_basics_1", true),
+            ),
+            retakeAnswers = listOf(answer("kotlin_co_1", false)),
+            questions = listOf(
+                topicQuestion("kotlin_co_1", "kotlin", "coroutines"),
+                topicQuestion("kotlin_co_2", "kotlin", "coroutines"),
+                topicQuestion("kotlin_co_3", "kotlin", "coroutines"),
+                topicQuestion("kotlin_basics_1", "kotlin", "basics"),
+                topicQuestion("android_1", "android", "lifecycle"),
+            ),
+            topics = listOf(Topic("kotlin", "Kotlin"), Topic("android", "Android")),
+            subtopics = listOf(
+                Subtopic("coroutines", "kotlin", "Coroutines"),
+                Subtopic("basics", "kotlin", "Basics"),
+                Subtopic("lifecycle", "android", "Lifecycle"),
+            ),
+        )
+
+        val viewModel = topicViewModel("kotlin", context)
+        advanceUntilIdle()
+
+        val content = assertIs<ProgressTopicUiState.Content>(viewModel.uiState.value)
+        // All-time accuracy is untouched and stays occurrence-based.
+        assertEquals(4, content.answeredCount)
+        assertEquals(3, content.correctCount)
+        val coverage = assertNotNull(content.coverage)
+        // Only this Topic's ACTIVE questions form the denominator, not the whole bank.
+        assertEquals(3, coverage.attemptedQuestionCount)
+        assertEquals(4, coverage.totalQuestionCount)
+
+        val byId = content.subtopics.associateBy { it.subtopicId }
+        val coroutines = assertNotNull(byId.getValue("coroutines").coverage)
+        assertEquals(2, coroutines.attemptedQuestionCount)
+        assertEquals(3, coroutines.totalQuestionCount)
+        assertEquals(3, byId.getValue("coroutines").answeredCount)
+    }
+
+    @Test
+    fun zeroCurrentCoverageDoesNotEraseHistoricalPerformance() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        // The answered questions resolve to their Topic but are no longer in the ACTIVE bank, so
+        // the Topic has current coverage of zero and real historical accuracy at the same time.
+        val context = topicTestContext(
+            answers = listOf(answer("kotlin_retired_1", true), answer("kotlin_retired_2", false)),
+            questions = listOf(topicQuestion("kotlin_current_1", "kotlin", "coroutines")),
+            retiredQuestions = listOf(
+                topicQuestion("kotlin_retired_1", "kotlin", "coroutines"),
+                topicQuestion("kotlin_retired_2", "kotlin", "coroutines"),
+            ),
+            topics = listOf(Topic("kotlin", "Kotlin")),
+            subtopics = listOf(Subtopic("coroutines", "kotlin", "Coroutines")),
+        )
+
+        val viewModel = topicViewModel("kotlin", context)
+        advanceUntilIdle()
+
+        val content = assertIs<ProgressTopicUiState.Content>(viewModel.uiState.value)
+        assertEquals(2, content.answeredCount)
+        assertEquals(50.0, content.percentage)
+        val coverage = assertNotNull(content.coverage)
+        assertEquals(0, coverage.attemptedQuestionCount)
+        assertEquals(1, coverage.totalQuestionCount)
+        assertEquals(0.0, coverage.percentage)
+
+        val subtopic = content.subtopics.single()
+        assertEquals(50.0, subtopic.percentage)
+        assertEquals(0, assertNotNull(subtopic.coverage).attemptedQuestionCount)
+    }
+
+    @Test
+    fun aTopicWithNoCurrentQuestionsReportsNoCoverageRatherThanZeroOfZero() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val context = topicTestContext(
+            answers = listOf(answer("kotlin_retired_1", true)),
+            // Nothing of this Topic remains ACTIVE.
+            questions = listOf(topicQuestion("android_1", "android", "lifecycle")),
+            retiredQuestions = listOf(topicQuestion("kotlin_retired_1", "kotlin", "coroutines")),
+            topics = listOf(Topic("kotlin", "Kotlin"), Topic("android", "Android")),
+            subtopics = listOf(Subtopic("coroutines", "kotlin", "Coroutines")),
+        )
+
+        val viewModel = topicViewModel("kotlin", context)
+        advanceUntilIdle()
+
+        val content = assertIs<ProgressTopicUiState.Content>(viewModel.uiState.value)
+        assertEquals(1, content.answeredCount)
+        // "Nothing to cover" is not "none of it covered", so there is no coverage to present.
+        assertNull(content.coverage)
+        assertNull(content.subtopics.single().coverage)
+    }
+
+    @Test
     fun topicWithNoCompletedObservationsIsEmpty() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val context = topicTestContext(
@@ -180,9 +283,40 @@ private fun topicTestContext(
     questions: List<Question>,
     topics: List<Topic>,
     subtopics: List<Subtopic>,
+    /** Answered in history and still resolvable, but outside the current ACTIVE bank. */
+    retiredQuestions: List<Question> = emptyList(),
+    /**
+     * A second completed attempt. An attempt holds each Question at most once, so answering the
+     * same Question again means a retake — which is exactly what separates occurrence-based
+     * accuracy from unique-question coverage.
+     */
+    retakeAnswers: List<Pair<String, Boolean>> = emptyList(),
 ): TopicTestContext {
-    val attempt = TestAttempt(
-        id = "attempt",
+    val attempts = buildList {
+        add(completedAttempt("attempt", answers))
+        if (retakeAnswers.isNotEmpty()) add(completedAttempt("retake", retakeAnswers))
+    }
+    return TopicTestContext(
+        TopicHistoryRepository(attempts),
+        TopicCurriculumRepository(questions, retiredQuestions, topics, subtopics),
+    )
+}
+
+private fun topicViewModel(
+    topicId: String,
+    context: TopicTestContext,
+): ProgressTopicViewModel =
+    ProgressTopicViewModel(
+        topicId = topicId,
+        learningProgressService = LearningProgressService(context.repository, context.curriculum),
+    )
+
+private fun completedAttempt(
+    id: String,
+    answers: List<Pair<String, Boolean>>,
+): TestAttempt =
+    TestAttempt(
+        id = id,
         config = AssessmentConfig.Mixed(answers.size),
         questionAttempts = answers.map { (questionId, isCorrect) ->
             QuestionAttempt(
@@ -194,20 +328,6 @@ private fun topicTestContext(
         startedAt = Instant.parse("2026-08-29T00:00:00Z"),
         completedAt = Instant.parse("2026-08-29T00:15:00Z"),
         score = AssessmentScore(answers.size, answers.count { it.second }),
-    )
-    return TopicTestContext(
-        TopicHistoryRepository(listOf(attempt)),
-        TopicCurriculumRepository(questions, topics, subtopics),
-    )
-}
-
-private fun topicViewModel(
-    topicId: String,
-    context: TopicTestContext,
-): ProgressTopicViewModel =
-    ProgressTopicViewModel(
-        topicId = topicId,
-        learningProgressService = LearningProgressService(context.repository, context.curriculum),
     )
 
 private fun answer(
@@ -236,10 +356,11 @@ private class TopicHistoryRepository(
 
 private class TopicCurriculumRepository(
     private val questions: List<Question>,
+    retiredQuestions: List<Question>,
     topics: List<Topic>,
     subtopics: List<Subtopic>,
 ) : CurriculumRepository {
-    private val questionsById = questions.associateBy(Question::id)
+    private val questionsById = (questions + retiredQuestions).associateBy(Question::id)
     private val topicsById = topics.associateBy(Topic::id)
     private val subtopicsById = subtopics.associateBy(Subtopic::id)
 

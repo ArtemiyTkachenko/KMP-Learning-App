@@ -1,15 +1,24 @@
 package org.artkachenko.kmp_learning_app.topic_study.topics
 
-import org.artkachenko.kmp_learning_app.curriculum.Topic
+import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 
 internal sealed interface TopicBrowserUiState {
     data object Loading : TopicBrowserUiState
 
+    /**
+     * Curriculum decides this state; learning context only decorates it. A Topic is browsable,
+     * searchable, and openable whether or not analytics ever arrive, which is why history has no
+     * say in Loading, Empty, or Error.
+     */
     data class Content(
-        val topics: List<Topic>,
+        val topics: List<TopicBrowserItemUiModel>,
         val searchableSubtopics: List<SubtopicSearchResult> = emptyList(),
         val query: String = "",
-        val topicMatches: List<TopicSearchResult> = emptyList(),
+        /**
+         * The same enriched rows as [topics], filtered: a Topic match is the same Topic, so it
+         * carries the same marker and the same learning context rather than a second derivation.
+         */
+        val topicMatches: List<TopicBrowserItemUiModel> = emptyList(),
         val subtopicMatches: List<SubtopicSearchResult> = emptyList(),
     ) : TopicBrowserUiState
 
@@ -18,9 +27,22 @@ internal sealed interface TopicBrowserUiState {
     data object Error : TopicBrowserUiState
 }
 
-internal data class TopicSearchResult(
+/**
+ * One Topic as the browser presents it: curriculum identity, plus what the learner has done with it.
+ *
+ * The learning context lives here rather than on `curriculum.Topic` because it describes the
+ * learner, not the content — the same Topic reads differently for two people, and the curriculum
+ * domain has to stay presentation- and history-agnostic.
+ */
+internal data class TopicBrowserItemUiModel(
     val topicId: String,
     val topicName: String,
+    /**
+     * `null` while analytics have not loaded or could not be derived. That is unknown history, not
+     * empty history, so a row in this state says nothing about the learner rather than claiming the
+     * Topic has never been studied.
+     */
+    val learningContext: LearningContextUiModel? = null,
 )
 
 internal data class SubtopicSearchResult(

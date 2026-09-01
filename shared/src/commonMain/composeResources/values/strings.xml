@@ -17,6 +17,11 @@
     <string name="topic_browser_search_topics">Topics</string>
     <string name="topic_browser_search_subtopics">Subtopics</string>
     <string name="topic_browser_search_no_results">No topics or subtopics match &quot;%1$s&quot;</string>
+    <string name="learning_context_explored">%1$d of %2$d explored</string>
+    <string name="learning_context_coverage_title">Curriculum coverage</string>
+    <string name="learning_context_coverage_count">%1$d of %2$d questions explored</string>
+    <string name="learning_context_not_studied">Not studied yet</string>
+    <string name="learning_context_accuracy">accuracy</string>
     <string name="progress_title">Progress</string>
     <string name="progress_loading">Loading progress</string>
     <string name="progress_overall">Overall progress</string>
@@ -50,6 +55,7 @@
     <string name="progress_topic_loading">Loading topic performance</string>
     <string name="progress_topic_empty">No completed answers have been recorded for this topic yet.</string>
     <string name="progress_topic_error">Topic performance could not be loaded.</string>
+    <string name="progress_topic_coverage">%1$d of %2$d current questions explored</string>
     <string name="mistake_review_unresolved_count">%1$d unresolved mistakes to review</string>
     <string name="interview_history_title">Your interview record</string>
     <string name="interview_history_attempts">%1$d completed</string>
@@ -89,7 +95,7 @@
     <string name="topic_detail_not_found">Topic not available</string>
     <string name="topic_detail_loading">Loading topic</string>
     <string name="topic_detail_start_practice">Start Practice</string>
-    <string name="topic_detail_accuracy_caption">accuracy on this topic</string>
+    <string name="topic_detail_accuracy_caption">All-time accuracy</string>
     <string name="topic_detail_subtopics">Subtopics</string>
     <string name="focused_practice_title">Focused practice</string>
     <string name="assessment_taking_question_progress">Question %1$d of %2$d</string>

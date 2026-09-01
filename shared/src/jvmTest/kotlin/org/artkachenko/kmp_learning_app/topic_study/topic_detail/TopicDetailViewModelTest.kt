@@ -3,11 +3,16 @@ package org.artkachenko.kmp_learning_app.topic_study.topic_detail
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlin.time.Instant
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -21,6 +26,7 @@ import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
+import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
@@ -55,7 +61,7 @@ internal class TopicDetailViewModelTest {
                 question("q3", topic.id, "subtopic_c"),
             ),
         )
-        val viewModel = TopicDetailViewModel("topic_a", repository, progressService(repository))
+        val viewModel = viewModel(topic.id, repository)
 
         advanceUntilIdle()
 
@@ -71,7 +77,7 @@ internal class TopicDetailViewModelTest {
     @Test
     fun missingTopicDoesNotQueryChildren() = runViewModelTest {
         val repository = FakeCurriculumRepository(topics = emptyList())
-        val viewModel = TopicDetailViewModel("missing", repository, progressService(repository))
+        val viewModel = viewModel("missing", repository)
 
         advanceUntilIdle()
 
@@ -83,11 +89,7 @@ internal class TopicDetailViewModelTest {
     @Test
     fun noQuestionsProducesUnavailablePracticeState() = runViewModelTest {
         val topic = Topic("topic_a", "Topic A")
-        val viewModel = TopicDetailViewModel(
-            topicId = topic.id,
-            curriculumRepository = FakeCurriculumRepository(topics = listOf(topic)),
-            learningProgressService = progressService(FakeCurriculumRepository(topics = listOf(topic))),
-        )
+        val viewModel = viewModel(topic.id, FakeCurriculumRepository(topics = listOf(topic)))
 
         advanceUntilIdle()
 
@@ -101,24 +103,18 @@ internal class TopicDetailViewModelTest {
     fun buildsTopicAndPopulatedSubtopicConfigs() = runViewModelTest {
         val topic = Topic("topic_a", "Topic A")
         val subtopic = Subtopic("subtopic_a", topic.id, "Subtopic A")
-        val viewModel = TopicDetailViewModel(
-            topicId = topic.id,
-            curriculumRepository = FakeCurriculumRepository(
+        val viewModel = viewModel(
+            topic.id,
+            FakeCurriculumRepository(
                 topics = listOf(topic),
                 subtopics = listOf(subtopic),
                 questions = listOf(question("q1", topic.id, subtopic.id)),
-            ),
-            learningProgressService = progressService(
-                FakeCurriculumRepository(
-                    topics = listOf(topic),
-                    subtopics = listOf(subtopic),
-                    questions = listOf(question("q1", topic.id, subtopic.id)),
-                ),
             ),
         )
 
         advanceUntilIdle()
 
+        // Practice configuration is curriculum-driven and unchanged by learning context.
         assertEquals(
             AssessmentScope.Topic(topic.id),
             viewModel.topicPracticeConfig()?.scope,
@@ -131,6 +127,10 @@ internal class TopicDetailViewModelTest {
             AssessmentScope.Subtopic(subtopic.id),
             viewModel.subtopicPracticeConfig(subtopic.id)?.scope,
         )
+        assertEquals(
+            FocusedPracticeQuestionCount,
+            viewModel.subtopicPracticeConfig(subtopic.id)?.questionCount,
+        )
         assertNull(viewModel.subtopicPracticeConfig("empty-or-unknown"))
     }
 
@@ -142,7 +142,7 @@ internal class TopicDetailViewModelTest {
             failuresRemaining = 1,
             questions = listOf(question("q1", topic.id, "subtopic_a")),
         )
-        val viewModel = TopicDetailViewModel(topic.id, repository, progressService(repository))
+        val viewModel = viewModel(topic.id, repository)
 
         advanceUntilIdle()
         assertEquals(TopicDetailUiState.Error, viewModel.uiState.value)
@@ -155,43 +155,161 @@ internal class TopicDetailViewModelTest {
     }
 
     @Test
-    fun observedAccuracyFromCompletedHistoryReachesTheTopicAndItsSubtopics() = runViewModelTest {
+    fun accuracyAndCoverageBothReachTheTopicAndItsSubtopics() = runViewModelTest {
         val topic = Topic("topic_a", "Topic A")
-        val subtopics = listOf(
-            Subtopic("subtopic_a", topic.id, "Subtopic A"),
-            Subtopic("subtopic_b", topic.id, "Subtopic B"),
-        )
-        val questions = listOf(
-            question("q1", topic.id, "subtopic_a"),
-            question("q2", topic.id, "subtopic_a"),
-            question("q3", topic.id, "subtopic_b"),
-        )
         val curriculum = FakeCurriculumRepository(
             topics = listOf(topic),
-            subtopics = subtopics,
-            questions = questions,
+            subtopics = listOf(
+                Subtopic("subtopic_a", topic.id, "Subtopic A"),
+                Subtopic("subtopic_b", topic.id, "Subtopic B"),
+            ),
+            questions = listOf(
+                question("q1", topic.id, "subtopic_a"),
+                question("q2", topic.id, "subtopic_a"),
+                question("q3", topic.id, "subtopic_b"),
+            ),
         )
-        // subtopic_a: 1 of 2 correct, subtopic_b: 1 of 1, so the topic is 2 of 3.
-        val history = HistoryRepository(
-            completedAttempt("q1" to true, "q2" to false, "q3" to true),
+        // subtopic_a: q1 answered twice across a retake and q2 once — three occurrences over two
+        // unique questions.
+        val history = historyRepository(
+            completedAttempt("attempt_1", "q1" to true, "q2" to true, "q3" to true),
+            completedAttempt("attempt_2", "q1" to false),
         )
 
-        val viewModel = TopicDetailViewModel(
-            topicId = topic.id,
-            curriculumRepository = curriculum,
-            learningProgressService = LearningProgressService(history, curriculum),
-        )
+        val viewModel = viewModel(topic.id, curriculum, history)
         advanceUntilIdle()
 
         val state = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
-        assertEquals(2.0 / 3.0 * 100.0, state.accuracyPercentage)
+        val topicContext = assertNotNull(state.learningContext)
+        // Accuracy counts every occurrence; coverage counts each stable Question ID once.
+        assertEquals(3.0 / 4.0 * 100.0, topicContext.accuracyPercentage)
+        assertEquals(3, topicContext.attemptedQuestionCount)
+        assertEquals(3, topicContext.totalQuestionCount)
+
         val byId = state.subtopics.associateBy { it.subtopic.id }
-        assertEquals(50.0, byId.getValue("subtopic_a").accuracyPercentage)
-        assertEquals(100.0, byId.getValue("subtopic_b").accuracyPercentage)
+        val subtopicA = assertNotNull(byId.getValue("subtopic_a").learningContext)
+        assertEquals(2.0 / 3.0 * 100.0, subtopicA.accuracyPercentage)
+        assertEquals(2, subtopicA.attemptedQuestionCount)
+        assertEquals(2, subtopicA.totalQuestionCount)
+
+        val subtopicB = assertNotNull(byId.getValue("subtopic_b").learningContext)
+        assertEquals(100.0, subtopicB.accuracyPercentage)
+        assertEquals(1, subtopicB.attemptedQuestionCount)
+        assertEquals(1, subtopicB.totalQuestionCount)
     }
 
     @Test
-    fun aTopicWithNoCompletedHistoryReportsNoAccuracyRatherThanZero() = runViewModelTest {
+    fun anUnseenTopicAndSubtopicReportCoverageWithoutFabricatingAccuracy() = runViewModelTest {
+        val topic = Topic("topic_a", "Topic A")
+        val curriculum = FakeCurriculumRepository(
+            topics = listOf(topic),
+            subtopics = listOf(Subtopic("subtopic_a", topic.id, "Subtopic A")),
+            questions = listOf(
+                question("q1", topic.id, "subtopic_a"),
+                question("q2", topic.id, "subtopic_a"),
+            ),
+        )
+
+        val viewModel = viewModel(topic.id, curriculum)
+        advanceUntilIdle()
+
+        val state = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
+        val topicContext = assertNotNull(state.learningContext)
+        // Null, not 0%: never answered is a different statement from answered and got none right.
+        assertNull(topicContext.accuracyPercentage)
+        assertEquals(0, topicContext.attemptedQuestionCount)
+        assertEquals(2, topicContext.totalQuestionCount)
+        assertTrue(topicContext.isUnstudied)
+        assertFalse(topicContext.isWeak)
+
+        val subtopicContext = assertNotNull(state.subtopics.single().learningContext)
+        assertNull(subtopicContext.accuracyPercentage)
+        assertEquals(0, subtopicContext.attemptedQuestionCount)
+        assertEquals(2, subtopicContext.totalQuestionCount)
+        assertTrue(subtopicContext.isUnstudied)
+    }
+
+    @Test
+    fun historicalAccuracySurvivesZeroCurrentCoverage() = runViewModelTest {
+        val topic = Topic("topic_a", "Topic A")
+        val subtopic = Subtopic("subtopic_a", topic.id, "Subtopic A")
+        // The answered questions still resolve to this Subtopic but are no longer ACTIVE, which is
+        // what a retired or reclassified question looks like from here.
+        val retired = listOf(
+            question("q_retired_1", topic.id, subtopic.id),
+            question("q_retired_2", topic.id, subtopic.id),
+            question("q_retired_3", topic.id, subtopic.id),
+        )
+        val curriculum = FakeCurriculumRepository(
+            topics = listOf(topic),
+            subtopics = listOf(subtopic),
+            questions = listOf(question("q_active", topic.id, subtopic.id)),
+            retiredQuestions = retired,
+        )
+        val history = historyRepository(
+            completedAttempt(
+                "attempt",
+                "q_retired_1" to true,
+                "q_retired_2" to true,
+                "q_retired_3" to false,
+            ),
+        )
+
+        val viewModel = viewModel(topic.id, curriculum, history)
+        advanceUntilIdle()
+
+        val state = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
+        val subtopicContext = assertNotNull(state.subtopics.single().learningContext)
+        assertEquals(2.0 / 3.0 * 100.0, subtopicContext.accuracyPercentage)
+        assertEquals(0, subtopicContext.attemptedQuestionCount)
+        assertEquals(1, subtopicContext.totalQuestionCount)
+        // Real historical evidence exists, so this is emphatically not "not studied yet".
+        assertFalse(subtopicContext.isUnstudied)
+    }
+
+    @Test
+    fun weakStatusIsCopiedFromTheDomainRatherThanInferredFromThePercentage() = runViewModelTest {
+        val topic = Topic("topic_a", "Topic A")
+        val curriculum = FakeCurriculumRepository(
+            topics = listOf(topic),
+            subtopics = listOf(
+                Subtopic("weak_sub", topic.id, "Weak Subtopic"),
+                Subtopic("sparse_sub", topic.id, "Sparse Subtopic"),
+            ),
+            questions = listOf(
+                question("q_weak_1", topic.id, "weak_sub"),
+                question("q_weak_2", topic.id, "weak_sub"),
+                question("q_weak_3", topic.id, "weak_sub"),
+                question("q_sparse_1", topic.id, "sparse_sub"),
+            ),
+        )
+        // weak_sub: three answers at 33%. sparse_sub: one answer at 0%, below the evidence
+        // threshold the policy needs, so it is just as low without being weak.
+        val history = historyRepository(
+            completedAttempt(
+                "attempt",
+                "q_weak_1" to true,
+                "q_weak_2" to false,
+                "q_weak_3" to false,
+                "q_sparse_1" to false,
+            ),
+        )
+
+        val viewModel = viewModel(topic.id, curriculum, history)
+        advanceUntilIdle()
+
+        val state = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
+        assertTrue(assertNotNull(state.learningContext).isWeak)
+
+        val byId = state.subtopics.associateBy { it.subtopic.id }
+        assertTrue(assertNotNull(byId.getValue("weak_sub").learningContext).isWeak)
+        val sparse = assertNotNull(byId.getValue("sparse_sub").learningContext)
+        assertEquals(0.0, sparse.accuracyPercentage)
+        assertFalse(sparse.isWeak)
+    }
+
+    @Test
+    fun curriculumStaysUsableWhileHistoryHasNotLoaded() = runViewModelTest {
         val topic = Topic("topic_a", "Topic A")
         val curriculum = FakeCurriculumRepository(
             topics = listOf(topic),
@@ -199,18 +317,103 @@ internal class TopicDetailViewModelTest {
             questions = listOf(question("q1", topic.id, "subtopic_a")),
         )
 
-        val viewModel = TopicDetailViewModel(topic.id, curriculum, progressService(curriculum))
+        val viewModel = viewModel(topic.id, curriculum, NeverReturningHistoryRepository)
         advanceUntilIdle()
 
-        // Null, not 0%: never answered is a different statement from answered and got none right.
         val state = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
-        assertNull(state.accuracyPercentage)
-        assertNull(state.subtopics.single().accuracyPercentage)
+        // No context at all rather than an empty one, so nothing on screen can claim the Topic
+        // has never been studied when the app simply does not know yet.
+        assertNull(state.learningContext)
+        assertNull(state.subtopics.single().learningContext)
+        // Practice is unaffected by the missing statistic.
+        assertNotNull(viewModel.topicPracticeConfig())
+        assertNotNull(viewModel.subtopicPracticeConfig("subtopic_a"))
     }
 
-    private fun completedAttempt(vararg answers: Pair<String, Boolean>): TestAttempt =
+    @Test
+    fun aHistoryFailureDoesNotBlockPractice() = runViewModelTest {
+        val topic = Topic("topic_a", "Topic A")
+        val curriculum = FakeCurriculumRepository(
+            topics = listOf(topic),
+            subtopics = listOf(Subtopic("subtopic_a", topic.id, "Subtopic A")),
+            questions = listOf(question("q1", topic.id, "subtopic_a")),
+        )
+
+        val viewModel = viewModel(topic.id, curriculum, FailingHistoryRepository)
+        advanceUntilIdle()
+
+        val state = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
+        assertNull(state.learningContext)
+        assertNotNull(viewModel.topicPracticeConfig())
+    }
+
+    @Test
+    fun completedHistoryInvalidationRefreshesContextWithoutReloadingTheCurriculum() =
+        runViewModelTest {
+            val topic = Topic("topic_a", "Topic A")
+            val curriculum = FakeCurriculumRepository(
+                topics = listOf(topic),
+                subtopics = listOf(Subtopic("subtopic_a", topic.id, "Subtopic A")),
+                questions = listOf(question("q1", topic.id, "subtopic_a")),
+            )
+            val history = MutableHistoryRepository()
+            val store = AssessmentHistoryStore(history, CoroutineScope(currentDispatcher()))
+            val viewModel = TopicDetailViewModel(
+                topicId = topic.id,
+                curriculumRepository = curriculum,
+                learningProgressService = LearningProgressService(history, curriculum),
+                historyStore = store,
+            )
+            advanceUntilIdle()
+
+            val before = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
+            assertTrue(assertNotNull(before.learningContext).isUnstudied)
+            val curriculumReads = curriculum.topicQuestionCalls
+
+            history.attempts = listOf(completedAttempt("attempt", "q1" to true))
+            store.invalidate()
+            advanceUntilIdle()
+
+            val after = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
+            val context = assertNotNull(after.learningContext)
+            assertEquals(100.0, context.accuracyPercentage)
+            assertEquals(1, context.attemptedQuestionCount)
+            assertEquals(100.0, assertNotNull(after.subtopics.single().learningContext).accuracyPercentage)
+            // The curriculum was not read again: only the analytics half refreshed.
+            assertEquals(curriculumReads, curriculum.topicQuestionCalls)
+        }
+
+    private fun TestScope.viewModel(
+        topicId: String,
+        curriculum: CurriculumRepository,
+        history: AssessmentRepository = EmptyHistoryRepository,
+    ): TopicDetailViewModel =
+        TopicDetailViewModel(
+            topicId = topicId,
+            curriculumRepository = curriculum,
+            learningProgressService = LearningProgressService(history, curriculum),
+            historyStore = AssessmentHistoryStore(history, CoroutineScope(currentDispatcher())),
+        )
+
+    private fun TestScope.currentDispatcher() = StandardTestDispatcher(testScheduler)
+
+    private fun historyRepository(vararg attempts: TestAttempt): AssessmentRepository =
+        object : AssessmentRepository {
+            override suspend fun save(attempt: TestAttempt) = Unit
+            override suspend fun getById(attemptId: String): TestAttempt? = attempts.firstOrNull()
+            override suspend fun getCompletedAttempts(): List<TestAttempt> = attempts.toList()
+        }
+
+    /**
+     * One completed attempt. An attempt holds each Question at most once, so a Question answered
+     * twice needs two attempts — which is how a retake reaches history in the app.
+     */
+    private fun completedAttempt(
+        id: String,
+        vararg answers: Pair<String, Boolean>,
+    ): TestAttempt =
         TestAttempt(
-            id = "attempt",
+            id = id,
             config = AssessmentConfig.Mixed(answers.size),
             questionAttempts = answers.map { (questionId, isCorrect) ->
                 QuestionAttempt(
@@ -224,10 +427,31 @@ internal class TopicDetailViewModelTest {
             score = AssessmentScore(answers.size, answers.count { it.second }),
         )
 
-    private class HistoryRepository(private val attempt: TestAttempt) : AssessmentRepository {
+    private class MutableHistoryRepository : AssessmentRepository {
+        var attempts: List<TestAttempt> = emptyList()
+
         override suspend fun save(attempt: TestAttempt) = Unit
-        override suspend fun getById(attemptId: String): TestAttempt? = attempt
-        override suspend fun getCompletedAttempts(): List<TestAttempt> = listOf(attempt)
+        override suspend fun getById(attemptId: String): TestAttempt? = null
+        override suspend fun getCompletedAttempts(): List<TestAttempt> = attempts
+    }
+
+    private object FailingHistoryRepository : AssessmentRepository {
+        override suspend fun save(attempt: TestAttempt) = Unit
+        override suspend fun getById(attemptId: String): TestAttempt? = null
+        override suspend fun getCompletedAttempts(): List<TestAttempt> = error("History unavailable")
+    }
+
+    /** Keeps the shared cache on its Loading value for the whole test. */
+    private object NeverReturningHistoryRepository : AssessmentRepository {
+        override suspend fun save(attempt: TestAttempt) = Unit
+        override suspend fun getById(attemptId: String): TestAttempt? = null
+        override suspend fun getCompletedAttempts(): List<TestAttempt> = awaitCancellation()
+    }
+
+    private object EmptyHistoryRepository : AssessmentRepository {
+        override suspend fun save(attempt: TestAttempt) = Unit
+        override suspend fun getById(attemptId: String): TestAttempt? = null
+        override suspend fun getCompletedAttempts(): List<TestAttempt> = emptyList()
     }
 
     private fun runViewModelTest(block: suspend TestScope.() -> Unit) = runTest {
@@ -251,8 +475,12 @@ internal class TopicDetailViewModelTest {
         private val topics: List<Topic>,
         private val subtopics: List<Subtopic> = emptyList(),
         private val questions: List<Question> = emptyList(),
+        /** Answered in history and still resolvable, but outside the current ACTIVE bank. */
+        retiredQuestions: List<Question> = emptyList(),
         private var failuresRemaining: Int = 0,
     ) : CurriculumRepository {
+        private val questionsById = (questions + retiredQuestions).associateBy(Question::id)
+
         var subtopicCalls = 0
             private set
         var topicQuestionCalls = 0
@@ -295,19 +523,6 @@ internal class TopicDetailViewModelTest {
         // Used by LearningProgressService to resolve each answered question back to its topic
         // and subtopic when the screen shows observed accuracy.
         override suspend fun getQuestionById(questionId: String): Question? =
-            questions.firstOrNull { it.id == questionId }
-    }
-
-    /**
-     * Study content is what these tests are about, so history is empty: every accuracy comes back
-     * null and the screen falls back to authored counts only.
-     */
-    private fun progressService(curriculum: CurriculumRepository): LearningProgressService =
-        LearningProgressService(EmptyHistoryRepository, curriculum)
-
-    private object EmptyHistoryRepository : AssessmentRepository {
-        override suspend fun save(attempt: TestAttempt) = Unit
-        override suspend fun getById(attemptId: String): TestAttempt? = null
-        override suspend fun getCompletedAttempts(): List<TestAttempt> = emptyList()
+            questionsById[questionId]
     }
 }

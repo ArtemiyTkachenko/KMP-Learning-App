@@ -171,6 +171,14 @@ internal class FocusedLearningJourneyIntegrationTest {
                 onAllNodesWithText("Core").fetchSemanticsNodes().isNotEmpty()
             }
             onNodeWithText("Weak area").assertIsDisplayed()
+            // All-time correctness and current coverage on the same analytics card, each naming
+            // what it counts, so this drill-down says the same things Topic Detail now does. Both
+            // appear twice: once for the Topic, once for its only observed Subtopic.
+            assertEquals(2, onAllNodesWithText("1 / 2 correct").fetchSemanticsNodes().size)
+            assertEquals(
+                2,
+                onAllNodesWithText("2 of 2 current questions explored").fetchSemanticsNodes().size,
+            )
             onNodeWithContentDescription("Back").performClick()
             waitUntil(timeoutMillis = 5_000) {
                 onAllNodesWithTag(ProgressContentTag).fetchSemanticsNodes().isNotEmpty()
@@ -180,7 +188,21 @@ internal class FocusedLearningJourneyIntegrationTest {
             waitUntil(timeoutMillis = 5_000) {
                 onAllNodesWithText("Android").fetchSemanticsNodes().isNotEmpty()
             }
+            // The completed attempt reaches Topics through the shared history invalidation: the
+            // card the learner started this journey on now carries the coverage and accuracy it
+            // did not have, with no restart and no manual retry.
+            waitUntil(timeoutMillis = 5_000) {
+                onAllNodesWithText("2 of 2 explored").fetchSemanticsNodes().isNotEmpty()
+            }
+            onNodeWithText("Not studied yet").assertDoesNotExist()
+
             onNodeWithText("Android").assertIsDisplayed().performClick()
+            // And Topic Detail shows the same two figures as separate, labelled concepts.
+            waitUntil(timeoutMillis = 5_000) {
+                onAllNodesWithText("Curriculum coverage").fetchSemanticsNodes().isNotEmpty()
+            }
+            onNodeWithText("All-time accuracy").assertIsDisplayed()
+            onNodeWithText("2 of 2 questions explored").assertIsDisplayed()
             onNodeWithTag(SubtopicPracticeButtonTag).performClick()
             onNodeWithText("Single question").assertIsDisplayed()
             assertEquals(

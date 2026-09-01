@@ -263,7 +263,59 @@ stable topic identity. `ProgressTopicViewModel` selects that Topic and its
 observed Subtopics out of the same derived snapshot, so the drill-down never
 recalculates statistics or issues curriculum queries of its own. Subtopics
 without completed observations are absent rather than fabricated, and weak
-Subtopics are flagged from the snapshot's existing policy result.
+Subtopics are flagged from the snapshot's existing policy result. Current
+coverage joins onto those rows by stable ID as a caption under the correct/answered
+line, so the drill-down states the same two concepts the study surfaces do without
+growing a second card per scope; a scope with no ACTIVE questions reports no
+coverage at all rather than `0/0`, and zero coverage never removes an accuracy the
+learner earned on questions that have since been retired. The screen stays
+analytics-focused: unseen Subtopics are still not listed here, because browsing the
+whole curriculum is Topic Detail's job.
+
+## Learning context on the study surfaces
+
+The Topics list, Topic Detail, and Subtopic rows present the same derived
+snapshot through one small presentation model, `LearningContextUiModel`, built by
+`LearningContextIndex` — a single derivation indexed by stable ID so a list of
+seventeen Topics costs one snapshot and no repository read per card. Three states
+have to stay apart, and the nullability is how they do it: a `null`
+`accuracyPercentage` means loaded history holds no answer for that scope, an
+absent `LearningContextUiModel` means analytics have not loaded or could not be
+derived, and only the combination of no accuracy and no attempted questions
+justifies saying "Not studied yet". Coverage and accuracy are never combined into
+a single score, because a scope can hold real historical accuracy beside zero
+current coverage — which is exactly what a retired question looks like from here.
+
+`TopicBrowserViewModel` and `TopicDetailViewModel` therefore hold curriculum,
+query, and learning context as three separate inputs and re-render from all three,
+rather than awaiting a combined load. Curriculum is the primary capability and the
+only input that can produce Loading, Empty, or Error: browsing, searching, and
+starting practice keep working when history is unavailable, and an optional
+statistic is never allowed to take down the study flow. The query lives outside
+both loads, so a history refresh rebuilds the rows underneath an active search
+without disturbing what was typed. Learning context follows the app-scoped
+`AssessmentHistoryStore` rather than reading completed attempts again, so a newly
+completed assessment refreshes these screens through the same invalidation every
+other consumer uses — no restart, no manual retry, and no second history cache.
+No app-wide analytics state holder was introduced: the store plus the service
+already are the shared source, and each feature only maps them.
+
+Search matching is unchanged by any of this. It still reads Topic and Subtopic
+names only, in memory, against the catalog already loaded, so learning context is
+display metadata that no query can match and typing still issues no repository
+read. Topic search results reuse the enriched Topic row rather than deriving a
+second one; Subtopic results stay compact and parent-contextual, with their full
+learning context living on Topic Detail.
+
+Presentation keeps the two figures visibly different concepts. Coverage is always
+a count ("12 of 28 explored"), never a bare percentage that could be mistaken for
+accuracy, and stays in neutral theme colours throughout: a learner at 10% coverage
+has not done anything wrong, so the correct/incorrect palette would misread as a
+bad score. Accuracy keeps `accuracyColor` and carries its own label. The weak badge
+is driven only by `TopicPerformance.isWeak` / `SubtopicPerformance.isWeak`; a row
+can render as low accuracy without being weak, because the policy's evidence
+threshold has not been met, and accuracy colour is never treated as the weak-state
+source of truth.
 
 Mistake review is derived, never persisted:
 

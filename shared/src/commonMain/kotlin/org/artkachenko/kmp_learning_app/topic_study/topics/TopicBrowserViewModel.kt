@@ -6,71 +6,157 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistory
+import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
+import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
+import org.artkachenko.kmp_learning_app.ui.LearningContextIndex
 
+/**
+ * Topic discovery, enriched with what the learner has done with each Topic.
+ *
+ * The three inputs are held apart on purpose, because they fail and change independently:
+ *
+ * - the [catalog] is the primary capability and the only one that can produce Loading, Empty, or
+ *   Error. Browsing, searching, and opening a Topic must keep working when analytics do not;
+ * - the [query] belongs to the learner, so it lives outside both loads. A history refresh rebuilds
+ *   the rows underneath an active search without disturbing what was typed;
+ * - [learningContexts] is optional enrichment derived from the shared history cache. Until a
+ *   derivation succeeds it stays null, and rows simply omit learning context: unknown history is
+ *   not empty history, and must never render as "not studied yet".
+ *
+ * Each writer updates its own input and re-renders, rather than the state being combined
+ * asynchronously, so a retry shows its spinner on the same frame it is requested.
+ */
 internal class TopicBrowserViewModel(
     private val curriculumRepository: CurriculumRepository,
+    private val learningProgressService: LearningProgressService,
+    private val historyStore: AssessmentHistoryStore,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<TopicBrowserUiState>(TopicBrowserUiState.Loading)
     val uiState: StateFlow<TopicBrowserUiState> = _uiState.asStateFlow()
+
+    private var catalog: TopicCatalog = TopicCatalog.Loading
+    private var query: String = ""
+    private var learningContexts: LearningContextIndex? = null
+
+    init {
+        observeLearningContext()
+        loadCatalog()
+    }
 
     fun retry() {
         loadCatalog()
     }
 
     fun onSearchQueryChange(query: String) {
-        val content = _uiState.value as? TopicBrowserUiState.Content ?: return
-        _uiState.value = content.withQuery(query)
+        // In-memory only: typing filters the catalog that is already loaded and never touches the
+        // repository, the history cache, or the coverage derivation.
+        this.query = query
+        render()
     }
 
-    private fun loadCatalog() {
-        _uiState.value = TopicBrowserUiState.Loading
+    /**
+     * Follows the app-scoped history cache rather than reading completed attempts again, so a newly
+     * completed assessment refreshes this screen's learning context through the same invalidation
+     * every other consumer uses, without a restart or a manual retry.
+     */
+    private fun observeLearningContext() {
         viewModelScope.launch {
-            _uiState.value = runCatching {
-                val topics = curriculumRepository.getActiveTopics()
-                if (topics.isEmpty()) {
-                    TopicBrowserUiState.Empty
-                } else {
-                    val searchableSubtopics = topics.flatMap { topic ->
-                        curriculumRepository.getActiveSubtopics(topic.id).map { subtopic ->
-                            SubtopicSearchResult(
-                                subtopicId = subtopic.id,
-                                subtopicName = subtopic.name,
-                                parentTopicId = topic.id,
-                                parentTopicName = topic.name,
-                            )
-                        }
-                    }
-                    TopicBrowserUiState.Content(
-                        topics = topics,
-                        searchableSubtopics = searchableSubtopics,
-                    )
+            historyStore.history.collect { history ->
+                learningContexts = when (history) {
+                    AssessmentHistory.Loading, AssessmentHistory.Failed -> null
+                    is AssessmentHistory.Loaded ->
+                        // A failed derivation is treated exactly like history that has not arrived:
+                        // the catalog stays browsable and the rows lose only their decoration.
+                        runCatching {
+                            LearningContextIndex(learningProgressService.load(history.attempts))
+                        }.getOrNull()
                 }
-            }.getOrElse {
-                TopicBrowserUiState.Error
+                render()
             }
         }
     }
 
-    init {
-        loadCatalog()
+    private fun loadCatalog() {
+        catalog = TopicCatalog.Loading
+        render()
+        viewModelScope.launch {
+            catalog = runCatching { readCatalog() }.getOrElse { TopicCatalog.Error }
+            render()
+        }
+    }
+
+    private suspend fun readCatalog(): TopicCatalog {
+        val topics = curriculumRepository.getActiveTopics()
+        if (topics.isEmpty()) return TopicCatalog.Empty
+        return TopicCatalog.Loaded(
+            topics = topics,
+            searchableSubtopics = topics.flatMap { topic ->
+                curriculumRepository.getActiveSubtopics(topic.id).map { subtopic ->
+                    SubtopicSearchResult(
+                        subtopicId = subtopic.id,
+                        subtopicName = subtopic.name,
+                        parentTopicId = topic.id,
+                        parentTopicName = topic.name,
+                    )
+                }
+            },
+        )
+    }
+
+    private fun render() {
+        _uiState.value = when (val catalog = catalog) {
+            TopicCatalog.Loading -> TopicBrowserUiState.Loading
+            TopicCatalog.Empty -> TopicBrowserUiState.Empty
+            TopicCatalog.Error -> TopicBrowserUiState.Error
+            is TopicCatalog.Loaded -> catalog.toContent(query, learningContexts)
+        }
     }
 }
 
-private fun TopicBrowserUiState.Content.withQuery(query: String): TopicBrowserUiState.Content {
-    val tokens = query.searchTokens()
-    if (tokens.isEmpty()) {
-        return copy(
-            query = query,
-            topicMatches = emptyList(),
-            subtopicMatches = emptyList(),
+/** The catalog half of the screen, kept separate from the query and from learning context. */
+private sealed interface TopicCatalog {
+    data object Loading : TopicCatalog
+
+    data object Empty : TopicCatalog
+
+    data object Error : TopicCatalog
+
+    data class Loaded(
+        val topics: List<Topic>,
+        val searchableSubtopics: List<SubtopicSearchResult>,
+    ) : TopicCatalog
+}
+
+private fun TopicCatalog.Loaded.toContent(
+    query: String,
+    learningContexts: LearningContextIndex?,
+): TopicBrowserUiState.Content {
+    val items = topics.map { topic ->
+        TopicBrowserItemUiModel(
+            topicId = topic.id,
+            topicName = topic.name,
+            // Joined by stable Topic ID against one derivation, never per row.
+            learningContext = learningContexts?.forTopic(topic.id),
         )
     }
-    return copy(
+    val tokens = query.searchTokens()
+    if (tokens.isEmpty()) {
+        return TopicBrowserUiState.Content(
+            topics = items,
+            searchableSubtopics = searchableSubtopics,
+            query = query,
+        )
+    }
+    return TopicBrowserUiState.Content(
+        topics = items,
+        searchableSubtopics = searchableSubtopics,
         query = query,
-        topicMatches = topics
-            .filter { it.name.matchesAll(tokens) }
-            .map { TopicSearchResult(topicId = it.id, topicName = it.name) },
+        // Matching reads Topic and Subtopic names only. Learning context is display metadata, so a
+        // query of "weak" or "76%" still finds curriculum by name or nothing at all.
+        topicMatches = items.filter { it.topicName.matchesAll(tokens) },
         subtopicMatches = searchableSubtopics.filter { it.subtopicName.matchesAll(tokens) },
     )
 }

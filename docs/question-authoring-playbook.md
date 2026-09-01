@@ -62,8 +62,8 @@ Context only to access application resources. Which Context is safest to
 retain?"* is better than *"What is the application Context?"* — it forces a
 judgment rather than a recital.
 
-Do not lengthen a stem to make a question harder. Difficulty must come from the
-concept, not from parsing.
+Do not lengthen a stem to make a question appear deeper. Interview depth must
+come from the required technical reasoning, not from parsing.
 
 **Ambiguity check.** Read the stem and ask whether a defensible case exists for
 any option other than the intended one. If it does, tighten the stem rather than
@@ -155,6 +155,115 @@ qualifier of comparable weight.
 
 Aim for **stylistic parity, not uniform word counts.** Do not pad an option to hit
 a character target.
+
+## Classifying Question Interview Level
+
+The authoritative definitions and boundary rules live in the
+[Question Interview Level](content-authoring.md#question-interview-level)
+section of the content-authoring contract. This section is the working method
+for applying that contract. It does not add a field to the current JSON model.
+
+Classify the finished question after its stem, correct answer, and plausible
+distractors are stable, and before the final anti-cue review. The real options
+matter: a stem that sounds architectural may require only a direct contract if
+its distractors can be eliminated without deeper reasoning.
+
+### Minimum-sufficient-knowledge test
+
+Write one sentence answering:
+
+> What is the minimum technical reasoning a candidate needs to eliminate the
+> distractors and justify the correct answer?
+
+Then classify that reasoning:
+
+- one direct documented contract -> `FOUNDATION` candidate;
+- known behavior applied to realistic constraints -> `APPLIED` candidate;
+- interacting mechanisms or constraints, substantial trade-offs, or a subtle
+  failure trace -> `ADVANCED` candidate.
+
+Do not classify by everything an expert could discuss after answering. The
+question's explanation may teach more than the candidate needed to select the
+answer.
+
+### Classification workflow
+
+1. **Name the primary concept.** If it cannot be named clearly, fix the question
+   before assigning a level.
+2. **State the minimum reasoning.** Describe the shortest technically adequate
+   path from the stem and options to the answer.
+3. **Classify the reasoning.** Decide whether it is primarily a documented
+   contract, application to a scenario, or interaction/trade-off/failure-mode
+   reasoning.
+4. **Remove false signals.** Ask whether the apparent level comes only from long
+   wording, answer length, explanation depth, obscure terminology, a rare API,
+   sophisticated distractors, `MULTIPLE` selection, answer count, Topic, or
+   familiarity. None of those raises the level.
+5. **Check the nearest boundary.** Compare against the rules and same-concept
+   progressions below and in the contract.
+6. **Record a one-sentence justification for review.** It is review evidence,
+   not a production JSON property.
+
+### Quick boundary checks
+
+**Foundation or Applied?** Remove the scenario details mentally. If one direct
+contract still supplies the answer, use `FOUNDATION`. If the details determine
+which known mechanism, owner, or correction fits, use `APPLIED`.
+
+**Applied or Advanced?** Ask whether the candidate is applying one known pattern
+under direct requirements, or must combine mechanisms, trace a subtle failure,
+or compare viable choices across several consequences. Use `ADVANCED` only for
+the latter.
+
+**Deep fact or advanced reasoning?** Recall of one obscure internal fact is not
+advanced. Common mechanisms can require advanced reasoning when their
+interaction must be traced. Obscurity and depth are independent.
+
+**Debugging?** A direct symptom-to-contract mapping can be foundation. Choosing
+the likely cause or fix in a realistic situation is applied. Tracing interacting
+lifecycle, state, concurrency, or system constraints can be advanced.
+
+**System design?** A layer-ownership choice can be applied. Use advanced only
+when several explicit concerns, such as offline behavior, consistency,
+background work, recovery, modularity, or testability, materially determine the
+answer.
+
+**Single or multiple selection?** Ignore selection mode when determining level.
+`MULTIPLE` does not rank above `SINGLE`, and the number of correct options is not
+a depth signal.
+
+### Same-concept calibration
+
+| Concept | `FOUNDATION` | `APPLIED` | `ADVANCED` |
+| --- | --- | --- | --- |
+| Coroutine failure | Predict child cancellation for an ordinary parent `Job`. | Choose supervision because independent siblings must continue. | Trace nested supervision, `async`, awaiting, sibling lifetime, and exception observation. |
+| State restoration | Identify the mechanism for a small restorable screen value. | Split a form's small saved state from large reloadable data. | Reconcile saved state, repository persistence, navigation state, and conflict rules. |
+| Compose recomposition | Predict what follows when an observed state read changes. | Place keyed memoization or derived state for a described repeated computation. | Redesign state reads and invalidation boundaries under frequency, consistency, and performance constraints. |
+
+The progression is in the required reasoning, not the word count. A concise
+advanced concept must still become an unambiguous stem with enough constraints
+to make its keyed answer defensible.
+
+### Resolving reviewer disagreement
+
+Review the stem and real options together:
+
+1. agree on the minimum sufficient reasoning;
+2. identify which scenario details actually affect the decision;
+3. identify any mechanisms or constraints that truly must be combined;
+4. compare the closest calibration example;
+5. choose the lower level when the higher-level analysis is educational but not
+   necessary to answer correctly.
+
+If sophisticated distractors are obviously unrelated, repair them before
+classification. If several answers remain defensible, tighten the requirements;
+do not use ambiguity as evidence of advanced depth.
+
+For complete-bank classification work, keep a temporary review table with the
+question ID, proposed level, one-line justification, and an ambiguity flag. Use
+it to make disagreement visible, but do not copy justification or ambiguity
+into production curriculum. Do not adjust honest classifications to reach an
+arbitrary distribution.
 
 ## Part 3 — Anti-cue audits
 
@@ -572,6 +681,13 @@ Editorial (human review — the validator cannot check these):
 
 - [ ] Stem tests one concept and is answerable without reading the options
 - [ ] Assumptions that change the answer are explicit
+- [ ] When interview level is under review, the finished question has a
+      defensible one-sentence classification justification
+- [ ] The classification describes required reasoning, not learner ability,
+      Topic, familiarity, selection mode, length, or obscurity
+- [ ] Scenario, mechanism, and trade-off depth support the proposed level
+- [ ] An `ADVANCED` classification requires deeper reasoning to choose correctly,
+      not merely deeper detail in the explanation
 - [ ] Every distractor is a belief a real developer could hold
 - [ ] No off-topic technology, impossible behaviour, or invented API
 - [ ] No distractor is defensibly correct under the stem as written

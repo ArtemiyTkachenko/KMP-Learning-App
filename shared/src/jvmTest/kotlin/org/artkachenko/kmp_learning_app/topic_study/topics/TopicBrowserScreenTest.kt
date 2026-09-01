@@ -19,6 +19,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.artkachenko.kmp_learning_app.AppRoute
 import org.artkachenko.kmp_learning_app.curriculum.Topic
+import org.artkachenko.kmp_learning_app.ui.topicVisualMarkerTag
 
 @OptIn(ExperimentalTestApi::class)
 internal class TopicBrowserScreenTest {
@@ -237,6 +238,86 @@ internal class TopicBrowserScreenTest {
         onNodeWithText("ViewModel lifecycle").assertIsDisplayed()
         onNodeWithText("Lifecycle, State & Navigation").assertIsDisplayed()
         onNodeWithText("Topics").assertIsDisplayed()
+    }
+
+    @Test
+    fun topicRowsShowTheirOwnVisualMarkerBesideTheName() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(
+                            Topic("networking", "Networking & Serialization"),
+                            Topic("security", "Security, Privacy & Permissions"),
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        // The name stays the authoritative identity; the marker is an addition, not a replacement.
+        onNodeWithText("Networking & Serialization").assertIsDisplayed()
+        onNodeWithText("Security, Privacy & Permissions").assertIsDisplayed()
+        onNodeWithTag(topicVisualMarkerTag("networking"), useUnmergedTree = true).assertIsDisplayed()
+        onNodeWithTag(topicVisualMarkerTag("security"), useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun aLongTopicNameKeepsBothTheNameAndItsMarkerOnScreen() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                Box(Modifier.size(320.dp, 640.dp)) {
+                    TopicBrowserScreen(
+                        state = TopicBrowserUiState.Content(
+                            topics = listOf(
+                                Topic("kmp", "Kotlin Multiplatform & Compose Multiplatform"),
+                            ),
+                        ),
+                        onTopicClick = {},
+                        onRetry = {},
+                    )
+                }
+            }
+        }
+
+        onNodeWithText("Kotlin Multiplatform & Compose Multiplatform").assertIsDisplayed()
+        onNodeWithTag(topicVisualMarkerTag("kmp"), useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun searchResultsReuseTheBrowsingTopicMarkerAndParentTopicContext() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(Topic("networking", "Networking & Serialization")),
+                        query = "http",
+                        topicMatches = listOf(
+                            TopicSearchResult("networking", "Networking & Serialization"),
+                        ),
+                        subtopicMatches = listOf(
+                            SubtopicSearchResult(
+                                subtopicId = "workmanager",
+                                subtopicName = "WorkManager constraints",
+                                parentTopicId = "background_work",
+                                parentTopicName = "Background Work & OS Constraints",
+                            ),
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        // A Topic match is the same Topic, so it must carry the same marker as normal browsing.
+        onNodeWithTag(topicVisualMarkerTag("networking"), useUnmergedTree = true).assertIsDisplayed()
+        // A Subtopic match inherits its parent Topic's marker, and keeps the parent name too.
+        onNodeWithTag(topicVisualMarkerTag("background_work"), useUnmergedTree = true).assertIsDisplayed()
+        onNodeWithText("WorkManager constraints").assertIsDisplayed()
+        onNodeWithText("Background Work & OS Constraints").assertIsDisplayed()
     }
 
     @Test

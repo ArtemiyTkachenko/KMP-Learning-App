@@ -49,6 +49,7 @@ import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
+import org.artkachenko.kmp_learning_app.ui.TopicVisualMarker
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 import org.jetbrains.compose.resources.stringResource
 
@@ -223,12 +224,16 @@ private fun TopicRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            TopicVisualMarker(topicId = topicId)
             Text(
                 text = topicName,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
+                // Long Topic names wrap rather than push the marker out of the card.
+                modifier = Modifier.weight(1f),
             )
         }
     }
@@ -296,6 +301,9 @@ private fun SubtopicResultRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // The parent Topic's marker, resolved from its stable ID rather than its display name,
+            // so a Subtopic hit carries the same context cue as the Topic itself.
+            TopicVisualMarker(topicId = result.parentTopicId)
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -327,10 +335,11 @@ private fun TopicBrowserScreenPreview() {
     AppTheme {
         TopicBrowserScreen(
             state = TopicBrowserUiState.Content(
+                // Real curriculum IDs so the preview shows the authored markers.
                 topics = listOf(
-                    Topic("android_platform", "Android platform"),
-                    Topic("ui_compose", "UI and Compose"),
-                    Topic("architecture", "Architecture"),
+                    Topic("android_platform", "Android Platform & Application Model"),
+                    Topic("android_ui", "UI — Views & Jetpack Compose"),
+                    Topic("architecture", "Application Architecture & Design Principles"),
                 ),
             ),
             onTopicClick = {},

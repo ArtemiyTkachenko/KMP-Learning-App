@@ -65,11 +65,11 @@ internal class PracticeBuilderScreenTest {
     }
 
     @Test
-    fun unavailableSourcesAreShownButCannotBeChosen() = runComposeUiTest {
+    fun onlyUnresolvedMistakesIsShownAsUnavailable() = runComposeUiTest {
         val chosen = mutableListOf<PracticeQuestionSource>()
         setContentWith(state(), onSourceClick = { chosen += it })
 
-        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.WEAK_AREAS)).assertIsNotEnabled()
+        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.WEAK_AREAS)).assertIsEnabled()
         onNodeWithTag(practiceSourceTag(PracticeQuestionSource.UNRESOLVED_MISTAKES))
             .assertIsNotEnabled()
         // Named, so the learner can see what targeted practice will offer.
@@ -77,7 +77,7 @@ internal class PracticeBuilderScreenTest {
         onNodeWithText("Mistakes").assertIsDisplayed()
         onNodeWithText("Dimmed sources are not available yet.").assertIsDisplayed()
 
-        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.WEAK_AREAS)).performClick()
+        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.UNRESOLVED_MISTAKES)).performClick()
 
         assertEquals(emptyList(), chosen)
     }
@@ -89,11 +89,13 @@ internal class PracticeBuilderScreenTest {
 
         onNodeWithTag(practiceSourceTag(PracticeQuestionSource.ALL)).assertIsEnabled()
         onNodeWithTag(practiceSourceTag(PracticeQuestionSource.UNSEEN)).assertIsEnabled()
+        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.WEAK_AREAS)).assertIsEnabled()
         onNodeWithText("Unseen").assertIsDisplayed()
+        onNodeWithText("Weak areas").assertIsDisplayed()
 
-        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.UNSEEN)).performClick()
+        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.WEAK_AREAS)).performClick()
 
-        assertEquals(listOf(PracticeQuestionSource.UNSEEN), chosen)
+        assertEquals(listOf(PracticeQuestionSource.WEAK_AREAS), chosen)
     }
 
     /**
@@ -206,7 +208,8 @@ internal class PracticeBuilderScreenTest {
                 PracticeSourceOption(
                     source = option,
                     isAvailable = option == PracticeQuestionSource.ALL ||
-                        option == PracticeQuestionSource.UNSEEN,
+                        option == PracticeQuestionSource.UNSEEN ||
+                        option == PracticeQuestionSource.WEAK_AREAS,
                 )
             },
             availability = availability,

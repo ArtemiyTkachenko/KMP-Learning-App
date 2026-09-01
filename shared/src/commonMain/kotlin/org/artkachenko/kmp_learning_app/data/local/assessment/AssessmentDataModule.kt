@@ -9,6 +9,7 @@ import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.data.local.assessment.repository.LocalAssessmentRepository
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
+import org.artkachenko.kmp_learning_app.learning_progress.LearningPerformanceDerivation
 import org.koin.dsl.module
 
 internal val assessmentDataModule = module {
@@ -27,6 +28,12 @@ internal val assessmentDataModule = module {
     single { AppCoroutineScope() }
 
     single {
+        LearningPerformanceDerivation(
+            curriculumRepository = get(),
+        )
+    }
+
+    single {
         AssessmentHistoryStore(
             assessmentRepository = get(),
             scope = get<AppCoroutineScope>(),
@@ -37,10 +44,11 @@ internal val assessmentDataModule = module {
         AssessmentQuestionSelector(
             curriculumRepository = get(),
             // The app-scoped cache rather than the repository: the Practice Builder re-runs
-            // selection after every edit, and an unseen preflight must not turn each of those into
-            // a history query. The store is also the one place completion invalidates, so
+            // selection after every edit, and a history-derived preflight must not turn each of
+            // those into a history query. The store is also the one place completion invalidates, so
             // selection sees a just-finished attempt through the same refresh Progress does.
             completedHistory = get<AssessmentHistoryStore>(),
+            performanceDerivation = get(),
         )
     }
 
@@ -66,6 +74,7 @@ internal val assessmentDataModule = module {
         LearningProgressService(
             assessmentRepository = get(),
             curriculumRepository = get(),
+            performanceDerivation = get(),
         )
     }
 }

@@ -542,8 +542,257 @@ internal class AssessmentQuestionSelectorTest {
     }
 
     @Test
-    fun weakAreasSourceIsNotSelectableYetAndDoesNotFallBackToAll() = runSelectorTest {
-        assertSourceIsNotSupportedYet(PracticeQuestionSource.WEAK_AREAS)
+    fun weakTopicMakesItsCurrentActiveQuestionsEligible() = runSelectorTest {
+        repository.historicalQuestions = listOf(
+            question("evidence_a", topicId = "topic_a", subtopicId = "sub_a"),
+            question("evidence_b", topicId = "topic_a", subtopicId = "sub_b"),
+            question("evidence_c", topicId = "topic_a", subtopicId = "sub_c"),
+        )
+        repository.topicQuestions = mapOf(
+            "topic_a" to listOf(
+                question("candidate_a", topicId = "topic_a", subtopicId = "sub_a"),
+                question("candidate_b", topicId = "topic_a", subtopicId = "sub_b"),
+            ),
+        )
+        history.attempts = listOf(
+            completedAttemptWithOutcomes(
+                "weak_topic",
+                "evidence_a" to false,
+                "evidence_b" to false,
+                "evidence_c" to true,
+            ),
+        )
+
+        val selector = selector()
+        val selected = selector.selectQuestions(weakPractice(AssessmentScope.Topic("topic_a"), 10))
+
+        assertTrue(selector.isSourceSupported(PracticeQuestionSource.WEAK_AREAS))
+        assertEquals(listOf("candidate_a", "candidate_b"), selected.map { it.id })
+    }
+
+    @Test
+    fun weakSubtopicDoesNotMakeItsHealthySiblingEligibleWhenTheParentIsHealthy() = runSelectorTest {
+        repository.historicalQuestions = buildList {
+            addAll(questionsIn("weak_evidence", 2, "topic_a", "sub_weak"))
+            addAll(questionsIn("healthy_evidence", 5, "topic_a", "sub_healthy"))
+        }
+        repository.topicQuestions = mapOf(
+            "topic_a" to listOf(
+                question("weak_candidate", topicId = "topic_a", subtopicId = "sub_weak"),
+                question("healthy_candidate", topicId = "topic_a", subtopicId = "sub_healthy"),
+            ),
+        )
+        history.attempts = listOf(
+            completedAttemptWithOutcomes(
+                "weak_subtopic",
+                *repository.historicalQuestions.map { it.id to it.id.startsWith("healthy") }.toTypedArray(),
+            ),
+        )
+
+        val selected = selector().selectQuestions(weakPractice(AssessmentScope.Topic("topic_a"), 10))
+
+        assertEquals(listOf("weak_candidate"), selected.map { it.id })
+    }
+
+    @Test
+    fun weakTopicMakesAChildSubtopicEligibleWithoutChildLevelWeakness() = runSelectorTest {
+        repository.historicalQuestions = listOf(
+            question("a", topicId = "topic_a", subtopicId = "sub_a"),
+            question("b", topicId = "topic_a", subtopicId = "sub_b"),
+            question("c", topicId = "topic_a", subtopicId = "sub_c"),
+        )
+        repository.subtopicQuestions = mapOf(
+            "sub_a" to listOf(question("candidate", topicId = "topic_a", subtopicId = "sub_a")),
+        )
+        history.attempts = listOf(
+            completedAttemptWithOutcomes("weak_parent", "a" to false, "b" to false, "c" to true),
+        )
+
+        val selected = selector().selectQuestions(
+            weakPractice(AssessmentScope.Subtopic("sub_a"), 10),
+        )
+
+        assertEquals(listOf("candidate"), selected.map { it.id })
+    }
+
+    @Test
+    fun topicAndSubtopicWeaknessRemainAUnionWithoutDuplicateQuestions() = runSelectorTest {
+        repository.historicalQuestions = questionsIn("evidence", 3, "topic_a", "sub_a")
+        val candidate = question("candidate", topicId = "topic_a", subtopicId = "sub_a")
+        repository.topicQuestions = mapOf("topic_a" to listOf(candidate, candidate))
+        history.attempts = listOf(
+            completedAttemptWithOutcomes(
+                "overlap",
+                *repository.historicalQuestions.map { it.id to false }.toTypedArray(),
+            ),
+        )
+
+        val selected = selector().selectQuestions(weakPractice(AssessmentScope.Topic("topic_a"), 10))
+
+        assertEquals(listOf("candidate"), selected.map { it.id })
+        assertUniqueQuestionIds(selected)
+    }
+
+    @Test
+    fun noQualifyingWeakAreasReportsNoEligibleQuestions() = runSelectorTest {
+        repository.historicalQuestions = questionsIn("healthy", 3, "topic_a", "sub_a")
+        repository.topicQuestions = mapOf(
+            "topic_a" to listOf(question("candidate", topicId = "topic_a", subtopicId = "sub_a")),
+        )
+        history.attempts = listOf(
+            completedAttemptWithOutcomes(
+                "healthy",
+                *repository.historicalQuestions.map { it.id to true }.toTypedArray(),
+            ),
+        )
+
+        val result = selector().select(weakPractice(AssessmentScope.Topic("topic_a"), 10))
+
+        assertEquals(AssessmentSelectionResult.NoContent.NoEligibleQuestions, result)
+        assertTrue(selector().isSourceSupported(PracticeQuestionSource.WEAK_AREAS))
+    }
+
+    @Test
+    fun insufficientIncorrectHistoryDoesNotQualifyAsWeak() = runSelectorTest {
+        repository.historicalQuestions = listOf(
+            question("one_observation", topicId = "topic_a", subtopicId = "sub_a"),
+        )
+        repository.topicQuestions = mapOf(
+            "topic_a" to listOf(question("candidate", topicId = "topic_a", subtopicId = "sub_a")),
+        )
+        history.attempts = listOf(completedAttempt("one_observation", isCorrect = false))
+
+        val result = selector().select(weakPractice(AssessmentScope.Topic("topic_a"), 10))
+
+        assertEquals(AssessmentSelectionResult.NoContent.NoEligibleQuestions, result)
+    }
+
+    @Test
+    fun weakAreaSelectionRespectsLevelsAndDoesNotFillFromUnselectedLevels() = runSelectorTest {
+        repository.historicalQuestions = questionsIn("evidence", 3, "topic_a", "sub_a")
+        repository.topicQuestions = mapOf(
+            "topic_a" to listOf(
+                question("foundation", topicId = "topic_a", subtopicId = "sub_a"),
+                question("applied", topicId = "topic_a", subtopicId = "sub_a")
+                    .copy(level = QuestionLevel.APPLIED),
+                question("advanced", topicId = "topic_a", subtopicId = "sub_a")
+                    .copy(level = QuestionLevel.ADVANCED),
+            ),
+        )
+        history.attempts = listOf(
+            completedAttemptWithOutcomes(
+                "weak",
+                *repository.historicalQuestions.map { it.id to false }.toTypedArray(),
+            ),
+        )
+
+        val selected = selector().selectQuestions(
+            weakPractice(
+                scope = AssessmentScope.Topic("topic_a"),
+                questionCount = 10,
+                levels = setOf(QuestionLevel.ADVANCED),
+            ),
+        )
+
+        assertEquals(listOf("topic:topic_a levels:ADVANCED"), repository.calls)
+        assertEquals(listOf("advanced"), selected.map { it.id })
+    }
+
+    @Test
+    fun configuredTopicScopeExcludesOtherWeakTopics() = runSelectorTest {
+        repository.historicalQuestions =
+            questionsIn("a", 3, "topic_a", "sub_a") +
+                questionsIn("b", 3, "topic_b", "sub_b")
+        repository.topicQuestions = mapOf(
+            "topic_a" to listOf(question("candidate_a", topicId = "topic_a", subtopicId = "sub_a")),
+            "topic_b" to listOf(question("candidate_b", topicId = "topic_b", subtopicId = "sub_b")),
+        )
+        history.attempts = listOf(
+            completedAttemptWithOutcomes(
+                "two_weak_topics",
+                *repository.historicalQuestions.map { it.id to false }.toTypedArray(),
+            ),
+        )
+
+        val selected = selector().selectQuestions(weakPractice(AssessmentScope.Topic("topic_a"), 10))
+
+        assertEquals(listOf("candidate_a"), selected.map { it.id })
+        assertEquals(listOf("topic:topic_a levels:FOUNDATION,APPLIED,ADVANCED"), repository.calls)
+    }
+
+    @Test
+    fun configuredSubtopicScopeExcludesOtherWeakSubtopics() = runSelectorTest {
+        repository.historicalQuestions =
+            questionsIn("a", 2, "topic_a", "sub_a") +
+                questionsIn("b", 2, "topic_b", "sub_b")
+        repository.subtopicQuestions = mapOf(
+            "sub_a" to listOf(question("candidate_a", topicId = "topic_a", subtopicId = "sub_a")),
+            "sub_b" to listOf(question("candidate_b", topicId = "topic_b", subtopicId = "sub_b")),
+        )
+        history.attempts = listOf(
+            completedAttemptWithOutcomes(
+                "two_weak_subtopics",
+                *repository.historicalQuestions.map { it.id to false }.toTypedArray(),
+            ),
+        )
+
+        val selected = selector().selectQuestions(
+            weakPractice(AssessmentScope.Subtopic("sub_a"), 10),
+        )
+
+        assertEquals(listOf("candidate_a"), selected.map { it.id })
+        assertEquals(listOf("subtopic:sub_a levels:FOUNDATION,APPLIED,ADVANCED"), repository.calls)
+    }
+
+    @Test
+    fun weakAreaSelectionUsesActiveCandidatesAndPreservesCountAndRandomization() = runSelectorTest {
+        repository.historicalQuestions = questionsIn("evidence", 3, "topic_a", "sub_a")
+        repository.topicQuestions = mapOf(
+            "topic_a" to listOf(
+                question("candidate_a", topicId = "topic_a", subtopicId = "sub_a"),
+                question("retired", topicId = "topic_a", subtopicId = "sub_a")
+                    .copy(status = ContentStatus.DEPRECATED),
+                question("candidate_b", topicId = "topic_a", subtopicId = "sub_a"),
+                question("candidate_c", topicId = "topic_a", subtopicId = "sub_a"),
+            ),
+        )
+        history.attempts = listOf(
+            completedAttemptWithOutcomes(
+                "weak",
+                *repository.historicalQuestions.map { it.id to false }.toTypedArray(),
+            ),
+        )
+
+        val selected = selector(randomize = { it.reversed() }).selectQuestions(
+            weakPractice(AssessmentScope.Topic("topic_a"), 2),
+        )
+
+        assertEquals(listOf("candidate_c", "candidate_b"), selected.map { it.id })
+    }
+
+    @Test
+    fun inProgressEvidenceDoesNotCreateAWeakArea() = runSelectorTest {
+        repository.historicalQuestions = questionsIn("evidence", 3, "topic_a", "sub_a")
+        repository.topicQuestions = mapOf(
+            "topic_a" to listOf(question("candidate", topicId = "topic_a", subtopicId = "sub_a")),
+        )
+        history.attempts = listOf(inProgressAttempt(*repository.historicalQuestions.map { it.id }.toTypedArray()))
+
+        val result = selector().select(weakPractice(AssessmentScope.Topic("topic_a"), 10))
+
+        assertEquals(AssessmentSelectionResult.NoContent.NoEligibleQuestions, result)
+    }
+
+    @Test
+    fun weakAreaHistoryFailurePropagatesInsteadOfBecomingNoWeakAreas() = runSelectorTest {
+        history.failure = IllegalStateException("History unavailable")
+
+        val result = runCatching {
+            selector().select(weakPractice(AssessmentScope.Topic("topic_a"), 10))
+        }
+
+        assertTrue(result.isFailure)
+        assertEquals(emptyList(), repository.calls)
     }
 
     @Test
@@ -815,6 +1064,18 @@ internal class AssessmentQuestionSelectorTest {
             source = PracticeQuestionSource.UNSEEN,
         )
 
+    private fun weakPractice(
+        scope: AssessmentScope,
+        questionCount: Int,
+        levels: Set<QuestionLevel> = AllQuestionLevels,
+    ): AssessmentConfig.Focused =
+        AssessmentConfig.Focused(
+            scope = scope,
+            questionCount = questionCount,
+            levels = levels,
+            source = PracticeQuestionSource.WEAK_AREAS,
+        )
+
     private fun completedAttempt(
         vararg questionIds: String,
         isCorrect: Boolean = true,
@@ -840,6 +1101,31 @@ internal class AssessmentQuestionSelectorTest {
             ),
         )
 
+    private fun completedAttemptWithOutcomes(
+        id: String,
+        vararg outcomes: Pair<String, Boolean>,
+    ): TestAttempt =
+        TestAttempt(
+            id = id,
+            config = AssessmentConfig.Mixed(questionCount = outcomes.size),
+            questionAttempts = outcomes.map { (questionId, isCorrect) ->
+                QuestionAttempt(
+                    questionId = questionId,
+                    answerState = QuestionAnswerState.Answered(
+                        selectedAnswerIds = setOf("${questionId}_answer_a"),
+                        isCorrect = isCorrect,
+                    ),
+                )
+            },
+            status = AssessmentStatus.COMPLETED,
+            startedAt = Instant.fromEpochSeconds(0),
+            completedAt = Instant.fromEpochSeconds(60),
+            score = AssessmentScore(
+                totalQuestions = outcomes.size,
+                correctAnswers = outcomes.count { it.second },
+            ),
+        )
+
     private fun inProgressAttempt(vararg questionIds: String): TestAttempt =
         TestAttempt(
             id = "in_progress_${questionIds.joinToString("_")}",
@@ -858,6 +1144,7 @@ internal class AssessmentQuestionSelectorTest {
         var activeQuestions: List<Question> = emptyList()
         var topicQuestions: Map<String, List<Question>> = emptyMap()
         var subtopicQuestions: Map<String, List<Question>> = emptyMap()
+        var historicalQuestions: List<Question> = emptyList()
         val calls = mutableListOf<String>()
 
         override suspend fun getActiveTopics(): List<Topic> =
@@ -896,14 +1183,19 @@ internal class AssessmentQuestionSelectorTest {
             return subtopicQuestions[subtopicId].orEmpty().filterEligible(levels)
         }
 
-        override suspend fun getTopicById(topicId: String): Topic? =
-            error("Not used by AssessmentQuestionSelector.")
+        override suspend fun getTopicById(topicId: String): Topic = Topic(topicId, topicId)
 
-        override suspend fun getSubtopicById(subtopicId: String): Subtopic? =
-            error("Not used by AssessmentQuestionSelector.")
+        override suspend fun getSubtopicById(subtopicId: String): Subtopic {
+            val question = allKnownQuestions().first { it.subtopicId == subtopicId }
+            return Subtopic(subtopicId, question.topicId, subtopicId)
+        }
 
         override suspend fun getQuestionById(questionId: String): Question? =
-            error("Not used by AssessmentQuestionSelector.")
+            allKnownQuestions().firstOrNull { it.id == questionId }
+
+        private fun allKnownQuestions(): List<Question> =
+            historicalQuestions + activeQuestions + topicQuestions.values.flatten() +
+                subtopicQuestions.values.flatten()
 
         private fun List<Question>.filterEligible(levels: Set<QuestionLevel>): List<Question> =
             filter { it.status == ContentStatus.ACTIVE && it.level in levels }
@@ -914,6 +1206,16 @@ internal class AssessmentQuestionSelectorTest {
 
     private fun questions(vararg ids: String): List<Question> =
         ids.map { question(it) }
+
+    private fun questionsIn(
+        prefix: String,
+        count: Int,
+        topicId: String,
+        subtopicId: String,
+    ): List<Question> =
+        List(count) { index ->
+            question("${prefix}_$index", topicId = topicId, subtopicId = subtopicId)
+        }
 
     private fun leveledTopicFixture(): List<Question> =
         listOf(
@@ -942,12 +1244,13 @@ internal class AssessmentQuestionSelectorTest {
     private fun question(
         id: String,
         topicId: String = "${id}_topic",
+        subtopicId: String = "${id}_subtopic",
         text: String = id,
     ): Question =
         Question(
             id = id,
             topicId = topicId,
-            subtopicId = "${id}_subtopic",
+            subtopicId = subtopicId,
             text = "$text?",
             answers = listOf(
                 AnswerOption("${id}_answer_a", "Answer A"),

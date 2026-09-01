@@ -96,7 +96,7 @@ internal class AssessmentAttemptStoreTest {
      *
      * Every source value is covered rather than only the selectable ones: a source read back as
      * something else would silently turn a repeat of an unseen run into a repeat over the whole
-     * scope, and the remaining values become selectable in E16-04 and E16-05.
+     * scope; WEAK_AREAS is now selectable, while UNRESOLVED_MISTAKES remains reserved for E16-05.
      */
     @Test
     fun practiceLevelsAndSourceRoundTripOnAFocusedAttempt() = runTest {

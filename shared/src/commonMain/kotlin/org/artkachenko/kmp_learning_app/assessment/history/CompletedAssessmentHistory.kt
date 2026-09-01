@@ -8,8 +8,8 @@ import org.artkachenko.kmp_learning_app.assessment.TestAttempt
  * Selection needs the completed attempts once per request rather than a subscription, and it has no
  * use for where they came from. Keeping that behind this interface is what lets
  * [AssessmentHistoryStore] answer the Practice Builder's repeated preflight reads out of the
- * app-scoped cache while the selector stays a plain domain class, testable with a lambda and with
- * no `StateFlow`, cache, or coroutine scope of its own.
+ * app-scoped cache while unseen and weak-area selection stay plain domain logic, testable with a
+ * lambda and with no `StateFlow`, cache, or coroutine scope of their own.
  */
 internal fun interface CompletedAssessmentHistory {
     /**
@@ -19,7 +19,7 @@ internal fun interface CompletedAssessmentHistory {
      *
      * Throws when history cannot be read, and callers must let that propagate: an unreadable
      * history is not an empty one, and treating it as empty would silently report every Question as
-     * unseen and start a practice run built on it.
+     * unseen or erase all weak areas and start a practice run built on a false premise.
      */
     suspend fun completedAttempts(): List<TestAttempt>
 }

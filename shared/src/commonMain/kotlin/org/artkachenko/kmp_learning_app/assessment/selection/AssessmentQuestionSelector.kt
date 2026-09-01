@@ -8,6 +8,8 @@ import org.artkachenko.kmp_learning_app.assessment.history.QuestionExposure
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.learning_progress.LearningPerformanceDerivation
+import org.artkachenko.kmp_learning_app.learning_progress.WeakArea
 
 /**
  * Turns a practice or interview configuration into the Questions an assessment will ask.
@@ -20,6 +22,8 @@ import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumReposito
 internal class AssessmentQuestionSelector(
     private val curriculumRepository: CurriculumRepository,
     private val completedHistory: CompletedAssessmentHistory,
+    private val performanceDerivation: LearningPerformanceDerivation =
+        LearningPerformanceDerivation(curriculumRepository),
     private val randomize: (List<Question>) -> List<Question> = { it.shuffled() },
 ) {
     suspend fun select(config: AssessmentConfig): AssessmentSelectionResult =
@@ -43,8 +47,8 @@ internal class AssessmentQuestionSelector(
         when (source) {
             PracticeQuestionSource.ALL,
             PracticeQuestionSource.UNSEEN,
-            -> true
             PracticeQuestionSource.WEAK_AREAS,
+            -> true
             PracticeQuestionSource.UNRESOLVED_MISTAKES,
             -> false
         }
@@ -57,11 +61,10 @@ internal class AssessmentQuestionSelector(
         val eligible = when (config.source) {
             PracticeQuestionSource.ALL -> loadScopedQuestions(config.scope, config.levels)
             PracticeQuestionSource.UNSEEN -> loadUnseenQuestions(config.scope, config.levels)
-            // The remaining history-derived policies land here, one branch each: E16-04 for
-            // WEAK_AREAS, E16-05 for UNRESOLVED_MISTAKES. Until a policy exists the request is
-            // refused explicitly, because falling through to the ALL pool would answer a different
-            // question than the learner asked.
-            PracticeQuestionSource.WEAK_AREAS,
+            PracticeQuestionSource.WEAK_AREAS ->
+                loadWeakAreaQuestions(config.scope, config.levels)
+            // E16-05 owns the remaining history-derived policy. Until it exists the request is
+            // refused explicitly, because falling through to ALL would answer a different question.
             PracticeQuestionSource.UNRESOLVED_MISTAKES,
             -> return AssessmentSelectionResult.NoContent.SourceNotSupported
         }
@@ -127,6 +130,31 @@ internal class AssessmentQuestionSelector(
         val observedQuestionIds =
             QuestionExposure.observedQuestionIds(completedHistory.completedAttempts())
         return eligible.filterNot { it.id in observedQuestionIds }
+    }
+
+    /**
+     * Weak-area practice intersects current eligibility with the exact performance derivation used
+     * by Learning Progress. Historical occurrences establish weak identities; the repository's
+     * scoped, level-aware ACTIVE read establishes what can be asked now.
+     */
+    private suspend fun loadWeakAreaQuestions(
+        scope: AssessmentScope,
+        levels: Set<QuestionLevel>,
+    ): List<Question> {
+        val weakAreas = performanceDerivation
+            .derive(completedHistory.completedAttempts())
+            .weakAreas
+        val weakTopicIds = weakAreas
+            .filterIsInstance<WeakArea.Topic>()
+            .mapTo(mutableSetOf()) { it.performance.topicId }
+        val weakSubtopicIds = weakAreas
+            .filterIsInstance<WeakArea.Subtopic>()
+            .mapTo(mutableSetOf()) { it.performance.topicId to it.performance.subtopicId }
+
+        return loadScopedQuestions(scope, levels).filter { question ->
+            question.topicId in weakTopicIds ||
+                question.topicId to question.subtopicId in weakSubtopicIds
+        }
     }
 
     /**

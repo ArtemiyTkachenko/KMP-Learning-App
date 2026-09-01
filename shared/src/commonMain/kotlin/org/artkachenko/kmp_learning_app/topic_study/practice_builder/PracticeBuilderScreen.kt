@@ -126,8 +126,8 @@ internal fun PracticeBuilderScreen(
                                 selected = option.source == state.source,
                                 onClick = { onSourceClick(option.source) },
                                 label = { Text(stringResource(option.source.labelResource())) },
-                                // Disabled rather than absent: the learner can see that unseen,
-                                // weak area, and mistake practice exist and are not ready yet.
+                                // Disabled rather than absent: the learner can see that weak-area
+                                // and mistake practice exist and are not ready yet.
                                 enabled = option.isAvailable,
                                 modifier = Modifier.testTag(practiceSourceTag(option.source)),
                             )

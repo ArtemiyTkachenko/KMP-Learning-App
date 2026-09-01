@@ -93,29 +93,36 @@ internal class AssessmentAttemptStoreTest {
      * These two dimensions were deliberately unpersisted while nothing could vary them; now that
      * they can be, history describing a level-narrowed attempt as an all-levels one would be
      * wrong, and retake — which re-runs the reconstructed config — would widen the repeat.
+     *
+     * Every source value is covered rather than only the selectable ones: a source read back as
+     * something else would silently turn a repeat of an unseen run into a repeat over the whole
+     * scope, and the remaining values become selectable in E16-04 and E16-05.
      */
     @Test
     fun practiceLevelsAndSourceRoundTripOnAFocusedAttempt() = runTest {
         withTestDatabase { database ->
             insertAttemptFixtureCurriculum(database)
             val store = AssessmentAttemptStore(database)
-            val config = AssessmentConfig.Focused(
-                scope = AssessmentScope.Topic("topic"),
-                questionCount = 10,
-                levels = setOf(QuestionLevel.ADVANCED, QuestionLevel.FOUNDATION),
-                source = PracticeQuestionSource.ALL,
-            )
-            val attempt = TestAttempt(
-                id = "attempt_targeted",
-                config = config,
-                questionAttempts = listOf(QuestionAttempt("question_a")),
-                status = AssessmentStatus.IN_PROGRESS,
-                startedAt = StartedAt,
-            )
+            PracticeQuestionSource.entries.forEach { source ->
+                val config = AssessmentConfig.Focused(
+                    scope = AssessmentScope.Topic("topic"),
+                    questionCount = 10,
+                    levels = setOf(QuestionLevel.ADVANCED, QuestionLevel.FOUNDATION),
+                    source = source,
+                )
+                val attemptId = "attempt_targeted_${source.name}"
+                val attempt = TestAttempt(
+                    id = attemptId,
+                    config = config,
+                    questionAttempts = listOf(QuestionAttempt("question_a")),
+                    status = AssessmentStatus.IN_PROGRESS,
+                    startedAt = StartedAt,
+                )
 
-            store.save(attempt)
+                store.save(attempt)
 
-            assertEquals(config, store.getById("attempt_targeted")?.config)
+                assertEquals(config, store.getById(attemptId)?.config)
+            }
         }
     }
 

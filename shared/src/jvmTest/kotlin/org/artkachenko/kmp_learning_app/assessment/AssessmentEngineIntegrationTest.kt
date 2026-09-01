@@ -298,6 +298,7 @@ internal class AssessmentEngineIntegrationTest {
         val curriculumRepository = LocalCurriculumRepository(database)
         val selector = AssessmentQuestionSelector(
             curriculumRepository = curriculumRepository,
+            completedHistory = { emptyList() },
             randomize = { it },
         )
         val engine = AssessmentEngine(
@@ -327,6 +328,7 @@ internal class AssessmentEngineIntegrationTest {
         AssessmentEngine(
             questionSelector = AssessmentQuestionSelector(
                 curriculumRepository = curriculumRepository,
+                completedHistory = { emptyList() },
                 randomize = { it },
             ),
             generateAttemptId = generateAttemptId,

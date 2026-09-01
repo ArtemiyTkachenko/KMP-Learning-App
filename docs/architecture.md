@@ -444,16 +444,54 @@ product behaviour, not a special case of targeted practice.
 `AssessmentQuestionSelector` returns `AssessmentSelectionResult` instead of a
 bare `List<Question>`. An empty list answered too many questions at once, and
 the differences matter: nothing eligible, no level selected, and a source whose
-policy does not exist yet are three different answers. Only `ALL` is selectable
-today; `UNSEEN`, `WEAK_AREAS`, and `UNRESOLVED_MISTAKES` are representable and
-refused explicitly (E16-03, E16-04, and E16-05 own them) rather than falling back
-to `ALL`, which would silently answer a different request than the learner made.
+policy does not exist yet are three different answers. `ALL` and `UNSEEN` are
+implemented; `WEAK_AREAS` and `UNRESOLVED_MISTAKES` are representable and refused
+explicitly (E16-04 and E16-05 own them) rather than falling back to `ALL`, which
+would silently answer a different request than the learner made.
 Each is a branch of one `when` over the source, so adding a policy is a local
 change that leaves the Practice Builder UI, the engine, scoring, and session logic
 untouched. `AssessmentEngine` collapses every no-content reason into
 `AssessmentStartResult.NoEligibleQuestions`, since assessment taking has one
 no-content state and availability is read from selection before starting; what it
 guarantees is that a refused request creates and persists no attempt.
+
+### Unseen practice
+
+"Has the learner seen this Question?" is one definition, `QuestionExposure`, and
+both the curriculum-coverage statistics and unseen practice read it. They are the
+same concept in opposite directions — coverage counts the Questions inside the
+exposure set, unseen practice selects the ones outside it — and two folds over
+history would agree today and drift the first time one of them changed its mind
+about what counts, leaving a Progress percentage that practice contradicts.
+Exposure is a set of stable Question IDs taken from completed attempts only, so a
+Question asked five times is exposed exactly as much as one asked once, an
+IN_PROGRESS attempt makes nothing seen, and correctness never enters into it.
+
+Selection subtracts that set from the ordinary candidate pool — the same scoped,
+level-aware ACTIVE read `ALL` uses — rather than starting from history. That
+ordering is what keeps historical and current content from contaminating each
+other: an exposed ID whose Question has been retired cannot remove anything from
+a pool it is no longer in, and a newly authored Question is unseen the moment it
+exists, with nothing to backfill. Nothing is persisted for any of this; there is
+no `isSeen` column and no stored candidate list, because the answer is derived at
+selection time and would otherwise be stale by the next completed attempt. Scope
+and levels are never widened to find unseen content: a fully-seen ADVANCED
+selection ends at `NoEligibleQuestions`, which the Practice Builder already reads
+as "this setup has nothing to ask", instead of quietly practising FOUNDATION.
+
+The selector reads history through `CompletedAssessmentHistory`, a one-shot
+suspending read that `AssessmentHistoryStore` implements. It serves the Practice
+Builder's per-edit preflight from the app-scoped cache rather than issuing a
+query for every chip the learner taps, and it inherits the store's invalidation,
+so a just-completed assessment stops being unseen through the same refresh
+Progress and the mistake queue use. It waits for the first read to settle and
+raises `AssessmentHistoryUnavailableException` on failure, because reporting an
+unread history as "no completed attempts" would report the whole curriculum as
+unseen — most likely right after launch — and start a practice run built on it.
+A retake still re-runs the persisted configuration rather than replaying stored
+Questions, so repeating an unseen run selects against the learner's history as it
+stands then, which by definition no longer includes the Questions they just
+answered.
 
 ## The Practice Builder
 
@@ -473,15 +511,21 @@ button that can never work. Enforcing it in the state holder means one
 implementation rather than one per control that touches levels.
 
 Source options carry availability as a property of the *policy*, not of the
-learner's content. `UNSEEN`, `WEAK_AREAS`, and `UNRESOLVED_MISTAKES` are shown and
-disabled rather than hidden, so the learner can see what targeted practice will
-offer, and E16-03 to E16-05 each make one of them selectable by implementing its
-policy, with no change to this screen. The builder reads that through
+learner's content. `WEAK_AREAS` and `UNRESOLVED_MISTAKES` are shown and disabled
+rather than hidden, so the learner can see what targeted practice will offer, and
+E16-04 and E16-05 each make one of them selectable by implementing its policy,
+with no change to this screen. The builder reads that through
 `AssessmentQuestionSelector.isSourceSupported`, which answers without loading any
-content; probing by attempting a selection would work today only because the
-unsupported branches return early, and would run three history-derived selections
-per render once those policies exist. A selector test asserts the two agree for
-every source, which is what keeps the duplicated `when` honest.
+content; probing by attempting a selection would read content, and completed
+history, once per option just to render a screen. A selector test asserts the two
+agree for every source, which is what keeps the duplicated `when` honest.
+
+Choosing `UNSEEN` changes nothing structurally: it re-runs the same preflight,
+which now resolves against completed history, so Start is enabled when unseen
+Questions remain and disabled with the existing no-content feedback when the
+learner has seen everything in the configured scope and levels. A supported source
+with nothing left to ask is not an unavailable source, and the two states stay
+separate in the UI for that reason.
 
 Whether the current configuration has any content is a separate question, and it
 is answered *before* Start through `AssessmentQuestionSelector.select` — never

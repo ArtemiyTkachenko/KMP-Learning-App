@@ -4,6 +4,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -45,7 +46,7 @@ internal sealed interface AssessmentHistory {
 internal class AssessmentHistoryStore(
     private val assessmentRepository: AssessmentRepository,
     scope: CoroutineScope,
-) {
+) : CompletedAssessmentHistory {
     private val reloads = MutableStateFlow(0)
 
     /**
@@ -57,6 +58,29 @@ internal class AssessmentHistoryStore(
     val history: StateFlow<AssessmentHistory> = reloads
         .map { read() }
         .stateIn(scope, SharingStarted.Eagerly, AssessmentHistory.Loading)
+
+    /**
+     * The same cached history as [history], for a caller that wants one answer rather than a
+     * subscription — question selection, which resolves a practice request against what the learner
+     * has already been shown.
+     *
+     * Waiting for the first read to settle is the point: reporting the initial
+     * [AssessmentHistory.Loading] as "no completed attempts" would make every Question look unseen
+     * for as long as the app had been running, which is exactly when the learner is most likely to
+     * open practice. A failure is raised rather than returned empty, for the same reason. Serving
+     * this from the cache is what keeps the Practice Builder's per-edit preflight from issuing a
+     * history query for every level chip the learner taps.
+     *
+     * Freshness follows the cache contract above and nothing stronger: an [invalidate] triggers a
+     * re-read but leaves the previous value readable until it lands, so this can briefly answer
+     * from history one completed attempt behind — the same value Progress and the mistake queue are
+     * showing at that moment.
+     */
+    override suspend fun completedAttempts(): List<TestAttempt> =
+        when (val settled = history.first { it != AssessmentHistory.Loading }) {
+            is AssessmentHistory.Loaded -> settled.attempts
+            else -> throw AssessmentHistoryUnavailableException()
+        }
 
     /**
      * Marks the cached history stale. Call after an attempt reaches a completed state; an

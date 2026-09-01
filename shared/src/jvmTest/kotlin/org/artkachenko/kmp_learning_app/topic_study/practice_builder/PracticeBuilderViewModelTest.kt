@@ -17,10 +17,16 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlin.time.Instant
 import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
+import org.artkachenko.kmp_learning_app.assessment.AssessmentScore
+import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
+import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
+import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
+import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
@@ -160,7 +166,7 @@ internal class PracticeBuilderViewModelTest {
     }
 
     @Test
-    fun everySourceIsRepresentedButOnlyAllIsAvailableYet() = runViewModelTest {
+    fun everySourceIsRepresentedButOnlyTheImplementedOnesAreAvailable() = runViewModelTest {
         val viewModel = viewModel(AssessmentScope.Topic("topic_a"), FakeCurriculumRepository())
         advanceUntilIdle()
 
@@ -168,7 +174,7 @@ internal class PracticeBuilderViewModelTest {
         // Every product source is listed, so the screen shows what targeted practice will offer.
         assertEquals(PracticeQuestionSource.entries, options.map { it.source })
         assertEquals(
-            setOf(PracticeQuestionSource.ALL),
+            setOf(PracticeQuestionSource.ALL, PracticeQuestionSource.UNSEEN),
             options.filter { it.isAvailable }.map { it.source }.toSet(),
         )
     }
@@ -178,7 +184,6 @@ internal class PracticeBuilderViewModelTest {
         val viewModel = viewModel(AssessmentScope.Topic("topic_a"), FakeCurriculumRepository())
         advanceUntilIdle()
 
-        viewModel.selectSource(PracticeQuestionSource.UNSEEN)
         viewModel.selectSource(PracticeQuestionSource.WEAK_AREAS)
         viewModel.selectSource(PracticeQuestionSource.UNRESOLVED_MISTAKES)
         advanceUntilIdle()
@@ -187,6 +192,53 @@ internal class PracticeBuilderViewModelTest {
         // ALL is what was configured all along, not a substitution made on the way out.
         assertEquals(PracticeQuestionSource.ALL, startedConfig(viewModel).source)
         assertTrue(viewModel.uiState.value.isStartEnabled)
+    }
+
+    @Test
+    fun choosingUnseenRechecksAvailabilityAgainstTheUnseenPool() = runViewModelTest {
+        // One of the three Questions in scope has already been answered in completed history.
+        val viewModel = viewModel(
+            scope = AssessmentScope.Topic("topic_a"),
+            curriculum = FakeCurriculumRepository(),
+            seenQuestionIds = listOf("q_foundation"),
+        )
+        advanceUntilIdle()
+        assertEquals(3, availableCount(viewModel))
+
+        viewModel.selectSource(PracticeQuestionSource.UNSEEN)
+        advanceUntilIdle()
+
+        assertEquals(PracticeQuestionSource.UNSEEN, viewModel.uiState.value.source)
+        assertEquals(2, availableCount(viewModel))
+        assertTrue(viewModel.uiState.value.isStartEnabled)
+        assertEquals(PracticeQuestionSource.UNSEEN, startedConfig(viewModel).source)
+    }
+
+    /**
+     * A supported source with nothing left to ask is not an unavailable source: unseen stays
+     * selectable and reports no content, rather than reverting to ALL and practising Questions the
+     * learner has already answered.
+     */
+    @Test
+    fun unseenPracticeWithNothingLeftToAskDisablesStartWithoutChangingTheSource() = runViewModelTest {
+        val viewModel = viewModel(
+            scope = AssessmentScope.Topic("topic_a"),
+            curriculum = FakeCurriculumRepository(),
+            seenQuestionIds = listOf("q_foundation", "q_applied", "q_advanced"),
+        )
+        advanceUntilIdle()
+
+        viewModel.selectSource(PracticeQuestionSource.UNSEEN)
+        advanceUntilIdle()
+
+        assertEquals(PracticeQuestionSource.UNSEEN, viewModel.uiState.value.source)
+        assertTrue(
+            viewModel.uiState.value.sourceOptions
+                .single { it.source == PracticeQuestionSource.UNSEEN }
+                .isAvailable,
+        )
+        assertEquals(PracticeAvailability.NoEligibleQuestions, viewModel.uiState.value.availability)
+        assertFalse(viewModel.uiState.value.isStartEnabled)
     }
 
     @Test
@@ -294,6 +346,10 @@ internal class PracticeBuilderViewModelTest {
         event.cancel()
     }
 
+    private fun availableCount(viewModel: PracticeBuilderViewModel): Int =
+        assertIs<PracticeAvailability.Available>(viewModel.uiState.value.availability)
+            .eligibleQuestionCount
+
     private suspend fun TestScope.startedConfig(
         viewModel: PracticeBuilderViewModel,
     ): AssessmentConfig.Focused {
@@ -303,18 +359,50 @@ internal class PracticeBuilderViewModelTest {
         return assertIs<PracticeBuilderEvent.StartPractice>(event.await()).config
     }
 
+    /**
+     * [seenQuestionIds] is the only history input the builder needs: which Questions are unseen is
+     * the selector's answer, and proving it belongs to the selector's own tests rather than here.
+     */
     private fun viewModel(
         scope: AssessmentScope,
         curriculum: CurriculumRepository,
+        seenQuestionIds: List<String> = emptyList(),
     ): PracticeBuilderViewModel =
         PracticeBuilderViewModel(
             scope = scope,
             curriculumRepository = curriculum,
             questionSelector = AssessmentQuestionSelector(
                 curriculumRepository = curriculum,
+                completedHistory = { completedHistoryOf(seenQuestionIds) },
                 randomize = { it },
             ),
         )
+
+    private fun completedHistoryOf(seenQuestionIds: List<String>): List<TestAttempt> {
+        if (seenQuestionIds.isEmpty()) return emptyList()
+        return listOf(
+            TestAttempt(
+                id = "completed_attempt",
+                config = AssessmentConfig.Mixed(questionCount = seenQuestionIds.size),
+                questionAttempts = seenQuestionIds.map { questionId ->
+                    QuestionAttempt(
+                        questionId = questionId,
+                        answerState = QuestionAnswerState.Answered(
+                            selectedAnswerIds = setOf("${questionId}_a"),
+                            isCorrect = true,
+                        ),
+                    )
+                },
+                status = AssessmentStatus.COMPLETED,
+                startedAt = Instant.fromEpochSeconds(0),
+                completedAt = Instant.fromEpochSeconds(60),
+                score = AssessmentScore(
+                    totalQuestions = seenQuestionIds.size,
+                    correctAnswers = seenQuestionIds.size,
+                ),
+            ),
+        )
+    }
 
     private fun runViewModelTest(block: suspend TestScope.() -> Unit) = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))

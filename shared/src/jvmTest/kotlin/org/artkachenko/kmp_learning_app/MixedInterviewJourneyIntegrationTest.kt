@@ -267,7 +267,11 @@ internal class MixedInterviewJourneyIntegrationTest {
         )
         val curriculumRepository = LocalCurriculumRepository(database)
         val assessmentRepository = LocalAssessmentRepository(AssessmentAttemptStore(database))
-        val selector = AssessmentQuestionSelector(curriculumRepository, randomize = { it })
+        val selector = AssessmentQuestionSelector(
+            curriculumRepository = curriculumRepository,
+            completedHistory = { assessmentRepository.getCompletedAttempts() },
+            randomize = { it },
+        )
         val availableIds = listOf(OriginalAttemptId, RetakeAttemptId).iterator()
         val createdAttemptIds = mutableListOf<String>()
         val engine = AssessmentEngine(

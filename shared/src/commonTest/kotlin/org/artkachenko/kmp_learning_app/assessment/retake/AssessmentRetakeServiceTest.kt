@@ -217,6 +217,7 @@ internal class AssessmentRetakeServiceTest {
                 assessmentEngine = AssessmentEngine(
                     questionSelector = AssessmentQuestionSelector(
                         curriculumRepository = curriculumRepository,
+                        completedHistory = { emptyList() },
                         randomize = { it },
                     ),
                     generateAttemptId = { "retake-${nextAttemptNumber++}" },

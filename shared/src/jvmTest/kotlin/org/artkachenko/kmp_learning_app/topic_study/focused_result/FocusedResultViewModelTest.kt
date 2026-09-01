@@ -163,6 +163,7 @@ internal class FocusedResultViewModelTest {
             assessmentEngine = AssessmentEngine(
                 questionSelector = AssessmentQuestionSelector(
                     curriculumRepository = FakeCurriculumRepository(questions),
+                    completedHistory = { emptyList() },
                     randomize = { it },
                 ),
                 generateAttemptId = { "retake" },

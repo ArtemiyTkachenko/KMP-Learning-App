@@ -4,6 +4,7 @@ import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
+import org.artkachenko.kmp_learning_app.assessment.history.QuestionExposure
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
@@ -28,14 +29,15 @@ internal class LearningProgressService(
         val topicCounts = mutableMapOf<String, Counts>()
         val subtopicCounts = mutableMapOf<SubtopicKey, Counts>()
         val questionsById = mutableMapOf<String, Question?>()
-        val attemptedQuestionIds = mutableSetOf<String>()
+        // Exposure comes from the shared policy, and from the raw historical IDs it reads before
+        // any metadata resolution: a Question that no longer resolves simply fails the ACTIVE
+        // intersection below rather than being silently dropped. Deriving it there rather than in
+        // the loop is what keeps coverage and unseen practice from disagreeing about what "seen"
+        // means.
+        val attemptedQuestionIds = QuestionExposure.observedQuestionIds(completedAttempts)
 
         for (attempt in completedAttempts) {
             for (questionAttempt in attempt.questionAttempts) {
-                // Exposure is recorded from the raw historical ID, before metadata resolution: a
-                // Question that no longer resolves simply fails the ACTIVE intersection below
-                // rather than being silently dropped here.
-                attemptedQuestionIds += questionAttempt.questionId
                 val question = questionsById.getOrLoad(questionAttempt.questionId) {
                     curriculumRepository.getQuestionById(questionAttempt.questionId)
                 } ?: continue

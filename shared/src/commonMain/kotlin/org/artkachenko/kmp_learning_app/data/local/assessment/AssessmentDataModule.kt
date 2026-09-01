@@ -24,18 +24,23 @@ internal val assessmentDataModule = module {
         )
     }
 
-    single {
-        AssessmentQuestionSelector(
-            curriculumRepository = get(),
-        )
-    }
-
     single { AppCoroutineScope() }
 
     single {
         AssessmentHistoryStore(
             assessmentRepository = get(),
             scope = get<AppCoroutineScope>(),
+        )
+    }
+
+    single {
+        AssessmentQuestionSelector(
+            curriculumRepository = get(),
+            // The app-scoped cache rather than the repository: the Practice Builder re-runs
+            // selection after every edit, and an unseen preflight must not turn each of those into
+            // a history query. The store is also the one place completion invalidates, so
+            // selection sees a just-finished attempt through the same refresh Progress does.
+            completedHistory = get<AssessmentHistoryStore>(),
         )
     }
 

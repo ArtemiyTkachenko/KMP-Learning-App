@@ -4,10 +4,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 
@@ -48,6 +51,12 @@ internal class AssessmentHistoryStore(
     scope: CoroutineScope,
 ) : CompletedAssessmentHistory {
     private val reloads = MutableStateFlow(0)
+    private val failedReadRetry = Mutex()
+    private val cachedHistory = MutableStateFlow<AssessmentHistory>(AssessmentHistory.Loading)
+
+    private val refreshes: StateFlow<HistoryRefresh> = reloads
+        .map { generation -> read(generation).also(::updateCachedHistory) }
+        .stateIn(scope, SharingStarted.Eagerly, HistoryRefresh.Pending)
 
     /**
      * Started eagerly rather than while subscribed, because the upstream is not a live subscription
@@ -55,9 +64,7 @@ internal class AssessmentHistoryStore(
      * when [invalidate] is called. Sharing while subscribed would re-read on every tab switch — more
      * work than caching, not less — and would leave the first screen of a session waiting.
      */
-    val history: StateFlow<AssessmentHistory> = reloads
-        .map { read() }
-        .stateIn(scope, SharingStarted.Eagerly, AssessmentHistory.Loading)
+    val history: StateFlow<AssessmentHistory> = cachedHistory.asStateFlow()
 
     /**
      * The same cached history as [history], for a caller that wants one answer rather than a
@@ -71,16 +78,19 @@ internal class AssessmentHistoryStore(
      * this from the cache is what keeps the Practice Builder's per-edit preflight from issuing a
      * history query for every level chip the learner taps.
      *
-     * Freshness follows the cache contract above and nothing stronger: an [invalidate] triggers a
-     * re-read but leaves the previous value readable until it lands, so this can briefly answer
-     * from history one completed attempt behind — the same value Progress and the mistake queue are
-     * showing at that moment.
+     * Unlike screen observers, selection cannot use stale history after [invalidate]: it waits for
+     * the refresh generation that was current when this call began. A failed generation is surfaced
+     * instead of falling back to older attempts. Calling again after a settled failure starts one
+     * new read, which makes the Practice Builder's Retry action a real repository retry.
      */
-    override suspend fun completedAttempts(): List<TestAttempt> =
-        when (val settled = history.first { it != AssessmentHistory.Loading }) {
-            is AssessmentHistory.Loaded -> settled.attempts
-            else -> throw AssessmentHistoryUnavailableException()
+    override suspend fun completedAttempts(): List<TestAttempt> {
+        val requiredGeneration = generationForOneShotRead()
+        return when (val refresh = refreshes.first { it.hasSettled(requiredGeneration) }) {
+            is HistoryRefresh.Loaded -> refresh.attempts
+            is HistoryRefresh.Failed -> throw AssessmentHistoryUnavailableException()
+            HistoryRefresh.Pending -> error("Pending refresh cannot satisfy a settled generation.")
         }
+    }
 
     /**
      * Marks the cached history stale. Call after an attempt reaches a completed state; an
@@ -90,13 +100,55 @@ internal class AssessmentHistoryStore(
         reloads.update { it + 1 }
     }
 
-    private suspend fun read(): AssessmentHistory =
+    /** Coalesces concurrent callers onto one retry when the current generation has failed. */
+    private suspend fun generationForOneShotRead(): Int = failedReadRetry.withLock {
+        val currentGeneration = reloads.value
+        val latestRefresh = refreshes.value
+        if (
+            latestRefresh is HistoryRefresh.Failed &&
+            latestRefresh.generation == currentGeneration
+        ) {
+            (currentGeneration + 1).also { retryGeneration -> reloads.value = retryGeneration }
+        } else {
+            currentGeneration
+        }
+    }
+
+    private suspend fun read(generation: Int): HistoryRefresh =
         runCatching { assessmentRepository.getCompletedAttempts() }
             .fold(
-                onSuccess = { AssessmentHistory.Loaded(it) },
-                // A failed re-read must not blank content that is already on screen, so the
-                // failure is only surfaced when nothing has ever loaded.
-                onFailure = { if (history.value is AssessmentHistory.Loaded) history.value else AssessmentHistory.Failed },
+                onSuccess = { HistoryRefresh.Loaded(generation, it) },
+                onFailure = { HistoryRefresh.Failed(generation) },
             )
+
+    private fun updateCachedHistory(refresh: HistoryRefresh) {
+        cachedHistory.value = when (refresh) {
+            HistoryRefresh.Pending -> cachedHistory.value
+            is HistoryRefresh.Loaded -> AssessmentHistory.Loaded(refresh.attempts)
+            is HistoryRefresh.Failed ->
+                if (cachedHistory.value is AssessmentHistory.Loaded) {
+                    cachedHistory.value
+                } else {
+                    AssessmentHistory.Failed
+                }
+        }
+    }
+
+    private fun HistoryRefresh.hasSettled(requiredGeneration: Int): Boolean =
+        when (this) {
+            HistoryRefresh.Pending -> false
+            is HistoryRefresh.Loaded -> generation >= requiredGeneration
+            is HistoryRefresh.Failed -> generation >= requiredGeneration
+        }
 }
 
+private sealed interface HistoryRefresh {
+    data object Pending : HistoryRefresh
+
+    data class Loaded(
+        val generation: Int,
+        val attempts: List<TestAttempt>,
+    ) : HistoryRefresh
+
+    data class Failed(val generation: Int) : HistoryRefresh
+}

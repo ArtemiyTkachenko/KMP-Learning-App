@@ -484,10 +484,13 @@ suspending read that `AssessmentHistoryStore` implements. It serves the Practice
 Builder's per-edit preflight from the app-scoped cache rather than issuing a
 query for every chip the learner taps, and it inherits the store's invalidation,
 so a just-completed assessment stops being unseen through the same refresh
-Progress and the mistake queue use. It waits for the first read to settle and
-raises `AssessmentHistoryUnavailableException` on failure, because reporting an
-unread history as "no completed attempts" would report the whole curriculum as
-unseen — most likely right after launch — and start a practice run built on it.
+Progress and the mistake queue use. Screen observers may retain their last loaded
+content while that refresh runs, but the one-shot selection read tracks the
+invalidation generation and waits for it rather than accepting stale attempts.
+It raises `AssessmentHistoryUnavailableException` when that generation fails,
+and the next selection retry starts one new repository read. Reporting unread or
+stale history as "no completed attempts" would report Questions as unseen — most
+likely right after launch or completion — and start a practice run built on it.
 A retake still re-runs the persisted configuration rather than replaying stored
 Questions, so repeating an unseen run selects against the learner's history as it
 stands then, which by definition no longer includes the Questions they just

@@ -4,6 +4,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 import kotlinx.coroutines.CompletableDeferred
@@ -66,6 +67,19 @@ internal class AssessmentHistoryStoreTest {
         assertFailsWith<AssessmentHistoryUnavailableException> { store.completedAttempts() }
     }
 
+    @Test
+    fun completedAttemptsRetriesAfterTheCurrentGenerationFailed() = runStoreTest {
+        val repository = FakeAssessmentRepository(listOf(completedAttempt("question_a")))
+        repository.failure = IllegalStateException("Database unavailable")
+        val store = testHistoryStore(repository, testCacheScope())
+        assertFailsWith<AssessmentHistoryUnavailableException> { store.completedAttempts() }
+
+        repository.failure = null
+
+        assertEquals(listOf("question_a"), store.completedAttempts().questionIds())
+        assertEquals(2, repository.reads)
+    }
+
     /** Served from the same cache the screens read, so a repeated preflight costs no query. */
     @Test
     fun repeatedReadsAreAnsweredFromTheCachedHistory() = runStoreTest {
@@ -79,18 +93,42 @@ internal class AssessmentHistoryStoreTest {
         assertEquals(1, repository.reads)
     }
 
-    /** A completed assessment reaches selection through the existing invalidation, not a new one. */
+    /** Selection waits for the invalidated generation rather than consuming the prior cache. */
     @Test
     fun invalidationMakesTheNextReadSeeNewlyCompletedAttempts() = runStoreTest {
         val repository = FakeAssessmentRepository(listOf(completedAttempt("question_a")))
         val store = testHistoryStore(repository, testCacheScope())
         assertEquals(listOf("question_a"), store.completedAttempts().questionIds())
 
+        val gate = CompletableDeferred<Unit>()
         repository.attempts = listOf(completedAttempt("question_a"), completedAttempt("question_b"))
+        repository.beforeRead = { gate.await() }
         store.invalidate()
+
+        val pending = async { store.completedAttempts() }
         advanceUntilIdle()
 
-        assertEquals(listOf("question_a", "question_b"), store.completedAttempts().questionIds())
+        assertTrue(pending.isActive, "Invalidated history must wait for its refreshed generation.")
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(listOf("question_a", "question_b"), pending.await().questionIds())
+    }
+
+    @Test
+    fun failedInvalidationIsNotReturnedAsStaleHistoryToSelection() = runStoreTest {
+        val repository = FakeAssessmentRepository(listOf(completedAttempt("question_a")))
+        val store = testHistoryStore(repository, testCacheScope())
+        assertEquals(listOf("question_a"), store.completedAttempts().questionIds())
+
+        repository.failure = IllegalStateException("Database unavailable")
+        store.invalidate()
+
+        assertFailsWith<AssessmentHistoryUnavailableException> { store.completedAttempts() }
+        advanceUntilIdle()
+
+        val displayed = assertIs<AssessmentHistory.Loaded>(store.history.value)
+        assertEquals(listOf("question_a"), displayed.attempts.questionIds())
     }
 
     private fun runStoreTest(block: suspend TestScope.() -> Unit) = runTest {

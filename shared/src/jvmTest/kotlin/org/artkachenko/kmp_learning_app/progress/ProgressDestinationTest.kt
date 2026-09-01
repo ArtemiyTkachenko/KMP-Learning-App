@@ -36,6 +36,7 @@ import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStor
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.curriculum.Question
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
@@ -191,6 +192,15 @@ private class StubCurriculumRepository : CurriculumRepository {
     override suspend fun getActiveQuestions(): List<Question> = emptyList()
     override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> = emptyList()
     override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> = emptyList()
+    override suspend fun getActiveQuestionsByLevels(levels: Set<QuestionLevel>): List<Question> = emptyList()
+    override suspend fun getActiveQuestionsByTopicAndLevels(
+        topicId: String,
+        levels: Set<QuestionLevel>,
+    ): List<Question> = emptyList()
+    override suspend fun getActiveQuestionsBySubtopicAndLevels(
+        subtopicId: String,
+        levels: Set<QuestionLevel>,
+    ): List<Question> = emptyList()
     override suspend fun getTopicById(topicId: String): Topic? = Topic(topicId, "Kotlin")
     override suspend fun getSubtopicById(subtopicId: String): Subtopic? = null
     override suspend fun getQuestionById(questionId: String): Question? = null

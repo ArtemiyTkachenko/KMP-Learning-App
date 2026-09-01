@@ -363,6 +363,15 @@ internal class MixedInterviewResultViewModelTest {
         }
         override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> = error("Not used")
         override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> = error("Not used")
+        override suspend fun getActiveQuestionsByLevels(levels: Set<QuestionLevel>): List<Question> = error("Not used")
+        override suspend fun getActiveQuestionsByTopicAndLevels(
+            topicId: String,
+            levels: Set<QuestionLevel>,
+        ): List<Question> = error("Not used")
+        override suspend fun getActiveQuestionsBySubtopicAndLevels(
+            subtopicId: String,
+            levels: Set<QuestionLevel>,
+        ): List<Question> = error("Not used")
         override suspend fun getTopicById(topicId: String): Topic? = topics.firstOrNull { it.id == topicId }
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? = null
         override suspend fun getQuestionById(questionId: String): Question? = questions.firstOrNull { it.id == questionId }

@@ -11,6 +11,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.artkachenko.kmp_learning_app.curriculum.Question
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
@@ -148,6 +149,19 @@ internal class TopicStudyPresentationModuleTest {
 
         override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> =
             error("Not used by TopicBrowserViewModel.")
+
+        override suspend fun getActiveQuestionsByLevels(levels: Set<QuestionLevel>): List<Question> =
+            error("Not used by TopicBrowserViewModel.")
+
+        override suspend fun getActiveQuestionsByTopicAndLevels(
+            topicId: String,
+            levels: Set<QuestionLevel>,
+        ): List<Question> = error("Not used by TopicBrowserViewModel.")
+
+        override suspend fun getActiveQuestionsBySubtopicAndLevels(
+            subtopicId: String,
+            levels: Set<QuestionLevel>,
+        ): List<Question> = error("Not used by TopicBrowserViewModel.")
 
         override suspend fun getTopicById(topicId: String): Topic? =
             error("Not used by TopicBrowserViewModel.")

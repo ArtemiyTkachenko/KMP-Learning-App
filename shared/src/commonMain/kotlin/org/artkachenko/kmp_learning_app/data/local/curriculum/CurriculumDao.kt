@@ -183,6 +183,81 @@ internal interface CurriculumDao {
         activeStatus: String,
     ): List<QuestionEntity>
 
+    /**
+     * Level-aware variants of the active-question queries.
+     *
+     * [levels] is matched with `IN`, so several selected levels mean inclusive OR. Filtering
+     * stays in SQL so callers never have to load the whole active bank to narrow it by level.
+     * Callers must not pass an empty [levels] collection; LocalCurriculumRepository resolves
+     * that case before it reaches Room.
+     */
+    @Query(
+        """
+        SELECT q.*
+        FROM question q
+        JOIN topic t
+            ON t.id = q.topic_id
+        JOIN subtopic s
+            ON s.id = q.subtopic_id
+            AND s.topic_id = q.topic_id
+        WHERE q.status = :activeStatus
+            AND s.status = :activeStatus
+            AND t.status = :activeStatus
+            AND q.level IN (:levels)
+        ORDER BY q.sort_order
+        """,
+    )
+    suspend fun getActiveQuestionsForLevels(
+        levels: List<String>,
+        activeStatus: String,
+    ): List<QuestionEntity>
+
+    @Query(
+        """
+        SELECT q.*
+        FROM question q
+        JOIN topic t
+            ON t.id = q.topic_id
+        JOIN subtopic s
+            ON s.id = q.subtopic_id
+            AND s.topic_id = q.topic_id
+        WHERE q.topic_id = :topicId
+            AND q.status = :activeStatus
+            AND s.status = :activeStatus
+            AND t.status = :activeStatus
+            AND q.level IN (:levels)
+        ORDER BY q.sort_order
+        """,
+    )
+    suspend fun getActiveQuestionsForTopicAndLevels(
+        topicId: String,
+        levels: List<String>,
+        activeStatus: String,
+    ): List<QuestionEntity>
+
+    @Query(
+        """
+        SELECT q.*
+        FROM question q
+        JOIN topic t
+            ON t.id = q.topic_id
+        JOIN subtopic s
+            ON s.id = q.subtopic_id
+            AND s.topic_id = q.topic_id
+        WHERE q.subtopic_id = :subtopicId
+            AND q.status = :activeStatus
+            AND s.status = :activeStatus
+            AND t.status = :activeStatus
+            AND q.level IN (:levels)
+        ORDER BY q.sort_order
+        """,
+    )
+    suspend fun getActiveQuestionsForSubtopicAndLevels(
+        subtopicId: String,
+        levels: List<String>,
+        activeStatus: String,
+    ): List<QuestionEntity>
+
     @Query("SELECT * FROM answer_option WHERE question_id = :questionId ORDER BY sort_order")
     suspend fun getAnswerOptionsForQuestion(questionId: String): List<AnswerOptionEntity>
 

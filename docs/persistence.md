@@ -371,6 +371,8 @@ The schema is driven by known future access patterns:
 - list `ACTIVE` subtopics for a topic;
 - list `ACTIVE` questions for a topic;
 - list `ACTIVE` questions for a subtopic;
+- list `ACTIVE` questions for one or more `QuestionLevel` values, optionally
+  scoped to a topic or a subtopic;
 - retrieve a question by stable question ID;
 - load answer options for a question;
 - load correct-answer IDs for a question;
@@ -389,6 +391,26 @@ Normal practice queries return only content whose full hierarchy is active:
 `Question`, `Subtopic`, and `Topic` must all have `ACTIVE` status. Stable-ID
 question lookup is different: it may return `ACTIVE` or `DEPRECATED` questions
 so later historical attempts can still resolve the content they referenced.
+
+### Level-Aware Selection
+
+`QuestionLevel` filtering is a narrowing of the same eligibility queries rather
+than a separate repository: `getActiveQuestionsByLevels`,
+`getActiveQuestionsByTopicAndLevels`, and `getActiveQuestionsBySubtopicAndLevels`
+add `level IN (...)` to the existing ACTIVE-hierarchy queries and keep the
+current `sort_order` ordering. Filtering stays in SQL so a caller never loads the
+whole active bank to narrow it, and presentation never filters entities itself.
+
+Several selected levels mean inclusive OR, because a learner practising
+`FOUNDATION` and `ADVANCED` wants questions from either depth. An empty selection
+consequently matches nothing on every scope — OR over zero terms is false — and
+"any level" is expressed by calling the unfiltered query instead. The repository
+resolves the empty case before it reaches Room rather than relying on `IN ()`,
+which is a SQLite extension rather than portable SQL and would otherwise have to
+behave identically across all four platform drivers.
+
+Level filtering deliberately does not touch stable-ID lookup: historical
+resolution stays independent of both ACTIVE and level eligibility.
 
 ## Content Lifecycle and Deletion
 

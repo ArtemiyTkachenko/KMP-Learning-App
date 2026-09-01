@@ -190,17 +190,17 @@ internal class FocusedResultViewModelTest {
         override suspend fun getActiveTopics(): List<Topic> = error("not used")
         override suspend fun getActiveSubtopics(topicId: String): List<Subtopic> = error("not used")
         override suspend fun getActiveQuestions(): List<Question> = questions
-        override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> = questions
-        override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> = questions
+        override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> = error("not used")
+        override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> = error("not used")
         override suspend fun getActiveQuestionsByLevels(levels: Set<QuestionLevel>): List<Question> = error("not used")
         override suspend fun getActiveQuestionsByTopicAndLevels(
             topicId: String,
             levels: Set<QuestionLevel>,
-        ): List<Question> = error("not used")
+        ): List<Question> = questions.filter { it.level in levels }
         override suspend fun getActiveQuestionsBySubtopicAndLevels(
             subtopicId: String,
             levels: Set<QuestionLevel>,
-        ): List<Question> = error("not used")
+        ): List<Question> = questions.filter { it.level in levels }
         override suspend fun getTopicById(topicId: String): Topic? = null
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? = null
         override suspend fun getQuestionById(questionId: String): Question? { lookups += questionId; return questions.firstOrNull { it.id == questionId } }

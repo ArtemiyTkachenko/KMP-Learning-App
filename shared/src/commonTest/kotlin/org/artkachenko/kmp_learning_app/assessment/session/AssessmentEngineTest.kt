@@ -15,6 +15,7 @@ import kotlin.test.assertTrue
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
+import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
@@ -109,12 +110,80 @@ internal class AssessmentEngineTest {
     }
 
     @Test
-    fun startReturnsNoEligibleQuestionsWhenSelectorReturnsEmptyList() = runEngineTest {
+    fun startReturnsNoEligibleQuestionsWhenSelectorFindsNothing() = runEngineTest {
         repository.activeQuestions = emptyList()
 
         val result = engine().start(AssessmentConfig.Mixed(questionCount = 10))
 
         assertEquals(AssessmentStartResult.NoEligibleQuestions, result)
+    }
+
+    @Test
+    fun targetedPracticeStartsThroughTheSameEngineWithStableQuestionIds() = runEngineTest {
+        repository.topicQuestions = mapOf(
+            "android_ui" to listOf(
+                question("foundation_question", level = QuestionLevel.FOUNDATION),
+                question("advanced_question", level = QuestionLevel.ADVANCED),
+            ),
+        )
+        val config = AssessmentConfig.Focused(
+            scope = AssessmentScope.Topic("android_ui"),
+            questionCount = 5,
+            levels = setOf(QuestionLevel.ADVANCED),
+            source = PracticeQuestionSource.ALL,
+        )
+
+        val session = assertStarted(engine().start(config))
+
+        assertEquals("attempt-1", session.attempt.id)
+        assertEquals(config, session.attempt.config)
+        assertEquals(AssessmentStatus.IN_PROGRESS, session.attempt.status)
+        assertEquals(listOf("advanced_question"), session.questions.map { it.id })
+        assertEquals(
+            listOf("advanced_question"),
+            session.attempt.questionAttempts.map { it.questionId },
+        )
+        assertNull(session.attempt.score)
+    }
+
+    @Test
+    fun practiceWithoutSelectedLevelsCreatesNoAttempt() = runEngineTest {
+        repository.topicQuestions = mapOf("android_ui" to listOf(question("question_a")))
+        val engine = engine()
+
+        val result = engine.start(
+            AssessmentConfig.Focused(
+                scope = AssessmentScope.Topic("android_ui"),
+                questionCount = 5,
+                levels = emptySet(),
+            ),
+        )
+
+        assertEquals(AssessmentStartResult.NoEligibleQuestions, result)
+        assertNoAttemptWasCreated(engine)
+    }
+
+    @Test
+    fun practiceWithAnUnsupportedSourceCreatesNoAttempt() = runEngineTest {
+        repository.topicQuestions = mapOf("android_ui" to listOf(question("question_a")))
+        val engine = engine()
+
+        listOf(
+            PracticeQuestionSource.UNSEEN,
+            PracticeQuestionSource.WEAK_AREAS,
+            PracticeQuestionSource.UNRESOLVED_MISTAKES,
+        ).forEach { source ->
+            val result = engine.start(
+                AssessmentConfig.Focused(
+                    scope = AssessmentScope.Topic("android_ui"),
+                    questionCount = 5,
+                    source = source,
+                ),
+            )
+
+            assertEquals(AssessmentStartResult.NoEligibleQuestions, result, "source $source")
+        }
+        assertNoAttemptWasCreated(engine)
     }
 
     @Test
@@ -587,10 +656,10 @@ internal class AssessmentEngineTest {
             activeQuestions
 
         override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> =
-            topicQuestions[topicId].orEmpty()
+            error("Targeted practice must use the level-aware topic read.")
 
         override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> =
-            subtopicQuestions[subtopicId].orEmpty()
+            error("Targeted practice must use the level-aware subtopic read.")
 
         override suspend fun getActiveQuestionsByLevels(levels: Set<QuestionLevel>): List<Question> =
             error("Not used by AssessmentEngine.")
@@ -598,12 +667,12 @@ internal class AssessmentEngineTest {
         override suspend fun getActiveQuestionsByTopicAndLevels(
             topicId: String,
             levels: Set<QuestionLevel>,
-        ): List<Question> = error("Not used by AssessmentEngine.")
+        ): List<Question> = topicQuestions[topicId].orEmpty().filter { it.level in levels }
 
         override suspend fun getActiveQuestionsBySubtopicAndLevels(
             subtopicId: String,
             levels: Set<QuestionLevel>,
-        ): List<Question> = error("Not used by AssessmentEngine.")
+        ): List<Question> = subtopicQuestions[subtopicId].orEmpty().filter { it.level in levels }
 
         override suspend fun getTopicById(topicId: String): Topic? =
             error("Not used by AssessmentEngine.")
@@ -617,6 +686,19 @@ internal class AssessmentEngineTest {
 
     private fun assertStarted(result: AssessmentStartResult): AssessmentSession =
         assertIs<AssessmentStartResult.Started>(result).session
+
+    /**
+     * A refused start must not build or persist an empty assessment. The attempt-ID generator is
+     * only consumed when an attempt is actually constructed, so the next runnable start on the
+     * same engine is still its first attempt.
+     */
+    private suspend fun EngineTestScope.assertNoAttemptWasCreated(engine: AssessmentEngine) {
+        repository.activeQuestions = listOf(question("probe_question"))
+
+        val session = assertStarted(engine.start(AssessmentConfig.Mixed(questionCount = 1)))
+
+        assertEquals("attempt-1", session.attempt.id)
+    }
 
     private fun assertAnswered(
         session: AssessmentSession,
@@ -636,6 +718,7 @@ internal class AssessmentEngineTest {
         id: String,
         selectionMode: AnswerSelectionMode = AnswerSelectionMode.SINGLE,
         correctAnswerIds: List<String> = listOf("${id}_a"),
+        level: QuestionLevel = QuestionLevel.FOUNDATION,
     ): Question =
         Question(
             id = id,
@@ -648,7 +731,7 @@ internal class AssessmentEngineTest {
                 AnswerOption("${id}_c", "Answer C"),
             ),
             selectionMode = selectionMode,
-            level = QuestionLevel.FOUNDATION,
+            level = level,
             correctAnswerIds = correctAnswerIds,
             explanation = "$id explanation.",
             sources = listOf(

@@ -132,7 +132,9 @@ score summaries without depending on Room, Koin, Compose, Android, or
 and keeps scoring/session behavior separate from persistence.
 Question selection follows `AssessmentConfig -> AssessmentQuestionSelector ->
 CurriculumRepository`; Mixed selection uses coverage-first rounds across topics
-after randomized encounter ordering.
+after randomized encounter ordering. Targeted practice adds level and question
+source to that configuration without adding a second engine; see "Targeted
+practice selection" below.
 The runtime `AssessmentSession` keeps the selected `Question` objects for
 scoring, while `TestAttempt` remains the stable-ID attempt record persisted by
 the local attempt store without embedding curriculum content.
@@ -416,3 +418,47 @@ Topic detail screens use a Material 3 top app bar for back navigation, with the
 navigation icon invoking the existing Navigation 3 back-stack pop. Detail and
 practice destinations should keep this phone-style toolbar affordance instead
 of rendering a standalone text Back button in page content.
+
+## Targeted practice selection
+
+EPIC-16 lets a practice run be narrowed by interview level and by where its
+Questions come from. That is one configuration, not one assessment type per
+practice kind: `AssessmentConfig.Focused` carries scope, requested question
+count, selected `QuestionLevel`s, and a single `PracticeQuestionSource`, and it
+still ends at the same `AssessmentEngine`, the same `QuestionAttempt`s keyed by
+stable Question ID, and the same scoring. The alternative — an engine per
+practice type — would have forked session lifecycle, persistence, and completion
+four ways to vary one step of the pipeline.
+
+The source is one typed dimension rather than `onlyUnseen`/`weakOnly`/
+`mistakesOnly` booleans, because the four values are mutually exclusive policies
+and boolean combinations would invent product states nobody designed. Levels are
+a set with inclusive-OR meaning, matching the `CurriculumRepository` level-filter
+contract: "any level" is expressed by naming every level, never by an empty set.
+Level filtering happens in the repository through the scoped level-aware reads,
+so presentation never loads a scope and filters it afterwards. Mixed Android
+Interview deliberately stays outside all of this — no scope, no levels, no
+source — because coverage-first selection across every ACTIVE Question is its
+product behaviour, not a special case of targeted practice.
+
+`AssessmentQuestionSelector` returns `AssessmentSelectionResult` instead of a
+bare `List<Question>`. An empty list answered too many questions at once, and
+the differences matter: nothing eligible, no level selected, and a source whose
+policy does not exist yet are three different answers. Only `ALL` is selectable
+today; `UNSEEN`, `WEAK_AREAS`, and `UNRESOLVED_MISTAKES` are representable and
+refused explicitly (E16-03, E16-04, and E16-05 own them) rather than falling back
+to `ALL`, which would silently answer a different request than the learner made.
+Each is a branch of one `when` over the source, so adding a policy is a local
+change that leaves the builder UI, the engine, scoring, and session logic
+untouched. `AssessmentEngine` collapses every no-content reason into
+`AssessmentStartResult.NoEligibleQuestions`, since assessment taking has one
+no-content state and availability is read from selection before starting; what it
+guarantees is that a refused request creates and persists no attempt.
+
+Practice levels and source are selection inputs and are not part of the persisted
+attempt record. `TestAttemptEntity` keeps config type, scope, and requested count,
+so historical attempts stay readable and no migration was introduced; a stored
+FOCUSED attempt reconstructs as the all-levels `ALL` request that every attempt
+written before EPIC-16 actually was. The visible consequence is retake, which
+re-runs the reconstructed config — the point to revisit, with a migration, once
+the Practice Builder can produce level-narrowed or history-derived attempts.

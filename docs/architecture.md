@@ -175,6 +175,45 @@ attempted" must stay distinguishable from "attempted poorly", and 0/0 reports a
 `null` percentage because an empty denominator is not 0% coverage. Coverage is
 derived state like everything else here; nothing about it is persisted.
 
+The snapshot also carries recent performance, which answers "how have I been
+performing lately?" while the all-time figures continue to answer "how have I
+performed across my complete history?". All-time accuracy is correct but slow:
+after substantial history it can still read 58% for a learner who now scores
+80-90%, so `RecentPerformancePolicy` defines a second, separate signal instead of
+reweighting the first. Recent means the latest **five completed assessments** —
+a count window rather than a date window, because a date window shows an
+intensive user dozens of observations from one evening and an occasional user an
+empty dashboard despite real history. Five is responsive to a change in
+performance, resistant to one bad evening, explainable in a sentence, and a
+natural size for one compact series; it is a product policy and is deliberately
+not configurable. Attempts are ordered `completedAt DESC, startedAt DESC,
+id ASC` — the same ordering `AssessmentAttemptDao` queries with — by the policy
+itself rather than trusted from the caller, since the history may arrive from the
+repository, the shared cache, or a test fake. Every completed attempt
+participates on identical terms, focused, mixed and retake alike, because a
+retake is simply another completed occurrence; IN_PROGRESS attempts never do.
+
+Recent accuracy is question-weighted: correct answers over answered questions
+across the whole window, never the mean of the attempt percentages, since a 1/1
+attempt and a 10/20 attempt make 11/21 rather than 75%. It is `null` rather than
+0.0 when there is no recent evidence, because a learner who has completed nothing
+has not scored 0%. Both series are exposed oldest -> newest so a chart reads past
+-> present without presentation reversing domain data, and the attempt series
+carries raw percentages only — no direction, momentum, or velocity score is
+derived, and there is no time decay, so every answer inside the window has equal
+weight and recency is expressed solely by the bounded window. A trend is marked
+available at three attempts, below which one observation or a single change is
+not a trajectory worth presenting. The per-answer series is capped at 50 outcomes
+and keeps the most recent ones; the summary is derived from the attempt series
+precisely so that the cap can never silently narrow it. `QuestionAttempt` stores
+no answer timestamp, so that series is ordered by attempt completion time and
+then by stored assessment sequence — a sequence, not a wall-clock record of when
+each answer was given. As with all-time performance, persisted
+`QuestionAnswerState.Answered.isCorrect` is authoritative and is never recompared
+against the current `Question.correctAnswerIds`: an answer key can be corrected
+later, and history must not change retrospectively. That also means recent
+performance issues no curriculum query of its own. Nothing about it is persisted.
+
 The Progress dashboard is a shared presentation destination reached through
 the argument-free `AppRoute.Progress` route. `ProgressViewModel` maps the
 derived snapshot and newest-first completed history into display models,

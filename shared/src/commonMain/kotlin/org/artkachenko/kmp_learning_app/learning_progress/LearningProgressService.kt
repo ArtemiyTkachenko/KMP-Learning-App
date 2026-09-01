@@ -3,6 +3,7 @@ package org.artkachenko.kmp_learning_app.learning_progress
 import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
+import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
@@ -38,8 +39,7 @@ internal class LearningProgressService(
                 val question = questionsById.getOrLoad(questionAttempt.questionId) {
                     curriculumRepository.getQuestionById(questionAttempt.questionId)
                 } ?: continue
-                val isCorrect =
-                    (questionAttempt.answerState as QuestionAnswerState.Answered).isCorrect
+                val isCorrect = answeredCorrectly(questionAttempt)
 
                 topicCounts.getOrPut(question.topicId, ::Counts).add(isCorrect)
                 subtopicCounts.getOrPut(
@@ -122,9 +122,57 @@ internal class LearningProgressService(
             ),
             topicCoverage = topicCoverage(activeQuestions, attemptedActiveQuestionIds),
             subtopicCoverage = subtopicCoverage(activeQuestions, attemptedActiveQuestionIds),
+            // Derived from the same history, and only from it: recent performance needs persisted
+            // correctness and timestamps, so it issues no curriculum query of its own.
+            recentPerformance = recentPerformance(completedAttempts),
         )
     }
 }
+
+/**
+ * Recent performance over the latest completed attempts, with every figure taken from persisted
+ * per-question correctness.
+ *
+ * Persisted correctness is authoritative rather than a fresh comparison against
+ * `Question.correctAnswerIds`: a Question's answer key can be corrected after an attempt was
+ * answered, and history must not change retrospectively because of it. That also keeps this
+ * derivation free of curriculum reads.
+ *
+ * Every completed attempt participates on the same terms — focused, mixed, and retake alike, since a
+ * retake is simply another completed occurrence — and IN_PROGRESS attempts do not, having been
+ * filtered out by the caller: recent performance describes completed evidence only.
+ */
+private fun recentPerformance(completedAttempts: List<TestAttempt>): RecentPerformance {
+    val window = RecentPerformancePolicy.recentWindow(completedAttempts)
+
+    return RecentPerformance(
+        attemptSeries = window.map { attempt ->
+            RecentAttemptPerformance(
+                attemptId = attempt.id,
+                completedAt = requireNotNull(attempt.completedAt),
+                answeredQuestionCount = attempt.questionAttempts.size,
+                correctAnswerCount = attempt.questionAttempts.count(::answeredCorrectly),
+            )
+        },
+        answerSeries = window
+            .flatMap { attempt ->
+                attempt.questionAttempts.map { questionAttempt ->
+                    RecentAnswerOutcome(
+                        attemptId = attempt.id,
+                        questionId = questionAttempt.questionId,
+                        isCorrect = answeredCorrectly(questionAttempt),
+                    )
+                }
+            }
+            // Keeps the most recent outcomes when the window holds more than the cap, without
+            // disturbing their chronological order. The summary above is unaffected: it comes from
+            // the attempt series, which covers every answer in the window.
+            .takeLast(RecentPerformancePolicy.MaxRecentAnswerOutcomes),
+    )
+}
+
+private fun answeredCorrectly(questionAttempt: QuestionAttempt): Boolean =
+    (questionAttempt.answerState as QuestionAnswerState.Answered).isCorrect
 
 /**
  * Coverage groups are derived from the ACTIVE questions rather than from the attempted IDs, so a

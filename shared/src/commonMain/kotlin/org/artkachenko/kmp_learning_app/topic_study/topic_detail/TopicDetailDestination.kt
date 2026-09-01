@@ -10,6 +10,7 @@ import org.koin.core.parameter.parametersOf
 @Composable
 internal fun TopicDetailDestination(
     topicId: String,
+    targetSubtopicId: String? = null,
     onBack: () -> Unit,
     onStartFocusedPractice: (AssessmentConfig.Focused) -> Unit,
     viewModel: TopicDetailViewModel = koinViewModel { parametersOf(topicId) },
@@ -17,6 +18,7 @@ internal fun TopicDetailDestination(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     TopicDetailScreen(
         state = state,
+        targetSubtopicId = targetSubtopicId,
         onBack = onBack,
         onStartTopicPractice = {
             viewModel.topicPracticeConfig()?.let(onStartFocusedPractice)

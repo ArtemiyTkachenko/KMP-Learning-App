@@ -9,6 +9,18 @@ import kotlin.test.assertSame
 
 internal class AppNavigationTest {
     @Test
+    fun topicRoutesCarryStableIdentityWithOptionalSubtopicTarget() {
+        assertEquals(
+            AppRoute.Topic(topicId = "topic_id", subtopicId = null),
+            AppRoute.Topic(topicId = "topic_id"),
+        )
+        assertEquals(
+            AppRoute.Topic(topicId = "topic_id", subtopicId = "subtopic_id"),
+            AppRoute.Topic("topic_id", "subtopic_id"),
+        )
+    }
+
+    @Test
     fun persistedMixedAttemptReplacesConfigEntry() {
         val backStack = mutableListOf<AppRoute>(
             AppRoute.Topics,

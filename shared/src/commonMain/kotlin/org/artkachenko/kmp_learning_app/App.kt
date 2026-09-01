@@ -115,6 +115,14 @@ private fun AppShell(
                         onTopicClick = { topicId ->
                             navigator.push(AppRoute.Topic(topicId = topicId))
                         },
+                        onSubtopicClick = { topicId, subtopicId ->
+                            navigator.push(
+                                AppRoute.Topic(
+                                    topicId = topicId,
+                                    subtopicId = subtopicId,
+                                ),
+                            )
+                        },
                     )
                 }
                 entry<AppRoute.Interview> {
@@ -186,6 +194,7 @@ private fun AppShell(
                 entry<AppRoute.Topic> { route ->
                     TopicDetailDestination(
                         topicId = route.topicId,
+                        targetSubtopicId = route.subtopicId,
                         onBack = {
                             popBack()
                         },

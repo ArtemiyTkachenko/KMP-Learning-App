@@ -90,4 +90,26 @@ internal class AppNavigatorRestorationTest {
         assertEquals(AppTopLevelDestination.TOPICS, shell.navigator.area)
         assertEquals(AppRoute.Topics, shell.navigator.currentRoute)
     }
+
+    @Test
+    fun topicAndSubtopicSearchTargetSurviveRestorationAsStableIds() = runComposeUiTest {
+        val shell = restorableShell()
+        shell.navigator.push(
+            AppRoute.Topic(
+                topicId = "topic_stable_id",
+                subtopicId = "subtopic_stable_id",
+            ),
+        )
+        waitForIdle()
+
+        restore(shell)
+
+        assertEquals(
+            AppRoute.Topic(
+                topicId = "topic_stable_id",
+                subtopicId = "subtopic_stable_id",
+            ),
+            shell.navigator.currentRoute,
+        )
+    }
 }

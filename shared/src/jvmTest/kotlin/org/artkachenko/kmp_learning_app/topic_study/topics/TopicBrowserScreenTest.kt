@@ -9,8 +9,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import kotlin.test.Test
@@ -119,6 +121,122 @@ internal class TopicBrowserScreenTest {
         onNodeWithText("Topics").assertIsDisplayed()
         onNodeWithText("Topic A").assertIsDisplayed()
         onNodeWithText("Topic B").assertIsDisplayed()
+        onNodeWithTag(TopicBrowserSearchFieldTag).assertIsDisplayed()
+    }
+
+    @Test
+    fun typingInSearchFieldEmitsQueryChange() = runComposeUiTest {
+        var query = ""
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(Topic("topic_a", "Topic A")),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                    onSearchQueryChange = { query = it },
+                )
+            }
+        }
+
+        onNodeWithTag(TopicBrowserSearchFieldTag).performTextInput("flow")
+
+        assertEquals("flow", query)
+    }
+
+    @Test
+    fun mixedSearchResultsRenderParentContextAndReturnStableIds() = runComposeUiTest {
+        var clickedTopicId: String? = null
+        var clickedSubtopicIds: Pair<String, String>? = null
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(
+                            Topic("compose", "Compose Overview"),
+                            Topic("android", "Android UI"),
+                        ),
+                        query = "compose",
+                        topicMatches = listOf(
+                            TopicSearchResult("compose", "Compose Overview"),
+                        ),
+                        subtopicMatches = listOf(
+                            SubtopicSearchResult(
+                                subtopicId = "compose_runtime",
+                                subtopicName = "Compose runtime",
+                                parentTopicId = "android",
+                                parentTopicName = "Android UI",
+                            ),
+                        ),
+                    ),
+                    onTopicClick = { clickedTopicId = it },
+                    onRetry = {},
+                    onSubtopicClick = { topicId, subtopicId ->
+                        clickedSubtopicIds = topicId to subtopicId
+                    },
+                )
+            }
+        }
+
+        onNodeWithText("Compose Overview").performClick()
+        assertEquals("compose", clickedTopicId)
+
+        onNodeWithText("Compose runtime").assertIsDisplayed().performClick()
+        assertEquals("android" to "compose_runtime", clickedSubtopicIds)
+        onNodeWithText("Android UI").assertIsDisplayed()
+        onNodeWithText("Subtopics").assertIsDisplayed()
+    }
+
+    @Test
+    fun noResultsAndClearActionAreExplicit() = runComposeUiTest {
+        var changedQuery: String? = null
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(Topic("topic_a", "Topic A")),
+                        query = "nonsense",
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                    onSearchQueryChange = { changedQuery = it },
+                )
+            }
+        }
+
+        onNodeWithText("No topics or subtopics match \"nonsense\"").assertIsDisplayed()
+        onNodeWithContentDescription("Clear search").performClick()
+
+        assertEquals("", changedQuery)
+    }
+
+    @Test
+    fun subtopicOnlyResultRendersItsParentTopic() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(Topic("architecture", "Architecture")),
+                        query = "viewmodel",
+                        subtopicMatches = listOf(
+                            SubtopicSearchResult(
+                                subtopicId = "viewmodel",
+                                subtopicName = "ViewModel lifecycle",
+                                parentTopicId = "architecture",
+                                parentTopicName = "Lifecycle, State & Navigation",
+                            ),
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("ViewModel lifecycle").assertIsDisplayed()
+        onNodeWithText("Lifecycle, State & Navigation").assertIsDisplayed()
+        onNodeWithText("Topics").assertIsDisplayed()
     }
 
     @Test
@@ -158,6 +276,7 @@ internal class TopicBrowserScreenTest {
 
         onNodeWithTag(TopicBrowserLoadingTag).assertIsDisplayed()
         onNodeWithText("Loading topics").assertIsDisplayed()
+        onNodeWithTag(TopicBrowserSearchFieldTag).assertDoesNotExist()
         // The interview and progress entries are their own navigation-bar destinations now, so
         // the topic list is only responsible for topics.
         onNodeWithText("View progress").assertDoesNotExist()
@@ -206,6 +325,18 @@ internal class TopicBrowserScreenTest {
         val route = AppRoute.Topic(topicId = "topic_stable_id")
 
         assertEquals("topic_stable_id", route.topicId)
+        assertEquals(null, route.subtopicId)
+    }
+
+    @Test
+    fun subtopicSearchRouteCarriesOnlyStableTopicAndSubtopicIds() {
+        val route = AppRoute.Topic(
+            topicId = "topic_stable_id",
+            subtopicId = "subtopic_stable_id",
+        )
+
+        assertEquals("topic_stable_id", route.topicId)
+        assertEquals("subtopic_stable_id", route.subtopicId)
     }
 }
 

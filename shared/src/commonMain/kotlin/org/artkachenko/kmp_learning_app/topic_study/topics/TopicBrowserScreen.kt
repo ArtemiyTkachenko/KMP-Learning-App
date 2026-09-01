@@ -14,15 +14,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -32,17 +33,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
-import kmp_learning_app.shared.generated.resources.mixed_interview_description
-import kmp_learning_app.shared.generated.resources.mixed_interview_question_count
-import kmp_learning_app.shared.generated.resources.mixed_interview_start
-import kmp_learning_app.shared.generated.resources.mixed_interview_title
 import kmp_learning_app.shared.generated.resources.topic_browser_empty
 import kmp_learning_app.shared.generated.resources.topic_browser_error
 import kmp_learning_app.shared.generated.resources.topic_browser_loading
+import kmp_learning_app.shared.generated.resources.topic_browser_clear_search
+import kmp_learning_app.shared.generated.resources.topic_browser_search_label
+import kmp_learning_app.shared.generated.resources.topic_browser_search_no_results
+import kmp_learning_app.shared.generated.resources.topic_browser_search_subtopics
+import kmp_learning_app.shared.generated.resources.topic_browser_search_topics
 import kmp_learning_app.shared.generated.resources.topic_browser_subtitle
 import kmp_learning_app.shared.generated.resources.topic_browser_title
 import org.artkachenko.kmp_learning_app.curriculum.Topic
-import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewDefaults
+import org.artkachenko.kmp_learning_app.ui.AppIcons
+import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
@@ -52,6 +55,7 @@ import org.jetbrains.compose.resources.stringResource
 internal const val TopicBrowserLoadingTag = "topic_browser_loading"
 internal const val TopicBrowserHeaderTag = "topic_browser_header"
 internal const val TopicBrowserViewportTag = "topic_browser_viewport"
+internal const val TopicBrowserSearchFieldTag = "topic_browser_search_field"
 
 /**
  * Space between the top safe area and the heading.
@@ -71,6 +75,8 @@ internal fun TopicBrowserScreen(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
     topWindowInsets: WindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top),
+    onSubtopicClick: (topicId: String, subtopicId: String) -> Unit = { _, _ -> },
+    onSearchQueryChange: (String) -> Unit = {},
 ) {
     Column(
         modifier = modifier
@@ -98,16 +104,40 @@ internal fun TopicBrowserScreen(
         )
         Spacer(modifier = Modifier.height(16.dp))
 
+        if (state is TopicBrowserUiState.Content) {
+            TopicSearchField(
+                query = state.query,
+                onQueryChange = onSearchQueryChange,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
         Box(modifier = Modifier.weight(1f).testTag(TopicBrowserViewportTag)) {
             when (state) {
                 TopicBrowserUiState.Loading -> ScreenLoading(
                     message = stringResource(Res.string.topic_browser_loading),
                     testTag = TopicBrowserLoadingTag,
                 )
-                is TopicBrowserUiState.Content -> TopicList(
-                    topics = state.topics,
-                    onTopicClick = onTopicClick,
-                )
+                is TopicBrowserUiState.Content -> when {
+                    state.query.isBlank() -> TopicList(
+                        topics = state.topics,
+                        onTopicClick = onTopicClick,
+                    )
+                    state.topicMatches.isEmpty() && state.subtopicMatches.isEmpty() -> {
+                        ScreenMessage(
+                            message = stringResource(
+                                Res.string.topic_browser_search_no_results,
+                                state.query.trim(),
+                            ),
+                        )
+                    }
+                    else -> TopicSearchResults(
+                        topicMatches = state.topicMatches,
+                        subtopicMatches = state.subtopicMatches,
+                        onTopicClick = onTopicClick,
+                        onSubtopicClick = onSubtopicClick,
+                    )
+                }
                 TopicBrowserUiState.Empty -> ScreenMessage(
                     message = stringResource(Res.string.topic_browser_empty),
                 )
@@ -118,6 +148,38 @@ internal fun TopicBrowserScreen(
             }
         }
     }
+}
+
+@Composable
+private fun TopicSearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = Modifier.fillMaxWidth().testTag(TopicBrowserSearchFieldTag),
+        label = { Text(stringResource(Res.string.topic_browser_search_label)) },
+        leadingIcon = {
+            Icon(
+                imageVector = AppIcons.Search,
+                contentDescription = null,
+            )
+        },
+        trailingIcon = if (query.isNotEmpty()) {
+            {
+                IconButton(onClick = { onQueryChange("") }) {
+                    Icon(
+                        imageVector = AppIcons.Close,
+                        contentDescription = stringResource(Res.string.topic_browser_clear_search),
+                    )
+                }
+            }
+        } else {
+            null
+        },
+        singleLine = true,
+    )
 }
 
 @Composable
@@ -135,7 +197,8 @@ private fun TopicList(
             key = { it.id },
         ) { topic ->
             TopicRow(
-                topic = topic,
+                topicId = topic.id,
+                topicName = topic.name,
                 onTopicClick = onTopicClick,
             )
         }
@@ -144,11 +207,12 @@ private fun TopicList(
 
 @Composable
 private fun TopicRow(
-    topic: Topic,
+    topicId: String,
+    topicName: String,
     onTopicClick: (String) -> Unit,
 ) {
     Card(
-        onClick = { onTopicClick(topic.id) },
+        onClick = { onTopicClick(topicId) },
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
@@ -162,9 +226,96 @@ private fun TopicRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = topic.name,
+                text = topicName,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TopicSearchResults(
+    topicMatches: List<TopicSearchResult>,
+    subtopicMatches: List<SubtopicSearchResult>,
+    onTopicClick: (String) -> Unit,
+    onSubtopicClick: (topicId: String, subtopicId: String) -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (topicMatches.isNotEmpty()) {
+            item(key = "topic_results_heading") {
+                SectionHeading(stringResource(Res.string.topic_browser_search_topics))
+            }
+            items(
+                items = topicMatches,
+                key = { "topic:${it.topicId}" },
+            ) { result ->
+                TopicRow(
+                    topicId = result.topicId,
+                    topicName = result.topicName,
+                    onTopicClick = onTopicClick,
+                )
+            }
+        }
+        if (subtopicMatches.isNotEmpty()) {
+            item(key = "subtopic_results_heading") {
+                SectionHeading(stringResource(Res.string.topic_browser_search_subtopics))
+            }
+            items(
+                items = subtopicMatches,
+                key = { "subtopic:${it.subtopicId}" },
+            ) { result ->
+                SubtopicResultRow(
+                    result = result,
+                    onClick = onSubtopicClick,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SubtopicResultRow(
+    result: SubtopicSearchResult,
+    onClick: (topicId: String, subtopicId: String) -> Unit,
+) {
+    Card(
+        onClick = { onClick(result.parentTopicId, result.subtopicId) },
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = result.subtopicName,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = result.parentTopicName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Icon(
+                imageVector = AppIcons.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
             )
         }
     }
@@ -183,6 +334,8 @@ private fun TopicBrowserScreenPreview() {
                 ),
             ),
             onTopicClick = {},
+            onSubtopicClick = { _, _ -> },
+            onSearchQueryChange = {},
             onRetry = {},
         )
     }

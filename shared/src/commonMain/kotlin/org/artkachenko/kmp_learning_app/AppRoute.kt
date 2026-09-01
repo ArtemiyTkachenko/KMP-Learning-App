@@ -25,6 +25,7 @@ internal sealed interface AppRoute : NavKey {
     @Serializable
     data class Topic(
         val topicId: String,
+        val subtopicId: String? = null,
     ) : AppRoute
 
     @Serializable

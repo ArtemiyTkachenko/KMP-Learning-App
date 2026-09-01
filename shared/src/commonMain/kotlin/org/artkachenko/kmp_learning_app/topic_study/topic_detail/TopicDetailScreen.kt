@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -17,6 +18,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -51,6 +53,7 @@ internal const val SubtopicPracticeButtonTag = "subtopic_practice_button"
 @Composable
 internal fun TopicDetailScreen(
     state: TopicDetailUiState,
+    targetSubtopicId: String? = null,
     onBack: () -> Unit,
     onStartTopicPractice: () -> Unit,
     onStartSubtopicPractice: (String) -> Unit,
@@ -77,6 +80,7 @@ internal fun TopicDetailScreen(
             is TopicDetailUiState.Content -> {
                 TopicContent(
                     state = state,
+                    targetSubtopicId = targetSubtopicId,
                     onStartTopicPractice = onStartTopicPractice,
                     onStartSubtopicPractice = onStartSubtopicPractice,
                     modifier = Modifier.weight(1f),
@@ -105,11 +109,23 @@ internal fun TopicDetailScreen(
 @Composable
 private fun TopicContent(
     state: TopicDetailUiState.Content,
+    targetSubtopicId: String?,
     onStartTopicPractice: () -> Unit,
     onStartSubtopicPractice: (String) -> Unit,
     modifier: Modifier,
 ) {
+    val listState = rememberLazyListState()
+    LaunchedEffect(state.subtopics, targetSubtopicId) {
+        val subtopicIndex = state.subtopics.indexOfFirst {
+            it.subtopic.id == targetSubtopicId
+        }
+        if (subtopicIndex >= 0) {
+            // The first lazy-list item is the topic summary and action block.
+            listState.scrollToItem(subtopicIndex + 1)
+        }
+    }
     LazyColumn(
+        state = listState,
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),

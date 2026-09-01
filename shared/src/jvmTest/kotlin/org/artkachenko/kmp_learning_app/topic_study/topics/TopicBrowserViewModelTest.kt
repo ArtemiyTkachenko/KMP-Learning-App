@@ -480,6 +480,19 @@ internal class TopicBrowserViewModelTest {
         override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> =
             error("Not used by TopicBrowserViewModel.")
 
+        override suspend fun getActiveQuestionsByLevels(levels: Set<QuestionLevel>): List<Question> =
+            error("Not used by TopicBrowserViewModel.")
+
+        override suspend fun getActiveQuestionsByTopicAndLevels(
+            topicId: String,
+            levels: Set<QuestionLevel>,
+        ): List<Question> = error("Not used by TopicBrowserViewModel.")
+
+        override suspend fun getActiveQuestionsBySubtopicAndLevels(
+            subtopicId: String,
+            levels: Set<QuestionLevel>,
+        ): List<Question> = error("Not used by TopicBrowserViewModel.")
+
         // Resolves an answered question's topic and subtopic back to curriculum metadata while
         // accuracy is derived; the catalog itself is read through getActiveTopics above.
         override suspend fun getTopicById(topicId: String): Topic? = null

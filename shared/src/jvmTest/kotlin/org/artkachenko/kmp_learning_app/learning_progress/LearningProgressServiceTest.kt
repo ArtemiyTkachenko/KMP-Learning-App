@@ -1001,6 +1001,19 @@ private class FakeCurriculumRepository(
     override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> =
         error("ACTIVE lookup must not be used.")
 
+    override suspend fun getActiveQuestionsByLevels(levels: Set<QuestionLevel>): List<Question> =
+        error("Level-filtered lookup must not be used.")
+
+    override suspend fun getActiveQuestionsByTopicAndLevels(
+        topicId: String,
+        levels: Set<QuestionLevel>,
+    ): List<Question> = error("Level-filtered lookup must not be used.")
+
+    override suspend fun getActiveQuestionsBySubtopicAndLevels(
+        subtopicId: String,
+        levels: Set<QuestionLevel>,
+    ): List<Question> = error("Level-filtered lookup must not be used.")
+
     override suspend fun getTopicById(topicId: String): Topic? {
         topicLookupCalls[topicId] = topicLookupCalls.getOrElse(topicId) { 0 } + 1
         return topicsById[topicId]

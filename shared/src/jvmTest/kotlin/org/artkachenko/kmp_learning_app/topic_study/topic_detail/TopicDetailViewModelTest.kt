@@ -516,6 +516,19 @@ internal class TopicDetailViewModelTest {
             error("N+1 query must not be used.")
         }
 
+        override suspend fun getActiveQuestionsByLevels(levels: Set<QuestionLevel>): List<Question> =
+            error("Level-filtered lookup is not used by topic detail.")
+
+        override suspend fun getActiveQuestionsByTopicAndLevels(
+            topicId: String,
+            levels: Set<QuestionLevel>,
+        ): List<Question> = error("Level-filtered lookup is not used by topic detail.")
+
+        override suspend fun getActiveQuestionsBySubtopicAndLevels(
+            subtopicId: String,
+            levels: Set<QuestionLevel>,
+        ): List<Question> = error("Level-filtered lookup is not used by topic detail.")
+
         override suspend fun getTopicById(topicId: String): Topic? =
             topics.firstOrNull { it.id == topicId }
 

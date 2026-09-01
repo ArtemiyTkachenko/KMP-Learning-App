@@ -3,6 +3,7 @@ package org.artkachenko.kmp_learning_app.data.local.curriculum.repository
 import androidx.room3.withReadTransaction
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
@@ -64,6 +65,47 @@ internal class LocalCurriculumRepository(
             ).toDomainQuestions(dao, includeRetiredAnswers = false)
         }
 
+    override suspend fun getActiveQuestionsByLevels(levels: Set<QuestionLevel>): List<Question> {
+        val levelNames = levels.toLevelNames() ?: return emptyList()
+        return database.withReadTransaction {
+            val dao = database.curriculumDao()
+            dao.getActiveQuestionsForLevels(
+                levels = levelNames,
+                activeStatus = activeStatus,
+            ).toDomainQuestions(dao, includeRetiredAnswers = false)
+        }
+    }
+
+    override suspend fun getActiveQuestionsByTopicAndLevels(
+        topicId: String,
+        levels: Set<QuestionLevel>,
+    ): List<Question> {
+        val levelNames = levels.toLevelNames() ?: return emptyList()
+        return database.withReadTransaction {
+            val dao = database.curriculumDao()
+            dao.getActiveQuestionsForTopicAndLevels(
+                topicId = topicId,
+                levels = levelNames,
+                activeStatus = activeStatus,
+            ).toDomainQuestions(dao, includeRetiredAnswers = false)
+        }
+    }
+
+    override suspend fun getActiveQuestionsBySubtopicAndLevels(
+        subtopicId: String,
+        levels: Set<QuestionLevel>,
+    ): List<Question> {
+        val levelNames = levels.toLevelNames() ?: return emptyList()
+        return database.withReadTransaction {
+            val dao = database.curriculumDao()
+            dao.getActiveQuestionsForSubtopicAndLevels(
+                subtopicId = subtopicId,
+                levels = levelNames,
+                activeStatus = activeStatus,
+            ).toDomainQuestions(dao, includeRetiredAnswers = false)
+        }
+    }
+
     override suspend fun getQuestionById(questionId: String): Question? =
         database.withReadTransaction {
             val dao = database.curriculumDao()
@@ -72,6 +114,17 @@ internal class LocalCurriculumRepository(
             // selected one can still be reviewed with its original answer text.
             listOf(question).toDomainQuestions(dao, includeRetiredAnswers = true).single()
         }
+
+    /**
+     * Maps a level selection onto the persisted column values, or `null` when nothing is
+     * selected.
+     *
+     * An empty selection is answered here instead of in SQL: `IN ()` is a SQLite-specific
+     * extension rather than portable SQL, and the four platform drivers should not have to
+     * agree on it for the API's documented "empty selection matches nothing" contract to hold.
+     */
+    private fun Set<QuestionLevel>.toLevelNames(): List<String>? =
+        if (isEmpty()) null else map { it.name }
 
     private suspend fun List<QuestionEntity>.toDomainQuestions(
         dao: CurriculumDao,

@@ -283,6 +283,19 @@ internal class AssessmentQuestionSelectorTest {
             return subtopicQuestions[subtopicId].orEmpty()
         }
 
+        override suspend fun getActiveQuestionsByLevels(levels: Set<QuestionLevel>): List<Question> =
+            error("Not used by AssessmentQuestionSelector.")
+
+        override suspend fun getActiveQuestionsByTopicAndLevels(
+            topicId: String,
+            levels: Set<QuestionLevel>,
+        ): List<Question> = error("Not used by AssessmentQuestionSelector.")
+
+        override suspend fun getActiveQuestionsBySubtopicAndLevels(
+            subtopicId: String,
+            levels: Set<QuestionLevel>,
+        ): List<Question> = error("Not used by AssessmentQuestionSelector.")
+
         override suspend fun getTopicById(topicId: String): Topic? =
             error("Not used by AssessmentQuestionSelector.")
 

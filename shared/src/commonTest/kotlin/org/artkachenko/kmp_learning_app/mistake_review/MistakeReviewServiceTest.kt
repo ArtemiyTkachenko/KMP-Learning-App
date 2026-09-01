@@ -426,6 +426,16 @@ private class RecordingCurriculumRepository(
         error("ACTIVE lookup must not be used.")
     override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> =
         error("ACTIVE lookup must not be used.")
+    override suspend fun getActiveQuestionsByLevels(levels: Set<QuestionLevel>): List<Question> =
+        error("ACTIVE lookup must not be used.")
+    override suspend fun getActiveQuestionsByTopicAndLevels(
+        topicId: String,
+        levels: Set<QuestionLevel>,
+    ): List<Question> = error("ACTIVE lookup must not be used.")
+    override suspend fun getActiveQuestionsBySubtopicAndLevels(
+        subtopicId: String,
+        levels: Set<QuestionLevel>,
+    ): List<Question> = error("ACTIVE lookup must not be used.")
     override suspend fun getTopicById(topicId: String): Topic? = error("Topic lookup is not needed.")
     override suspend fun getSubtopicById(subtopicId: String): Subtopic? =
         error("Subtopic lookup is not needed.")

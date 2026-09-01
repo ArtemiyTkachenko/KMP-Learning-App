@@ -269,6 +269,19 @@ internal class AssessmentRetakeServiceTest {
             return subtopicQuestions[subtopicId].orEmpty()
         }
 
+        override suspend fun getActiveQuestionsByLevels(levels: Set<QuestionLevel>): List<Question> =
+            error("Not used by retake tests.")
+
+        override suspend fun getActiveQuestionsByTopicAndLevels(
+            topicId: String,
+            levels: Set<QuestionLevel>,
+        ): List<Question> = error("Not used by retake tests.")
+
+        override suspend fun getActiveQuestionsBySubtopicAndLevels(
+            subtopicId: String,
+            levels: Set<QuestionLevel>,
+        ): List<Question> = error("Not used by retake tests.")
+
         override suspend fun getTopicById(topicId: String): Topic? =
             error("Not used by retake tests.")
 

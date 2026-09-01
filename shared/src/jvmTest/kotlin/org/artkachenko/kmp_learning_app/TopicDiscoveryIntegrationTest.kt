@@ -475,6 +475,27 @@ internal class TopicDiscoveryIntegrationTest {
             return delegate.getActiveQuestionsBySubtopic(subtopicId)
         }
 
+        override suspend fun getActiveQuestionsByLevels(levels: Set<QuestionLevel>): List<Question> {
+            questionReads += 1
+            return delegate.getActiveQuestionsByLevels(levels)
+        }
+
+        override suspend fun getActiveQuestionsByTopicAndLevels(
+            topicId: String,
+            levels: Set<QuestionLevel>,
+        ): List<Question> {
+            questionReads += 1
+            return delegate.getActiveQuestionsByTopicAndLevels(topicId, levels)
+        }
+
+        override suspend fun getActiveQuestionsBySubtopicAndLevels(
+            subtopicId: String,
+            levels: Set<QuestionLevel>,
+        ): List<Question> {
+            questionReads += 1
+            return delegate.getActiveQuestionsBySubtopicAndLevels(subtopicId, levels)
+        }
+
         override suspend fun getTopicById(topicId: String): Topic? = delegate.getTopicById(topicId)
 
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? =

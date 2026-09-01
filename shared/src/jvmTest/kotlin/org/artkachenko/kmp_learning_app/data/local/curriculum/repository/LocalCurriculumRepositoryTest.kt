@@ -150,6 +150,185 @@ internal class LocalCurriculumRepositoryTest {
     }
 
     @Test
+    fun getActiveQuestionsByLevelsReturnsOnlyTheRequestedLevel() = runTest {
+        withRepository(levelFixture()) { repository ->
+            assertEquals(
+                listOf("foundation_active", "other_topic_foundation"),
+                repository.getActiveQuestionsByLevels(setOf(QuestionLevel.FOUNDATION)).map { it.id },
+            )
+            assertEquals(
+                listOf("applied_active", "other_topic_applied"),
+                repository.getActiveQuestionsByLevels(setOf(QuestionLevel.APPLIED)).map { it.id },
+            )
+            assertEquals(
+                listOf("advanced_active", "other_topic_advanced"),
+                repository.getActiveQuestionsByLevels(setOf(QuestionLevel.ADVANCED)).map { it.id },
+            )
+        }
+    }
+
+    @Test
+    fun getActiveQuestionsByLevelsCombinesSeveralLevelsWithInclusiveOr() = runTest {
+        withRepository(levelFixture()) { repository ->
+            assertEquals(
+                listOf("foundation_active", "applied_active", "other_topic_foundation", "other_topic_applied"),
+                repository.getActiveQuestionsByLevels(
+                    setOf(QuestionLevel.FOUNDATION, QuestionLevel.APPLIED),
+                ).map { it.id },
+            )
+            assertEquals(
+                listOf("applied_active", "advanced_active", "other_topic_applied", "other_topic_advanced"),
+                repository.getActiveQuestionsByLevels(
+                    setOf(QuestionLevel.APPLIED, QuestionLevel.ADVANCED),
+                ).map { it.id },
+            )
+            assertEquals(
+                listOf("foundation_active", "advanced_active", "other_topic_foundation", "other_topic_advanced"),
+                repository.getActiveQuestionsByLevels(
+                    setOf(QuestionLevel.FOUNDATION, QuestionLevel.ADVANCED),
+                ).map { it.id },
+            )
+            assertEquals(
+                repository.getActiveQuestions().map { it.id },
+                repository.getActiveQuestionsByLevels(QuestionLevel.entries.toSet()).map { it.id },
+            )
+        }
+    }
+
+    @Test
+    fun getActiveQuestionsByTopicAndLevelsKeepsTopicScopeAndOrdering() = runTest {
+        withRepository(levelFixture()) { repository ->
+            assertEquals(
+                listOf("advanced_active"),
+                repository.getActiveQuestionsByTopicAndLevels(
+                    topicId = "active_topic",
+                    levels = setOf(QuestionLevel.ADVANCED),
+                ).map { it.id },
+            )
+            assertEquals(
+                listOf("foundation_active", "advanced_active"),
+                repository.getActiveQuestionsByTopicAndLevels(
+                    topicId = "active_topic",
+                    levels = setOf(QuestionLevel.FOUNDATION, QuestionLevel.ADVANCED),
+                ).map { it.id },
+            )
+            assertEquals(
+                emptyList(),
+                repository.getActiveQuestionsByTopicAndLevels(
+                    topicId = "deprecated_topic",
+                    levels = QuestionLevel.entries.toSet(),
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun getActiveQuestionsBySubtopicAndLevelsKeepsSubtopicScopeAndOrdering() = runTest {
+        withRepository(levelFixture()) { repository ->
+            assertEquals(
+                listOf("applied_active"),
+                repository.getActiveQuestionsBySubtopicAndLevels(
+                    subtopicId = "active_subtopic",
+                    levels = setOf(QuestionLevel.APPLIED),
+                ).map { it.id },
+            )
+            assertEquals(
+                listOf("foundation_active", "applied_active"),
+                repository.getActiveQuestionsBySubtopicAndLevels(
+                    subtopicId = "active_subtopic",
+                    levels = setOf(QuestionLevel.FOUNDATION, QuestionLevel.APPLIED),
+                ).map { it.id },
+            )
+            assertEquals(
+                emptyList(),
+                repository.getActiveQuestionsBySubtopicAndLevels(
+                    subtopicId = "deprecated_subtopic",
+                    levels = QuestionLevel.entries.toSet(),
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun levelFilteringExcludesDeprecatedQuestionsSubtopicsAndTopics() = runTest {
+        withRepository(levelFixture()) { repository ->
+            val allLevels = QuestionLevel.entries.toSet()
+
+            val deprecatedIds = listOf(
+                "deprecated_advanced",
+                "deprecated_subtopic_applied",
+                "deprecated_topic_foundation",
+            )
+            assertEquals(
+                emptyList(),
+                repository.getActiveQuestionsByLevels(allLevels)
+                    .map { it.id }
+                    .filter { it in deprecatedIds },
+            )
+            assertEquals(
+                emptyList(),
+                repository.getActiveQuestionsByTopicAndLevels("active_topic", allLevels)
+                    .map { it.id }
+                    .filter { it in deprecatedIds },
+            )
+
+            // The retired Question is ADVANCED, so a matching level must not resurface it.
+            assertEquals(
+                listOf("advanced_active"),
+                repository.getActiveQuestionsByLevels(setOf(QuestionLevel.ADVANCED))
+                    .map { it.id }
+                    .filter { it.startsWith("advanced") || it.startsWith("deprecated") },
+            )
+        }
+    }
+
+    @Test
+    fun emptyLevelSelectionMatchesNothingOnEveryScope() = runTest {
+        withRepository(levelFixture()) { repository ->
+            assertEquals(emptyList(), repository.getActiveQuestionsByLevels(emptySet()))
+            assertEquals(
+                emptyList(),
+                repository.getActiveQuestionsByTopicAndLevels("active_topic", emptySet()),
+            )
+            assertEquals(
+                emptyList(),
+                repository.getActiveQuestionsBySubtopicAndLevels("active_subtopic", emptySet()),
+            )
+        }
+    }
+
+    @Test
+    fun levelFilteringDoesNotChangeUnfilteredSelectionOrHistoricalLookup() = runTest {
+        withRepository(levelFixture()) { repository ->
+            assertEquals(
+                listOf(
+                    "foundation_active",
+                    "applied_active",
+                    "advanced_active",
+                    "other_topic_foundation",
+                    "other_topic_applied",
+                    "other_topic_advanced",
+                ),
+                repository.getActiveQuestions().map { it.id },
+            )
+            assertEquals(
+                listOf("foundation_active", "applied_active", "advanced_active"),
+                repository.getActiveQuestionsByTopic("active_topic").map { it.id },
+            )
+            assertEquals(
+                listOf("foundation_active", "applied_active", "advanced_active"),
+                repository.getActiveQuestionsBySubtopic("active_subtopic").map { it.id },
+            )
+
+            // Historical lookup stays outside ACTIVE and level eligibility.
+            val retired = repository.getQuestionById("deprecated_advanced")
+            assertNotNull(retired)
+            assertEquals(ContentStatus.DEPRECATED, retired.status)
+            assertEquals(QuestionLevel.ADVANCED, retired.level)
+        }
+    }
+
+    @Test
     fun getQuestionByIdReturnsDeprecatedQuestionForHistoricalLookup() = runTest {
         val deprecatedQuestion = question(
             id = "deprecated_question",
@@ -297,6 +476,53 @@ internal class LocalCurriculumRepositoryTest {
             ),
         )
 
+    /**
+     * Spreads all three levels across an ACTIVE scope, a retired Question, a deprecated
+     * Subtopic, a deprecated Topic, and a second Topic, so level filtering has to respect
+     * both ACTIVE eligibility and Topic/Subtopic scoping to produce the expected ids.
+     */
+    private fun levelFixture(): Curriculum =
+        Curriculum(
+            topics = listOf(
+                Topic("active_topic", "Active topic"),
+                Topic("deprecated_topic", "Deprecated topic", ContentStatus.DEPRECATED),
+                Topic("other_topic", "Other topic"),
+            ),
+            subtopics = listOf(
+                Subtopic("active_subtopic", "active_topic", "Active subtopic"),
+                Subtopic("deprecated_subtopic", "active_topic", "Deprecated subtopic", ContentStatus.DEPRECATED),
+                Subtopic("deprecated_parent_subtopic", "deprecated_topic", "Deprecated parent subtopic"),
+                Subtopic("other_subtopic", "other_topic", "Other subtopic"),
+            ),
+            questions = listOf(
+                question("foundation_active", "active_topic", "active_subtopic", level = QuestionLevel.FOUNDATION),
+                question("applied_active", "active_topic", "active_subtopic", level = QuestionLevel.APPLIED),
+                question("advanced_active", "active_topic", "active_subtopic", level = QuestionLevel.ADVANCED),
+                question(
+                    "deprecated_advanced",
+                    "active_topic",
+                    "active_subtopic",
+                    status = ContentStatus.DEPRECATED,
+                    level = QuestionLevel.ADVANCED,
+                ),
+                question(
+                    "deprecated_subtopic_applied",
+                    "active_topic",
+                    "deprecated_subtopic",
+                    level = QuestionLevel.APPLIED,
+                ),
+                question(
+                    "deprecated_topic_foundation",
+                    "deprecated_topic",
+                    "deprecated_parent_subtopic",
+                    level = QuestionLevel.FOUNDATION,
+                ),
+                question("other_topic_foundation", "other_topic", "other_subtopic", level = QuestionLevel.FOUNDATION),
+                question("other_topic_applied", "other_topic", "other_subtopic", level = QuestionLevel.APPLIED),
+                question("other_topic_advanced", "other_topic", "other_subtopic", level = QuestionLevel.ADVANCED),
+            ),
+        )
+
     private fun curriculumOf(vararg graphs: CurriculumGraph): Curriculum =
         Curriculum(
             topics = graphs.map { it.topic },
@@ -334,6 +560,7 @@ internal class LocalCurriculumRepositoryTest {
         topicId: String,
         subtopicId: String,
         status: ContentStatus = ContentStatus.ACTIVE,
+        level: QuestionLevel = QuestionLevel.FOUNDATION,
         answers: List<AnswerOption> = listOf(
             AnswerOption("${id}_answer_b", "Answer B"),
             AnswerOption("${id}_answer_a", "Answer A"),
@@ -352,7 +579,7 @@ internal class LocalCurriculumRepositoryTest {
             text = "$id?",
             answers = answers,
             selectionMode = selectionMode,
-            level = QuestionLevel.FOUNDATION,
+            level = level,
             correctAnswerIds = correctAnswerIds,
             explanation = "$id explanation.",
             sources = sources,

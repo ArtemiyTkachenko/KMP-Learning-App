@@ -592,6 +592,19 @@ internal class AssessmentEngineTest {
         override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> =
             subtopicQuestions[subtopicId].orEmpty()
 
+        override suspend fun getActiveQuestionsByLevels(levels: Set<QuestionLevel>): List<Question> =
+            error("Not used by AssessmentEngine.")
+
+        override suspend fun getActiveQuestionsByTopicAndLevels(
+            topicId: String,
+            levels: Set<QuestionLevel>,
+        ): List<Question> = error("Not used by AssessmentEngine.")
+
+        override suspend fun getActiveQuestionsBySubtopicAndLevels(
+            subtopicId: String,
+            levels: Set<QuestionLevel>,
+        ): List<Question> = error("Not used by AssessmentEngine.")
+
         override suspend fun getTopicById(topicId: String): Topic? =
             error("Not used by AssessmentEngine.")
 

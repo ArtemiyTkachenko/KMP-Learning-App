@@ -273,7 +273,8 @@ internal class TopicDetailViewModelTest {
             return subtopics
         }
 
-        override suspend fun getActiveQuestions(): List<Question> = error("Not used.")
+        // Read once per LearningProgressService load to derive curriculum coverage.
+        override suspend fun getActiveQuestions(): List<Question> = questions
 
         override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> {
             topicQuestionCalls += 1

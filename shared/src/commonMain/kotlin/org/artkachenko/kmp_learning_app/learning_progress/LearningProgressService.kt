@@ -27,9 +27,14 @@ internal class LearningProgressService(
         val topicCounts = mutableMapOf<String, Counts>()
         val subtopicCounts = mutableMapOf<SubtopicKey, Counts>()
         val questionsById = mutableMapOf<String, Question?>()
+        val attemptedQuestionIds = mutableSetOf<String>()
 
         for (attempt in completedAttempts) {
             for (questionAttempt in attempt.questionAttempts) {
+                // Exposure is recorded from the raw historical ID, before metadata resolution: a
+                // Question that no longer resolves simply fails the ACTIVE intersection below
+                // rather than being silently dropped here.
+                attemptedQuestionIds += questionAttempt.questionId
                 val question = questionsById.getOrLoad(questionAttempt.questionId) {
                     curriculumRepository.getQuestionById(questionAttempt.questionId)
                 } ?: continue
@@ -93,6 +98,16 @@ internal class LearningProgressService(
                 .thenBy(::stableSortKey),
         )
 
+        // Coverage answers "how much of the CURRENT curriculum have I encountered?", so its
+        // denominator is the ACTIVE question bank and never anything reachable from history. This
+        // is the one ACTIVE read per derivation; the grouping below is entirely in memory, so no
+        // per-Topic or per-Subtopic query is issued.
+        val activeQuestions = curriculumRepository.getActiveQuestions()
+        val activeQuestionIds = activeQuestions.mapTo(mutableSetOf(), Question::id)
+        // Stable IDs deduplicate exposure: repeated occurrences of one Question collapse here,
+        // while the occurrence-based accuracy above deliberately counts every one of them.
+        val attemptedActiveQuestionIds = attemptedQuestionIds intersect activeQuestionIds
+
         return LearningProgressSnapshot(
             completedAttemptCount = completedAttempts.size,
             answeredQuestionCount = answeredQuestionCount,
@@ -101,9 +116,54 @@ internal class LearningProgressService(
             topics = topics,
             subtopics = subtopics,
             weakAreas = weakAreas,
+            coverage = CurriculumCoverage(
+                attemptedQuestionCount = attemptedActiveQuestionIds.size,
+                totalQuestionCount = activeQuestions.size,
+            ),
+            topicCoverage = topicCoverage(activeQuestions, attemptedActiveQuestionIds),
+            subtopicCoverage = subtopicCoverage(activeQuestions, attemptedActiveQuestionIds),
         )
     }
 }
+
+/**
+ * Coverage groups are derived from the ACTIVE questions rather than from the attempted IDs, so a
+ * Topic the learner has never opened is still present as 0/N instead of being missing. Ordering is
+ * by stable ID so the domain output is deterministic without depending on repository row order or
+ * on how a screen wants to sort them.
+ */
+private fun topicCoverage(
+    activeQuestions: List<Question>,
+    attemptedActiveQuestionIds: Set<String>,
+): List<TopicCoverage> =
+    activeQuestions
+        .groupBy(Question::topicId)
+        .entries
+        .sortedBy { it.key }
+        .map { (topicId, questions) ->
+            TopicCoverage(
+                topicId = topicId,
+                attemptedQuestionCount = questions.count { it.id in attemptedActiveQuestionIds },
+                totalQuestionCount = questions.size,
+            )
+        }
+
+private fun subtopicCoverage(
+    activeQuestions: List<Question>,
+    attemptedActiveQuestionIds: Set<String>,
+): List<SubtopicCoverage> =
+    activeQuestions
+        .groupBy { SubtopicKey(topicId = it.topicId, subtopicId = it.subtopicId) }
+        .entries
+        .sortedWith(compareBy({ it.key.topicId }, { it.key.subtopicId }))
+        .map { (key, questions) ->
+            SubtopicCoverage(
+                topicId = key.topicId,
+                subtopicId = key.subtopicId,
+                attemptedQuestionCount = questions.count { it.id in attemptedActiveQuestionIds },
+                totalQuestionCount = questions.size,
+            )
+        }
 
 private data class Counts(
     var answered: Int = 0,

@@ -444,10 +444,10 @@ product behaviour, not a special case of targeted practice.
 `AssessmentQuestionSelector` returns `AssessmentSelectionResult` instead of a
 bare `List<Question>`. An empty list answered too many questions at once, and
 the differences matter: nothing eligible, no level selected, and a source whose
-policy does not exist yet are three different answers. `ALL` and `UNSEEN` are
-implemented; `WEAK_AREAS` and `UNRESOLVED_MISTAKES` are representable and refused
-explicitly (E16-04 and E16-05 own them) rather than falling back to `ALL`, which
-would silently answer a different request than the learner made.
+policy does not exist yet are three different answers. `ALL`, `UNSEEN`, and
+`WEAK_AREAS` are implemented; `UNRESOLVED_MISTAKES` is representable and refused
+explicitly until E16-05 rather than falling back to `ALL`, which would silently
+answer a different request than the learner made.
 Each is a branch of one `when` over the source, so adding a policy is a local
 change that leaves the Practice Builder UI, the engine, scoring, and session logic
 untouched. `AssessmentEngine` collapses every no-content reason into
@@ -496,6 +496,28 @@ Questions, so repeating an unseen run selects against the learner's history as i
 stands then, which by definition no longer includes the Questions they just
 answered.
 
+### Weak-area practice
+
+Weak-area practice and the Progress dashboard share one
+`LearningPerformanceDerivation`. It owns the occurrence aggregation, historical
+Question-to-Topic/Subtopic resolution, minimum-evidence rules, accuracy threshold,
+and `WeakArea` construction; neither the selector nor presentation reconstructs
+those rules. `LearningProgressService` combines that output with coverage and recent
+performance, while `AssessmentQuestionSelector` consumes only the weak Topic and
+Subtopic identities. This keeps the practice pool and the learner-facing Progress
+assessment on the same semantics without making every practice preflight calculate
+unrelated coverage and trend data.
+
+The selector derives weak identities from completed history through
+`CompletedAssessmentHistory`, then intersects their union with the ordinary scoped,
+level-aware ACTIVE candidate read. A weak Topic admits candidates from any of its
+children; an independently weak Subtopic admits only that child when its parent is
+healthy. Membership is an OR filter, so Topic/Subtopic overlap does not add weight or
+duplicate a Question. The configured scope and levels are never widened, deprecated
+Questions can contribute historical evidence but cannot enter a new attempt, and an
+empty weak set ends at `NoEligibleQuestions`. The existing stable-ID deduplication,
+randomization, and requested-count truncation run after this eligibility filter.
+
 ## The Practice Builder
 
 Choosing a Topic or Subtopic no longer starts an assessment; it opens a builder
@@ -514,21 +536,18 @@ button that can never work. Enforcing it in the state holder means one
 implementation rather than one per control that touches levels.
 
 Source options carry availability as a property of the *policy*, not of the
-learner's content. `WEAK_AREAS` and `UNRESOLVED_MISTAKES` are shown and disabled
-rather than hidden, so the learner can see what targeted practice will offer, and
-E16-04 and E16-05 each make one of them selectable by implementing its policy,
-with no change to this screen. The builder reads that through
+learner's content. `WEAK_AREAS` is selectable; `UNRESOLVED_MISTAKES` remains shown
+and disabled until E16-05, so the learner can see what targeted practice will offer.
+The builder reads that through
 `AssessmentQuestionSelector.isSourceSupported`, which answers without loading any
 content; probing by attempting a selection would read content, and completed
 history, once per option just to render a screen. A selector test asserts the two
 agree for every source, which is what keeps the duplicated `when` honest.
 
-Choosing `UNSEEN` changes nothing structurally: it re-runs the same preflight,
-which now resolves against completed history, so Start is enabled when unseen
-Questions remain and disabled with the existing no-content feedback when the
-learner has seen everything in the configured scope and levels. A supported source
-with nothing left to ask is not an unavailable source, and the two states stay
-separate in the UI for that reason.
+Choosing `UNSEEN` or `WEAK_AREAS` changes nothing structurally: it re-runs the same
+preflight against completed history, so Start is enabled only when matching content
+exists. A supported source with nothing left to ask is not an unavailable source,
+and the two states stay separate in the UI for that reason.
 
 Whether the current configuration has any content is a separate question, and it
 is answered *before* Start through `AssessmentQuestionSelector.select` — never

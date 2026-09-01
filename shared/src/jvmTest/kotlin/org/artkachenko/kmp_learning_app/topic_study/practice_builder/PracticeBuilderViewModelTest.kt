@@ -166,7 +166,7 @@ internal class PracticeBuilderViewModelTest {
     }
 
     @Test
-    fun everySourceIsRepresentedButOnlyTheImplementedOnesAreAvailable() = runViewModelTest {
+    fun everySourceIsRepresentedButOnlyUnresolvedMistakesIsUnavailable() = runViewModelTest {
         val viewModel = viewModel(AssessmentScope.Topic("topic_a"), FakeCurriculumRepository())
         advanceUntilIdle()
 
@@ -174,7 +174,11 @@ internal class PracticeBuilderViewModelTest {
         // Every product source is listed, so the screen shows what targeted practice will offer.
         assertEquals(PracticeQuestionSource.entries, options.map { it.source })
         assertEquals(
-            setOf(PracticeQuestionSource.ALL, PracticeQuestionSource.UNSEEN),
+            setOf(
+                PracticeQuestionSource.ALL,
+                PracticeQuestionSource.UNSEEN,
+                PracticeQuestionSource.WEAK_AREAS,
+            ),
             options.filter { it.isAvailable }.map { it.source }.toSet(),
         )
     }
@@ -184,7 +188,6 @@ internal class PracticeBuilderViewModelTest {
         val viewModel = viewModel(AssessmentScope.Topic("topic_a"), FakeCurriculumRepository())
         advanceUntilIdle()
 
-        viewModel.selectSource(PracticeQuestionSource.WEAK_AREAS)
         viewModel.selectSource(PracticeQuestionSource.UNRESOLVED_MISTAKES)
         advanceUntilIdle()
 
@@ -239,6 +242,47 @@ internal class PracticeBuilderViewModelTest {
         )
         assertEquals(PracticeAvailability.NoEligibleQuestions, viewModel.uiState.value.availability)
         assertFalse(viewModel.uiState.value.isStartEnabled)
+    }
+
+    @Test
+    fun choosingWeakAreasRunsPreflightAndStartsWithTheWeakAreaSource() = runViewModelTest {
+        val viewModel = viewModel(
+            scope = AssessmentScope.Topic("topic_a"),
+            curriculum = FakeCurriculumRepository(),
+            completedAttempts = listOf(
+                completedHistoryOfAnswers(
+                    "q_foundation" to false,
+                    "q_applied" to false,
+                    "q_advanced" to true,
+                ),
+            ),
+        )
+        advanceUntilIdle()
+
+        viewModel.selectSource(PracticeQuestionSource.WEAK_AREAS)
+        advanceUntilIdle()
+
+        assertEquals(PracticeQuestionSource.WEAK_AREAS, viewModel.uiState.value.source)
+        assertEquals(3, availableCount(viewModel))
+        assertTrue(viewModel.uiState.value.isStartEnabled)
+        assertEquals(PracticeQuestionSource.WEAK_AREAS, startedConfig(viewModel).source)
+    }
+
+    @Test
+    fun weakAreasWithoutQualifyingHistoryStaySelectableButDisableStart() = runViewModelTest {
+        val viewModel = viewModel(AssessmentScope.Topic("topic_a"), FakeCurriculumRepository())
+        advanceUntilIdle()
+
+        viewModel.selectSource(PracticeQuestionSource.WEAK_AREAS)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(PracticeQuestionSource.WEAK_AREAS, state.source)
+        assertTrue(
+            state.sourceOptions.single { it.source == PracticeQuestionSource.WEAK_AREAS }.isAvailable,
+        )
+        assertEquals(PracticeAvailability.NoEligibleQuestions, state.availability)
+        assertFalse(state.isStartEnabled)
     }
 
     @Test
@@ -367,13 +411,16 @@ internal class PracticeBuilderViewModelTest {
         scope: AssessmentScope,
         curriculum: CurriculumRepository,
         seenQuestionIds: List<String> = emptyList(),
+        completedAttempts: List<TestAttempt>? = null,
     ): PracticeBuilderViewModel =
         PracticeBuilderViewModel(
             scope = scope,
             curriculumRepository = curriculum,
             questionSelector = AssessmentQuestionSelector(
                 curriculumRepository = curriculum,
-                completedHistory = { completedHistoryOf(seenQuestionIds) },
+                completedHistory = {
+                    completedAttempts ?: completedHistoryOf(seenQuestionIds)
+                },
                 randomize = { it },
             ),
         )
@@ -403,6 +450,30 @@ internal class PracticeBuilderViewModelTest {
             ),
         )
     }
+
+    private fun completedHistoryOfAnswers(
+        vararg answers: Pair<String, Boolean>,
+    ): TestAttempt =
+        TestAttempt(
+            id = "completed_attempt",
+            config = AssessmentConfig.Mixed(questionCount = answers.size),
+            questionAttempts = answers.map { (questionId, isCorrect) ->
+                QuestionAttempt(
+                    questionId = questionId,
+                    answerState = QuestionAnswerState.Answered(
+                        selectedAnswerIds = setOf("${questionId}_a"),
+                        isCorrect = isCorrect,
+                    ),
+                )
+            },
+            status = AssessmentStatus.COMPLETED,
+            startedAt = Instant.fromEpochSeconds(0),
+            completedAt = Instant.fromEpochSeconds(60),
+            score = AssessmentScore(
+                totalQuestions = answers.size,
+                correctAnswers = answers.count { it.second },
+            ),
+        )
 
     private fun runViewModelTest(block: suspend TestScope.() -> Unit) = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))

@@ -7,13 +7,13 @@ import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.history.QuestionExposure
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.curriculum.Question
-import org.artkachenko.kmp_learning_app.curriculum.Subtopic
-import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 
 internal class LearningProgressService(
     private val assessmentRepository: AssessmentRepository,
     private val curriculumRepository: CurriculumRepository,
+    private val performanceDerivation: LearningPerformanceDerivation =
+        LearningPerformanceDerivation(curriculumRepository),
 ) {
     /**
      * [completedAttempts] lets a caller that already holds newest-first completed history reuse it,
@@ -26,79 +26,13 @@ internal class LearningProgressService(
                 .filter { it.status == AssessmentStatus.COMPLETED }
         val answeredQuestionCount = completedAttempts.sumOf { requireNotNull(it.score).totalQuestions }
         val correctAnswerCount = completedAttempts.sumOf { requireNotNull(it.score).correctAnswers }
-        val topicCounts = mutableMapOf<String, Counts>()
-        val subtopicCounts = mutableMapOf<SubtopicKey, Counts>()
-        val questionsById = mutableMapOf<String, Question?>()
+        val performance = performanceDerivation.derive(completedAttempts)
         // Exposure comes from the shared policy, and from the raw historical IDs it reads before
         // any metadata resolution: a Question that no longer resolves simply fails the ACTIVE
         // intersection below rather than being silently dropped. Deriving it there rather than in
         // the loop is what keeps coverage and unseen practice from disagreeing about what "seen"
         // means.
         val attemptedQuestionIds = QuestionExposure.observedQuestionIds(completedAttempts)
-
-        for (attempt in completedAttempts) {
-            for (questionAttempt in attempt.questionAttempts) {
-                val question = questionsById.getOrLoad(questionAttempt.questionId) {
-                    curriculumRepository.getQuestionById(questionAttempt.questionId)
-                } ?: continue
-                val isCorrect = answeredCorrectly(questionAttempt)
-
-                topicCounts.getOrPut(question.topicId, ::Counts).add(isCorrect)
-                subtopicCounts.getOrPut(
-                    SubtopicKey(
-                        topicId = question.topicId,
-                        subtopicId = question.subtopicId,
-                    ),
-                    ::Counts,
-                ).add(isCorrect)
-            }
-        }
-
-        val topicsById = mutableMapOf<String, Topic?>()
-        val topics = topicCounts.keys.sorted().map { topicId ->
-            val counts = topicCounts.getValue(topicId)
-            val percentage = percentage(counts.correct, counts.answered)
-            val topic = curriculumRepository.getTopicById(topicId)
-            topicsById[topicId] = topic
-            TopicPerformance(
-                topicId = topicId,
-                topicName = topic?.name,
-                answeredCount = counts.answered,
-                correctCount = counts.correct,
-                percentage = percentage,
-                isWeak = LearningProgressPolicy.isWeakTopic(counts.answered, percentage),
-            )
-        }
-
-        val subtopicsById = mutableMapOf<String, Subtopic?>()
-        val subtopics = subtopicCounts.keys
-            .sortedWith(compareBy(SubtopicKey::topicId, SubtopicKey::subtopicId))
-            .map { key ->
-                val counts = subtopicCounts.getValue(key)
-                val percentage = percentage(counts.correct, counts.answered)
-                val subtopic = subtopicsById.getOrLoad(key.subtopicId) {
-                    curriculumRepository.getSubtopicById(key.subtopicId)
-                }
-                SubtopicPerformance(
-                    subtopicId = key.subtopicId,
-                    subtopicName = subtopic?.name,
-                    topicId = key.topicId,
-                    topicName = topicsById.getValue(key.topicId)?.name,
-                    answeredCount = counts.answered,
-                    correctCount = counts.correct,
-                    percentage = percentage,
-                    isWeak = LearningProgressPolicy.isWeakSubtopic(counts.answered, percentage),
-                )
-            }
-
-        val weakAreas = buildList {
-            topics.filter(TopicPerformance::isWeak).forEach { add(WeakArea.Topic(it)) }
-            subtopics.filter(SubtopicPerformance::isWeak).forEach { add(WeakArea.Subtopic(it)) }
-        }.sortedWith(
-            compareBy<WeakArea> { it.percentage }
-                .thenByDescending { it.answeredCount }
-                .thenBy(::stableSortKey),
-        )
 
         // Coverage answers "how much of the CURRENT curriculum have I encountered?", so its
         // denominator is the ACTIVE question bank and never anything reachable from history. This
@@ -115,9 +49,9 @@ internal class LearningProgressService(
             answeredQuestionCount = answeredQuestionCount,
             correctAnswerCount = correctAnswerCount,
             percentage = percentage(correctAnswerCount, answeredQuestionCount),
-            topics = topics,
-            subtopics = subtopics,
-            weakAreas = weakAreas,
+            topics = performance.topics,
+            subtopics = performance.subtopics,
+            weakAreas = performance.weakAreas,
             coverage = CurriculumCoverage(
                 attemptedQuestionCount = attemptedActiveQuestionIds.size,
                 totalQuestionCount = activeQuestions.size,
@@ -215,28 +149,10 @@ private fun subtopicCoverage(
             )
         }
 
-private data class Counts(
-    var answered: Int = 0,
-    var correct: Int = 0,
-) {
-    fun add(isCorrect: Boolean) {
-        answered++
-        if (isCorrect) correct++
-    }
-}
-
 private data class SubtopicKey(
     val topicId: String,
     val subtopicId: String,
 )
-
-private suspend fun <K, V> MutableMap<K, V?>.getOrLoad(
-    key: K,
-    load: suspend () -> V?,
-): V? {
-    if (containsKey(key)) return this[key]
-    return load().also { this[key] = it }
-}
 
 private fun percentage(
     correctCount: Int,
@@ -246,11 +162,4 @@ private fun percentage(
         0.0
     } else {
         correctCount.toDouble() / answeredCount * 100.0
-    }
-
-private fun stableSortKey(area: WeakArea): String =
-    when (area) {
-        is WeakArea.Topic -> "topic:${area.performance.topicId}"
-        is WeakArea.Subtopic ->
-            "subtopic:${area.performance.topicId}:${area.performance.subtopicId}"
     }

@@ -1,5 +1,7 @@
 package org.artkachenko.kmp_learning_app.assessment
 
+import kotlinx.serialization.Serializable
+
 /**
  * Where targeted practice draws its eligible Questions from.
  *
@@ -11,7 +13,11 @@ package org.artkachenko.kmp_learning_app.assessment
  * from completed assessment history and are owned by E16-03, E16-04, and E16-05 respectively;
  * until then they are representable but produce an explicit no-content selection outcome instead
  * of quietly widening back to [ALL].
+ *
+ * Serializable because the Practice Builder's chosen source travels to assessment taking as a
+ * typed navigation argument.
  */
+@Serializable
 internal enum class PracticeQuestionSource {
     /** Every ACTIVE Question in the configured scope and levels. */
     ALL,

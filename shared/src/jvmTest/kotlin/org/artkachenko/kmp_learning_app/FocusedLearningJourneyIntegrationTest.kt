@@ -27,6 +27,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
+import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
@@ -56,6 +57,8 @@ import org.artkachenko.kmp_learning_app.progress.ProgressContentTag
 import org.artkachenko.kmp_learning_app.progress.progressTopicCardTag
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultPracticeAgainTag
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
+import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderStartButtonTag
+import org.artkachenko.kmp_learning_app.topic_study.practice_builder.practiceLevelTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.SubtopicPracticeButtonTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicPracticeButtonTag
 import org.koin.compose.KoinApplication
@@ -95,6 +98,17 @@ internal class FocusedLearningJourneyIntegrationTest {
             onNodeWithText("Core").assertIsDisplayed()
             onNodeWithTag(TopicPracticeButtonTag).assertIsDisplayed().performClick()
 
+            // The Practice Builder now stands between choosing a scope and taking an assessment.
+            // Narrowing to one level here is what the rest of this journey then has to preserve,
+            // through persistence, history, and the retake.
+            onNodeWithText("Topic: Android").assertIsDisplayed()
+            onNodeWithTag(practiceLevelTag(QuestionLevel.APPLIED)).performScrollTo().performClick()
+            onNodeWithTag(practiceLevelTag(QuestionLevel.ADVANCED)).performScrollTo().performClick()
+            waitUntil(timeoutMillis = 5_000) {
+                onAllNodesWithText("2 questions ready").fetchSemanticsNodes().isNotEmpty()
+            }
+            onNodeWithTag(PracticeBuilderStartButtonTag).performScrollTo().performClick()
+
             onNodeWithText("Single question").assertIsDisplayed()
             onNodeWithText("A").performClick()
             onNodeWithTag(AssessmentTakingSubmitTag).performClick()
@@ -110,9 +124,26 @@ internal class FocusedLearningJourneyIntegrationTest {
             onNodeWithText("Source: Single source").assertIsDisplayed()
             assertEquals(AssessmentStatus.COMPLETED, components.repository.getById("attempt-original")?.status)
             assertEquals(1, components.repository.getById("attempt-original")?.score?.correctAnswers)
+            // The configured run survives Room: history describes the practice the learner set up,
+            // not the all-levels default it would have collapsed to without the v6 columns.
+            assertEquals(
+                AssessmentConfig.Focused(
+                    scope = AssessmentScope.Topic("topic_android"),
+                    questionCount = 10,
+                    levels = setOf(QuestionLevel.FOUNDATION),
+                    source = PracticeQuestionSource.ALL,
+                ),
+                components.repository.getById("attempt-original")?.config,
+            )
 
             onNodeWithTag(FocusedResultPracticeAgainTag).performClick()
             onNodeWithText("Single question").assertIsDisplayed()
+            // Retake re-runs the reconstructed config, so it repeats the narrowed practice rather
+            // than widening back across the whole Topic.
+            assertEquals(
+                components.repository.getById("attempt-original")?.config,
+                components.repository.getById("attempt-retake")?.config,
+            )
             assertEquals(AssessmentStatus.IN_PROGRESS, components.repository.getById("attempt-retake")?.status)
             assertTrue(components.repository.getById("attempt-retake")?.questionAttempts?.all {
                 it.answerState == QuestionAnswerState.Unanswered
@@ -122,6 +153,10 @@ internal class FocusedLearningJourneyIntegrationTest {
             onNodeWithContentDescription("Back").performClick()
             onNodeWithText("Score: 1 / 2").assertIsDisplayed()
 
+            // Result, then the builder it was configured in, then the Topic: backing out of a run
+            // returns to the setup rather than skipping past it.
+            onNodeWithContentDescription("Back").performClick()
+            onNodeWithText("Topic: Android").assertIsDisplayed()
             onNodeWithContentDescription("Back").performClick()
             onNodeWithContentDescription("Back").performClick()
 
@@ -205,6 +240,13 @@ internal class FocusedLearningJourneyIntegrationTest {
             onNodeWithText("All-time accuracy").assertIsDisplayed()
             onNodeWithText("2 of 2 questions explored").assertIsDisplayed()
             onNodeWithTag(SubtopicPracticeButtonTag).performClick()
+            // A Subtopic action opens the builder already scoped to that Subtopic, and its
+            // untouched defaults are the run one-tap focused practice used to start.
+            onNodeWithText("Subtopic: Core").assertIsDisplayed()
+            waitUntil(timeoutMillis = 5_000) {
+                onAllNodesWithText("2 questions ready").fetchSemanticsNodes().isNotEmpty()
+            }
+            onNodeWithTag(PracticeBuilderStartButtonTag).performScrollTo().performClick()
             onNodeWithText("Single question").assertIsDisplayed()
             assertEquals(
                 AssessmentConfig.Focused(AssessmentScope.Subtopic("subtopic_core"), 10),

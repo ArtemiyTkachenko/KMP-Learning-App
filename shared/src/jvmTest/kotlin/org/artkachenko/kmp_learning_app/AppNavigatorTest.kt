@@ -7,6 +7,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
+import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 
 internal class AppNavigatorTest {
     /** Every value this saver produces is a String, which every host can store. */
@@ -133,14 +135,17 @@ internal class AppNavigatorTest {
             AppRoute.MistakeReview,
             AppRoute.Topic("t"),
             AppRoute.ProgressTopic("t"),
+            // Configuring practice has started nothing, so leaving it costs the learner nothing.
+            AppRoute.PracticeBuilderTopic("t"),
+            AppRoute.PracticeBuilderSubtopic("s"),
         ).forEach { assertTrue(it.showsAreaNavigation(), "$it should keep area navigation") }
 
         listOf(
             AppRoute.MixedInterview(20),
             AppRoute.MixedInterviewAttempt("a"),
             AppRoute.MixedInterviewResult("a"),
-            AppRoute.FocusedTopicPractice("t", 10),
-            AppRoute.FocusedSubtopicPractice("s", 10),
+            AppRoute.FocusedTopicPractice("t", 10, AllQuestionLevels.toList(), PracticeQuestionSource.ALL),
+            AppRoute.FocusedSubtopicPractice("s", 10, AllQuestionLevels.toList(), PracticeQuestionSource.ALL),
             AppRoute.FocusedPracticeAttempt("a"),
             AppRoute.FocusedPracticeResult("a"),
         ).forEach { assertFalse(it.showsAreaNavigation(), "$it should hide area navigation") }

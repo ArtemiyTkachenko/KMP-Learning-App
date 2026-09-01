@@ -14,7 +14,7 @@ import kotlinx.coroutines.test.runTest
 
 internal class CurriculumDatabaseMigrationTest {
     @Test
-    fun migrationFromOneToFivePreservesCurriculumAndHistoricalAssessmentRows() = runTest {
+    fun migrationFromOneToSixPreservesCurriculumAndHistoricalAssessmentRows() = runTest {
         val databasePath = Files.createTempDirectory("curriculum-migration-test")
             .resolve("curriculum.db")
         val helper = MigrationTestHelper(
@@ -101,8 +101,8 @@ internal class CurriculumDatabaseMigrationTest {
         }
 
         helper.runMigrationsAndValidate(
-            version = 5,
-            migrations = listOf(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5),
+            version = 6,
+            migrations = listOf(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6),
         ).use { connection ->
             connection.prepare("SELECT selection_mode, level FROM question WHERE id = 'question'").use { statement ->
                 assertTrue(statement.step())
@@ -394,6 +394,113 @@ internal class CurriculumDatabaseMigrationTest {
             connection.prepare("SELECT answer_id FROM question_attempt_selected_answer").use { statement ->
                 assertTrue(statement.step())
                 assertEquals("deprecated_b", statement.getText(0))
+            }
+            connection.prepare("PRAGMA foreign_key_check").use { statement ->
+                assertTrue(!statement.step())
+            }
+        }
+    }
+
+    /**
+     * The Practice Builder can narrow a run by level and source, so those two dimensions became
+     * part of the attempt record. Existing rows must survive the change without being given a
+     * selection they were never offered: a null column is what the mapper reads back as the
+     * historical all-levels ALL request.
+     */
+    @Test
+    fun migrationFromFiveToSixLeavesHistoricalAttemptsWithoutAPracticeSelection() = runTest {
+        val databasePath = Files.createTempDirectory("curriculum-migration-test")
+            .resolve("curriculum.db")
+        val helper = MigrationTestHelper(
+            schemaDirectoryPath = Path.of("schemas").toAbsolutePath(),
+            databasePath = databasePath,
+            driver = BundledSQLiteDriver(),
+            databaseClass = CurriculumDatabase::class,
+            databaseFactory = { CurriculumDatabaseConstructor.initialize() },
+        )
+
+        helper.createDatabase(version = 5).use { connection ->
+            connection.executeSQL("INSERT INTO topic (id, name, status, sort_order) VALUES ('topic', 'Topic', 'ACTIVE', 0)")
+            connection.executeSQL(
+                """
+                INSERT INTO subtopic (id, topic_id, name, status, sort_order)
+                VALUES ('subtopic', 'topic', 'Subtopic', 'ACTIVE', 0)
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO question (
+                    id, topic_id, subtopic_id, text, selection_mode, level, explanation, status, sort_order
+                ) VALUES ('question', 'topic', 'subtopic', 'Question?', 'SINGLE', 'ADVANCED', 'Explanation.', 'ACTIVE', 0)
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO answer_option (question_id, id, text, sort_order, status)
+                VALUES ('question', 'answer_a', 'Answer A', 0, 'ACTIVE')
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO test_attempt (
+                    id, config_type, requested_question_count, scope_type, scope_id, status,
+                    score_total_questions, score_correct_answers, started_at_epoch_millis,
+                    completed_at_epoch_millis
+                ) VALUES
+                    ('focused_attempt', 'FOCUSED', 10, 'TOPIC', 'topic', 'COMPLETED', 1, 1, 1000, 2000),
+                    ('mixed_attempt', 'MIXED', 20, NULL, NULL, 'COMPLETED', 1, 0, 3000, 4000)
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO question_attempt (test_attempt_id, question_id, sort_order, is_correct)
+                VALUES ('focused_attempt', 'question', 0, 1)
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO question_attempt_selected_answer (test_attempt_id, question_id, answer_id)
+                VALUES ('focused_attempt', 'question', 'answer_a')
+                """,
+            )
+        }
+
+        helper.runMigrationsAndValidate(
+            version = 6,
+            migrations = listOf(MIGRATION_5_6),
+        ).use { connection ->
+            connection.prepare(
+                """
+                SELECT id, practice_levels, practice_source, config_type, requested_question_count,
+                       scope_type, scope_id, status, score_correct_answers
+                FROM test_attempt ORDER BY id
+                """,
+            ).use { statement ->
+                assertTrue(statement.step())
+                assertEquals("focused_attempt", statement.getText(0))
+                assertTrue(statement.isNull(1))
+                assertTrue(statement.isNull(2))
+                assertEquals("FOCUSED", statement.getText(3))
+                assertEquals(10, statement.getLong(4).toInt())
+                assertEquals("TOPIC", statement.getText(5))
+                assertEquals("topic", statement.getText(6))
+                assertEquals("COMPLETED", statement.getText(7))
+                assertEquals(1, statement.getLong(8).toInt())
+
+                assertTrue(statement.step())
+                assertEquals("mixed_attempt", statement.getText(0))
+                assertTrue(statement.isNull(1))
+                assertTrue(statement.isNull(2))
+                assertEquals("MIXED", statement.getText(3))
+                assertEquals(20, statement.getLong(4).toInt())
+            }
+            connection.prepare("SELECT answer_id FROM question_attempt_selected_answer").use { statement ->
+                assertTrue(statement.step())
+                assertEquals("answer_a", statement.getText(0))
+            }
+            connection.prepare("SELECT level FROM question WHERE id = 'question'").use { statement ->
+                assertTrue(statement.step())
+                assertEquals("ADVANCED", statement.getText(0))
             }
             connection.prepare("PRAGMA foreign_key_check").use { statement ->
                 assertTrue(!statement.step())

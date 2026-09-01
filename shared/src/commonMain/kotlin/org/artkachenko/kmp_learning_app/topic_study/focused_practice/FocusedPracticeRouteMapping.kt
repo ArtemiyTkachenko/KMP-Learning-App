@@ -8,10 +8,14 @@ internal fun AppRoute.FocusedTopicPractice.toAssessmentConfig(): AssessmentConfi
     AssessmentConfig.Focused(
         scope = AssessmentScope.Topic(topicId),
         questionCount = questionCount,
+        levels = levels.toSet(),
+        source = source,
     )
 
 internal fun AppRoute.FocusedSubtopicPractice.toAssessmentConfig(): AssessmentConfig.Focused =
     AssessmentConfig.Focused(
         scope = AssessmentScope.Subtopic(subtopicId),
         questionCount = questionCount,
+        levels = levels.toSet(),
+        source = source,
     )

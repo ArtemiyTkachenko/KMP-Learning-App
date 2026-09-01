@@ -124,3 +124,21 @@ internal val MIGRATION_4_5 = Migration(
         "ALTER TABLE `question` ADD COLUMN `level` TEXT NOT NULL DEFAULT 'FOUNDATION'",
     )
 }
+
+/**
+ * Records which levels and which question source an attempt was practised with.
+ *
+ * Both columns are nullable and default to NULL, which is what makes this a pure add: every
+ * existing row keeps the only selection it could have had. A FOCUSED row with NULL means the
+ * all-levels ALL request that targeted practice did not yet exist to narrow, and a MIXED row has
+ * no level or source dimension at all, so it keeps writing NULL from here on. Backfilling the
+ * FOCUSED rows with literal level names would have claimed the learner chose something they were
+ * never offered.
+ */
+internal val MIGRATION_5_6 = Migration(
+    startVersion = 5,
+    endVersion = 6,
+) { connection ->
+    connection.executeSQL("ALTER TABLE `test_attempt` ADD COLUMN `practice_levels` TEXT")
+    connection.executeSQL("ALTER TABLE `test_attempt` ADD COLUMN `practice_source` TEXT")
+}

@@ -15,6 +15,7 @@ import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultView
 import org.artkachenko.kmp_learning_app.progress.ProgressTopicViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressViewModel
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
+import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
 import org.koin.core.module.dsl.viewModel
@@ -100,6 +101,15 @@ internal val topicStudyPresentationModule = module {
             curriculumRepository = get(),
             learningProgressService = get(),
             historyStore = get(),
+        )
+    }
+    viewModel { parameters ->
+        // The selection boundary, not the engine: the builder reads eligibility before starting
+        // practice and must never create an attempt to find out whether one is possible.
+        PracticeBuilderViewModel(
+            scope = parameters.get(),
+            curriculumRepository = get(),
+            questionSelector = get(),
         )
     }
     viewModel { parameters ->

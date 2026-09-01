@@ -6,7 +6,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistory
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
@@ -48,24 +47,24 @@ internal class TopicDetailViewModel(
         loadTopic()
     }
 
-    fun topicPracticeConfig(): AssessmentConfig.Focused? =
+    /**
+     * The scope a practice action configures, or null when this screen has nothing to practise.
+     *
+     * These used to return a whole `AssessmentConfig.Focused` built from a fixed question count,
+     * because practice started immediately. The Practice Builder owns the count, levels, and
+     * source now, so this screen contributes only the stable scope it is showing — and still
+     * refuses to hand out a Subtopic it does not list.
+     */
+    fun topicPracticeScope(): AssessmentScope? =
         (uiState.value as? TopicDetailUiState.Content)?.let { state ->
-            AssessmentConfig.Focused(
-                scope = AssessmentScope.Topic(state.topic.id),
-                questionCount = FocusedPracticeQuestionCount,
-            )
+            AssessmentScope.Topic(state.topic.id)
         }
 
-    fun subtopicPracticeConfig(subtopicId: String): AssessmentConfig.Focused? =
+    fun subtopicPracticeScope(subtopicId: String): AssessmentScope? =
         (uiState.value as? TopicDetailUiState.Content)
             ?.subtopics
             ?.firstOrNull { it.subtopic.id == subtopicId }
-            ?.let { item ->
-                AssessmentConfig.Focused(
-                    scope = AssessmentScope.Subtopic(item.subtopic.id),
-                    questionCount = FocusedPracticeQuestionCount,
-                )
-            }
+            ?.let { item -> AssessmentScope.Subtopic(item.subtopic.id) }
 
     /**
      * Follows the app-scoped history cache rather than reading completed attempts again, so

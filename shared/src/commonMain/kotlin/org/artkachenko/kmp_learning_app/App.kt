@@ -27,8 +27,11 @@ import org.artkachenko.kmp_learning_app.progress.ProgressTopicDestination
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.FocusedPracticeDestination
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.toAssessmentConfig
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultDestination
+import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderDestination
+import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toAssessmentScope
+import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toPracticeBuilderRoute
+import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toPracticeRoute
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailDestination
-import org.artkachenko.kmp_learning_app.topic_study.topic_detail.toAppRoute
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserDestination
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 import org.koin.compose.viewmodel.koinViewModel
@@ -198,8 +201,28 @@ private fun AppShell(
                         onBack = {
                             popBack()
                         },
-                        onStartFocusedPractice = { config ->
-                            navigator.push(config.toAppRoute())
+                        // Practice is configured before it starts, so a Topic or Subtopic action
+                        // opens the builder already scoped to it rather than launching a run.
+                        onConfigurePractice = { scope ->
+                            navigator.push(scope.toPracticeBuilderRoute())
+                        },
+                    )
+                }
+                entry<AppRoute.PracticeBuilderTopic> { route ->
+                    PracticeBuilderDestination(
+                        scope = route.toAssessmentScope(),
+                        onBack = { popBack() },
+                        onStartPractice = { config ->
+                            navigator.push(config.toPracticeRoute())
+                        },
+                    )
+                }
+                entry<AppRoute.PracticeBuilderSubtopic> { route ->
+                    PracticeBuilderDestination(
+                        scope = route.toAssessmentScope(),
+                        onBack = { popBack() },
+                        onStartPractice = { config ->
+                            navigator.push(config.toPracticeRoute())
                         },
                     )
                 }

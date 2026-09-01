@@ -82,10 +82,10 @@ The exact authored values are:
 Use Foundation, Applied, and Advanced in prose. Do not create alternate stored
 values or treat this dimension as a generic difficulty score.
 
-> **Current-bank transition:** E15-02 mechanically bootstrapped every bundled
-> question to `FOUNDATION` so the required schema remains decodable. Those values
-> are provisional legacy metadata, not reviewed classifications. E15-03 owns the
-> deliberate question-by-question classification under this rubric.
+> **Current-bank audit:** E15-03 deliberately classified all 399 bundled
+> questions under this rubric, including active and deprecated content. The
+> resulting distributions and boundary decisions are recorded in the
+> [E15-03 classification report](question-level-classification-report.md).
 
 ### Comparison
 

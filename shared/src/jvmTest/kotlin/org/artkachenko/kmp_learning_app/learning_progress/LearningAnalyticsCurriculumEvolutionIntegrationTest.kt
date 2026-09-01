@@ -23,6 +23,7 @@ import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
 import org.artkachenko.kmp_learning_app.curriculum.Question
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
@@ -588,6 +589,7 @@ private fun evolutionQuestion(
         AnswerOption(wrongAnswerId(id), "Authored distractor for $id"),
     ),
     selectionMode = AnswerSelectionMode.SINGLE,
+    level = QuestionLevel.FOUNDATION,
     correctAnswerIds = listOf(correctAnswer),
     explanation = "Why $id answers the way it does.",
     sources = listOf(SourceReference("Documentation for $id", "https://example.com/$id")),

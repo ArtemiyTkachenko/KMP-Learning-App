@@ -18,6 +18,7 @@ import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
@@ -85,7 +86,7 @@ internal class AssessmentSessionLoaderTest {
     private fun fourAnswerQuestion(id: String) = Question(
         id, "topic", "subtopic", "Question",
         listOf(AnswerOption("a", "A"), AnswerOption("b", "B"), AnswerOption("c", "C"), AnswerOption("d", "D")),
-        AnswerSelectionMode.SINGLE, listOf("a"),
+        AnswerSelectionMode.SINGLE, QuestionLevel.FOUNDATION, listOf("a"),
         "Explanation", listOf(SourceReference("Source", "url")), ContentStatus.ACTIVE,
     )
 
@@ -109,7 +110,7 @@ internal class AssessmentSessionLoaderTest {
     )
 
     private fun question(id: String, status: ContentStatus = ContentStatus.ACTIVE) = Question(
-        id, "topic", "subtopic", "Question", listOf(AnswerOption("a", "A")), AnswerSelectionMode.SINGLE, listOf("a"),
+        id, "topic", "subtopic", "Question", listOf(AnswerOption("a", "A")), AnswerSelectionMode.SINGLE, QuestionLevel.FOUNDATION, listOf("a"),
         "Explanation", listOf(SourceReference("Source", "url")), status,
     )
 

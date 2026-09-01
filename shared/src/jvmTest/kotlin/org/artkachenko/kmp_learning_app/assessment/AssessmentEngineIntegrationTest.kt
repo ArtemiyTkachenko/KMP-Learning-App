@@ -21,6 +21,7 @@ import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
 import org.artkachenko.kmp_learning_app.curriculum.Question
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
@@ -420,6 +421,7 @@ internal class AssessmentEngineIntegrationTest {
                 AnswerOption(SingleAnswerC, "C"),
             ),
             selectionMode = AnswerSelectionMode.SINGLE,
+            level = QuestionLevel.FOUNDATION,
             correctAnswerIds = listOf(SingleAnswerA),
             explanation = "A is the correct answer.",
             sources = listOf(
@@ -440,6 +442,7 @@ internal class AssessmentEngineIntegrationTest {
                 AnswerOption(MultiAnswerC, "C"),
             ),
             selectionMode = AnswerSelectionMode.MULTIPLE,
+            level = QuestionLevel.FOUNDATION,
             correctAnswerIds = listOf(MultiAnswerA, MultiAnswerC),
             explanation = "A and C are correct.",
             sources = listOf(

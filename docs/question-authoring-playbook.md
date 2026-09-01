@@ -161,7 +161,9 @@ a character target.
 The authoritative definitions and boundary rules live in the
 [Question Interview Level](content-authoring.md#question-interview-level)
 section of the content-authoring contract. This section is the working method
-for applying that contract. It does not add a field to the current JSON model.
+for applying that contract. The finished question must author the resulting
+required `level` value in JSON; the one-sentence review justification remains
+reporting-only and is not stored in production curriculum.
 
 Classify the finished question after its stem, correct answer, and plausible
 distractors are stable, and before the final anti-cue review. The real options

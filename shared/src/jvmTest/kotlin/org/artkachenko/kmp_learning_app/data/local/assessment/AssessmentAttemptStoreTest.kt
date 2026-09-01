@@ -385,6 +385,7 @@ internal class AssessmentAttemptStoreTest {
             subtopicId = "subtopic",
             text = "$id?",
             selectionMode = "SINGLE",
+            level = "FOUNDATION",
             explanation = "$id explanation.",
             status = status,
             sortOrder = sortOrder,

@@ -3,6 +3,7 @@ package org.artkachenko.kmp_learning_app.curriculum.content
 import kotlinx.coroutines.test.runTest
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.validation.CurriculumValidator
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -26,6 +27,16 @@ internal class InitialCurriculumSmokeTest {
         )
         assertEquals(353, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.SINGLE })
         assertEquals(46, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.MULTIPLE })
+    }
+
+    @Test
+    fun bundledQuestionsHaveTheE1502ProvisionalFoundationLevel() = runTest {
+        val initialCurriculum = BundledCurriculumSource.load()
+
+        assertEquals(
+            initialCurriculum.questions.size,
+            initialCurriculum.questions.count { it.level == QuestionLevel.FOUNDATION },
+        )
     }
 
     @Test

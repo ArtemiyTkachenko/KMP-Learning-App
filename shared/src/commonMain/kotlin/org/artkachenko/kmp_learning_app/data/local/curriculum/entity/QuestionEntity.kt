@@ -38,6 +38,7 @@ internal data class QuestionEntity(
     val text: String,
     @ColumnInfo(name = "selection_mode")
     val selectionMode: String,
+    val level: String,
     val explanation: String,
     val status: String,
     @ColumnInfo(name = "sort_order")

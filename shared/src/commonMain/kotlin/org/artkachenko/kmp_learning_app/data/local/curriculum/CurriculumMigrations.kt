@@ -111,3 +111,16 @@ internal val MIGRATION_3_4 = Migration(
         """,
     )
 }
+
+/**
+ * Gives v4 questions a deterministic legacy level when no authored value exists.
+ * Current bundled content subsequently overwrites this value during normal import.
+ */
+internal val MIGRATION_4_5 = Migration(
+    startVersion = 4,
+    endVersion = 5,
+) { connection ->
+    connection.executeSQL(
+        "ALTER TABLE `question` ADD COLUMN `level` TEXT NOT NULL DEFAULT 'FOUNDATION'",
+    )
+}

@@ -6,6 +6,7 @@ import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
@@ -66,6 +67,20 @@ internal class AssessmentQuestionSelectorTest {
 
         assertEquals(listOf("all"), repository.calls)
         assertEquals(listOf("android_question", "kotlin_question"), selected.map { it.id })
+    }
+
+    @Test
+    fun questionLevelMetadataDoesNotChangeExistingSelection() = runSelectorTest {
+        repository.activeQuestions = listOf(
+            question("foundation").copy(level = QuestionLevel.FOUNDATION),
+            question("applied").copy(level = QuestionLevel.APPLIED),
+            question("advanced").copy(level = QuestionLevel.ADVANCED),
+        )
+
+        val selected = selector().select(AssessmentConfig.Mixed(questionCount = 3))
+
+        assertEquals(listOf("foundation", "applied", "advanced"), selected.map { it.id })
+        assertEquals(QuestionLevel.entries, selected.map { it.level })
     }
 
     @Test
@@ -306,6 +321,7 @@ internal class AssessmentQuestionSelectorTest {
                 AnswerOption("${id}_answer_b", "Answer B"),
             ),
             selectionMode = AnswerSelectionMode.SINGLE,
+            level = QuestionLevel.FOUNDATION,
             correctAnswerIds = listOf("${id}_answer_a"),
             explanation = "$id explanation.",
             sources = listOf(

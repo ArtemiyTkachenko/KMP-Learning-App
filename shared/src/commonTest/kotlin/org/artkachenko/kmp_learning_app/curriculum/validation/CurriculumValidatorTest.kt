@@ -5,6 +5,7 @@ import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
 import org.artkachenko.kmp_learning_app.curriculum.Question
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
@@ -18,6 +19,18 @@ internal class CurriculumValidatorTest {
     @Test
     fun validCurriculumHasNoErrors() {
         assertTrue(validator.validate(validCurriculum()).isEmpty())
+    }
+
+    @Test
+    fun allSupportedQuestionLevelsAreValid() {
+        QuestionLevel.entries.forEach { level ->
+            assertTrue(
+                validator.validate(
+                    validCurriculum(questions = listOf(question().copy(level = level))),
+                ).isEmpty(),
+                "Expected $level to pass curriculum validation.",
+            )
+        }
     }
 
     @Test
@@ -421,6 +434,7 @@ internal class CurriculumValidatorTest {
         text = text,
         answers = answers,
         selectionMode = selectionMode,
+        level = QuestionLevel.FOUNDATION,
         correctAnswerIds = correctAnswerIds,
         explanation = explanation,
         sources = sources,

@@ -17,6 +17,7 @@ import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
 import org.artkachenko.kmp_learning_app.curriculum.Question
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
@@ -54,6 +55,87 @@ internal class CurriculumImporterTest {
 
             assertPersistedQuestionMatches(singleAnswerQuestion, dao)
             assertPersistedQuestionMatches(multipleAnswerQuestion, dao)
+        }
+    }
+
+    @Test
+    fun importPersistsAndReconstructsEveryAuthoredLevelIncludingDeprecatedQuestions() = runTest {
+        withTestDatabase { database ->
+            val curriculum = curriculumOf(
+                graph("foundation").withQuestionLevel(QuestionLevel.FOUNDATION),
+                graph("applied").withQuestionLevel(QuestionLevel.APPLIED),
+                graph("advanced").withQuestionLevel(QuestionLevel.ADVANCED),
+                graph("deprecated", status = ContentStatus.DEPRECATED)
+                    .withQuestionLevel(QuestionLevel.APPLIED),
+            )
+
+            assertEquals(
+                CurriculumImportResult.Imported,
+                CurriculumImporter(database, loadCurriculum = { curriculum }).importCurriculum(),
+            )
+
+            val dao = database.curriculumDao()
+            assertEquals("FOUNDATION", dao.getQuestionById("foundation_question")?.level)
+            assertEquals("APPLIED", dao.getQuestionById("applied_question")?.level)
+            assertEquals("ADVANCED", dao.getQuestionById("advanced_question")?.level)
+            assertEquals("APPLIED", dao.getQuestionById("deprecated_question")?.level)
+
+            val repository = LocalCurriculumRepository(database)
+            assertEquals(
+                listOf(QuestionLevel.FOUNDATION, QuestionLevel.APPLIED, QuestionLevel.ADVANCED),
+                repository.getActiveQuestions().map { it.level },
+            )
+            assertEquals(
+                QuestionLevel.APPLIED,
+                repository.getQuestionById("deprecated_question")?.level,
+            )
+        }
+    }
+
+    @Test
+    fun reimportUpdatesLevelWithoutChangingQuestionIdentityOrCreatingDuplicates() = runTest {
+        withTestDatabase { database ->
+            val foundation = curriculumOf(
+                graph("stable").withQuestionLevel(QuestionLevel.FOUNDATION),
+            )
+            val advanced = curriculumOf(
+                graph("stable").withQuestionLevel(QuestionLevel.ADVANCED),
+            )
+
+            assertEquals(
+                CurriculumImportResult.Imported,
+                CurriculumImporter(database, loadCurriculum = { foundation }).importCurriculum(),
+            )
+            val historicalAttempt = TestAttempt(
+                id = "level_reimport_attempt",
+                config = AssessmentConfig.Focused(AssessmentScope.Topic("stable"), 1),
+                questionAttempts = listOf(
+                    QuestionAttempt(
+                        questionId = "stable_question",
+                        answerState = QuestionAnswerState.Answered(
+                            selectedAnswerIds = setOf("stable_answer_a"),
+                            isCorrect = true,
+                        ),
+                    ),
+                ),
+                status = AssessmentStatus.COMPLETED,
+                startedAt = Instant.fromEpochMilliseconds(1),
+                completedAt = Instant.fromEpochMilliseconds(2),
+                score = AssessmentScore(totalQuestions = 1, correctAnswers = 1),
+            )
+            val attemptStore = AssessmentAttemptStore(database)
+            attemptStore.save(historicalAttempt)
+            assertEquals(
+                CurriculumImportResult.Imported,
+                CurriculumImporter(database, loadCurriculum = { advanced }).importCurriculum(),
+            )
+
+            assertEquals(1, database.curriculumDao().countQuestions())
+            assertEquals(
+                QuestionLevel.ADVANCED,
+                LocalCurriculumRepository(database).getQuestionById("stable_question")?.level,
+            )
+            assertEquals(historicalAttempt, attemptStore.getById("level_reimport_attempt"))
         }
     }
 
@@ -641,6 +723,7 @@ internal class CurriculumImporterTest {
     ) {
         assertEquals(question.text, dao.getQuestionById(question.id)?.text)
         assertEquals(question.selectionMode.name, dao.getQuestionById(question.id)?.selectionMode)
+        assertEquals(question.level.name, dao.getQuestionById(question.id)?.level)
         assertEquals(question.status.name, dao.getQuestionById(question.id)?.status)
         assertEquals(question.answers.map { it.id }, dao.getAnswerOptionsForQuestion(question.id).map { it.id })
         assertEquals(question.correctAnswerIds.sorted(), dao.getCorrectAnswerIdsForQuestion(question.id))
@@ -714,6 +797,7 @@ internal class CurriculumImporterTest {
                 text = questionText,
                 answers = answers,
                 selectionMode = selectionMode,
+                level = QuestionLevel.FOUNDATION,
                 correctAnswerIds = correctAnswerIds,
                 explanation = explanation,
                 sources = sources,
@@ -726,6 +810,9 @@ internal class CurriculumImporterTest {
         val subtopic: Subtopic,
         val question: Question,
     )
+
+    private fun CurriculumGraph.withQuestionLevel(level: QuestionLevel): CurriculumGraph =
+        copy(question = question.copy(level = level))
 
     private data class RowCounts(
         val topics: Int,

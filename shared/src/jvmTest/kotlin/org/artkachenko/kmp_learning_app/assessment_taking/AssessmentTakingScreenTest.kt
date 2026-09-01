@@ -15,6 +15,7 @@ import kotlin.test.assertEquals
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.Question
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 
 @OptIn(ExperimentalTestApi::class)
@@ -75,6 +76,7 @@ internal class AssessmentTakingScreenTest {
                 AnswerOption("answer_b", "Answer B"),
             ),
             selectionMode = AnswerSelectionMode.MULTIPLE,
+            level = QuestionLevel.FOUNDATION,
             correctAnswerIds = listOf("answer_a"),
             explanation = "Answer A is correct.",
             sources = listOf(SourceReference("Source", "https://example.com")),

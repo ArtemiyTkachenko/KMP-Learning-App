@@ -165,7 +165,7 @@ internal class AssessmentEngineTest {
     }
 
     @Test
-    fun practiceWithAnUnsupportedSourceCreatesNoAttempt() = runEngineTest {
+    fun practiceWithAnEmptyHistoryDerivedSourceCreatesNoAttempt() = runEngineTest {
         repository.topicQuestions = mapOf("android_ui" to listOf(question("question_a")))
         val engine = engine()
 

@@ -47,8 +47,8 @@ internal enum class PracticeScopeKind {
  * whose policy has not been implemented yet cannot be chosen at all. Whether an available source
  * happens to have Questions right now is [PracticeAvailability], which is a separate answer — an
  * unseen source stays selectable after the learner has seen everything in scope, and reports no
- * content. E16-05 turns the remaining Mistakes source available by implementing its policy, with no
- * change to this screen.
+ * content. All current sources have policies; keeping this distinction lets future source values be
+ * represented before implementation without conflating that state with an empty eligible pool.
  */
 internal data class PracticeSourceOption(
     val source: PracticeQuestionSource,

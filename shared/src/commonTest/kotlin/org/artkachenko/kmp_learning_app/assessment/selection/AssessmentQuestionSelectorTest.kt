@@ -24,7 +24,6 @@ import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlin.time.Instant
@@ -796,8 +795,229 @@ internal class AssessmentQuestionSelectorTest {
     }
 
     @Test
-    fun unresolvedMistakesSourceIsNotSelectableYetAndDoesNotFallBackToAll() = runSelectorTest {
-        assertSourceIsNotSupportedYet(PracticeQuestionSource.UNRESOLVED_MISTAKES)
+    fun unresolvedMistakesSelectsOnlyQuestionsWhoseLatestOccurrenceIsIncorrect() = runSelectorTest {
+        repository.topicQuestions = mapOf(
+            "android_ui" to questions("q1", "q2"),
+        )
+        history.attempts = listOf(completedAttemptWithOutcomes("latest", "q1" to false, "q2" to true))
+
+        val selector = selector()
+        val selected = selector.selectQuestions(mistakePractice(questionCount = 10))
+
+        assertTrue(selector.isSourceSupported(PracticeQuestionSource.UNRESOLVED_MISTAKES))
+        assertEquals(listOf("q1"), selected.map { it.id })
+    }
+
+    @Test
+    fun aLaterCorrectOccurrenceRemovesMistakePracticeEligibility() = runSelectorTest {
+        repository.topicQuestions = mapOf("android_ui" to questions("q1"))
+        history.attempts = listOf(
+            completedAttemptWithOutcomes("newest", "q1" to true),
+            completedAttemptWithOutcomes("oldest", "q1" to false),
+        )
+
+        val result = selector().select(mistakePractice(questionCount = 10))
+
+        assertEquals(AssessmentSelectionResult.NoContent.NoEligibleQuestions, result)
+    }
+
+    @Test
+    fun incorrectCorrectIncorrectLifecycleClosesAndReopensEligibility() = runSelectorTest {
+        repository.topicQuestions = mapOf("android_ui" to questions("q1"))
+        val selector = selector()
+        val oldestIncorrect = completedAttemptWithOutcomes("oldest", "q1" to false)
+
+        history.attempts = listOf(oldestIncorrect)
+        assertEquals(listOf("q1"), selector.selectQuestions(mistakePractice(10)).map { it.id })
+
+        val laterCorrect = completedAttemptWithOutcomes("correct", "q1" to true)
+        history.attempts = listOf(laterCorrect, oldestIncorrect)
+        assertEquals(
+            AssessmentSelectionResult.NoContent.NoEligibleQuestions,
+            selector.select(mistakePractice(10)),
+        )
+
+        val latestIncorrect = completedAttemptWithOutcomes("reopened", "q1" to false)
+        history.attempts = listOf(latestIncorrect, laterCorrect, oldestIncorrect)
+        assertEquals(listOf("q1"), selector.selectQuestions(mistakePractice(10)).map { it.id })
+    }
+
+    @Test
+    fun mistakePracticeRespectsConfiguredTopicScope() = runSelectorTest {
+        repository.topicQuestions = mapOf(
+            "topic_a" to listOf(question("q1", topicId = "topic_a")),
+            "topic_b" to listOf(question("q2", topicId = "topic_b")),
+        )
+        history.attempts = listOf(completedAttemptWithOutcomes("latest", "q1" to false, "q2" to false))
+
+        val selected = selector().selectQuestions(
+            mistakePractice(10, scope = AssessmentScope.Topic("topic_a")),
+        )
+
+        assertEquals(listOf("q1"), selected.map { it.id })
+        assertEquals(listOf("topic:topic_a levels:FOUNDATION,APPLIED,ADVANCED"), repository.calls)
+    }
+
+    @Test
+    fun mistakePracticeRespectsConfiguredSubtopicScope() = runSelectorTest {
+        repository.subtopicQuestions = mapOf(
+            "sub_a" to listOf(question("q1", topicId = "topic_a", subtopicId = "sub_a")),
+            "sub_b" to listOf(question("q2", topicId = "topic_a", subtopicId = "sub_b")),
+        )
+        history.attempts = listOf(completedAttemptWithOutcomes("latest", "q1" to false, "q2" to false))
+
+        val selected = selector().selectQuestions(
+            mistakePractice(10, scope = AssessmentScope.Subtopic("sub_a")),
+        )
+
+        assertEquals(listOf("q1"), selected.map { it.id })
+        assertEquals(listOf("subtopic:sub_a levels:FOUNDATION,APPLIED,ADVANCED"), repository.calls)
+    }
+
+    @Test
+    fun mistakePracticeRespectsSelectedLevelsWithoutWidening() = runSelectorTest {
+        repository.topicQuestions = mapOf(
+            "android_ui" to listOf(
+                question("foundation").copy(level = QuestionLevel.FOUNDATION),
+                question("applied").copy(level = QuestionLevel.APPLIED),
+                question("advanced").copy(level = QuestionLevel.ADVANCED),
+            ),
+        )
+        history.attempts = listOf(
+            completedAttemptWithOutcomes(
+                "latest",
+                "foundation" to false,
+                "applied" to false,
+                "advanced" to false,
+            ),
+        )
+
+        val selected = selector().selectQuestions(
+            mistakePractice(10, levels = setOf(QuestionLevel.ADVANCED)),
+        )
+
+        assertEquals(listOf("advanced"), selected.map { it.id })
+        assertEquals(listOf("topic:android_ui levels:ADVANCED"), repository.calls)
+    }
+
+    @Test
+    fun missingAndDeprecatedMistakesAreSkippedWhileValidCurrentContentStillSelects() = runSelectorTest {
+        repository.topicQuestions = mapOf(
+            "android_ui" to listOf(
+                question("q1"),
+                question("retired").copy(status = ContentStatus.DEPRECATED),
+            ),
+        )
+        history.attempts = listOf(
+            completedAttemptWithOutcomes(
+                "latest",
+                "gone" to false,
+                "retired" to false,
+                "q1" to false,
+            ),
+        )
+
+        val selected = selector().selectQuestions(mistakePractice(10))
+
+        assertEquals(listOf("q1"), selected.map { it.id })
+    }
+
+    @Test
+    fun missingMistakeContentAloneReportsNoEligibleQuestions() = runSelectorTest {
+        repository.topicQuestions = mapOf("android_ui" to questions("q1"))
+        history.attempts = listOf(completedAttemptWithOutcomes("latest", "gone" to false))
+
+        val result = selector().select(mistakePractice(10))
+
+        assertEquals(AssessmentSelectionResult.NoContent.NoEligibleQuestions, result)
+    }
+
+    @Test
+    fun allLatestCorrectOccurrencesReportNoEligibleMistakes() = runSelectorTest {
+        repository.topicQuestions = mapOf("android_ui" to questions("q1", "q2"))
+        history.attempts = listOf(completedAttemptWithOutcomes("latest", "q1" to true, "q2" to true))
+
+        assertEquals(
+            AssessmentSelectionResult.NoContent.NoEligibleQuestions,
+            selector().select(mistakePractice(10)),
+        )
+    }
+
+    @Test
+    fun emptyHistoryReportsNoEligibleMistakes() = runSelectorTest {
+        repository.topicQuestions = mapOf("android_ui" to questions("q1", "q2"))
+
+        assertEquals(
+            AssessmentSelectionResult.NoContent.NoEligibleQuestions,
+            selector().select(mistakePractice(10)),
+        )
+    }
+
+    @Test
+    fun inProgressAnswersNeitherCreateNorResolveMistakeEligibility() = runSelectorTest {
+        repository.topicQuestions = mapOf("android_ui" to questions("q1", "q2"))
+        history.attempts = listOf(
+            inProgressAttemptWithOutcomes("q1" to true, "q2" to false),
+            completedAttemptWithOutcomes("completed", "q1" to false),
+        )
+
+        val selected = selector().selectQuestions(mistakePractice(10))
+
+        assertEquals(listOf("q1"), selected.map { it.id })
+    }
+
+    @Test
+    fun mistakePracticeRandomizesBeforeTakingAndReturnsAnUndersizedPool() = runSelectorTest {
+        repository.topicQuestions = mapOf(
+            "android_ui" to questions("q1", "q2", "q3", "q4", "q5"),
+        )
+        history.attempts = listOf(
+            completedAttemptWithOutcomes(
+                "latest",
+                "q1" to false,
+                "q2" to false,
+                "q3" to false,
+                "q4" to false,
+                "q5" to false,
+            ),
+        )
+        val selector = selector(randomize = { it.reversed() })
+
+        val limited = selector.selectQuestions(mistakePractice(2))
+        val oversized = selector.selectQuestions(mistakePractice(10))
+
+        assertEquals(listOf("q5", "q4"), limited.map { it.id })
+        assertEquals(listOf("q5", "q4", "q3", "q2", "q1"), oversized.map { it.id })
+    }
+
+    @Test
+    fun repeatedHistoryAndDuplicateCandidatesStillSelectOneStableQuestionId() = runSelectorTest {
+        repository.topicQuestions = mapOf(
+            "android_ui" to listOf(
+                question("q1", text = "First copy"),
+                question("q1", text = "Duplicate copy"),
+            ),
+        )
+        history.attempts = listOf(
+            completedAttemptWithOutcomes("newest", "q1" to false),
+            completedAttemptWithOutcomes("oldest", "q1" to false),
+        )
+
+        val selected = selector().selectQuestions(mistakePractice(10))
+
+        assertEquals(listOf("q1"), selected.map { it.id })
+        assertEquals("First copy?", selected.single().text)
+        assertUniqueQuestionIds(selected)
+    }
+
+    @Test
+    fun mistakeHistoryFailurePropagatesInsteadOfBecomingAnEmptyMistakeSet() = runSelectorTest {
+        history.failure = IllegalStateException("History unavailable")
+
+        val result = runCatching { selector().select(mistakePractice(10)) }
+
+        assertTrue(result.isFailure)
+        assertEquals(emptyList(), repository.calls)
     }
 
     @Test
@@ -1030,29 +1250,6 @@ internal class AssessmentQuestionSelectorTest {
         return result.questions
     }
 
-    private suspend fun SelectorTestScope.assertSourceIsNotSupportedYet(
-        source: PracticeQuestionSource,
-    ) {
-        repository.topicQuestions = mapOf(
-            "android_ui" to listOf(question("ui_question_a"), question("ui_question_b")),
-        )
-
-        val result = selector().select(
-            AssessmentConfig.Focused(
-                scope = AssessmentScope.Topic("android_ui"),
-                questionCount = 2,
-                levels = AllQuestionLevels,
-                source = source,
-            ),
-        )
-
-        assertEquals(AssessmentSelectionResult.NoContent.SourceNotSupported, result)
-        assertFalse(selector().isSourceSupported(source))
-        // No curriculum or history read at all: an unimplemented source must not quietly become ALL.
-        assertEquals(emptyList(), repository.calls)
-        assertEquals(0, history.reads)
-    }
-
     private fun unseenPractice(
         questionCount: Int,
         levels: Set<QuestionLevel> = AllQuestionLevels,
@@ -1074,6 +1271,18 @@ internal class AssessmentQuestionSelectorTest {
             questionCount = questionCount,
             levels = levels,
             source = PracticeQuestionSource.WEAK_AREAS,
+        )
+
+    private fun mistakePractice(
+        questionCount: Int,
+        scope: AssessmentScope = AssessmentScope.Topic("android_ui"),
+        levels: Set<QuestionLevel> = AllQuestionLevels,
+    ): AssessmentConfig.Focused =
+        AssessmentConfig.Focused(
+            scope = scope,
+            questionCount = questionCount,
+            levels = levels,
+            source = PracticeQuestionSource.UNRESOLVED_MISTAKES,
         )
 
     private fun completedAttempt(
@@ -1131,6 +1340,25 @@ internal class AssessmentQuestionSelectorTest {
             id = "in_progress_${questionIds.joinToString("_")}",
             config = AssessmentConfig.Mixed(questionCount = questionIds.size),
             questionAttempts = questionIds.map { QuestionAttempt(questionId = it) },
+            status = AssessmentStatus.IN_PROGRESS,
+            startedAt = Instant.fromEpochSeconds(0),
+        )
+
+    private fun inProgressAttemptWithOutcomes(
+        vararg outcomes: Pair<String, Boolean>,
+    ): TestAttempt =
+        TestAttempt(
+            id = "in_progress_${outcomes.joinToString("_") { it.first }}",
+            config = AssessmentConfig.Mixed(questionCount = outcomes.size),
+            questionAttempts = outcomes.map { (questionId, isCorrect) ->
+                QuestionAttempt(
+                    questionId = questionId,
+                    answerState = QuestionAnswerState.Answered(
+                        selectedAnswerIds = setOf("${questionId}_answer_a"),
+                        isCorrect = isCorrect,
+                    ),
+                )
+            },
             status = AssessmentStatus.IN_PROGRESS,
             startedAt = Instant.fromEpochSeconds(0),
         )

@@ -65,21 +65,19 @@ internal class PracticeBuilderScreenTest {
     }
 
     @Test
-    fun onlyUnresolvedMistakesIsShownAsUnavailable() = runComposeUiTest {
+    fun everyPracticeSourceIsEnabledIncludingMistakes() = runComposeUiTest {
         val chosen = mutableListOf<PracticeQuestionSource>()
         setContentWith(state(), onSourceClick = { chosen += it })
 
-        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.WEAK_AREAS)).assertIsEnabled()
-        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.UNRESOLVED_MISTAKES))
-            .assertIsNotEnabled()
-        // Named, so the learner can see what targeted practice will offer.
-        onNodeWithText("Weak areas").assertIsDisplayed()
+        PracticeQuestionSource.entries.forEach { source ->
+            onNodeWithTag(practiceSourceTag(source)).assertIsEnabled()
+        }
         onNodeWithText("Mistakes").assertIsDisplayed()
-        onNodeWithText("Dimmed sources are not available yet.").assertIsDisplayed()
+        onNodeWithText("Dimmed sources are not available yet.").assertDoesNotExist()
 
         onNodeWithTag(practiceSourceTag(PracticeQuestionSource.UNRESOLVED_MISTAKES)).performClick()
 
-        assertEquals(emptyList(), chosen)
+        assertEquals(listOf(PracticeQuestionSource.UNRESOLVED_MISTAKES), chosen)
     }
 
     @Test
@@ -205,12 +203,7 @@ internal class PracticeBuilderScreenTest {
             levels = levels,
             source = source,
             sourceOptions = PracticeQuestionSource.entries.map { option ->
-                PracticeSourceOption(
-                    source = option,
-                    isAvailable = option == PracticeQuestionSource.ALL ||
-                        option == PracticeQuestionSource.UNSEEN ||
-                        option == PracticeQuestionSource.WEAK_AREAS,
-                )
+                PracticeSourceOption(source = option, isAvailable = true)
             },
             availability = availability,
         )

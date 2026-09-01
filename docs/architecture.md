@@ -319,18 +319,21 @@ can render as low accuracy without being weak, because the policy's evidence
 threshold has not been met, and accuracy colour is never treated as the weak-state
 source of truth.
 
-Mistake review is derived, never persisted:
+Unresolved mistake state is derived once, never persisted:
 
     AssessmentRepository.getCompletedAttempts()   (newest first)
         -> first occurrence per stable Question ID
         -> that occurrence's persisted correctness
         -> incorrect only
-        -> AssessmentReviewLoader.loadQuestion(...)
-        -> unresolved mistake queue
+        -> UnresolvedMistakeDerivation
+             |-> AssessmentReviewLoader.loadQuestion(...) -> mistake queue
+             `-> current ACTIVE scoped/level candidates -> targeted practice
 
 Because completed history is already ordered newest first, the first occurrence
 of a Question ID is its latest one, so a later correct answer resolves the
-Question automatically and a later incorrect answer reopens it. This is
+Question automatically and a later incorrect answer reopens it. Both Mistake
+Review and unresolved-mistake practice consume `UnresolvedMistakeDerivation`, so
+they cannot disagree about that lifecycle. This is
 deliberately narrower than `LearningProgressService`, which stays
 occurrence-based and counts every completed answer. Review content is
 reconstructed only for unresolved candidates, and a Question whose content no
@@ -443,11 +446,10 @@ product behaviour, not a special case of targeted practice.
 
 `AssessmentQuestionSelector` returns `AssessmentSelectionResult` instead of a
 bare `List<Question>`. An empty list answered too many questions at once, and
-the differences matter: nothing eligible, no level selected, and a source whose
-policy does not exist yet are three different answers. `ALL`, `UNSEEN`, and
-`WEAK_AREAS` are implemented; `UNRESOLVED_MISTAKES` is representable and refused
-explicitly until E16-05 rather than falling back to `ALL`, which would silently
-answer a different request than the learner made.
+the differences matter: nothing eligible, no level selected, and a future source
+whose policy does not exist yet are three different answers. All four current
+sources — `ALL`, `UNSEEN`, `WEAK_AREAS`, and `UNRESOLVED_MISTAKES` — are
+implemented and never fall back to another source.
 Each is a branch of one `when` over the source, so adding a policy is a local
 change that leaves the Practice Builder UI, the engine, scoring, and session logic
 untouched. `AssessmentEngine` collapses every no-content reason into
@@ -518,6 +520,30 @@ Questions can contribute historical evidence but cannot enter a new attempt, and
 empty weak set ends at `NoEligibleQuestions`. The existing stable-ID deduplication,
 randomization, and requested-count truncation run after this eligibility filter.
 
+### Unresolved-mistake practice
+
+Mistake practice consumes the same `UnresolvedMistakeDerivation` as Mistake
+Review. Completed attempts arrive newest first through `CompletedAssessmentHistory`;
+the first persisted occurrence of each stable Question ID wins, and its stored
+`QuestionAnswerState.Answered.isCorrect` is authoritative. The current authored
+answer key is not consulted, so editing curriculum content cannot rewrite history.
+IN_PROGRESS attempts are excluded before latest-occurrence state is derived, and
+assessment type or retake origin does not partition the history.
+
+The selector intersects those unresolved IDs with its ordinary scoped,
+level-aware ACTIVE repository read. History therefore decides whether an ID is
+unresolved, while current curriculum decides whether it is askable: missing and
+deprecated Questions remain available to historical review but cannot enter a new
+assessment. Scope and levels are never widened, and an empty intersection returns
+`NoEligibleQuestions`. The resulting pool still passes through the common
+stable-ID deduplication, randomization, and requested-count truncation.
+
+Nothing records a mistake as resolved or dismissed. When mistake practice is
+completed correctly, the normal completion save creates the newest correct
+occurrence and `AssessmentTakingViewModel` invalidates `AssessmentHistoryStore`.
+The next Mistake Review or selection derivation therefore excludes that Question;
+a later completed incorrect occurrence reopens it through exactly the same path.
+
 ## The Practice Builder
 
 Choosing a Topic or Subtopic no longer starts an assessment; it opens a builder
@@ -536,18 +562,17 @@ button that can never work. Enforcing it in the state holder means one
 implementation rather than one per control that touches levels.
 
 Source options carry availability as a property of the *policy*, not of the
-learner's content. `WEAK_AREAS` is selectable; `UNRESOLVED_MISTAKES` remains shown
-and disabled until E16-05, so the learner can see what targeted practice will offer.
-The builder reads that through
+learner's content. All four current sources are selectable. The builder reads that through
 `AssessmentQuestionSelector.isSourceSupported`, which answers without loading any
 content; probing by attempting a selection would read content, and completed
 history, once per option just to render a screen. A selector test asserts the two
 agree for every source, which is what keeps the duplicated `when` honest.
 
-Choosing `UNSEEN` or `WEAK_AREAS` changes nothing structurally: it re-runs the same
-preflight against completed history, so Start is enabled only when matching content
-exists. A supported source with nothing left to ask is not an unavailable source,
-and the two states stay separate in the UI for that reason.
+Choosing `UNSEEN`, `WEAK_AREAS`, or `UNRESOLVED_MISTAKES` changes nothing
+structurally: it re-runs the same preflight against completed history, so Start is
+enabled only when matching content exists. A supported source with nothing left to
+ask is not an unavailable source, and the two states stay separate in the UI for
+that reason.
 
 Whether the current configuration has any content is a separate question, and it
 is answered *before* Start through `AssessmentQuestionSelector.select` — never

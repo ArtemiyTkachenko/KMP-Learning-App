@@ -166,35 +166,59 @@ internal class PracticeBuilderViewModelTest {
     }
 
     @Test
-    fun everySourceIsRepresentedButOnlyUnresolvedMistakesIsUnavailable() = runViewModelTest {
+    fun everySourceIsRepresentedAndSupported() = runViewModelTest {
         val viewModel = viewModel(AssessmentScope.Topic("topic_a"), FakeCurriculumRepository())
         advanceUntilIdle()
 
         val options = viewModel.uiState.value.sourceOptions
         // Every product source is listed, so the screen shows what targeted practice will offer.
         assertEquals(PracticeQuestionSource.entries, options.map { it.source })
-        assertEquals(
-            setOf(
-                PracticeQuestionSource.ALL,
-                PracticeQuestionSource.UNSEEN,
-                PracticeQuestionSource.WEAK_AREAS,
+        assertTrue(options.all { it.isAvailable })
+    }
+
+    @Test
+    fun choosingMistakesRunsPreflightAndStartsWithTheMistakeSource() = runViewModelTest {
+        val viewModel = viewModel(
+            scope = AssessmentScope.Topic("topic_a"),
+            curriculum = FakeCurriculumRepository(),
+            completedAttempts = listOf(
+                completedHistoryOfAnswers(
+                    "q_foundation" to false,
+                    "q_applied" to true,
+                ),
             ),
-            options.filter { it.isAvailable }.map { it.source }.toSet(),
+        )
+        advanceUntilIdle()
+
+        viewModel.selectSource(PracticeQuestionSource.UNRESOLVED_MISTAKES)
+        advanceUntilIdle()
+
+        assertEquals(PracticeQuestionSource.UNRESOLVED_MISTAKES, viewModel.uiState.value.source)
+        assertEquals(1, availableCount(viewModel))
+        assertTrue(viewModel.uiState.value.isStartEnabled)
+        assertEquals(
+            PracticeQuestionSource.UNRESOLVED_MISTAKES,
+            startedConfig(viewModel).source,
         )
     }
 
     @Test
-    fun anUnavailableSourceCannotBecomeTheActiveSource() = runViewModelTest {
+    fun mistakesWithoutEligibleHistoryStaySelectableButDisableStart() = runViewModelTest {
         val viewModel = viewModel(AssessmentScope.Topic("topic_a"), FakeCurriculumRepository())
         advanceUntilIdle()
 
         viewModel.selectSource(PracticeQuestionSource.UNRESOLVED_MISTAKES)
         advanceUntilIdle()
 
-        assertEquals(PracticeQuestionSource.ALL, viewModel.uiState.value.source)
-        // ALL is what was configured all along, not a substitution made on the way out.
-        assertEquals(PracticeQuestionSource.ALL, startedConfig(viewModel).source)
-        assertTrue(viewModel.uiState.value.isStartEnabled)
+        val state = viewModel.uiState.value
+        assertEquals(PracticeQuestionSource.UNRESOLVED_MISTAKES, state.source)
+        assertTrue(
+            state.sourceOptions
+                .single { it.source == PracticeQuestionSource.UNRESOLVED_MISTAKES }
+                .isAvailable,
+        )
+        assertEquals(PracticeAvailability.NoEligibleQuestions, state.availability)
+        assertFalse(state.isStartEnabled)
     }
 
     @Test
@@ -404,8 +428,8 @@ internal class PracticeBuilderViewModelTest {
     }
 
     /**
-     * [seenQuestionIds] is the only history input the builder needs: which Questions are unseen is
-     * the selector's answer, and proving it belongs to the selector's own tests rather than here.
+     * History is only input data here: which Questions qualify for a source is the selector's
+     * answer, and proving its derivations belongs to the selector's own tests rather than here.
      */
     private fun viewModel(
         scope: AssessmentScope,

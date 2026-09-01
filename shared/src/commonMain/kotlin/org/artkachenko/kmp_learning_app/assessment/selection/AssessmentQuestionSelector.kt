@@ -5,6 +5,7 @@ import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.assessment.history.CompletedAssessmentHistory
 import org.artkachenko.kmp_learning_app.assessment.history.QuestionExposure
+import org.artkachenko.kmp_learning_app.assessment.history.UnresolvedMistakeDerivation
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
@@ -48,9 +49,8 @@ internal class AssessmentQuestionSelector(
             PracticeQuestionSource.ALL,
             PracticeQuestionSource.UNSEEN,
             PracticeQuestionSource.WEAK_AREAS,
-            -> true
             PracticeQuestionSource.UNRESOLVED_MISTAKES,
-            -> false
+            -> true
         }
 
     private suspend fun selectPracticeQuestions(
@@ -63,10 +63,8 @@ internal class AssessmentQuestionSelector(
             PracticeQuestionSource.UNSEEN -> loadUnseenQuestions(config.scope, config.levels)
             PracticeQuestionSource.WEAK_AREAS ->
                 loadWeakAreaQuestions(config.scope, config.levels)
-            // E16-05 owns the remaining history-derived policy. Until it exists the request is
-            // refused explicitly, because falling through to ALL would answer a different question.
-            PracticeQuestionSource.UNRESOLVED_MISTAKES,
-            -> return AssessmentSelectionResult.NoContent.SourceNotSupported
+            PracticeQuestionSource.UNRESOLVED_MISTAKES ->
+                loadUnresolvedMistakeQuestions(config.scope, config.levels)
         }
 
         return toResult(randomizeUnique(eligible).take(config.questionCount))
@@ -155,6 +153,22 @@ internal class AssessmentQuestionSelector(
             question.topicId in weakTopicIds ||
                 question.topicId to question.subtopicId in weakSubtopicIds
         }
+    }
+
+    /**
+     * Historical state decides which stable IDs are unresolved; current curriculum eligibility
+     * decides which of those IDs can be asked now. This keeps missing and deprecated Questions in
+     * Mistake Review history without resurrecting them into a new assessment.
+     */
+    private suspend fun loadUnresolvedMistakeQuestions(
+        scope: AssessmentScope,
+        levels: Set<QuestionLevel>,
+    ): List<Question> {
+        val unresolvedQuestionIds = UnresolvedMistakeDerivation
+            .derive(completedHistory.completedAttempts())
+            .mapTo(mutableSetOf()) { it.questionId }
+
+        return loadScopedQuestions(scope, levels).filter { it.id in unresolvedQuestionIds }
     }
 
     /**

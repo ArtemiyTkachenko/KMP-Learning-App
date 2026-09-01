@@ -1,9 +1,7 @@
 package org.artkachenko.kmp_learning_app.mistake_review
 
-import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
-import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
-import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
+import org.artkachenko.kmp_learning_app.assessment.history.UnresolvedMistakeDerivation
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 
@@ -24,15 +22,15 @@ internal class MistakeReviewService(
      * exactly as [countUnresolved] does, so the shared cache is not re-read per screen.
      */
     suspend fun load(completedAttempts: List<TestAttempt>? = null): List<UnresolvedMistake> =
-        unresolvedCandidates(completedAttempts).map { candidate ->
+        unresolvedOccurrences(completedAttempts).map { occurrence ->
             UnresolvedMistake(
-                questionId = candidate.questionAttempt.questionId,
-                sourceAttemptId = candidate.sourceAttemptId,
+                questionId = occurrence.questionId,
+                sourceAttemptId = occurrence.sourceAttemptId,
                 // Review content is reconstructed only for unresolved candidates, never for every
                 // historical occurrence.
                 reviewItem = assessmentReviewLoader.loadQuestion(
-                    attemptId = candidate.sourceAttemptId,
-                    questionAttempt = candidate.questionAttempt,
+                    attemptId = occurrence.sourceAttemptId,
+                    questionAttempt = occurrence.questionAttempt,
                 ),
             )
         }
@@ -45,40 +43,14 @@ internal class MistakeReviewService(
      * and rebuild the whole history a third time on every resume.
      */
     suspend fun countUnresolved(completedAttempts: List<TestAttempt>? = null): Int =
-        unresolvedCandidates(completedAttempts).size
+        unresolvedOccurrences(completedAttempts).size
 
-    private suspend fun unresolvedCandidates(
+    private suspend fun unresolvedOccurrences(
         completedAttempts: List<TestAttempt>? = null,
-    ): List<Candidate> {
+    ) = UnresolvedMistakeDerivation.derive(
         // getCompletedAttempts() is contractually completed-only and already ordered newest first
-        // (completedAt DESC, startedAt DESC, id ASC). The status filter mirrors the same defensive
-        // check LearningProgressService applies; the order is consumed as-is and never re-sorted.
-        val attempts = (completedAttempts ?: assessmentRepository.getCompletedAttempts())
-            .filter { it.status == AssessmentStatus.COMPLETED }
-
-        val seenQuestionIds = mutableSetOf<String>()
-        val candidates = mutableListOf<Candidate>()
-
-        for (attempt in attempts) {
-            for (questionAttempt in attempt.questionAttempts) {
-                // Newest attempt first means the FIRST occurrence seen is the latest one; every
-                // older occurrence of the same Question is irrelevant to its current state.
-                if (!seenQuestionIds.add(questionAttempt.questionId)) continue
-
-                val answered = questionAttempt.answerState as QuestionAnswerState.Answered
-                // Persisted correctness only. Re-deriving it from the current correctAnswerIds
-                // would rewrite history whenever authored answers change.
-                if (!answered.isCorrect) {
-                    candidates += Candidate(attempt.id, questionAttempt)
-                }
-            }
-        }
-
-        return candidates
-    }
+        // (completedAt DESC, startedAt DESC, id ASC). The shared derivation consumes that order as
+        // given and defensively excludes any non-completed attempt supplied by a caller.
+        completedAttempts ?: assessmentRepository.getCompletedAttempts(),
+    )
 }
-
-private data class Candidate(
-    val sourceAttemptId: String,
-    val questionAttempt: QuestionAttempt,
-)

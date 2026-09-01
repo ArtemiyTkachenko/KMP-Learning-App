@@ -94,9 +94,9 @@ internal class AssessmentAttemptStoreTest {
      * they can be, history describing a level-narrowed attempt as an all-levels one would be
      * wrong, and retake — which re-runs the reconstructed config — would widen the repeat.
      *
-     * Every source value is covered rather than only the selectable ones: a source read back as
-     * something else would silently turn a repeat of an unseen run into a repeat over the whole
-     * scope; WEAK_AREAS is now selectable, while UNRESOLVED_MISTAKES remains reserved for E16-05.
+     * Every source value is covered: a source read back as something else would silently turn a
+     * repeat of a targeted run into a repeat over a different candidate pool. All four source
+     * policies are selectable, including unresolved mistakes.
      */
     @Test
     fun practiceLevelsAndSourceRoundTripOnAFocusedAttempt() = runTest {

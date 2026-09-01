@@ -1,6 +1,5 @@
 package org.artkachenko.kmp_learning_app.progress
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -8,23 +7,17 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.mistake_review_none
@@ -53,6 +46,7 @@ import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.MetricRow
 import org.artkachenko.kmp_learning_app.ui.PerformanceCard
+import org.artkachenko.kmp_learning_app.ui.PrimarySummaryCard
 import org.artkachenko.kmp_learning_app.ui.ScreenAction
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
@@ -117,7 +111,7 @@ private fun ProgressContent(
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
@@ -166,36 +160,25 @@ private fun ProgressContent(
  */
 @Composable
 private fun OverallSummary(state: ProgressUiState.Content) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-    ) {
-        Column(
-            Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            AccuracyHeadline(
-                percentage = state.percentage,
-                caption = stringResource(Res.string.progress_accuracy_caption),
+    PrimarySummaryCard {
+        AccuracyHeadline(
+            percentage = state.percentage,
+            caption = stringResource(Res.string.progress_accuracy_caption),
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            MetricRow(
+                label = stringResource(Res.string.progress_completed_attempts_label),
+                value = state.completedAttemptCount.toString(),
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                MetricRow(
-                    label = stringResource(Res.string.progress_completed_attempts_label),
-                    value = state.completedAttemptCount.toString(),
-                )
-                MetricRow(
-                    label = stringResource(Res.string.progress_questions_answered_label),
-                    value = state.answeredQuestionCount.toString(),
-                )
-                MetricRow(
-                    label = stringResource(Res.string.progress_correct_answers_label),
-                    value = state.correctAnswerCount.toString(),
-                )
-            }
+            MetricRow(
+                label = stringResource(Res.string.progress_questions_answered_label),
+                value = state.answeredQuestionCount.toString(),
+            )
+            MetricRow(
+                label = stringResource(Res.string.progress_correct_answers_label),
+                value = state.correctAnswerCount.toString(),
+            )
         }
     }
 }

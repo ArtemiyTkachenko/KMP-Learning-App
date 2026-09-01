@@ -1,7 +1,5 @@
 package org.artkachenko.kmp_learning_app.topic_study.topics
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -130,7 +128,7 @@ private fun TopicList(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(
             items = topics,
@@ -149,19 +147,13 @@ private fun TopicRow(
     topic: Topic,
     onTopicClick: (String) -> Unit,
 ) {
-    // The container used to be `surface`, which is the same colour as the screen background,
-    // with a filled card's 0dp elevation and no outline - so the rows read as one flat block.
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable {
-                onTopicClick(topic.id)
-            },
+        onClick = { onTopicClick(topic.id) },
+        modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Row(
             modifier = Modifier

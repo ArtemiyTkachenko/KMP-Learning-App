@@ -36,6 +36,7 @@ import kmp_learning_app.shared.generated.resources.assessment_review_source_open
 import kmp_learning_app.shared.generated.resources.assessment_review_unresolved_questions
 import org.artkachenko.kmp_learning_app.ui.AccuracyHeadline
 import org.artkachenko.kmp_learning_app.ui.AppIcons
+import org.artkachenko.kmp_learning_app.ui.PrimarySummaryCard
 import org.artkachenko.kmp_learning_app.ui.StatusBadge
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.jetbrains.compose.resources.stringResource
@@ -47,13 +48,7 @@ internal fun AssessmentScoreSummary(
     percentage: Double,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-    ) {
+    PrimarySummaryCard(modifier) {
         // The outcome of the assessment leads at display size instead of being a plain line of
         // text the same weight as everything under it.
         AccuracyHeadline(
@@ -64,7 +59,6 @@ internal fun AssessmentScoreSummary(
                 correctAnswers,
                 totalQuestions,
             ),
-            modifier = Modifier.padding(16.dp),
         )
     }
 }
@@ -139,7 +133,6 @@ internal fun ReviewQuestionCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(

@@ -599,18 +599,20 @@ internal class AssessmentTakingViewModelTest {
             activeQuestionCalls++
             return questions
         }
-        override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> = questions
-        override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> = questions
+        override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> =
+            error("Practice selection uses the level-aware topic read.")
+        override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> =
+            error("Practice selection uses the level-aware subtopic read.")
         override suspend fun getActiveQuestionsByLevels(levels: Set<QuestionLevel>): List<Question> =
-            error("Level-filtered lookup is not used by assessment taking.")
+            error("Unscoped level lookup is not used by assessment taking.")
         override suspend fun getActiveQuestionsByTopicAndLevels(
             topicId: String,
             levels: Set<QuestionLevel>,
-        ): List<Question> = error("Level-filtered lookup is not used by assessment taking.")
+        ): List<Question> = questions.filter { it.level in levels }
         override suspend fun getActiveQuestionsBySubtopicAndLevels(
             subtopicId: String,
             levels: Set<QuestionLevel>,
-        ): List<Question> = error("Level-filtered lookup is not used by assessment taking.")
+        ): List<Question> = questions.filter { it.level in levels }
         override suspend fun getTopicById(topicId: String): Topic? = null
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? = null
         override suspend fun getQuestionById(questionId: String): Question? = questions.firstOrNull { it.id == questionId }

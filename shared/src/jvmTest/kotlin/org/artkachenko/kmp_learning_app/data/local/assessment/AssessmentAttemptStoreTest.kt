@@ -7,13 +7,16 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFails
 import kotlin.time.Instant
 import kotlinx.coroutines.test.runTest
+import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScore
 import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
+import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.data.local.assessment.entity.QuestionAttemptEntity
 import org.artkachenko.kmp_learning_app.data.local.assessment.entity.QuestionAttemptSelectedAnswerEntity
 import org.artkachenko.kmp_learning_app.data.local.assessment.entity.TestAttemptEntity
@@ -80,6 +83,45 @@ internal class AssessmentAttemptStoreTest {
 
             assertEquals(focusedSubtopic, store.getById("attempt_subtopic"))
             assertEquals(mixed, store.getById("attempt_mixed"))
+        }
+    }
+
+    /**
+     * The attempt record stores what was practised, not the criteria that selected it. Levels and
+     * question source are selection inputs with no columns of their own, so a stored FOCUSED
+     * attempt reconstructs as the all-levels ALL request every pre-EPIC-16 attempt was. Pinning it
+     * here keeps the loss deliberate: adding those dimensions to history is a schema change, and
+     * this test is what fails when one is needed.
+     */
+    @Test
+    fun practiceLevelsAndSourceAreNotPartOfThePersistedAttemptRecord() = runTest {
+        withTestDatabase { database ->
+            insertAttemptFixtureCurriculum(database)
+            val store = AssessmentAttemptStore(database)
+            val attempt = TestAttempt(
+                id = "attempt_targeted",
+                config = AssessmentConfig.Focused(
+                    scope = AssessmentScope.Topic("topic"),
+                    questionCount = 10,
+                    levels = setOf(QuestionLevel.ADVANCED),
+                    source = PracticeQuestionSource.ALL,
+                ),
+                questionAttempts = listOf(QuestionAttempt("question_a")),
+                status = AssessmentStatus.IN_PROGRESS,
+                startedAt = StartedAt,
+            )
+
+            store.save(attempt)
+
+            assertEquals(
+                AssessmentConfig.Focused(
+                    scope = AssessmentScope.Topic("topic"),
+                    questionCount = 10,
+                    levels = AllQuestionLevels,
+                    source = PracticeQuestionSource.ALL,
+                ),
+                store.getById("attempt_targeted")?.config,
+            )
         }
     }
 

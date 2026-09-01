@@ -10,15 +10,27 @@ import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
+import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentSelectionResult
 
 internal class AssessmentEngine(
     private val questionSelector: AssessmentQuestionSelector,
     private val generateAttemptId: () -> String = { Uuid.random().toString() },
     private val now: () -> Instant = { Clock.System.now() },
 ) {
+    /**
+     * Every configuration starts here, whichever selection policy produced its Questions.
+     *
+     * The typed no-content reasons stay at the selection boundary and collapse into
+     * [AssessmentStartResult.NoEligibleQuestions] on the way out: assessment taking has one
+     * no-content state, and the Practice Builder reads availability from selection before it
+     * ever asks for a start. What matters here is that no attempt is created or persisted for
+     * a request that cannot be run.
+     */
     suspend fun start(config: AssessmentConfig): AssessmentStartResult {
-        val questions = questionSelector.select(config)
-        if (questions.isEmpty()) return AssessmentStartResult.NoEligibleQuestions
+        val questions = when (val selection = questionSelector.select(config)) {
+            is AssessmentSelectionResult.NoContent -> return AssessmentStartResult.NoEligibleQuestions
+            is AssessmentSelectionResult.Selected -> selection.questions
+        }
 
         val attempt = TestAttempt(
             id = generateAttemptId(),

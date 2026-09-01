@@ -8,6 +8,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 
 internal class AssessmentModelTest {
     @Test
@@ -30,6 +31,65 @@ internal class AssessmentModelTest {
 
         assertIs<AssessmentScope.Subtopic>(config.scope)
         assertEquals(5, config.questionCount)
+    }
+
+    @Test
+    fun practiceConfigDefaultsToEveryLevelAndTheWholeActivePool() {
+        val config = AssessmentConfig.Focused(
+            scope = AssessmentScope.Topic("android_ui"),
+            questionCount = 10,
+        )
+
+        assertEquals(
+            setOf(QuestionLevel.FOUNDATION, QuestionLevel.APPLIED, QuestionLevel.ADVANCED),
+            config.levels,
+        )
+        assertEquals(PracticeQuestionSource.ALL, config.source)
+    }
+
+    @Test
+    fun practiceConfigRepresentsOneOrMoreSelectedLevels() {
+        val single = AssessmentConfig.Focused(
+            scope = AssessmentScope.Subtopic("compose_state"),
+            questionCount = 5,
+            levels = setOf(QuestionLevel.ADVANCED),
+        )
+        val several = AssessmentConfig.Focused(
+            scope = AssessmentScope.Topic("android_ui"),
+            questionCount = 5,
+            levels = setOf(QuestionLevel.FOUNDATION, QuestionLevel.APPLIED),
+        )
+
+        assertEquals(setOf(QuestionLevel.ADVANCED), single.levels)
+        assertEquals(setOf(QuestionLevel.FOUNDATION, QuestionLevel.APPLIED), several.levels)
+    }
+
+    @Test
+    fun practiceConfigRepresentsEveryQuestionSource() {
+        val configuredSources = PracticeQuestionSource.entries.map { source ->
+            AssessmentConfig.Focused(
+                scope = AssessmentScope.Topic("android_ui"),
+                questionCount = 5,
+                source = source,
+            ).source
+        }
+
+        assertEquals(PracticeQuestionSource.entries, configuredSources)
+    }
+
+    /**
+     * Representable but not runnable: an empty selection stays constructible so the selection
+     * boundary can refuse it explicitly instead of the request failing at construction.
+     */
+    @Test
+    fun practiceConfigCanCarryAnEmptyLevelSelection() {
+        val config = AssessmentConfig.Focused(
+            scope = AssessmentScope.Topic("android_ui"),
+            questionCount = 5,
+            levels = emptySet(),
+        )
+
+        assertEquals(emptySet(), config.levels)
     }
 
     @Test

@@ -259,15 +259,11 @@ internal class AssessmentRetakeServiceTest {
             return activeQuestions
         }
 
-        override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> {
-            topicQuestionCalls++
-            return topicQuestions[topicId].orEmpty()
-        }
+        override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> =
+            error("Practice selection uses the level-aware topic read.")
 
-        override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> {
-            subtopicQuestionCalls++
-            return subtopicQuestions[subtopicId].orEmpty()
-        }
+        override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> =
+            error("Practice selection uses the level-aware subtopic read.")
 
         override suspend fun getActiveQuestionsByLevels(levels: Set<QuestionLevel>): List<Question> =
             error("Not used by retake tests.")
@@ -275,12 +271,18 @@ internal class AssessmentRetakeServiceTest {
         override suspend fun getActiveQuestionsByTopicAndLevels(
             topicId: String,
             levels: Set<QuestionLevel>,
-        ): List<Question> = error("Not used by retake tests.")
+        ): List<Question> {
+            topicQuestionCalls++
+            return topicQuestions[topicId].orEmpty().filter { it.level in levels }
+        }
 
         override suspend fun getActiveQuestionsBySubtopicAndLevels(
             subtopicId: String,
             levels: Set<QuestionLevel>,
-        ): List<Question> = error("Not used by retake tests.")
+        ): List<Question> {
+            subtopicQuestionCalls++
+            return subtopicQuestions[subtopicId].orEmpty().filter { it.level in levels }
+        }
 
         override suspend fun getTopicById(topicId: String): Topic? =
             error("Not used by retake tests.")

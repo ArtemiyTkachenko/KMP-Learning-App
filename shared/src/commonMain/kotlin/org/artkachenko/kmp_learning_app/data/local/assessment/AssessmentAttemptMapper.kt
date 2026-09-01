@@ -77,6 +77,19 @@ private fun TestAttempt.toEntity(): TestAttemptEntity {
     )
 }
 
+/**
+ * The attempt record stores what was practised — type, scope, and requested count — and not the
+ * selection criteria that produced it. Practice levels and question source are inputs to
+ * `AssessmentQuestionSelector`, and persisting them would mean new columns and a database
+ * migration for data nothing reads back yet. Historical FOCUSED rows therefore reconstruct as an
+ * all-levels [org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource.ALL] request,
+ * which is exactly what every attempt written before EPIC-16 was.
+ *
+ * The visible consequence is retake: `AssessmentRetakeService` re-runs the reconstructed config,
+ * so repeating a level-narrowed or history-derived practice run would re-select across the whole
+ * scope. That is acceptable while the Practice Builder cannot yet produce such attempts, and is
+ * the point to revisit — with a migration — when it can.
+ */
 private fun AssessmentConfig.toPersistenceConfigFields(): PersistenceConfigFields =
     when (this) {
         is AssessmentConfig.Focused -> {

@@ -412,6 +412,17 @@ behave identically across all four platform drivers.
 Level filtering deliberately does not touch stable-ID lookup: historical
 resolution stays independent of both ACTIVE and level eligibility.
 
+### Level Verification Coverage
+
+Each layer owns its own level tests, and `QuestionLevelEndToEndTest` owns the
+combinations no single layer can prove: the real bundled curriculum through
+decode, validation, import, Room, and repository reads; a version 4 database
+through `MIGRATION_4_5` and a following bundled import; and level-filtered
+queries checked against the authored bundle rather than a hand-built fixture. It
+exists because the risky failures here are integration failures — the persisted
+value winning over the bundle, or the deterministic legacy `FOUNDATION` leaking
+into imported content — and each of those is invisible to a layer-local test.
+
 ## Content Lifecycle and Deletion
 
 Persist `ContentStatus.ACTIVE` and `ContentStatus.DEPRECATED` as readable `TEXT`

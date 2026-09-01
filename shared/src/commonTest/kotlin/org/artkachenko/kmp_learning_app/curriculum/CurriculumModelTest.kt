@@ -88,6 +88,7 @@ internal class CurriculumModelTest {
         text = "Which statement is correct?",
         answers = answers,
         selectionMode = selectionMode,
+        level = QuestionLevel.FOUNDATION,
         correctAnswerIds = correctAnswerIds,
         explanation = "The selected answer matches the documented behavior.",
         sources = listOf(

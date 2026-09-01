@@ -13,10 +13,12 @@ The conceptual hierarchy is:
 2. Subtopic
 3. Question
 
-Questions are intentionally not defined in this issue. E06-02 will define the
-structured Kotlin content model, E06-03 will define authoring and quality
-standards, E06-04 will create the initial question bank, and E06-05 will add
-deterministic content validation.
+The implemented `Question` model links to its Topic and Subtopic by stable IDs
+and contains text, answer options, authored `selectionMode`, required authored
+`level`, correct-answer IDs, explanation, sources, and lifecycle status.
+`QuestionLevel` represents interview depth with the exact values `FOUNDATION`,
+`APPLIED`, and `ADVANCED`. It describes the reasoning required by the question,
+not learner performance, and is not yet used for assessment filtering.
 
 Not every subtopic listed here must have an MVP question immediately. The
 taxonomy represents the intended curriculum map so the question bank can grow

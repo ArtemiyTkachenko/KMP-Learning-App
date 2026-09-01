@@ -36,6 +36,7 @@ import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
 import org.artkachenko.kmp_learning_app.curriculum.Question
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
@@ -171,6 +172,7 @@ internal class MixedInterviewResultIntegrationTest {
             AnswerOption("b", "Answer B"),
         ),
         selectionMode = AnswerSelectionMode.SINGLE,
+        level = QuestionLevel.FOUNDATION,
         correctAnswerIds = listOf("a"),
         explanation = "Explanation $id",
         sources = listOf(SourceReference("Source", "https://example.com/$id")),

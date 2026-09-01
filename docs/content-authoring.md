@@ -36,7 +36,10 @@ The content model uses the hierarchy:
 
 The Kotlin model stores these as flat collections linked by stable IDs. A
 question has `id`, `topicId`, `subtopicId`, `text`, `answers`,
-`selectionMode`, `correctAnswerIds`, `explanation`, `sources`, and `status`.
+`selectionMode`, `level`, `correctAnswerIds`, `explanation`, `sources`, and
+`status`. `level` is a required `QuestionLevel`; authored JSON must provide one
+of `FOUNDATION`, `APPLIED`, or `ADVANCED` explicitly. The Kotlin and JSON models
+do not infer a default.
 
 `SourceReference` contains a human-readable `title` and the actual `url`.
 `ContentStatus` supports `ACTIVE` and `DEPRECATED`.
@@ -58,10 +61,9 @@ question has `id`, `topicId`, `subtopicId`, `text`, `answers`,
 
 ## Question Interview Level
 
-This section is the authoritative editorial contract for the upcoming
-Question-level interview-depth field. The field is not part of the current
-Kotlin or JSON model yet; do not add a level key to authored curriculum until
-the schema adopts it.
+This section is the authoritative editorial contract for the required
+Question-level interview-depth field. Every Kotlin `Question` and every authored
+JSON question must provide `level` explicitly.
 
 Question interview level describes **the depth and kind of technical reasoning
 required by the question**. It does not claim how difficult every candidate
@@ -79,6 +81,11 @@ The exact authored values are:
 
 Use Foundation, Applied, and Advanced in prose. Do not create alternate stored
 values or treat this dimension as a generic difficulty score.
+
+> **Current-bank transition:** E15-02 mechanically bootstrapped every bundled
+> question to `FOUNDATION` so the required schema remains decodable. Those values
+> are provisional legacy metadata, not reviewed classifications. E15-03 owns the
+> deliberate question-by-question classification under this rubric.
 
 ### Comparison
 
@@ -659,6 +666,8 @@ machine-verifiable:
   every clause of the question stem is itself true.
 - Multiple-answer wording is explicit when more than one answer is correct.
 - `selectionMode` is explicitly authored and matches the intended interaction.
+- `level` is explicitly authored as `FOUNDATION`, `APPLIED`, or `ADVANCED`; no
+  default is assumed.
 - `MULTIPLE` wording clearly communicates multi-selection; `MULTIPLE` may still
   have exactly one correct answer.
 - `SINGLE` does not contain several correct answers.

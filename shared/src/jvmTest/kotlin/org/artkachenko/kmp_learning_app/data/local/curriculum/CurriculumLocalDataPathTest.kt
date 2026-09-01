@@ -12,6 +12,7 @@ import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
 import org.artkachenko.kmp_learning_app.curriculum.Question
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
@@ -250,6 +251,7 @@ internal class CurriculumLocalDataPathTest {
                 AnswerOption("${id}_answer_b", "Answer B"),
             ),
             selectionMode = AnswerSelectionMode.SINGLE,
+            level = QuestionLevel.FOUNDATION,
             correctAnswerIds = correctAnswerIds,
             explanation = "$id explanation.",
             sources = listOf(

@@ -14,7 +14,7 @@ import kotlinx.coroutines.test.runTest
 
 internal class CurriculumDatabaseMigrationTest {
     @Test
-    fun migrationFromOneToFourPreservesCurriculumAndHistoricalAssessmentRows() = runTest {
+    fun migrationFromOneToFivePreservesCurriculumAndHistoricalAssessmentRows() = runTest {
         val databasePath = Files.createTempDirectory("curriculum-migration-test")
             .resolve("curriculum.db")
         val helper = MigrationTestHelper(
@@ -101,12 +101,13 @@ internal class CurriculumDatabaseMigrationTest {
         }
 
         helper.runMigrationsAndValidate(
-            version = 4,
-            migrations = listOf(MIGRATION_2_3, MIGRATION_3_4),
+            version = 5,
+            migrations = listOf(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5),
         ).use { connection ->
-            connection.prepare("SELECT selection_mode FROM question WHERE id = 'question'").use { statement ->
+            connection.prepare("SELECT selection_mode, level FROM question WHERE id = 'question'").use { statement ->
                 assertTrue(statement.step())
                 assertEquals("SINGLE", statement.getText(0))
+                assertEquals("FOUNDATION", statement.getText(1))
             }
             connection.prepare("SELECT COUNT(*) FROM question_attempt_selected_answer").use { statement ->
                 assertTrue(statement.step())
@@ -236,6 +237,166 @@ internal class CurriculumDatabaseMigrationTest {
             connection.prepare("SELECT COUNT(*) FROM question_correct_answer").use { statement ->
                 assertTrue(statement.step())
                 assertEquals(3, statement.getLong(0).toInt())
+            }
+        }
+    }
+
+    @Test
+    fun migrationFromFourToFiveAddsFoundationLevelWithoutChangingCurriculumOrHistory() = runTest {
+        val databasePath = Files.createTempDirectory("curriculum-migration-test")
+            .resolve("curriculum.db")
+        val helper = MigrationTestHelper(
+            schemaDirectoryPath = Path.of("schemas").toAbsolutePath(),
+            databasePath = databasePath,
+            driver = BundledSQLiteDriver(),
+            databaseClass = CurriculumDatabase::class,
+            databaseFactory = { CurriculumDatabaseConstructor.initialize() },
+        )
+
+        helper.createDatabase(version = 4).use { connection ->
+            connection.executeSQL("INSERT INTO topic (id, name, status, sort_order) VALUES ('topic', 'Topic', 'ACTIVE', 0)")
+            connection.executeSQL(
+                """
+                INSERT INTO subtopic (id, topic_id, name, status, sort_order)
+                VALUES ('subtopic', 'topic', 'Subtopic', 'ACTIVE', 0)
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO question (
+                    id, topic_id, subtopic_id, text, selection_mode, explanation, status, sort_order
+                ) VALUES
+                    ('active_question', 'topic', 'subtopic', 'Active?', 'SINGLE', 'Active explanation.', 'ACTIVE', 0),
+                    ('deprecated_question', 'topic', 'subtopic', 'Deprecated?', 'MULTIPLE', 'Deprecated explanation.', 'DEPRECATED', 1)
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO answer_option (question_id, id, text, sort_order, status)
+                VALUES
+                    ('active_question', 'active_a', 'Active A', 0, 'ACTIVE'),
+                    ('deprecated_question', 'deprecated_a', 'Deprecated A', 0, 'ACTIVE'),
+                    ('deprecated_question', 'deprecated_b', 'Deprecated B', 1, 'DEPRECATED')
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO question_correct_answer (question_id, answer_id)
+                VALUES
+                    ('active_question', 'active_a'),
+                    ('deprecated_question', 'deprecated_a')
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO question_source (question_id, url, title, sort_order)
+                VALUES ('deprecated_question', 'https://example.com/source', 'Source', 0)
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO test_attempt (
+                    id, config_type, requested_question_count, scope_type, scope_id, status,
+                    score_total_questions, score_correct_answers, started_at_epoch_millis,
+                    completed_at_epoch_millis
+                ) VALUES ('attempt', 'MIXED', 1, NULL, NULL, 'COMPLETED', 1, 0, 1000, 2000)
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO question_attempt (test_attempt_id, question_id, sort_order, is_correct)
+                VALUES ('attempt', 'deprecated_question', 0, 0)
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO question_attempt_selected_answer (test_attempt_id, question_id, answer_id)
+                VALUES ('attempt', 'deprecated_question', 'deprecated_b')
+                """,
+            )
+        }
+
+        helper.runMigrationsAndValidate(
+            version = 5,
+            migrations = listOf(MIGRATION_4_5),
+        ).use { connection ->
+            connection.prepare(
+                "SELECT id, level, text, selection_mode, explanation, status, sort_order FROM question ORDER BY sort_order",
+            ).use { statement ->
+                assertTrue(statement.step())
+                assertEquals("active_question", statement.getText(0))
+                assertEquals("FOUNDATION", statement.getText(1))
+                assertEquals("Active?", statement.getText(2))
+                assertEquals("SINGLE", statement.getText(3))
+                assertEquals("Active explanation.", statement.getText(4))
+                assertEquals("ACTIVE", statement.getText(5))
+                assertEquals(0, statement.getLong(6).toInt())
+
+                assertTrue(statement.step())
+                assertEquals("deprecated_question", statement.getText(0))
+                assertEquals("FOUNDATION", statement.getText(1))
+                assertEquals("Deprecated?", statement.getText(2))
+                assertEquals("MULTIPLE", statement.getText(3))
+                assertEquals("Deprecated explanation.", statement.getText(4))
+                assertEquals("DEPRECATED", statement.getText(5))
+                assertEquals(1, statement.getLong(6).toInt())
+            }
+            connection.prepare(
+                "SELECT question_id, id, text, status, sort_order FROM answer_option ORDER BY question_id, sort_order",
+            ).use { statement ->
+                assertTrue(statement.step())
+                assertEquals("active_question", statement.getText(0))
+                assertEquals("active_a", statement.getText(1))
+                assertEquals("Active A", statement.getText(2))
+                assertEquals("ACTIVE", statement.getText(3))
+                assertEquals(0, statement.getLong(4).toInt())
+
+                assertTrue(statement.step())
+                assertEquals("deprecated_question", statement.getText(0))
+                assertEquals("deprecated_a", statement.getText(1))
+                assertEquals("Deprecated A", statement.getText(2))
+                assertEquals("ACTIVE", statement.getText(3))
+                assertEquals(0, statement.getLong(4).toInt())
+
+                assertTrue(statement.step())
+                assertEquals("deprecated_question", statement.getText(0))
+                assertEquals("deprecated_b", statement.getText(1))
+                assertEquals("Deprecated B", statement.getText(2))
+                assertEquals("DEPRECATED", statement.getText(3))
+                assertEquals(1, statement.getLong(4).toInt())
+            }
+            connection.prepare(
+                "SELECT question_id, answer_id FROM question_correct_answer ORDER BY question_id",
+            ).use { statement ->
+                assertTrue(statement.step())
+                assertEquals("active_question", statement.getText(0))
+                assertEquals("active_a", statement.getText(1))
+                assertTrue(statement.step())
+                assertEquals("deprecated_question", statement.getText(0))
+                assertEquals("deprecated_a", statement.getText(1))
+            }
+            connection.prepare("SELECT url, title, sort_order FROM question_source WHERE question_id = 'deprecated_question'").use { statement ->
+                assertTrue(statement.step())
+                assertEquals("https://example.com/source", statement.getText(0))
+                assertEquals("Source", statement.getText(1))
+                assertEquals(0, statement.getLong(2).toInt())
+            }
+            connection.prepare("SELECT status, score_total_questions, score_correct_answers FROM test_attempt WHERE id = 'attempt'").use { statement ->
+                assertTrue(statement.step())
+                assertEquals("COMPLETED", statement.getText(0))
+                assertEquals(1, statement.getLong(1).toInt())
+                assertEquals(0, statement.getLong(2).toInt())
+            }
+            connection.prepare("SELECT is_correct FROM question_attempt WHERE question_id = 'deprecated_question'").use { statement ->
+                assertTrue(statement.step())
+                assertEquals(0, statement.getLong(0).toInt())
+            }
+            connection.prepare("SELECT answer_id FROM question_attempt_selected_answer").use { statement ->
+                assertTrue(statement.step())
+                assertEquals("deprecated_b", statement.getText(0))
+            }
+            connection.prepare("PRAGMA foreign_key_check").use { statement ->
+                assertTrue(!statement.step())
             }
         }
     }

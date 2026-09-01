@@ -32,6 +32,7 @@ import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
@@ -173,6 +174,7 @@ internal class FocusedResultViewModelTest {
         id = id, topicId = "topic", subtopicId = "subtopic", text = "Question $id",
         answers = listOf(AnswerOption("a", "Answer A"), AnswerOption("b", "Answer B"), AnswerOption("c", "Answer C")),
         selectionMode = AnswerSelectionMode.SINGLE,
+        level = QuestionLevel.FOUNDATION,
         correctAnswerIds = correctIds, explanation = "Explanation", sources = listOf(SourceReference("Source B", "b"), SourceReference("Source A", "a")),
         status = ContentStatus.ACTIVE,
     )

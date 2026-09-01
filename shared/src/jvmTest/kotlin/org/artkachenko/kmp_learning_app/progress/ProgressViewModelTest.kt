@@ -31,6 +31,7 @@ import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
@@ -711,6 +712,7 @@ private fun question(
             AnswerOption("${id}_b", "Answer B"),
         ),
         selectionMode = AnswerSelectionMode.SINGLE,
+        level = QuestionLevel.FOUNDATION,
         correctAnswerIds = listOf("${id}_a"),
         explanation = "Explanation",
         sources = listOf(SourceReference("Source", "https://example.com/$id")),

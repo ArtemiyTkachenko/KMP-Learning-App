@@ -6,17 +6,37 @@ import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
 import org.artkachenko.kmp_learning_app.curriculum.Question
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 internal class CurriculumJsonCodecTest {
     @Test
     fun validCurriculumJsonDecodesSuccessfully() {
-        assertEquals(sampleCurriculum(), CurriculumJsonCodec.decode(sampleCurriculumJson))
+        assertEquals(
+            sampleCurriculum(level = QuestionLevel.FOUNDATION),
+            CurriculumJsonCodec.decode(sampleCurriculumJson),
+        )
+    }
+
+    @Test
+    fun foundationLevelRoundTripUsesExactAuthoredValue() {
+        assertLevelRoundTrip(QuestionLevel.FOUNDATION)
+    }
+
+    @Test
+    fun appliedLevelRoundTripUsesExactAuthoredValue() {
+        assertLevelRoundTrip(QuestionLevel.APPLIED)
+    }
+
+    @Test
+    fun advancedLevelRoundTripUsesExactAuthoredValue() {
+        assertLevelRoundTrip(QuestionLevel.ADVANCED)
     }
 
     @Test
@@ -38,7 +58,7 @@ internal class CurriculumJsonCodecTest {
 
     @Test
     fun curriculumRoundTripPreservesEquivalentValue() {
-        val curriculum = sampleCurriculum()
+        val curriculum = sampleCurriculum(level = QuestionLevel.FOUNDATION)
 
         assertEquals(curriculum, CurriculumJsonCodec.decode(CurriculumJsonCodec.encode(curriculum)))
     }
@@ -46,6 +66,7 @@ internal class CurriculumJsonCodecTest {
     @Test
     fun multipleCorrectAnswerIdsSurviveRoundTrip() {
         val curriculum = sampleCurriculum(
+            level = QuestionLevel.FOUNDATION,
             correctAnswerIds = listOf("answer_a", "answer_b"),
         )
 
@@ -56,7 +77,9 @@ internal class CurriculumJsonCodecTest {
 
     @Test
     fun activeStatusSurvivesRoundTrip() {
-        val decoded = CurriculumJsonCodec.decode(CurriculumJsonCodec.encode(sampleCurriculum()))
+        val decoded = CurriculumJsonCodec.decode(
+            CurriculumJsonCodec.encode(sampleCurriculum(level = QuestionLevel.FOUNDATION)),
+        )
 
         assertEquals(ContentStatus.ACTIVE, decoded.topics.single().status)
         assertEquals(ContentStatus.ACTIVE, decoded.subtopics.single().status)
@@ -65,7 +88,10 @@ internal class CurriculumJsonCodecTest {
 
     @Test
     fun deprecatedStatusSurvivesRoundTrip() {
-        val curriculum = sampleCurriculum(status = ContentStatus.DEPRECATED)
+        val curriculum = sampleCurriculum(
+            level = QuestionLevel.FOUNDATION,
+            status = ContentStatus.DEPRECATED,
+        )
 
         val decoded = CurriculumJsonCodec.decode(CurriculumJsonCodec.encode(curriculum))
 
@@ -132,6 +158,24 @@ internal class CurriculumJsonCodecTest {
     }
 
     @Test
+    fun missingLevelFailsDecoding() {
+        assertFailsWith<SerializationException> {
+            CurriculumJsonCodec.decode(
+                sampleCurriculumJson.replace("\"level\":\"FOUNDATION\",", ""),
+            )
+        }
+    }
+
+    @Test
+    fun unsupportedLevelFailsDecoding() {
+        assertFailsWith<SerializationException> {
+            CurriculumJsonCodec.decode(
+                sampleCurriculumJson.replace("\"FOUNDATION\"", "\"EXPERT\""),
+            )
+        }
+    }
+
+    @Test
     fun unexpectedPropertyFailsDecoding() {
         assertFailsWith<SerializationException> {
             CurriculumJsonCodec.decode(
@@ -144,6 +188,7 @@ internal class CurriculumJsonCodecTest {
     }
 
     private fun sampleCurriculum(
+        level: QuestionLevel,
         correctAnswerIds: List<String> = listOf("answer_a"),
         selectionMode: AnswerSelectionMode = AnswerSelectionMode.MULTIPLE,
         status: ContentStatus = ContentStatus.ACTIVE,
@@ -165,6 +210,7 @@ internal class CurriculumJsonCodecTest {
                     AnswerOption(id = "answer_b", text = "Second correct answer"),
                 ),
                 selectionMode = selectionMode,
+                level = level,
                 correctAnswerIds = correctAnswerIds,
                 explanation = "The listed answer IDs identify the correct answer options.",
                 sources = listOf(SourceReference(title = "Source", url = "https://example.com/source")),
@@ -173,6 +219,14 @@ internal class CurriculumJsonCodecTest {
         ),
     )
 
+    private fun assertLevelRoundTrip(level: QuestionLevel) {
+        val encoded = CurriculumJsonCodec.encode(sampleCurriculum(level = level))
+        val decoded = CurriculumJsonCodec.decode(encoded)
+
+        assertEquals(level, decoded.questions.single().level)
+        assertTrue(encoded.contains("\"level\":\"${level.name}\""))
+    }
+
     private val sampleCurriculumJson =
-        """{"topics":[{"id":"topic_1","name":"Topic","status":"ACTIVE"}],"subtopics":[{"id":"subtopic_1","topicId":"topic_1","name":"Subtopic","status":"ACTIVE"}],"questions":[{"id":"question_1","topicId":"topic_1","subtopicId":"subtopic_1","text":"Which answers are correct? Select all that apply.","answers":[{"id":"answer_a","text":"First correct answer"},{"id":"answer_b","text":"Second correct answer"}],"selectionMode":"MULTIPLE","correctAnswerIds":["answer_a"],"explanation":"The listed answer IDs identify the correct answer options.","sources":[{"title":"Source","url":"https://example.com/source"}],"status":"ACTIVE"}]}"""
+        """{"topics":[{"id":"topic_1","name":"Topic","status":"ACTIVE"}],"subtopics":[{"id":"subtopic_1","topicId":"topic_1","name":"Subtopic","status":"ACTIVE"}],"questions":[{"id":"question_1","topicId":"topic_1","subtopicId":"subtopic_1","text":"Which answers are correct? Select all that apply.","answers":[{"id":"answer_a","text":"First correct answer"},{"id":"answer_b","text":"Second correct answer"}],"selectionMode":"MULTIPLE","level":"FOUNDATION","correctAnswerIds":["answer_a"],"explanation":"The listed answer IDs identify the correct answer options.","sources":[{"title":"Source","url":"https://example.com/source"}],"status":"ACTIVE"}]}"""
 }

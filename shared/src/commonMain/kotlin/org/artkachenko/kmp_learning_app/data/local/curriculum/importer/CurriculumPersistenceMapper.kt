@@ -35,6 +35,7 @@ internal fun Curriculum.toPersistenceSnapshot(): CurriculumPersistenceSnapshot =
                 subtopicId = question.subtopicId,
                 text = question.text,
                 selectionMode = question.selectionMode.name,
+                level = question.level.name,
                 explanation = question.explanation,
                 status = question.status.name,
                 sortOrder = index,

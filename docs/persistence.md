@@ -17,6 +17,7 @@ The schema is designed around the current E06 content model:
 - `AnswerOption`
 - `SourceReference`
 - `ContentStatus`
+- `QuestionLevel`
 
 Bundled curriculum content is now represented as JSON and decoded into
 `Curriculum` before validation or persistence:
@@ -176,6 +177,7 @@ Logical table: `question`
 | `subtopic_id` | `TEXT` | `NOT NULL` |
 | `text` | `TEXT` | `NOT NULL` |
 | `selection_mode` | `TEXT` | `NOT NULL` |
+| `level` | `TEXT` | `NOT NULL` |
 | `explanation` | `TEXT` | `NOT NULL` |
 | `status` | `TEXT` | `NOT NULL` |
 | `sort_order` | `INTEGER` | `NOT NULL` |
@@ -427,9 +429,9 @@ Expected platform-specific responsibilities:
 
 Android remains the primary MVP target, but every configured application host
 now supplies a persistent `CurriculumDatabase` to the same shared repositories.
-All platform builders open schema version 4 and register `MIGRATION_1_2`,
-`MIGRATION_2_3`, and `MIGRATION_3_4`; curriculum and assessment history remain
-in one database.
+All platform builders open schema version 5 and register `MIGRATION_1_2`,
+`MIGRATION_2_3`, `MIGRATION_3_4`, and `MIGRATION_4_5`; curriculum and assessment
+history remain in one database.
 
 Android and Desktop use `BundledSQLiteDriver` with `curriculum.db` in the
 platform application data directory. JVM persistence tests use the same driver
@@ -461,8 +463,9 @@ back to an ephemeral database.
 ## Assessment Attempt History
 
 Schema version 2 introduced assessment attempts; the current schema is version
-4. Version 3 preserves retired answer-option identity, while version 4 persists
-authored question selection mode:
+5. Version 3 preserves retired answer-option identity, version 4 persists
+authored question selection mode, and version 5 persists authored question
+interview level:
 
 ```text
 TestAttempt
@@ -519,6 +522,12 @@ version 3 rows have no authored value, the migration reproduces the former UI
 behavior: one correct-answer row becomes `SINGLE`, while several become
 `MULTIPLE`. Subsequent bundled-content import makes the current authored value
 authoritative.
+Schema version 5 adds `question.level` through `MIGRATION_4_5`. Version 4 rows
+contain no trustworthy classification signal, so the migration deterministically
+sets `FOUNDATION`. Normal bundled-content import then overwrites rows with their
+explicit authored value. Retained historical questions absent from the current
+bundle remain `FOUNDATION`; this legacy-only SQL policy is not a Kotlin or JSON
+default. Assessment attempt tables are unchanged.
 E11-01 adds history read queries only and does not change the schema.
 
 Destructive migration should not be the default production strategy. Migration

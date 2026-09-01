@@ -74,8 +74,12 @@ internal val topicStudyPresentationModule = module {
         )
     }
     viewModel {
+        // The shared history cache, not another read of its own: Topic learning context refreshes
+        // from the same invalidation as Progress and the mistake queue.
         TopicBrowserViewModel(
             curriculumRepository = get(),
+            learningProgressService = get(),
+            historyStore = get(),
         )
     }
     viewModel {
@@ -95,6 +99,7 @@ internal val topicStudyPresentationModule = module {
             topicId = parameters.get(),
             curriculumRepository = get(),
             learningProgressService = get(),
+            historyStore = get(),
         )
     }
     viewModel { parameters ->

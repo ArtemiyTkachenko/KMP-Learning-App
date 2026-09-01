@@ -16,6 +16,9 @@ import org.jetbrains.compose.resources.stringResource
  * against the domain's weakness threshold — these numbers used to render at body size in a uniform
  * colour, which made a weak area and a strong one look identical. A weak row additionally tints its
  * container and carries a badge, so it is identifiable without reading the number at all.
+ *
+ * [caption] is the row's quietest line, and is where current-curriculum coverage goes: a second
+ * figure with a different denominator, worth saying but never worth another card.
  */
 @Composable
 internal fun ProgressPerformanceCard(
@@ -25,6 +28,7 @@ internal fun ProgressPerformanceCard(
     answeredCount: Int,
     percentage: Double,
     modifier: Modifier = Modifier,
+    caption: String? = null,
     isWeak: Boolean = false,
     showChevron: Boolean = false,
     isSummary: Boolean = false,
@@ -35,6 +39,7 @@ internal fun ProgressPerformanceCard(
         percentage = percentage,
         modifier = modifier,
         subtitle = subtitle,
+        caption = caption,
         isWeak = isWeak,
         weakLabel = stringResource(Res.string.progress_weak_label),
         showChevron = showChevron,

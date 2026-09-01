@@ -19,14 +19,16 @@ import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
-import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.topic_study.topics.SubtopicSearchResult
+import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserItemUiModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserSearchFieldTag
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserScreen
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserUiState
-import org.artkachenko.kmp_learning_app.topic_study.topics.TopicSearchResult
+import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 import org.artkachenko.kmp_learning_app.ui.theme.AppDarkColorScheme
+import org.artkachenko.kmp_learning_app.ui.theme.AppDarkSemanticColors
 import org.artkachenko.kmp_learning_app.ui.theme.AppLightColorScheme
+import org.artkachenko.kmp_learning_app.ui.theme.AppLightSemanticColors
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 import org.artkachenko.kmp_learning_app.ui.topicVisualMarkerTag
 
@@ -56,6 +58,10 @@ internal class TopicDiscoveryThemeTest {
 
     @Test
     fun bothPalettesKeepTheDiscoverySurfacesApartAndTheMarkerLegible() {
+        val semanticByName = mapOf(
+            "light" to AppLightSemanticColors,
+            "dark" to AppDarkSemanticColors,
+        )
         listOf("light" to AppLightColorScheme, "dark" to AppDarkColorScheme).forEach { (name, scheme) ->
             // Three tones carry the whole hierarchy: the page, the Topic card on it, and the
             // marker inside the card. If any two collapse into the same value the screen becomes
@@ -77,6 +83,21 @@ internal class TopicDiscoveryThemeTest {
                 scheme.surfaceContainerLow,
                 4.5,
                 "$name parent topic context",
+            )
+            // Learning context adds two more things to the same card. Coverage borrows the neutral
+            // variant colour checked above; the weak badge is the one semantic element, and it
+            // draws its own container rather than inheriting the card's.
+            val semantic = semanticByName.getValue(name)
+            assertContrastAtLeast(
+                semantic.onPartiallyCorrectContainer,
+                semantic.partiallyCorrectContainer,
+                4.5,
+                "$name weak badge",
+            )
+            assertNotEquals(
+                semantic.partiallyCorrectContainer,
+                scheme.surfaceContainerLow,
+                "$name weak badge vs card",
             )
         }
     }
@@ -106,6 +127,15 @@ internal class TopicDiscoveryThemeTest {
         onNodeWithText(UiTopicName).assertIsDisplayed()
         onNodeWithTag(topicVisualMarkerTag(UiTopicId), useUnmergedTree = true).assertIsDisplayed()
         onNodeWithTag(TopicBrowserSearchFieldTag).assertIsDisplayed()
+
+        // Learning context reads in either palette: a neutral coverage count on both cards, the
+        // unstudied Topic saying so instead of showing a fabricated 0%, and the weak one carrying
+        // both its accuracy and the domain's badge.
+        onNodeWithText("0 of 10 explored").assertIsDisplayed()
+        onNodeWithText("Not studied yet").assertIsDisplayed()
+        onNodeWithText("4 of 10 explored").assertIsDisplayed()
+        onNodeWithText("42%").assertIsDisplayed()
+        onNodeWithText("Weak area").assertIsDisplayed()
 
         state.value = SearchState
         waitForIdle()
@@ -156,16 +186,40 @@ private const val NetworkingTopicId = "networking"
 private const val NetworkingTopicName = "Networking & Serialization"
 private const val SubtopicName = "Compose snapshot state"
 
+/**
+ * The three learning states a Topic card has to keep apart in either palette: observed, weak, and
+ * unstudied. Coverage stays neutral in all three; only accuracy and the weak badge are semantic.
+ */
 private val BrowsingState = TopicBrowserUiState.Content(
     topics = listOf(
-        Topic(UiTopicId, UiTopicName),
-        Topic(NetworkingTopicId, NetworkingTopicName),
+        TopicBrowserItemUiModel(
+            topicId = UiTopicId,
+            topicName = UiTopicName,
+            learningContext = LearningContextUiModel(
+                attemptedQuestionCount = 0,
+                totalQuestionCount = 10,
+                coveragePercentage = 0.0,
+                accuracyPercentage = null,
+                isWeak = false,
+            ),
+        ),
+        TopicBrowserItemUiModel(
+            topicId = NetworkingTopicId,
+            topicName = NetworkingTopicName,
+            learningContext = LearningContextUiModel(
+                attemptedQuestionCount = 4,
+                totalQuestionCount = 10,
+                coveragePercentage = 40.0,
+                accuracyPercentage = 42.0,
+                isWeak = true,
+            ),
+        ),
     ),
 )
 
 private val SearchState = BrowsingState.copy(
     query = "compose",
-    topicMatches = listOf(TopicSearchResult(NetworkingTopicId, NetworkingTopicName)),
+    topicMatches = listOf(BrowsingState.topics[1]),
     subtopicMatches = listOf(
         SubtopicSearchResult(
             subtopicId = "compose_state",

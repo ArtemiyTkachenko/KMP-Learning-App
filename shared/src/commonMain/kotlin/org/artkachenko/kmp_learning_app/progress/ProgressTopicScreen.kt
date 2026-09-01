@@ -16,6 +16,7 @@ import kmp_learning_app.shared.generated.resources.progress_subtopic_unavailable
 import kmp_learning_app.shared.generated.resources.progress_topic_detail_title
 import kmp_learning_app.shared.generated.resources.progress_topic_empty
 import kmp_learning_app.shared.generated.resources.progress_topic_error
+import kmp_learning_app.shared.generated.resources.progress_topic_coverage
 import kmp_learning_app.shared.generated.resources.progress_topic_loading
 import kmp_learning_app.shared.generated.resources.progress_topic_subtopics
 import kmp_learning_app.shared.generated.resources.progress_topic_unavailable
@@ -79,6 +80,10 @@ private fun ProgressTopicContent(
                 correctCount = state.correctCount,
                 answeredCount = state.answeredCount,
                 percentage = state.percentage,
+                // Historical correctness above, current coverage below it: the same two concepts
+                // Topic Detail now shows, so a learner does not have to switch surfaces for one
+                // of them. Adding it as a caption keeps this to one card per scope.
+                caption = coverageCaption(state.coverage),
                 isWeak = state.isWeak,
                 isSummary = true,
             )
@@ -97,9 +102,24 @@ private fun ProgressTopicContent(
                     correctCount = subtopic.correctCount,
                     answeredCount = subtopic.answeredCount,
                     percentage = subtopic.percentage,
+                    caption = coverageCaption(subtopic.coverage),
                     isWeak = subtopic.isWeak,
                 )
             }
         }
     }
 }
+
+/**
+ * Wording that names the denominator, because this row already carries a second fraction: "5 / 8
+ * correct" is all-time and occurrence-based, while this one counts current Questions once each.
+ */
+@Composable
+private fun coverageCaption(coverage: ProgressCoverageUiModel?): String? =
+    coverage?.let {
+        stringResource(
+            Res.string.progress_topic_coverage,
+            it.attemptedQuestionCount,
+            it.totalQuestionCount,
+        )
+    }

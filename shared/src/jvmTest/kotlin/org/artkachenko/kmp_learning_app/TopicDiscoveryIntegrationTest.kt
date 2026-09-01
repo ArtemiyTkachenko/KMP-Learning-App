@@ -121,6 +121,15 @@ internal class TopicDiscoveryIntegrationTest {
         onNodeWithText(HttpSubtopicName).assertIsDisplayed()
         assertNoPracticeQuestionOnScreen()
 
+        // Topic Detail carries the same two concepts for a learner who has completed nothing:
+        // current coverage against the ACTIVE bank, and no accuracy at all rather than a fake 0%.
+        waitForTextContaining("questions explored")
+        onNodeWithText("Curriculum coverage").assertIsDisplayed()
+        onNodeWithText("0 of 1 questions explored").assertIsDisplayed()
+        onNodeWithText("0 of 1 explored").assertIsDisplayed()
+        onNodeWithText("0%").assertDoesNotExist()
+        onNodeWithText("All-time accuracy").assertDoesNotExist()
+
         onNodeWithContentDescription("Back").performClick()
         waitForTag(TopicBrowserSearchFieldTag)
         // Topics keeps its own back stack entry, so returning lands on the search results the
@@ -181,7 +190,18 @@ internal class TopicDiscoveryIntegrationTest {
     fun searchStatesStayDistinctAndFilterTheLoadedCatalogWithoutReadingItAgain() =
         runDiscoveryTest(CompactWidth) { repository ->
             waitForTag(topicVisualMarkerTag(UiTopicId))
+            // Waits for learning context too, so the baseline is taken after the enrichment read
+            // rather than racing it. No assessment has been completed in this fixture, so every
+            // Topic reports the unstudied state rather than a fabricated 0%.
+            waitForTextContaining("explored")
+            // All three Topics: a brand-new learner gets the neutral state everywhere, never a
+            // fabricated 0%.
+            assertEquals(3, onAllNodesWithText("Not studied yet").fetchSemanticsNodes().size)
+            onNodeWithText("0%").assertDoesNotExist()
             val readsAfterLoad = repository.reads()
+            // Coverage costs one read of the ACTIVE bank for the whole screen, not one per Topic
+            // card: three Topics are on screen.
+            assertEquals(1, repository.questionReads)
 
             // Question text is deliberately outside search: this word appears only in the
             // fixture's question text, and searching it must find nothing. Typed one character at
@@ -202,10 +222,9 @@ internal class TopicDiscoveryIntegrationTest {
                 .assertIsDisplayed()
 
             // Nine keystrokes and a clear against a catalog that was read once: search filters the
-            // loaded catalog in memory rather than querying Room per keystroke, and it never reads
-            // questions at all.
+            // loaded catalog in memory rather than querying Room per keystroke, and neither the
+            // curriculum nor the coverage derivation runs again.
             assertEquals(readsAfterLoad, repository.reads())
-            assertEquals(0, repository.questionReads)
         }
 
     @Test

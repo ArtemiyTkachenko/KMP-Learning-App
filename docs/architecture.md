@@ -156,6 +156,25 @@ including focused, mixed, and retake attempts; derived statistics are not
 persisted. A Topic is weak after at least 3 observations below 70% accuracy,
 and a Subtopic after at least 2 observations below 70% accuracy.
 
+The same snapshot carries curriculum coverage, which answers a different
+question: not "how accurately did I answer what I saw?" but "how much of the
+current curriculum have I seen at all?". Coverage is the intersection of the
+stable Question IDs appearing in completed history with the current ACTIVE
+question bank, read once per derivation through
+`CurriculumRepository.getActiveQuestions()` and grouped in memory. It is
+therefore deliberately unlike performance in three ways: each stable Question ID
+counts at most once no matter how often it was answered, correctness is
+irrelevant because an incorrect answer is still exposure, and the denominator is
+the current ACTIVE bank rather than anything reachable from history. A
+DEPRECATED or unresolvable historical Question keeps its historical accuracy but
+leaves current coverage, and publishing new questions legitimately lowers the
+coverage percentage while leaving accuracy untouched. Coverage groups are built
+from the ACTIVE questions rather than from the attempted IDs, so a Topic or
+Subtopic with no history at all is present as `0/N` instead of missing — "never
+attempted" must stay distinguishable from "attempted poorly", and 0/0 reports a
+`null` percentage because an empty denominator is not 0% coverage. Coverage is
+derived state like everything else here; nothing about it is persisted.
+
 The Progress dashboard is a shared presentation destination reached through
 the argument-free `AppRoute.Progress` route. `ProgressViewModel` maps the
 derived snapshot and newest-first completed history into display models,
@@ -170,7 +189,7 @@ navigation item, badged with the same count, owns opening the queue.
 Topic performance rows open `AppRoute.ProgressTopic(topicId)`, carrying only
 stable topic identity. `ProgressTopicViewModel` selects that Topic and its
 observed Subtopics out of the same derived snapshot, so the drill-down never
-recalculates statistics or reads current ACTIVE curriculum coverage. Subtopics
+recalculates statistics or issues curriculum queries of its own. Subtopics
 without completed observations are absent rather than fabricated, and weak
 Subtopics are flagged from the snapshot's existing policy result.
 

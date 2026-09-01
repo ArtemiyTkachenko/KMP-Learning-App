@@ -235,7 +235,7 @@ private class TopicHistoryRepository(
 }
 
 private class TopicCurriculumRepository(
-    questions: List<Question>,
+    private val questions: List<Question>,
     topics: List<Topic>,
     subtopics: List<Subtopic>,
 ) : CurriculumRepository {
@@ -246,7 +246,10 @@ private class TopicCurriculumRepository(
     override suspend fun getActiveTopics(): List<Topic> = error("ACTIVE lookup must not be used.")
     override suspend fun getActiveSubtopics(topicId: String): List<Subtopic> =
         error("ACTIVE lookup must not be used.")
-    override suspend fun getActiveQuestions(): List<Question> = error("ACTIVE lookup must not be used.")
+
+    /** LearningProgressService reads the ACTIVE bank once per load to derive curriculum coverage. */
+    override suspend fun getActiveQuestions(): List<Question> = questions
+
     override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> =
         error("ACTIVE lookup must not be used.")
     override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> =

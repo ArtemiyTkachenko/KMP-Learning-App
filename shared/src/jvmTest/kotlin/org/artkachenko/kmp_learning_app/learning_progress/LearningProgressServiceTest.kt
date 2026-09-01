@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
@@ -39,9 +40,236 @@ internal class LearningProgressServiceTest {
                 topics = emptyList(),
                 subtopics = emptyList(),
                 weakAreas = emptyList(),
+                coverage = CurriculumCoverage(0, 0),
+                topicCoverage = emptyList(),
+                subtopicCoverage = emptyList(),
             ),
             snapshot,
         )
+    }
+
+    @Test
+    fun emptyHistoryStillReportsCurrentCurriculumAsUncovered() = runTest {
+        val context = TestContext(
+            questions = listOf(
+                question("q1", "topic_a", "sub_a"),
+                question("q2", "topic_a", "sub_a"),
+                question("q3", "topic_b", "sub_b"),
+            ),
+        )
+
+        val snapshot = context.service.load()
+
+        assertEquals(CurriculumCoverage(0, 3), snapshot.coverage)
+        // No performance evidence exists, yet the unseen curriculum is still representable as 0/N.
+        assertEquals(emptyList(), snapshot.topics)
+        assertEquals(
+            listOf(TopicCoverage("topic_a", 0, 2), TopicCoverage("topic_b", 0, 1)),
+            snapshot.topicCoverage,
+        )
+        assertEquals(
+            listOf(
+                SubtopicCoverage("topic_a", "sub_a", 0, 2),
+                SubtopicCoverage("topic_b", "sub_b", 0, 1),
+            ),
+            snapshot.subtopicCoverage,
+        )
+        assertEquals(0, snapshot.completedAttemptCount)
+        assertEquals(0, snapshot.answeredQuestionCount)
+        assertEquals(0, snapshot.correctAnswerCount)
+    }
+
+    @Test
+    fun coverageCountsUniqueActiveQuestionsAcrossTopicsAndSubtopics() = runTest {
+        val context = TestContext(
+            attempts = listOf(
+                completedAttempt("first", listOf("q1" to true, "q3" to false)),
+                completedAttempt("second", listOf("q4" to true)),
+            ),
+            questions = listOf(
+                question("q1", "topic_a", "sub_a"),
+                question("q2", "topic_a", "sub_a"),
+                question("q3", "topic_a", "sub_b"),
+                question("q4", "topic_b", "sub_c"),
+                question("q5", "topic_b", "sub_c"),
+            ),
+        )
+
+        val snapshot = context.service.load()
+
+        // q3 was answered incorrectly and is still covered: coverage is exposure, not success.
+        assertEquals(CurriculumCoverage(3, 5), snapshot.coverage)
+        assertEquals(
+            listOf(TopicCoverage("topic_a", 2, 3), TopicCoverage("topic_b", 1, 2)),
+            snapshot.topicCoverage,
+        )
+        assertEquals(
+            listOf(
+                SubtopicCoverage("topic_a", "sub_a", 1, 2),
+                SubtopicCoverage("topic_a", "sub_b", 1, 1),
+                SubtopicCoverage("topic_b", "sub_c", 1, 2),
+            ),
+            snapshot.subtopicCoverage,
+        )
+        // One ACTIVE read per derivation; every grouping above happens in memory.
+        assertEquals(1, context.curriculum.activeQuestionCalls)
+    }
+
+    @Test
+    fun repeatedQuestionCoversOnceButKeepsAccuracyOccurrenceBased() = runTest {
+        val context = TestContext(
+            attempts = listOf(
+                completedAttempt("a", listOf("q1" to true)),
+                completedAttempt("b", listOf("q1" to false)),
+                completedAttempt("c", listOf("q1" to true)),
+            ),
+            questions = listOf(question("q1", "topic_a", "sub_a"), question("q2", "topic_a", "sub_a")),
+        )
+
+        val snapshot = context.service.load()
+
+        assertEquals(CurriculumCoverage(1, 2), snapshot.coverage)
+        assertEquals(listOf(TopicCoverage("topic_a", 1, 2)), snapshot.topicCoverage)
+        assertEquals(3, snapshot.answeredQuestionCount)
+        assertEquals(2, snapshot.correctAnswerCount)
+        assertEquals(3, snapshot.topics.single().answeredCount)
+        assertEquals(2, snapshot.topics.single().correctCount)
+        assertEquals(3, snapshot.subtopics.single().answeredCount)
+    }
+
+    @Test
+    fun focusedAndMixedEncountersOfTheSameQuestionCoverItOnce() = runTest {
+        val context = TestContext(
+            attempts = listOf(
+                completedAttempt(
+                    id = "focused",
+                    observations = listOf("q1" to true),
+                    config = AssessmentConfig.Focused(AssessmentScope.Topic("topic_a"), 1),
+                ),
+                completedAttempt(
+                    id = "mixed",
+                    observations = listOf("q1" to false),
+                    config = AssessmentConfig.Mixed(1),
+                ),
+            ),
+            // The Focused attempt was scoped to topic_a, but coverage follows the Question's
+            // CURRENT authored Topic rather than the assessment configuration.
+            questions = listOf(question("q1", "topic_b", "sub_b"), question("q2", "topic_a", "sub_a")),
+        )
+
+        val snapshot = context.service.load()
+
+        assertEquals(CurriculumCoverage(1, 2), snapshot.coverage)
+        assertEquals(
+            listOf(TopicCoverage("topic_a", 0, 1), TopicCoverage("topic_b", 1, 1)),
+            snapshot.topicCoverage,
+        )
+    }
+
+    @Test
+    fun deprecatedAndMissingHistoricalQuestionsStayOutOfCurrentCoverage() = runTest {
+        val context = TestContext(
+            attempts = listOf(
+                completedAttempt(
+                    id = "history",
+                    observations = listOf(
+                        "deprecated_q" to false,
+                        "active_q" to true,
+                        "missing_q" to true,
+                    ),
+                    persistedCorrectCount = 2,
+                ),
+            ),
+            questions = listOf(
+                question("deprecated_q", "old_topic", "old_sub", status = ContentStatus.DEPRECATED),
+                question("active_q", "topic_a", "sub_a"),
+            ),
+        )
+
+        val snapshot = context.service.load()
+
+        assertEquals(CurriculumCoverage(1, 1), snapshot.coverage)
+        assertEquals(listOf(TopicCoverage("topic_a", 1, 1)), snapshot.topicCoverage)
+        assertEquals(listOf(SubtopicCoverage("topic_a", "sub_a", 1, 1)), snapshot.subtopicCoverage)
+        // Historical accuracy still keeps the persisted score and the DEPRECATED attribution.
+        assertEquals(3, snapshot.answeredQuestionCount)
+        assertEquals(2, snapshot.correctAnswerCount)
+        assertEquals(
+            listOf("old_topic", "topic_a"),
+            snapshot.topics.map { it.topicId },
+        )
+    }
+
+    @Test
+    fun inProgressOccurrencesDoNotCountAsCoverage() = runTest {
+        val context = TestContext(
+            attempts = listOf(inProgressAttempt("unfinished")),
+            questions = listOf(question("unfinished_question", "topic_a", "sub_a")),
+        )
+
+        val snapshot = context.service.load()
+
+        assertEquals(CurriculumCoverage(0, 1), snapshot.coverage)
+        assertEquals(listOf(TopicCoverage("topic_a", 0, 1)), snapshot.topicCoverage)
+    }
+
+    @Test
+    fun curriculumExpansionLowersCoverageWithoutTouchingAccuracy() = runTest {
+        val attempts = listOf(completedAttempt("history", listOf("q1" to true)))
+        val before = TestContext(
+            attempts = attempts,
+            questions = listOf(question("q1", "topic_a", "sub_a"), question("q2", "topic_a", "sub_a")),
+        ).service.load()
+
+        val after = TestContext(
+            attempts = attempts,
+            questions = listOf(
+                question("q1", "topic_a", "sub_a"),
+                question("q2", "topic_a", "sub_a"),
+                question("q3", "topic_a", "sub_a"),
+            ),
+        ).service.load()
+
+        assertEquals(CurriculumCoverage(1, 2), before.coverage)
+        assertEquals(50.0, before.coverage.percentage)
+        assertEquals(CurriculumCoverage(1, 3), after.coverage)
+        assertEquals(1.0 / 3.0 * 100.0, assertNotNull(after.coverage.percentage), 0.0000001)
+        assertEquals(before.answeredQuestionCount, after.answeredQuestionCount)
+        assertEquals(before.correctAnswerCount, after.correctAnswerCount)
+        assertEquals(before.percentage, after.percentage)
+        assertEquals(before.topics, after.topics)
+        assertEquals(before.subtopics, after.subtopics)
+    }
+
+    @Test
+    fun curriculumRetirementRemovesQuestionFromCoverageButNotFromAccuracy() = runTest {
+        val attempts = listOf(completedAttempt("history", listOf("q1" to true, "q2" to false)))
+        val before = TestContext(
+            attempts = attempts,
+            questions = listOf(question("q1", "topic_a", "sub_a"), question("q2", "topic_a", "sub_a")),
+        ).service.load()
+
+        val after = TestContext(
+            attempts = attempts,
+            questions = listOf(
+                question("q1", "topic_a", "sub_a"),
+                question("q2", "topic_a", "sub_a", status = ContentStatus.DEPRECATED),
+            ),
+        ).service.load()
+
+        assertEquals(CurriculumCoverage(2, 2), before.coverage)
+        assertEquals(CurriculumCoverage(1, 1), after.coverage)
+        assertEquals(before.topics, after.topics)
+        assertEquals(2, after.topics.single().answeredCount)
+        assertEquals(1, after.topics.single().correctCount)
+    }
+
+    @Test
+    fun coveragePercentageIsNullOnlyWhenNoCurrentCurriculumExists() {
+        assertNull(CurriculumCoverage(0, 0).percentage)
+        assertEquals(0.0, assertNotNull(CurriculumCoverage(0, 4).percentage))
+        assertEquals(50.0, assertNotNull(TopicCoverage("topic_a", 1, 2).percentage))
+        assertEquals(100.0, assertNotNull(SubtopicCoverage("topic_a", "sub_a", 3, 3).percentage))
     }
 
     @Test
@@ -292,7 +520,7 @@ private class FakeAssessmentRepository(
 }
 
 private class FakeCurriculumRepository(
-    questions: List<Question>,
+    private val questions: List<Question>,
     topics: List<Topic>,
     subtopics: List<Subtopic>,
 ) : CurriculumRepository {
@@ -302,11 +530,19 @@ private class FakeCurriculumRepository(
     val questionLookupCalls = mutableMapOf<String, Int>()
     val topicLookupCalls = mutableMapOf<String, Int>()
     val subtopicLookupCalls = mutableMapOf<String, Int>()
+    var activeQuestionCalls = 0
+        private set
 
     override suspend fun getActiveTopics(): List<Topic> = error("ACTIVE lookup must not be used.")
     override suspend fun getActiveSubtopics(topicId: String): List<Subtopic> =
         error("ACTIVE lookup must not be used.")
-    override suspend fun getActiveQuestions(): List<Question> = error("ACTIVE lookup must not be used.")
+
+    /** Coverage reads the current ACTIVE question bank; DEPRECATED fixtures stay out of it. */
+    override suspend fun getActiveQuestions(): List<Question> {
+        activeQuestionCalls += 1
+        return questions.filter { it.status == ContentStatus.ACTIVE }
+    }
+
     override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> =
         error("ACTIVE lookup must not be used.")
     override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> =

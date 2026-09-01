@@ -7,7 +7,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTouchHeightIsEqualTo
+import androidx.compose.ui.test.assertTouchWidthIsEqualTo
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -321,6 +326,54 @@ internal class TopicBrowserScreenTest {
     }
 
     @Test
+    fun discoveryRowsAnnounceTheirNameOnceAndStayFullSizeTargets() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(Topic("networking", "Networking & Serialization")),
+                        query = "compose",
+                        topicMatches = listOf(
+                            TopicSearchResult("networking", "Networking & Serialization"),
+                        ),
+                        subtopicMatches = listOf(
+                            SubtopicSearchResult(
+                                subtopicId = "compose_state",
+                                subtopicName = "Compose snapshot state",
+                                parentTopicId = "android_ui",
+                                parentTopicName = "UI — Views & Jetpack Compose",
+                            ),
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        // The marker and the chevron are decoration beside text that already says what the row is,
+        // so neither may announce anything: a described icon would read the Topic name twice.
+        onNodeWithContentDescription("Networking & Serialization").assertDoesNotExist()
+        onNodeWithContentDescription("UI — Views & Jetpack Compose").assertDoesNotExist()
+
+        // Each row is one target carrying its whole label, rather than a name and a separate
+        // control, and a Subtopic result keeps its parent Topic inside that same label.
+        onNodeWithText("Networking & Serialization")
+            .assertHasClickAction()
+            .assertHeightIsAtLeast(MinimumTouchTarget)
+        onNode(hasText("Compose snapshot state") and hasText("UI — Views & Jetpack Compose"))
+            .assertHasClickAction()
+            .assertHeightIsAtLeast(MinimumTouchTarget)
+
+        // The clear control is the one small target on the screen: its icon is drawn at 40.dp, so
+        // what has to reach the minimum is its touch bounds.
+        onNodeWithContentDescription("Clear search")
+            .assertHasClickAction()
+            .assertTouchHeightIsEqualTo(MinimumTouchTarget)
+            .assertTouchWidthIsEqualTo(MinimumTouchTarget)
+    }
+
+    @Test
     fun topicClickReturnsStableTopicId() = runComposeUiTest {
         var clickedTopicId: String? = null
 
@@ -426,3 +479,6 @@ private val TestTopInset = 48.dp
 
 /** Mirrors TopicBrowserHeaderSpacing, which is private to the screen. */
 private val TestHeaderSpacing = 12.dp
+
+/** The Material minimum touch target. */
+private val MinimumTouchTarget = 48.dp

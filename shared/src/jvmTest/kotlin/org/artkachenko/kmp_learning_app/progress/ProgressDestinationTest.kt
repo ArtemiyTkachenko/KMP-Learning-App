@@ -4,9 +4,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -83,7 +86,14 @@ internal class ProgressDestinationTest {
         waitForIdle()
 
         onNodeWithText("Completed assessments").assertIsDisplayed()
-        assertEquals(2, onAllNodesWithText("Mixed Android Interview").fetchSemanticsNodes().size)
+        // The dashboard now carries coverage and recent performance above the history, so the rows
+        // sit below the fold; each is scrolled to by its own stable attempt handle rather than
+        // counted, which also says which attempt was found.
+        listOf("second", "first").forEach { attemptId ->
+            onNodeWithTag(ProgressContentTag)
+                .performScrollToNode(hasTestTag(progressHistoryCardTag(attemptId)))
+            onNodeWithTag(progressHistoryCardTag(attemptId)).assertIsDisplayed()
+        }
     }
 
     @Test
@@ -117,7 +127,10 @@ internal class ProgressDestinationTest {
         owner.moveTo(Lifecycle.State.RESUMED)
         waitForIdle()
 
+        onNodeWithTag(ProgressContentTag)
+            .performScrollToNode(hasText("Mixed Android Interview"))
         onNodeWithText("Mixed Android Interview").performClick()
+        onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("Focused practice"))
         onNodeWithText("Focused practice").performClick()
 
         assertEquals(listOf("mixed-attempt"), mixedTargets)

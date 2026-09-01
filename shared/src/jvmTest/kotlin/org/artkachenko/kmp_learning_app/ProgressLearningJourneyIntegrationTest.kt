@@ -102,7 +102,7 @@ internal class ProgressLearningJourneyIntegrationTest {
                     // The derived values, not just their labels.
                     onNode(hasText("Questions answered") and hasText("7")).assertIsDisplayed()
                     onNode(hasText("Correct answers") and hasText("3")).assertIsDisplayed()
-                    onNodeWithText("accuracy overall").assertIsDisplayed()
+                    onNodeWithText("All-time accuracy").assertIsDisplayed()
                     assertTrue(
                         onAllNodesWithText("42.9%").fetchSemanticsNodes().isNotEmpty(),
                     )

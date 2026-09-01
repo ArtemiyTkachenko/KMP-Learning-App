@@ -5,6 +5,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -50,6 +51,7 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDatabase
 import org.artkachenko.kmp_learning_app.data.local.curriculum.curriculumDataModule
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImporter
 import org.artkachenko.kmp_learning_app.data.local.curriculum.repository.LocalCurriculumRepository
+import org.artkachenko.kmp_learning_app.progress.ProgressContentTag
 import org.artkachenko.kmp_learning_app.progress.progressTopicCardTag
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultPracticeAgainTag
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
@@ -124,14 +126,14 @@ internal class FocusedLearningJourneyIntegrationTest {
 
             onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.PROGRESS)).performClick()
             waitUntil(timeoutMillis = 5_000) {
-                onAllNodesWithText("Completed assessments").fetchSemanticsNodes().isNotEmpty()
+                onAllNodesWithTag(ProgressContentTag).fetchSemanticsNodes().isNotEmpty()
             }
             // The derived values, not just their labels: this is the end-to-end check that Room
             // history reaches the dashboard with the right numbers.
             onNode(hasText("Questions answered") and hasText("2")).assertIsDisplayed()
             onNode(hasText("Correct answers") and hasText("1")).assertIsDisplayed()
             // 50% is the overall headline here and also the topic and weak-area figures.
-            onNodeWithText("accuracy overall").assertIsDisplayed()
+            onNodeWithText("All-time accuracy").assertIsDisplayed()
             assertTrue(onAllNodesWithText("50%").fetchSemanticsNodes().isNotEmpty())
             onNode(hasScrollAction()).performScrollToNode(hasText("Focused practice"))
             onNodeWithText("Focused practice").performClick()
@@ -140,7 +142,7 @@ internal class FocusedLearningJourneyIntegrationTest {
             }
             onNodeWithContentDescription("Back").performClick()
             waitUntil(timeoutMillis = 5_000) {
-                onAllNodesWithText("Completed assessments").fetchSemanticsNodes().isNotEmpty()
+                onAllNodesWithTag(ProgressContentTag).fetchSemanticsNodes().isNotEmpty()
             }
 
             // Mistake review: the multiple-choice question was answered incorrectly and the single
@@ -158,7 +160,7 @@ internal class FocusedLearningJourneyIntegrationTest {
             // Mistakes is its own area, so getting back to Progress is a navigation-bar switch.
             onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.PROGRESS)).performClick()
             waitUntil(timeoutMillis = 5_000) {
-                onAllNodesWithText("Completed assessments").fetchSemanticsNodes().isNotEmpty()
+                onAllNodesWithTag(ProgressContentTag).fetchSemanticsNodes().isNotEmpty()
             }
 
             // Topic drill-down. "Android" also labels the weak-area parent and the focused history
@@ -171,7 +173,7 @@ internal class FocusedLearningJourneyIntegrationTest {
             onNodeWithText("Weak area").assertIsDisplayed()
             onNodeWithContentDescription("Back").performClick()
             waitUntil(timeoutMillis = 5_000) {
-                onAllNodesWithText("Completed assessments").fetchSemanticsNodes().isNotEmpty()
+                onAllNodesWithTag(ProgressContentTag).fetchSemanticsNodes().isNotEmpty()
             }
             onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.TOPICS)).performClick()
 

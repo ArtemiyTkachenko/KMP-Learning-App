@@ -69,7 +69,7 @@ private fun ProgressTopicContent(
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
@@ -80,6 +80,7 @@ private fun ProgressTopicContent(
                 answeredCount = state.answeredCount,
                 percentage = state.percentage,
                 isWeak = state.isWeak,
+                isSummary = true,
             )
         }
         // Only Subtopics with completed observations reach the snapshot, so an observed Topic can

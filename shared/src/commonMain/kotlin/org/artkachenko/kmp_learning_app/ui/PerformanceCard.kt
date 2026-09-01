@@ -41,25 +41,22 @@ internal fun PerformanceCard(
     isWeak: Boolean = false,
     weakLabel: String? = null,
     showChevron: Boolean = false,
+    isSummary: Boolean = false,
 ) {
     val semantic = AppThemeExtras.semanticColors
     Card(
         modifier = modifier.fillMaxWidth(),
+        shape = if (isSummary) MaterialTheme.shapes.large else MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = if (isWeak) {
                 semantic.partiallyCorrectContainer
+            } else if (isSummary) {
+                MaterialTheme.colorScheme.surfaceContainer
             } else {
                 MaterialTheme.colorScheme.surfaceContainerLow
             },
         ),
-        border = BorderStroke(
-            width = 1.dp,
-            color = if (isWeak) {
-                semantic.partiallyCorrect
-            } else {
-                MaterialTheme.colorScheme.outlineVariant
-            },
-        ),
+        border = if (isWeak) BorderStroke(1.dp, semantic.partiallyCorrect) else null,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -106,7 +103,7 @@ internal fun PerformanceCard(
             Text(
                 text = formatAccuracy(percentage),
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
                 color = accuracyColor(percentage),
             )
             if (showChevron) {

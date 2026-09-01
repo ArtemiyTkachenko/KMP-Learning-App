@@ -1,7 +1,5 @@
 package org.artkachenko.kmp_learning_app.topic_study.topic_detail
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -22,8 +20,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
@@ -39,6 +35,8 @@ import kmp_learning_app.shared.generated.resources.topic_detail_subtopics
 import org.artkachenko.kmp_learning_app.ui.AccuracyHeadline
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.PrimarySummaryCard
+import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
@@ -119,17 +117,10 @@ private fun TopicContent(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 state.accuracyPercentage?.let { accuracy ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                        ),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    ) {
+                    PrimarySummaryCard {
                         AccuracyHeadline(
                             percentage = accuracy,
                             caption = stringResource(Res.string.topic_detail_accuracy_caption),
-                            modifier = Modifier.padding(16.dp),
                         )
                     }
                 }
@@ -149,12 +140,8 @@ private fun TopicContent(
                 ) {
                     Text(text = stringResource(Res.string.topic_detail_start_practice))
                 }
-                Text(
+                SectionHeading(
                     text = stringResource(Res.string.topic_detail_subtopics),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(top = 8.dp),
                 )
             }
         }
@@ -165,14 +152,12 @@ private fun TopicContent(
             // The row itself starts practice, so the per-row filled button is gone: it duplicated
             // the row's own click target and competed with the topic-level primary action.
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag(SubtopicPracticeButtonTag)
-                    .clickable { onStartSubtopicPractice(item.subtopic.id) },
+                onClick = { onStartSubtopicPractice(item.subtopic.id) },
+                modifier = Modifier.fillMaxWidth().testTag(SubtopicPracticeButtonTag),
+                shape = MaterialTheme.shapes.medium,
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                 ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -199,7 +184,7 @@ private fun TopicContent(
                         Text(
                             text = formatAccuracy(accuracy),
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             color = accuracyColor(accuracy),
                         )
                     }
@@ -214,5 +199,3 @@ private fun TopicContent(
         }
     }
 }
-
-

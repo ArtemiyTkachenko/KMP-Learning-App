@@ -1,6 +1,5 @@
 package org.artkachenko.kmp_learning_app.mixed_interview
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -10,15 +9,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.mixed_result_attempt_not_found
@@ -35,7 +31,6 @@ import kmp_learning_app.shared.generated.resources.mixed_result_repeat_source_mi
 import kmp_learning_app.shared.generated.resources.mixed_result_title
 import kmp_learning_app.shared.generated.resources.mixed_result_topic_score
 import kmp_learning_app.shared.generated.resources.mixed_result_topic_unavailable
-import kotlin.math.roundToInt
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentScoreSummary
 import org.artkachenko.kmp_learning_app.assessment_review.MissingReviewQuestion
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionCard
@@ -46,6 +41,7 @@ import org.artkachenko.kmp_learning_app.ui.PerformanceCard
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
+import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.jetbrains.compose.resources.stringResource
 
 internal const val MixedResultLoadingTag = "mixed_result_loading"
@@ -104,7 +100,7 @@ private fun MixedResultContent(
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
@@ -147,23 +143,13 @@ private fun MixedResultContent(
             }
         }
         item {
-            Text(
-                stringResource(Res.string.mixed_result_performance_by_topic),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            SectionHeading(stringResource(Res.string.mixed_result_performance_by_topic))
         }
         items(state.topicPerformance, key = { it.topicId }) { topic ->
             TopicPerformanceCard(topic)
         }
         item {
-            Text(
-                stringResource(Res.string.mixed_result_question_review),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            SectionHeading(stringResource(Res.string.mixed_result_question_review))
         }
         items(state.questions) { item ->
             when (item) {
@@ -189,4 +175,3 @@ private fun TopicPerformanceCard(
         percentage = topic.percentage,
     )
 }
-

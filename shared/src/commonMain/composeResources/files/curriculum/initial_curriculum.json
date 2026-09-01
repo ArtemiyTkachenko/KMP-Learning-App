@@ -2357,7 +2357,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "content_provider_uri_permission_grant_d"
       ],
@@ -2398,7 +2398,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "android_context_001_b"
       ],
@@ -2924,7 +2924,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "navigation_pop_up_to_inclusive_b"
       ],
@@ -3154,7 +3154,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "compose_edge_to_edge_insets_a"
       ],
@@ -3228,7 +3228,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "compose_phases_deferred_state_read_c"
       ],
@@ -4244,7 +4244,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "ADVANCED",
       "correctAnswerIds": [
         "coroutine_async_exception_surfaces_at_await_d"
       ],
@@ -4586,7 +4586,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "flow_share_in_vs_state_in_a"
       ],
@@ -4623,7 +4623,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "ADVANCED",
       "correctAnswerIds": [
         "coroutine_supervisor_scope_direct_children_b"
       ],
@@ -4660,7 +4660,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "coroutine_io_dispatcher_blocking_calls_a"
       ],
@@ -4808,7 +4808,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "coroutine_async_await_sequential_b"
       ],
@@ -4960,7 +4960,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "architecture_ui_event_consumption_c"
       ],
@@ -5112,7 +5112,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "architecture_paging_ownership_b"
       ],
@@ -5149,7 +5149,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "architecture_tradeoffs_001_b"
       ],
@@ -5186,7 +5186,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "architecture_error_mapping_boundary_a"
       ],
@@ -5223,7 +5223,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "architecture_error_modeling_result_type_a"
       ],
@@ -5260,7 +5260,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "architecture_mvi_single_state_c"
       ],
@@ -5297,7 +5297,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "architecture_use_case_reuse_b"
       ],
@@ -5334,7 +5334,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "architecture_interface_boundary_ownership_a"
       ],
@@ -5757,7 +5757,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "dagger_multibinding_into_set_a"
       ],
@@ -5950,7 +5950,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "room_transaction_dao_method_c"
       ],
@@ -6172,7 +6172,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "cache_invalidation_staleness_policy_b"
       ],
@@ -6435,7 +6435,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "okhttp_authenticator_token_refresh_a"
       ],
@@ -6472,7 +6472,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "ADVANCED",
       "correctAnswerIds": [
         "http_cache_control_revalidation_b"
       ],
@@ -6546,7 +6546,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "pagination_keyset_vs_offset_c"
       ],
@@ -6583,7 +6583,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "network_error_transport_vs_http_c"
       ],
@@ -6624,7 +6624,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "tls_certificate_pinning_tradeoff_b"
       ],
@@ -6813,7 +6813,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "background_limits_001_d"
       ],
@@ -6965,7 +6965,7 @@
         }
       ],
       "selectionMode": "MULTIPLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "background_api_selection_criteria_a",
         "background_api_selection_criteria_b",
@@ -7041,7 +7041,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "notification_trampoline_restriction_a"
       ],
@@ -7152,7 +7152,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "fcm_message_priority_doze_d"
       ],
@@ -7189,7 +7189,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "notification_pending_intent_back_stack_c"
       ],
@@ -7453,7 +7453,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "flow_testing_turbine_bounded_collection_b"
       ],
@@ -7605,7 +7605,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "flow_testing_hot_flow_never_completes_a"
       ],
@@ -7679,7 +7679,7 @@
         }
       ],
       "selectionMode": "MULTIPLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "local_vs_instrumented_test_placement_a",
         "local_vs_instrumented_test_placement_c"
@@ -7721,7 +7721,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "test_dependency_substitution_constructor_a"
       ],
@@ -7758,7 +7758,7 @@
         }
       ],
       "selectionMode": "MULTIPLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "flaky_test_shared_state_and_time_a",
         "flaky_test_shared_state_and_time_c"
@@ -7952,7 +7952,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "compose_recomposition_performance_001_d"
       ],
@@ -8030,7 +8030,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "performance_coroutine_scope_leak_d"
       ],
@@ -8104,7 +8104,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "performance_r8_minify_reflection_a"
       ],
@@ -8327,7 +8327,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "sensitive_logging_001_d"
       ],
@@ -8438,7 +8438,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "security_permission_denied_forever_b"
       ],
@@ -8475,7 +8475,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "security_scoped_storage_media_access_d"
       ],
@@ -8734,7 +8734,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "modularization_dependency_direction_c"
       ],
@@ -8771,7 +8771,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "gradle_configuration_cache_invalidation_b"
       ],
@@ -8851,7 +8851,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "offline_design_001_b"
       ],
@@ -8892,7 +8892,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "ADVANCED",
       "correctAnswerIds": [
         "system_design_push_vs_poll_d"
       ],
@@ -8984,7 +8984,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "system_design_conflict_resolution_policy_d"
       ],
@@ -9025,7 +9025,7 @@
         }
       ],
       "selectionMode": "MULTIPLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "system_design_observability_signals_a",
         "system_design_observability_signals_b",
@@ -9064,7 +9064,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "system_design_api_backward_compatibility_a"
       ],
@@ -9101,7 +9101,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "system_design_source_of_truth_boundary_b"
       ],
@@ -9138,7 +9138,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "system_design_feature_flag_rollout_b"
       ],
@@ -9175,7 +9175,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "system_design_pagination_state_ownership_c"
       ],
@@ -9323,7 +9323,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "kmp_source_set_hierarchy_resolution_b"
       ],
@@ -9360,7 +9360,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "kmp_expect_actual_vs_interface_b"
       ],
@@ -9438,7 +9438,7 @@
         }
       ],
       "selectionMode": "MULTIPLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "kmp_shared_layer_selection_a",
         "kmp_shared_layer_selection_b",
@@ -9514,7 +9514,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "kmp_tradeoff_when_not_to_share_a"
       ],
@@ -9699,7 +9699,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "android_context_theme_inflation_d"
       ],
@@ -9736,7 +9736,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "viewmodel_destination_scope_a"
       ],
@@ -9773,7 +9773,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "lifecycle_repeat_on_lifecycle_b"
       ],
@@ -9847,7 +9847,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "navigation3_back_stack_ownership_d"
       ],
@@ -9884,7 +9884,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "saved_state_transient_inputs_a"
       ],
@@ -9958,7 +9958,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "compose_derived_state_threshold_c"
       ],
@@ -10106,7 +10106,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "compose_composition_local_tradeoff_a"
       ],
@@ -10143,7 +10143,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "compose_key_identity_lazy_state_b"
       ],
@@ -10218,7 +10218,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "compose_udf_event_direction_b"
       ],
@@ -10367,7 +10367,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "binder_thread_pool_ui_handoff_b"
       ],
@@ -10515,7 +10515,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "remember_saveable_vs_viewmodel_ownership_b"
       ],
@@ -10552,7 +10552,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "navigation_graph_viewmodel_shared_scope_c"
       ],
@@ -10813,7 +10813,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "custom_view_invalidate_vs_request_layout_b"
       ],
@@ -10850,7 +10850,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "compose_view_disposal_strategy_lifecycle_c"
       ],
@@ -11077,7 +11077,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "noinline_vs_crossinline_lambda_c"
       ],
@@ -11114,7 +11114,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "sequence_intermediate_allocation_tradeoff_d"
       ],
@@ -11225,7 +11225,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "coroutine_run_blocking_main_thread_c"
       ],
@@ -11266,7 +11266,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "coroutine_scope_job_ownership_c"
       ],
@@ -11340,7 +11340,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "coroutine_scope_vs_supervisor_scope_failure_b"
       ],
@@ -11377,7 +11377,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "ADVANCED",
       "correctAnswerIds": [
         "coroutine_supervisor_job_child_context_noop_b"
       ],
@@ -11418,7 +11418,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "launch_vs_async_unawaited_result_a"
       ],
@@ -11455,7 +11455,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "cancellation_exception_rethrow_b"
       ],
@@ -11492,7 +11492,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "cpu_loop_cooperative_cancellation_c"
       ],
@@ -11529,7 +11529,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "coroutine_run_interruptible_blocking_call_a"
       ],
@@ -11570,7 +11570,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "suspending_api_dispatcher_assumption_b"
       ],
@@ -11607,7 +11607,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "ADVANCED",
       "correctAnswerIds": [
         "coroutine_exception_handler_root_boundary_d"
       ],
@@ -11644,7 +11644,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "flow_vs_channel_delivery_model_b"
       ],
@@ -11719,7 +11719,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "flow_buffer_producer_consumer_concurrency_a"
       ],
@@ -11793,7 +11793,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "architecture_state_holder_taxonomy_d"
       ],
@@ -11830,7 +11830,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "viewmodel_vs_repository_responsibility_c"
       ],
@@ -11867,7 +11867,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "durable_state_vs_one_off_event_a"
       ],
@@ -11904,7 +11904,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "dto_entity_domain_model_boundary_a"
       ],
@@ -11978,7 +11978,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "domain_layer_passthrough_cost_c"
       ],
@@ -12090,7 +12090,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "dagger_component_dependency_vs_subcomponent_c"
       ],
@@ -12239,7 +12239,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "dagger_assisted_injection_viewmodel_d"
       ],
@@ -12317,7 +12317,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "dagger_qualifier_same_type_bindings_c"
       ],
@@ -12391,7 +12391,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "datastore_vs_room_data_shape_a"
       ],
@@ -12502,7 +12502,7 @@
         }
       ],
       "selectionMode": "MULTIPLE",
-      "level": "FOUNDATION",
+      "level": "ADVANCED",
       "correctAnswerIds": [
         "offline_first_local_write_then_sync_a",
         "offline_first_local_write_then_sync_b"
@@ -12615,7 +12615,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "connect_read_write_timeout_distinction_c"
       ],
@@ -12726,7 +12726,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "ADVANCED",
       "correctAnswerIds": [
         "idempotent_worker_retry_design_c"
       ],
@@ -12763,7 +12763,7 @@
         }
       ],
       "selectionMode": "MULTIPLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "workmanager_vs_foreground_service_constraint_a",
         "workmanager_vs_foreground_service_constraint_b"
@@ -12838,7 +12838,7 @@
         }
       ],
       "selectionMode": "MULTIPLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "fcm_token_rotation_server_mapping_a",
         "fcm_token_rotation_server_mapping_b"
@@ -12876,7 +12876,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "test_main_dispatcher_replacement_a"
       ],
@@ -12913,7 +12913,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "flow_test_background_collector_statein_a"
       ],
@@ -12950,7 +12950,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "compose_semantics_merged_tree_b"
       ],
@@ -12987,7 +12987,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "room_migration_test_preserves_data_b"
       ],
@@ -13024,7 +13024,7 @@
         }
       ],
       "selectionMode": "MULTIPLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "contract_focused_tests_resist_refactor_a",
         "contract_focused_tests_resist_refactor_b"
@@ -13178,7 +13178,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "heap_dump_path_to_gc_root_c"
       ],
@@ -13363,7 +13363,7 @@
         }
       ],
       "selectionMode": "MULTIPLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "exported_component_external_input_validation_a",
         "exported_component_external_input_validation_b"
@@ -13401,7 +13401,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "modularization_large_app_module_cost_b"
       ],
@@ -13438,7 +13438,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "over_modularization_tiny_module_cost_c"
       ],
@@ -13475,7 +13475,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "feature_siblings_shared_contract_module_a"
       ],
@@ -13549,7 +13549,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "feature_vs_layer_module_tradeoff_d"
       ],
@@ -13586,7 +13586,7 @@
         }
       ],
       "selectionMode": "MULTIPLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "modularization_build_speed_not_guaranteed_a",
         "modularization_build_speed_not_guaranteed_b"
@@ -13624,7 +13624,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "ADVANCED",
       "correctAnswerIds": [
         "resilient_write_queue_dependency_order_a"
       ],
@@ -13661,7 +13661,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "paged_cache_remote_key_transaction_b"
       ],
@@ -13698,7 +13698,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "ADVANCED",
       "correctAnswerIds": [
         "realtime_messages_persist_then_render_c"
       ],
@@ -13735,7 +13735,7 @@
         }
       ],
       "selectionMode": "MULTIPLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "account_data_partition_logout_a",
         "account_data_partition_logout_b"
@@ -13810,7 +13810,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "kmp_shared_ui_platform_experience_tradeoff_b"
       ],
@@ -13884,7 +13884,7 @@
         }
       ],
       "selectionMode": "MULTIPLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "kmp_common_vs_platform_test_placement_a",
         "kmp_common_vs_platform_test_placement_b"
@@ -13922,7 +13922,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "flow_flat_map_latest_search_cancellation_b"
       ],
@@ -14189,7 +14189,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "flow_retry_when_conditional_attempts_a"
       ],
@@ -14305,7 +14305,7 @@
         }
       ],
       "selectionMode": "MULTIPLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "http_status_retry_classification_a",
         "http_status_retry_classification_c"
@@ -14426,7 +14426,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "network_retry_backoff_jitter_a"
       ],
@@ -14463,7 +14463,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "okhttp_client_instance_reuse_pooling_a"
       ],
@@ -14541,7 +14541,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "auth_access_refresh_token_lifetime_split_b"
       ],
@@ -14578,7 +14578,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "serialization_class_discriminator_mismatch_d"
       ],
@@ -14615,7 +14615,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "retrofit_vs_ktor_client_multiplatform_a"
       ],
@@ -14849,7 +14849,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "alarm_manager_vs_workmanager_selection_b"
       ],
@@ -14890,7 +14890,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "long_running_worker_set_foreground_c"
       ],
@@ -14964,7 +14964,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "hilt_entry_point_manual_access_b"
       ],
@@ -15038,7 +15038,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "hilt_activity_retained_component_lifetime_c"
       ],
@@ -15075,7 +15075,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "hilt_vs_dagger_convention_tradeoff_b"
       ],
@@ -15112,7 +15112,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "manual_di_graph_growth_cost_c"
       ],
@@ -15149,7 +15149,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "koin_multiplatform_common_module_d"
       ],
@@ -15298,7 +15298,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "webview_javascript_interface_exposure_c"
       ],
@@ -15335,7 +15335,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "network_security_config_cleartext_scope_a"
       ],
@@ -15372,7 +15372,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "ADVANCED",
       "correctAnswerIds": [
         "biometric_prompt_keystore_binding_b"
       ],
@@ -15409,7 +15409,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "ADVANCED",
       "correctAnswerIds": [
         "auth_token_device_storage_risk_c"
       ],
@@ -15446,7 +15446,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "ADVANCED",
       "correctAnswerIds": [
         "root_detection_client_trust_boundary_c"
       ],
@@ -15483,7 +15483,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "anr_broadcast_receiver_work_budget_c"
       ],
@@ -15561,7 +15561,7 @@
         }
       ],
       "selectionMode": "MULTIPLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "context_leak_retained_activity_references_a",
         "context_leak_retained_activity_references_c"
@@ -15599,7 +15599,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "lifecycle_leak_listener_unregistration_d"
       ],
@@ -15636,7 +15636,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "android_heap_limit_oom_large_allocation_b"
       ],
@@ -15673,7 +15673,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "recyclerview_diffutil_minimal_updates_b"
       ],
@@ -15710,7 +15710,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "cpu_profiling_sampling_vs_instrumented_d"
       ],
@@ -15747,7 +15747,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "fakes_vs_mocks_interaction_coupling_a"
       ],
@@ -15784,7 +15784,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "run_test_advance_until_idle_pending_work_b"
       ],
@@ -15821,7 +15821,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "repository_test_cache_policy_fakes_c"
       ],
@@ -15858,7 +15858,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "compose_ui_test_clock_manual_advance_d"
       ],
@@ -15899,7 +15899,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "testability_injected_time_source_seam_d"
       ],
@@ -15936,7 +15936,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "unit_test_android_stub_not_mocked_error_a"
       ],
@@ -16122,7 +16122,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "file_storage_cache_dir_vs_files_dir_a"
       ],
@@ -16200,7 +16200,7 @@
         }
       ],
       "selectionMode": "MULTIPLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "system_requirements_clarifying_constraint_a",
         "system_requirements_clarifying_constraint_c"
@@ -16238,7 +16238,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "system_nonfunctional_freshness_budget_c"
       ],
@@ -16275,7 +16275,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "ADVANCED",
       "correctAnswerIds": [
         "system_retry_queue_poison_write_d"
       ],
@@ -16316,7 +16316,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "system_client_server_rule_placement_c"
       ],
@@ -16357,7 +16357,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "feature_flag_offline_default_value_b"
       ],
@@ -16468,7 +16468,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "kmp_shared_viewmodel_owner_platform_a"
       ],
@@ -16579,7 +16579,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "repository_observable_api_shape_c"
       ],
@@ -16657,7 +16657,7 @@
         }
       ],
       "selectionMode": "MULTIPLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "clean_architecture_dependency_rule_tradeoff_b",
         "clean_architecture_dependency_rule_tradeoff_d"
@@ -16881,7 +16881,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "fcm_delivery_best_effort_signal_b"
       ],
@@ -16922,7 +16922,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "fcm_message_handling_work_budget_d"
       ],
@@ -16996,7 +16996,7 @@
         }
       ],
       "selectionMode": "MULTIPLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "notification_remote_input_reply_action_a",
         "notification_remote_input_reply_action_c"
@@ -17149,7 +17149,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "process_death_reproducing_restoration_b"
       ],

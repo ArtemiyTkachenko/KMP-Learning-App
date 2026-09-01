@@ -16,6 +16,19 @@ internal data class TestAttemptEntity(
     val scopeType: String?,
     @ColumnInfo(name = "scope_id")
     val scopeId: String?,
+    /**
+     * The practised `QuestionLevel` names, comma separated in enum order, or null.
+     *
+     * Null carries a meaning the mapper depends on: either a MIXED attempt, which has no level
+     * dimension, or a FOCUSED attempt written before targeted practice existed, which was
+     * unavoidably an all-levels run. A closed three-value set read only alongside its attempt does
+     * not earn a join table; the ordering is normalised on write so equal selections compare equal.
+     */
+    @ColumnInfo(name = "practice_levels")
+    val practiceLevels: String?,
+    /** The `PracticeQuestionSource` name, or null for MIXED and for pre-EPIC-16 FOCUSED rows. */
+    @ColumnInfo(name = "practice_source")
+    val practiceSource: String?,
     val status: String,
     @ColumnInfo(name = "score_total_questions")
     val scoreTotalQuestions: Int?,

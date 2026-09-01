@@ -96,12 +96,12 @@ internal class TopicDetailViewModelTest {
 
         val state = assertIs<TopicDetailUiState.NoQuestions>(viewModel.uiState.value)
         assertEquals(topic, state.topic)
-        assertNull(viewModel.topicPracticeConfig())
-        assertNull(viewModel.subtopicPracticeConfig("unknown"))
+        assertNull(viewModel.topicPracticeScope())
+        assertNull(viewModel.subtopicPracticeScope("unknown"))
     }
 
     @Test
-    fun buildsTopicAndPopulatedSubtopicConfigs() = runViewModelTest {
+    fun buildsTopicAndPopulatedSubtopicScopes() = runViewModelTest {
         val topic = Topic("topic_a", "Topic A")
         val subtopic = Subtopic("subtopic_a", topic.id, "Subtopic A")
         val viewModel = viewModel(
@@ -115,24 +115,14 @@ internal class TopicDetailViewModelTest {
 
         advanceUntilIdle()
 
-        // Practice configuration is curriculum-driven and unchanged by learning context.
-        assertEquals(
-            AssessmentScope.Topic(topic.id),
-            viewModel.topicPracticeConfig()?.scope,
-        )
-        assertEquals(
-            FocusedPracticeQuestionCount,
-            viewModel.topicPracticeConfig()?.questionCount,
-        )
+        // The screen contributes the stable scope only; the Practice Builder owns count, levels,
+        // and source. Scope stays curriculum-driven and unchanged by learning context.
+        assertEquals(AssessmentScope.Topic(topic.id), viewModel.topicPracticeScope())
         assertEquals(
             AssessmentScope.Subtopic(subtopic.id),
-            viewModel.subtopicPracticeConfig(subtopic.id)?.scope,
+            viewModel.subtopicPracticeScope(subtopic.id),
         )
-        assertEquals(
-            FocusedPracticeQuestionCount,
-            viewModel.subtopicPracticeConfig(subtopic.id)?.questionCount,
-        )
-        assertNull(viewModel.subtopicPracticeConfig("empty-or-unknown"))
+        assertNull(viewModel.subtopicPracticeScope("empty-or-unknown"))
     }
 
     @Test
@@ -327,8 +317,8 @@ internal class TopicDetailViewModelTest {
         assertNull(state.learningContext)
         assertNull(state.subtopics.single().learningContext)
         // Practice is unaffected by the missing statistic.
-        assertNotNull(viewModel.topicPracticeConfig())
-        assertNotNull(viewModel.subtopicPracticeConfig("subtopic_a"))
+        assertNotNull(viewModel.topicPracticeScope())
+        assertNotNull(viewModel.subtopicPracticeScope("subtopic_a"))
     }
 
     @Test
@@ -345,7 +335,7 @@ internal class TopicDetailViewModelTest {
 
         val state = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
         assertNull(state.learningContext)
-        assertNotNull(viewModel.topicPracticeConfig())
+        assertNotNull(viewModel.topicPracticeScope())
     }
 
     @Test

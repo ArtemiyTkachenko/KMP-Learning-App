@@ -3,7 +3,7 @@ package org.artkachenko.kmp_learning_app.topic_study.topic_detail
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
+import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -12,7 +12,7 @@ internal fun TopicDetailDestination(
     topicId: String,
     targetSubtopicId: String? = null,
     onBack: () -> Unit,
-    onStartFocusedPractice: (AssessmentConfig.Focused) -> Unit,
+    onConfigurePractice: (AssessmentScope) -> Unit,
     viewModel: TopicDetailViewModel = koinViewModel { parametersOf(topicId) },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -21,10 +21,10 @@ internal fun TopicDetailDestination(
         targetSubtopicId = targetSubtopicId,
         onBack = onBack,
         onStartTopicPractice = {
-            viewModel.topicPracticeConfig()?.let(onStartFocusedPractice)
+            viewModel.topicPracticeScope()?.let(onConfigurePractice)
         },
         onStartSubtopicPractice = { subtopicId ->
-            viewModel.subtopicPracticeConfig(subtopicId)?.let(onStartFocusedPractice)
+            viewModel.subtopicPracticeScope(subtopicId)?.let(onConfigurePractice)
         },
         onRetry = viewModel::retry,
     )

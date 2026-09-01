@@ -27,7 +27,7 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.entity.TopicEntity
         QuestionAttemptEntity::class,
         QuestionAttemptSelectedAnswerEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 @ConstructedBy(CurriculumDatabaseConstructor::class)

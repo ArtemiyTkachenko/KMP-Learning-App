@@ -11,6 +11,16 @@ import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
  */
 internal val AllQuestionLevels: Set<QuestionLevel> = QuestionLevel.entries.toSet()
 
+/**
+ * A level selection as an ordered list, in authored order rather than selection order.
+ *
+ * A `Set` has no order, but the two places that flatten one — the navigation route and the stored
+ * attempt row — are compared for equality. Without a normal form, the same practice request would
+ * compare unequal depending on which chip the learner tapped first.
+ */
+internal fun Set<QuestionLevel>.inAuthoredOrder(): List<QuestionLevel> =
+    QuestionLevel.entries.filter { it in this }
+
 internal sealed interface AssessmentConfig {
     val questionCount: Int
 

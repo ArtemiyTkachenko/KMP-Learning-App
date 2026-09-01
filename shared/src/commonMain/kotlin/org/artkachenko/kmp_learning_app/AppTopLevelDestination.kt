@@ -53,6 +53,10 @@ internal fun AppRoute.showsAreaNavigation(): Boolean =
         is AppRoute.MistakeReview,
         is AppRoute.Topic,
         is AppRoute.ProgressTopic,
+        // Setting practice up is not yet doing it: nothing has been started, so leaving costs the
+        // learner nothing and the bar stays, exactly as on the Topic this was opened from.
+        is AppRoute.PracticeBuilderTopic,
+        is AppRoute.PracticeBuilderSubtopic,
         -> true
 
         is AppRoute.MixedInterview,

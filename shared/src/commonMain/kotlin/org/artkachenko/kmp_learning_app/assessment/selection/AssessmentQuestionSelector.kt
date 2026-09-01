@@ -25,6 +25,26 @@ internal class AssessmentQuestionSelector(
             is AssessmentConfig.Mixed -> selectMixedQuestions(config)
         }
 
+    /**
+     * Whether [source] has a selection policy, answered without reading any content.
+     *
+     * The Practice Builder needs this before the learner commits to a choice: an option with no
+     * policy has to be visibly unavailable rather than start-then-fail. Asking [select] instead
+     * would work today only because the unsupported branches return early — once E16-03 to E16-05
+     * land, probing every option would run three history-derived selections to render a screen.
+     *
+     * This mirrors the source branch in [selectPracticeQuestions] and must move with it;
+     * `AssessmentQuestionSelectorTest` fails if the two ever disagree.
+     */
+    fun isSourceSupported(source: PracticeQuestionSource): Boolean =
+        when (source) {
+            PracticeQuestionSource.ALL -> true
+            PracticeQuestionSource.UNSEEN,
+            PracticeQuestionSource.WEAK_AREAS,
+            PracticeQuestionSource.UNRESOLVED_MISTAKES,
+            -> false
+        }
+
     private suspend fun selectPracticeQuestions(
         config: AssessmentConfig.Focused,
     ): AssessmentSelectionResult {

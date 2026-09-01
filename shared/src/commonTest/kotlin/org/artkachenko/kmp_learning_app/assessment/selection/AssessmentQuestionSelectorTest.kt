@@ -240,6 +240,37 @@ internal class AssessmentQuestionSelectorTest {
         assertEquals(AssessmentSelectionResult.NoContent.NoEligibleQuestions, result)
     }
 
+    /**
+     * The Practice Builder disables a source using [AssessmentQuestionSelector.isSourceSupported]
+     * rather than by attempting a selection, so that answer has to be the same one selection would
+     * give. Without this, a source could become selectable in the UI and still be refused on Start,
+     * or stay disabled after its policy landed.
+     */
+    @Test
+    fun reportedSourceSupportMatchesWhatSelectionActuallyDoes() = runSelectorTest {
+        PracticeQuestionSource.entries.forEach { source ->
+            repository.topicQuestions = mapOf(
+                "android_ui" to listOf(question("ui_question_a")),
+            )
+            val selector = selector()
+            val result = selector.select(
+                AssessmentConfig.Focused(
+                    scope = AssessmentScope.Topic("android_ui"),
+                    questionCount = 1,
+                    levels = AllQuestionLevels,
+                    source = source,
+                ),
+            )
+
+            val selectionSupportsIt = result != AssessmentSelectionResult.NoContent.SourceNotSupported
+            assertEquals(
+                selectionSupportsIt,
+                selector.isSourceSupported(source),
+                "isSourceSupported disagrees with select() for $source",
+            )
+        }
+    }
+
     @Test
     fun unseenSourceIsNotSelectableYetAndDoesNotFallBackToAll() = runSelectorTest {
         assertSourceIsNotSupportedYet(PracticeQuestionSource.UNSEEN)

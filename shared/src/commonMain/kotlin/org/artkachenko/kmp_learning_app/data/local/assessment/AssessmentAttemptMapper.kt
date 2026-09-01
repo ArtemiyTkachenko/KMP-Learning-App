@@ -1,13 +1,17 @@
 package org.artkachenko.kmp_learning_app.data.local.assessment
 
 import kotlin.time.Instant
+import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScore
 import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
+import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
+import org.artkachenko.kmp_learning_app.assessment.inAuthoredOrder
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.data.local.assessment.entity.QuestionAttemptEntity
 import org.artkachenko.kmp_learning_app.data.local.assessment.entity.QuestionAttemptSelectedAnswerEntity
 import org.artkachenko.kmp_learning_app.data.local.assessment.entity.TestAttemptEntity
@@ -16,6 +20,7 @@ private const val ConfigTypeFocused = "FOCUSED"
 private const val ConfigTypeMixed = "MIXED"
 private const val ScopeTypeTopic = "TOPIC"
 private const val ScopeTypeSubtopic = "SUBTOPIC"
+private const val PracticeLevelSeparator = ","
 
 internal data class AssessmentAttemptPersistenceSnapshot(
     val testAttempt: TestAttemptEntity,
@@ -69,6 +74,8 @@ private fun TestAttempt.toEntity(): TestAttemptEntity {
         requestedQuestionCount = config.questionCount,
         scopeType = configFields.scopeType,
         scopeId = configFields.scopeId,
+        practiceLevels = configFields.practiceLevels,
+        practiceSource = configFields.practiceSource,
         status = status.name,
         scoreTotalQuestions = score?.totalQuestions,
         scoreCorrectAnswers = score?.correctAnswers,
@@ -78,17 +85,19 @@ private fun TestAttempt.toEntity(): TestAttemptEntity {
 }
 
 /**
- * The attempt record stores what was practised — type, scope, and requested count — and not the
- * selection criteria that produced it. Practice levels and question source are inputs to
- * `AssessmentQuestionSelector`, and persisting them would mean new columns and a database
- * migration for data nothing reads back yet. Historical FOCUSED rows therefore reconstruct as an
- * all-levels [org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource.ALL] request,
- * which is exactly what every attempt written before EPIC-16 was.
+ * The attempt record stores what was practised: type, scope, requested count, and — since the
+ * Practice Builder can produce them — the practised levels and question source.
  *
- * The visible consequence is retake: `AssessmentRetakeService` re-runs the reconstructed config,
- * so repeating a level-narrowed or history-derived practice run would re-select across the whole
- * scope. That is acceptable while the Practice Builder cannot yet produce such attempts, and is
- * the point to revisit — with a migration — when it can.
+ * Those two were deliberately left out while no UI could narrow a run, so every stored FOCUSED
+ * attempt genuinely was an all-levels
+ * [org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource.ALL] request. That stopped
+ * being true once a learner could practise, say, only ADVANCED Questions: history would describe
+ * the attempt as something they never ran, and retake — which re-runs the reconstructed config —
+ * would widen back to the whole scope.
+ *
+ * MIXED keeps writing nulls because it has no level or source dimension at all, which is also what
+ * every pre-EPIC-16 row holds after the v6 migration; [toDomainConfig] reads a null on a FOCUSED
+ * row back as the historical all-levels `ALL` semantics.
  */
 private fun AssessmentConfig.toPersistenceConfigFields(): PersistenceConfigFields =
     when (this) {
@@ -98,6 +107,8 @@ private fun AssessmentConfig.toPersistenceConfigFields(): PersistenceConfigField
                 configType = ConfigTypeFocused,
                 scopeType = scopeFields.scopeType,
                 scopeId = scopeFields.scopeId,
+                practiceLevels = levels.toPersistedPracticeLevels(),
+                practiceSource = source.name,
             )
         }
         is AssessmentConfig.Mixed ->
@@ -105,8 +116,13 @@ private fun AssessmentConfig.toPersistenceConfigFields(): PersistenceConfigField
                 configType = ConfigTypeMixed,
                 scopeType = null,
                 scopeId = null,
+                practiceLevels = null,
+                practiceSource = null,
             )
     }
+
+private fun Set<QuestionLevel>.toPersistedPracticeLevels(): String =
+    inAuthoredOrder().joinToString(PracticeLevelSeparator) { it.name }
 
 private fun AssessmentScope.toPersistenceScopeFields(): PersistenceScopeFields =
     when (this) {
@@ -157,6 +173,9 @@ private fun TestAttemptEntity.toDomainConfig(): AssessmentConfig =
             require(scopeType == null && scopeId == null) {
                 "MIXED assessment config must not have scope fields."
             }
+            require(practiceLevels == null && practiceSource == null) {
+                "MIXED assessment config must not have practice selection fields."
+            }
             AssessmentConfig.Mixed(questionCount = requestedQuestionCount)
         }
         ConfigTypeFocused -> {
@@ -170,9 +189,22 @@ private fun TestAttemptEntity.toDomainConfig(): AssessmentConfig =
                     else -> error("Unknown focused assessment scope type: $scopeType.")
                 },
                 questionCount = requestedQuestionCount,
+                // A row written before v6 has no recorded selection, and every such attempt was an
+                // all-levels ALL run. Defaulting rather than failing is what keeps that history
+                // readable, and it is the only place the legacy semantics are reconstructed.
+                levels = practiceLevels?.toDomainPracticeLevels() ?: AllQuestionLevels,
+                source = practiceSource?.let(PracticeQuestionSource::valueOf)
+                    ?: PracticeQuestionSource.ALL,
             )
         }
         else -> error("Unknown assessment config type: $configType.")
+    }
+
+private fun String.toDomainPracticeLevels(): Set<QuestionLevel> =
+    if (isEmpty()) {
+        emptySet()
+    } else {
+        split(PracticeLevelSeparator).map(QuestionLevel::valueOf).toSet()
     }
 
 private fun QuestionAttemptEntity.toDomain(
@@ -228,6 +260,8 @@ private data class PersistenceConfigFields(
     val configType: String,
     val scopeType: String?,
     val scopeId: String?,
+    val practiceLevels: String?,
+    val practiceSource: String?,
 )
 
 private data class PersistenceScopeFields(

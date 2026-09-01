@@ -6,6 +6,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.test.assertSame
+import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 
 internal class AppNavigationTest {
     @Test
@@ -40,20 +42,59 @@ internal class AppNavigationTest {
         val backStack = mutableListOf<AppRoute>(
             AppRoute.Topics,
             AppRoute.Topic("topic"),
-            AppRoute.FocusedTopicPractice("topic", questionCount = 10),
+            AppRoute.PracticeBuilderTopic("topic"),
+            focusedTopicPractice(),
         )
 
         backStack.replaceTopWith(AppRoute.FocusedPracticeAttempt("focused-attempt"))
 
+        // The builder stays on the stack, so backing out of a practice run returns to the setup
+        // the learner configured rather than all the way to the Topic.
         assertEquals(
             listOf(
                 AppRoute.Topics,
                 AppRoute.Topic("topic"),
+                AppRoute.PracticeBuilderTopic("topic"),
                 AppRoute.FocusedPracticeAttempt("focused-attempt"),
             ),
             backStack,
         )
     }
+
+    @Test
+    fun topicPracticeOpensTheBuilderBeforeAnyAssessment() {
+        val backStack = mutableListOf<AppRoute>(AppRoute.Topics, AppRoute.Topic("topic"))
+
+        backStack.add(AppRoute.PracticeBuilderTopic("topic"))
+        backStack.add(focusedTopicPractice())
+
+        assertEquals(
+            listOf(
+                AppRoute.Topics,
+                AppRoute.Topic("topic"),
+                AppRoute.PracticeBuilderTopic("topic"),
+                focusedTopicPractice(),
+            ),
+            backStack,
+        )
+    }
+
+    @Test
+    fun practiceBuilderRoutesCarryOnlyStableScopeIdentity() {
+        assertEquals(AppRoute.PracticeBuilderTopic("topic_stable"), AppRoute.PracticeBuilderTopic("topic_stable"))
+        assertEquals(
+            AppRoute.PracticeBuilderSubtopic("subtopic_stable"),
+            AppRoute.PracticeBuilderSubtopic("subtopic_stable"),
+        )
+    }
+
+    private fun focusedTopicPractice(): AppRoute.FocusedTopicPractice =
+        AppRoute.FocusedTopicPractice(
+            topicId = "topic",
+            questionCount = 10,
+            levels = listOf(QuestionLevel.ADVANCED),
+            source = PracticeQuestionSource.ALL,
+        )
 
     @Test
     fun completionReplacesOnlyPersistedAttemptEntry() {

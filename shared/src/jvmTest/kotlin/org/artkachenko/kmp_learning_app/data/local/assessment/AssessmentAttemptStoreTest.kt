@@ -5,6 +5,7 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
+import kotlin.test.assertNull
 import kotlin.time.Instant
 import kotlinx.coroutines.test.runTest
 import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
@@ -87,31 +88,65 @@ internal class AssessmentAttemptStoreTest {
     }
 
     /**
-     * The attempt record stores what was practised, not the criteria that selected it. Levels and
-     * question source are selection inputs with no columns of their own, so a stored FOCUSED
-     * attempt reconstructs as the all-levels ALL request every pre-EPIC-16 attempt was. Pinning it
-     * here keeps the loss deliberate: adding those dimensions to history is a schema change, and
-     * this test is what fails when one is needed.
+     * A run the Practice Builder configured has to come back as the run the learner asked for.
+     *
+     * These two dimensions were deliberately unpersisted while nothing could vary them; now that
+     * they can be, history describing a level-narrowed attempt as an all-levels one would be
+     * wrong, and retake — which re-runs the reconstructed config — would widen the repeat.
      */
     @Test
-    fun practiceLevelsAndSourceAreNotPartOfThePersistedAttemptRecord() = runTest {
+    fun practiceLevelsAndSourceRoundTripOnAFocusedAttempt() = runTest {
         withTestDatabase { database ->
             insertAttemptFixtureCurriculum(database)
             val store = AssessmentAttemptStore(database)
+            val config = AssessmentConfig.Focused(
+                scope = AssessmentScope.Topic("topic"),
+                questionCount = 10,
+                levels = setOf(QuestionLevel.ADVANCED, QuestionLevel.FOUNDATION),
+                source = PracticeQuestionSource.ALL,
+            )
             val attempt = TestAttempt(
                 id = "attempt_targeted",
-                config = AssessmentConfig.Focused(
-                    scope = AssessmentScope.Topic("topic"),
-                    questionCount = 10,
-                    levels = setOf(QuestionLevel.ADVANCED),
-                    source = PracticeQuestionSource.ALL,
-                ),
+                config = config,
                 questionAttempts = listOf(QuestionAttempt("question_a")),
                 status = AssessmentStatus.IN_PROGRESS,
                 startedAt = StartedAt,
             )
 
             store.save(attempt)
+
+            assertEquals(config, store.getById("attempt_targeted")?.config)
+        }
+    }
+
+    /**
+     * Rows written before the v6 columns existed carry no selection, and every one of them was an
+     * all-levels ALL run. Reconstructing them that way is what keeps historical practice readable.
+     */
+    @Test
+    fun aLegacyFocusedRowReconstructsAsAnAllLevelsAllRequest() = runTest {
+        withTestDatabase { database ->
+            insertAttemptFixtureCurriculum(database)
+            val dao = database.assessmentAttemptDao()
+            dao.upsertTestAttempt(
+                TestAttemptEntity(
+                    id = "attempt_legacy",
+                    configType = "FOCUSED",
+                    requestedQuestionCount = 10,
+                    scopeType = "TOPIC",
+                    scopeId = "topic",
+                    practiceLevels = null,
+                    practiceSource = null,
+                    status = "IN_PROGRESS",
+                    scoreTotalQuestions = null,
+                    scoreCorrectAnswers = null,
+                    startedAtEpochMillis = StartedAt.toEpochMilliseconds(),
+                    completedAtEpochMillis = null,
+                ),
+            )
+            dao.upsertQuestionAttempts(
+                listOf(QuestionAttemptEntity("attempt_legacy", "question_a", sortOrder = 0, isCorrect = null)),
+            )
 
             assertEquals(
                 AssessmentConfig.Focused(
@@ -120,8 +155,31 @@ internal class AssessmentAttemptStoreTest {
                     levels = AllQuestionLevels,
                     source = PracticeQuestionSource.ALL,
                 ),
-                store.getById("attempt_targeted")?.config,
+                AssessmentAttemptStore(database).getById("attempt_legacy")?.config,
             )
+        }
+    }
+
+    /** Mixed has no level or source dimension, so its rows keep both columns null. */
+    @Test
+    fun mixedAttemptsStoreNoPracticeSelection() = runTest {
+        withTestDatabase { database ->
+            insertAttemptFixtureCurriculum(database)
+            val store = AssessmentAttemptStore(database)
+            val mixed = TestAttempt(
+                id = "attempt_mixed_selection",
+                config = AssessmentConfig.Mixed(questionCount = 3),
+                questionAttempts = listOf(QuestionAttempt("question_a")),
+                status = AssessmentStatus.IN_PROGRESS,
+                startedAt = StartedAt,
+            )
+
+            store.save(mixed)
+
+            val stored = database.assessmentAttemptDao().getTestAttemptById("attempt_mixed_selection")
+            assertNull(stored?.practiceLevels)
+            assertNull(stored?.practiceSource)
+            assertEquals(mixed, store.getById("attempt_mixed_selection"))
         }
     }
 
@@ -348,6 +406,8 @@ internal class AssessmentAttemptStoreTest {
                     requestedQuestionCount = 1,
                     scopeType = null,
                     scopeId = null,
+                    practiceLevels = null,
+                    practiceSource = null,
                     status = "IN_PROGRESS",
                     scoreTotalQuestions = null,
                     scoreCorrectAnswers = null,

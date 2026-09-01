@@ -272,7 +272,11 @@ internal class FocusedLearningJourneyIntegrationTest {
         val repository = LocalAssessmentRepository(
             org.artkachenko.kmp_learning_app.data.local.assessment.AssessmentAttemptStore(db),
         )
-        val selector = AssessmentQuestionSelector(curriculum, randomize = { it })
+        val selector = AssessmentQuestionSelector(
+            curriculumRepository = curriculum,
+            completedHistory = { repository.getCompletedAttempts() },
+            randomize = { it },
+        )
         val engine = AssessmentEngine(
             selector,
             generateAttemptId = ids.iterator()::next,

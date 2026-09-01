@@ -69,20 +69,51 @@ internal class PracticeBuilderScreenTest {
         val chosen = mutableListOf<PracticeQuestionSource>()
         setContentWith(state(), onSourceClick = { chosen += it })
 
-        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.UNSEEN)).assertIsNotEnabled()
         onNodeWithTag(practiceSourceTag(PracticeQuestionSource.WEAK_AREAS)).assertIsNotEnabled()
         onNodeWithTag(practiceSourceTag(PracticeQuestionSource.UNRESOLVED_MISTAKES))
             .assertIsNotEnabled()
-        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.ALL)).assertIsEnabled()
         // Named, so the learner can see what targeted practice will offer.
-        onNodeWithText("Unseen").assertIsDisplayed()
         onNodeWithText("Weak areas").assertIsDisplayed()
         onNodeWithText("Mistakes").assertIsDisplayed()
         onNodeWithText("Dimmed sources are not available yet.").assertIsDisplayed()
 
-        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.UNSEEN)).performClick()
+        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.WEAK_AREAS)).performClick()
 
         assertEquals(emptyList(), chosen)
+    }
+
+    @Test
+    fun anImplementedSourceCanBeChosen() = runComposeUiTest {
+        val chosen = mutableListOf<PracticeQuestionSource>()
+        setContentWith(state(), onSourceClick = { chosen += it })
+
+        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.ALL)).assertIsEnabled()
+        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.UNSEEN)).assertIsEnabled()
+        onNodeWithText("Unseen").assertIsDisplayed()
+
+        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.UNSEEN)).performClick()
+
+        assertEquals(listOf(PracticeQuestionSource.UNSEEN), chosen)
+    }
+
+    /**
+     * A selected source with nothing left to ask stays selected and selectable; only Start
+     * responds. Reverting the chip would hide that the learner has finished the unseen pool.
+     */
+    @Test
+    fun aChosenUnseenSourceRendersSelectedEvenWithNothingLeftToAsk() = runComposeUiTest {
+        setContentWith(
+            state(
+                source = PracticeQuestionSource.UNSEEN,
+                availability = PracticeAvailability.NoEligibleQuestions,
+            ),
+        )
+
+        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.UNSEEN)).assertIsSelected()
+        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.UNSEEN)).assertIsEnabled()
+        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.ALL)).assertIsNotSelected()
+        onNodeWithTag(PracticeBuilderStartButtonTag).assertIsNotEnabled()
+        onNodeWithText("No questions match this setup. Try more levels.").assertIsDisplayed()
     }
 
     @Test
@@ -162,6 +193,7 @@ internal class PracticeBuilderScreenTest {
 
     private fun state(
         levels: Set<QuestionLevel> = AllQuestionLevels,
+        source: PracticeQuestionSource = PracticeQuestionSource.ALL,
         availability: PracticeAvailability = PracticeAvailability.Available(12),
     ): PracticeBuilderUiState =
         PracticeBuilderUiState(
@@ -169,11 +201,12 @@ internal class PracticeBuilderScreenTest {
             questionCount = DefaultPracticeQuestionCount,
             questionCountOptions = PracticeQuestionCountOptions,
             levels = levels,
-            source = PracticeQuestionSource.ALL,
-            sourceOptions = PracticeQuestionSource.entries.map { source ->
+            source = source,
+            sourceOptions = PracticeQuestionSource.entries.map { option ->
                 PracticeSourceOption(
-                    source = source,
-                    isAvailable = source == PracticeQuestionSource.ALL,
+                    source = option,
+                    isAvailable = option == PracticeQuestionSource.ALL ||
+                        option == PracticeQuestionSource.UNSEEN,
                 )
             },
             availability = availability,

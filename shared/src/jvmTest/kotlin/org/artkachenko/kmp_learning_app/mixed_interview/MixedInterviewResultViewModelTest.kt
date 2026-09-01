@@ -267,7 +267,11 @@ internal class MixedInterviewResultViewModelTest {
         assessmentRetakeService = AssessmentRetakeService(
             assessmentRepository = repository,
             assessmentEngine = AssessmentEngine(
-                questionSelector = AssessmentQuestionSelector(curriculum, randomize = { it }),
+                questionSelector = AssessmentQuestionSelector(
+                    curriculumRepository = curriculum,
+                    completedHistory = { repository.getCompletedAttempts() },
+                    randomize = { it },
+                ),
                 generateAttemptId = { retakeId },
                 now = { Instant.fromEpochMilliseconds(3) },
             ),

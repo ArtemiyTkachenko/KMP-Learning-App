@@ -9,10 +9,10 @@ import kotlinx.serialization.Serializable
  * why they are one dimension rather than a set of `onlyUnseen`/`weakOnly`/`mistakesOnly` flags:
  * "unseen weak mistakes" is not a product concept, and boolean combinations would invent one.
  *
- * Only [ALL] is selectable today. [UNSEEN], [WEAK_AREAS], and [UNRESOLVED_MISTAKES] are derived
- * from completed assessment history and are owned by E16-03, E16-04, and E16-05 respectively;
- * until then they are representable but produce an explicit no-content selection outcome instead
- * of quietly widening back to [ALL].
+ * [ALL] and [UNSEEN] are implemented. [WEAK_AREAS] and [UNRESOLVED_MISTAKES] are derived from
+ * completed assessment history too and are owned by E16-04 and E16-05; until then they are
+ * representable but produce an explicit no-content selection outcome instead of quietly widening
+ * back to [ALL].
  *
  * Serializable because the Practice Builder's chosen source travels to assessment taking as a
  * typed navigation argument.
@@ -22,7 +22,11 @@ internal enum class PracticeQuestionSource {
     /** Every ACTIVE Question in the configured scope and levels. */
     ALL,
 
-    /** ACTIVE Questions never observed in completed history. Reserved for E16-03. */
+    /**
+     * ACTIVE Questions in the configured scope and levels whose stable IDs have never appeared in
+     * completed assessment history. Exposure, not performance: how the learner answered a Question
+     * makes no difference to whether they have seen it.
+     */
     UNSEEN,
 
     /** ACTIVE Questions belonging to scopes the weak-area policy already flags. Reserved for E16-04. */

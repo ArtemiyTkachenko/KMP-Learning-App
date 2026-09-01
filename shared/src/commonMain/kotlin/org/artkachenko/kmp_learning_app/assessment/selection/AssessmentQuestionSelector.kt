@@ -3,6 +3,8 @@ package org.artkachenko.kmp_learning_app.assessment.selection
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
+import org.artkachenko.kmp_learning_app.assessment.history.CompletedAssessmentHistory
+import org.artkachenko.kmp_learning_app.assessment.history.QuestionExposure
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
@@ -17,6 +19,7 @@ import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumReposito
  */
 internal class AssessmentQuestionSelector(
     private val curriculumRepository: CurriculumRepository,
+    private val completedHistory: CompletedAssessmentHistory,
     private val randomize: (List<Question>) -> List<Question> = { it.shuffled() },
 ) {
     suspend fun select(config: AssessmentConfig): AssessmentSelectionResult =
@@ -30,16 +33,17 @@ internal class AssessmentQuestionSelector(
      *
      * The Practice Builder needs this before the learner commits to a choice: an option with no
      * policy has to be visibly unavailable rather than start-then-fail. Asking [select] instead
-     * would work today only because the unsupported branches return early — once E16-03 to E16-05
-     * land, probing every option would run three history-derived selections to render a screen.
+     * would read content — and, for the history-derived policies, completed history — once per
+     * option just to render a screen.
      *
      * This mirrors the source branch in [selectPracticeQuestions] and must move with it;
      * `AssessmentQuestionSelectorTest` fails if the two ever disagree.
      */
     fun isSourceSupported(source: PracticeQuestionSource): Boolean =
         when (source) {
-            PracticeQuestionSource.ALL -> true
+            PracticeQuestionSource.ALL,
             PracticeQuestionSource.UNSEEN,
+            -> true
             PracticeQuestionSource.WEAK_AREAS,
             PracticeQuestionSource.UNRESOLVED_MISTAKES,
             -> false
@@ -52,11 +56,11 @@ internal class AssessmentQuestionSelector(
 
         val eligible = when (config.source) {
             PracticeQuestionSource.ALL -> loadScopedQuestions(config.scope, config.levels)
-            // The history-derived policies land here, one branch each: E16-03 for UNSEEN, E16-04
-            // for WEAK_AREAS, E16-05 for UNRESOLVED_MISTAKES. Until a policy exists the request is
+            PracticeQuestionSource.UNSEEN -> loadUnseenQuestions(config.scope, config.levels)
+            // The remaining history-derived policies land here, one branch each: E16-04 for
+            // WEAK_AREAS, E16-05 for UNRESOLVED_MISTAKES. Until a policy exists the request is
             // refused explicitly, because falling through to the ALL pool would answer a different
             // question than the learner asked.
-            PracticeQuestionSource.UNSEEN,
             PracticeQuestionSource.WEAK_AREAS,
             PracticeQuestionSource.UNRESOLVED_MISTAKES,
             -> return AssessmentSelectionResult.NoContent.SourceNotSupported
@@ -101,6 +105,29 @@ internal class AssessmentQuestionSelector(
         } else {
             AssessmentSelectionResult.Selected(questions)
         }
+
+    /**
+     * Unseen practice is the complement of curriculum coverage inside the ordinary candidate pool:
+     * the same scoped, level-aware ACTIVE read every source starts from, minus the stable Question
+     * IDs [QuestionExposure] found in completed history.
+     *
+     * Subtracting last is what keeps the two dimensions — what the learner has seen, and what the
+     * curriculum currently offers — from contaminating each other. A historical ID whose Question
+     * was retired cannot remove anything from a pool it is no longer in, and a newly authored
+     * Question is unseen the moment it exists, with no exposure record to backfill. That also means
+     * the scope and level narrowing is never widened to find unseen content: seen Questions in
+     * unselected levels are not in the pool to begin with, and an exhausted level selection
+     * correctly ends at no content rather than quietly practising a different level.
+     */
+    private suspend fun loadUnseenQuestions(
+        scope: AssessmentScope,
+        levels: Set<QuestionLevel>,
+    ): List<Question> {
+        val eligible = loadScopedQuestions(scope, levels)
+        val observedQuestionIds =
+            QuestionExposure.observedQuestionIds(completedHistory.completedAttempts())
+        return eligible.filterNot { it.id in observedQuestionIds }
+    }
 
     /**
      * Level filtering belongs to the repository, not to this class or to presentation: the scoped

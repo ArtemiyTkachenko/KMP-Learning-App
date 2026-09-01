@@ -60,6 +60,7 @@ internal class TopicStudyPresentationModuleTest {
                     single {
                         AssessmentQuestionSelector(
                             curriculumRepository = get(),
+                            completedHistory = { emptyList() },
                             randomize = { it },
                         )
                     }

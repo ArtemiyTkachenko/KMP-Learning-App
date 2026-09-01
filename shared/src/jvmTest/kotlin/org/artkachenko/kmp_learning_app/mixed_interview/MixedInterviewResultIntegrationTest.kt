@@ -72,6 +72,7 @@ internal class MixedInterviewResultIntegrationTest {
                 assessmentEngine = AssessmentEngine(
                     questionSelector = AssessmentQuestionSelector(
                         curriculumRepository = curriculumRepository,
+                        completedHistory = { assessmentRepository.getCompletedAttempts() },
                         randomize = { it },
                     ),
                     generateAttemptId = { "mixed-retake" },

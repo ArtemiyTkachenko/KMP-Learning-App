@@ -264,7 +264,11 @@ internal class AssessmentTakingViewModelTest {
         val viewModel = AssessmentTakingViewModel(
             launch = AssessmentTakingLaunch.ExistingAttempt("retake-1"),
             assessmentEngine = AssessmentEngine(
-                questionSelector = AssessmentQuestionSelector(curriculum, randomize = { it }),
+                questionSelector = AssessmentQuestionSelector(
+                    curriculumRepository = curriculum,
+                    completedHistory = { emptyList() },
+                    randomize = { it },
+                ),
                 generateAttemptId = { error("start must not be called") },
                 now = { Instant.fromEpochMilliseconds(2_000) },
             ),
@@ -369,7 +373,11 @@ internal class AssessmentTakingViewModelTest {
         val viewModel = AssessmentTakingViewModel(
             launch = AssessmentTakingLaunch.ExistingAttempt("mixed-existing"),
             assessmentEngine = AssessmentEngine(
-                questionSelector = AssessmentQuestionSelector(curriculum, randomize = { it }),
+                questionSelector = AssessmentQuestionSelector(
+                    curriculumRepository = curriculum,
+                    completedHistory = { emptyList() },
+                    randomize = { it },
+                ),
                 generateAttemptId = { error("start must not be called") },
                 now = { Instant.fromEpochMilliseconds(2_000) },
             ),
@@ -412,7 +420,11 @@ internal class AssessmentTakingViewModelTest {
         repository.savedAttempts += source
         var generatedIds = 0
         val engine = AssessmentEngine(
-            questionSelector = AssessmentQuestionSelector(curriculum, randomize = { it }),
+            questionSelector = AssessmentQuestionSelector(
+                curriculumRepository = curriculum,
+                completedHistory = { emptyList() },
+                randomize = { it },
+            ),
             generateAttemptId = {
                 generatedIds++
                 if (generatedIds == 1) "retake" else error("start must not be called twice")
@@ -455,7 +467,11 @@ internal class AssessmentTakingViewModelTest {
         val viewModel = AssessmentTakingViewModel(
             launch = AssessmentTakingLaunch.ExistingAttempt("mixed-ready"),
             assessmentEngine = AssessmentEngine(
-                questionSelector = AssessmentQuestionSelector(curriculum, randomize = { it }),
+                questionSelector = AssessmentQuestionSelector(
+                    curriculumRepository = curriculum,
+                    completedHistory = { emptyList() },
+                    randomize = { it },
+                ),
                 generateAttemptId = { error("start must not be called") },
                 now = { Instant.fromEpochMilliseconds(2_000) },
             ),
@@ -489,7 +505,11 @@ internal class AssessmentTakingViewModelTest {
         val viewModel = AssessmentTakingViewModel(
             launch = AssessmentTakingLaunch.ExistingAttempt("mixed-completed"),
             assessmentEngine = AssessmentEngine(
-                questionSelector = AssessmentQuestionSelector(curriculum, randomize = { it }),
+                questionSelector = AssessmentQuestionSelector(
+                    curriculumRepository = curriculum,
+                    completedHistory = { emptyList() },
+                    randomize = { it },
+                ),
                 generateAttemptId = { error("start must not be called") },
                 now = { Instant.fromEpochMilliseconds(3_000) },
             ),
@@ -545,6 +565,7 @@ internal class AssessmentTakingViewModelTest {
         assessmentEngine = AssessmentEngine(
             questionSelector = AssessmentQuestionSelector(
                 curriculumRepository = FakeCurriculumRepository(questions),
+                completedHistory = { emptyList() },
                 randomize = { it },
             ),
             generateAttemptId = { "attempt-1" },

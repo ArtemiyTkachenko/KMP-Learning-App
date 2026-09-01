@@ -14,6 +14,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
+import org.artkachenko.kmp_learning_app.assessment.AssessmentScore
 import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
@@ -169,7 +170,6 @@ internal class AssessmentEngineTest {
         val engine = engine()
 
         listOf(
-            PracticeQuestionSource.UNSEEN,
             PracticeQuestionSource.WEAK_AREAS,
             PracticeQuestionSource.UNRESOLVED_MISTAKES,
         ).forEach { source ->
@@ -184,6 +184,30 @@ internal class AssessmentEngineTest {
             assertEquals(AssessmentStartResult.NoEligibleQuestions, result, "source $source")
         }
         assertNoAttemptWasCreated(engine)
+    }
+
+    /**
+     * A history-derived source changes what selection returns and nothing else: the engine starts
+     * the Questions it is given and records the configuration that asked for them, with no idea
+     * that this list came from completed history rather than from the whole scope.
+     */
+    @Test
+    fun practiceWithAHistoryDerivedSourceStartsLikeAnyOtherRun() = runEngineTest {
+        repository.topicQuestions = mapOf(
+            "android_ui" to listOf(question("question_a"), question("question_b")),
+        )
+        completedAttempts = listOf(completedAttempt("question_a"))
+        val config = AssessmentConfig.Focused(
+            scope = AssessmentScope.Topic("android_ui"),
+            questionCount = 5,
+            source = PracticeQuestionSource.UNSEEN,
+        )
+
+        val session = assertStarted(engine().start(config))
+
+        assertEquals(listOf("question_b"), session.questions.map { it.id })
+        assertEquals(config, session.attempt.config)
+        assertEquals(AssessmentStatus.IN_PROGRESS, session.attempt.status)
     }
 
     @Test
@@ -595,6 +619,9 @@ internal class AssessmentEngineTest {
 
     private class EngineTestScope {
         val repository = FakeCurriculumRepository()
+
+        /** Completed history behind the history-derived practice sources. */
+        var completedAttempts: List<TestAttempt> = emptyList()
         private var nextAttemptNumber = 1
 
         fun engine(
@@ -603,6 +630,7 @@ internal class AssessmentEngineTest {
             AssessmentEngine(
                 questionSelector = AssessmentQuestionSelector(
                     curriculumRepository = repository,
+                    completedHistory = { completedAttempts },
                     randomize = { it },
                 ),
                 generateAttemptId = { "attempt-${nextAttemptNumber++}" },
@@ -713,6 +741,25 @@ internal class AssessmentEngineTest {
         assertEquals(selectedAnswerIds, answerState.selectedAnswerIds)
         assertEquals(isCorrect, answerState.isCorrect)
     }
+
+    private fun completedAttempt(questionId: String): TestAttempt =
+        TestAttempt(
+            id = "completed_$questionId",
+            config = AssessmentConfig.Mixed(questionCount = 1),
+            questionAttempts = listOf(
+                QuestionAttempt(
+                    questionId = questionId,
+                    answerState = QuestionAnswerState.Answered(
+                        selectedAnswerIds = setOf("${questionId}_a"),
+                        isCorrect = true,
+                    ),
+                ),
+            ),
+            status = AssessmentStatus.COMPLETED,
+            startedAt = StartedAt,
+            completedAt = StartedAt,
+            score = AssessmentScore(totalQuestions = 1, correctAnswers = 1),
+        )
 
     private fun question(
         id: String,

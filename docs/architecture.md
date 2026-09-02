@@ -544,6 +544,68 @@ occurrence and `AssessmentTakingViewModel` invalidates `AssessmentHistoryStore`.
 The next Mistake Review or selection derivation therefore excludes that Question;
 a later completed incorrect occurrence reopens it through exactly the same path.
 
+## Guided learning recommendation policy
+
+`LearningRecommendationPolicy` is a pure `commonMain` decision over already-derived
+facts. It does not read Room or repositories, observe flows, inspect navigation,
+start an assessment, or reproduce any learning-signal derivation. Its typed
+`LearningRecommendationInputs` have these sources of truth:
+
+| Input | Source |
+| --- | --- |
+| Completed-attempt count | `LearningProgressSnapshot.completedAttemptCount` |
+| Unresolved-mistake count | `MistakeReviewService.countUnresolved`, backed by `UnresolvedMistakeDerivation` |
+| Ordered weak areas | `LearningProgressSnapshot.weakAreas`, backed by `LearningPerformanceDerivation` |
+| Topic and Subtopic coverage | `LearningProgressSnapshot.topicCoverage` and `subtopicCoverage` |
+| Optional recent study context | Scope/configuration kind from the newest completed history entry |
+
+The optional recent context is stable domain data only: either a focused
+`AssessmentScope` or Mixed. The caller takes it from completed history, which is
+already ordered newest first; `IN_PROGRESS` attempts and presentation navigation
+state are not inputs.
+
+Recommendation priority is a deterministic product policy, not a ranking score:
+
+| State | Recommendation |
+| --- | --- |
+| No usable ACTIVE curriculum | None |
+| New user (zero completed attempts) | Browse Topics |
+| One or more unresolved mistakes | Open Mistake Review |
+| Currently usable weak area | Open weak-area practice preset |
+| Remaining unseen ACTIVE Questions | Open Topic-scoped unseen-practice preset |
+| Otherwise | None |
+
+Mistakes therefore outrank weakness, and weakness outranks ordinary coverage.
+The unresolved count is consumed as one fact; the policy never scans attempts.
+Weakness is consumed as the ordered `WeakArea` output and never recalculates the
+70% or minimum-evidence rules. That established ordering (accuracy, then evidence,
+then stable identity) selects the first weak area that still intersects current
+ACTIVE Topic/Subtopic coverage; a historical weak scope with no current content is
+skipped. Coverage is consumed as unique-ID counts and never derives exposure.
+
+Unseen coverage candidates are Topics with at least one unseen ACTIVE Question.
+They are selected by this exact tie order:
+
+1. Lowest coverage ratio, compared exactly from attempted/total counts.
+2. A matching recent focused Topic, or the current parent Topic of a matching
+   focused Subtopic.
+3. More unseen Questions.
+4. Lexicographically smallest stable Topic ID.
+
+Mixed, stale, missing, complete, or unrelated recent context is ignored. Recency
+can only resolve a tie inside the already-selected lowest-coverage group, so it
+cannot create a competing "continue where you left off" recommendation; that
+surface belongs to E17-02.
+
+Every result pairs a semantic `LearningRecommendationTarget` with a typed
+`LearningRecommendationRationale`. The rationale carries the deciding count,
+scope/name, or unseen count needed for later localized copy; no resource IDs or
+hard-coded presentation sentences enter the domain. Practice recommendations
+carry only `PracticePreset(scope, source)`. Question count and level selection
+remain the Practice Builder's defaults, and no recommendation starts an attempt.
+There is no random choice, wall-clock input, persistence, ML/LLM step, streak,
+engagement optimization, or blended score.
+
 ## The Practice Builder
 
 Choosing a Topic or Subtopic no longer starts an assessment; it opens a builder

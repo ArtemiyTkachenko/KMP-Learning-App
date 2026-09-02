@@ -1,7 +1,8 @@
 package org.artkachenko.kmp_learning_app.assessment_taking
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,6 +32,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
@@ -51,10 +53,13 @@ import kmp_learning_app.shared.generated.resources.assessment_taking_submit
 import kmp_learning_app.shared.generated.resources.assessment_taking_submitting
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
+import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
 import org.artkachenko.kmp_learning_app.ui.ScreenStatus
+import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.jetbrains.compose.resources.stringResource
 
 internal const val AssessmentTakingLoadingTag = "focused_practice_loading"
@@ -63,7 +68,6 @@ internal const val AssessmentTakingFinishTag = "focused_practice_finish"
 
 internal const val AssessmentProgressMeterTag = "assessment_progress_meter"
 
-private const val AssessmentProgressAnimationMillis = 300
 
 @Composable
 internal fun AssessmentTakingScreen(
@@ -76,10 +80,12 @@ internal fun AssessmentTakingScreen(
     onComplete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxSize()) {
+    val scrollBehavior = rememberAppTopBarScrollBehavior()
+    Column(modifier = modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)) {
         AppTopBar(
             title = title,
             onBack = onBack,
+            scrollBehavior = scrollBehavior,
         )
         // Pinned under the bar rather than placed in the scrolling content: how far through the
         // assessment the learner is should stay answerable while they read a long question.
@@ -159,7 +165,7 @@ private fun AssessmentProgressMeter(questionNumber: Int, totalQuestions: Int) {
     }
     val animated by animateFloatAsState(
         targetValue = fraction,
-        animationSpec = tween(AssessmentProgressAnimationMillis),
+        animationSpec = AppMotion.effectSpec(AppMotion.ProgressDurationMillis),
         label = "assessmentProgress",
     )
     LinearProgressIndicator(
@@ -180,7 +186,7 @@ private fun QuestionContent(
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+        contentPadding = appScreenContentPadding(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
@@ -286,22 +292,40 @@ private fun AnswerRow(
         )
     }
 
-    Surface(
-        modifier = Modifier.fillMaxWidth().then(selectionModifier),
-        shape = MaterialTheme.shapes.medium,
-        color = if (selected) {
+    // Choosing an answer is the action this whole product exists for, and it used to be the least
+    // responsive thing in it: the container colour and the border jumped between two values in a
+    // single frame, so the row registered the tap without ever acknowledging it. Easing the three
+    // properties is the feedback — the state is what is being animated, not decoration around it.
+    val containerColor by animateColorAsState(
+        targetValue = if (selected) {
             MaterialTheme.colorScheme.secondaryContainer
         } else {
             MaterialTheme.colorScheme.surface
         },
-        border = BorderStroke(
-            width = if (selected) 2.dp else 1.dp,
-            color = if (selected) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.outlineVariant
-            },
-        ),
+        animationSpec = AppMotion.effectSpec(),
+        label = "answerContainer",
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (selected) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.outlineVariant
+        },
+        animationSpec = AppMotion.effectSpec(),
+        label = "answerBorder",
+    )
+    // The border width is spatial rather than an effect: it is a size, so it springs like one.
+    val borderWidth by animateDpAsState(
+        targetValue = if (selected) SelectedBorderWidth else UnselectedBorderWidth,
+        animationSpec = AppMotion.spatialSpec(),
+        label = "answerBorderWidth",
+    )
+
+    Surface(
+        modifier = Modifier.fillMaxWidth().then(selectionModifier),
+        shape = MaterialTheme.shapes.medium,
+        color = containerColor,
+        border = BorderStroke(width = borderWidth, color = borderColor),
     ) {
         Row(
             modifier = Modifier
@@ -337,6 +361,9 @@ private fun AnswerRow(
         }
     }
 }
+
+private val SelectedBorderWidth = 2.dp
+private val UnselectedBorderWidth = 1.dp
 
 private val AnswerRowMinHeight = 48.dp
 

@@ -149,10 +149,11 @@ internal class ProgressLearningJourneyIntegrationTest {
                     scrollToText("State")
                     assertTrue(onAllNodesWithText("State").fetchSemanticsNodes().isNotEmpty())
 
-                    onNode(hasScrollAction()).performScrollToNode(
-                        hasText("Topic performance"),
-                    )
-                    onNodeWithText("Legacy Android").performScrollTo().assertIsDisplayed()
+                    // Scrolled to as a lazy node rather than with performScrollTo: that only works
+                    // on an already-composed node, so it depended on this row happening to fall
+                    // inside the composed window once the section heading above it was in view.
+                    scrollToText("Legacy Android")
+                    onNodeWithText("Legacy Android").assertIsDisplayed()
                     onNodeWithText("0 / 1 correct").assertIsDisplayed()
                     assertTrue(onAllNodesWithText("0%").fetchSemanticsNodes().isNotEmpty())
                     scrollToTag(progressTopicCardTag(AndroidTopicId))

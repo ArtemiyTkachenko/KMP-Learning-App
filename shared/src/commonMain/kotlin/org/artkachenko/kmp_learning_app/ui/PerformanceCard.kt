@@ -15,7 +15,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 
@@ -103,7 +102,6 @@ internal fun PerformanceCard(
             Text(
                 text = formatAccuracy(percentage),
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
                 color = accuracyColor(percentage),
             )
             if (showChevron) {

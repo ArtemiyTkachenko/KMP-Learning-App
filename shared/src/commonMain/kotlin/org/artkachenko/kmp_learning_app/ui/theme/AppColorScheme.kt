@@ -12,6 +12,17 @@ import androidx.compose.ui.graphics.Color
  * UI on every host. These roles are derived from a single indigo seed so the product has its own
  * identity, and the container/variant roles are filled in because the screens rely on them for
  * hierarchy (see [AppSemanticColors] for correct/incorrect, which M3 does not model).
+ *
+ * **Every role is now stated.** The schemes used to name only the roles the screens read directly,
+ * which left the rest — `inverseSurface`, `inversePrimary`, `inverseOnSurface`, `scrim`,
+ * `surfaceBright`, `surfaceDim`, `surfaceTint`, and the whole fixed-colour family — resolving to
+ * `lightColorScheme`/`darkColorScheme` defaults, which are the Material *baseline purple*. Nothing
+ * looked wrong while no component happened to read one, but a Snackbar draws its container from
+ * `inverseSurface` and its action from `inversePrimary`, so the first one shown would have arrived
+ * in a palette this app never chose. Partial schemes fail quietly and late; this one cannot.
+ *
+ * The fixed-colour roles hold the same value in both schemes. That is their definition: they exist
+ * for content that must not flip with the theme, so light and dark deliberately agree.
  */
 internal val AppLightColorScheme = lightColorScheme(
     primary = Color(0xFF3F5BA9),
@@ -43,6 +54,29 @@ internal val AppLightColorScheme = lightColorScheme(
     surfaceContainer = Color(0xFFEFEDF4),
     surfaceContainerHigh = Color(0xFFE9E7EF),
     surfaceContainerHighest = Color(0xFFE3E1E9),
+    // The dimmest and brightest neutrals the light scheme can reach. Components that need to sit
+    // below or above the whole container ramp use these rather than borrowing a step from it.
+    surfaceDim = Color(0xFFDBD9E1),
+    surfaceBright = Color(0xFFFBF8FF),
+    // Inverted surfaces: Snackbars and tooltips paint a dark card in the light theme. Without these
+    // the app's first Snackbar would have appeared in Material's baseline palette.
+    inverseSurface = Color(0xFF303036),
+    inverseOnSurface = Color(0xFFF2F0F7),
+    inversePrimary = Color(0xFFB4C5FF),
+    scrim = Color(0xFF000000),
+    surfaceTint = Color(0xFF3F5BA9),
+    primaryFixed = Color(0xFFDBE1FF),
+    primaryFixedDim = Color(0xFFB4C5FF),
+    onPrimaryFixed = Color(0xFF00174B),
+    onPrimaryFixedVariant = Color(0xFF264190),
+    secondaryFixed = Color(0xFFDFE1F9),
+    secondaryFixedDim = Color(0xFFC3C5DD),
+    onSecondaryFixed = Color(0xFF171B2C),
+    onSecondaryFixedVariant = Color(0xFF424659),
+    tertiaryFixed = Color(0xFFFFD7F3),
+    tertiaryFixedDim = Color(0xFFE5BAD8),
+    onTertiaryFixed = Color(0xFF2C1229),
+    onTertiaryFixedVariant = Color(0xFF5C3C56),
 )
 
 internal val AppDarkColorScheme = darkColorScheme(
@@ -75,4 +109,25 @@ internal val AppDarkColorScheme = darkColorScheme(
     surfaceContainer = Color(0xFF1F1F25),
     surfaceContainerHigh = Color(0xFF292A2F),
     surfaceContainerHighest = Color(0xFF34343A),
+    surfaceDim = Color(0xFF121318),
+    surfaceBright = Color(0xFF38383F),
+    // The mirror of the light scheme's inversion: a Snackbar in the dark theme is a light card.
+    inverseSurface = Color(0xFFE3E1E9),
+    inverseOnSurface = Color(0xFF303036),
+    inversePrimary = Color(0xFF3F5BA9),
+    scrim = Color(0xFF000000),
+    surfaceTint = Color(0xFFB4C5FF),
+    // Identical to the light scheme by definition: fixed roles do not flip with the theme.
+    primaryFixed = Color(0xFFDBE1FF),
+    primaryFixedDim = Color(0xFFB4C5FF),
+    onPrimaryFixed = Color(0xFF00174B),
+    onPrimaryFixedVariant = Color(0xFF264190),
+    secondaryFixed = Color(0xFFDFE1F9),
+    secondaryFixedDim = Color(0xFFC3C5DD),
+    onSecondaryFixed = Color(0xFF171B2C),
+    onSecondaryFixedVariant = Color(0xFF424659),
+    tertiaryFixed = Color(0xFFFFD7F3),
+    tertiaryFixedDim = Color(0xFFE5BAD8),
+    onTertiaryFixed = Color(0xFF2C1229),
+    onTertiaryFixedVariant = Color(0xFF5C3C56),
 )

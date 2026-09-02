@@ -8,9 +8,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.ui.unit.IntOffset
 import androidx.navigationevent.NavigationEvent
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.scene.Scene
+import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 
 /**
  * Navigation motion, declared once for every host.
@@ -23,18 +25,44 @@ import androidx.navigation3.scene.Scene
  * rather than one being "deeper" than the other. Pushing to and popping from a detail screen slides
  * horizontally, which carries the sense of depth.
  */
-private const val TransitionDurationMillis = 260
 private const val SlideFraction = 6
+
+/**
+ * Movement and fade are specified separately on purpose.
+ *
+ * Everything previously used one `tween` on the default easing, so a screen slid in at the same
+ * rate it faded — which is what made the motion read as mechanical. Material pairs an emphasised
+ * curve for the thing that moves with a shorter, flatter fade, so the incoming screen is legible
+ * before it has finished arriving.
+ */
+private fun slideSpec() =
+    tween<IntOffset>(
+        durationMillis = AppMotion.NavigationDurationMillis,
+        easing = AppMotion.EmphasizedEasing,
+    )
+
+private fun enterFadeSpec() =
+    tween<Float>(
+        durationMillis = AppMotion.NavigationDurationMillis,
+        easing = AppMotion.EmphasizedDecelerateEasing,
+    )
+
+/** Exits accelerate away and finish early, so the incoming screen is never read through the old one. */
+private fun exitFadeSpec() =
+    tween<Float>(
+        durationMillis = AppMotion.NavigationDurationMillis / 2,
+        easing = AppMotion.EmphasizedAccelerateEasing,
+    )
 
 internal fun appTransitionSpec():
     AnimatedContentTransitionScope<Scene<NavKey>>.() -> ContentTransform = {
     if (isTopLevelSwitch()) {
         crossFade()
     } else {
-        slideInHorizontally(tween(TransitionDurationMillis)) { it / SlideFraction } +
-            fadeIn(tween(TransitionDurationMillis)) togetherWith
-            slideOutHorizontally(tween(TransitionDurationMillis)) { -it / SlideFraction } +
-            fadeOut(tween(TransitionDurationMillis))
+        slideInHorizontally(slideSpec()) { it / SlideFraction } +
+            fadeIn(enterFadeSpec()) togetherWith
+            slideOutHorizontally(slideSpec()) { -it / SlideFraction } +
+            fadeOut(exitFadeSpec())
     }
 }
 
@@ -43,10 +71,10 @@ internal fun appPopTransitionSpec():
     if (isTopLevelSwitch()) {
         crossFade()
     } else {
-        slideInHorizontally(tween(TransitionDurationMillis)) { -it / SlideFraction } +
-            fadeIn(tween(TransitionDurationMillis)) togetherWith
-            slideOutHorizontally(tween(TransitionDurationMillis)) { it / SlideFraction } +
-            fadeOut(tween(TransitionDurationMillis))
+        slideInHorizontally(slideSpec()) { -it / SlideFraction } +
+            fadeIn(enterFadeSpec()) togetherWith
+            slideOutHorizontally(slideSpec()) { it / SlideFraction } +
+            fadeOut(exitFadeSpec())
     }
 }
 
@@ -60,15 +88,27 @@ internal fun appPredictivePopTransitionSpec():
         crossFade()
     } else {
         val direction = if (swipeEdge == NavigationEvent.EDGE_RIGHT) -1 else 1
-        slideInHorizontally(tween(TransitionDurationMillis)) { -direction * it / SlideFraction } +
-            fadeIn(tween(TransitionDurationMillis)) togetherWith
-            slideOutHorizontally(tween(TransitionDurationMillis)) { direction * it / SlideFraction } +
-            fadeOut(tween(TransitionDurationMillis))
+        slideInHorizontally(slideSpec()) { -direction * it / SlideFraction } +
+            fadeIn(enterFadeSpec()) togetherWith
+            slideOutHorizontally(slideSpec()) { direction * it / SlideFraction } +
+            fadeOut(exitFadeSpec())
     }
 }
 
+/**
+ * Siblings cross-fade rather than slide, so neither reads as deeper than the other.
+ *
+ * The outgoing half is not shortened here as it is for a push: with nothing moving, an early exit
+ * leaves a visible gap where neither screen is drawn.
+ */
 private fun crossFade(): ContentTransform =
-    fadeIn(tween(TransitionDurationMillis)) togetherWith fadeOut(tween(TransitionDurationMillis))
+    fadeIn(enterFadeSpec()) togetherWith
+        fadeOut(
+            tween(
+                durationMillis = AppMotion.NavigationDurationMillis,
+                easing = AppMotion.EmphasizedEasing,
+            ),
+        )
 
 /** True when both sides of the transition are navigation-bar areas. */
 internal fun isTopLevelSwitch(from: AppRoute?, to: AppRoute?): Boolean =

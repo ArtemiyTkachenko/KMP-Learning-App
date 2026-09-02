@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
@@ -42,6 +43,8 @@ import kmp_learning_app.shared.generated.resources.practice_builder_title
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
+import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -77,14 +80,16 @@ internal fun PracticeBuilderScreen(
     onRetryAvailability: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxSize()) {
+    val scrollBehavior = rememberAppTopBarScrollBehavior()
+    Column(modifier = modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)) {
         AppTopBar(
             title = stringResource(Res.string.practice_builder_title),
             onBack = onBack,
+            scrollBehavior = scrollBehavior,
         )
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+            contentPadding = appScreenContentPadding(),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             item {

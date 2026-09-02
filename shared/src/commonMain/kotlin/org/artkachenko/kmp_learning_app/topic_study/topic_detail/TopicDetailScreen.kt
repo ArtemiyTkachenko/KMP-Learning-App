@@ -17,16 +17,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.learning_context_accuracy
@@ -47,8 +45,12 @@ import kmp_learning_app.shared.generated.resources.topic_detail_subtopics
 import org.artkachenko.kmp_learning_app.ui.AccuracyHeadline
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
+import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
+import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 import org.artkachenko.kmp_learning_app.ui.PrimarySummaryCard
+import org.artkachenko.kmp_learning_app.ui.ProgressMeter
 import org.artkachenko.kmp_learning_app.ui.SecondarySummaryCard
 import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.artkachenko.kmp_learning_app.ui.ScreenError
@@ -74,7 +76,8 @@ internal fun TopicDetailScreen(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxSize()) {
+    val scrollBehavior = rememberAppTopBarScrollBehavior()
+    Column(modifier = modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)) {
         AppTopBar(
             title = when (state) {
                 is TopicDetailUiState.Content -> state.topic.name
@@ -82,6 +85,7 @@ internal fun TopicDetailScreen(
                 else -> stringResource(Res.string.topic_detail_heading)
             },
             onBack = onBack,
+            scrollBehavior = scrollBehavior,
         )
 
         when (state) {
@@ -135,13 +139,18 @@ private fun TopicContent(
         }
         if (subtopicIndex >= 0) {
             // The first lazy-list item is the topic summary and action block.
-            listState.scrollToItem(subtopicIndex + 1)
+            //
+            // Animated rather than instant: arriving here from search used to place the learner at
+            // an arbitrary offset with no indication that the screen had scrolled at all, so a
+            // Subtopic partway down a long Topic looked like the top of the list. Travelling there
+            // shows that there is content above.
+            listState.animateScrollToItem(subtopicIndex + 1)
         }
     }
     LazyColumn(
         state = listState,
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+        contentPadding = appScreenContentPadding(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         // Deliberately one lazy item: the summary, the action, and the Subtopics heading form the
@@ -228,7 +237,6 @@ private fun TopicContent(
                             Text(
                                 text = formatAccuracy(accuracy),
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
                                 color = accuracyColor(accuracy),
                             )
                             Text(
@@ -299,7 +307,7 @@ private fun TopicLearningSummary(context: LearningContextUiModel) {
  */
 @Composable
 private fun TopicCoverage(context: LearningContextUiModel) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight)) {
         Text(
             text = stringResource(Res.string.learning_context_coverage_title),
             style = MaterialTheme.typography.titleSmall,
@@ -315,17 +323,9 @@ private fun TopicCoverage(context: LearningContextUiModel) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (context.hasCoverageScope) {
-            LinearProgressIndicator(
-                progress = {
-                    (context.attemptedQuestionCount.toFloat() / context.totalQuestionCount)
-                        .coerceIn(0f, 1f)
-                },
-                modifier = Modifier.fillMaxWidth().height(8.dp),
+            ProgressMeter(
+                fraction = context.attemptedQuestionCount.toFloat() / context.totalQuestionCount,
                 color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                strokeCap = StrokeCap.Round,
-                gapSize = 0.dp,
-                drawStopIndicator = {},
             )
         }
     }

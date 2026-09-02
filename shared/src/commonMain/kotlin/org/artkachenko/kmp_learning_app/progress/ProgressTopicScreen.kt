@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
@@ -23,6 +24,8 @@ import kmp_learning_app.shared.generated.resources.progress_topic_unavailable
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.layout.PaddingValues
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
+import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
@@ -36,10 +39,11 @@ internal fun ProgressTopicScreen(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier.fillMaxSize()) {
+    val scrollBehavior = rememberAppTopBarScrollBehavior()
+    Column(modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)) {
         // The topic name is the aggregate card's title, so the bar keeps a stable label rather
         // than repeating it.
-        AppTopBar(stringResource(Res.string.progress_topic_detail_title), onBack)
+        AppTopBar(stringResource(Res.string.progress_topic_detail_title), onBack, scrollBehavior)
         when (state) {
             ProgressTopicUiState.Loading -> ScreenLoading(
                 message = stringResource(Res.string.progress_topic_loading),
@@ -70,7 +74,7 @@ private fun ProgressTopicContent(
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+        contentPadding = appScreenContentPadding(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {

@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
@@ -37,6 +38,8 @@ import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionCard
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.assessment_review.UnresolvedReviewQuestionsNotice
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
+import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.PerformanceCard
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
@@ -58,8 +61,9 @@ internal fun MixedInterviewResultScreen(
     failedSourceUrl: String? = null,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier.fillMaxSize()) {
-        AppTopBar(stringResource(Res.string.mixed_result_title), onBack)
+    val scrollBehavior = rememberAppTopBarScrollBehavior()
+    Column(modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)) {
+        AppTopBar(stringResource(Res.string.mixed_result_title), onBack, scrollBehavior)
         when (state) {
             MixedInterviewResultUiState.Loading -> ScreenLoading(
                 message = stringResource(Res.string.mixed_result_loading),
@@ -100,7 +104,7 @@ private fun MixedResultContent(
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+        contentPadding = appScreenContentPadding(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {

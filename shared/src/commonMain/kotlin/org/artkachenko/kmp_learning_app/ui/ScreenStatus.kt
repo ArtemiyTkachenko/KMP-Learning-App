@@ -1,5 +1,11 @@
 package org.artkachenko.kmp_learning_app.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,7 +26,53 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.app_retry
+import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.jetbrains.compose.resources.stringResource
+
+/**
+ * Cross-fades between a screen's loading, empty, error, and content states.
+ *
+ * Every screen resolves its state in a `when` block, and each branch simply replaced the last, so
+ * content appeared the instant a read finished — a spinner one frame and a full list the next. That
+ * hard cut is what made a fast load look like a glitch and a slow one look broken.
+ *
+ * The fade is short and carries no movement. It exists to say that one thing became another, which
+ * is the functional purpose E13-02 requires; sliding content in as well would be decoration.
+ *
+ * [contentKey] is what decides whether a transition runs, and it defaults to the state's class
+ * rather than the state itself. Keying on the whole state would restart the fade on every data
+ * change, so a list would flicker each time one answer was recorded. The state is still passed
+ * through to [content] in full, which is what lets the outgoing branch keep rendering the old value
+ * while it fades — keying alone would redraw both halves with the new state and defeat the fade.
+ */
+@Composable
+internal fun <S : Any> ScreenStateTransition(
+    state: S,
+    modifier: Modifier = Modifier,
+    contentKey: (S) -> Any = { it::class },
+    content: @Composable AnimatedContentScope.(S) -> Unit,
+) {
+    AnimatedContent(
+        targetState = state,
+        modifier = modifier,
+        contentKey = contentKey,
+        transitionSpec = {
+            fadeIn(
+                tween(
+                    durationMillis = AppMotion.StateChangeDurationMillis,
+                    easing = AppMotion.EmphasizedDecelerateEasing,
+                ),
+            ) togetherWith fadeOut(
+                tween(
+                    durationMillis = AppMotion.StateChangeDurationMillis / 2,
+                    easing = AppMotion.EmphasizedAccelerateEasing,
+                ),
+            )
+        },
+        label = "screenState",
+        content = content,
+    )
+}
 
 /**
  * Loading, empty, and error presentation shared by every screen.

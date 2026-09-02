@@ -13,8 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 
 /** Screen-level summary content, intentionally stronger than ordinary interactive rows. */
 @Composable
@@ -30,8 +30,8 @@ internal fun PrimarySummaryCard(
         ),
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(AppSpacing.Generous),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
             content = content,
         )
     }
@@ -55,14 +55,22 @@ internal fun SecondarySummaryCard(
         ),
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(AppSpacing.Comfortable),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Related),
             content = content,
         )
     }
 }
 
-/** Shared section hierarchy for scrollable learning and progress content. */
+/**
+ * Shared section hierarchy for scrollable learning and progress content.
+ *
+ * The top margin is the point of this component. A heading sits in the same `spacedBy` flow as the
+ * cards it introduces, so with only 8.dp of its own it was separated from the section above by
+ * about the same distance as two sibling cards — proximity then said nothing about grouping, and
+ * the screens read as one undifferentiated column of cards. [AppSpacing.Section] is deliberately
+ * twice the largest gap between siblings, so a section break is unambiguous.
+ */
 @Composable
 internal fun SectionHeading(
     text: String,
@@ -71,10 +79,9 @@ internal fun SectionHeading(
     Text(
         text = text,
         style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onSurface,
         modifier = modifier
-            .padding(top = 8.dp)
+            .padding(top = AppSpacing.Section)
             .semantics { heading() },
     )
 }

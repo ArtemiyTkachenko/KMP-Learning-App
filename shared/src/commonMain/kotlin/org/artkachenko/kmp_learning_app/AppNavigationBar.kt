@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -22,10 +24,14 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import org.artkachenko.kmp_learning_app.ui.theme.AppLayout
+import org.artkachenko.kmp_learning_app.ui.theme.LocalAppContentMargin
 import org.jetbrains.compose.resources.stringResource
 
 /** Counts worth surfacing on a navigation item; absent or zero renders no badge. */
@@ -51,8 +57,11 @@ internal fun appNavigationBarItemTag(destination: AppTopLevelDestination): Strin
  * there is room for a rail beside the content. This is the Material compact/medium boundary, and
  * it is a window measurement rather than a platform check because the same host can be either
  * size — a desktop or browser window can be dragged narrow.
+ *
+ * The value lives in [AppLayout] because the content margin turns on the same boundary; this name
+ * is kept so the navigation call sites and their tests still read in terms of the rail.
  */
-internal val AppNavigationRailBreakpoint: Dp = 600.dp
+internal val AppNavigationRailBreakpoint: Dp = AppLayout.CompactWidthBreakpoint
 
 private val RailHeaderHeight: Dp = 12.dp
 
@@ -120,6 +129,10 @@ internal fun AppNavigationScaffold(
 ) {
     BoxWithConstraints(modifier.fillMaxSize()) {
         val usesRail = maxWidth >= AppNavigationRailBreakpoint
+        // This is already the one place that measures the window, so it is also where the content
+        // margin is decided; screens read it from the composition local rather than each deciding
+        // for itself or re-measuring.
+        val contentMargin = AppLayout.screenHorizontalMargin(maxWidth)
         Row(Modifier.fillMaxSize()) {
             if (showsNavigation && usesRail) {
                 AppNavigationRail(selected = selected, onSelect = onSelect, badges = badges)
@@ -144,8 +157,23 @@ internal fun AppNavigationScaffold(
                         )
                     }
                 },
-                content = content,
-            )
+            ) { scaffoldPadding ->
+                CompositionLocalProvider(LocalAppContentMargin provides contentMargin) {
+                    // Wide windows stop the layout growing with them. A phone layout stretched
+                    // across a desktop window puts a Topic name against the far left edge and its
+                    // accuracy figure against the far right, with a foot of empty card between —
+                    // readable on a phone, unreadable at 1600px. Centred rather than leading-aligned
+                    // so a window between the breakpoint and the cap does not appear off-balance.
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.TopCenter,
+                    ) {
+                        Box(Modifier.widthIn(max = AppLayout.MaxContentWidth).fillMaxSize()) {
+                            content(scaffoldPadding)
+                        }
+                    }
+                }
+            }
         }
     }
 }

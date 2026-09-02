@@ -12,6 +12,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
@@ -34,6 +35,8 @@ import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.layout.PaddingValues
 import kmp_learning_app.shared.generated.resources.focused_result_loading
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
+import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
@@ -51,8 +54,9 @@ internal fun FocusedResultScreen(
     failedSourceUrl: String? = null,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxSize()) {
-        AppTopBar(stringResource(Res.string.focused_result_title), onBack)
+    val scrollBehavior = rememberAppTopBarScrollBehavior()
+    Column(modifier = modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)) {
+        AppTopBar(stringResource(Res.string.focused_result_title), onBack, scrollBehavior)
         when (state) {
             FocusedResultUiState.Loading -> ScreenLoading(
                 message = stringResource(Res.string.focused_result_loading),
@@ -88,7 +92,7 @@ private fun ResultContent(
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+        contentPadding = appScreenContentPadding(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {

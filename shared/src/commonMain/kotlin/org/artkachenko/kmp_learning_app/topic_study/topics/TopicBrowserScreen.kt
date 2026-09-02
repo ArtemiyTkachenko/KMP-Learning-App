@@ -29,7 +29,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
@@ -57,7 +56,10 @@ import org.artkachenko.kmp_learning_app.ui.StatusBadge
 import org.artkachenko.kmp_learning_app.ui.TopicVisualMarker
 import org.artkachenko.kmp_learning_app.ui.accuracyColor
 import org.artkachenko.kmp_learning_app.ui.formatAccuracy
+import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
+import org.artkachenko.kmp_learning_app.ui.theme.AppListBottomPadding
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
+import org.artkachenko.kmp_learning_app.ui.theme.LocalAppContentMargin
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.jetbrains.compose.resources.stringResource
 
@@ -96,14 +98,13 @@ internal fun TopicBrowserScreen(
             // bar, so bottom padding out here would show as a strip of background above it. Any
             // scroll-end spacing belongs inside the list, as contentPadding.
             .windowInsetsPadding(topWindowInsets)
-            .padding(horizontal = 20.dp)
+            .padding(horizontal = LocalAppContentMargin.current)
             .padding(top = TopicBrowserHeaderSpacing),
     ) {
         Text(
             text = stringResource(Res.string.topic_browser_title),
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onSurface,
-            fontWeight = FontWeight.SemiBold,
             modifier = Modifier.testTag(TopicBrowserHeaderTag),
         )
         Text(
@@ -198,7 +199,7 @@ private fun TopicList(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 24.dp),
+        contentPadding = PaddingValues(bottom = AppListBottomPadding),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(
@@ -225,10 +226,11 @@ private fun TopicList(
 private fun TopicRow(
     topic: TopicBrowserItemUiModel,
     onTopicClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Card(
         onClick = { onTopicClick(topic.topicId) },
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -237,7 +239,7 @@ private fun TopicRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(AppSpacing.Comfortable),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -310,7 +312,6 @@ private fun TopicAccuracy(accuracy: Double) {
         Text(
             text = formatAccuracy(accuracy),
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
             color = accuracyColor(accuracy),
         )
         Text(
@@ -330,7 +331,7 @@ private fun TopicSearchResults(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 24.dp),
+        contentPadding = PaddingValues(bottom = AppListBottomPadding),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         if (topicMatches.isNotEmpty()) {
@@ -343,9 +344,16 @@ private fun TopicSearchResults(
             ) { result ->
                 // The same row as normal browsing: a Topic match is the same Topic, so it keeps its
                 // marker and its learning context rather than becoming a second kind of card.
+                //
+                // Results are re-filtered on every keystroke, so rows appear, disappear, and move
+                // constantly while a query is being typed. Without `animateItem` the list teleports
+                // between arrangements and it is impossible to see whether a row left or simply
+                // shifted — the animation carries the filtering, which is what makes it functional
+                // rather than decorative.
                 TopicRow(
                     topic = result,
                     onTopicClick = onTopicClick,
+                    modifier = Modifier.animateItem(),
                 )
             }
         }
@@ -360,6 +368,7 @@ private fun TopicSearchResults(
                 SubtopicResultRow(
                     result = result,
                     onClick = onSubtopicClick,
+                    modifier = Modifier.animateItem(),
                 )
             }
         }
@@ -370,10 +379,11 @@ private fun TopicSearchResults(
 private fun SubtopicResultRow(
     result: SubtopicSearchResult,
     onClick: (topicId: String, subtopicId: String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Card(
         onClick = { onClick(result.parentTopicId, result.subtopicId) },
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,

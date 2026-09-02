@@ -25,7 +25,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.interview_history_attempts
@@ -38,7 +37,10 @@ import kmp_learning_app.shared.generated.resources.mixed_interview_how_it_works
 import kmp_learning_app.shared.generated.resources.mixed_interview_question_count
 import kmp_learning_app.shared.generated.resources.mixed_interview_start
 import kmp_learning_app.shared.generated.resources.mixed_interview_title
+import org.artkachenko.kmp_learning_app.ui.MetricFigure
 import org.artkachenko.kmp_learning_app.ui.PerformanceCard
+import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
+import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
 import org.jetbrains.compose.resources.stringResource
 
 internal const val InterviewStartButtonTag = "interview_start"
@@ -68,7 +70,7 @@ internal fun InterviewStartScreen(
             // This screen leads with its own heading instead of an AppTopBar, so there is no bar
             // here to pad for the status bar; without this the heading sits underneath it.
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
+        contentPadding = appScreenContentPadding(top = AppSpacing.Section, bottom = AppSpacing.Section),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
@@ -76,7 +78,6 @@ internal fun InterviewStartScreen(
                 text = stringResource(Res.string.mixed_interview_title),
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.SemiBold,
             )
         }
         item {
@@ -90,14 +91,12 @@ internal fun InterviewStartScreen(
                     modifier = Modifier.fillMaxWidth().padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text(
+                    MetricFigure(
                         text = stringResource(
                             Res.string.mixed_interview_question_count,
                             MixedInterviewDefaults.QuestionCount,
                         ),
-                        style = MaterialTheme.typography.headlineSmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontWeight = FontWeight.Bold,
                     )
                     Text(
                         text = stringResource(Res.string.mixed_interview_description),
@@ -160,7 +159,6 @@ private fun InterviewRecord(
                 text = stringResource(Res.string.interview_history_title),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.SemiBold,
             )
             Text(
                 text = stringResource(

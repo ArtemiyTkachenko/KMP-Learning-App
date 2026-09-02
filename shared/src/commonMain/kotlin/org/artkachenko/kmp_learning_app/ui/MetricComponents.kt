@@ -13,8 +13,11 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.Animatable
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -25,6 +28,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressPolicy
+import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
+import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 
 /**
@@ -65,7 +70,6 @@ internal fun AccuracyHeadline(
             Text(
                 text = formatAccuracy(percentage),
                 style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.Bold,
                 color = color,
             )
             Text(
@@ -75,15 +79,7 @@ internal fun AccuracyHeadline(
                 modifier = Modifier.padding(bottom = 6.dp),
             )
         }
-        LinearProgressIndicator(
-            progress = { (percentage / 100.0).toFloat().coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth().height(8.dp),
-            color = color,
-            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-            strokeCap = StrokeCap.Round,
-            gapSize = 0.dp,
-            drawStopIndicator = {},
-        )
+        ProgressMeter(fraction = (percentage / 100.0).toFloat(), color = color)
         supporting?.let {
             Text(
                 text = it,
@@ -92,6 +88,70 @@ internal fun AccuracyHeadline(
             )
         }
     }
+}
+
+/**
+ * The horizontal meter under a figure, in the one style the product uses for all of them.
+ *
+ * This existed four times with the same styling copied out, and three of those copies passed their
+ * value straight through while the fourth — the assessment progress meter — animated it. So the
+ * accuracy bar on the result screen snapped from one length to another while the visually identical
+ * bar during an assessment travelled, which read as two different controls.
+ *
+ * The value is animated because a meter's length *is* its meaning: seeing it move from 40% to 60%
+ * says something a redrawn bar at 60% does not. The first composition is not animated for the same
+ * reason — a bar growing from zero every time a screen opens would be stating a change that did not
+ * happen.
+ */
+@Composable
+internal fun ProgressMeter(
+    fraction: Float,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    val target = fraction.coerceIn(0f, 1f)
+    val animated = remember { Animatable(target) }
+    LaunchedEffect(target) {
+        animated.animateTo(target, AppMotion.effectSpec(AppMotion.ProgressDurationMillis))
+    }
+    LinearProgressIndicator(
+        progress = { animated.value },
+        modifier = modifier.fillMaxWidth().height(MeterHeight),
+        color = color,
+        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        strokeCap = StrokeCap.Round,
+        // The default gap and stop indicator are Material's own progress affordances. They are
+        // removed because this is a static measurement of how much has been covered, not an
+        // operation in flight.
+        gapSize = 0.dp,
+        drawStopIndicator = {},
+    )
+}
+
+private val MeterHeight = 8.dp
+
+/**
+ * The figure a card exists to show, one step below [AccuracyHeadline]'s screen headline.
+ *
+ * This exists because three cards — coverage, recent performance, and the interview question count
+ * — each set `FontWeight.Bold` on a headline role at their own call site, while the same roles are
+ * used elsewhere as ordinary headings at the scale's SemiBold. That is two intents sharing one
+ * role, which is why the weight could not simply move into [AppTypography]: a figure is short,
+ * numeric, and the reason its card exists, whereas a heading introduces the content beneath it.
+ * Naming the intent once keeps the three cards in step and leaves headings alone.
+ */
+@Composable
+internal fun MetricFigure(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.onSurface,
+) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+        color = color,
+        modifier = modifier,
+    )
 }
 
 /** Whole number when exact, otherwise one decimal place, with the percent sign attached. */
@@ -116,7 +176,7 @@ internal fun StatusBadge(
         color = containerColor,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = AppSpacing.Grouped, vertical = AppSpacing.Tight),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -131,7 +191,6 @@ internal fun StatusBadge(
             Text(
                 text = text,
                 style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
                 color = contentColor,
             )
         }
@@ -161,7 +220,6 @@ internal fun MetricRow(
         Text(
             text = value,
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
             color = valueColor,
         )
     }

@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -77,15 +78,42 @@ internal fun hasExplicitTopicVisualIdentity(topicId: String): Boolean =
  */
 internal fun topicVisualMarkerTag(topicId: String): String = "topic_marker_$topicId"
 
-private val TopicMarkerSize = 36.dp
-private val TopicMarkerIconSize = 20.dp
+/**
+ * Sized so the marker is unmistakably an object rather than a tinted background behind a glyph,
+ * while staying smaller than the two lines of text beside it. The glyph keeps roughly half the
+ * container to itself, which is the proportion Material uses for an icon in a circular container.
+ */
+private val TopicMarkerSize = 40.dp
+private val TopicMarkerIconSize = 22.dp
 
 /**
- * The Topic marker: a tonal container with the Topic's glyph.
+ * The Topic marker: an accent container with the Topic's glyph.
  *
  * Sized to stay secondary to the Topic name, which remains the authoritative identity. The icon
  * carries no content description because the name is always rendered beside it — describing it
  * would make a screen reader announce the same Topic twice.
+ *
+ * The container is `primaryContainer` rather than `surfaceContainerHigh`. The glyph set is the one
+ * piece of authored visual identity the product has, and it was previously rendered on the palette's
+ * quietest tone — a grey square inside a grey card — so a deliberate set of seventeen symbols read
+ * as furniture. Moving it onto the accent role is also most of why the app looked colourless: the
+ * scheme's `primary` family appeared six times in the entire UI against thirty-eight uses of
+ * `onSurfaceVariant`, so the brand existed in the theme and nowhere on screen.
+ *
+ * The glyph tint moves to `onPrimaryContainer` for the same reason it always had to: it is the role
+ * paired with this container, and the pairing is what keeps the contrast assertion in
+ * `TopicDiscoveryThemeTest` meaningful rather than coincidental.
+ *
+ * The container is a circle rather than a rounded square. A rounded square inside the rounded-square
+ * card that holds it reads as one soft blur of corners at this size; a circle is a different figure
+ * from its container, which is what actually separates the marker from the card.
+ *
+ * `MaterialShapes` was the obvious candidate here and was deliberately not used. Its `Square` is
+ * `RoundedPolygon.rectangle(rounding = CornerRounding(radius = 0.3f))` with the default smoothing of
+ * zero, so it renders as an ordinary 30%-radius rounded rectangle — indistinguishable from the shape
+ * already in use. The genuinely distinct entries (`Cookie9Sided`, `Clover4Leaf`, `SoftBurst`) are
+ * decorative in a way this product is not. Taking one would have meant an experimental opt-in and a
+ * per-composition shape allocation to buy either nothing or the wrong tone.
  */
 @Composable
 internal fun TopicVisualMarker(
@@ -94,14 +122,14 @@ internal fun TopicVisualMarker(
 ) {
     Surface(
         modifier = modifier.size(TopicMarkerSize).testTag(topicVisualMarkerTag(topicId)),
-        shape = MaterialTheme.shapes.small,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.primaryContainer,
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
                 imageVector = topicVisualIdentity(topicId).icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.size(TopicMarkerIconSize),
             )
         }

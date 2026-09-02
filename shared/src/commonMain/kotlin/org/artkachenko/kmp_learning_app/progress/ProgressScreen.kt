@@ -13,15 +13,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.mistake_review_none
@@ -57,12 +55,18 @@ import kmp_learning_app.shared.generated.resources.progress_weak_areas
 import org.artkachenko.kmp_learning_app.ui.AccuracyHeadline
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
+import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
+import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
+import org.artkachenko.kmp_learning_app.ui.MetricFigure
 import org.artkachenko.kmp_learning_app.ui.MetricRow
 import org.artkachenko.kmp_learning_app.ui.PerformanceCard
+import org.artkachenko.kmp_learning_app.ui.ProgressMeter
 import org.artkachenko.kmp_learning_app.ui.PrimarySummaryCard
 import org.artkachenko.kmp_learning_app.ui.ScreenAction
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
+import org.artkachenko.kmp_learning_app.ui.ScreenStateTransition
 import org.artkachenko.kmp_learning_app.ui.SecondarySummaryCard
 import org.artkachenko.kmp_learning_app.ui.accuracyColor
 import org.artkachenko.kmp_learning_app.ui.formatAccuracy
@@ -90,32 +94,35 @@ internal fun ProgressScreen(
     onHistoryClick: (CompletedAssessmentType, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier.fillMaxSize()) {
-        AppTopBar(stringResource(Res.string.progress_title), onBack)
-        when (state) {
-            ProgressUiState.Loading -> ScreenLoading(
-                message = stringResource(Res.string.progress_loading),
-                testTag = ProgressLoadingTag,
-                modifier = Modifier.weight(1f),
-            )
-            ProgressUiState.Empty -> ScreenAction(
-                message = stringResource(Res.string.progress_empty),
-                actionLabel = stringResource(Res.string.progress_empty_action),
-                onAction = onBrowseTopics,
-                modifier = Modifier.weight(1f),
-                icon = AppIcons.Insights,
-            )
-            ProgressUiState.Error -> ScreenError(
-                message = stringResource(Res.string.progress_error),
-                onRetry = onRetry,
-                modifier = Modifier.weight(1f),
-            )
-            is ProgressUiState.Content -> ProgressContent(
-                state = state,
-                onTopicClick = onTopicClick,
-                onHistoryClick = onHistoryClick,
-                modifier = Modifier.weight(1f),
-            )
+    val scrollBehavior = rememberAppTopBarScrollBehavior()
+    Column(modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)) {
+        AppTopBar(stringResource(Res.string.progress_title), onBack, scrollBehavior)
+        ScreenStateTransition(state = state, modifier = Modifier.weight(1f)) { current ->
+            when (current) {
+                ProgressUiState.Loading -> ScreenLoading(
+                    message = stringResource(Res.string.progress_loading),
+                    testTag = ProgressLoadingTag,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                ProgressUiState.Empty -> ScreenAction(
+                    message = stringResource(Res.string.progress_empty),
+                    actionLabel = stringResource(Res.string.progress_empty_action),
+                    onAction = onBrowseTopics,
+                    modifier = Modifier.fillMaxSize(),
+                    icon = AppIcons.Insights,
+                )
+                ProgressUiState.Error -> ScreenError(
+                    message = stringResource(Res.string.progress_error),
+                    onRetry = onRetry,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                is ProgressUiState.Content -> ProgressContent(
+                    state = current,
+                    onTopicClick = onTopicClick,
+                    onHistoryClick = onHistoryClick,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         }
     }
 }
@@ -129,7 +136,7 @@ private fun ProgressContent(
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize().testTag(ProgressContentTag),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+        contentPadding = appScreenContentPadding(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
@@ -195,7 +202,7 @@ private fun OverallSummary(state: ProgressUiState.Content) {
             caption = stringResource(Res.string.progress_accuracy_caption),
         )
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight)) {
             MetricRow(
                 label = stringResource(Res.string.progress_completed_attempts_label),
                 value = state.completedAttemptCount.toString(),
@@ -237,12 +244,7 @@ private fun CurriculumCoverageSummary(coverage: ProgressCoverageUiModel) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
-            Text(
-                text = formatAccuracy(percentage),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            MetricFigure(text = formatAccuracy(percentage))
             Text(
                 text = stringResource(
                     Res.string.progress_coverage_count,
@@ -252,18 +254,10 @@ private fun CurriculumCoverageSummary(coverage: ProgressCoverageUiModel) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            LinearProgressIndicator(
+            ProgressMeter(
                 // The exact count ratio, not the rounded percentage above it.
-                progress = {
-                    (coverage.attemptedQuestionCount.toFloat() / coverage.totalQuestionCount)
-                        .coerceIn(0f, 1f)
-                },
-                modifier = Modifier.fillMaxWidth().height(8.dp),
+                fraction = coverage.attemptedQuestionCount.toFloat() / coverage.totalQuestionCount,
                 color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                strokeCap = StrokeCap.Round,
-                gapSize = 0.dp,
-                drawStopIndicator = {},
             )
         }
     }
@@ -285,10 +279,8 @@ private fun RecentPerformanceSummary(recent: ProgressRecentPerformanceUiModel) {
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface,
         )
-        Text(
+        MetricFigure(
             text = formatAccuracy(recent.percentage),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
             color = accuracyColor(recent.percentage),
         )
         Text(

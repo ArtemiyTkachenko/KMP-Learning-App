@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.mistake_review_description
@@ -25,6 +26,8 @@ import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionCard
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
+import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.ScreenAction
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
@@ -44,8 +47,9 @@ internal fun MistakeReviewScreen(
     failedSourceUrl: String? = null,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier.fillMaxSize()) {
-        AppTopBar(stringResource(Res.string.mistake_review_title), onBack)
+    val scrollBehavior = rememberAppTopBarScrollBehavior()
+    Column(modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)) {
+        AppTopBar(stringResource(Res.string.mistake_review_title), onBack, scrollBehavior)
         when (state) {
             MistakeReviewUiState.Loading -> ScreenLoading(
                 message = stringResource(Res.string.mistake_review_loading),
@@ -85,7 +89,7 @@ private fun MistakeReviewContent(
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+        contentPadding = appScreenContentPadding(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
@@ -98,14 +102,21 @@ private fun MistakeReviewContent(
         }
         // Review rendering is reused from the shared assessment-review components so selected
         // answers, correct answers, explanation, and sources stay consistent with result screens.
+        // A mistake leaves this list the moment it is answered correctly elsewhere, so entries are
+        // genuinely removed while the learner is looking at them. Animating the removal is what
+        // shows which one resolved; without it the remaining cards simply jump up a slot.
         items(state.mistakes, key = UnresolvedMistake::questionId) { mistake ->
             when (val item = mistake.reviewItem) {
                 is ReviewQuestionItem.Available -> ReviewQuestionCard(
                     question = item.question,
                     onSourceClick = onSourceClick,
                     failedSourceUrl = failedSourceUrl,
+                    modifier = Modifier.animateItem(),
                 )
-                is ReviewQuestionItem.Missing -> MissingReviewQuestion(item.questionId)
+                is ReviewQuestionItem.Missing -> MissingReviewQuestion(
+                    questionId = item.questionId,
+                    modifier = Modifier.animateItem(),
+                )
             }
         }
     }

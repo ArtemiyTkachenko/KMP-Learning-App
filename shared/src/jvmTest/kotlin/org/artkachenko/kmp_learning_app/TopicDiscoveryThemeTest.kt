@@ -4,6 +4,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
@@ -69,14 +72,24 @@ internal class TopicDiscoveryThemeTest {
             assertNotEquals(scheme.background, scheme.surfaceContainerLow, "$name page vs card")
             assertNotEquals(
                 scheme.surfaceContainerLow,
-                scheme.surfaceContainerHigh,
+                scheme.primaryContainer,
                 "$name card vs marker",
             )
 
             // WCAG 2.1 asks 3:1 of a meaningful graphic against its background and 4.5:1 of body
             // text. The marker glyph is the tinted graphic; the Topic name and its supporting
             // parent-Topic line are the text.
-            assertContrastAtLeast(scheme.primary, scheme.surfaceContainerHigh, 3.0, "$name marker glyph")
+            //
+            // E19-02 moved the marker from a neutral container onto the accent role, so this pair
+            // is now onPrimaryContainer against primaryContainer. Held to the text threshold rather
+            // than the 3:1 graphic one: these are paired on/container roles, and a pairing that
+            // cannot carry text is a sign the two tones are too close whatever is drawn on them.
+            assertContrastAtLeast(
+                scheme.onPrimaryContainer,
+                scheme.primaryContainer,
+                4.5,
+                "$name marker glyph",
+            )
             assertContrastAtLeast(scheme.onSurface, scheme.surfaceContainerLow, 4.5, "$name topic name")
             assertContrastAtLeast(
                 scheme.onSurfaceVariant,
@@ -101,6 +114,63 @@ internal class TopicDiscoveryThemeTest {
             )
         }
     }
+
+    /**
+     * Guards the failure mode E19-02 fixed rather than the values it chose.
+     *
+     * Both schemes previously named only the roles a screen read directly, so everything else fell
+     * through to `lightColorScheme`/`darkColorScheme` defaults — Material's baseline purple. That is
+     * invisible until some component reads one: a Snackbar takes its container from `inverseSurface`
+     * and its action label from `inversePrimary`, and would have arrived in a palette this product
+     * never chose.
+     *
+     * The roles listed are the ones that were actually unspecified, checked against a
+     * default-constructed scheme. `surfaceTint` is deliberately absent: its default is `primary`,
+     * which this app does supply, so agreeing with the default there is correct rather than a gap.
+     */
+    @Test
+    fun noSchemeRoleFallsBackToTheMaterialBaselinePalette() {
+        listOf(
+            Triple("light", AppLightColorScheme, lightColorScheme()),
+            Triple("dark", AppDarkColorScheme, darkColorScheme()),
+        ).forEach { (name, scheme, baseline) ->
+            previouslyUnspecifiedRoles.forEach { (role, read) ->
+                assertNotEquals(
+                    read(baseline),
+                    read(scheme),
+                    "$name $role still resolves to the Material baseline value",
+                )
+            }
+        }
+    }
+
+    /**
+     * The roles the schemes used to leave to Material's defaults.
+     *
+     * Written out rather than read reflectively because `kotlin.reflect.full` would mean adding
+     * kotlin-reflect purely for one assertion. The cost is that a role introduced by a future
+     * Material version has to be added here by hand — so the list names the failure it guards
+     * rather than pretending to be exhaustive.
+     */
+    private val previouslyUnspecifiedRoles: List<Pair<String, (ColorScheme) -> Color>> = listOf(
+        "inversePrimary" to { it.inversePrimary },
+        "inverseSurface" to { it.inverseSurface },
+        "inverseOnSurface" to { it.inverseOnSurface },
+        "surfaceBright" to { it.surfaceBright },
+        "surfaceDim" to { it.surfaceDim },
+        "primaryFixed" to { it.primaryFixed },
+        "primaryFixedDim" to { it.primaryFixedDim },
+        "onPrimaryFixed" to { it.onPrimaryFixed },
+        "onPrimaryFixedVariant" to { it.onPrimaryFixedVariant },
+        "secondaryFixed" to { it.secondaryFixed },
+        "secondaryFixedDim" to { it.secondaryFixedDim },
+        "onSecondaryFixed" to { it.onSecondaryFixed },
+        "onSecondaryFixedVariant" to { it.onSecondaryFixedVariant },
+        "tertiaryFixed" to { it.tertiaryFixed },
+        "tertiaryFixedDim" to { it.tertiaryFixedDim },
+        "onTertiaryFixed" to { it.onTertiaryFixed },
+        "onTertiaryFixedVariant" to { it.onTertiaryFixedVariant },
+    )
 
     private fun ComposeUiTest.assertDiscoveryStatesRender(darkTheme: Boolean) {
         val state: MutableState<TopicBrowserUiState> = mutableStateOf(BrowsingState)

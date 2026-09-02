@@ -3008,3 +3008,177 @@ epics:
         priority: "P2"
         size: "M"
         initial_status: "Backlog"
+
+  - key: E19
+    github_title: "EPIC-19 Visual Design & Motion Refinement"
+
+    goal: >
+      Raise the perceived quality of the existing product without changing its
+      learning model or its component vocabulary. Establish the theme token
+      layer the screens currently lack, complete and actually deploy the color
+      scheme, give the Topic glyph set enough presence to read, and replace
+      uniform linear motion with Material 3 expressive motion. Every change
+      stays inside the existing shared UI package; no new dependency, module, or
+      design-system framework is introduced.
+
+    issues:
+      - key: E19-01
+        title: "Establish the shared theme token layer"
+
+        issue: >
+          AppTheme supplies only a ColorScheme, so Typography, Shapes, and
+          motion are all Material defaults. Type weight is patched at eight
+          individual call sites, the default 12dp medium corner is the card
+          shape everywhere, spacing exists only as repeated dp literals, and the
+          two animation durations in the app are private constants in unrelated
+          files.
+
+        approach: >
+          Add Typography, Shapes, motion, and spacing token files beside the
+          existing color files and wire all four through the single AppTheme
+          entry point, including the expressive MotionScheme so Material
+          components animate with spring physics. Tune the Material type scale
+          rather than bundling a font, because the icon set was hand-authored
+          specifically to keep the JS and Wasm bundles small. Remove the
+          per-call-site font weight overrides the Typography now owns.
+
+        acceptance_criteria:
+          - "AppTheme supplies Typography, Shapes, MotionScheme, and ColorScheme from one place."
+          - "The type scale defines weight and letter spacing per role rather than at call sites."
+          - "No screen or shared component sets fontWeight for a role the Typography already defines."
+          - "The shape scale is defined explicitly rather than inherited from Material defaults."
+          - "Spacing and motion tokens exist as named shared values."
+          - "No font resource and no new Gradle dependency are added."
+          - "Existing shared UI tests remain green."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E19-02
+        title: "Complete and deploy the application color scheme"
+
+        issue: >
+          Both color schemes are partial, so unspecified roles including
+          inverseSurface, inversePrimary, scrim, surfaceBright, surfaceDim, and
+          the fixed-color roles silently fall back to the Material baseline
+          palette rather than the application's own. In the light scheme
+          background and surface are the same value, so content surfaces never
+          separate from the page, and the accent roles are almost never used.
+
+        approach: >
+          Fill every remaining role from the existing seed, separate background
+          from surface so the surface container ramp reads as depth, and spend
+          the accent on the surfaces that carry a screen: the Topic marker and
+          the primary summary card. Extend the existing theme contrast test to
+          cover the new pairings and to fail if any role returns to a baseline
+          default.
+
+        acceptance_criteria:
+          - "Every ColorScheme role is specified explicitly in both light and dark schemes."
+          - "No role resolves to a Material baseline default."
+          - "Light background and surface are distinguishable values."
+          - "Accent roles are used for at least the Topic marker and the primary summary surface."
+          - "Correct, partially correct, and incorrect semantic tokens keep their current meaning."
+          - "Theme contrast assertions cover the newly introduced color pairings."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E19-03
+        title: "Give the Topic glyph set visual presence"
+
+        issue: >
+          The Topic markers use the lowest-contrast container in the palette, so
+          a well-authored glyph set reads as grey furniture rather than as
+          identity. The navigation bar uses one filled icon per destination
+          regardless of selection, which is not the Material selection pattern.
+
+        approach: >
+          Raise the marker container and glyph size, move it onto an accent
+          container role, and give it an expressive Material shape instead of a
+          plain rounded square. Add outlined navigation glyphs so the bar shows
+          filled only for the selected destination. Keep the existing rule that
+          Topic identity varies by glyph rather than by seventeen separate
+          colors, and update that rationale in code if grouping tints are added.
+
+        acceptance_criteria:
+          - "The Topic marker uses an accent container role and an expressive shape."
+          - "Marker and glyph sizes keep the marker secondary to the Topic name."
+          - "Navigation destinations render a filled glyph when selected and an outlined glyph otherwise."
+          - "New glyphs follow the existing local ImageVector builder and mirror correctly in right-to-left layouts."
+          - "No icon dependency is added."
+          - "Topic identity mapping remains keyed by stable Topic ID with a working fallback."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E19-04
+        title: "Replace uniform linear motion with purposeful motion"
+
+        issue: >
+          Every animation in the application is a fixed-duration tween with
+          default easing, and most state changes are not animated at all.
+          Loading replaced by content pops, filtered search results snap,
+          answer selection swaps color and border instantly, three of the four
+          progress meters do not animate while the fourth does, and top app bars
+          never respond to scroll.
+
+        approach: >
+          Take the expressive MotionScheme from E19-01 as the component
+          baseline, then animate the specific transitions that carry meaning:
+          content state changes, list insertion and removal, answer selection,
+          determinate progress, top app bar scroll, and search deep-link scroll.
+          Keep the existing sibling-crossfade and depth-slide navigation model
+          and change only its easing. Add no motion that does not communicate
+          state, depth, selection, filtering, or progress.
+
+        acceptance_criteria:
+          - "Loading, empty, error, and content transitions are animated through one shared mechanism."
+          - "Keyed list items animate insertion, removal, and reordering."
+          - "Answer selection animates its container and border rather than swapping instantly."
+          - "All determinate progress indicators animate their value consistently."
+          - "Top app bars respond to content scrolled beneath them."
+          - "Navigation keeps sibling crossfade and depth slide, with Material easing."
+          - "Motion durations and specs come from shared tokens rather than per-file constants."
+          - "No animation is added that lacks a functional purpose."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E19-05
+        title: "Apply consistent spacing and adaptive layout rhythm"
+
+        issue: >
+          Screen content padding is duplicated as an identical literal in eight
+          screen files, off-grid spacing values have accumulated, section
+          headings are separated from their content by the same gap that
+          separates sibling items, and a fixed compact margin with no maximum
+          content width stretches a phone layout across the full width of a
+          desktop or browser window.
+
+        approach: >
+          Move every screen onto the shared spacing tokens, derive the
+          horizontal margin from the window width already measured by the
+          navigation scaffold, and constrain content to a readable maximum
+          width on wide windows. Make section separation exceed item separation
+          so proximity communicates grouping, and retire the off-grid values
+          while preserving the documented reasoning attached to them. Reuse the
+          navigation rail breakpoint the shell already measures rather than
+          measuring window width a second time.
+
+        acceptance_criteria:
+          - "Screen content padding comes from a shared token rather than repeated literals."
+          - "Horizontal margin adapts between compact and wider windows."
+          - "Content is constrained to a maximum readable width on wide windows."
+          - "Section separation is visibly larger than sibling item separation."
+          - "Spacing values sit on the shared scale."
+          - "Interactive targets meet the minimum touch target size."
+          - "Existing inset ownership from EPIC-13 is preserved on every host."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"

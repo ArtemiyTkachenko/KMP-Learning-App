@@ -19,7 +19,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.assessment_review_accuracy_caption
@@ -38,6 +37,7 @@ import org.artkachenko.kmp_learning_app.ui.AccuracyHeadline
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.PrimarySummaryCard
 import org.artkachenko.kmp_learning_app.ui.StatusBadge
+import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.jetbrains.compose.resources.stringResource
 
@@ -161,7 +161,7 @@ internal fun ReviewQuestionCard(
                             )
                             Text(
                                 stringResource(Res.string.assessment_review_source, source.title),
-                                modifier = Modifier.padding(start = 6.dp),
+                                modifier = Modifier.padding(start = AppSpacing.Related),
                             )
                         }
                     }
@@ -226,8 +226,8 @@ private fun ReviewAnswerRow(answer: ReviewAnswerUiModel) {
         border = BorderStroke(1.dp, border),
     ) {
         Column(
-            Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            Modifier.padding(AppSpacing.Grouped),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
         ) {
             Text(
                 answer.text,
@@ -266,7 +266,6 @@ private fun AnswerTag(
     Text(
         text = text,
         style = MaterialTheme.typography.labelMedium,
-        fontWeight = FontWeight.SemiBold,
         color = color,
     )
 }

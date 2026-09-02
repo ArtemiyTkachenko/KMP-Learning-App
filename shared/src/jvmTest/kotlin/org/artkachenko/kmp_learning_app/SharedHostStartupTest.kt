@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
@@ -33,6 +34,7 @@ import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultView
 import org.artkachenko.kmp_learning_app.progress.ProgressTopicViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressViewModel
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
+import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
@@ -95,6 +97,15 @@ internal class SharedHostStartupTest {
                 koin.get<ProgressTopicViewModel> { parametersOf("topic") },
             )
             assertIs<MistakeReviewViewModel>(koin.get<MistakeReviewViewModel>())
+            // The Practice Builder now stands between choosing a scope and taking an assessment,
+            // so every targeted practice run starts here. It is safe to resolve where assessment
+            // taking is not: its eligibility read goes to the selection boundary, which reads
+            // content rather than creating an attempt.
+            assertIs<PracticeBuilderViewModel>(
+                koin.get<PracticeBuilderViewModel> {
+                    parametersOf(AssessmentScope.Topic("topic"))
+                },
+            )
             assertIs<FocusedResultViewModel>(
                 koin.get<FocusedResultViewModel> { parametersOf("attempt") },
             )

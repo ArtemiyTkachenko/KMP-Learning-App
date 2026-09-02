@@ -496,9 +496,10 @@ back to an ephemeral database.
 ## Assessment Attempt History
 
 Schema version 2 introduced assessment attempts; the current schema is version
-5. Version 3 preserves retired answer-option identity, version 4 persists
-authored question selection mode, and version 5 persists authored question
-interview level:
+6. Version 3 preserves retired answer-option identity, version 4 persists
+authored question selection mode, version 5 persists authored question
+interview level, and version 6 persists the practice levels and question source
+a targeted run was configured with:
 
 ```text
 TestAttempt
@@ -516,9 +517,23 @@ rows, and selected stable `AnswerOption` IDs.
 - `id` as the stable attempt identity;
 - `config_type`, `requested_question_count`, `scope_type`, and `scope_id` as
   readable assessment configuration metadata;
+- nullable `practice_levels` and `practice_source` as the remaining targeted
+  practice configuration;
 - `status` as `IN_PROGRESS` or `COMPLETED`;
 - nullable score columns for completed attempts;
 - `started_at_epoch_millis` and nullable `completed_at_epoch_millis`.
+
+`practice_levels` stores `QuestionLevel` names comma-separated in authored enum
+order rather than in a join table: it is a closed three-value set read only
+alongside its own attempt, and normalising the order on write is what makes two
+identical selections compare equal. `practice_source` stores the
+`PracticeQuestionSource` name. Both are written only for FOCUSED rows; MIXED has
+no level or source dimension and always stores `NULL`. A FOCUSED row with `NULL`
+in either column predates version 6 and reconstructs as the all-levels `ALL`
+request every stored attempt genuinely was before the Practice Builder existed.
+Persisting these matters because retake re-runs the reconstructed configuration:
+without them a narrowed run would widen back across its whole scope, and history
+would describe an attempt the learner never made.
 
 `question_attempt` stores `(test_attempt_id, question_id)` as its primary key,
 references the parent attempt and stable curriculum `question.id`, and uses
@@ -561,6 +576,12 @@ sets `FOUNDATION`. Normal bundled-content import then overwrites rows with their
 explicit authored value. Retained historical questions absent from the current
 bundle remain `FOUNDATION`; this legacy-only SQL policy is not a Kotlin or JSON
 default. Assessment attempt tables are unchanged.
+Schema version 6 adds `test_attempt.practice_levels` and
+`test_attempt.practice_source` through `MIGRATION_5_6`, a pure add of two
+nullable columns. Nothing is backfilled, because a literal level list on a
+historical row would claim the learner chose something they were never offered;
+the mapper reconstructs a null on a FOCUSED row as all-levels `ALL` instead, in
+one place. Curriculum tables and `question_attempt` are unchanged.
 E11-01 adds history read queries only and does not change the schema.
 
 Destructive migration should not be the default production strategy. Migration

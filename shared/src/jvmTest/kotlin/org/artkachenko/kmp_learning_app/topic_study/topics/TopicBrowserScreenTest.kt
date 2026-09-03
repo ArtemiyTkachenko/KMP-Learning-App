@@ -29,6 +29,8 @@ import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingContext
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingTarget
+import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationRationale
+import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationTarget
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 import org.artkachenko.kmp_learning_app.ui.topicVisualMarkerTag
@@ -722,6 +724,306 @@ internal class TopicBrowserScreenTest {
     }
 
     @Test
+    fun noRecommendationLeavesTheCatalogueExactlyAsItWas() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(TopicBrowserRecommendedNextTag).assertDoesNotExist()
+        onNodeWithText("Recommended next").assertDoesNotExist()
+        onNodeWithText("Kotlin").assertIsDisplayed()
+    }
+
+    @Test
+    fun aNewLearnerIsPointedAtTheTopicListInPlainLanguage() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                        recommendedNext = RecommendedNextUiModel(
+                            target = LearningRecommendationTarget.Topics,
+                            rationale = LearningRecommendationRationale.NewUser,
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        // Exactly one card, with its reason on it, and no Topic picked on the learner's behalf.
+        onAllNodesWithText("Recommended next").assertCountEquals(1)
+        onNodeWithTag(TopicBrowserRecommendedNextTag).assertIsDisplayed()
+        onNodeWithText("Choose a topic").assertIsDisplayed()
+        onNodeWithText("Start with a topic you want to explore.").assertIsDisplayed()
+        // The catalogue below is unchanged by the addition.
+        onNodeWithText("Kotlin").assertIsDisplayed()
+    }
+
+    @Test
+    fun unresolvedMistakesAreExplainedWithTheirExactCount() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                        recommendedNext = RecommendedNextUiModel(
+                            target = LearningRecommendationTarget.MistakeReview,
+                            rationale = LearningRecommendationRationale.UnresolvedMistakes(3),
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("Review mistakes").assertIsDisplayed()
+        onNodeWithText("You have 3 unresolved mistakes to revisit.").assertIsDisplayed()
+    }
+
+    @Test
+    fun aSingleUnresolvedMistakeReadsAsOne() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                        recommendedNext = RecommendedNextUiModel(
+                            target = LearningRecommendationTarget.MistakeReview,
+                            rationale = LearningRecommendationRationale.UnresolvedMistakes(1),
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("You have 1 unresolved mistake to revisit.").assertIsDisplayed()
+    }
+
+    @Test
+    fun aWeakAreaIsNamedAndExplained() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                        recommendedNext = RecommendedNextUiModel(
+                            target = weakAreaPractice(),
+                            rationale = LearningRecommendationRationale.WeakArea(
+                                scope = AssessmentScope.Subtopic("coroutines"),
+                                areaName = "Coroutines",
+                            ),
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("Practice Coroutines").assertIsDisplayed()
+        onNodeWithText("This is currently one of your weak areas.").assertIsDisplayed()
+        // A recommendation is an action and a reason, never a score or a ranking.
+        onNodeWithText("accuracy").assertDoesNotExist()
+    }
+
+    @Test
+    fun aWeakAreaWithNoCurrentNameStillOffersTheAction() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                        recommendedNext = RecommendedNextUiModel(
+                            target = weakAreaPractice(),
+                            rationale = LearningRecommendationRationale.WeakArea(
+                                scope = AssessmentScope.Subtopic("coroutines"),
+                                areaName = null,
+                            ),
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        // A missing display name degrades the wording; it does not withhold a decision the policy
+        // made without needing the name.
+        onNodeWithTag(TopicBrowserRecommendedNextTag).assertIsDisplayed()
+        onNodeWithText("Practice a weak area").assertIsDisplayed()
+        onNodeWithText("Focus on an area that needs more work.").assertIsDisplayed()
+    }
+
+    @Test
+    fun unseenCoverageNamesTheTopicAndCountsWhatIsLeft() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                        recommendedNext = RecommendedNextUiModel(
+                            target = unseenPractice(),
+                            rationale = LearningRecommendationRationale.UnseenCoverage(
+                                topicId = "kotlin",
+                                unseenQuestionCount = 12,
+                            ),
+                            topicName = "Kotlin",
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("Explore Kotlin").assertIsDisplayed()
+        onNodeWithText("12 questions in this topic are still unseen.").assertIsDisplayed()
+    }
+
+    @Test
+    fun unseenCoverageWithNoResolvableNameFallsBackToNeutralCopy() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                        recommendedNext = RecommendedNextUiModel(
+                            target = unseenPractice(),
+                            rationale = LearningRecommendationRationale.UnseenCoverage(
+                                topicId = "kotlin",
+                                unseenQuestionCount = 1,
+                            ),
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("Practice unseen questions").assertIsDisplayed()
+        onNodeWithText("1 question in this topic is still unseen.").assertIsDisplayed()
+    }
+
+    @Test
+    fun theRecommendationIsOneTargetEmittingTheSemanticTarget() = runComposeUiTest {
+        var clickedTarget: LearningRecommendationTarget? = null
+        val target = weakAreaPractice()
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                        recommendedNext = RecommendedNextUiModel(
+                            target = target,
+                            rationale = LearningRecommendationRationale.WeakArea(
+                                scope = AssessmentScope.Subtopic("coroutines"),
+                                areaName = "Coroutines",
+                            ),
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                    onRecommendedNextClick = { clickedTarget = it },
+                )
+            }
+        }
+
+        // One tap, and no dismiss, settings, or "why?" affordance beside it.
+        onNodeWithTag(TopicBrowserRecommendedNextTag)
+            .assertHasClickAction()
+            .assertHeightIsAtLeast(MinimumTouchTarget)
+            .performClick()
+
+        assertEquals(target, clickedTarget)
+    }
+
+    @Test
+    fun theRecommendationIsAbsentFromSearchResults() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                        query = "kotlin",
+                        topicMatches = listOf(topicItem("kotlin", "Kotlin")),
+                        // The state holder already withholds it while a query is active; this
+                        // asserts the screen cannot reintroduce it even if one arrives.
+                        recommendedNext = RecommendedNextUiModel(
+                            target = LearningRecommendationTarget.MistakeReview,
+                            rationale = LearningRecommendationRationale.UnresolvedMistakes(3),
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(TopicBrowserRecommendedNextTag).assertDoesNotExist()
+        onNodeWithText("Review mistakes").assertDoesNotExist()
+        onNodeWithText("Kotlin").assertIsDisplayed()
+    }
+
+    @Test
+    fun bothGuidedCardsCanCoexistAboveTheCatalogueOnACompactScreen() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                Box(Modifier.size(320.dp, 640.dp)) {
+                    TopicBrowserScreen(
+                        state = TopicBrowserUiState.Content(
+                            topics = listOf(
+                                topicItem(
+                                    "architecture",
+                                    "Application Architecture & Design Principles",
+                                    learningContext(14, 31, accuracy = 68.0),
+                                ),
+                            ),
+                            // Deliberately pointing at different things: the highest-priority
+                            // action now, and the most recent learning context.
+                            recommendedNext = RecommendedNextUiModel(
+                                target = LearningRecommendationTarget.MistakeReview,
+                                rationale = LearningRecommendationRationale.UnresolvedMistakes(3),
+                            ),
+                            continueStudying = ContinueStudyingContext(
+                                target = ContinueStudyingTarget.Topic("kotlin", "coroutines"),
+                                scopeName = "Coroutines",
+                                parentTopicName = "Kotlin Language & JVM Fundamentals",
+                            ),
+                        ),
+                        onTopicClick = {},
+                        onRetry = {},
+                    )
+                }
+            }
+        }
+
+        // Neither suppresses the other, and neither replaces the Topic rows below them.
+        onNodeWithTag(TopicBrowserRecommendedNextTag).assertIsDisplayed()
+        onNodeWithText("Review mistakes").assertIsDisplayed()
+        onNodeWithText("You have 3 unresolved mistakes to revisit.").assertIsDisplayed()
+        onNodeWithTag(TopicBrowserContinueStudyingTag).assertIsDisplayed()
+        onNodeWithText("Continue studying").assertIsDisplayed()
+        onNodeWithText("Coroutines").assertIsDisplayed()
+        onNodeWithText("Application Architecture & Design Principles")
+            .assertIsDisplayed()
+            .assertHasClickAction()
+    }
+
+    @Test
     fun topicClickReturnsStableTopicId() = runComposeUiTest {
         var clickedTopicId: String? = null
 
@@ -831,6 +1133,21 @@ private fun topicItem(
     topicName: String,
     learningContext: LearningContextUiModel? = null,
 ) = TopicBrowserItemUiModel(topicId, topicName, learningContext)
+
+/** A weak-area practice intent: a scope and a source, with the builder owning everything else. */
+private fun weakAreaPractice() = LearningRecommendationTarget.Practice(
+    PracticePreset(
+        scope = AssessmentScope.Subtopic("coroutines"),
+        source = PracticeQuestionSource.WEAK_AREAS,
+    ),
+)
+
+private fun unseenPractice() = LearningRecommendationTarget.Practice(
+    PracticePreset(
+        scope = AssessmentScope.Topic("kotlin"),
+        source = PracticeQuestionSource.UNSEEN,
+    ),
+)
 
 private fun learningContext(
     attempted: Int,

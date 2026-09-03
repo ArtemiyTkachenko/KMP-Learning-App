@@ -13,22 +13,31 @@ import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingContext
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingResolver
+import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendation
+import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationRationale
+import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationResolver
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
 import org.artkachenko.kmp_learning_app.ui.LearningContextIndex
 
 /**
- * Topic discovery, enriched with what the learner has done with each Topic.
+ * Topic discovery, enriched with what the learner has done with each Topic and what to do next.
  *
- * The three inputs are held apart on purpose, because they fail and change independently:
+ * The inputs are held apart on purpose, because they fail and change independently:
  *
  * - the [catalog] is the primary capability and the only one that can produce Loading, Empty, or
  *   Error. Browsing, searching, and opening a Topic must keep working when analytics do not;
  * - the [query] belongs to the learner, so it lives outside both loads. A history refresh rebuilds
  *   the rows underneath an active search without disturbing what was typed;
- * - [learningContexts] and [continueStudying] are optional enrichment derived from the shared
- *   history cache. Until a derivation succeeds they stay null, and the screen simply omits them:
- *   unknown history is not empty history, and must never render as "not studied yet" or as a
- *   shortcut into a context the learner does not have.
+ * - [learningContexts], [recommendedNext], and [continueStudying] are optional enrichment derived
+ *   from the shared history cache. Until a derivation succeeds they stay null, and the screen
+ *   simply omits them: unknown history is not empty history, and must never render as "not studied
+ *   yet", as a shortcut into a context the learner does not have, or as advice for a learner whose
+ *   history nobody could read.
+ *
+ * The two guided surfaces answer different questions and are never combined: [continueStudying] is
+ * recency ("take me back to what I was doing"), [recommendedNext] is learning priority ("what
+ * should I do now?"). They may point somewhere different, and neither is suppressed, deduplicated,
+ * or re-decided because of the other.
  *
  * Each writer updates its own input and re-renders, rather than the state being combined
  * asynchronously, so a retry shows its spinner on the same frame it is requested.
@@ -38,6 +47,7 @@ internal class TopicBrowserViewModel(
     private val learningProgressService: LearningProgressService,
     private val historyStore: AssessmentHistoryStore,
     private val continueStudyingResolver: ContinueStudyingResolver,
+    private val learningRecommendationResolver: LearningRecommendationResolver,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<TopicBrowserUiState>(TopicBrowserUiState.Loading)
     val uiState: StateFlow<TopicBrowserUiState> = _uiState.asStateFlow()
@@ -46,6 +56,7 @@ internal class TopicBrowserViewModel(
     private var query: String = ""
     private var learningContexts: LearningContextIndex? = null
     private var continueStudying: ContinueStudyingContext? = null
+    private var recommendedNext: LearningRecommendation? = null
 
     init {
         observeLearningContext()
@@ -65,24 +76,38 @@ internal class TopicBrowserViewModel(
 
     /**
      * Follows the app-scoped history cache rather than reading completed attempts again, so a newly
-     * completed assessment refreshes this screen's learning context and its Continue Studying
-     * shortcut through the same invalidation every other consumer uses, without a restart or a
-     * manual retry.
+     * completed assessment refreshes this screen's learning context, its recommendation, and its
+     * Continue Studying shortcut through the same invalidation every other consumer uses, without a
+     * restart, a manual retry, or anything cached between emissions.
      *
-     * Both derivations read the same emission, in one sequential collector: `collect` processes an
-     * emission to completion before taking the next, so two history refreshes cannot interleave and
-     * an older derivation cannot land on top of a newer one. There is no second history collector
-     * and no independent `getCompletedAttempts` read for Continue Studying.
+     * All three derivations read the same emission, in one sequential collector: `collect`
+     * processes an emission to completion before taking the next, so two history refreshes cannot
+     * interleave and an older derivation cannot land on top of a newer one. There is no second
+     * history collector and no independent `getCompletedAttempts` read.
+     *
+     * `attempts` is non-null only for `Loaded`, which is the distinction the recommendation rests
+     * on: a loaded empty history is a learner with no completed study and may produce the
+     * deterministic new-user recommendation, while Loading or Failed history is simply unknown and
+     * must never be presented as either.
      */
     private fun observeLearningContext() {
         viewModelScope.launch {
             historyStore.history.collect { history ->
                 val attempts = (history as? AssessmentHistory.Loaded)?.attempts
                 // A failed derivation is treated exactly like history that has not arrived: the
-                // catalog stays browsable and loses only its decoration. Neither derivation can
-                // turn this screen into an Error, and neither can hide the other's result.
-                learningContexts = attempts?.derivedOrNull {
-                    LearningContextIndex(learningProgressService.load(it))
+                // catalog stays browsable and loses only its decoration. No derivation can turn
+                // this screen into an Error, and none can hide another's result.
+                val progress = attempts?.derivedOrNull { learningProgressService.load(it) }
+                learningContexts = progress?.let(::LearningContextIndex)
+                // The one progress derivation above is reused rather than a second load being
+                // issued for the recommendation: Topic rows and the recommendation describe the
+                // same history, so they must not be able to disagree about it either.
+                recommendedNext = if (attempts != null && progress != null) {
+                    attempts.derivedOrNull {
+                        learningRecommendationResolver.resolve(it, progress)
+                    }
+                } else {
+                    null
                 }
                 continueStudying = attempts?.derivedOrNull {
                     continueStudyingResolver.resolve(it)
@@ -128,7 +153,12 @@ internal class TopicBrowserViewModel(
             TopicCatalog.Loading -> TopicBrowserUiState.Loading
             TopicCatalog.Empty -> TopicBrowserUiState.Empty
             TopicCatalog.Error -> TopicBrowserUiState.Error
-            is TopicCatalog.Loaded -> catalog.toContent(query, learningContexts, continueStudying)
+            is TopicCatalog.Loaded -> catalog.toContent(
+                query = query,
+                learningContexts = learningContexts,
+                continueStudying = continueStudying,
+                recommendedNext = recommendedNext,
+            )
         }
     }
 }
@@ -151,6 +181,7 @@ private fun TopicCatalog.Loaded.toContent(
     query: String,
     learningContexts: LearningContextIndex?,
     continueStudying: ContinueStudyingContext?,
+    recommendedNext: LearningRecommendation?,
 ): TopicBrowserUiState.Content {
     val items = topics.map { topic ->
         TopicBrowserItemUiModel(
@@ -166,9 +197,11 @@ private fun TopicCatalog.Loaded.toContent(
             topics = items,
             searchableSubtopics = searchableSubtopics,
             query = query,
-            // The shortcut belongs to browsing, so it is attached here and nowhere else: an active
-            // query keeps the screen on what was asked for rather than adding an unrelated card.
+            // Both guided surfaces belong to browsing, so they are attached here and nowhere else:
+            // an active query keeps the screen on what was asked for rather than adding unrelated
+            // cards. Neither is a search result, and neither is filtered by the query text.
             continueStudying = continueStudying,
+            recommendedNext = recommendedNext?.let { toUiModel(it) },
         )
     }
     return TopicBrowserUiState.Content(
@@ -181,6 +214,24 @@ private fun TopicCatalog.Loaded.toContent(
         subtopicMatches = searchableSubtopics.filter { it.subtopicName.matchesAll(tokens) },
     )
 }
+
+/**
+ * Carries the policy's decision through unchanged, resolving only the display name its unseen
+ * rationale cannot carry.
+ *
+ * The name is read from the catalogue this screen already holds, by stable Topic ID, so a renamed
+ * Topic reads correctly with nothing stored or migrated — and a Topic the catalogue no longer lists
+ * simply leaves the name absent rather than withholding the recommendation the policy made.
+ */
+private fun TopicCatalog.Loaded.toUiModel(
+    recommendation: LearningRecommendation,
+): RecommendedNextUiModel =
+    RecommendedNextUiModel(
+        target = recommendation.target,
+        rationale = recommendation.rationale,
+        topicName = (recommendation.rationale as? LearningRecommendationRationale.UnseenCoverage)
+            ?.let { rationale -> topics.firstOrNull { it.id == rationale.topicId }?.name },
+    )
 
 private fun String.searchTokens(): List<String> =
     trim()

@@ -17,7 +17,9 @@ import org.artkachenko.kmp_learning_app.mixed_interview.InterviewStartViewModel
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressTopicViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressViewModel
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionContentResolver
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsViewModel
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
@@ -78,6 +80,13 @@ internal val topicStudyPresentationModule = module {
         )
     }
     single {
+        // Content resolution only. Which Questions are saved stays the holder's answer above, and
+        // this resolves each of those identities through the historical stable-ID lookup.
+        SavedQuestionContentResolver(
+            curriculumRepository = get(),
+        )
+    }
+    single {
         ProgressStateHolder(
             learningProgressService = get(),
             curriculumRepository = get(),
@@ -97,6 +106,14 @@ internal val topicStudyPresentationModule = module {
             historyStore = get(),
             stateHolder = get(),
             savedQuestionStateHolder = get(),
+        )
+    }
+    viewModel {
+        // The same app-scoped holder the three review surfaces observe, so browsing shows what
+        // they saved and removing here is what they see next. No second read of the saved table.
+        SavedQuestionsViewModel(
+            savedQuestionStateHolder = get(),
+            contentResolver = get(),
         )
     }
     viewModel {

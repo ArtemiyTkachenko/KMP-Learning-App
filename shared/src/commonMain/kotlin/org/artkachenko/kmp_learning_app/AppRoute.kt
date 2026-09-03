@@ -24,6 +24,18 @@ internal sealed interface AppRoute : NavKey {
     @Serializable
     data object MistakeReview : AppRoute
 
+    /**
+     * The learner's saved Questions.
+     *
+     * A detail destination inside Topics rather than an area of its own: saved Questions are
+     * learner-curated curriculum content, so they belong beside Topic detail and the Practice
+     * Builder instead of becoming a fifth navigation-bar item. The route carries nothing — which
+     * Questions are saved is read from the shared saved state on arrival, never from the back
+     * stack.
+     */
+    @Serializable
+    data object SavedQuestions : AppRoute
+
     @Serializable
     data class Topic(
         val topicId: String,

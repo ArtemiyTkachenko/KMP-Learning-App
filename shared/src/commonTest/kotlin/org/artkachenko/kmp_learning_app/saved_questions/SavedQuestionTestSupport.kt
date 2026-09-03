@@ -42,11 +42,21 @@ internal class FakeSavedQuestionRepository(
     var isSavedCalls = 0
         private set
 
+    /**
+     * Reads of the saved table. Only the app-scoped holder should perform them, so a surface that
+     * quietly added a repository subscription of its own would show up here as extra reads.
+     */
+    var readCalls = 0
+        private set
+
     var failReads = false
     var failMutations = false
 
     /** When set, a save suspends until it completes, so a pending mutation can be observed. */
     var saveGate: CompletableDeferred<Unit>? = null
+
+    /** The same, for a removal: what a browsing surface's pending action is waiting on. */
+    var unsaveGate: CompletableDeferred<Unit>? = null
 
     override suspend fun save(questionId: String) {
         saveCalls += questionId
@@ -59,6 +69,7 @@ internal class FakeSavedQuestionRepository(
 
     override suspend fun unsave(questionId: String) {
         unsaveCalls += questionId
+        unsaveGate?.await()
         if (failMutations) error("Unsave failed.")
         saved.removeAll { it.questionId == questionId }
     }
@@ -69,6 +80,7 @@ internal class FakeSavedQuestionRepository(
     }
 
     override suspend fun getSavedQuestions(): List<SavedQuestion> {
+        readCalls += 1
         if (failReads) error("Saved questions unavailable.")
         return saved.toList()
     }

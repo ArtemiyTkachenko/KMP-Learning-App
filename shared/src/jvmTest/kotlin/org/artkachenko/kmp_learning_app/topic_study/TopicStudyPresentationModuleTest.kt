@@ -37,7 +37,9 @@ import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressTopicViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressViewModel
 import org.artkachenko.kmp_learning_app.saved_questions.FakeSavedQuestionRepository
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionContentResolver
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsViewModel
 import org.artkachenko.kmp_learning_app.saved_questions.repository.SavedQuestionRepository
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
@@ -162,6 +164,8 @@ internal class TopicStudyPresentationModuleTest {
                 app.koin.get<SavedQuestionStateHolder>(),
                 app.koin.get<SavedQuestionStateHolder>(),
             )
+            assertIs<SavedQuestionContentResolver>(app.koin.get<SavedQuestionContentResolver>())
+            assertIs<SavedQuestionsViewModel>(app.koin.get<SavedQuestionsViewModel>())
             advanceUntilIdle()
         } finally {
             app.close()

@@ -33,7 +33,10 @@ E08 assessment-engine work. Runtime reads should depend on that interface
 rather than on Room entities, DAOs, or the local repository implementation.
 
 The shell exposes four areas — Topics, Interview, Progress, and Mistakes —
-through `AppTopLevelDestination`, which maps each to its `AppRoute`.
+through `AppTopLevelDestination`, which maps each to its `AppRoute`. Saved Questions is
+deliberately not a fifth: it is `AppRoute.SavedQuestions`, a detail pushed onto the Topics
+stack from a static entry in the Topic Browser, because saved Questions are learner-curated
+curriculum content and belong beside Topic detail and the Practice Builder.
 
 `AppNavigator` owns navigation state and gives **each area its own back stack**. A
 single shared stack meant switching away from a detail discarded it, so returning to
@@ -43,7 +46,8 @@ start area (Topics), and only then reports the event unconsumed so the host can 
 the app. Re-selecting the area already shown returns it to its root.
 
 Which screens keep the navigation control is decided by `AppRoute.showsAreaNavigation()`:
-browsing screens — including the topic and progress-topic details — keep it, because
+browsing screens — including the topic and progress-topic details, and Saved Questions —
+keep it, because
 hiding it on every detail trapped the learner inside an area until they pressed back.
 Screens that own the learner's full attention (an assessment in progress, and its
 result) hide it and rely on their own back affordance.

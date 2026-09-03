@@ -134,6 +134,23 @@ internal class AppNavigatorRestorationTest {
         assertEquals(route, shell.navigator.currentRoute)
     }
 
+    /**
+     * A new route has to participate in the shell's polymorphic route serialization, which is
+     * where a data object that was never registered would surface — as a crash, or as the learner
+     * coming back to Topics with the destination they had open silently dropped.
+     */
+    @Test
+    fun savedQuestionsSurvivesRestorationAsATopicsDetail() = runComposeUiTest {
+        val shell = restorableShell()
+        shell.navigator.push(AppRoute.SavedQuestions)
+        waitForIdle()
+
+        restore(shell)
+
+        assertEquals(AppTopLevelDestination.TOPICS, shell.navigator.area)
+        assertEquals(AppRoute.SavedQuestions, shell.navigator.currentRoute)
+    }
+
     @Test
     fun topicAndSubtopicSearchTargetSurviveRestorationAsStableIds() = runComposeUiTest {
         val shell = restorableShell()

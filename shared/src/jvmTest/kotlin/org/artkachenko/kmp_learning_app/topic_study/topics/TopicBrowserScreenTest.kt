@@ -19,6 +19,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
@@ -1019,6 +1020,121 @@ internal class TopicBrowserScreenTest {
         onNodeWithText("Continue studying").assertIsDisplayed()
         onNodeWithText("Coroutines").assertIsDisplayed()
         onNodeWithText("Application Architecture & Design Principles")
+            .assertIsDisplayed()
+            .assertHasClickAction()
+    }
+
+    @Test
+    fun savedQuestionsAreReachableFromNormalBrowsingWithoutAnySavedStateOnScreen() =
+        runComposeUiTest {
+            setContent {
+                MaterialTheme {
+                    TopicBrowserScreen(
+                        state = TopicBrowserUiState.Content(
+                            topics = listOf(topicItem("kotlin", "Kotlin")),
+                        ),
+                        onTopicClick = {},
+                        onRetry = {},
+                    )
+                }
+            }
+
+            // Present with no saved-state input at all: the screen never learns how many Questions
+            // are saved, so the entry cannot be hidden when the collection is empty — which is
+            // exactly the case where the learner needs the destination's empty state.
+            onNodeWithTag(TopicBrowserSavedQuestionsTag).assertIsDisplayed()
+            onNodeWithText("Saved questions").assertIsDisplayed()
+            onNodeWithText("Review questions you saved").assertIsDisplayed()
+            // It says where it goes, and nothing about what to do: it is not a recommendation.
+            onNodeWithText("Recommended next").assertDoesNotExist()
+            onNodeWithText("Continue studying").assertDoesNotExist()
+        }
+
+    @Test
+    fun theSavedQuestionsEntryIsOneTargetEmittingASemanticClick() = runComposeUiTest {
+        var clicks = 0
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                    onSavedQuestionsClick = { clicks += 1 },
+                )
+            }
+        }
+
+        onNodeWithTag(TopicBrowserSavedQuestionsTag)
+            .assertHasClickAction()
+            .assertHeightIsAtLeast(MinimumTouchTarget)
+            .performClick()
+
+        assertEquals(1, clicks)
+    }
+
+    @Test
+    fun theSavedQuestionsEntryIsAbsentFromSearchResults() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                        query = "kotlin",
+                        topicMatches = listOf(topicItem("kotlin", "Kotlin")),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        // Saved Questions has its own destination; it is not a Topic search result, and the search
+        // box does not search saved Question text.
+        onNodeWithTag(TopicBrowserSavedQuestionsTag).assertDoesNotExist()
+        onNodeWithText("Saved questions").assertDoesNotExist()
+        onNodeWithText("Kotlin").assertIsDisplayed()
+    }
+
+    @Test
+    fun bothGuidedCardsCoexistWithTheSavedQuestionsEntryAndTheCatalogue() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                Box(Modifier.size(320.dp, 640.dp)) {
+                    TopicBrowserScreen(
+                        state = TopicBrowserUiState.Content(
+                            topics = listOf(
+                                topicItem(
+                                    "architecture",
+                                    "Application Architecture & Design Principles",
+                                    learningContext(14, 31, accuracy = 68.0),
+                                ),
+                            ),
+                            recommendedNext = RecommendedNextUiModel(
+                                target = LearningRecommendationTarget.MistakeReview,
+                                rationale = LearningRecommendationRationale.UnresolvedMistakes(3),
+                            ),
+                            continueStudying = ContinueStudyingContext(
+                                target = ContinueStudyingTarget.Topic("kotlin", "coroutines"),
+                                scopeName = "Coroutines",
+                                parentTopicName = "Kotlin Language & JVM Fundamentals",
+                            ),
+                        ),
+                        onTopicClick = {},
+                        onRetry = {},
+                    )
+                }
+            }
+        }
+
+        // Guidance first, then the learner's own collection, then the catalogue — all reachable on
+        // a compact viewport, and none of them suppressing another.
+        onNodeWithTag(TopicBrowserRecommendedNextTag).assertIsDisplayed()
+        onNodeWithTag(TopicBrowserContinueStudyingTag).assertIsDisplayed()
+        onNodeWithTag(TopicBrowserSavedQuestionsTag).performScrollTo().assertIsDisplayed()
+        onNodeWithText("Application Architecture & Design Principles")
+            .performScrollTo()
             .assertIsDisplayed()
             .assertHasClickAction()
     }

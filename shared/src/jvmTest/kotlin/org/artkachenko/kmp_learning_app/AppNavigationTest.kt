@@ -4,6 +4,7 @@ import androidx.navigation3.runtime.NavKey
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.assertSame
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
@@ -318,6 +319,66 @@ internal class AppNavigationTest {
             levels = listOf(QuestionLevel.ADVANCED),
             source = PracticeQuestionSource.ALL,
         )
+
+    /**
+     * The structural rule for EPIC-18: Saved Questions completes the study workflow without adding
+     * a fifth place to navigate to. It is a detail of Topics, reached the way Topic detail is.
+     */
+    @Test
+    fun savedQuestionsIsATopicsDetailAndNotAFifthArea() {
+        assertEquals(
+            listOf(
+                AppTopLevelDestination.TOPICS,
+                AppTopLevelDestination.INTERVIEW,
+                AppTopLevelDestination.PROGRESS,
+                AppTopLevelDestination.MISTAKES,
+            ),
+            AppTopLevelDestination.entries,
+        )
+        assertNull(AppTopLevelDestination.forRoute(AppRoute.SavedQuestions))
+
+        val navigator = navigator()
+        navigator.push(AppRoute.SavedQuestions)
+
+        assertEquals(AppTopLevelDestination.TOPICS, navigator.area)
+        assertEquals(AppRoute.SavedQuestions, navigator.currentRoute)
+    }
+
+    @Test
+    fun savedQuestionsKeepsAreaNavigationAndBackReturnsToTopics() {
+        // Browsing, not an assessment in progress: the learner can leave for another area in one
+        // move, exactly as they can from Topic detail or the Practice Builder.
+        assertTrue(AppRoute.SavedQuestions.showsAreaNavigation())
+
+        val navigator = navigator()
+        navigator.push(AppRoute.SavedQuestions)
+        navigator.popBack()
+
+        assertEquals(AppRoute.Topics, navigator.currentRoute)
+        assertEquals(AppTopLevelDestination.TOPICS, navigator.area)
+    }
+
+    @Test
+    fun switchingAreasFromSavedQuestionsLeavesItWhereItWas() {
+        val navigator = navigator()
+        navigator.push(AppRoute.SavedQuestions)
+
+        navigator.select(AppTopLevelDestination.PROGRESS)
+        assertEquals(AppRoute.Progress, navigator.currentRoute)
+
+        // Each area keeps its own stack, so Topics is still on Saved Questions when returned to.
+        navigator.select(AppTopLevelDestination.TOPICS)
+        assertEquals(AppRoute.SavedQuestions, navigator.currentRoute)
+    }
+
+    @Test
+    fun theSavedQuestionsRouteCarriesNoSavedState() {
+        // Which Questions are saved is read from the shared saved state on arrival. The route is a
+        // destination, not a snapshot: no question IDs, order, or content travels in the stack.
+        val route: AppRoute = AppRoute.SavedQuestions
+
+        assertSame(AppRoute.SavedQuestions, route)
+    }
 
     @Test
     fun completionReplacesOnlyPersistedAttemptEntry() {

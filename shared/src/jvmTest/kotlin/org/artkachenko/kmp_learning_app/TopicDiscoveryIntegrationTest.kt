@@ -44,6 +44,7 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.curriculumDataModu
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImportResult
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImporter
 import org.artkachenko.kmp_learning_app.data.local.curriculum.repository.LocalCurriculumRepository
+import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicPracticeButtonTag
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserSearchFieldTag
@@ -400,6 +401,7 @@ internal class TopicDiscoveryIntegrationTest {
                                     listOf(
                                         curriculumDataModule,
                                         assessmentDataModule,
+                                        savedQuestionDataModule,
                                         topicStudyPresentationModule,
                                         module {
                                             single<CurriculumDatabase> { db }

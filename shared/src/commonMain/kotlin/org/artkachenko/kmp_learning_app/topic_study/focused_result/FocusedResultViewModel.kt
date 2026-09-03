@@ -14,25 +14,53 @@ import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentReposito
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeResult
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
+import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 
 internal class FocusedResultViewModel(
     private val attemptId: String,
     private val assessmentRepository: AssessmentRepository,
     private val assessmentReviewLoader: AssessmentReviewLoader,
     private val assessmentRetakeService: AssessmentRetakeService,
+    private val savedQuestionStateHolder: SavedQuestionStateHolder,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<FocusedResultUiState>(FocusedResultUiState.Loading)
     val uiState: StateFlow<FocusedResultUiState> = _uiState.asStateFlow()
     private val _events = Channel<FocusedResultEvent>(Channel.BUFFERED)
     val events: Flow<FocusedResultEvent> = _events.receiveAsFlow()
 
+    /**
+     * A second, independent state stream: the result is never held back waiting for saved state, and
+     * a saved-state failure never becomes [FocusedResultUiState.Error].
+     */
+    val savedQuestions: StateFlow<SavedQuestionsState> = savedQuestionStateHolder.state
+
     init {
         require(attemptId.isNotBlank()) { "attemptId must not be blank." }
         load()
+        savedQuestionStateHolder.refresh()
     }
 
     fun retry() {
         load()
+        savedQuestionStateHolder.refresh()
+    }
+
+    /**
+     * Saves or unsaves a Question of this result.
+     *
+     * Ignores an ID this result does not currently show as available content, so the mutation
+     * boundary cannot persist a Question the learner has no way to review — the state already knows
+     * which items resolved, so no curriculum lookup is needed to check.
+     */
+    fun toggleSaved(questionId: String) {
+        val content = uiState.value as? FocusedResultUiState.Content ?: return
+        val isAvailable = content.questions.any {
+            it is ReviewQuestionItem.Available && it.question.questionId == questionId
+        }
+        if (!isAvailable) return
+        savedQuestionStateHolder.toggleSaved(questionId)
     }
 
     fun repeatPractice() {

@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.assessment_review_accuracy_caption
@@ -28,11 +29,13 @@ import kmp_learning_app.shared.generated.resources.assessment_review_explanation
 import kmp_learning_app.shared.generated.resources.assessment_review_incorrect
 import kmp_learning_app.shared.generated.resources.assessment_review_missing_question
 import kmp_learning_app.shared.generated.resources.assessment_review_partially_correct
+import kmp_learning_app.shared.generated.resources.assessment_review_save_question
 import kmp_learning_app.shared.generated.resources.assessment_review_score
 import kmp_learning_app.shared.generated.resources.assessment_review_selected
 import kmp_learning_app.shared.generated.resources.assessment_review_source
 import kmp_learning_app.shared.generated.resources.assessment_review_source_open_failed
 import kmp_learning_app.shared.generated.resources.assessment_review_unresolved_questions
+import kmp_learning_app.shared.generated.resources.assessment_review_unsave_question
 import org.artkachenko.kmp_learning_app.ui.AccuracyHeadline
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.PrimarySummaryCard
@@ -96,6 +99,15 @@ internal fun UnresolvedReviewQuestionsNotice(
 /** Links sit flush with the card's text column rather than inset like a button. */
 private val SourceLinkPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)
 
+/**
+ * Stable per-Question handle for the save action.
+ *
+ * One convention for all three review surfaces, because they render the same shared card: a
+ * surface-specific tag would suggest three affordances where there is one.
+ */
+internal fun reviewQuestionSaveTag(questionId: String): String =
+    "review_question_save_$questionId"
+
 /** How a reviewed answer relates to the authored correct set, for colouring only. */
 private enum class AnswerOutcome { CORRECT, MISSED, WRONG, NEUTRAL }
 
@@ -121,11 +133,18 @@ private fun ReviewAnswerUiModel.outcome(): AnswerOutcome = when {
     else -> AnswerOutcome.NEUTRAL
 }
 
+/**
+ * [saveAction] is optional so this component stays usable where saved state is unknown, or where a
+ * surface has no saving to offer at all. Everything else about the card is unchanged by it: the
+ * action sits beside the heading and leaves the outcome, answers, explanation, and source links
+ * exactly as they were.
+ */
 @Composable
 internal fun ReviewQuestionCard(
     question: ReviewQuestionUiModel,
     onSourceClick: (String) -> Unit,
     failedSourceUrl: String? = null,
+    saveAction: ReviewSaveAction? = null,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -135,11 +154,21 @@ internal fun ReviewQuestionCard(
         ),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(
-                question.text,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(AppSpacing.Related),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Text(
+                    question.text,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                if (saveAction != null) {
+                    SaveQuestionAction(questionId = question.questionId, action = saveAction)
+                }
+            }
             QuestionOutcomeLabel(question.outcome())
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 question.answers.forEach { ReviewAnswerRow(it) }
@@ -177,6 +206,33 @@ internal fun ReviewQuestionCard(
                 )
             }
         }
+    }
+}
+
+/**
+ * States the current saved state as the label of the action that changes it, in words rather than
+ * by colour or icon shape alone, so it reads the same to assistive technology as it does on screen.
+ * Disabled only while this Question's own mutation is being persisted.
+ */
+@Composable
+private fun SaveQuestionAction(
+    questionId: String,
+    action: ReviewSaveAction,
+) {
+    TextButton(
+        onClick = action.onToggle,
+        enabled = !action.isPending,
+        modifier = Modifier.testTag(reviewQuestionSaveTag(questionId)),
+    ) {
+        Text(
+            stringResource(
+                if (action.isSaved) {
+                    Res.string.assessment_review_unsave_question
+                } else {
+                    Res.string.assessment_review_save_question
+                },
+            ),
+        )
     }
 }
 

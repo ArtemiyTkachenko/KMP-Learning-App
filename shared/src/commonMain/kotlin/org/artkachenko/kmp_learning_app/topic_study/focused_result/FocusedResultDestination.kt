@@ -19,6 +19,7 @@ internal fun FocusedResultDestination(
     viewModel: FocusedResultViewModel = koinViewModel { parametersOf(attemptId) },
 ) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
+    val savedQuestions = viewModel.savedQuestions.collectAsStateWithLifecycle().value
     val uriHandler = LocalUriHandler.current
     var failedSourceUrl by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(viewModel) {
@@ -38,6 +39,9 @@ internal fun FocusedResultDestination(
             failedSourceUrl = url.takeIf { runCatching { uriHandler.openUri(it) }.isFailure }
         },
         onRepeatPractice = viewModel::repeatPractice,
+        savedQuestions = savedQuestions,
+        // The semantic action, not the repository: persistence stays behind the ViewModel.
+        onToggleSaved = viewModel::toggleSaved,
         failedSourceUrl = failedSourceUrl,
     )
 }

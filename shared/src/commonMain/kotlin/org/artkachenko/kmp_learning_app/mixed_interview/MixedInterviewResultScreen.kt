@@ -37,6 +37,8 @@ import org.artkachenko.kmp_learning_app.assessment_review.MissingReviewQuestion
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionCard
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.assessment_review.UnresolvedReviewQuestionsNotice
+import org.artkachenko.kmp_learning_app.assessment_review.reviewSaveAction
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
@@ -58,6 +60,8 @@ internal fun MixedInterviewResultScreen(
     onBack: () -> Unit,
     onSourceClick: (String) -> Unit,
     onRepeatInterview: () -> Unit = {},
+    savedQuestions: SavedQuestionsState = SavedQuestionsState.Loading,
+    onToggleSaved: (String) -> Unit = {},
     failedSourceUrl: String? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -87,6 +91,8 @@ internal fun MixedInterviewResultScreen(
                 state = state,
                 onSourceClick = onSourceClick,
                 onRepeatInterview = onRepeatInterview,
+                savedQuestions = savedQuestions,
+                onToggleSaved = onToggleSaved,
                 failedSourceUrl = failedSourceUrl,
                 modifier = Modifier.weight(1f),
             )
@@ -99,6 +105,8 @@ private fun MixedResultContent(
     state: MixedInterviewResultUiState.Content,
     onSourceClick: (String) -> Unit,
     onRepeatInterview: () -> Unit,
+    savedQuestions: SavedQuestionsState,
+    onToggleSaved: (String) -> Unit,
     failedSourceUrl: String?,
     modifier: Modifier,
 ) {
@@ -157,8 +165,17 @@ private fun MixedResultContent(
         }
         items(state.questions) { item ->
             when (item) {
-                is ReviewQuestionItem.Available ->
-                    ReviewQuestionCard(item.question, onSourceClick, failedSourceUrl)
+                is ReviewQuestionItem.Available -> ReviewQuestionCard(
+                    question = item.question,
+                    onSourceClick = onSourceClick,
+                    failedSourceUrl = failedSourceUrl,
+                    // The same shared card and the same shared saved state as the other review
+                    // surfaces; Mixed results do not bookmark by their own rules.
+                    saveAction = savedQuestions.reviewSaveAction(
+                        questionId = item.question.questionId,
+                        onToggleSaved = onToggleSaved,
+                    ),
+                )
                 is ReviewQuestionItem.Missing -> MissingReviewQuestion(item.questionId)
             }
         }

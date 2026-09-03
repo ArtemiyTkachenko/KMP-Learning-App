@@ -18,6 +18,7 @@ internal fun MistakeReviewDestination(
     viewModel: MistakeReviewViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val savedQuestions by viewModel.savedQuestions.collectAsStateWithLifecycle()
     val uriHandler = LocalUriHandler.current
     var failedSourceUrl by remember { mutableStateOf<String?>(null) }
 
@@ -27,6 +28,8 @@ internal fun MistakeReviewDestination(
         onRetry = viewModel::refresh,
         onBrowseTopics = onBrowseTopics,
         onPracticePreset = onConfigurePractice,
+        savedQuestions = savedQuestions,
+        onToggleSaved = viewModel::toggleSaved,
         onSourceClick = { url ->
             // Matches the result destinations: openUri throws when no host handler can open the
             // URI, and the failure must stay visible instead of looking like a no-op.

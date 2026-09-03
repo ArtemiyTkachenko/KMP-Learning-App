@@ -35,6 +35,7 @@ import org.artkachenko.kmp_learning_app.progress.ProgressTopicViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressViewModel
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
+import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
@@ -71,6 +72,7 @@ internal class SharedHostStartupTest {
                 module { single<CurriculumDatabase> { database } },
                 curriculumDataModule,
                 assessmentDataModule,
+                savedQuestionDataModule,
                 topicStudyPresentationModule,
             )
         }
@@ -144,6 +146,7 @@ internal class SharedHostStartupTest {
                             module { single<CurriculumDatabase> { created } },
                             curriculumDataModule,
                             assessmentDataModule,
+                            savedQuestionDataModule,
                             topicStudyPresentationModule,
                         )
                     }.koin

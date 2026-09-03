@@ -21,6 +21,9 @@ import org.artkachenko.kmp_learning_app.assessment_review.ReviewAnswerUiModel
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionUiModel
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewSourceUiModel
+import org.artkachenko.kmp_learning_app.assessment_review.reviewQuestionSaveTag
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestion
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 
 @OptIn(ExperimentalTestApi::class)
 internal class MixedInterviewResultScreenTest {
@@ -247,6 +250,73 @@ internal class MixedInterviewResultScreenTest {
         repeatState = RepeatInterviewState.Error
         onNodeWithText("Interview could not be started. Try again.").assertIsDisplayed()
         onNodeWithText("Score: 3 / 5").assertIsDisplayed()
+    }
+
+    /** The same shared card and the same saved identity the other review surfaces use. */
+    @Test
+    fun savingAMixedResultQuestionReportsItsExactIdAndMissingOnesOfferNothing() = runComposeUiTest {
+        val toggled = mutableListOf<String>()
+        setContent {
+            MaterialTheme {
+                MixedInterviewResultScreen(
+                    state = contentState(),
+                    onRetry = {},
+                    onBack = {},
+                    onSourceClick = {},
+                    savedQuestions = SavedQuestionsState.Loaded(emptyList()),
+                    onToggleSaved = toggled::add,
+                )
+            }
+        }
+
+        onNodeWithTag(reviewQuestionSaveTag("q1")).performScrollTo().performClick()
+        assertEquals(listOf("q1"), toggled)
+        onNodeWithTag(reviewQuestionSaveTag("missing")).assertDoesNotExist()
+    }
+
+    @Test
+    fun aSavedMixedResultQuestionReadsAsUnsaveWithoutDisturbingTheBreakdown() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MixedInterviewResultScreen(
+                    state = contentState(),
+                    onRetry = {},
+                    onBack = {},
+                    onSourceClick = {},
+                    savedQuestions = SavedQuestionsState.Loaded(
+                        listOf(SavedQuestion("q1", savedAtEpochMillis = 1_000)),
+                    ),
+                    onToggleSaved = {},
+                )
+            }
+        }
+
+        onNodeWithText("Score: 3 / 5").assertIsDisplayed()
+        onNodeWithText("Kotlin").performScrollTo().assertIsDisplayed()
+        onNodeWithText("2 / 3 correct").performScrollTo().assertIsDisplayed()
+        onNodeWithText("Unsave").performScrollTo().assertIsDisplayed()
+        onNodeWithText("Practice Again").assertIsDisplayed()
+    }
+
+    /** A saved-state failure must not remove the result the learner came here to read. */
+    @Test
+    fun unavailableSavedStateLeavesTheMixedResultIntact() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MixedInterviewResultScreen(
+                    state = contentState(),
+                    onRetry = {},
+                    onBack = {},
+                    onSourceClick = {},
+                    savedQuestions = SavedQuestionsState.Error,
+                    onToggleSaved = {},
+                )
+            }
+        }
+
+        onNodeWithText("Score: 3 / 5").assertIsDisplayed()
+        onNodeWithText("Question review").performScrollTo().assertIsDisplayed()
+        onNodeWithTag(reviewQuestionSaveTag("q1")).assertDoesNotExist()
     }
 
     private fun contentState() = MixedInterviewResultUiState.Content(

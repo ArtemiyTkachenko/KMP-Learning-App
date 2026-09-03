@@ -37,6 +37,9 @@ import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.saved_questions.FakeSavedQuestionRepository
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
+import org.artkachenko.kmp_learning_app.saved_questions.savedQuestionStateHolder
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class FocusedResultViewModelTest {
@@ -54,6 +57,7 @@ internal class FocusedResultViewModelTest {
             repository,
             AssessmentReviewLoader(curriculum),
             retakeService(repository, questions),
+            savedQuestionStateHolder(),
         )
         advanceUntilIdle()
 
@@ -73,6 +77,7 @@ internal class FocusedResultViewModelTest {
             FakeAssessmentRepository(completedAttempt(listOf("q"), 0, selectedIds = setOf("a", "b"))),
             reviewLoader(listOf(q)),
             retakeService(FakeAssessmentRepository(completedAttempt(listOf("q"), 0)), listOf(q)),
+            savedQuestionStateHolder(),
         )
         advanceUntilIdle()
 
@@ -93,6 +98,7 @@ internal class FocusedResultViewModelTest {
             FakeAssessmentRepository(completedAttempt(listOf("missing", "q"), 1)),
             reviewLoader(listOf(question("q"))),
             retakeService(FakeAssessmentRepository(completedAttempt(listOf("q"), 1)), listOf(question("q"))),
+            savedQuestionStateHolder(),
         )
         advanceUntilIdle()
 
@@ -110,6 +116,7 @@ internal class FocusedResultViewModelTest {
             repo,
             reviewLoader(emptyList()),
             retakeService(repo, emptyList()),
+            savedQuestionStateHolder(),
         )
         advanceUntilIdle()
         assertIs<FocusedResultUiState.AttemptNotFound>(missing.uiState.value)
@@ -133,6 +140,7 @@ internal class FocusedResultViewModelTest {
             repository,
             reviewLoader(listOf(question)),
             retakeService(repository, listOf(question)),
+            savedQuestionStateHolder(),
         )
         advanceUntilIdle()
 
@@ -140,6 +148,82 @@ internal class FocusedResultViewModelTest {
         viewModel.repeatPractice()
         advanceUntilIdle()
         assertEquals(FocusedResultEvent.RetakeCreated("retake"), event.await())
+    }
+
+    /**
+     * The Focused integration boundary only: saving is the shared holder's behaviour, which its own
+     * tests cover. What matters here is that the result forwards the exact Question ID it is
+     * showing, and that its own state is untouched by the mutation.
+     */
+    @Test
+    fun savingAnAvailableQuestionPersistsThatIdAndLeavesTheResultUnchanged() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val repository = FakeAssessmentRepository(completedAttempt(listOf("q"), 1))
+        val savedRepository = FakeSavedQuestionRepository()
+        val viewModel = FocusedResultViewModel(
+            "attempt",
+            repository,
+            reviewLoader(listOf(question("q"))),
+            retakeService(repository, listOf(question("q"))),
+            savedQuestionStateHolder(savedRepository),
+        )
+        advanceUntilIdle()
+        val before = assertIs<FocusedResultUiState.Content>(viewModel.uiState.value)
+
+        viewModel.toggleSaved("q")
+        advanceUntilIdle()
+
+        assertEquals(listOf("q"), savedRepository.saveCalls)
+        assertEquals(
+            setOf("q"),
+            assertIs<SavedQuestionsState.Loaded>(viewModel.savedQuestions.value).savedQuestionIds,
+        )
+        // Score, review content, and the repeat-practice state are all as they were.
+        assertEquals(before, viewModel.uiState.value)
+    }
+
+    /**
+     * A stable ID is known for a missing historical Question, but it is not review content the
+     * learner can act on, so the mutation boundary refuses it even if a caller asks.
+     */
+    @Test
+    fun aQuestionThisResultCannotShowIsNeverSaved() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val repository = FakeAssessmentRepository(completedAttempt(listOf("missing", "q"), 1))
+        val savedRepository = FakeSavedQuestionRepository()
+        val viewModel = FocusedResultViewModel(
+            "attempt",
+            repository,
+            reviewLoader(listOf(question("q"))),
+            retakeService(repository, listOf(question("q"))),
+            savedQuestionStateHolder(savedRepository),
+        )
+        advanceUntilIdle()
+
+        viewModel.toggleSaved("missing")
+        viewModel.toggleSaved("never_in_this_result")
+        advanceUntilIdle()
+
+        assertTrue(savedRepository.saveCalls.isEmpty())
+        assertTrue(savedRepository.unsaveCalls.isEmpty())
+    }
+
+    @Test
+    fun unreadableSavedStateDoesNotTurnTheResultIntoAnError() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val repository = FakeAssessmentRepository(completedAttempt(listOf("q"), 1))
+        val savedRepository = FakeSavedQuestionRepository().apply { failReads = true }
+        val viewModel = FocusedResultViewModel(
+            "attempt",
+            repository,
+            reviewLoader(listOf(question("q"))),
+            retakeService(repository, listOf(question("q"))),
+            savedQuestionStateHolder(savedRepository),
+        )
+        advanceUntilIdle()
+
+        assertIs<FocusedResultUiState.Content>(viewModel.uiState.value)
+        assertIs<SavedQuestionsState.Error>(viewModel.savedQuestions.value)
     }
 
     private fun completedAttempt(ids: List<String>, correct: Int, selectedIds: Set<String> = setOf("a")) = TestAttempt(

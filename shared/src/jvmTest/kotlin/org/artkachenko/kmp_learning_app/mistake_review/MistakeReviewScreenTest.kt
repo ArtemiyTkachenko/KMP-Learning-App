@@ -16,7 +16,10 @@ import org.artkachenko.kmp_learning_app.assessment_review.ReviewAnswerUiModel
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionUiModel
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewSourceUiModel
+import org.artkachenko.kmp_learning_app.assessment_review.reviewQuestionSaveTag
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestion
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 
 @OptIn(ExperimentalTestApi::class)
 internal class MistakeReviewScreenTest {
@@ -251,6 +254,139 @@ internal class MistakeReviewScreenTest {
         onNodeWithText("Question q1").assertIsDisplayed()
         onNodeWithText("Explanation for q1").performScrollTo().assertIsDisplayed()
         onNodeWithTag(mistakePracticeShortcutTag("q1")).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun anUnresolvedMistakeOffersSaveAndReportsItsExactQuestionId() = runComposeUiTest {
+        val toggled = mutableListOf<String>()
+        setContent {
+            MaterialTheme {
+                MistakeReviewScreen(
+                    state = MistakeReviewUiState.Content(listOf(availableMistake("q1"))),
+                    onBack = {},
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onSourceClick = {},
+                    onPracticePreset = {},
+                    savedQuestions = SavedQuestionsState.Loaded(emptyList()),
+                    onToggleSaved = toggled::add,
+                )
+            }
+        }
+
+        onNodeWithText("Save").assertIsDisplayed()
+        onNodeWithTag(reviewQuestionSaveTag("q1")).performScrollTo().performClick()
+        assertEquals(listOf("q1"), toggled)
+    }
+
+    @Test
+    fun aSavedUnresolvedMistakeOffersUnsave() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MistakeReviewScreen(
+                    state = MistakeReviewUiState.Content(listOf(availableMistake("q1"))),
+                    onBack = {},
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onSourceClick = {},
+                    onPracticePreset = {},
+                    savedQuestions = SavedQuestionsState.Loaded(
+                        listOf(SavedQuestion("q1", savedAtEpochMillis = 1_000)),
+                    ),
+                    onToggleSaved = {},
+                )
+            }
+        }
+
+        onNodeWithText("Unsave").assertIsDisplayed()
+        onNodeWithText("Save").assertDoesNotExist()
+    }
+
+    @Test
+    fun aMissingUnresolvedMistakeStaysAPlaceholderWithNoSaveAction() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MistakeReviewScreen(
+                    state = MistakeReviewUiState.Content(
+                        listOf(UnresolvedMistake("gone", "attempt", ReviewQuestionItem.Missing("gone"))),
+                    ),
+                    onBack = {},
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onSourceClick = {},
+                    onPracticePreset = {},
+                    savedQuestions = SavedQuestionsState.Loaded(emptyList()),
+                    onToggleSaved = {},
+                )
+            }
+        }
+
+        onNodeWithText("Question gone is no longer available.").assertIsDisplayed()
+        onNodeWithTag(reviewQuestionSaveTag("gone")).assertDoesNotExist()
+        onNodeWithText("Save").assertDoesNotExist()
+    }
+
+    /** Two independent actions on one entry: saving is not practising, and neither replaces the other. */
+    @Test
+    fun savingAndTheScopedPracticeShortcutRemainSeparatelyClickable() = runComposeUiTest {
+        val toggled = mutableListOf<String>()
+        val presets = mutableListOf<PracticePreset>()
+        setContent {
+            MaterialTheme {
+                MistakeReviewScreen(
+                    state = MistakeReviewUiState.Content(
+                        listOf(availableMistake("q1", subtopicId = "kotlin_flows")),
+                    ),
+                    onBack = {},
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onSourceClick = {},
+                    onPracticePreset = presets::add,
+                    savedQuestions = SavedQuestionsState.Loaded(emptyList()),
+                    onToggleSaved = toggled::add,
+                )
+            }
+        }
+
+        onNodeWithTag(reviewQuestionSaveTag("q1")).performScrollTo().performClick()
+        assertEquals(listOf("q1"), toggled)
+        assertEquals(emptyList(), presets)
+
+        onNodeWithTag(mistakePracticeShortcutTag("q1")).performScrollTo().performClick()
+        assertEquals(
+            listOf(
+                PracticePreset(
+                    scope = AssessmentScope.Subtopic("kotlin_flows"),
+                    source = PracticeQuestionSource.UNRESOLVED_MISTAKES,
+                ),
+            ),
+            presets,
+        )
+        assertEquals(listOf("q1"), toggled)
+    }
+
+    /** Unreadable saved state costs the affordance, not the queue. */
+    @Test
+    fun unavailableSavedStateLeavesTheQueueIntact() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MistakeReviewScreen(
+                    state = MistakeReviewUiState.Content(listOf(availableMistake("q1"))),
+                    onBack = {},
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onSourceClick = {},
+                    onPracticePreset = {},
+                    savedQuestions = SavedQuestionsState.Error,
+                    onToggleSaved = {},
+                )
+            }
+        }
+
+        onNodeWithText("Question q1").assertIsDisplayed()
+        onNodeWithText("Explanation for q1").performScrollTo().assertIsDisplayed()
+        onNodeWithTag(mistakePracticeShortcutTag("q1")).performScrollTo().assertIsDisplayed()
+        onNodeWithTag(reviewQuestionSaveTag("q1")).assertDoesNotExist()
     }
 }
 

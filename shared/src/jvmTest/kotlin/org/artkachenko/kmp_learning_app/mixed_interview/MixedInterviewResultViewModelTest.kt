@@ -15,6 +15,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -42,6 +43,11 @@ import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.saved_questions.FakeSavedQuestionRepository
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestion
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
+import org.artkachenko.kmp_learning_app.saved_questions.repository.SavedQuestionRepository
+import org.artkachenko.kmp_learning_app.saved_questions.savedQuestionStateHolder
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class MixedInterviewResultViewModelTest {
@@ -248,6 +254,98 @@ internal class MixedInterviewResultViewModelTest {
         assertIs<MixedInterviewResultUiState.Content>(viewModel.uiState.value)
     }
 
+    /**
+     * Mixed results save through the same shared state as the other review surfaces, and saving is
+     * independent learner intent: the score and the topic breakdown are the persisted attempt's, and
+     * a save does not touch them.
+     */
+    @Test
+    fun savingAMixedResultQuestionUsesTheSharedStateAndChangesNoResultContent() = runTest {
+        setMain(testScheduler)
+        val curriculum = FakeCurriculumRepository(
+            listOf(question("q1", "topic-a"), question("q2", "topic-a")),
+            listOf(Topic("topic-a", "Topic A")),
+        )
+        val savedRepository = FakeSavedQuestionRepository(
+            listOf(SavedQuestion("q2", savedAtEpochMillis = 1_000)),
+        )
+        val viewModel = viewModel(
+            FakeAssessmentRepository(
+                completedAttempt(
+                    listOf(answered("q1", true), answered("q2", false)),
+                    AssessmentScore(2, 1),
+                ),
+            ),
+            curriculum,
+            savedRepository = savedRepository,
+        )
+        advanceUntilIdle()
+        val before = content(viewModel)
+        // A Question saved elsewhere is already saved here.
+        assertEquals(
+            setOf("q2"),
+            assertIs<SavedQuestionsState.Loaded>(viewModel.savedQuestions.value).savedQuestionIds,
+        )
+
+        viewModel.toggleSaved("q1")
+        advanceUntilIdle()
+
+        assertEquals(listOf("q1"), savedRepository.saveCalls)
+        assertEquals(
+            setOf("q1", "q2"),
+            assertIs<SavedQuestionsState.Loaded>(viewModel.savedQuestions.value).savedQuestionIds,
+        )
+        assertEquals(before.topicPerformance, content(viewModel).topicPerformance)
+        assertEquals(before.correctAnswers, content(viewModel).correctAnswers)
+        assertEquals(before.percentage, content(viewModel).percentage)
+        assertEquals(before.repeatInterviewState, content(viewModel).repeatInterviewState)
+        assertEquals(before.questions, content(viewModel).questions)
+    }
+
+    @Test
+    fun aMissingMixedResultQuestionIsNeverSaved() = runTest {
+        setMain(testScheduler)
+        val savedRepository = FakeSavedQuestionRepository()
+        val viewModel = viewModel(
+            FakeAssessmentRepository(
+                completedAttempt(
+                    listOf(answered("q1", true), answered("missing", false)),
+                    AssessmentScore(2, 1),
+                ),
+            ),
+            FakeCurriculumRepository(
+                listOf(question("q1", "topic-a")),
+                listOf(Topic("topic-a", "Topic A")),
+            ),
+            savedRepository = savedRepository,
+        )
+        advanceUntilIdle()
+
+        viewModel.toggleSaved("missing")
+        advanceUntilIdle()
+
+        assertTrue(savedRepository.saveCalls.isEmpty())
+    }
+
+    @Test
+    fun unreadableSavedStateLeavesTheMixedResultVisible() = runTest {
+        setMain(testScheduler)
+        val viewModel = viewModel(
+            FakeAssessmentRepository(
+                completedAttempt(listOf(answered("q1", true)), AssessmentScore(1, 1)),
+            ),
+            FakeCurriculumRepository(
+                listOf(question("q1", "topic-a")),
+                listOf(Topic("topic-a", "Topic A")),
+            ),
+            savedRepository = FakeSavedQuestionRepository().apply { failReads = true },
+        )
+        advanceUntilIdle()
+
+        assertIs<MixedInterviewResultUiState.Content>(viewModel.uiState.value)
+        assertIs<SavedQuestionsState.Error>(viewModel.savedQuestions.value)
+    }
+
     private fun setMain(scheduler: kotlinx.coroutines.test.TestCoroutineScheduler) {
         Dispatchers.setMain(StandardTestDispatcher(scheduler))
     }
@@ -255,10 +353,11 @@ internal class MixedInterviewResultViewModelTest {
     private fun content(viewModel: MixedInterviewResultViewModel) =
         assertIs<MixedInterviewResultUiState.Content>(viewModel.uiState.value)
 
-    private fun viewModel(
+    private fun TestScope.viewModel(
         repository: FakeAssessmentRepository,
         curriculum: FakeCurriculumRepository,
         retakeId: String = "retake",
+        savedRepository: SavedQuestionRepository = FakeSavedQuestionRepository(),
     ) = MixedInterviewResultViewModel(
         attemptId = SourceId,
         assessmentRepository = repository,
@@ -276,6 +375,7 @@ internal class MixedInterviewResultViewModelTest {
                 now = { Instant.fromEpochMilliseconds(3) },
             ),
         ),
+        savedQuestionStateHolder = savedQuestionStateHolder(savedRepository),
     )
 
     private fun inProgressAttempt() = TestAttempt(

@@ -31,6 +31,7 @@ internal class FocusedResultScreenTest {
                                 ReviewQuestionUiModel(
                                     questionId = "q1",
                                     topicId = "topic",
+                                    subtopicId = "topic_basics",
                                     text = "Question text",
                                     isCorrect = true,
                                     answers = listOf(
@@ -121,6 +122,7 @@ internal class FocusedResultScreenTest {
         ReviewQuestionUiModel(
             questionId = "q1",
             topicId = "topic",
+            subtopicId = "topic_basics",
             text = "Question text",
             isCorrect = true,
             answers = listOf(ReviewAnswerUiModel("a", "Answer A", true, true)),

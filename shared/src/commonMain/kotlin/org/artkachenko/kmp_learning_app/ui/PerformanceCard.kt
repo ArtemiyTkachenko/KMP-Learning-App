@@ -28,6 +28,11 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
  * The accuracy figure is the point of the row, so it is the largest thing in it and is coloured
  * against the domain's weakness threshold. Weak rows also tint their container and carry a badge,
  * so they are identifiable without reading the number.
+ *
+ * [action] is an optional low-emphasis control on its own line under the figures. It is absent by
+ * default, so a card stays a reading surface unless a caller deliberately gives it something to do,
+ * and it sits below the row rather than inside it so a long title and the control never compete for
+ * the same width.
  */
 @Composable
 internal fun PerformanceCard(
@@ -41,6 +46,7 @@ internal fun PerformanceCard(
     weakLabel: String? = null,
     showChevron: Boolean = false,
     isSummary: Boolean = false,
+    action: (@Composable () -> Unit)? = null,
 ) {
     val semantic = AppThemeExtras.semanticColors
     Card(
@@ -58,7 +64,12 @@ internal fun PerformanceCard(
         border = if (isWeak) BorderStroke(1.dp, semantic.partiallyCorrect) else null,
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                // The action supplies the card's bottom inset when there is one, so the row does
+                // not leave a full gap above a control that belongs to it.
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp)
+                .padding(bottom = if (action == null) 16.dp else 4.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -111,6 +122,13 @@ internal fun PerformanceCard(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp),
                 )
+            }
+        }
+        action?.let {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = 4.dp),
+            ) {
+                it()
             }
         }
     }

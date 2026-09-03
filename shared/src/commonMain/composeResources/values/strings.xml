@@ -140,6 +140,9 @@
     <string name="practice_builder_no_questions">No questions match this setup. Try more levels.</string>
     <string name="practice_builder_error">Available questions could not be checked.</string>
     <string name="practice_builder_start">Start practice</string>
+    <string name="practice_shortcut_weak_area">Practice weak area</string>
+    <string name="practice_shortcut_unseen">Practice unseen questions</string>
+    <string name="practice_shortcut_subtopic_mistakes">Practice unresolved mistakes in this subtopic</string>
     <string name="assessment_taking_question_progress">Question %1$d of %2$d</string>
     <string name="assessment_taking_select_one">Select one answer</string>
     <string name="assessment_taking_select_all">Select all that apply</string>

@@ -1,6 +1,18 @@
 # Learning Recommendations
 
-How the app decides what to suggest next and how it returns the learner to recent work. See [practice selection](practice-selection.md) for what a recommended practice run then selects.
+How the app decides what to suggest next, how it returns the learner to recent work, and how a study surface turns a signal it is already showing into practice. See [practice selection](practice-selection.md) for what the resulting practice run then selects.
+
+Three separate concepts share one payload and must not be conflated:
+
+| Concept | Chooses | How many actions |
+| --- | --- | --- |
+| Recommended Next | The single best action, globally | At most one |
+| Continue Studying | Where the learner last worked | At most one |
+| Contextual practice shortcut | Nothing; it offers what the visible signal already says | Zero, one, or more per scope |
+
+All three hand the same `PracticePreset(scope, source)` to the same
+`toPracticeBuilderRoute()` mapping, and the Practice Builder never learns which
+one produced it.
 
 ## Guided learning recommendation policy
 
@@ -133,3 +145,47 @@ history read — so both derivations see the same history and an older one canno
 land on top of a newer. The card is withheld while a search query is active: a
 learner who has started typing has said what they are looking for, and the
 shortcut is not a search result.
+
+## Contextual practice shortcuts
+
+A contextual shortcut is a local affordance, not a policy. It fires only where a
+study surface is *already displaying* a learning signal that names a Topic or
+Subtopic, and it translates that signal into the practice source EPIC-16 already
+has for it:
+
+| Surface | Visible signal | Preset |
+| --- | --- | --- |
+| Progress weak-area row | The row is in `LearningProgressSnapshot.weakAreas` | `WEAK_AREAS` for the row's stable ID |
+| Topic detail, Topic | `LearningContextUiModel.isWeak` | `WEAK_AREAS` for the Topic |
+| Topic detail, Topic | `LearningContextUiModel.hasUnseenQuestions` | `UNSEEN` for the Topic |
+| Topic detail, Subtopic row | The same two facts, per Subtopic | `WEAK_AREAS` / `UNSEEN` for the Subtopic |
+| Mistake Review entry | The entry is in the unresolved queue | `UNRESOLVED_MISTAKES` for the Question's Subtopic |
+
+Nothing is re-derived. Weakness is the domain's `isWeak` verdict, copied verbatim,
+and is never inferred from the accuracy figure displayed beside it.
+`hasUnseenQuestions` only restates the coverage counts already on screen, and is an
+observation about whether the action is worth offering — the unseen stable IDs
+themselves are still computed by `AssessmentQuestionSelector` from completed
+history at the moment practice is configured. The unresolved queue stays
+`UnresolvedMistakeDerivation`'s, and the clicked Question supplies its Subtopic as
+*context*, never as a candidate list; no Question ID travels in a route.
+
+Two signals can be true for one scope. Both actions are then offered, because the
+learner chose to look at that scope; inventing a precedence between them would
+turn the feature into a second recommendation policy. Ordinary `ALL` practice is
+untouched and remains the primary action on Topic detail.
+
+An aggregate signal gets no shortcut. Curriculum coverage and the global
+unresolved-mistake count on Progress identify no Topic or Subtopic, and there is
+no global focused scope, so picking one — the first, the weakest, the one holding
+the most mistakes — would be a scope chosen behind the learner's back. Mistake
+Review remains the global mistake capability.
+
+Absent analytics (`learningContext == null`) mean *unknown*, not "not weak" and
+not "nothing seen". No shortcut is inferred from an absent context, and ordinary
+practice stays available.
+
+Nothing is preflighted on the originating surface and no candidate count is
+cached. Learning state can legitimately change between a shortcut being drawn and
+being tapped; the builder is the screen that re-checks against current content and
+reports an empty result honestly.

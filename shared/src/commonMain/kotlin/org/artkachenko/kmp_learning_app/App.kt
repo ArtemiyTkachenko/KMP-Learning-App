@@ -161,6 +161,12 @@ private fun AppShell(
                         onOpenMixedResult = { attemptId ->
                             navigator.push(AppRoute.MixedInterviewResult(attemptId))
                         },
+                        // A weak-area row's shortcut is a preset, so it opens the same builder the
+                        // Topic screen and Recommended Next open, already on WEAK_AREAS. Nothing
+                        // starts here, and no route exists for "weak practice" specifically.
+                        onConfigurePractice = { preset ->
+                            navigator.push(preset.toPracticeBuilderRoute())
+                        },
                     )
                 }
                 entry<AppRoute.ProgressTopic> { route ->
@@ -172,6 +178,11 @@ private fun AppShell(
                 entry<AppRoute.MistakeReview> {
                     MistakeReviewDestination(
                         onBrowseTopics = { navigator.select(AppTopLevelDestination.TOPICS) },
+                        // The queue entry supplies the Subtopic; the builder decides everything
+                        // else, including whether that Subtopic still has an unresolved mistake.
+                        onConfigurePractice = { preset ->
+                            navigator.push(preset.toPracticeBuilderRoute())
+                        },
                     )
                 }
                 entry<AppRoute.MixedInterview> { route ->
@@ -216,6 +227,12 @@ private fun AppShell(
                         // opens the builder already scoped to it rather than launching a run.
                         onConfigurePractice = { scope ->
                             navigator.push(scope.toPracticeBuilderRoute())
+                        },
+                        // The same builder, opened on the source a visible weak or coverage signal
+                        // justifies. The extra dimension travels in the preset, not in a route of
+                        // its own, so both paths land on one editable configuration screen.
+                        onConfigureTargetedPractice = { preset ->
+                            navigator.push(preset.toPracticeBuilderRoute())
                         },
                     )
                 }

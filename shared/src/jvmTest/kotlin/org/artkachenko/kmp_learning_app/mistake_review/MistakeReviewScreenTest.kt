@@ -10,10 +10,13 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runComposeUiTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
+import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewAnswerUiModel
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionUiModel
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewSourceUiModel
+import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 
 @OptIn(ExperimentalTestApi::class)
 internal class MistakeReviewScreenTest {
@@ -21,7 +24,7 @@ internal class MistakeReviewScreenTest {
     fun loadingStateRenders() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                MistakeReviewScreen(MistakeReviewUiState.Loading, {}, {}, {}, {})
+                MistakeReviewScreen(MistakeReviewUiState.Loading, {}, {}, {}, {}, {})
             }
         }
 
@@ -33,7 +36,7 @@ internal class MistakeReviewScreenTest {
     fun emptyStateExplainsTheResolutionRule() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                MistakeReviewScreen(MistakeReviewUiState.Empty, {}, {}, {}, {})
+                MistakeReviewScreen(MistakeReviewUiState.Empty, {}, {}, {}, {}, {})
             }
         }
 
@@ -48,7 +51,7 @@ internal class MistakeReviewScreenTest {
         var retryCount = 0
         setContent {
             MaterialTheme {
-                MistakeReviewScreen(MistakeReviewUiState.Error, {}, { retryCount += 1 }, {}, {})
+                MistakeReviewScreen(MistakeReviewUiState.Error, {}, { retryCount += 1 }, {}, {}, {})
             }
         }
 
@@ -67,6 +70,7 @@ internal class MistakeReviewScreenTest {
                     onRetry = {},
                     onBrowseTopics = {},
                     onSourceClick = {},
+                    onPracticePreset = {},
                 )
             }
         }
@@ -97,6 +101,7 @@ internal class MistakeReviewScreenTest {
                     onRetry = {},
                     onBrowseTopics = {},
                     onSourceClick = {},
+                    onPracticePreset = {},
                 )
             }
         }
@@ -116,6 +121,7 @@ internal class MistakeReviewScreenTest {
                     onRetry = {},
                     onBrowseTopics = {},
                     onSourceClick = {},
+                    onPracticePreset = {},
                 )
             }
         }
@@ -135,6 +141,7 @@ internal class MistakeReviewScreenTest {
                     onRetry = {},
                     onBrowseTopics = {},
                     onSourceClick = clicked::add,
+                    onPracticePreset = {},
                 )
             }
         }
@@ -154,6 +161,7 @@ internal class MistakeReviewScreenTest {
                     onRetry = {},
                     onBrowseTopics = {},
                     onSourceClick = {},
+                    onPracticePreset = {},
                     failedSourceUrl = "https://kotlinlang.org/q1",
                 )
             }
@@ -161,9 +169,95 @@ internal class MistakeReviewScreenTest {
 
         onNodeWithText("This source could not be opened.").performScrollTo().assertIsDisplayed()
     }
+
+    /**
+     * The entry supplies the scope and nothing else. Its own Question ID does not travel, because
+     * the shortcut asks for unresolved practice in that Subtopic, not for this Question again.
+     */
+    @Test
+    fun anUnresolvedMistakeOffersScopedMistakePracticeForItsOwnSubtopic() = runComposeUiTest {
+        val presets = mutableListOf<PracticePreset>()
+        setContent {
+            MaterialTheme {
+                MistakeReviewScreen(
+                    state = MistakeReviewUiState.Content(
+                        listOf(availableMistake("q1", subtopicId = "kotlin_flows")),
+                    ),
+                    onBack = {},
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onSourceClick = {},
+                    onPracticePreset = presets::add,
+                )
+            }
+        }
+
+        onNodeWithTag(mistakePracticeShortcutTag("q1")).performScrollTo().performClick()
+
+        assertEquals(
+            listOf(
+                PracticePreset(
+                    scope = AssessmentScope.Subtopic("kotlin_flows"),
+                    source = PracticeQuestionSource.UNRESOLVED_MISTAKES,
+                ),
+            ),
+            presets,
+        )
+    }
+
+    /**
+     * Review content the curriculum no longer holds cannot name a current Subtopic, so the entry
+     * stays a plain "no longer available" note rather than acquiring a shortcut to an invented one.
+     */
+    @Test
+    fun missingReviewContentInventsNoPracticeScope() = runComposeUiTest {
+        val presets = mutableListOf<PracticePreset>()
+        setContent {
+            MaterialTheme {
+                MistakeReviewScreen(
+                    state = MistakeReviewUiState.Content(
+                        listOf(UnresolvedMistake("gone", "attempt", ReviewQuestionItem.Missing("gone"))),
+                    ),
+                    onBack = {},
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onSourceClick = {},
+                    onPracticePreset = presets::add,
+                )
+            }
+        }
+
+        onNodeWithTag(mistakePracticeShortcutTag("gone")).assertDoesNotExist()
+        onNodeWithText("Practice unresolved mistakes in this subtopic").assertDoesNotExist()
+        assertEquals(emptyList(), presets)
+    }
+
+    /** The queue still renders its explanations; the shortcut is an addition, not a replacement. */
+    @Test
+    fun theShortcutDoesNotDisplaceTheReviewContent() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MistakeReviewScreen(
+                    state = MistakeReviewUiState.Content(listOf(availableMistake("q1"))),
+                    onBack = {},
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onSourceClick = {},
+                    onPracticePreset = {},
+                )
+            }
+        }
+
+        onNodeWithText("Question q1").assertIsDisplayed()
+        onNodeWithText("Explanation for q1").performScrollTo().assertIsDisplayed()
+        onNodeWithTag(mistakePracticeShortcutTag("q1")).performScrollTo().assertIsDisplayed()
+    }
 }
 
-private fun availableMistake(questionId: String): UnresolvedMistake =
+private fun availableMistake(
+    questionId: String,
+    subtopicId: String = "kotlin_coroutines",
+): UnresolvedMistake =
     UnresolvedMistake(
         questionId = questionId,
         sourceAttemptId = "attempt",
@@ -171,6 +265,7 @@ private fun availableMistake(questionId: String): UnresolvedMistake =
             ReviewQuestionUiModel(
                 questionId = questionId,
                 topicId = "kotlin",
+                subtopicId = subtopicId,
                 text = "Question $questionId",
                 isCorrect = false,
                 answers = listOf(

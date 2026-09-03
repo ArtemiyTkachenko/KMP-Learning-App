@@ -36,6 +36,7 @@ internal class AssessmentReviewLoader(
             ReviewQuestionUiModel(
                 questionId = question.id,
                 topicId = question.topicId,
+                subtopicId = question.subtopicId,
                 text = question.text,
                 isCorrect = answerState.isCorrect,
                 answers = question.answers.map { answer ->

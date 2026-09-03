@@ -19,6 +19,9 @@ import org.jetbrains.compose.resources.stringResource
  *
  * [caption] is the row's quietest line, and is where current-curriculum coverage goes: a second
  * figure with a different denominator, worth saying but never worth another card.
+ *
+ * [action] is absent by default, so adding a shortcut to one kind of row leaves every other
+ * performance card on the dashboard exactly as readable and exactly as inert as it was.
  */
 @Composable
 internal fun ProgressPerformanceCard(
@@ -32,6 +35,7 @@ internal fun ProgressPerformanceCard(
     isWeak: Boolean = false,
     showChevron: Boolean = false,
     isSummary: Boolean = false,
+    action: (@Composable () -> Unit)? = null,
 ) {
     PerformanceCard(
         title = title,
@@ -44,6 +48,7 @@ internal fun ProgressPerformanceCard(
         weakLabel = stringResource(Res.string.progress_weak_label),
         showChevron = showChevron,
         isSummary = isSummary,
+        action = action,
     )
 }
 

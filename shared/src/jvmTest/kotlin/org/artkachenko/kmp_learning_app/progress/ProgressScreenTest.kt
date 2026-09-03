@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -15,6 +16,9 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runComposeUiTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
+import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
+import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 
 @OptIn(ExperimentalTestApi::class)
 internal class ProgressScreenTest {
@@ -29,6 +33,7 @@ internal class ProgressScreenTest {
                     onBrowseTopics = {},
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
+                    onPracticePreset = {},
                 )
             }
         }
@@ -41,7 +46,7 @@ internal class ProgressScreenTest {
     fun emptyStateRendersGuidance() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, { _, _ -> })
+                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, { _, _ -> }, {})
             }
         }
         onNodeWithText(
@@ -54,7 +59,7 @@ internal class ProgressScreenTest {
         var retryCount = 0
         setContent {
             MaterialTheme {
-                ProgressScreen(ProgressUiState.Error, {}, { retryCount += 1 }, {}, {}, { _, _ -> })
+                ProgressScreen(ProgressUiState.Error, {}, { retryCount += 1 }, {}, {}, { _, _ -> }, {})
             }
         }
         onNodeWithText("Progress could not be loaded.").assertIsDisplayed()
@@ -94,6 +99,7 @@ internal class ProgressScreenTest {
                     onBrowseTopics = {},
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
+                    onPracticePreset = {},
                 )
             }
         }
@@ -112,7 +118,9 @@ internal class ProgressScreenTest {
         onNodeWithText("State").assertIsDisplayed()
         onNodeWithText("66.7%").assertExists()
         // A weak subtopic missing its parent name and a weak topic missing its own name both fall
-        // back rather than disappearing.
+        // back rather than disappearing. The rows carry a practice shortcut each now, so the second
+        // one starts below the fold and has to be scrolled into composition first.
+        onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("2 / 5 correct"))
         onAllNodesWithText("Topic unavailable").assertCountEquals(2)
     }
 
@@ -132,6 +140,7 @@ internal class ProgressScreenTest {
                     onBrowseTopics = {},
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
+                    onPracticePreset = {},
                 )
             }
         }
@@ -149,7 +158,7 @@ internal class ProgressScreenTest {
     fun observationBasedSectionsAreAbsentWhenTheyHaveNoRows() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                ProgressScreen(contentState(), {}, {}, {}, {}, { _, _ -> })
+                ProgressScreen(contentState(), {}, {}, {}, {}, { _, _ -> }, {})
             }
         }
 
@@ -172,6 +181,7 @@ internal class ProgressScreenTest {
                     onBrowseTopics = {},
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
+                    onPracticePreset = {},
                 )
             }
         }
@@ -185,7 +195,7 @@ internal class ProgressScreenTest {
     fun theUnresolvedCountIsAbsentWhenNoAssessmentHasBeenCompleted() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, { _, _ -> })
+                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, { _, _ -> }, {})
             }
         }
 
@@ -204,6 +214,7 @@ internal class ProgressScreenTest {
                     onBrowseTopics = {},
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
+                    onPracticePreset = {},
                 )
             }
         }
@@ -217,7 +228,7 @@ internal class ProgressScreenTest {
         var browsed = 0
         setContent {
             MaterialTheme {
-                ProgressScreen(ProgressUiState.Empty, {}, {}, { browsed += 1 }, {}, { _, _ -> })
+                ProgressScreen(ProgressUiState.Empty, {}, {}, { browsed += 1 }, {}, { _, _ -> }, {})
             }
         }
 
@@ -243,6 +254,7 @@ internal class ProgressScreenTest {
                     onBrowseTopics = {},
                     onTopicClick = clicked::add,
                     onHistoryClick = { _, _ -> },
+                    onPracticePreset = {},
                 )
             }
         }
@@ -285,6 +297,7 @@ internal class ProgressScreenTest {
                     onBrowseTopics = {},
                     onTopicClick = {},
                     onHistoryClick = { type, id -> clicks += type to id },
+                    onPracticePreset = {},
                 )
             }
         }
@@ -335,6 +348,7 @@ internal class ProgressScreenTest {
                     onBrowseTopics = {},
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
+                    onPracticePreset = {},
                 )
             }
         }
@@ -354,6 +368,7 @@ internal class ProgressScreenTest {
                     {},
                     {},
                     { _, _ -> },
+                    {},
                 )
             }
         }
@@ -376,6 +391,7 @@ internal class ProgressScreenTest {
                     {},
                     {},
                     { _, _ -> },
+                    {},
                 )
             }
         }
@@ -395,6 +411,7 @@ internal class ProgressScreenTest {
                     {},
                     {},
                     { _, _ -> },
+                    {},
                 )
             }
         }
@@ -421,6 +438,7 @@ internal class ProgressScreenTest {
                     {},
                     {},
                     { _, _ -> },
+                    {},
                 )
             }
         }
@@ -451,6 +469,7 @@ internal class ProgressScreenTest {
                     {},
                     {},
                     { _, _ -> },
+                    {},
                 )
             }
         }
@@ -478,6 +497,7 @@ internal class ProgressScreenTest {
                     {},
                     {},
                     { _, _ -> },
+                    {},
                 )
             }
         }
@@ -508,6 +528,7 @@ internal class ProgressScreenTest {
                     {},
                     {},
                     { _, _ -> },
+                    {},
                 )
             }
         }
@@ -535,6 +556,7 @@ internal class ProgressScreenTest {
                     {},
                     {},
                     { _, _ -> },
+                    {},
                 )
             }
         }
@@ -549,7 +571,7 @@ internal class ProgressScreenTest {
     fun aNewLearnerSeesGuidanceRatherThanAnAllZeroDashboard() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, { _, _ -> })
+                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, { _, _ -> }, {})
             }
         }
 
@@ -591,6 +613,7 @@ internal class ProgressScreenTest {
                     {},
                     {},
                     { _, _ -> },
+                    {},
                 )
             }
         }
@@ -606,6 +629,135 @@ internal class ProgressScreenTest {
         onNodeWithText("Topic performance").assertIsDisplayed()
         onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("Assessment history"))
         onNodeWithText("Assessment history").assertIsDisplayed()
+    }
+
+    @Test
+    fun aWeakTopicRowOffersPracticeForItsExactScopeAndSource() = runComposeUiTest {
+        val presets = mutableListOf<PracticePreset>()
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    state = contentState(
+                        weakAreas = listOf(
+                            WeakAreaUiModel(
+                                WeakAreaType.TOPIC,
+                                "topic_kotlin",
+                                "Kotlin",
+                                null,
+                                5,
+                                2,
+                                40.0,
+                            ),
+                        ),
+                    ),
+                    onBack = {},
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onTopicClick = {},
+                    onHistoryClick = { _, _ -> },
+                    onPracticePreset = presets::add,
+                )
+            }
+        }
+
+        onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("Practice weak area"))
+        onNodeWithText("Practice weak area").assertIsDisplayed().performClick()
+
+        assertEquals(
+            listOf(
+                PracticePreset(
+                    scope = AssessmentScope.Topic("topic_kotlin"),
+                    source = PracticeQuestionSource.WEAK_AREAS,
+                ),
+            ),
+            presets,
+        )
+    }
+
+    @Test
+    fun aWeakSubtopicRowOffersPracticeForItsExactScopeAndSource() = runComposeUiTest {
+        val presets = mutableListOf<PracticePreset>()
+        val area = WeakAreaUiModel(
+            WeakAreaType.SUBTOPIC,
+            "subtopic_state",
+            "State",
+            "Kotlin",
+            3,
+            1,
+            33.3,
+        )
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    state = contentState(weakAreas = listOf(area)),
+                    onBack = {},
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onTopicClick = {},
+                    onHistoryClick = { _, _ -> },
+                    onPracticePreset = presets::add,
+                )
+            }
+        }
+
+        // By row handle rather than by label: every weak row carries the same wording.
+        onNodeWithTag(ProgressContentTag)
+            .performScrollToNode(hasTestTag(progressWeakAreaPracticeTag(area)))
+        onNodeWithTag(progressWeakAreaPracticeTag(area)).performClick()
+
+        assertEquals(
+            listOf(
+                PracticePreset(
+                    scope = AssessmentScope.Subtopic("subtopic_state"),
+                    source = PracticeQuestionSource.WEAK_AREAS,
+                ),
+            ),
+            presets,
+        )
+    }
+
+    /**
+     * The dashboard's two aggregate signals name no Topic or Subtopic, so neither may acquire a
+     * shortcut: a focused preset built from either one would be a scope chosen for the learner.
+     * Topic performance rows are not weak-area rows and keep their existing drill-down only.
+     */
+    @Test
+    fun onlyWeakAreaRowsAcquireAPracticeShortcut() = runComposeUiTest {
+        val presets = mutableListOf<PracticePreset>()
+        val topicClicks = mutableListOf<String>()
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    state = contentState(
+                        coverage = ProgressCoverageUiModel(25, 100, 25.0),
+                        unresolvedMistakeCount = 17,
+                        topics = listOf(ProgressTopicUiModel("topic_kotlin", "Kotlin", 20, 14, 70.0)),
+                    ),
+                    onBack = {},
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onTopicClick = topicClicks::add,
+                    onHistoryClick = { _, _ -> },
+                    onPracticePreset = presets::add,
+                )
+            }
+        }
+
+        onNodeWithText("25 of 100 questions explored").assertIsDisplayed()
+        onNodeWithText("17 unresolved mistakes to review").assertIsDisplayed()
+        // Neither aggregate offers practice, and neither is clickable in some other way that would
+        // amount to the same thing.
+        onNodeWithText("25 of 100 questions explored").assertHasNoClickAction()
+        onNodeWithText("17 unresolved mistakes to review").assertHasNoClickAction()
+        onAllNodesWithText("Practice weak area").assertCountEquals(0)
+        onAllNodesWithText("Practice unseen questions").assertCountEquals(0)
+
+        // The ordinary Topic drill-down is untouched by the shortcut work.
+        onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("Kotlin"))
+        onNodeWithText("Kotlin").performClick()
+
+        assertEquals(listOf("topic_kotlin"), topicClicks)
+        assertEquals(emptyList(), presets)
     }
 }
 

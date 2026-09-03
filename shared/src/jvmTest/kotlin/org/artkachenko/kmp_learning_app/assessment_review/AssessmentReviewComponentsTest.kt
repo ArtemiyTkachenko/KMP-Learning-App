@@ -20,6 +20,7 @@ internal class AssessmentReviewComponentsTest {
                     question = ReviewQuestionUiModel(
                         questionId = "q1",
                         topicId = "topic",
+                        subtopicId = "topic_basics",
                         text = "Question text",
                         isCorrect = false,
                         answers = listOf(
@@ -122,6 +123,7 @@ internal class AssessmentReviewComponentsTest {
         ReviewQuestionUiModel(
             questionId = "q",
             topicId = "topic",
+            subtopicId = "topic_basics",
             text = "Question text",
             isCorrect = isCorrect,
             answers = answers,

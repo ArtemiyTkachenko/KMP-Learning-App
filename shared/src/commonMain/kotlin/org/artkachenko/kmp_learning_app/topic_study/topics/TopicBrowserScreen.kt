@@ -40,6 +40,18 @@ import kmp_learning_app.shared.generated.resources.learning_context_accuracy
 import kmp_learning_app.shared.generated.resources.learning_context_explored
 import kmp_learning_app.shared.generated.resources.learning_context_not_studied
 import kmp_learning_app.shared.generated.resources.progress_weak_label
+import kmp_learning_app.shared.generated.resources.recommended_next_mistakes_action
+import kmp_learning_app.shared.generated.resources.recommended_next_mistakes_reason
+import kmp_learning_app.shared.generated.resources.recommended_next_title
+import kmp_learning_app.shared.generated.resources.recommended_next_topics_action
+import kmp_learning_app.shared.generated.resources.recommended_next_topics_reason
+import kmp_learning_app.shared.generated.resources.recommended_next_unseen_action
+import kmp_learning_app.shared.generated.resources.recommended_next_unseen_action_generic
+import kmp_learning_app.shared.generated.resources.recommended_next_unseen_reason
+import kmp_learning_app.shared.generated.resources.recommended_next_weak_area_action
+import kmp_learning_app.shared.generated.resources.recommended_next_weak_area_action_generic
+import kmp_learning_app.shared.generated.resources.recommended_next_weak_area_reason
+import kmp_learning_app.shared.generated.resources.recommended_next_weak_area_reason_generic
 import kmp_learning_app.shared.generated.resources.topic_browser_empty
 import kmp_learning_app.shared.generated.resources.topic_browser_error
 import kmp_learning_app.shared.generated.resources.topic_browser_loading
@@ -53,6 +65,8 @@ import kmp_learning_app.shared.generated.resources.topic_browser_title
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingContext
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingTarget
+import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationRationale
+import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationTarget
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 import org.artkachenko.kmp_learning_app.ui.SectionHeading
@@ -68,6 +82,7 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppListBottomPadding
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppContentMargin
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 internal const val TopicBrowserLoadingTag = "topic_browser_loading"
@@ -75,6 +90,7 @@ internal const val TopicBrowserHeaderTag = "topic_browser_header"
 internal const val TopicBrowserViewportTag = "topic_browser_viewport"
 internal const val TopicBrowserSearchFieldTag = "topic_browser_search_field"
 internal const val TopicBrowserContinueStudyingTag = "topic_browser_continue_studying"
+internal const val TopicBrowserRecommendedNextTag = "topic_browser_recommended_next"
 
 /**
  * Space between the top safe area and the heading.
@@ -97,6 +113,7 @@ internal fun TopicBrowserScreen(
     onSubtopicClick: (topicId: String, subtopicId: String) -> Unit = { _, _ -> },
     onSearchQueryChange: (String) -> Unit = {},
     onContinueStudyingClick: (ContinueStudyingTarget) -> Unit = {},
+    onRecommendedNextClick: (LearningRecommendationTarget) -> Unit = {},
 ) {
     Column(
         modifier = modifier
@@ -141,8 +158,10 @@ internal fun TopicBrowserScreen(
                     state.query.isBlank() -> TopicList(
                         topics = state.topics,
                         onTopicClick = onTopicClick,
-                        // Absent unless the state carries one, which it never does while a query
-                        // is active: the card belongs to browsing, not to search results.
+                        // Absent unless the state carries them, which it never does while a query
+                        // is active: both cards belong to browsing, not to search results.
+                        recommendedNext = state.recommendedNext,
+                        onRecommendedNextClick = onRecommendedNextClick,
                         continueStudying = state.continueStudying,
                         onContinueStudyingClick = onContinueStudyingClick,
                     )
@@ -209,6 +228,8 @@ private fun TopicSearchField(
 private fun TopicList(
     topics: List<TopicBrowserItemUiModel>,
     onTopicClick: (String) -> Unit,
+    recommendedNext: RecommendedNextUiModel?,
+    onRecommendedNextClick: (LearningRecommendationTarget) -> Unit,
     continueStudying: ContinueStudyingContext?,
     onContinueStudyingClick: (ContinueStudyingTarget) -> Unit,
 ) {
@@ -217,8 +238,17 @@ private fun TopicList(
         contentPadding = PaddingValues(bottom = AppListBottomPadding),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // Inside the list rather than pinned above it: a shortcut is worth one glance on arrival,
-        // and scrolls away for a learner who came to browse the catalogue instead.
+        // Inside the list rather than pinned above it: guidance is worth one glance on arrival, and
+        // scrolls away for a learner who came to browse the catalogue instead. At most one of each,
+        // and in priority order — what to do now, then the way back to what was being done.
+        recommendedNext?.let { recommendation ->
+            item(key = "recommended_next") {
+                RecommendedNextCard(
+                    recommendation = recommendation,
+                    onClick = onRecommendedNextClick,
+                )
+            }
+        }
         continueStudying?.let { context ->
             item(key = "continue_studying") {
                 ContinueStudyingCard(
@@ -244,9 +274,12 @@ private fun TopicList(
  *
  * One card and one tap, deliberately: it names the context and goes there. It carries no score, no
  * coverage figure, and no explanation of why it is being offered — the reason is simply that this
- * is where they were, and a second competing action would turn the top of Topics into a dashboard.
- * Whether the destination is Topic detail or a practice setup is the card's supporting line, not a
- * choice presented here.
+ * is where they were. Whether the destination is Topic detail or a practice setup is the card's
+ * supporting line, not a choice presented here.
+ *
+ * It remains a compact continuity shortcut beneath the one policy-driven action above it: Recommended
+ * Next is the primary guidance, this is the secondary way back, and there is deliberately no third.
+ * Neither turns the Topic rows below into recommendation cards.
  */
 @Composable
 private fun ContinueStudyingCard(
@@ -322,6 +355,127 @@ private fun ContinueStudyingContext.supportingLabel(): String? =
             PracticeQuestionSource.UNRESOLVED_MISTAKES ->
                 Res.string.continue_studying_source_mistakes
         }?.let { stringResource(it) }
+    }
+
+/**
+ * The single most useful thing to do now, and the fact that makes it so.
+ *
+ * One card, one tap, and no alternatives: there is no ranking, no score, no second suggestion, no
+ * "why?" affordance, and nothing to dismiss or configure. `LearningRecommendationPolicy` chose this
+ * action from an ordered decision tree, and the card's job is to say what it chose and why — the
+ * rationale is already typed, so nothing here infers a reason of its own.
+ *
+ * It uses the primary container while Continue Studying stays on the secondary one, which is the
+ * whole visual statement being made: of the two guided cards, this is the one to act on, and the
+ * other is the way back to where the learner was.
+ */
+@Composable
+private fun RecommendedNextCard(
+    recommendation: RecommendedNextUiModel,
+    onClick: (LearningRecommendationTarget) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        onClick = { onClick(recommendation.target) },
+        modifier = modifier.fillMaxWidth().testTag(TopicBrowserRecommendedNextTag),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+        ),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(AppSpacing.Comfortable),
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+            ) {
+                Text(
+                    text = stringResource(Res.string.recommended_next_title),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                Text(
+                    text = recommendation.actionLabel(),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                Text(
+                    // Always present: a recommendation the learner cannot see a reason for is the
+                    // one thing this feature is not allowed to be.
+                    text = recommendation.rationaleLabel(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+            Icon(
+                imageVector = AppIcons.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+/**
+ * What the learner is being asked to do, chosen by the typed rationale alone.
+ *
+ * Switching on the rationale is presentation mapping, not a decision: the target was already picked,
+ * and this only writes it in words. A weak area with no current display name and an unseen Topic the
+ * catalogue no longer lists both degrade to neutral wording rather than hiding an action the policy
+ * made on evidence that did not include a name.
+ */
+@Composable
+private fun RecommendedNextUiModel.actionLabel(): String =
+    when (val rationale = rationale) {
+        LearningRecommendationRationale.NewUser ->
+            stringResource(Res.string.recommended_next_topics_action)
+
+        is LearningRecommendationRationale.UnresolvedMistakes ->
+            stringResource(Res.string.recommended_next_mistakes_action)
+
+        is LearningRecommendationRationale.WeakArea -> rationale.areaName
+            ?.let { stringResource(Res.string.recommended_next_weak_area_action, it) }
+            ?: stringResource(Res.string.recommended_next_weak_area_action_generic)
+
+        is LearningRecommendationRationale.UnseenCoverage -> topicName
+            ?.let { stringResource(Res.string.recommended_next_unseen_action, it) }
+            ?: stringResource(Res.string.recommended_next_unseen_action_generic)
+    }
+
+/**
+ * Why this action, in plain language.
+ *
+ * The counts come from the rationale exactly as the policy recorded them; nothing is recounted here,
+ * and no percentage, score, or confidence is introduced that the domain never expressed.
+ */
+@Composable
+private fun RecommendedNextUiModel.rationaleLabel(): String =
+    when (val rationale = rationale) {
+        LearningRecommendationRationale.NewUser ->
+            stringResource(Res.string.recommended_next_topics_reason)
+
+        is LearningRecommendationRationale.UnresolvedMistakes -> pluralStringResource(
+            Res.plurals.recommended_next_mistakes_reason,
+            rationale.count,
+            rationale.count,
+        )
+
+        is LearningRecommendationRationale.WeakArea ->
+            if (rationale.areaName == null) {
+                stringResource(Res.string.recommended_next_weak_area_reason_generic)
+            } else {
+                stringResource(Res.string.recommended_next_weak_area_reason)
+            }
+
+        is LearningRecommendationRationale.UnseenCoverage -> pluralStringResource(
+            Res.plurals.recommended_next_unseen_reason,
+            rationale.unseenQuestionCount,
+            rationale.unseenQuestionCount,
+        )
     }
 
 /**

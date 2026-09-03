@@ -21,6 +21,24 @@
     <string name="continue_studying_source_unseen">Unseen practice</string>
     <string name="continue_studying_source_weak_areas">Weak-area practice</string>
     <string name="continue_studying_source_mistakes">Mistake practice</string>
+    <string name="recommended_next_title">Recommended next</string>
+    <string name="recommended_next_topics_action">Choose a topic</string>
+    <string name="recommended_next_topics_reason">Start with a topic you want to explore.</string>
+    <string name="recommended_next_mistakes_action">Review mistakes</string>
+    <plurals name="recommended_next_mistakes_reason">
+        <item quantity="one">You have %1$d unresolved mistake to revisit.</item>
+        <item quantity="other">You have %1$d unresolved mistakes to revisit.</item>
+    </plurals>
+    <string name="recommended_next_weak_area_action">Practice %1$s</string>
+    <string name="recommended_next_weak_area_reason">This is currently one of your weak areas.</string>
+    <string name="recommended_next_weak_area_action_generic">Practice a weak area</string>
+    <string name="recommended_next_weak_area_reason_generic">Focus on an area that needs more work.</string>
+    <string name="recommended_next_unseen_action">Explore %1$s</string>
+    <string name="recommended_next_unseen_action_generic">Practice unseen questions</string>
+    <plurals name="recommended_next_unseen_reason">
+        <item quantity="one">%1$d question in this topic is still unseen.</item>
+        <item quantity="other">%1$d questions in this topic are still unseen.</item>
+    </plurals>
     <string name="learning_context_explored">%1$d of %2$d explored</string>
     <string name="learning_context_coverage_title">Curriculum coverage</string>
     <string name="learning_context_coverage_count">%1$d of %2$d questions explored</string>

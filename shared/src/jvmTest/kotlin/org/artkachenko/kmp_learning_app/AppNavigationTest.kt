@@ -10,6 +10,7 @@ import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingTarget
+import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationTarget
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 
 internal class AppNavigationTest {
@@ -160,6 +161,100 @@ internal class AppNavigationTest {
             assertFalse(route is AppRoute.MixedInterview, "$route starts an assessment")
         }
     }
+
+    @Test
+    fun aNewLearnerRecommendationSelectsTopicsWithoutChoosingATopic() {
+        assertEquals(AppRoute.Topics, LearningRecommendationTarget.Topics.toAppRoute())
+
+        val navigator = navigator()
+        navigator.push(AppRoute.Topic("kotlin"))
+        navigator.openRecommendation(LearningRecommendationTarget.Topics)
+
+        // The Topics area itself, returned to its root. No Topic is picked for the learner: the
+        // acceptance criterion is deterministic starting guidance, not automatic selection.
+        assertEquals(AppTopLevelDestination.TOPICS, navigator.area)
+        assertEquals(AppRoute.Topics, navigator.currentRoute)
+    }
+
+    @Test
+    fun aMistakeRecommendationReachesTheExistingMistakeReviewArea() {
+        assertEquals(AppRoute.MistakeReview, LearningRecommendationTarget.MistakeReview.toAppRoute())
+
+        val navigator = navigator()
+        navigator.openRecommendation(LearningRecommendationTarget.MistakeReview)
+
+        // The existing capability and its own area, rather than the same route pushed onto the
+        // Topics stack — and deliberately not UNRESOLVED_MISTAKES practice.
+        assertEquals(AppTopLevelDestination.MISTAKES, navigator.area)
+        assertEquals(AppRoute.MistakeReview, navigator.currentRoute)
+    }
+
+    @Test
+    fun aPracticeRecommendationReachesTheBuilderCarryingItsScopeAndSource() {
+        assertEquals(
+            AppRoute.PracticeBuilderSubtopic("coroutines", PracticeQuestionSource.WEAK_AREAS),
+            recommendedPractice(
+                AssessmentScope.Subtopic("coroutines"),
+                PracticeQuestionSource.WEAK_AREAS,
+            ).toAppRoute(),
+        )
+        assertEquals(
+            AppRoute.PracticeBuilderTopic("kotlin", PracticeQuestionSource.UNSEEN),
+            recommendedPractice(
+                AssessmentScope.Topic("kotlin"),
+                PracticeQuestionSource.UNSEEN,
+            ).toAppRoute(),
+        )
+
+        // Pushed onto the current area, because the builder is a detail rather than an area root.
+        val navigator = navigator()
+        navigator.openRecommendation(
+            recommendedPractice(AssessmentScope.Topic("kotlin"), PracticeQuestionSource.UNSEEN),
+        )
+        assertEquals(AppTopLevelDestination.TOPICS, navigator.area)
+        assertEquals(
+            AppRoute.PracticeBuilderTopic("kotlin", PracticeQuestionSource.UNSEEN),
+            navigator.currentRoute,
+        )
+    }
+
+    /**
+     * The rule Recommended Next rests on: it selects a product capability the learner can inspect
+     * and edit, never a running or stored assessment.
+     */
+    @Test
+    fun noRecommendationTargetCanStartOrReopenAnAssessment() {
+        val routes = listOf(
+            LearningRecommendationTarget.Topics,
+            LearningRecommendationTarget.MistakeReview,
+            recommendedPractice(AssessmentScope.Topic("kotlin"), PracticeQuestionSource.UNSEEN),
+            recommendedPractice(
+                AssessmentScope.Subtopic("coroutines"),
+                PracticeQuestionSource.WEAK_AREAS,
+            ),
+        ).map(LearningRecommendationTarget::toAppRoute)
+
+        routes.forEach { route ->
+            assertFalse(route is AppRoute.FocusedTopicPractice, "$route starts an assessment")
+            assertFalse(route is AppRoute.FocusedSubtopicPractice, "$route starts an assessment")
+            assertFalse(route is AppRoute.MixedInterview, "$route starts an assessment")
+            assertFalse(route is AppRoute.FocusedPracticeAttempt, "$route resumes an attempt")
+            assertFalse(route is AppRoute.MixedInterviewAttempt, "$route resumes an attempt")
+            assertFalse(route is AppRoute.FocusedPracticeResult, "$route reopens a result")
+            assertFalse(route is AppRoute.MixedInterviewResult, "$route reopens a result")
+        }
+    }
+
+    private fun recommendedPractice(
+        scope: AssessmentScope,
+        source: PracticeQuestionSource,
+    ): LearningRecommendationTarget.Practice =
+        LearningRecommendationTarget.Practice(PracticePreset(scope, source))
+
+    private fun navigator(): AppNavigator =
+        AppNavigator(
+            AppTopLevelDestination.entries.associateWith { mutableListOf<NavKey>(it.route) },
+        )
 
     private fun focusedTopicPractice(): AppRoute.FocusedTopicPractice =
         AppRoute.FocusedTopicPractice(

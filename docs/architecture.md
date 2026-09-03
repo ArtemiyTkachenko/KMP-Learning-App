@@ -606,6 +606,55 @@ remain the Practice Builder's defaults, and no recommendation starts an attempt.
 There is no random choice, wall-clock input, persistence, ML/LLM step, streak,
 engagement optimization, or blended score.
 
+## Recommended Next
+
+`LearningRecommendationResolver` is the only place the policy's inputs are
+assembled, and it makes no decision of its own. It receives the completed history
+of one `AssessmentHistoryStore` emission together with the
+`LearningProgressSnapshot` the caller has already derived from that same emission,
+asks for the unresolved-mistake count with that history, takes the recent context
+from the shared `TestAttempt.toRecentStudyContext`, and hands the result to
+`LearningRecommendationPolicy`. It does not inject `LearningProgressService`, does
+not read `AssessmentRepository`, and holds no cache: one history emission produces
+one progress derivation, shared by Topic learning context and the recommendation,
+so the two cannot describe the same history differently.
+
+The count arrives through the narrow `UnresolvedMistakeCounter`, wired in DI to
+`MistakeReviewService::countUnresolved`. That keeps the recommendation domain from
+depending on the Mistake Review feature for one integer, and keeps it unable to
+reach review content or the shared cache. A failing count propagates rather than
+being read as zero: zero is a fact the policy acts on — it falls through to weak
+areas and then to coverage — so substituting it for an unknown would recommend
+practice on evidence nobody established.
+
+Only `AssessmentHistory.Loaded` produces a recommendation. Loading and Failed
+history are unknown, not empty, and are never translated into zero completed
+attempts; the deterministic new-user recommendation therefore belongs to a
+genuinely loaded empty history and to nothing else.
+
+Presentation is `TopicBrowserUiState.Content.recommendedNext`, optional enrichment
+beside `continueStudying` rather than a screen state, so a failed derivation costs
+only the card. `RecommendedNextUiModel` carries the domain's `target` and
+`rationale` verbatim and adds one resolved Topic name, because an unseen rationale
+identifies its Topic by stable ID and the label has to come from the catalogue the
+screen already loaded. The Composable switches on the typed rationale to select
+localized copy and re-derives nothing; a missing weak-area name or an unresolvable
+Topic name degrades the wording rather than withholding the recommendation. The
+card is withheld while a search query is active, exactly as the continue shortcut
+is, and no rationale text participates in matching.
+
+`LearningRecommendationRouteMapping` is where Navigation 3 begins.
+`LearningRecommendationTarget.Topics` and `MistakeReview` are area roots, so
+`AppNavigator.openRecommendation` selects them through the existing
+`AppTopLevelDestination.forRoute` rule instead of pushing an area root onto another
+area's stack; a practice target is pushed as the shared
+`PracticePreset.toPracticeBuilderRoute` detail. A new learner is therefore returned
+to the Topic list itself with no Topic chosen for them, a mistake recommendation
+reaches the existing Mistake Review capability rather than `UNRESOLVED_MISTAKES`
+practice, and a practice recommendation lands in the editable builder. A navigation
+test asserts no recommendation target can reach an attempt, a result, or a route
+that starts a run.
+
 ## Continue Studying
 
 `ContinueStudyingResolver` answers a different question from the recommendation
@@ -617,7 +666,11 @@ policy above, and neither calls the other:
 | `LearningRecommendationPolicy` | "What should I work on now?" | Mistakes, weakness, coverage |
 
 The two are allowed to point at different places, and Continue Studying does not
-disappear because the recommendation would go elsewhere.
+disappear because the recommendation would go elsewhere. Both cards may be shown
+at once, in that order: Recommended Next is the one policy-driven primary action,
+Continue Studying stays a compact continuity shortcut beneath it, and neither is
+deduplicated, suppressed, or altered because of the other. Neither turns the Topic
+rows below them into recommendation cards.
 
 Its only inputs are completed assessment history and current curriculum. History
 supplies stable IDs through the persisted `TestAttempt.config`; current curriculum
@@ -670,9 +723,11 @@ The card lives on the existing Topics surface as optional enrichment on
 failed, or empty history and a failed resolution all leave Topics browsing,
 searching, and opening exactly as they were, with the card simply absent.
 `TopicBrowserViewModel` derives it from the same `AssessmentHistoryStore` emission
-that already produces Topic learning context — one sequential collector, no second
-history read — so both derivations see the same history and an older one cannot
-land on top of a newer. The card is withheld while a search query is active: a
+that already produces Topic learning context and the recommendation — one
+sequential collector, no second history read — so all three derivations see the
+same history and an older one cannot land on top of a newer. They fail
+independently: a failed continue resolution cannot erase a valid recommendation,
+and a failed recommendation cannot erase the shortcut or the learning context. The card is withheld while a search query is active: a
 learner who has started typing has said what they are looking for, and the
 shortcut is not a search result.
 

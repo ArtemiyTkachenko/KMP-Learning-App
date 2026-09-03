@@ -1,6 +1,8 @@
 package org.artkachenko.kmp_learning_app.topic_study.topics
 
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingContext
+import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationRationale
+import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationTarget
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 
 internal sealed interface TopicBrowserUiState {
@@ -33,6 +35,19 @@ internal sealed interface TopicBrowserUiState {
          * looking for.
          */
         val continueStudying: ContinueStudyingContext? = null,
+        /**
+         * The one policy-chosen next action, or `null` when none can be justified.
+         *
+         * Optional enrichment beside [continueStudying] rather than a screen-level state, for the
+         * same reason: Topics is a catalogue first, and guidance that cannot be derived must cost
+         * the learner nothing. The two are independent — [continueStudying] answers "where was I?"
+         * and this answers "what should I do now?" — so either may be present without the other,
+         * and neither is suppressed or altered because the other exists.
+         *
+         * Absent while a query is active, exactly as the continue shortcut is: a recommendation is
+         * not a search result, and its reason is not searchable text.
+         */
+        val recommendedNext: RecommendedNextUiModel? = null,
     ) : TopicBrowserUiState
 
     data object Empty : TopicBrowserUiState
@@ -56,6 +71,29 @@ internal data class TopicBrowserItemUiModel(
      * Topic has never been studied.
      */
     val learningContext: LearningContextUiModel? = null,
+)
+
+/**
+ * One recommendation as the browser presents it: the policy's own decision, plus the current name
+ * the copy needs.
+ *
+ * [target] and [rationale] are the domain's typed values, copied verbatim. Presentation switches on
+ * the rationale to pick localized wording and never re-derives, re-ranks, or second-guesses the
+ * decision behind it — the reason shown is the exact fact the policy acted on.
+ *
+ * [topicName] is the only thing added here, because `LearningRecommendationRationale.UnseenCoverage`
+ * identifies its Topic by stable ID and a display name must come from the catalogue this screen has
+ * already loaded rather than from anything stored.
+ */
+internal data class RecommendedNextUiModel(
+    val target: LearningRecommendationTarget,
+    val rationale: LearningRecommendationRationale,
+    /**
+     * Current name of the Topic an unseen-coverage rationale names, or `null` when the rationale
+     * names none or the catalogue no longer resolves it. A missing name degrades the copy; it never
+     * withholds the recommendation, because the decision did not depend on the name.
+     */
+    val topicName: String? = null,
 )
 
 internal data class SubtopicSearchResult(

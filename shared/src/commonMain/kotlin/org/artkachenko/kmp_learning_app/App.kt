@@ -132,6 +132,11 @@ private fun AppShell(
                         onContinueStudying = { target ->
                             navigator.push(target.toAppRoute())
                         },
+                        // The recommended action reaches an existing capability — Topics, Mistake
+                        // Review, or the Practice Builder — and never starts an assessment. Two of
+                        // those are areas rather than details, so the mapping selects or pushes as
+                        // that destination requires.
+                        onRecommendedNext = navigator::openRecommendation,
                     )
                 }
                 entry<AppRoute.Interview> {

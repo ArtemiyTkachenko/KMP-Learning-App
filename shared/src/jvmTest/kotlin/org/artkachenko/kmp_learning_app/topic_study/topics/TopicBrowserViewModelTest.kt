@@ -35,10 +35,18 @@ import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingContext
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingResolver
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingTarget
+import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationRationale
+import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationResolver
+import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationTarget
+import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
+import org.artkachenko.kmp_learning_app.guided_learning.UnresolvedMistakeCounter
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
+import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
+import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class TopicBrowserViewModelTest {
@@ -391,6 +399,7 @@ internal class TopicBrowserViewModelTest {
             learningProgressService = LearningProgressService(history, repository),
             historyStore = store,
             continueStudyingResolver = ContinueStudyingResolver(repository),
+            learningRecommendationResolver = recommendationResolver(repository, history),
         )
         advanceUntilIdle()
 
@@ -512,6 +521,7 @@ internal class TopicBrowserViewModelTest {
             learningProgressService = LearningProgressService(history, repository),
             historyStore = store,
             continueStudyingResolver = ContinueStudyingResolver(repository),
+            learningRecommendationResolver = recommendationResolver(repository, history),
         )
         advanceUntilIdle()
 
@@ -534,6 +544,275 @@ internal class TopicBrowserViewModelTest {
         assertEquals("Lifecycle, State & Navigation", refreshed.scopeName)
     }
 
+    @Test
+    fun aLoadedEmptyHistoryReceivesTheDeterministicStartingRecommendation() = runViewModelTest {
+        // Loaded and empty is a real statement about the learner: they have completed nothing.
+        val viewModel = loadedViewModel()
+
+        val recommendation = assertNotNull(recommendedNext(viewModel))
+        // Browse Topics, and no Topic chosen for them: the list is immediately below the card.
+        assertEquals(LearningRecommendationTarget.Topics, recommendation.target)
+        assertEquals(LearningRecommendationRationale.NewUser, recommendation.rationale)
+        assertNull(recommendation.topicName)
+    }
+
+    @Test
+    fun historyThatHasNotLoadedIsNotMistakenForANewLearner() = runViewModelTest {
+        val viewModel = viewModel(catalogRepository(), NeverReturningHistoryRepository)
+        advanceUntilIdle()
+
+        // Unknown history justifies nothing. Reading it as "no completed attempts" would greet a
+        // returning learner as a beginner on every slow start.
+        assertNull(recommendedNext(viewModel))
+    }
+
+    @Test
+    fun unreadableHistoryIsNotMistakenForANewLearner() = runViewModelTest {
+        val viewModel = viewModel(catalogRepository(), FailingHistoryRepository)
+        advanceUntilIdle()
+
+        assertNull(recommendedNext(viewModel))
+        // And the catalogue is untouched by the failure.
+        assertEquals(
+            3,
+            assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value).topics.size,
+        )
+    }
+
+    @Test
+    fun unresolvedMistakesAreRecommendedWithTheirExactCount() = runViewModelTest {
+        val viewModel = loadedViewModel(
+            history = historyRepository(
+                answer("q_compose_1", false),
+                answer("q_compose_2", false),
+            ),
+        )
+
+        val recommendation = assertNotNull(recommendedNext(viewModel))
+        // The existing Mistake Review capability, not targeted mistake practice.
+        assertEquals(LearningRecommendationTarget.MistakeReview, recommendation.target)
+        assertEquals(
+            LearningRecommendationRationale.UnresolvedMistakes(count = 2),
+            recommendation.rationale,
+        )
+    }
+
+    @Test
+    fun aWeakAreaIsRecommendedAsAnEditableWeakAreaPreset() = runViewModelTest {
+        // Every Question was answered wrongly once and correctly since, so nothing is unresolved
+        // while the all-time accuracy is still 50% over six occurrences — weak by the policy.
+        val viewModel = loadedViewModel(
+            repository = namedCatalogRepository(),
+            history = historyRepository(
+                listOf(
+                    completedAttempt(
+                        "newer",
+                        answer("q_compose_1", true),
+                        answer("q_compose_2", true),
+                        answer("q_compose_3", true),
+                    ),
+                    completedAttempt(
+                        "older",
+                        answer("q_compose_1", false),
+                        answer("q_compose_2", false),
+                        answer("q_compose_3", false),
+                    ),
+                ),
+            ),
+        )
+
+        val recommendation = assertNotNull(recommendedNext(viewModel))
+        assertEquals(
+            LearningRecommendationTarget.Practice(
+                PracticePreset(
+                    scope = AssessmentScope.Subtopic("compose_runtime"),
+                    source = PracticeQuestionSource.WEAK_AREAS,
+                ),
+            ),
+            recommendation.target,
+        )
+        assertEquals(
+            LearningRecommendationRationale.WeakArea(
+                scope = AssessmentScope.Subtopic("compose_runtime"),
+                areaName = "Compose runtime",
+            ),
+            recommendation.rationale,
+        )
+    }
+
+    @Test
+    fun remainingUnseenContentIsRecommendedWithItsCurrentTopicName() = runViewModelTest {
+        // One correct answer in compose, so nothing is unresolved and nothing is weak. What is
+        // left is curriculum the learner has never seen.
+        val viewModel = loadedViewModel(history = historyRepository(answer("q_compose_1", true)))
+
+        val recommendation = assertNotNull(recommendedNext(viewModel))
+        assertEquals(
+            LearningRecommendationTarget.Practice(
+                PracticePreset(
+                    scope = AssessmentScope.Topic("architecture"),
+                    source = PracticeQuestionSource.UNSEEN,
+                ),
+            ),
+            recommendation.target,
+        )
+        assertEquals(
+            LearningRecommendationRationale.UnseenCoverage(
+                topicId = "architecture",
+                unseenQuestionCount = 2,
+            ),
+            recommendation.rationale,
+        )
+        // Resolved from the loaded catalogue by stable ID, never from anything persisted.
+        assertEquals("Lifecycle, State & Navigation", recommendation.topicName)
+    }
+
+    @Test
+    fun nothingUsefulLeftToDoRendersNoRecommendation() = runViewModelTest {
+        val viewModel = loadedViewModel(
+            history = historyRepository(
+                answer("q_compose_1", true),
+                answer("q_compose_2", true),
+                answer("q_compose_3", true),
+                answer("q_compose_4", true),
+                answer("q_compose_arch_1", true),
+                answer("q_architecture_1", true),
+                answer("q_architecture_2", true),
+            ),
+        )
+
+        // No mistakes, no weak area, nothing unseen. Manufacturing an action here would be the
+        // hidden policy this feature exists to avoid.
+        assertNull(recommendedNext(viewModel))
+        // Topics remain exactly as browsable as before.
+        assertEquals(
+            3,
+            assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value).topics.size,
+        )
+    }
+
+    @Test
+    fun oneHistoryEmissionDerivesLearningProgressOnce() = runViewModelTest {
+        val repository = catalogRepository()
+        val history = historyRepository(answer("q_compose_1", true))
+        val viewModel = viewModel(repository, history)
+        advanceUntilIdle()
+
+        val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        assertNotNull(state.topics.first().learningContext)
+        assertNotNull(state.recommendedNext)
+        // Topic rows and the recommendation share one LearningProgressSnapshot. The derivation
+        // reads the ACTIVE bank exactly once, so a second load would show as a second read — and
+        // the two surfaces could then describe the same history differently.
+        assertEquals(1, repository.questionReadCount)
+        assertEquals(1, history.readCount)
+    }
+
+    @Test
+    fun aFailedRecommendationLeavesTheCatalogueAndTheContinueShortcutIntact() = runViewModelTest {
+        val repository = continueStudyingRepository()
+        val viewModel = viewModel(
+            repository = repository,
+            history = historyRepository(listOf(completedFocusedAttempt("attempt", "compose"))),
+            learningRecommendationResolver = LearningRecommendationResolver {
+                error("Recommendation unavailable")
+            },
+        )
+        advanceUntilIdle()
+
+        val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        // Optional enrichment, so its failure costs only itself: not the catalogue, not the
+        // learning context, and not the other guided surface.
+        assertNull(state.recommendedNext)
+        assertEquals(3, state.topics.size)
+        assertNotNull(state.topics.first().learningContext)
+        assertEquals(ContinueStudyingTarget.Topic("compose"), assertNotNull(state.continueStudying).target)
+    }
+
+    @Test
+    fun aFailedContinueShortcutLeavesAValidRecommendationInPlace() = runViewModelTest {
+        val viewModel = viewModel(
+            repository = catalogRepository(),
+            history = historyRepository(listOf(completedFocusedAttempt("attempt", "compose"))),
+            // Resolving the continue context fails on its own curriculum lookup, while the
+            // recommendation's inputs — progress and mistakes — are unaffected.
+            continueStudyingResolver = ContinueStudyingResolver(
+                continueStudyingRepository(
+                    identityFailure = IllegalStateException("curriculum identity unavailable"),
+                ),
+            ),
+        )
+        advanceUntilIdle()
+
+        val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        assertNull(state.continueStudying)
+        // The newest completed context is a Topic-scoped run, which breaks the otherwise tied
+        // coverage decision towards that same Topic.
+        assertEquals(
+            LearningRecommendationRationale.UnseenCoverage(
+                topicId = "compose",
+                unseenQuestionCount = 4,
+            ),
+            assertNotNull(state.recommendedNext).rationale,
+        )
+    }
+
+    @Test
+    fun completedHistoryInvalidationMovesTheRecommendationToTheNewState() = runViewModelTest {
+        val repository = catalogRepository()
+        val history = MutableHistoryRepository()
+        val store = AssessmentHistoryStore(history, CoroutineScope(currentDispatcher()))
+        val viewModel = TopicBrowserViewModel(
+            curriculumRepository = repository,
+            learningProgressService = LearningProgressService(history, repository),
+            historyStore = store,
+            continueStudyingResolver = ContinueStudyingResolver(repository),
+            learningRecommendationResolver = recommendationResolver(repository, history),
+        )
+        advanceUntilIdle()
+
+        assertEquals(
+            LearningRecommendationRationale.NewUser,
+            assertNotNull(recommendedNext(viewModel)).rationale,
+        )
+
+        // The normal completion path, with nothing cached, persisted, or manually refreshed: the
+        // current facts alone decide the current recommendation.
+        history.attempts = listOf(completedAttempt("attempt", answer("q_compose_1", false)))
+        store.invalidate()
+        advanceUntilIdle()
+
+        val refreshed = assertNotNull(recommendedNext(viewModel))
+        assertEquals(LearningRecommendationTarget.MistakeReview, refreshed.target)
+        assertEquals(
+            LearningRecommendationRationale.UnresolvedMistakes(count = 1),
+            refreshed.rationale,
+        )
+    }
+
+    @Test
+    fun theRecommendationIsNotOfferedAsASearchResult() = runViewModelTest {
+        val viewModel = loadedViewModel(history = historyRepository(answer("q_compose_1", true)))
+        assertNotNull(recommendedNext(viewModel))
+
+        viewModel.onSearchQueryChange("compose")
+
+        val search = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        // A learner who has started typing has already said what they are looking for, and the
+        // rationale is not searchable text either way.
+        assertNull(search.recommendedNext)
+        assertEquals(
+            listOf("compose", "compose_architecture"),
+            search.topicMatches.map(TopicBrowserItemUiModel::topicId),
+        )
+
+        viewModel.onSearchQueryChange("")
+        assertNotNull(recommendedNext(viewModel))
+    }
+
+    private fun recommendedNext(viewModel: TopicBrowserViewModel): RecommendedNextUiModel? =
+        assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value).recommendedNext
+
     private fun continueStudying(viewModel: TopicBrowserViewModel): ContinueStudyingContext? =
         assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value).continueStudying
 
@@ -547,21 +826,40 @@ internal class TopicBrowserViewModelTest {
 
     private suspend fun TestScope.loadedViewModel(
         history: AssessmentRepository = historyRepository(),
-    ): TopicBrowserViewModel {
-        val repository = catalogRepository()
-        return viewModel(repository, history).also { advanceUntilIdle() }
-    }
+        repository: CurriculumRepository = catalogRepository(),
+    ): TopicBrowserViewModel = viewModel(repository, history).also { advanceUntilIdle() }
 
     private fun TestScope.viewModel(
         repository: CurriculumRepository,
         history: AssessmentRepository = historyRepository(),
+        continueStudyingResolver: ContinueStudyingResolver = ContinueStudyingResolver(repository),
+        learningRecommendationResolver: LearningRecommendationResolver =
+            recommendationResolver(repository, history),
     ): TopicBrowserViewModel =
         TopicBrowserViewModel(
             curriculumRepository = repository,
             learningProgressService = LearningProgressService(history, repository),
             historyStore = AssessmentHistoryStore(history, CoroutineScope(currentDispatcher())),
-            continueStudyingResolver = ContinueStudyingResolver(repository),
+            continueStudyingResolver = continueStudyingResolver,
+            learningRecommendationResolver = learningRecommendationResolver,
         )
+
+    /**
+     * The production wiring: the real policy behind the real mistake semantics, counting from the
+     * same history emission the ViewModel already holds.
+     */
+    private fun recommendationResolver(
+        repository: CurriculumRepository,
+        history: AssessmentRepository,
+    ): LearningRecommendationResolver {
+        val mistakeReviewService = MistakeReviewService(
+            assessmentRepository = history,
+            assessmentReviewLoader = AssessmentReviewLoader(repository),
+        )
+        return LearningRecommendationResolver { completedAttempts ->
+            mistakeReviewService.countUnresolved(completedAttempts)
+        }
+    }
 
     private fun TestScope.currentDispatcher() = StandardTestDispatcher(testScheduler)
 
@@ -735,6 +1033,26 @@ internal class TopicBrowserViewModelTest {
             question("q_retired_2", "compose_architecture", "compose_arch_sub"),
             question("q_retired_3", "compose_architecture", "compose_arch_sub"),
         ).associateBy(Question::id)
+
+        /**
+         * The same catalogue, with the identity lookups a weak-area rationale is named from. The
+         * name is resolved by the existing performance derivation, not by the recommendation.
+         */
+        fun namedCatalogRepository() = FakeCurriculumRepository(
+            topicResults = resultsOf(CatalogTopics),
+            subtopicResults = mutableMapOf(
+                "compose" to resultsOf(
+                    listOf(Subtopic("compose_runtime", "compose", "Compose runtime")),
+                ),
+                "compose_architecture" to resultsOf(emptyList()),
+                "architecture" to resultsOf(emptyList()),
+            ),
+            questions = ActiveQuestions,
+            identityTopics = CatalogTopics,
+            identitySubtopics = listOf(
+                Subtopic("compose_runtime", "compose", "Compose runtime"),
+            ),
+        )
 
         /** The same catalogue, with the identity lookups Continue Studying resolves against. */
         fun continueStudyingRepository(identityFailure: Throwable? = null) =

@@ -10,6 +10,7 @@ import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingViewModel
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingResolver
+import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationResolver
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewViewModel
 import org.artkachenko.kmp_learning_app.mixed_interview.InterviewStartViewModel
@@ -40,6 +41,17 @@ internal val topicStudyPresentationModule = module {
     single {
         ContinueStudyingResolver(
             curriculumRepository = get(),
+        )
+    }
+    single {
+        // The count only, taken from the same completed history the caller already holds: the
+        // recommendation never loads the mistake queue's review content to find out how many
+        // Questions are unresolved.
+        val mistakeReviewService = get<MistakeReviewService>()
+        LearningRecommendationResolver(
+            unresolvedMistakeCounter = { completedAttempts ->
+                mistakeReviewService.countUnresolved(completedAttempts)
+            },
         )
     }
     single {
@@ -82,13 +94,15 @@ internal val topicStudyPresentationModule = module {
         )
     }
     viewModel {
-        // The shared history cache, not another read of its own: Topic learning context refreshes
-        // from the same invalidation as Progress and the mistake queue.
+        // The shared history cache, not another read of its own: Topic learning context, the
+        // recommendation, and the continue shortcut all refresh from the same invalidation as
+        // Progress and the mistake queue.
         TopicBrowserViewModel(
             curriculumRepository = get(),
             learningProgressService = get(),
             historyStore = get(),
             continueStudyingResolver = get(),
+            learningRecommendationResolver = get(),
         )
     }
     viewModel {

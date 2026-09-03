@@ -8,5 +8,3 @@ description: Safely modify Gradle and Kotlin Multiplatform build configuration f
 Read `.codex/skills/gradle-kmp-change/SKILL.md` now and follow it exactly. That file is
 the single source of truth for this skill and is shared with Codex — do not restate or
 reinterpret its rules here.
-
-Also apply the "Gradle And Build Rules" section of `AGENTS.md`.

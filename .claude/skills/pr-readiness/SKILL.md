@@ -8,6 +8,3 @@ description: Determine whether completed work is ready for review, PR, or merge.
 Read `.codex/skills/pr-readiness/SKILL.md` now and follow it exactly. That file is the
 single source of truth for this skill and is shared with Codex — do not restate or
 reinterpret its rules here.
-
-Also apply the "Backlog And Issue Workflow" and "Testing And Verification" sections of
-`AGENTS.md`.

@@ -5,54 +5,43 @@ description: Determine whether completed work is ready for review, PR, or merge.
 
 # PR Readiness
 
-Use this skill when the user asks whether work is ready for PR, ready for review, ready to merge, or complete against a backlog issue.
+## Use When
 
-Do not merge changes automatically. Do not claim CI passed unless CI results were actually observed.
+The user asks whether work is ready for PR, ready for review, ready to merge, or complete
+against a backlog issue.
+
+## Do Not Use When
+
+The user asked for implementation or a line-by-line review. Never merge changes
+automatically.
 
 ## Workflow
 
-1. Determine the relevant backlog issue when applicable.
-2. Read `.github/project/backlog.yml` for the issue's acceptance criteria.
-3. Inspect the complete relevant diff.
-4. Check each acceptance criterion against the actual implementation.
-5. Look for unrelated changes.
-6. Search touched areas for accidental TODOs, placeholders, logging, or debug code.
-7. Check whether documentation or backlog updates are required by the change.
-8. Review meaningful test coverage.
-9. Run relevant build/test/lint/static-analysis commands that exist in this repository.
-10. Report failed, skipped, or unavailable validation explicitly.
-11. Give a concise readiness verdict.
+1. Determine the relevant backlog issue and read its acceptance criteria in
+   `.github/project/backlog.yml`.
+2. Inspect the complete relevant diff.
+3. Check each acceptance criterion against the actual implementation.
+4. Look for unrelated changes, and for accidental TODOs, placeholders, logging, or debug
+   code in the touched areas.
+5. Check whether the change requires documentation or backlog updates.
+6. Review meaningful test coverage.
+7. Run the relevant build/test/lint checks, and report anything failed, skipped, or
+   unavailable.
 
-## Validation Commands
+## Project References
 
-Use focused checks first:
+- [Backlog workflow](../../../docs/workflows/backlog.md) — acceptance criteria and the
+  status language to use.
+- [Validation](../../../docs/development/validation.md) — every check that exists here,
+  including backlog validation.
+- [CI](../../../docs/workflows/ci.md) — what the pipeline covers, and what it does not
+  (there is no iOS signal).
 
-```sh
-./gradlew :shared:check
-./gradlew :androidApp:assembleDebug
-./gradlew :androidApp:lintDebug
-```
+## Output
 
-Use the full current repository check when appropriate:
+A concise readiness verdict such as "ready for review", "ready for PR", "blocked by
+validation", or "not ready".
 
-```sh
-./gradlew check
-```
-
-Use `./gradlew build` only when full assembly across Android release, web production output, iOS frameworks, and tests is needed.
-
-For backlog-only changes, validate with:
-
-```sh
-python .github/project/validate_backlog.py .github/project/backlog.yml
-```
-
-If local dependencies such as `PyYAML` are missing, say so and do not report the validation as passed.
-
-## Verdict Rules
-
-- Do not say tests passed unless they were executed.
-- Do not say CI passed unless actual CI results were checked.
-- Do not say an issue is merged if it is not merged.
-- Do not call the issue `Done` before the project's Done conditions are met.
-- Prefer statuses such as "ready for review", "ready for PR", "blocked by validation", or "not ready".
+Do not say tests passed unless they were executed, do not say CI passed unless CI results
+were checked, do not say an issue is merged if it is not, and do not call an issue `Done`
+before the project's Done conditions are met.

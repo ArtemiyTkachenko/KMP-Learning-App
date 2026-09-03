@@ -5,31 +5,36 @@ description: Review or guide Kotlin Multiplatform boundaries in this project. Us
 
 # KMP Boundary Review
 
-Use this skill when a task adds or moves shared code, changes source sets, introduces platform-specific implementations, adds `expect`/`actual`, or changes dependencies between shared and platform modules.
+## Use When
 
-Do not use it for pure `.github` automation work or ordinary Kotlin changes that do not affect KMP boundaries.
+A task adds or moves shared code, changes source sets, introduces a platform-specific
+implementation, adds `expect`/`actual`, or changes dependencies between shared and
+platform modules.
 
-## Current Structure
+## Do Not Use When
 
-- Shared module: `:shared`
-- Platform/application shells: `:androidApp`, `:desktopApp`, `:webApp`, `iosApp`
-- Shared source sets include `commonMain`, `androidMain`, `iosMain`, `jvmMain`, `jsMain`, `wasmJsMain`
-- Test source sets include `commonTest`, `androidHostTest`, `jvmTest`, `iosTest`, `webTest`
+The work is `.github` automation, or ordinary Kotlin changes with no boundary impact.
 
-## Review Questions
+## Workflow
 
-- Does this responsibility conceptually belong in shared code?
-- Is any Android, UIKit, JVM, browser, or Wasm API leaking into `commonMain`?
-- Is platform-specific behavior being forced into common code to maximize sharing?
-- Would small platform duplication be clearer than a shared abstraction?
-- Is `expect`/`actual` justified by a useful common contract?
-- Are actual implementations present for all configured targets that need them?
-- Is dependency direction still platform/application -> `:shared`?
-- Are source-set dependencies declared in the correct source set?
-- Are tests placed in `commonTest` only for genuinely shared behavior?
+1. Identify which source sets and modules the change touches.
+2. Walk the boundary review questions in
+   [KMP boundaries](../../../docs/development/kmp.md#boundary-review-questions).
+3. Confirm dependency direction and that source-set dependencies are declared where they
+   are consumed.
+4. Check that tests landed in the source set matching the behavior's scope.
+
+## Project References
+
+- [KMP boundaries](../../../docs/development/kmp.md) — modules, targets, source sets, and
+  the rules being reviewed against.
+- [Persistence](../../../docs/architecture/persistence.md) — the existing platform
+  boundary for the database, a useful reference for new platform abstractions.
+- [Testing](../../../docs/development/testing.md) — test source-set placement.
 
 ## Output
 
-For reviews, separate blocking correctness issues from maintainability concerns and optional suggestions. Recommend the smallest correction that preserves the intended boundary.
-
-Do not propose broad architecture rewrites merely because another KMP structure is theoretically possible.
+Separate blocking correctness issues from maintainability concerns and optional
+suggestions. Recommend the smallest correction that preserves the intended boundary. Do
+not propose a broad architecture rewrite merely because another KMP structure is
+theoretically possible.

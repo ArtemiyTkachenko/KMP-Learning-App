@@ -5,46 +5,34 @@ description: Safely modify Gradle and Kotlin Multiplatform build configuration f
 
 # Gradle KMP Change
 
-Use this skill for changes to Gradle build files, settings, version catalogs, plugins, source-set dependency declarations, project/module dependencies, or build properties.
+## Use When
 
-Do not use it merely because ordinary Kotlin code lives in a Gradle project.
+Changing Gradle build files, settings, the version catalog, plugins, targets, source-set
+dependency declarations, module dependencies, or build properties.
 
-## Repository Facts
+## Do Not Use When
 
-- Modules are declared in `settings.gradle.kts`: `:androidApp`, `:desktopApp`, `:shared`, `:webApp`.
-- Root `build.gradle.kts` only centralizes plugin aliases with `apply false`.
-- Dependency and plugin versions live in `gradle/libs.versions.toml`.
-- `:shared` uses `org.jetbrains.kotlin.multiplatform`, `com.android.kotlin.multiplatform.library`, Compose Multiplatform, and the Compose compiler plugin.
-- `:androidApp` uses `com.android.application` and the Compose compiler plugin.
-- Gradle properties enable configuration cache and build cache.
+The change is ordinary Kotlin code that merely happens to live in a Gradle project.
 
-## Rules
+## Workflow
 
-- Preserve centralized dependency/version management in `gradle/libs.versions.toml`.
-- Avoid scattered literal versions in module build files.
-- Explain why any new plugin, target, dependency, or source-set dependency is needed.
-- Avoid unrelated version upgrades.
-- Do not introduce convention plugins or build abstractions until repeated build logic justifies them.
-- Verify that source-set dependencies match the target that consumes them.
-- Keep platform application modules depending on `:shared`, not the reverse.
+1. Read the affected build files and `gradle/libs.versions.toml` before editing.
+2. Identify the narrowest module and source set that needs the change.
+3. Make the change, keeping versions in the catalog and platform dependencies out of
+   `commonMain`.
+4. Verify the source-set dependency matches the target that consumes it, and that
+   dependency direction is still application shell -> `:shared`.
+5. Validate with the narrowest task, then widen if build behavior changed across modules.
 
-## Validation
+## Project References
 
-Run the narrowest useful validation first:
+- [Gradle](../../../docs/development/gradle.md) — build layout, rules, and the
+  dependency-addition procedure.
+- [KMP boundaries](../../../docs/development/kmp.md) — modules, targets, source sets.
+- [Validation](../../../docs/development/validation.md) — commands and known non-fatal
+  build warnings.
 
-```sh
-./gradlew :shared:check
-./gradlew :androidApp:assembleDebug
-./gradlew :androidApp:lintDebug
-```
+## Output
 
-Use broader verification when build behavior changes across modules:
-
-```sh
-./gradlew check
-./gradlew build
-```
-
-Do not run heavy Gradle/KMP commands in parallel. Kotlin/Native, JS, and Wasm setup may contend for shared toolchain resources.
-
-Known non-fatal signals to report if observed: Compose/Web asset-size warnings, Kotlin/Native framework bundle ID warnings, and KLIB duplicate `unique_name` warnings.
+Explain why any new plugin, target, dependency, or source-set dependency is needed, name
+the commands run, and report any non-fatal build warnings observed.

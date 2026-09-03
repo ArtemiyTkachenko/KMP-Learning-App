@@ -15,12 +15,12 @@ changes.
 This document defines authoring quality expectations. It does not define
 application storage, import, persistence, serialization, or runtime behavior.
 
-This guide defines the rules. `docs/question-authoring-playbook.md` documents the
+This guide defines the rules. `docs/content/question-authoring-playbook.md` documents the
 method for meeting them: where plausible distractors come from, the anti-cue
 audits a question must survive, and the checks to run before opening a PR. Where
 the two disagree, this guide wins.
 
-`docs/question-bank-coverage.md` records the current *state* of the bank: what
+`docs/content/question-bank-coverage.md` records the current *state* of the bank: what
 each subtopic already holds, which gaps are real and which are deliberate, and
 the audit baselines a new batch must not degrade. Read it before planning an
 expansion so the coverage review does not have to be repeated, and regenerate
@@ -388,7 +388,7 @@ answer is valid and still uses multi-selection controls.
 - Multiple-correct-answer questions are allowed because the model uses
   `correctAnswerIds: List<String>`, but use them only when the technical content
   genuinely has multiple independently correct answers.
-- See `docs/question-authoring-playbook.md` for how to satisfy the first two
+- See `docs/content/question-authoring-playbook.md` for how to satisfy the first two
   rules in practice. Distractor plausibility is the easiest rule to believe you
   have met and the hardest to actually meet, so the playbook gives a taxonomy of
   where good distractors come from and the length, absolute-word, category, and
@@ -679,6 +679,6 @@ machine-verifiable:
 - Sources are authoritative, relevant, and specific to the tested claim.
 - Freshness and version sensitivity have been considered.
 - `ACTIVE` or `DEPRECATED` status is appropriate.
-- The mechanical audits in `docs/question-authoring-playbook.md` have been run:
+- The mechanical audits in `docs/content/question-authoring-playbook.md` have been run:
   answer-length parity, absolute-word distribution across correct answers and
   distractors, and a liveness check confirming every source URL still resolves.

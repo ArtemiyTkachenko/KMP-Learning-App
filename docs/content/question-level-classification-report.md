@@ -3,7 +3,7 @@
 This report records the complete-bank editorial review performed for E15-03 on
 2026-09-01. The review covered all 399 bundled questions: 360 `ACTIVE` and 39
 `DEPRECATED`. Each stem, answer option, and correct-answer set was reviewed
-against the Question Interview Level contract in `docs/content-authoring.md`.
+against the Question Interview Level contract in `docs/content/content-authoring.md`.
 
 The counts include both active and deprecated bundled questions. They describe
 the bank as classified; no target distribution or quota was used.

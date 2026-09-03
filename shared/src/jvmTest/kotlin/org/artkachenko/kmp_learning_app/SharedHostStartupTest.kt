@@ -9,6 +9,7 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -33,6 +34,10 @@ import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewViewModel
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressTopicViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressViewModel
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionContentResolver
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsViewModel
+import org.artkachenko.kmp_learning_app.saved_questions.repository.SavedQuestionRepository
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
 import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
@@ -113,6 +118,19 @@ internal class SharedHostStartupTest {
             )
             assertIs<MixedInterviewResultViewModel>(
                 koin.get<MixedInterviewResultViewModel> { parametersOf("attempt") },
+            )
+            // Saved Questions spans both shared modules: the repository comes from the data module
+            // and everything above it from the presentation module. Resolving the browsing
+            // destination's ViewModel is what proves a host gets that whole chain rather than the
+            // review surfaces alone.
+            assertIs<SavedQuestionRepository>(koin.get<SavedQuestionRepository>())
+            assertIs<SavedQuestionContentResolver>(koin.get<SavedQuestionContentResolver>())
+            assertIs<SavedQuestionsViewModel>(koin.get<SavedQuestionsViewModel>())
+            // Exactly one app-scoped holder: the review surfaces and the browser share saved state
+            // by sharing this instance, so a second binding would silently break that.
+            assertEquals(
+                koin.get<SavedQuestionStateHolder>(),
+                koin.get<SavedQuestionStateHolder>(),
             )
             // AssessmentTakingViewModel is deliberately not resolved here: it starts a real
             // assessment from its initializer, which needs seeded curriculum content rather

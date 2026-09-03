@@ -462,9 +462,9 @@ Expected platform-specific responsibilities:
 
 Android remains the primary MVP target, but every configured application host
 now supplies a persistent `CurriculumDatabase` to the same shared repositories.
-All platform builders open schema version 5 and register `MIGRATION_1_2`,
-`MIGRATION_2_3`, `MIGRATION_3_4`, and `MIGRATION_4_5`; curriculum and assessment
-history remain in one database.
+All platform builders open schema version 7 and register the complete migration chain from
+`MIGRATION_1_2` through `MIGRATION_6_7`; curriculum, assessment history, and saved Question
+identity remain in one database.
 
 Android and Desktop use `BundledSQLiteDriver` with `curriculum.db` in the
 platform application data directory. JVM persistence tests use the same driver
@@ -496,7 +496,7 @@ back to an ephemeral database.
 ## Assessment Attempt History
 
 Schema version 2 introduced assessment attempts; the current schema is version
-6. Version 3 preserves retired answer-option identity, version 4 persists
+7. Version 3 preserves retired answer-option identity, version 4 persists
 authored question selection mode, version 5 persists authored question
 interview level, and version 6 persists the practice levels and question source
 a targeted run was configured with:
@@ -559,6 +559,18 @@ excluded from completed learning history. Historical naming uses unrestricted
 stable Topic, Subtopic, and Question repository lookups; current browsing and
 selection continue to use ACTIVE-only queries.
 
+## Saved Questions
+
+Schema version 7 adds `saved_question` as learner-owned study state. Each row stores only
+`question_id` and `saved_at_epoch_millis`; the stable Question ID is the primary key, and
+insert-ignore semantics make repeat saves no-ops that preserve the first save time. Repository
+reads order newest first and use the stable ID as a deterministic tie-breaker.
+
+The table deliberately has no foreign key to `question`. Saved identity survives independently
+when curriculum content is removed, while display content is resolved separately through
+`CurriculumRepository.getQuestionById`. That historical resolver may return ACTIVE or DEPRECATED
+content, or null for a missing ID; none of those results automatically changes the saved row.
+
 ## Migration and Schema History
 
 E07-03 establishes schema version 1 and enables version-controlled Room schema
@@ -583,6 +595,9 @@ historical row would claim the learner chose something they were never offered;
 the mapper reconstructs a null on a FOCUSED row as all-levels `ALL` instead, in
 one place. Curriculum tables and `question_attempt` are unchanged.
 E11-01 adds history read queries only and does not change the schema.
+Schema version 7 adds `saved_question` through `MIGRATION_6_7`. The migration creates the empty
+identity-and-timestamp table without rewriting curriculum or assessment rows and without a
+foreign key to curriculum content.
 
 Destructive migration should not be the default production strategy. Migration
 tests validate the migration chain against Room's exported schemas and verify
@@ -599,12 +614,14 @@ Android Application
      -> CurriculumImporter
      -> CurriculumDataInitializer
      -> CurriculumRepository
+     -> AssessmentRepository
+     -> SavedQuestionRepository
 ```
 
-The shared module defines the curriculum data module. Android supplies the
-platform database module using the application context and existing Room
-builder. The project uses Koin's classic DSL only; annotation processing,
-compiler plugins, Compose injection, and ViewModel DSLs remain deferred.
+The shared module defines the repository data modules. Each host supplies its platform database
+module, and all three repositories resolve against that single `CurriculumDatabase` instance.
+The project uses Koin's classic DSL only; annotation processing, compiler plugins, Compose
+injection, and ViewModel DSLs remain deferred.
 
 ## Deferred Implementation Work
 

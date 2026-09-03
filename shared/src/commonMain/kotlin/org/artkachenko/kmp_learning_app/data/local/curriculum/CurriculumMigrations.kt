@@ -142,3 +142,19 @@ internal val MIGRATION_5_6 = Migration(
     connection.executeSQL("ALTER TABLE `test_attempt` ADD COLUMN `practice_levels` TEXT")
     connection.executeSQL("ALTER TABLE `test_attempt` ADD COLUMN `practice_source` TEXT")
 }
+
+/** Adds learner-owned saved identity without coupling it to curriculum row lifetime. */
+internal val MIGRATION_6_7 = Migration(
+    startVersion = 6,
+    endVersion = 7,
+) { connection ->
+    connection.executeSQL(
+        """
+        CREATE TABLE IF NOT EXISTS `saved_question` (
+            `question_id` TEXT NOT NULL,
+            `saved_at_epoch_millis` INTEGER NOT NULL,
+            PRIMARY KEY(`question_id`)
+        )
+        """,
+    )
+}

@@ -14,6 +14,8 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.entity.QuestionEnt
 import org.artkachenko.kmp_learning_app.data.local.curriculum.entity.QuestionSourceEntity
 import org.artkachenko.kmp_learning_app.data.local.curriculum.entity.SubtopicEntity
 import org.artkachenko.kmp_learning_app.data.local.curriculum.entity.TopicEntity
+import org.artkachenko.kmp_learning_app.data.local.saved_questions.SavedQuestionDao
+import org.artkachenko.kmp_learning_app.data.local.saved_questions.entity.SavedQuestionEntity
 
 @Database(
     entities = [
@@ -26,8 +28,9 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.entity.TopicEntity
         TestAttemptEntity::class,
         QuestionAttemptEntity::class,
         QuestionAttemptSelectedAnswerEntity::class,
+        SavedQuestionEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 @ConstructedBy(CurriculumDatabaseConstructor::class)
@@ -35,6 +38,8 @@ internal abstract class CurriculumDatabase : RoomDatabase() {
     abstract fun curriculumDao(): CurriculumDao
 
     abstract fun assessmentAttemptDao(): AssessmentAttemptDao
+
+    abstract fun savedQuestionDao(): SavedQuestionDao
 }
 
 @Suppress("KotlinNoActualForExpect")

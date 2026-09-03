@@ -263,6 +263,7 @@ internal class MixedInterviewResultScreenTest {
                 ReviewQuestionUiModel(
                     questionId = "q1",
                     topicId = "kotlin",
+                    subtopicId = "kotlin_basics",
                     text = "Question text",
                     isCorrect = true,
                     answers = listOf(

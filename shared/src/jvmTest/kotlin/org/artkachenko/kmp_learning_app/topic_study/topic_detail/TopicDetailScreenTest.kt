@@ -15,8 +15,11 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
+import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
+import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 
 @OptIn(ExperimentalTestApi::class)
@@ -39,6 +42,7 @@ internal class TopicDetailScreenTest {
                     onBack = {},
                     onStartTopicPractice = { topicStarts += 1 },
                     onStartSubtopicPractice = { subtopicId = it },
+                    onPracticePreset = {},
                     onRetry = {},
                 )
             }
@@ -69,6 +73,7 @@ internal class TopicDetailScreenTest {
                     onBack = {},
                     onStartTopicPractice = {},
                     onStartSubtopicPractice = { clicked = it },
+                    onPracticePreset = {},
                     onRetry = {},
                 )
             }
@@ -102,6 +107,7 @@ internal class TopicDetailScreenTest {
                     onBack = {},
                     onStartTopicPractice = {},
                     onStartSubtopicPractice = {},
+                    onPracticePreset = {},
                     onRetry = {},
                 )
             }
@@ -144,6 +150,7 @@ internal class TopicDetailScreenTest {
                     onBack = {},
                     onStartTopicPractice = { topicStarts += 1 },
                     onStartSubtopicPractice = {},
+                    onPracticePreset = {},
                     onRetry = {},
                 )
             }
@@ -189,6 +196,7 @@ internal class TopicDetailScreenTest {
                     onBack = {},
                     onStartTopicPractice = {},
                     onStartSubtopicPractice = {},
+                    onPracticePreset = {},
                     onRetry = {},
                 )
             }
@@ -224,6 +232,7 @@ internal class TopicDetailScreenTest {
                     onBack = {},
                     onStartTopicPractice = {},
                     onStartSubtopicPractice = { subtopicStarts = it },
+                    onPracticePreset = {},
                     onRetry = {},
                 )
             }
@@ -246,6 +255,7 @@ internal class TopicDetailScreenTest {
                     onBack = {},
                     onStartTopicPractice = {},
                     onStartSubtopicPractice = {},
+                    onPracticePreset = {},
                     onRetry = {},
                 )
             }
@@ -265,6 +275,7 @@ internal class TopicDetailScreenTest {
                     onBack = {},
                     onStartTopicPractice = {},
                     onStartSubtopicPractice = {},
+                    onPracticePreset = {},
                     onRetry = { retryCount += 1 },
                 )
             }
@@ -280,6 +291,7 @@ internal class TopicDetailScreenTest {
                     onBack = {},
                     onStartTopicPractice = {},
                     onStartSubtopicPractice = {},
+                    onPracticePreset = {},
                     onRetry = {},
                 )
             }
@@ -313,6 +325,7 @@ internal class TopicDetailScreenTest {
                         onBack = {},
                         onStartTopicPractice = {},
                         onStartSubtopicPractice = {},
+                        onPracticePreset = {},
                         onRetry = {},
                     )
                 }
@@ -342,6 +355,7 @@ internal class TopicDetailScreenTest {
                     onBack = {},
                     onStartTopicPractice = {},
                     onStartSubtopicPractice = {},
+                    onPracticePreset = {},
                     onRetry = {},
                 )
             }
@@ -350,7 +364,290 @@ internal class TopicDetailScreenTest {
         onNodeWithText("Subtopic A").assertIsDisplayed()
         onNodeWithTag(TopicPracticeButtonTag).assertIsDisplayed()
     }
+
+    /**
+     * A weak Topic offers weak-area practice for itself, and the ordinary Start Practice action is
+     * still there and still carries no source of its own.
+     */
+    @Test
+    fun aWeakTopicOffersWeakAreaPracticeBesideOrdinaryPractice() = runComposeUiTest {
+        val presets = mutableListOf<PracticePreset>()
+        var ordinaryStarts = 0
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningContext = learningContext(10, 10, 41.0, isWeak = true),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = { ordinaryStarts += 1 },
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = presets::add,
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(TopicWeakPracticeTag).assertIsDisplayed().performClick()
+        onNodeWithTag(TopicPracticeButtonTag).assertIsDisplayed().performClick()
+
+        assertEquals(
+            listOf(
+                PracticePreset(
+                    scope = AssessmentScope.Topic("topic_a"),
+                    source = PracticeQuestionSource.WEAK_AREAS,
+                ),
+            ),
+            presets,
+        )
+        assertEquals(1, ordinaryStarts)
+    }
+
+    @Test
+    fun aTopicTheDomainDoesNotCallWeakOffersNoWeakAreaShortcut() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    // A low percentage that the policy did not call weak — presentation must not
+                    // second-guess that from the number it is displaying.
+                    state = topicContent(
+                        learningContext = learningContext(10, 10, 22.0, isWeak = false),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(TopicWeakPracticeTag).assertDoesNotExist()
+        onNodeWithTag(TopicPracticeButtonTag).assertIsDisplayed()
+    }
+
+    @Test
+    fun aTopicWithRemainingCoverageOffersUnseenPractice() = runComposeUiTest {
+        val presets = mutableListOf<PracticePreset>()
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(learningContext = learningContext(6, 10, 80.0)),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = presets::add,
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(TopicUnseenPracticeTag).assertIsDisplayed().performClick()
+
+        assertEquals(
+            listOf(
+                PracticePreset(
+                    scope = AssessmentScope.Topic("topic_a"),
+                    source = PracticeQuestionSource.UNSEEN,
+                ),
+            ),
+            presets,
+        )
+    }
+
+    @Test
+    fun aFullyCoveredTopicOffersNoUnseenPractice() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(learningContext = learningContext(10, 10, 80.0)),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(TopicUnseenPracticeTag).assertDoesNotExist()
+        onNodeWithTag(TopicPracticeButtonTag).assertIsDisplayed()
+    }
+
+    /**
+     * Both conditions can hold at once, and both actions are then offered: the learner chose to look
+     * at this scope, so nothing here ranks one intent above the other. Choosing one action globally
+     * is Recommended Next's job, on a different surface.
+     */
+    @Test
+    fun aTopicThatIsBothWeakAndPartlyCoveredOffersBothWithNoPrecedence() = runComposeUiTest {
+        val presets = mutableListOf<PracticePreset>()
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningContext = learningContext(4, 10, 35.0, isWeak = true),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = presets::add,
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(TopicWeakPracticeTag).assertIsDisplayed().performClick()
+        onNodeWithTag(TopicUnseenPracticeTag).assertIsDisplayed().performClick()
+
+        assertEquals(
+            listOf(
+                PracticePreset(
+                    AssessmentScope.Topic("topic_a"),
+                    PracticeQuestionSource.WEAK_AREAS,
+                ),
+                PracticePreset(AssessmentScope.Topic("topic_a"), PracticeQuestionSource.UNSEEN),
+            ),
+            presets,
+        )
+    }
+
+    /**
+     * Unknown analytics are not empty history: an absent context must not read as "not weak" or as
+     * "nothing seen yet", and it must not take ordinary practice away either.
+     */
+    @Test
+    fun unknownAnalyticsInferNoShortcutsAndLeaveOrdinaryPracticeIntact() = runComposeUiTest {
+        var ordinaryStarts = 0
+        var subtopicStarts = 0
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = TopicDetailUiState.Content(
+                        topic = Topic("topic_a", "Topic A"),
+                        topicQuestionCount = 10,
+                        subtopics = listOf(
+                            SubtopicPracticeItem(
+                                Subtopic("subtopic_a", "topic_a", "Subtopic A"),
+                                4,
+                            ),
+                        ),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = { ordinaryStarts += 1 },
+                    onStartSubtopicPractice = { subtopicStarts += 1 },
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(TopicWeakPracticeTag).assertDoesNotExist()
+        onNodeWithTag(TopicUnseenPracticeTag).assertDoesNotExist()
+        onNodeWithTag(subtopicWeakPracticeTag("subtopic_a")).assertDoesNotExist()
+        onNodeWithTag(subtopicUnseenPracticeTag("subtopic_a")).assertDoesNotExist()
+
+        onNodeWithTag(TopicPracticeButtonTag).performClick()
+        onNodeWithTag(SubtopicPracticeButtonTag).performClick()
+
+        assertEquals(1, ordinaryStarts)
+        assertEquals(1, subtopicStarts)
+    }
+
+    @Test
+    fun aWeakSubtopicRowOffersWeakAreaPracticeForItsOwnScope() = runComposeUiTest {
+        val presets = mutableListOf<PracticePreset>()
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        subtopics = listOf(
+                            SubtopicPracticeItem(
+                                subtopic = Subtopic("subtopic_a", "topic_a", "Subtopic A"),
+                                questionCount = 10,
+                                learningContext = learningContext(10, 10, 30.0, isWeak = true),
+                            ),
+                        ),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = presets::add,
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(subtopicWeakPracticeTag("subtopic_a")).assertIsDisplayed().performClick()
+        onNodeWithTag(subtopicUnseenPracticeTag("subtopic_a")).assertDoesNotExist()
+
+        assertEquals(
+            listOf(
+                PracticePreset(
+                    scope = AssessmentScope.Subtopic("subtopic_a"),
+                    source = PracticeQuestionSource.WEAK_AREAS,
+                ),
+            ),
+            presets,
+        )
+    }
+
+    /**
+     * The row's own tap is still ordinary practice for the whole Subtopic; the shortcut is a
+     * separate, labelled control that emits a different intent.
+     */
+    @Test
+    fun aPartlyCoveredSubtopicRowOffersUnseenPracticeAlongsideItsOwnTap() = runComposeUiTest {
+        val presets = mutableListOf<PracticePreset>()
+        val ordinaryStarts = mutableListOf<String>()
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        subtopics = listOf(
+                            SubtopicPracticeItem(
+                                subtopic = Subtopic("subtopic_a", "topic_a", "Subtopic A"),
+                                questionCount = 10,
+                                learningContext = learningContext(3, 10, 70.0),
+                            ),
+                        ),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = ordinaryStarts::add,
+                    onPracticePreset = presets::add,
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(subtopicUnseenPracticeTag("subtopic_a")).assertIsDisplayed().performClick()
+        onNodeWithTag(subtopicWeakPracticeTag("subtopic_a")).assertDoesNotExist()
+        onNodeWithTag(SubtopicPracticeButtonTag).performClick()
+
+        assertEquals(
+            listOf(
+                PracticePreset(
+                    scope = AssessmentScope.Subtopic("subtopic_a"),
+                    source = PracticeQuestionSource.UNSEEN,
+                ),
+            ),
+            presets,
+        )
+        assertEquals(listOf("subtopic_a"), ordinaryStarts)
+    }
 }
+
+private fun topicContent(
+    learningContext: LearningContextUiModel? = null,
+    subtopics: List<SubtopicPracticeItem> = emptyList(),
+): TopicDetailUiState.Content =
+    TopicDetailUiState.Content(
+        topic = Topic("topic_a", "Topic A"),
+        topicQuestionCount = 10,
+        subtopics = subtopics,
+        learningContext = learningContext,
+    )
 
 private fun learningContext(
     attempted: Int,

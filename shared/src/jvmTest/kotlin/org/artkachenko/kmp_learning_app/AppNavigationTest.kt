@@ -12,6 +12,7 @@ import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingTarget
 import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationTarget
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
+import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toPracticeBuilderRoute
 
 internal class AppNavigationTest {
     @Test
@@ -242,6 +243,60 @@ internal class AppNavigationTest {
             assertFalse(route is AppRoute.MixedInterviewAttempt, "$route resumes an attempt")
             assertFalse(route is AppRoute.FocusedPracticeResult, "$route reopens a result")
             assertFalse(route is AppRoute.MixedInterviewResult, "$route reopens a result")
+        }
+    }
+
+    /**
+     * A contextual shortcut pushes the builder onto the area the learner is already in, and takes
+     * the same route the identical preset takes from Recommended Next. The builder never learns
+     * which surface a preset came from, so one preset means one thing everywhere.
+     */
+    @Test
+    fun aContextualShortcutPushesTheBuilderOntoTheAreaItWasOfferedIn() {
+        val preset = PracticePreset(
+            AssessmentScope.Subtopic("coroutines"),
+            PracticeQuestionSource.UNRESOLVED_MISTAKES,
+        )
+        val navigator = navigator()
+        navigator.select(AppTopLevelDestination.MISTAKES)
+
+        navigator.push(preset.toPracticeBuilderRoute())
+
+        assertEquals(AppTopLevelDestination.MISTAKES, navigator.area)
+        assertEquals(
+            AppRoute.PracticeBuilderSubtopic("coroutines", PracticeQuestionSource.UNRESOLVED_MISTAKES),
+            navigator.currentRoute,
+        )
+        // Identical payload, identical destination, whichever surface offered it.
+        assertEquals(
+            preset.toPracticeBuilderRoute(),
+            LearningRecommendationTarget.Practice(preset).toAppRoute(),
+        )
+    }
+
+    /**
+     * The same rule that binds Recommended Next binds every contextual shortcut: a preset opens a
+     * configuration screen, never a run, a stored attempt, or a result.
+     */
+    @Test
+    fun noContextualShortcutPresetCanStartOrReopenAnAssessment() {
+        val presets = PracticeQuestionSource.entries.flatMap { source ->
+            listOf(
+                PracticePreset(AssessmentScope.Topic("kotlin"), source),
+                PracticePreset(AssessmentScope.Subtopic("coroutines"), source),
+            )
+        }
+
+        presets.map(PracticePreset::toPracticeBuilderRoute).forEach { route ->
+            assertTrue(
+                route is AppRoute.PracticeBuilderTopic ||
+                    route is AppRoute.PracticeBuilderSubtopic,
+                "$route is not the Practice Builder",
+            )
+            assertFalse(route is AppRoute.FocusedTopicPractice, "$route starts an assessment")
+            assertFalse(route is AppRoute.FocusedSubtopicPractice, "$route starts an assessment")
+            assertFalse(route is AppRoute.FocusedPracticeAttempt, "$route resumes an attempt")
+            assertFalse(route is AppRoute.FocusedPracticeResult, "$route reopens a result")
         }
     }
 

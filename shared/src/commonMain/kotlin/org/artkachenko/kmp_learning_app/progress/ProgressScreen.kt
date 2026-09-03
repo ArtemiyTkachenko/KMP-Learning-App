@@ -15,6 +15,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,6 +26,7 @@ import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.mistake_review_none
 import kmp_learning_app.shared.generated.resources.mistake_review_unresolved_count
 import kmp_learning_app.shared.generated.resources.mixed_interview_title
+import kmp_learning_app.shared.generated.resources.practice_shortcut_weak_area
 import kmp_learning_app.shared.generated.resources.progress_accuracy_caption
 import kmp_learning_app.shared.generated.resources.progress_completed_attempts_label
 import kmp_learning_app.shared.generated.resources.progress_correct_answers_label
@@ -52,6 +54,7 @@ import kmp_learning_app.shared.generated.resources.progress_title
 import kmp_learning_app.shared.generated.resources.progress_topic_performance
 import kmp_learning_app.shared.generated.resources.progress_topic_unavailable
 import kmp_learning_app.shared.generated.resources.progress_weak_areas
+import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 import org.artkachenko.kmp_learning_app.ui.AccuracyHeadline
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
@@ -84,6 +87,16 @@ internal fun progressTopicCardTag(topicId: String): String = "progress_topic_car
 /** Stable per-row handle for completed attempts whose visible labels may be identical. */
 internal fun progressHistoryCardTag(attemptId: String): String = "progress_history_card_$attemptId"
 
+/** Stable per-row handle for a weak area's practice shortcut, whose label repeats across rows. */
+internal fun progressWeakAreaPracticeTag(area: WeakAreaUiModel): String =
+    "progress_weak_area_practice_${area.type}_${area.stableId}"
+
+/**
+ * [onPracticePreset] carries a semantic practice intent, never a route: the dashboard says which
+ * scope and which existing question source the learner asked for, and the navigation boundary turns
+ * that into the Practice Builder. Only weak-area rows produce one — they are the dashboard's only
+ * signal that names a Topic or Subtopic.
+ */
 @Composable
 internal fun ProgressScreen(
     state: ProgressUiState,
@@ -92,6 +105,7 @@ internal fun ProgressScreen(
     onBrowseTopics: () -> Unit,
     onTopicClick: (String) -> Unit,
     onHistoryClick: (CompletedAssessmentType, String) -> Unit,
+    onPracticePreset: (PracticePreset) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollBehavior = rememberAppTopBarScrollBehavior()
@@ -120,6 +134,7 @@ internal fun ProgressScreen(
                     state = current,
                     onTopicClick = onTopicClick,
                     onHistoryClick = onHistoryClick,
+                    onPracticePreset = onPracticePreset,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -132,6 +147,7 @@ private fun ProgressContent(
     state: ProgressUiState.Content,
     onTopicClick: (String) -> Unit,
     onHistoryClick: (CompletedAssessmentType, String) -> Unit,
+    onPracticePreset: (PracticePreset) -> Unit,
     modifier: Modifier,
 ) {
     LazyColumn(
@@ -164,7 +180,7 @@ private fun ProgressContent(
                 ProgressSectionTitle(stringResource(Res.string.progress_weak_areas))
             }
             items(state.weakAreas, key = { "${it.type}:${it.stableId}" }) { area ->
-                WeakAreaCard(area)
+                WeakAreaCard(area) { onPracticePreset(area.toPracticePreset()) }
             }
         }
         // Observation-based sections can be empty even when overall statistics exist, for
@@ -340,6 +356,12 @@ private fun recentWindowLabel(attemptCount: Int): String =
  * Reports the size of the mistake queue without offering to open it. Opening it is the Mistakes
  * navigation item's job, and that item carries the same count as a badge; a button here as well
  * gave the learner two controls for one destination sitting a few millimetres apart.
+ *
+ * It gets no practice shortcut either, for a different reason: this count spans the whole
+ * curriculum, and focused practice has to name a Topic or Subtopic. Choosing one — the first, the
+ * weakest, the one holding the most mistakes — would be a recommendation made silently on the
+ * learner's behalf. Scoped mistake practice is offered where a scope is actually known, on a queue
+ * entry in Mistake Review.
  */
 @Composable
 private fun UnresolvedMistakeSummary(unresolvedCount: Int) {
@@ -368,8 +390,21 @@ private fun UnresolvedMistakeSummary(unresolvedCount: Int) {
     }
 }
 
+/**
+ * A weak area, still primarily a performance row.
+ *
+ * The row gains one low-emphasis text button rather than becoming a practice card or a click target
+ * of its own: the section exists to report where the learner is struggling, and a whole card that
+ * silently starts configuring practice would hide that meaning behind an unlabelled tap.
+ *
+ * The shortcut is offered because the row is here at all — the domain put it in the snapshot's weak
+ * areas — so nothing about weakness is re-decided from the percentage this card displays.
+ */
 @Composable
-private fun WeakAreaCard(area: WeakAreaUiModel) {
+private fun WeakAreaCard(
+    area: WeakAreaUiModel,
+    onPracticeClick: () -> Unit,
+) {
     val title = when (area.type) {
         WeakAreaType.TOPIC ->
             area.title ?: stringResource(Res.string.progress_topic_unavailable)
@@ -388,6 +423,14 @@ private fun WeakAreaCard(area: WeakAreaUiModel) {
         answeredCount = area.answeredCount,
         percentage = area.percentage,
         isWeak = true,
+        action = {
+            TextButton(
+                onClick = onPracticeClick,
+                modifier = Modifier.testTag(progressWeakAreaPracticeTag(area)),
+            ) {
+                Text(text = stringResource(Res.string.practice_shortcut_weak_area))
+            }
+        },
     )
 }
 

@@ -2,6 +2,8 @@ package org.artkachenko.kmp_learning_app.topic_study.topic_detail
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,6 +21,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -32,6 +35,8 @@ import kmp_learning_app.shared.generated.resources.learning_context_coverage_cou
 import kmp_learning_app.shared.generated.resources.learning_context_coverage_title
 import kmp_learning_app.shared.generated.resources.learning_context_explored
 import kmp_learning_app.shared.generated.resources.learning_context_not_studied
+import kmp_learning_app.shared.generated.resources.practice_shortcut_unseen
+import kmp_learning_app.shared.generated.resources.practice_shortcut_weak_area
 import kmp_learning_app.shared.generated.resources.progress_weak_label
 import kmp_learning_app.shared.generated.resources.topic_browser_error
 import kmp_learning_app.shared.generated.resources.topic_detail_accuracy_caption
@@ -42,6 +47,9 @@ import kmp_learning_app.shared.generated.resources.topic_detail_no_questions
 import kmp_learning_app.shared.generated.resources.topic_detail_not_found
 import kmp_learning_app.shared.generated.resources.topic_detail_start_practice
 import kmp_learning_app.shared.generated.resources.topic_detail_subtopics
+import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
+import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
+import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 import org.artkachenko.kmp_learning_app.ui.AccuracyHeadline
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
@@ -66,6 +74,27 @@ internal const val TopicDetailLoadingTag = "topic_detail_loading"
 internal const val TopicPracticeButtonTag = "topic_practice_button"
 internal const val SubtopicPracticeButtonTag = "subtopic_practice_button"
 
+/** The Topic's own targeted shortcuts, whose labels repeat on every Subtopic row below them. */
+internal const val TopicWeakPracticeTag = "topic_weak_practice"
+internal const val TopicUnseenPracticeTag = "topic_unseen_practice"
+
+internal fun subtopicWeakPracticeTag(subtopicId: String): String =
+    "subtopic_weak_practice_$subtopicId"
+
+internal fun subtopicUnseenPracticeTag(subtopicId: String): String =
+    "subtopic_unseen_practice_$subtopicId"
+
+/**
+ * The Topic's practice surface, with three kinds of practice entry point that must stay distinct.
+ *
+ * [onStartTopicPractice] and [onStartSubtopicPractice] are ordinary practice and are unchanged: they
+ * carry a scope only, so the builder applies its `ALL` default. [onPracticePreset] carries a scope
+ * *and* an existing question source, and is emitted only where this screen is already displaying the
+ * signal that justifies it — the domain's `isWeak` verdict, or coverage that still has current
+ * questions left in it. Neither is re-derived here, and neither ranks above the other: a scope that
+ * is both weak and partly covered offers both, because the learner chose to look at that scope.
+ * Choosing one for them is what Recommended Next does, elsewhere and on purpose.
+ */
 @Composable
 internal fun TopicDetailScreen(
     state: TopicDetailUiState,
@@ -73,6 +102,7 @@ internal fun TopicDetailScreen(
     onBack: () -> Unit,
     onStartTopicPractice: () -> Unit,
     onStartSubtopicPractice: (String) -> Unit,
+    onPracticePreset: (PracticePreset) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -101,6 +131,7 @@ internal fun TopicDetailScreen(
                     targetSubtopicId = targetSubtopicId,
                     onStartTopicPractice = onStartTopicPractice,
                     onStartSubtopicPractice = onStartSubtopicPractice,
+                    onPracticePreset = onPracticePreset,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -130,6 +161,7 @@ private fun TopicContent(
     targetSubtopicId: String?,
     onStartTopicPractice: () -> Unit,
     onStartSubtopicPractice: (String) -> Unit,
+    onPracticePreset: (PracticePreset) -> Unit,
     modifier: Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -180,6 +212,29 @@ private fun TopicContent(
                 ) {
                     Text(text = stringResource(Res.string.topic_detail_start_practice))
                 }
+                // Accelerators beside the primary action, never instead of it: with no analytics
+                // this block is simply empty and ordinary practice is unaffected.
+                TargetedPracticeActions(
+                    context = context,
+                    onPracticeWeakAreas = {
+                        onPracticePreset(
+                            PracticePreset(
+                                scope = AssessmentScope.Topic(state.topic.id),
+                                source = PracticeQuestionSource.WEAK_AREAS,
+                            ),
+                        )
+                    },
+                    onPracticeUnseen = {
+                        onPracticePreset(
+                            PracticePreset(
+                                scope = AssessmentScope.Topic(state.topic.id),
+                                source = PracticeQuestionSource.UNSEEN,
+                            ),
+                        )
+                    },
+                    weakTestTag = TopicWeakPracticeTag,
+                    unseenTestTag = TopicUnseenPracticeTag,
+                )
                 SectionHeading(
                     text = stringResource(Res.string.topic_detail_subtopics),
                 )
@@ -189,6 +244,7 @@ private fun TopicContent(
             items = state.subtopics,
             key = { it.subtopic.id },
         ) { item ->
+            val context = item.learningContext
             // The row itself starts practice, so the per-row filled button is gone: it duplicated
             // the row's own click target and competed with the topic-level primary action.
             Card(
@@ -200,7 +256,12 @@ private fun TopicContent(
                 ),
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, top = 16.dp)
+                        // The targeted actions supply the bottom inset when there are any, so the
+                        // row does not leave a full gap above controls that belong to it.
+                        .padding(bottom = if (context.hasTargetedPractice) 4.dp else 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -213,7 +274,6 @@ private fun TopicContent(
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
-                        val context = item.learningContext
                         if (context == null) {
                             // No analytics to show, so the row keeps the authored count it has
                             // always had rather than claiming the Subtopic is unstudied.
@@ -232,7 +292,7 @@ private fun TopicContent(
                         }
                     }
                     // Absent rather than 0% for a Subtopic with no recorded answer.
-                    item.learningContext?.accuracyPercentage?.let { accuracy ->
+                    context?.accuracyPercentage?.let { accuracy ->
                         Column(horizontalAlignment = Alignment.End) {
                             Text(
                                 text = formatAccuracy(accuracy),
@@ -253,6 +313,81 @@ private fun TopicContent(
                         modifier = Modifier.size(20.dp),
                     )
                 }
+                // Inside the card but outside its click target, and labelled: tapping the row is
+                // still ordinary practice for the whole Subtopic, and these say what else they do.
+                TargetedPracticeActions(
+                    context = context,
+                    onPracticeWeakAreas = {
+                        onPracticePreset(
+                            PracticePreset(
+                                scope = AssessmentScope.Subtopic(item.subtopic.id),
+                                source = PracticeQuestionSource.WEAK_AREAS,
+                            ),
+                        )
+                    },
+                    onPracticeUnseen = {
+                        onPracticePreset(
+                            PracticePreset(
+                                scope = AssessmentScope.Subtopic(item.subtopic.id),
+                                source = PracticeQuestionSource.UNSEEN,
+                            ),
+                        )
+                    },
+                    weakTestTag = subtopicWeakPracticeTag(item.subtopic.id),
+                    unseenTestTag = subtopicUnseenPracticeTag(item.subtopic.id),
+                    modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 4.dp),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Whether a scope's already-derived context justifies any targeted shortcut at all.
+ *
+ * Defined on the nullable receiver so an unknown context answers `false` here rather than at every
+ * call site: unknown analytics justify nothing, and that is a different statement from "not weak,
+ * nothing left to see". This is also the only place the layout below asks the question, so a row's
+ * spacing and its controls cannot disagree about whether it has any.
+ */
+private val LearningContextUiModel?.hasTargetedPractice: Boolean
+    get() = this != null && (isWeak || hasUnseenQuestions)
+
+/**
+ * The targeted shortcuts a scope's already-derived learning context justifies, if any.
+ *
+ * Both conditions are read verbatim off the model: [LearningContextUiModel.isWeak] is the domain's
+ * verdict and is never re-derived from the accuracy shown beside it, and
+ * [LearningContextUiModel.hasUnseenQuestions] only restates the coverage counts already displayed.
+ *
+ * Both can be true at once and both are then offered. Which Questions either source actually yields
+ * is decided later, by the selector, from history as it stands when practice is configured.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TargetedPracticeActions(
+    context: LearningContextUiModel?,
+    onPracticeWeakAreas: () -> Unit,
+    onPracticeUnseen: () -> Unit,
+    weakTestTag: String,
+    unseenTestTag: String,
+    modifier: Modifier = Modifier,
+) {
+    if (context == null || !context.hasTargetedPractice) return
+    // Wraps rather than clips: two labelled text buttons do not share a line on a compact width or
+    // at a large font scale.
+    FlowRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (context.isWeak) {
+            TextButton(onClick = onPracticeWeakAreas, modifier = Modifier.testTag(weakTestTag)) {
+                Text(text = stringResource(Res.string.practice_shortcut_weak_area))
+            }
+        }
+        if (context.hasUnseenQuestions) {
+            TextButton(onClick = onPracticeUnseen, modifier = Modifier.testTag(unseenTestTag)) {
+                Text(text = stringResource(Res.string.practice_shortcut_unseen))
             }
         }
     }

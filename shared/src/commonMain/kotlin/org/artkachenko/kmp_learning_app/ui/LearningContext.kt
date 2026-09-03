@@ -50,6 +50,17 @@ internal data class LearningContextUiModel(
     /** Whether there is a current bank to describe, so a surface can omit an empty "0 of 0". */
     val hasCoverageScope: Boolean
         get() = totalQuestionCount > 0
+
+    /**
+     * Whether the coverage already derived above leaves current questions the learner has not met.
+     *
+     * This restates the two counts and nothing else. It is an *observation* used to decide whether
+     * offering unseen practice makes sense, never a selection rule: which stable Question IDs are
+     * actually unseen stays entirely with the practice selector, which re-derives them from
+     * completed history at the moment practice is configured.
+     */
+    val hasUnseenQuestions: Boolean
+        get() = attemptedQuestionCount < totalQuestionCount
 }
 
 /**

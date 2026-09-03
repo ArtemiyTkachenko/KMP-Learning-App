@@ -25,6 +25,11 @@ import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.artkachenko.kmp_learning_app.AppRoute
+import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
+import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
+import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingContext
+import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingTarget
+import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 import org.artkachenko.kmp_learning_app.ui.topicVisualMarkerTag
 
@@ -551,6 +556,169 @@ internal class TopicBrowserScreenTest {
         onNodeWithText("Application Architecture & Design Principles")
             .assertHasClickAction()
             .assertHeightIsAtLeast(MinimumTouchTarget)
+    }
+
+    @Test
+    fun aContinueContextRendersItsScopeAndParentTopicAboveTheCatalogue() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                        continueStudying = ContinueStudyingContext(
+                            target = ContinueStudyingTarget.Topic("kotlin", "coroutines"),
+                            scopeName = "Coroutines",
+                            parentTopicName = "Kotlin",
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(TopicBrowserContinueStudyingTag).assertIsDisplayed()
+        onNodeWithText("Continue studying").assertIsDisplayed()
+        onNodeWithText("Coroutines").assertIsDisplayed()
+        // The card is a shortcut, not a report: no score, coverage, or rationale appears on it.
+        onNodeWithText("accuracy").assertDoesNotExist()
+        onNodeWithText("Weak area").assertDoesNotExist()
+    }
+
+    @Test
+    fun aTargetedPracticeContextNamesThePracticeItReturnsTo() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                        continueStudying = ContinueStudyingContext(
+                            target = ContinueStudyingTarget.Practice(
+                                PracticePreset(
+                                    scope = AssessmentScope.Subtopic("coroutines"),
+                                    source = PracticeQuestionSource.WEAK_AREAS,
+                                ),
+                            ),
+                            scopeName = "Coroutines",
+                            parentTopicName = "Kotlin",
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("Coroutines").assertIsDisplayed()
+        onNodeWithText("Weak-area practice").assertIsDisplayed()
+    }
+
+    @Test
+    fun theContinueCardIsOneTargetEmittingTheSemanticContinueTarget() = runComposeUiTest {
+        var clickedTarget: ContinueStudyingTarget? = null
+        val target = ContinueStudyingTarget.Topic("kotlin", "coroutines")
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                        continueStudying = ContinueStudyingContext(target, "Coroutines", "Kotlin"),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                    onContinueStudyingClick = { clickedTarget = it },
+                )
+            }
+        }
+
+        // One tap, and no Continue/Configure/Dismiss row of competing actions.
+        onNodeWithTag(TopicBrowserContinueStudyingTag)
+            .assertHasClickAction()
+            .assertHeightIsAtLeast(MinimumTouchTarget)
+            .performClick()
+
+        assertEquals(target, clickedTarget)
+    }
+
+    @Test
+    fun noContinueContextLeavesTheCatalogueExactlyAsItWas() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(TopicBrowserContinueStudyingTag).assertDoesNotExist()
+        onNodeWithText("Continue studying").assertDoesNotExist()
+        onNodeWithText("Kotlin").assertIsDisplayed()
+    }
+
+    @Test
+    fun theContinueCardIsAbsentFromSearchResults() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                        query = "kotlin",
+                        topicMatches = listOf(topicItem("kotlin", "Kotlin")),
+                        // The state holder already withholds it while a query is active; this
+                        // asserts the screen cannot reintroduce it even if one arrives.
+                        continueStudying = ContinueStudyingContext(
+                            target = ContinueStudyingTarget.Topic("kotlin"),
+                            scopeName = "Kotlin",
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(TopicBrowserContinueStudyingTag).assertDoesNotExist()
+        onNodeWithText("Kotlin").assertIsDisplayed()
+    }
+
+    @Test
+    fun theContinueCardStaysReadableBesideTheTopicCardsOnACompactScreen() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                Box(Modifier.size(320.dp, 640.dp)) {
+                    TopicBrowserScreen(
+                        state = TopicBrowserUiState.Content(
+                            topics = listOf(
+                                topicItem(
+                                    "architecture",
+                                    "Application Architecture & Design Principles",
+                                    learningContext(14, 31, accuracy = 68.0),
+                                ),
+                            ),
+                            continueStudying = ContinueStudyingContext(
+                                target = ContinueStudyingTarget.Topic("kotlin", "coroutines"),
+                                scopeName = "Structured concurrency & cancellation",
+                                parentTopicName = "Kotlin Language & JVM Fundamentals",
+                            ),
+                        ),
+                        onTopicClick = {},
+                        onRetry = {},
+                    )
+                }
+            }
+        }
+
+        onNodeWithText("Continue studying").assertIsDisplayed()
+        onNodeWithText("Structured concurrency & cancellation").assertIsDisplayed()
+        onNodeWithText("Kotlin Language & JVM Fundamentals").assertIsDisplayed()
+        // The Topic rows below are unchanged by the addition.
+        onNodeWithText("Application Architecture & Design Principles").assertIsDisplayed()
+        onNodeWithText("14 of 31 explored").assertIsDisplayed()
+        onNodeWithText("68%").assertIsDisplayed()
     }
 
     @Test

@@ -32,6 +32,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
+import kmp_learning_app.shared.generated.resources.continue_studying_source_mistakes
+import kmp_learning_app.shared.generated.resources.continue_studying_source_unseen
+import kmp_learning_app.shared.generated.resources.continue_studying_source_weak_areas
+import kmp_learning_app.shared.generated.resources.continue_studying_title
 import kmp_learning_app.shared.generated.resources.learning_context_accuracy
 import kmp_learning_app.shared.generated.resources.learning_context_explored
 import kmp_learning_app.shared.generated.resources.learning_context_not_studied
@@ -46,6 +50,9 @@ import kmp_learning_app.shared.generated.resources.topic_browser_search_subtopic
 import kmp_learning_app.shared.generated.resources.topic_browser_search_topics
 import kmp_learning_app.shared.generated.resources.topic_browser_subtitle
 import kmp_learning_app.shared.generated.resources.topic_browser_title
+import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
+import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingContext
+import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingTarget
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 import org.artkachenko.kmp_learning_app.ui.SectionHeading
@@ -67,6 +74,7 @@ internal const val TopicBrowserLoadingTag = "topic_browser_loading"
 internal const val TopicBrowserHeaderTag = "topic_browser_header"
 internal const val TopicBrowserViewportTag = "topic_browser_viewport"
 internal const val TopicBrowserSearchFieldTag = "topic_browser_search_field"
+internal const val TopicBrowserContinueStudyingTag = "topic_browser_continue_studying"
 
 /**
  * Space between the top safe area and the heading.
@@ -88,6 +96,7 @@ internal fun TopicBrowserScreen(
     topWindowInsets: WindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top),
     onSubtopicClick: (topicId: String, subtopicId: String) -> Unit = { _, _ -> },
     onSearchQueryChange: (String) -> Unit = {},
+    onContinueStudyingClick: (ContinueStudyingTarget) -> Unit = {},
 ) {
     Column(
         modifier = modifier
@@ -132,6 +141,10 @@ internal fun TopicBrowserScreen(
                     state.query.isBlank() -> TopicList(
                         topics = state.topics,
                         onTopicClick = onTopicClick,
+                        // Absent unless the state carries one, which it never does while a query
+                        // is active: the card belongs to browsing, not to search results.
+                        continueStudying = state.continueStudying,
+                        onContinueStudyingClick = onContinueStudyingClick,
                     )
                     state.topicMatches.isEmpty() && state.subtopicMatches.isEmpty() -> {
                         ScreenMessage(
@@ -196,12 +209,24 @@ private fun TopicSearchField(
 private fun TopicList(
     topics: List<TopicBrowserItemUiModel>,
     onTopicClick: (String) -> Unit,
+    continueStudying: ContinueStudyingContext?,
+    onContinueStudyingClick: (ContinueStudyingTarget) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = AppListBottomPadding),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        // Inside the list rather than pinned above it: a shortcut is worth one glance on arrival,
+        // and scrolls away for a learner who came to browse the catalogue instead.
+        continueStudying?.let { context ->
+            item(key = "continue_studying") {
+                ContinueStudyingCard(
+                    context = context,
+                    onClick = onContinueStudyingClick,
+                )
+            }
+        }
         items(
             items = topics,
             key = { it.topicId },
@@ -213,6 +238,91 @@ private fun TopicList(
         }
     }
 }
+
+/**
+ * The way back into what the learner was last working on.
+ *
+ * One card and one tap, deliberately: it names the context and goes there. It carries no score, no
+ * coverage figure, and no explanation of why it is being offered — the reason is simply that this
+ * is where they were, and a second competing action would turn the top of Topics into a dashboard.
+ * Whether the destination is Topic detail or a practice setup is the card's supporting line, not a
+ * choice presented here.
+ */
+@Composable
+private fun ContinueStudyingCard(
+    context: ContinueStudyingContext,
+    onClick: (ContinueStudyingTarget) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        onClick = { onClick(context.target) },
+        modifier = modifier.fillMaxWidth().testTag(TopicBrowserContinueStudyingTag),
+        shape = MaterialTheme.shapes.medium,
+        // A quiet container rather than the primaryContainer the Interview hero uses: this is a
+        // shortcut sitting above the Topic cards, and it should read as one of them with emphasis.
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+        ),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(AppSpacing.Comfortable),
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+            ) {
+                Text(
+                    text = stringResource(Res.string.continue_studying_title),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+                Text(
+                    // Resolved from the current curriculum, so a renamed Topic is named correctly
+                    // here without anything stored in history being migrated.
+                    text = context.scopeName,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+                context.supportingLabel()?.let { label ->
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                }
+            }
+            Icon(
+                imageVector = AppIcons.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+/**
+ * The single supporting line: which Topic a Subtopic belongs to, or which practice intent is being
+ * returned to.
+ *
+ * The domain hands over a typed source rather than a stored sentence, so the copy is written and
+ * localized here. `ALL` has no label because it never reaches this card — an untargeted run returns
+ * to content, where the parent Topic is the useful line instead.
+ */
+@Composable
+private fun ContinueStudyingContext.supportingLabel(): String? =
+    when (val target = target) {
+        is ContinueStudyingTarget.Topic -> parentTopicName
+        is ContinueStudyingTarget.Practice -> when (target.preset.source) {
+            PracticeQuestionSource.ALL -> null
+            PracticeQuestionSource.UNSEEN -> Res.string.continue_studying_source_unseen
+            PracticeQuestionSource.WEAK_AREAS -> Res.string.continue_studying_source_weak_areas
+            PracticeQuestionSource.UNRESOLVED_MISTAKES ->
+                Res.string.continue_studying_source_mistakes
+        }?.let { stringResource(it) }
+    }
 
 /**
  * One Topic card, in the order a learner reads it: what the Topic is, how much of it they have

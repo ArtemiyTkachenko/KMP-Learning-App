@@ -606,6 +606,76 @@ remain the Practice Builder's defaults, and no recommendation starts an attempt.
 There is no random choice, wall-clock input, persistence, ML/LLM step, streak,
 engagement optimization, or blended score.
 
+## Continue Studying
+
+`ContinueStudyingResolver` answers a different question from the recommendation
+policy above, and neither calls the other:
+
+| Surface | Question | Input |
+| --- | --- | --- |
+| Continue Studying | "Where was I working, and how do I get back?" | Recency of completed focused study |
+| `LearningRecommendationPolicy` | "What should I work on now?" | Mistakes, weakness, coverage |
+
+The two are allowed to point at different places, and Continue Studying does not
+disappear because the recommendation would go elsewhere.
+
+Its only inputs are completed assessment history and current curriculum. History
+supplies stable IDs through the persisted `TestAttempt.config`; current curriculum
+decides whether those IDs still lead anywhere and supplies every label, so a
+renamed Topic is renamed on the card with nothing migrated. There is no
+`lastStudiedTopicId` column, preference, or resume flag: the information already
+exists in completed history, so no Room migration was needed and completion
+invalidation refreshes the shortcut through the same path Progress uses.
+
+`TestAttempt.toRecentStudyContext` is the one definition of recent study, shared
+with the recommendation policy's tie-break input. It refuses `IN_PROGRESS`
+attempts and reports Mixed runs as `RecentStudyContext.Mixed`. Continue Studying
+additionally needs the persisted practice source, which `RecentStudyContext`
+deliberately does not carry, so the resolver narrows back to the stored
+`AssessmentConfig.Focused` after that shared decision rather than duplicating it.
+
+Selection walks completed history in its existing newest-first order and takes the
+first entry that resolves to a currently usable context. It keeps walking rather
+than stopping at the newest one, so a single stale attempt cannot hide a usable
+context just behind it:
+
+| Historical context | Result |
+| --- | --- |
+| Mixed run | Skipped; no Topic is inferred from its Questions |
+| `IN_PROGRESS` attempt | Skipped; this feature never resumes |
+| Active Topic | Return to Topic detail |
+| Active Subtopic under an active Topic | Return to Topic detail at that Subtopic |
+| Deprecated Subtopic, parent Topic still active | Degrade to the parent Topic |
+| Subtopic missing entirely, or parent not active | Skipped; inspect older history |
+| Missing or deprecated Topic | Skipped; inspect older history |
+| Nothing usable left | No card |
+
+Source decides the destination kind. An `ALL` run returns to *content*, because
+reopening an assessment is a heavier answer than a shortcut tap asked for. A
+targeted run — unseen, weak areas, or unresolved mistakes — returns to the
+Practice Builder carrying `PracticePreset(scope, source)`, which the learner can
+edit before anything starts. Those sources are history-derived and will have moved
+on since the attempt completed; that is exactly why the builder is reopened and
+re-preflighted rather than a previous run being restored. No Question IDs are
+snapshotted and no eligible pool is carried.
+
+`ContinueStudyingTarget` cannot represent an attempt ID, and
+`ContinueStudyingRouteMapping` maps it only to `AppRoute.Topic` or the shared
+Practice Builder preset route, so returning to a learning context can never become
+resuming an assessment. A navigation test asserts no Continue target reaches
+`FocusedPracticeAttempt`, `MixedInterviewAttempt`, or a route that starts a run.
+
+The card lives on the existing Topics surface as optional enrichment on
+`TopicBrowserUiState.Content`, never as a screen state of its own: unknown,
+failed, or empty history and a failed resolution all leave Topics browsing,
+searching, and opening exactly as they were, with the card simply absent.
+`TopicBrowserViewModel` derives it from the same `AssessmentHistoryStore` emission
+that already produces Topic learning context — one sequential collector, no second
+history read — so both derivations see the same history and an older one cannot
+land on top of a newer. The card is withheld while a search query is active: a
+learner who has started typing has said what they are looking for, and the
+shortcut is not a search result.
+
 ## The Practice Builder
 
 Choosing a Topic or Subtopic no longer starts an assessment; it opens a builder
@@ -622,6 +692,18 @@ case: an empty level set is representable in the domain and explicitly
 non-runnable, so a screen that could reach it would strand the learner on a Start
 button that can never work. Enforcing it in the state holder means one
 implementation rather than one per control that touches levels.
+
+The builder can be opened on an initial source as well as a scope.
+`AppRoute.PracticeBuilderTopic` and `PracticeBuilderSubtopic` carry a typed
+`PracticeQuestionSource` defaulting to `ALL`, which keeps the Topic Detail entry
+semantically unchanged, and `PracticePreset.toPracticeBuilderRoute` is the single
+mapping from a semantic practice intent to that route. One preset-capable route
+per scope rather than a route per practice kind: a later shortcut surface reuses
+this mapping instead of adding a parallel preset system. An arriving source seeds
+the initial state and nothing else — count and levels stay the builder's defaults,
+an unsupported source falls back to `ALL` exactly as `selectSource` refuses one,
+availability is re-checked normally, the learner can still change it, and nothing
+starts on arrival.
 
 Source options carry availability as a property of the *policy*, not of the
 learner's content. All four current sources are selectable. The builder reads that through

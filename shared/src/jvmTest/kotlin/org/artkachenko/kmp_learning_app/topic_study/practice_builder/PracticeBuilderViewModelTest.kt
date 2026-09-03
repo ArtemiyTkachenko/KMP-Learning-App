@@ -401,6 +401,62 @@ internal class PracticeBuilderViewModelTest {
     }
 
     @Test
+    fun anArrivingPresetSeedsTheSourceAndKeepsEveryOtherDefault() = runViewModelTest {
+        val viewModel = viewModel(
+            scope = AssessmentScope.Topic("topic_a"),
+            curriculum = FakeCurriculumRepository(),
+            seenQuestionIds = listOf("q_foundation"),
+            initialSource = PracticeQuestionSource.UNSEEN,
+        )
+
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(PracticeQuestionSource.UNSEEN, state.source)
+        // The preset carries scope and source only: count and levels stay the builder's defaults
+        // rather than reconstructing the run the intent was remembered from.
+        assertEquals(DefaultPracticeQuestionCount, state.questionCount)
+        assertEquals(AllQuestionLevels, state.levels)
+        // And it is preflighted against current content, not against a snapshot: one of the three
+        // Questions in scope has since been seen.
+        assertEquals(2, availableCount(viewModel))
+    }
+
+    @Test
+    fun anArrivingPresetStartsNothingByItself() = runViewModelTest {
+        val viewModel = viewModel(
+            scope = AssessmentScope.Subtopic("subtopic_a"),
+            curriculum = FakeCurriculumRepository(),
+            initialSource = PracticeQuestionSource.WEAK_AREAS,
+        )
+
+        val event = async { viewModel.events.first() }
+        advanceUntilIdle()
+
+        assertEquals(PracticeQuestionSource.WEAK_AREAS, viewModel.uiState.value.source)
+        assertTrue(event.isActive, "Arriving on a preset must not start practice.")
+        event.cancel()
+    }
+
+    @Test
+    fun anArrivingPresetCanStillBeEditedBeforeStarting() = runViewModelTest {
+        val viewModel = viewModel(
+            scope = AssessmentScope.Topic("topic_a"),
+            curriculum = FakeCurriculumRepository(),
+            initialSource = PracticeQuestionSource.UNSEEN,
+        )
+        advanceUntilIdle()
+
+        viewModel.selectSource(PracticeQuestionSource.ALL)
+        viewModel.selectQuestionCount(5)
+        advanceUntilIdle()
+
+        val config = startedConfig(viewModel)
+        assertEquals(PracticeQuestionSource.ALL, config.source)
+        assertEquals(5, config.questionCount)
+    }
+
+    @Test
     fun startIsIgnoredWhileTheConfigurationCannotRun() = runViewModelTest {
         val curriculum = FakeCurriculumRepository(questions = emptyList())
         val viewModel = viewModel(AssessmentScope.Topic("topic_a"), curriculum)
@@ -436,6 +492,7 @@ internal class PracticeBuilderViewModelTest {
         curriculum: CurriculumRepository,
         seenQuestionIds: List<String> = emptyList(),
         completedAttempts: List<TestAttempt>? = null,
+        initialSource: PracticeQuestionSource = PracticeQuestionSource.ALL,
     ): PracticeBuilderViewModel =
         PracticeBuilderViewModel(
             scope = scope,
@@ -447,6 +504,7 @@ internal class PracticeBuilderViewModelTest {
                 },
                 randomize = { it },
             ),
+            initialSource = initialSource,
         )
 
     private fun completedHistoryOf(seenQuestionIds: List<String>): List<TestAttempt> {

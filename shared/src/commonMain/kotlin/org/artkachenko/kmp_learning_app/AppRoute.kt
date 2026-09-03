@@ -50,15 +50,23 @@ internal sealed interface AppRoute : NavKey {
      *
      * Only the ID travels: the Topic or Subtopic name is resolved from the curriculum on arrival,
      * so a renamed Topic cannot be shown under a stale label saved into the back stack.
+     *
+     * [source] is the builder's *initial* selection, not a decided run. It defaults to `ALL`, which
+     * is the entry Topic Detail has always used, so opening the builder from content is unchanged.
+     * A caller that already knows which practice intent it means — a remembered targeted run, or a
+     * later guided-learning shortcut — passes it here rather than adding a route per source. Every
+     * other dimension stays the builder's: count, levels, preflight, and Start.
      */
     @Serializable
     data class PracticeBuilderTopic(
         val topicId: String,
+        val source: PracticeQuestionSource = PracticeQuestionSource.ALL,
     ) : AppRoute
 
     @Serializable
     data class PracticeBuilderSubtopic(
         val subtopicId: String,
+        val source: PracticeQuestionSource = PracticeQuestionSource.ALL,
     ) : AppRoute
 
     /**

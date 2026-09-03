@@ -7,6 +7,7 @@ import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
+import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.toAssessmentConfig
 
 internal class PracticeBuilderRouteMappingTest {
@@ -32,6 +33,52 @@ internal class PracticeBuilderRouteMappingTest {
             AssessmentScope.Subtopic("subtopic_a"),
             AppRoute.PracticeBuilderSubtopic("subtopic_a").toAssessmentScope(),
         )
+    }
+
+    /** Opening from content is unchanged: scope only, and the builder's own ALL default. */
+    @Test
+    fun openingTheBuilderFromContentStillDefaultsToTheAllSource() {
+        assertEquals(
+            PracticeQuestionSource.ALL,
+            assertIsTopicBuilderRoute(AssessmentScope.Topic("topic_a").toPracticeBuilderRoute())
+                .source,
+        )
+        assertEquals(
+            PracticeQuestionSource.ALL,
+            assertIsSubtopicBuilderRoute(
+                AssessmentScope.Subtopic("subtopic_a").toPracticeBuilderRoute(),
+            ).source,
+        )
+    }
+
+    @Test
+    fun aTopicPresetOpensTheBuilderOnItsRememberedSource() {
+        val route = assertIsTopicBuilderRoute(
+            PracticePreset(
+                scope = AssessmentScope.Topic("topic_a"),
+                source = PracticeQuestionSource.UNSEEN,
+            ).toPracticeBuilderRoute(),
+        )
+
+        assertEquals(AppRoute.PracticeBuilderTopic("topic_a", PracticeQuestionSource.UNSEEN), route)
+        // Still the builder, never an assessment: a preset is a setup to inspect, not a run.
+        assertEquals(AssessmentScope.Topic("topic_a"), route.toAssessmentScope())
+    }
+
+    @Test
+    fun aSubtopicPresetOpensTheBuilderOnItsRememberedSource() {
+        val route = assertIsSubtopicBuilderRoute(
+            PracticePreset(
+                scope = AssessmentScope.Subtopic("subtopic_a"),
+                source = PracticeQuestionSource.WEAK_AREAS,
+            ).toPracticeBuilderRoute(),
+        )
+
+        assertEquals(
+            AppRoute.PracticeBuilderSubtopic("subtopic_a", PracticeQuestionSource.WEAK_AREAS),
+            route,
+        )
+        assertEquals(AssessmentScope.Subtopic("subtopic_a"), route.toAssessmentScope())
     }
 
     /**
@@ -93,6 +140,14 @@ internal class PracticeBuilderRouteMappingTest {
             route(setOf(QuestionLevel.ADVANCED, QuestionLevel.FOUNDATION)),
         )
     }
+
+    private fun assertIsTopicBuilderRoute(route: AppRoute): AppRoute.PracticeBuilderTopic =
+        route as? AppRoute.PracticeBuilderTopic
+            ?: error("Expected a topic practice builder route but was $route.")
+
+    private fun assertIsSubtopicBuilderRoute(route: AppRoute): AppRoute.PracticeBuilderSubtopic =
+        route as? AppRoute.PracticeBuilderSubtopic
+            ?: error("Expected a subtopic practice builder route but was $route.")
 
     private fun assertIsTopicRoute(route: AppRoute): AppRoute.FocusedTopicPractice =
         route as? AppRoute.FocusedTopicPractice

@@ -38,6 +38,15 @@ internal class PracticeBuilderViewModel(
     private val scope: AssessmentScope,
     private val curriculumRepository: CurriculumRepository,
     private val questionSelector: AssessmentQuestionSelector,
+    /**
+     * Which source the builder opens on. `ALL` is the entry from Topic Detail and stays the
+     * default; a caller that already knows the practice intent — a remembered targeted run —
+     * supplies it so the learner arrives on the setup they meant rather than on a reset one.
+     *
+     * It seeds the initial state and nothing more: availability, editing, and Start are unchanged,
+     * so an arriving preset is inspected and preflighted exactly like a hand-made selection.
+     */
+    private val initialSource: PracticeQuestionSource = PracticeQuestionSource.ALL,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(initialState())
     val uiState: StateFlow<PracticeBuilderUiState> = _uiState.asStateFlow()
@@ -124,10 +133,13 @@ internal class PracticeBuilderViewModel(
             ),
             questionCount = DefaultPracticeQuestionCount,
             questionCountOptions = PracticeQuestionCountOptions,
-            // Opening on every level and on ALL reproduces the run the old one-tap entry started,
-            // so the builder costs a returning learner one extra tap and no decisions.
+            // Opening on every level reproduces the run the old one-tap entry started, so the
+            // builder costs a returning learner one extra tap and no decisions.
             levels = AllQuestionLevels,
-            source = PracticeQuestionSource.ALL,
+            // A source with no selection policy is refused here for the same reason selectSource
+            // refuses it: an unselectable source must not become the state the screen opens on.
+            source = initialSource.takeIf(questionSelector::isSourceSupported)
+                ?: PracticeQuestionSource.ALL,
             sourceOptions = PracticeQuestionSource.entries.map { source ->
                 PracticeSourceOption(
                     source = source,

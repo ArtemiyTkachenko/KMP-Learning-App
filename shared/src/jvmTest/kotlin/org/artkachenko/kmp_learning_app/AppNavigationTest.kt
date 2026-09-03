@@ -6,8 +6,11 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.test.assertSame
+import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
+import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingTarget
+import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 
 internal class AppNavigationTest {
     @Test
@@ -86,6 +89,76 @@ internal class AppNavigationTest {
             AppRoute.PracticeBuilderSubtopic("subtopic_stable"),
             AppRoute.PracticeBuilderSubtopic("subtopic_stable"),
         )
+    }
+
+    @Test
+    fun continuingATopicContextReachesTheExistingTopicDetailRoute() {
+        assertEquals(
+            AppRoute.Topic(topicId = "kotlin", subtopicId = null),
+            ContinueStudyingTarget.Topic("kotlin").toAppRoute(),
+        )
+    }
+
+    @Test
+    fun continuingASubtopicContextReachesTheSameTopicRouteOpenedAtTheSubtopic() {
+        assertEquals(
+            AppRoute.Topic(topicId = "kotlin", subtopicId = "coroutines"),
+            ContinueStudyingTarget.Topic("kotlin", "coroutines").toAppRoute(),
+        )
+    }
+
+    @Test
+    fun continuingTargetedPracticeReachesTheBuilderCarryingItsSource() {
+        assertEquals(
+            AppRoute.PracticeBuilderTopic("kotlin", PracticeQuestionSource.WEAK_AREAS),
+            ContinueStudyingTarget.Practice(
+                PracticePreset(
+                    scope = AssessmentScope.Topic("kotlin"),
+                    source = PracticeQuestionSource.WEAK_AREAS,
+                ),
+            ).toAppRoute(),
+        )
+        assertEquals(
+            AppRoute.PracticeBuilderSubtopic("coroutines", PracticeQuestionSource.UNSEEN),
+            ContinueStudyingTarget.Practice(
+                PracticePreset(
+                    scope = AssessmentScope.Subtopic("coroutines"),
+                    source = PracticeQuestionSource.UNSEEN,
+                ),
+            ).toAppRoute(),
+        )
+    }
+
+    /**
+     * The rule this whole feature depends on: continuing recent study returns to a *learning
+     * context*, so no Continue target may ever produce a route that reopens a stored attempt.
+     */
+    @Test
+    fun noContinueTargetCanReachAnExistingAttempt() {
+        val routes = listOf(
+            ContinueStudyingTarget.Topic("kotlin"),
+            ContinueStudyingTarget.Topic("kotlin", "coroutines"),
+            ContinueStudyingTarget.Practice(
+                PracticePreset(AssessmentScope.Topic("kotlin"), PracticeQuestionSource.UNSEEN),
+            ),
+            ContinueStudyingTarget.Practice(
+                PracticePreset(
+                    AssessmentScope.Subtopic("coroutines"),
+                    PracticeQuestionSource.UNRESOLVED_MISTAKES,
+                ),
+            ),
+        ).map(ContinueStudyingTarget::toAppRoute)
+
+        routes.forEach { route ->
+            assertFalse(route is AppRoute.FocusedPracticeAttempt, "$route resumes an attempt")
+            assertFalse(route is AppRoute.MixedInterviewAttempt, "$route resumes an attempt")
+            // Nor a finished one, and nor a run configured to start immediately.
+            assertFalse(route is AppRoute.FocusedPracticeResult, "$route reopens a result")
+            assertFalse(route is AppRoute.MixedInterviewResult, "$route reopens a result")
+            assertFalse(route is AppRoute.FocusedTopicPractice, "$route starts an assessment")
+            assertFalse(route is AppRoute.FocusedSubtopicPractice, "$route starts an assessment")
+            assertFalse(route is AppRoute.MixedInterview, "$route starts an assessment")
+        }
     }
 
     private fun focusedTopicPractice(): AppRoute.FocusedTopicPractice =

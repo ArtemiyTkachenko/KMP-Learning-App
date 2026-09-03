@@ -132,6 +132,35 @@ Save/Unsave control beside the question heading, with no affordance at all while
 Saving is orthogonal to everything derived from history. It does not change scoring, coverage,
 weak areas, recommendations, or unresolved-mistake state, and no history invalidation follows it.
 
+## Browsing Saved Questions
+
+`AppRoute.SavedQuestions` is a detail of the Topics area, reached from a static entry in the Topic
+Browser that is present during normal browsing and withheld from search results, exactly as the two
+guided-learning cards are. The entry carries no count and reads no saved state, so the Topic Browser
+gains no dependency on saved-Question persistence and the destination stays reachable when nothing
+has been saved — which is the case its empty state exists for. Area navigation stays visible, since
+browsing saved content is review rather than an assessment in progress.
+
+`SavedQuestionsViewModel` observes the same app-scoped `SavedQuestionStateHolder` the three review
+surfaces observe; it never reads `SavedQuestionRepository` itself, which is what makes a Question
+saved on a result screen appear here, and one removed here disappear there. It adds exactly one
+thing: `SavedQuestionContentResolver` maps each saved identity through
+`CurriculumRepository.getQuestionById` — the historical resolver, never an ACTIVE listing — into
+`SavedQuestionItem.Available` or `SavedQuestionItem.Missing`, preserving the repository's saved
+order (`saved_at_epoch_millis DESC, question_id ASC`) exactly. DEPRECATED content resolves and
+renders like any other; a null lookup is a `Missing` placeholder that keeps its position and stays
+removable, because the learner still owns that identity; a *failing* lookup is a screen error with
+Retry, since a curriculum that cannot be read is not evidence that a Question was retired. Retry
+re-runs resolution against the loaded saved list explicitly, because a refresh that re-reads an
+equal saved list produces no new `StateFlow` emission to react to.
+
+`SavedQuestionContentUiModel` deliberately is not `ReviewQuestionUiModel`: that model describes one
+historical attempt, and a saved Question has none — the learner may have saved it having answered it
+either way. Nothing about correctness, selection, or score is fabricated to reuse
+`ReviewQuestionCard`. What is shared is the neutral presentation in `QuestionContentComponents.kt`
+— the answer-option container and tag, the explanation block, and the source links with their
+open-failure notice — which both `ReviewQuestionCard` and the saved-Question card render.
+
 Topic detail screens use a Material 3 top app bar for back navigation, with the
 navigation icon invoking the existing Navigation 3 back-stack pop. Detail and
 practice destinations should keep this phone-style toolbar affordance instead

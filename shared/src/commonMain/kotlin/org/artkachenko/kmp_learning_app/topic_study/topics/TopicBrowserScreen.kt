@@ -23,6 +23,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,6 +53,8 @@ import kmp_learning_app.shared.generated.resources.recommended_next_weak_area_ac
 import kmp_learning_app.shared.generated.resources.recommended_next_weak_area_action_generic
 import kmp_learning_app.shared.generated.resources.recommended_next_weak_area_reason
 import kmp_learning_app.shared.generated.resources.recommended_next_weak_area_reason_generic
+import kmp_learning_app.shared.generated.resources.saved_questions_entry_subtitle
+import kmp_learning_app.shared.generated.resources.saved_questions_title
 import kmp_learning_app.shared.generated.resources.topic_browser_empty
 import kmp_learning_app.shared.generated.resources.topic_browser_error
 import kmp_learning_app.shared.generated.resources.topic_browser_loading
@@ -91,6 +94,7 @@ internal const val TopicBrowserViewportTag = "topic_browser_viewport"
 internal const val TopicBrowserSearchFieldTag = "topic_browser_search_field"
 internal const val TopicBrowserContinueStudyingTag = "topic_browser_continue_studying"
 internal const val TopicBrowserRecommendedNextTag = "topic_browser_recommended_next"
+internal const val TopicBrowserSavedQuestionsTag = "topic_browser_saved_questions"
 
 /**
  * Space between the top safe area and the heading.
@@ -114,6 +118,7 @@ internal fun TopicBrowserScreen(
     onSearchQueryChange: (String) -> Unit = {},
     onContinueStudyingClick: (ContinueStudyingTarget) -> Unit = {},
     onRecommendedNextClick: (LearningRecommendationTarget) -> Unit = {},
+    onSavedQuestionsClick: () -> Unit = {},
 ) {
     Column(
         modifier = modifier
@@ -164,6 +169,7 @@ internal fun TopicBrowserScreen(
                         onRecommendedNextClick = onRecommendedNextClick,
                         continueStudying = state.continueStudying,
                         onContinueStudyingClick = onContinueStudyingClick,
+                        onSavedQuestionsClick = onSavedQuestionsClick,
                     )
                     state.topicMatches.isEmpty() && state.subtopicMatches.isEmpty() -> {
                         ScreenMessage(
@@ -232,6 +238,7 @@ private fun TopicList(
     onRecommendedNextClick: (LearningRecommendationTarget) -> Unit,
     continueStudying: ContinueStudyingContext?,
     onContinueStudyingClick: (ContinueStudyingTarget) -> Unit,
+    onSavedQuestionsClick: () -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -257,6 +264,11 @@ private fun TopicList(
                 )
             }
         }
+        // Below the guidance and above the catalogue, and always present: it is a way into content
+        // the learner curated themselves, not a third thing the app is suggesting they do.
+        item(key = "saved_questions") {
+            SavedQuestionsEntry(onClick = onSavedQuestionsClick)
+        }
         items(
             items = topics,
             key = { it.topicId },
@@ -264,6 +276,56 @@ private fun TopicList(
             TopicRow(
                 topic = topic,
                 onTopicClick = onTopicClick,
+            )
+        }
+    }
+}
+
+/**
+ * The way into the Questions the learner saved for themselves.
+ *
+ * Not a third guided-learning card, and drawn so that it cannot be read as one: the two cards above
+ * it are filled with the primary and secondary containers because a policy chose them, while this is
+ * an outlined utility row that says only where it goes. Nothing about it is derived — it carries no
+ * count, no recommendation, and no reason, so it never has to read saved state to decide whether the
+ * destination is worth offering. The empty state lives on the destination, which is exactly why the
+ * entry must remain reachable when nothing has been saved yet.
+ */
+@Composable
+private fun SavedQuestionsEntry(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedCard(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth().testTag(TopicBrowserSavedQuestionsTag),
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(AppSpacing.Comfortable),
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+            ) {
+                Text(
+                    text = stringResource(Res.string.saved_questions_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = stringResource(Res.string.saved_questions_entry_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Icon(
+                imageVector = AppIcons.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
             )
         }
     }
@@ -278,8 +340,9 @@ private fun TopicList(
  * supporting line, not a choice presented here.
  *
  * It remains a compact continuity shortcut beneath the one policy-driven action above it: Recommended
- * Next is the primary guidance, this is the secondary way back, and there is deliberately no third.
- * Neither turns the Topic rows below into recommendation cards.
+ * Next is the primary guidance, this is the secondary way back, and there are deliberately still only
+ * those two guided-learning cards. The Saved Questions entry below them is a learner-owned collection
+ * rather than a third suggestion. Neither card turns the Topic rows below into recommendation cards.
  */
 @Composable
 private fun ContinueStudyingCard(

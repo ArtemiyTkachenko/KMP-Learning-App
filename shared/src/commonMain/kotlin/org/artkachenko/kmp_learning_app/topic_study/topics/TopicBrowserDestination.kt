@@ -13,6 +13,7 @@ internal fun TopicBrowserDestination(
     onSubtopicClick: (topicId: String, subtopicId: String) -> Unit,
     onContinueStudying: (ContinueStudyingTarget) -> Unit,
     onRecommendedNext: (LearningRecommendationTarget) -> Unit,
+    onSavedQuestions: () -> Unit,
     viewModel: TopicBrowserViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -27,5 +28,8 @@ internal fun TopicBrowserDestination(
         // stays unaware of Navigation 3 exactly as it is for Topic and Subtopic clicks.
         onContinueStudyingClick = onContinueStudying,
         onRecommendedNextClick = onRecommendedNext,
+        // A static entry: the screen never learns how many Questions are saved, so nothing here
+        // reads saved state to decide whether the destination exists.
+        onSavedQuestionsClick = onSavedQuestions,
     )
 }

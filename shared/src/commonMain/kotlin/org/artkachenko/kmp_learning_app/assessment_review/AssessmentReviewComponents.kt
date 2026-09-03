@@ -1,16 +1,12 @@
 package org.artkachenko.kmp_learning_app.assessment_review
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -18,26 +14,21 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.assessment_review_accuracy_caption
 import kmp_learning_app.shared.generated.resources.assessment_review_correct
 import kmp_learning_app.shared.generated.resources.assessment_review_correct_answer
-import kmp_learning_app.shared.generated.resources.assessment_review_explanation
 import kmp_learning_app.shared.generated.resources.assessment_review_incorrect
 import kmp_learning_app.shared.generated.resources.assessment_review_missing_question
 import kmp_learning_app.shared.generated.resources.assessment_review_partially_correct
 import kmp_learning_app.shared.generated.resources.assessment_review_save_question
 import kmp_learning_app.shared.generated.resources.assessment_review_score
 import kmp_learning_app.shared.generated.resources.assessment_review_selected
-import kmp_learning_app.shared.generated.resources.assessment_review_source
-import kmp_learning_app.shared.generated.resources.assessment_review_source_open_failed
 import kmp_learning_app.shared.generated.resources.assessment_review_unresolved_questions
 import kmp_learning_app.shared.generated.resources.assessment_review_unsave_question
 import org.artkachenko.kmp_learning_app.ui.AccuracyHeadline
-import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.PrimarySummaryCard
 import org.artkachenko.kmp_learning_app.ui.StatusBadge
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
@@ -95,9 +86,6 @@ internal fun UnresolvedReviewQuestionsNotice(
         color = AppThemeExtras.semanticColors.partiallyCorrect,
     )
 }
-
-/** Links sit flush with the card's text column rather than inset like a button. */
-private val SourceLinkPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)
 
 /**
  * Stable per-Question handle for the save action.
@@ -173,38 +161,12 @@ internal fun ReviewQuestionCard(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 question.answers.forEach { ReviewAnswerRow(it) }
             }
-            ExplanationBlock(question.explanation)
-            if (question.sources.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                    question.sources.forEach { source ->
-                        // A link, not a primary action: these used to be filled buttons stacked
-                        // inside the card, which competed with the answer content.
-                        TextButton(
-                            onClick = { onSourceClick(source.url) },
-                            contentPadding = SourceLinkPadding,
-                        ) {
-                            Icon(
-                                imageVector = AppIcons.OpenInNew,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                            )
-                            Text(
-                                stringResource(Res.string.assessment_review_source, source.title),
-                                modifier = Modifier.padding(start = AppSpacing.Related),
-                            )
-                        }
-                    }
-                }
-            }
-            // Rendered inside the card the user just tapped: source buttons sit deep in a
-            // scrolling list, so a notice at the top of the screen would be out of view.
-            if (failedSourceUrl != null && question.sources.any { it.url == failedSourceUrl }) {
-                Text(
-                    stringResource(Res.string.assessment_review_source_open_failed),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
+            QuestionExplanationBlock(question.explanation)
+            QuestionSources(
+                sources = question.sources,
+                onSourceClick = onSourceClick,
+                failedSourceUrl = failedSourceUrl,
+            )
         }
     }
 }
@@ -260,6 +222,10 @@ private fun QuestionOutcomeLabel(outcome: QuestionOutcome) {
     StatusBadge(text = text, contentColor = content, containerColor = container)
 }
 
+/**
+ * One answered option: the shared option container, coloured and labelled by how this attempt's
+ * selection related to the authored correct set.
+ */
 @Composable
 private fun ReviewAnswerRow(answer: ReviewAnswerUiModel) {
     val semantic = AppThemeExtras.semanticColors
@@ -275,80 +241,29 @@ private fun ReviewAnswerRow(answer: ReviewAnswerUiModel) {
         AnswerOutcome.MISSED, AnswerOutcome.NEUTRAL -> MaterialTheme.colorScheme.surface
     }
 
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.small,
-        color = container,
-        border = BorderStroke(1.dp, border),
-    ) {
-        Column(
-            Modifier.padding(AppSpacing.Grouped),
-            verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
-        ) {
-            Text(
-                answer.text,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            if (answer.wasSelected || answer.isCorrectAnswer) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (answer.wasSelected) {
-                        AnswerTag(
-                            text = stringResource(Res.string.assessment_review_selected),
-                            color = if (answer.isCorrectAnswer) semantic.correct else semantic.incorrect,
-                        )
-                    }
-                    if (answer.isCorrectAnswer) {
-                        AnswerTag(
-                            text = stringResource(Res.string.assessment_review_correct_answer),
-                            color = semantic.correct,
-                        )
-                    }
+    QuestionAnswerOption(
+        text = answer.text,
+        borderColor = border,
+        containerColor = container,
+        tags = if (answer.wasSelected || answer.isCorrectAnswer) {
+            {
+                if (answer.wasSelected) {
+                    QuestionAnswerTag(
+                        text = stringResource(Res.string.assessment_review_selected),
+                        color = if (answer.isCorrectAnswer) semantic.correct else semantic.incorrect,
+                    )
+                }
+                if (answer.isCorrectAnswer) {
+                    QuestionAnswerTag(
+                        text = stringResource(Res.string.assessment_review_correct_answer),
+                        color = semantic.correct,
+                    )
                 }
             }
-        }
-    }
-}
-
-/** Small, coloured, and bolder than the answer text so the labels stop competing with it. */
-@Composable
-private fun AnswerTag(
-    text: String,
-    color: Color,
-) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelMedium,
-        color = color,
+        } else {
+            null
+        },
     )
-}
-
-@Composable
-private fun ExplanationBlock(explanation: String) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.small,
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-    ) {
-        Column(
-            Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(
-                stringResource(Res.string.assessment_review_explanation),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                explanation,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
-    }
 }
 
 @Composable

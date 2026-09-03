@@ -24,6 +24,7 @@ import org.artkachenko.kmp_learning_app.mixed_interview.toAssessmentConfig
 import org.artkachenko.kmp_learning_app.mixed_interview.toAssessmentTakingLaunch
 import org.artkachenko.kmp_learning_app.progress.ProgressDestination
 import org.artkachenko.kmp_learning_app.progress.ProgressTopicDestination
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsDestination
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.FocusedPracticeDestination
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.toAssessmentConfig
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultDestination
@@ -137,6 +138,20 @@ private fun AppShell(
                         // those are areas rather than details, so the mapping selects or pushes as
                         // that destination requires.
                         onRecommendedNext = navigator::openRecommendation,
+                        // A detail of the Topics area, pushed like Topic detail is. Saved
+                        // Questions are learner-curated content, so they stay inside the area the
+                        // catalogue lives in rather than becoming a fifth navigation destination.
+                        onSavedQuestions = {
+                            navigator.push(AppRoute.SavedQuestions)
+                        },
+                    )
+                }
+                entry<AppRoute.SavedQuestions> {
+                    SavedQuestionsDestination(
+                        onBack = { popBack() },
+                        // Back to the Topics catalogue this was opened from, rather than selecting
+                        // the area: this route is already inside Topics.
+                        onBrowseTopics = { popBack() },
                     )
                 }
                 entry<AppRoute.Interview> {

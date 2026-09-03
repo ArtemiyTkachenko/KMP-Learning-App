@@ -180,6 +180,15 @@
     <string name="focused_result_repeat_source_missing">The original attempt is no longer available.</string>
     <string name="focused_result_repeat_no_questions">No practice questions are currently available for this scope.</string>
     <string name="focused_result_repeat_error">Practice could not be started. Try again.</string>
+    <string name="saved_questions_title">Saved questions</string>
+    <string name="saved_questions_entry_subtitle">Review questions you saved</string>
+    <string name="saved_questions_description">Questions you saved while reviewing, most recently saved first.</string>
+    <string name="saved_questions_loading">Loading saved questions</string>
+    <string name="saved_questions_empty">No saved questions yet.</string>
+    <string name="saved_questions_empty_detail">Save a question while reviewing an assessment or your mistakes and it will appear here.</string>
+    <string name="saved_questions_empty_action">Browse topics</string>
+    <string name="saved_questions_error">Saved questions could not be loaded.</string>
+    <string name="saved_questions_remove">Remove</string>
     <string name="app_startup_loading">Preparing local curriculum</string>
     <string name="app_startup_error">Local curriculum could not be initialized</string>
 </resources>

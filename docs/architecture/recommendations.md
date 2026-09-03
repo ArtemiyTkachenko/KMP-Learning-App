@@ -189,3 +189,25 @@ Nothing is preflighted on the originating surface and no candidate count is
 cached. Learning state can legitimately change between a shortcut being drawn and
 being tapped; the builder is the screen that re-checks against current content and
 reports an empty result honestly.
+
+## How guidance is verified
+
+Guided learning is derived rather than stored, so its behaviour is only as
+trustworthy as the layer each claim is tested at. The responsibilities are kept
+apart deliberately, and a claim proved at one layer is not re-proved at another:
+
+| Layer | What it establishes |
+| --- | --- |
+| `LearningRecommendationPolicy` tests | Which action wins, for given facts: precedence, weak-area order, coverage tie-breaks, determinism |
+| `LearningRecommendationResolver` tests | That the facts handed to the policy are the established ones, and that an unknown count fails rather than reading as zero |
+| `TopicBrowserViewModel` tests | The whole derivation over real progress and mistake components: representative learner states, and the two guided surfaces coexisting from one history emission |
+| `GuidedLearningPracticePresetIntegrationTest` | That a preset the policy produced is still runnable and editable once the real Practice Builder has preflighted it |
+| `AppNavigationTest` | That a target reaches an existing capability, and never an attempt, result, or configured run |
+| Compose tests | Rendering and callbacks for an already-derived model, never policy |
+
+The representative states covered are a new learner, competing unresolved/weak/
+unseen signals, weak-before-coverage, unseen only, an extensive healthy history,
+and history naming content that has since been retired. Target and rationale are
+asserted together everywhere, because a recommendation is one atomic result: an
+explanation derived separately from the decision it explains could disagree with
+it.

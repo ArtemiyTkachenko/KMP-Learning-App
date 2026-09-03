@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app.topic_study
 
 import kotlin.test.AfterTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -17,6 +18,7 @@ import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
+import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.history.AppCoroutineScope
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
@@ -35,6 +37,7 @@ import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressTopicViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressViewModel
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
+import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
 import org.koin.core.parameter.parametersOf
@@ -109,6 +112,25 @@ internal class TopicStudyPresentationModuleTest {
                 app.koin.get<AssessmentTakingViewModel> {
                     parametersOf(AssessmentTakingLaunch.ExistingAttempt("attempt"))
                 },
+            )
+            // The Practice Builder is reached both ways: from content with a scope alone, and from
+            // a guided-learning or contextual preset that also names the source it opens on. The
+            // module reads that second parameter as optional, so both entries have to resolve and
+            // the preset one has to arrive on its own source rather than on the ALL default.
+            assertEquals(
+                PracticeQuestionSource.ALL,
+                app.koin.get<PracticeBuilderViewModel> {
+                    parametersOf(AssessmentScope.Topic("topic"))
+                }.uiState.value.source,
+            )
+            assertEquals(
+                PracticeQuestionSource.WEAK_AREAS,
+                app.koin.get<PracticeBuilderViewModel> {
+                    parametersOf(
+                        AssessmentScope.Subtopic("subtopic"),
+                        PracticeQuestionSource.WEAK_AREAS,
+                    )
+                }.uiState.value.source,
             )
             assertIs<AssessmentSessionLoader>(app.koin.get<AssessmentSessionLoader>())
             assertIs<AssessmentRetakeService>(app.koin.get<AssessmentRetakeService>())

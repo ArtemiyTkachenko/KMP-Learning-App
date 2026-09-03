@@ -45,6 +45,7 @@ import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationTa
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 import org.artkachenko.kmp_learning_app.guided_learning.UnresolvedMistakeCounter
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
+import org.artkachenko.kmp_learning_app.learning_progress.WeakArea
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 
@@ -810,6 +811,172 @@ internal class TopicBrowserViewModelTest {
         assertNotNull(recommendedNext(viewModel))
     }
 
+    /**
+     * E17-05: the precedence the policy documents, with every competing signal genuinely present
+     * rather than assumed — and each of them derived by the same production components the
+     * recommendation reads.
+     */
+    @Test
+    fun unresolvedMistakesOutrankACoexistingWeakAreaAndRemainingCoverage() = runViewModelTest {
+        val viewModel = loadedViewModel(
+            history = historyRepository(
+                answer("q_compose_1", false),
+                answer("q_compose_2", false),
+                answer("q_compose_3", false),
+            ),
+        )
+
+        // The other two signals are real: the same derivation has already marked Compose weak on
+        // this screen and reports Questions the learner has not seen.
+        val compose = assertNotNull(topic(viewModel, "compose").learningContext)
+        assertTrue(compose.isWeak, "Compose should be a competing weak area.")
+        assertTrue(compose.hasUnseenQuestions, "Compose should still have unseen coverage.")
+
+        val recommendation = assertNotNull(recommendedNext(viewModel))
+        // Mistakes win, and the count is the mistake queue's own rather than a tally of answers.
+        assertEquals(LearningRecommendationTarget.MistakeReview, recommendation.target)
+        assertEquals(
+            LearningRecommendationRationale.UnresolvedMistakes(count = 3),
+            recommendation.rationale,
+        )
+    }
+
+    /**
+     * E17-05: the two guided surfaces answer different questions, so both may be offered at once.
+     *
+     * Neither is suppressed, deduplicated, or re-decided because the other exists, and both describe
+     * the same history emission rather than two independently timed reads.
+     */
+    @Test
+    fun bothGuidedSurfacesAreOfferedTogetherWithoutSuppressingEachOther() = runViewModelTest {
+        val history = historyRepository(
+            listOf(
+                completedFocusedAttempt("newer", "compose"),
+                completedAttempt("older", answer("q_architecture_1", false)),
+            ),
+        )
+        val viewModel = viewModel(continueStudyingRepository(), history)
+        advanceUntilIdle()
+
+        val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        // Recency: the Topic the learner was last practising.
+        val continueContext = assertNotNull(state.continueStudying)
+        assertEquals(ContinueStudyingTarget.Topic("compose"), continueContext.target)
+        assertEquals("Compose UI", continueContext.scopeName)
+        // Priority: a different capability entirely, because an unresolved mistake outranks
+        // recency. The card that points elsewhere does not remove the one that points back.
+        val recommendation = assertNotNull(state.recommendedNext)
+        assertEquals(LearningRecommendationTarget.MistakeReview, recommendation.target)
+        assertEquals(
+            LearningRecommendationRationale.UnresolvedMistakes(count = 1),
+            recommendation.rationale,
+        )
+        // One emission produced both, so they cannot disagree about the history they describe.
+        assertEquals(1, history.readCount)
+    }
+
+    /**
+     * E17-05: history outlives the content it refers to, and guidance follows current content.
+     *
+     * A weak scope with nothing left to ask is not a usable action, so the policy steps over it to
+     * the next legitimate one instead of offering practice that would open on an empty builder.
+     */
+    @Test
+    fun aWeakScopeWithNoCurrentContentIsSkippedForTheNextUsableAction() = runViewModelTest {
+        val repository = catalogRepository()
+        val history = historyRepository(
+            listOf(
+                completedAttempt(
+                    "newer",
+                    answer("q_retired_scope_1", true),
+                    answer("q_retired_scope_2", true),
+                ),
+                completedAttempt(
+                    "older",
+                    answer("q_retired_scope_1", false),
+                    answer("q_retired_scope_2", false),
+                ),
+            ),
+        )
+        val viewModel = loadedViewModel(history = history, repository = repository)
+
+        // The premise, read from the same derivation the recommendation consumes rather than
+        // assumed: this history really does produce a weak area, and it names retired content.
+        val weakAreas = LearningProgressService(history, repository).load().weakAreas
+        assertTrue(
+            weakAreas.any {
+                it is WeakArea.Subtopic && it.performance.subtopicId == "retired_subtopic"
+            },
+            "Expected a weak area on the retired scope but was $weakAreas.",
+        )
+
+        val recommendation = assertNotNull(recommendedNext(viewModel))
+        // 50% over four occurrences is weak, and the scope those occurrences name no longer has
+        // ACTIVE content, so the coverage branch answers instead.
+        assertEquals(
+            LearningRecommendationTarget.Practice(
+                PracticePreset(
+                    scope = AssessmentScope.Topic("compose"),
+                    source = PracticeQuestionSource.UNSEEN,
+                ),
+            ),
+            recommendation.target,
+        )
+        assertEquals(
+            LearningRecommendationRationale.UnseenCoverage(
+                topicId = "compose",
+                unseenQuestionCount = 4,
+            ),
+            recommendation.rationale,
+        )
+    }
+
+    /**
+     * E17-05: an experienced learner with a healthy history is told nothing rather than something.
+     *
+     * Repeated Questions, a mistake resolved by a later correct answer, and answers to content that
+     * has since been retired are all present, and none of them manufactures an action once the
+     * current curriculum is fully covered.
+     */
+    @Test
+    fun anExtensiveHealthyHistoryIsOfferedNoFillerRecommendation() = runViewModelTest {
+        val viewModel = loadedViewModel(
+            history = historyRepository(
+                listOf(
+                    completedAttempt("third", answer("q_compose_1", true)),
+                    completedAttempt(
+                        "second",
+                        answer("q_compose_1", true),
+                        answer("q_compose_2", true),
+                        answer("q_compose_3", true),
+                        answer("q_compose_4", true),
+                        answer("q_compose_arch_1", true),
+                        answer("q_architecture_1", true),
+                        answer("q_architecture_2", true),
+                    ),
+                    completedAttempt(
+                        "first",
+                        answer("q_compose_1", false),
+                        answer("q_retired_1", true),
+                        answer("q_retired_2", true),
+                        answer("q_retired_3", true),
+                    ),
+                ),
+            ),
+        )
+
+        assertNull(recommendedNext(viewModel))
+        // The premise, from the rows this screen already shows: real accuracy, and nothing left
+        // unseen anywhere in the current curriculum.
+        val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        assertEquals(3, state.topics.size)
+        state.topics.forEach { row ->
+            val context = assertNotNull(row.learningContext, "${row.topicId} has no learning context")
+            assertNotNull(context.accuracyPercentage, "${row.topicId} has no history")
+            assertFalse(context.hasUnseenQuestions, "${row.topicId} still has unseen questions")
+        }
+    }
+
     private fun recommendedNext(viewModel: TopicBrowserViewModel): RecommendedNextUiModel? =
         assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value).recommendedNext
 
@@ -1027,11 +1194,16 @@ internal class TopicBrowserViewModelTest {
         /**
          * Answered in history and still resolvable to their Topic, but no longer in the ACTIVE
          * bank: they carry accuracy without contributing any current coverage.
+         *
+         * The `q_retired_scope_*` pair belongs to a Topic and Subtopic that have gone with them, so
+         * historical performance can name a scope that current curriculum cannot offer at all.
          */
         val RetiredQuestionsById = listOf(
             question("q_retired_1", "compose_architecture", "compose_arch_sub"),
             question("q_retired_2", "compose_architecture", "compose_arch_sub"),
             question("q_retired_3", "compose_architecture", "compose_arch_sub"),
+            question("q_retired_scope_1", "retired_topic", "retired_subtopic"),
+            question("q_retired_scope_2", "retired_topic", "retired_subtopic"),
         ).associateBy(Question::id)
 
         /**

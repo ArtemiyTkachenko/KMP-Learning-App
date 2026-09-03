@@ -71,6 +71,7 @@ import org.artkachenko.kmp_learning_app.progress.ProgressRecentTrendChartTag
 import org.artkachenko.kmp_learning_app.progress.progressHistoryCardTag
 import org.artkachenko.kmp_learning_app.progress.progressTopicCardTag
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
+import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserContinueStudyingTag
 import org.koin.compose.KoinApplication
 import org.koin.core.context.stopKoin
 import org.koin.dsl.koinConfiguration
@@ -107,7 +108,12 @@ internal class ProgressLearningJourneyIntegrationTest {
                     // one score: current coverage of the Topic beside its all-time accuracy, both
                     // read from a single derivation of the real snapshot.
                     waitForText("3 of 3 explored")
-                    onNodeWithText("Android").assertIsDisplayed()
+                    // The same real history also offers a Continue Studying shortcut back to the
+                    // Subtopic of the newest completed focused run, under its parent Topic. Both
+                    // it and the Topic card say "Android", so the card is targeted by the coverage
+                    // line only it carries.
+                    onNode(hasText("Android") and hasText("3 of 3 explored")).assertIsDisplayed()
+                    onNodeWithTag(TopicBrowserContinueStudyingTag).assertIsDisplayed()
                     onNodeWithText("40%").assertIsDisplayed()
                     onNodeWithText("Not studied yet").assertDoesNotExist()
                     assertTrue(onAllNodesWithText("Weak area").fetchSemanticsNodes().isNotEmpty())

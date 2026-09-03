@@ -7,7 +7,9 @@ import org.artkachenko.kmp_learning_app.mixed_interview.InterviewHistoryStateHol
 import org.artkachenko.kmp_learning_app.progress.ProgressStateHolder
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
+import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingViewModel
+import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingResolver
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewViewModel
 import org.artkachenko.kmp_learning_app.mixed_interview.InterviewStartViewModel
@@ -33,6 +35,11 @@ internal val topicStudyPresentationModule = module {
         MistakeReviewService(
             assessmentRepository = get(),
             assessmentReviewLoader = get(),
+        )
+    }
+    single {
+        ContinueStudyingResolver(
+            curriculumRepository = get(),
         )
     }
     single {
@@ -81,6 +88,7 @@ internal val topicStudyPresentationModule = module {
             curriculumRepository = get(),
             learningProgressService = get(),
             historyStore = get(),
+            continueStudyingResolver = get(),
         )
     }
     viewModel {
@@ -110,6 +118,9 @@ internal val topicStudyPresentationModule = module {
             scope = parameters.get(),
             curriculumRepository = get(),
             questionSelector = get(),
+            // Optional: opening the builder from content passes a scope alone and keeps the
+            // builder's own ALL default, while a preset-carrying entry supplies the source.
+            initialSource = parameters.getOrNull() ?: PracticeQuestionSource.ALL,
         )
     }
     viewModel { parameters ->

@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.topic_study.topics
 
+import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingContext
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 
 internal sealed interface TopicBrowserUiState {
@@ -20,6 +21,18 @@ internal sealed interface TopicBrowserUiState {
          */
         val topicMatches: List<TopicBrowserItemUiModel> = emptyList(),
         val subtopicMatches: List<SubtopicSearchResult> = emptyList(),
+        /**
+         * A shortcut back into recent study context, or `null` when there is no usable one.
+         *
+         * Optional enrichment on this state rather than a state of its own: Topics is a catalogue
+         * first, and a screen-level `ContinueStudying` state would let an absent, stale, or
+         * unreadable history decide whether the learner can browse at all.
+         *
+         * Absent while a query is active. The card is not a search result, and it is not a Topic
+         * that happens to match — a learner who has started typing has already said what they are
+         * looking for.
+         */
+        val continueStudying: ContinueStudyingContext? = null,
     ) : TopicBrowserUiState
 
     data object Empty : TopicBrowserUiState

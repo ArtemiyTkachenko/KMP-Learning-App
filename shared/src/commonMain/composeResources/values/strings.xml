@@ -17,6 +17,10 @@
     <string name="topic_browser_search_topics">Topics</string>
     <string name="topic_browser_search_subtopics">Subtopics</string>
     <string name="topic_browser_search_no_results">No topics or subtopics match &quot;%1$s&quot;</string>
+    <string name="continue_studying_title">Continue studying</string>
+    <string name="continue_studying_source_unseen">Unseen practice</string>
+    <string name="continue_studying_source_weak_areas">Weak-area practice</string>
+    <string name="continue_studying_source_mistakes">Mistake practice</string>
     <string name="learning_context_explored">%1$d of %2$d explored</string>
     <string name="learning_context_coverage_title">Curriculum coverage</string>
     <string name="learning_context_coverage_count">%1$d of %2$d questions explored</string>

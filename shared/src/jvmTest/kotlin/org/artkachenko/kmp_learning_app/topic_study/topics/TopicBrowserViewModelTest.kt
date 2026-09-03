@@ -19,6 +19,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
+import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScore
 import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
@@ -34,6 +35,9 @@ import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingContext
+import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingResolver
+import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingTarget
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -356,6 +360,7 @@ internal class TopicBrowserViewModelTest {
         // No context at all, rather than an empty one: unknown history must not render as
         // "not studied yet", which is a claim about the learner.
         assertTrue(state.topics.all { it.learningContext == null })
+        assertNull(state.continueStudying)
         // Search still works against the loaded catalog.
         viewModel.onSearchQueryChange("compose")
         assertEquals(
@@ -385,6 +390,7 @@ internal class TopicBrowserViewModelTest {
             curriculumRepository = repository,
             learningProgressService = LearningProgressService(history, repository),
             historyStore = store,
+            continueStudyingResolver = ContinueStudyingResolver(repository),
         )
         advanceUntilIdle()
 
@@ -410,6 +416,127 @@ internal class TopicBrowserViewModelTest {
         assertEquals(refreshed, topic(viewModel, "compose").learningContext)
     }
 
+    @Test
+    fun emptyCompletedHistoryOffersNoContinueShortcut() = runViewModelTest {
+        val viewModel = viewModel(continueStudyingRepository(), historyRepository())
+        advanceUntilIdle()
+
+        val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        assertEquals(3, state.topics.size)
+        assertNull(state.continueStudying)
+    }
+
+    @Test
+    fun aCompletedFocusedRunAddsAContinueShortcutNamedByCurrentCurriculum() = runViewModelTest {
+        val viewModel = viewModel(
+            continueStudyingRepository(),
+            historyRepository(listOf(completedFocusedAttempt("attempt", "compose"))),
+        )
+        advanceUntilIdle()
+
+        val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        val context = assertNotNull(state.continueStudying)
+        assertEquals(ContinueStudyingTarget.Topic("compose"), context.target)
+        assertEquals("Compose UI", context.scopeName)
+        // Catalogue behaviour is untouched by the addition.
+        assertEquals(
+            listOf("compose", "compose_architecture", "architecture"),
+            state.topics.map(TopicBrowserItemUiModel::topicId),
+        )
+    }
+
+    @Test
+    fun anUnreadableHistoryLeavesTopicsBrowsableWithNoContinueShortcut() = runViewModelTest {
+        val viewModel = viewModel(continueStudyingRepository(), FailingHistoryRepository)
+        advanceUntilIdle()
+
+        val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        assertEquals(3, state.topics.size)
+        // Unknown history is not empty history, and neither may be presented as a study context.
+        assertNull(state.continueStudying)
+    }
+
+    @Test
+    fun aFailedContextResolutionLeavesTopicsBrowsableWithNoContinueShortcut() = runViewModelTest {
+        val repository = continueStudyingRepository(
+            identityFailure = IllegalStateException("curriculum identity unavailable"),
+        )
+        val viewModel = viewModel(
+            repository,
+            historyRepository(listOf(completedFocusedAttempt("attempt", "compose"))),
+        )
+        advanceUntilIdle()
+
+        // Continue Studying is enrichment: its failure must not become the screen's Error state.
+        val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        assertEquals(3, state.topics.size)
+        assertNull(state.continueStudying)
+    }
+
+    @Test
+    fun theContinueShortcutIsNotOfferedAsASearchResult() = runViewModelTest {
+        val viewModel = viewModel(
+            continueStudyingRepository(),
+            historyRepository(listOf(completedFocusedAttempt("attempt", "compose"))),
+        )
+        advanceUntilIdle()
+        assertNotNull(
+            assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value).continueStudying,
+        )
+
+        viewModel.onSearchQueryChange("compose")
+
+        val search = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        // Searching says what the learner is looking for; the shortcut is not it, and never
+        // matches the query text either way.
+        assertNull(search.continueStudying)
+        assertEquals(
+            listOf("compose", "compose_architecture"),
+            search.topicMatches.map(TopicBrowserItemUiModel::topicId),
+        )
+
+        viewModel.onSearchQueryChange("")
+        assertNotNull(
+            assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value).continueStudying,
+        )
+    }
+
+    @Test
+    fun completingANewerFocusedRunMovesTheContinueShortcutToIt() = runViewModelTest {
+        val repository = continueStudyingRepository()
+        val history = MutableHistoryRepository()
+        history.attempts = listOf(completedFocusedAttempt("older", "compose"))
+        val store = AssessmentHistoryStore(history, CoroutineScope(currentDispatcher()))
+        val viewModel = TopicBrowserViewModel(
+            curriculumRepository = repository,
+            learningProgressService = LearningProgressService(history, repository),
+            historyStore = store,
+            continueStudyingResolver = ContinueStudyingResolver(repository),
+        )
+        advanceUntilIdle()
+
+        assertEquals(
+            ContinueStudyingTarget.Topic("compose"),
+            assertNotNull(continueStudying(viewModel)).target,
+        )
+
+        // The normal completion path: newest first, then the shared invalidation every other
+        // consumer already follows. No "last studied" value is stored anywhere.
+        history.attempts = listOf(
+            completedFocusedAttempt("newer", "architecture"),
+            completedFocusedAttempt("older", "compose"),
+        )
+        store.invalidate()
+        advanceUntilIdle()
+
+        val refreshed = assertNotNull(continueStudying(viewModel))
+        assertEquals(ContinueStudyingTarget.Topic("architecture"), refreshed.target)
+        assertEquals("Lifecycle, State & Navigation", refreshed.scopeName)
+    }
+
+    private fun continueStudying(viewModel: TopicBrowserViewModel): ContinueStudyingContext? =
+        assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value).continueStudying
+
     private fun topic(
         viewModel: TopicBrowserViewModel,
         topicId: String,
@@ -433,6 +560,7 @@ internal class TopicBrowserViewModelTest {
             curriculumRepository = repository,
             learningProgressService = LearningProgressService(history, repository),
             historyStore = AssessmentHistoryStore(history, CoroutineScope(currentDispatcher())),
+            continueStudyingResolver = ContinueStudyingResolver(repository),
         )
 
     private fun TestScope.currentDispatcher() = StandardTestDispatcher(testScheduler)
@@ -449,8 +577,18 @@ internal class TopicBrowserViewModelTest {
         private val subtopicResults: MutableMap<String, ArrayDeque<Result<List<Subtopic>>>> =
             mutableMapOf(),
         private val questions: List<Question> = emptyList(),
+        /**
+         * Identity lookups, which Continue Studying resolves its historical scope IDs against.
+         * Empty by default so tests that are only about the catalogue keep the previous behaviour
+         * of resolving no metadata at all.
+         */
+        identityTopics: List<Topic> = emptyList(),
+        identitySubtopics: List<Subtopic> = emptyList(),
+        private val identityFailure: Throwable? = null,
     ) : CurriculumRepository {
         private val questionsById = questions.associateBy(Question::id)
+        private val identityTopicsById = identityTopics.associateBy(Topic::id)
+        private val identitySubtopicsById = identitySubtopics.associateBy(Subtopic::id)
 
         var topicReadCount: Int = 0
             private set
@@ -494,10 +632,17 @@ internal class TopicBrowserViewModelTest {
         ): List<Question> = error("Not used by TopicBrowserViewModel.")
 
         // Resolves an answered question's topic and subtopic back to curriculum metadata while
-        // accuracy is derived; the catalog itself is read through getActiveTopics above.
-        override suspend fun getTopicById(topicId: String): Topic? = null
+        // accuracy is derived, and a historical Continue Studying scope back to current curriculum;
+        // the catalog itself is read through getActiveTopics above.
+        override suspend fun getTopicById(topicId: String): Topic? {
+            identityFailure?.let { throw it }
+            return identityTopicsById[topicId]
+        }
 
-        override suspend fun getSubtopicById(subtopicId: String): Subtopic? = null
+        override suspend fun getSubtopicById(subtopicId: String): Subtopic? {
+            identityFailure?.let { throw it }
+            return identitySubtopicsById[subtopicId]
+        }
 
         // Resolves an answered question back to its Topic when accuracy is derived. Historical
         // questions that no longer exist resolve to null and contribute to neither figure.
@@ -544,14 +689,14 @@ internal class TopicBrowserViewModelTest {
     }
 
     private companion object {
+        val CatalogTopics = listOf(
+            Topic("compose", "Compose UI"),
+            Topic("compose_architecture", "Compose Architecture"),
+            Topic("architecture", "Lifecycle, State & Navigation"),
+        )
+
         fun catalogRepository() = FakeCurriculumRepository(
-            topicResults = resultsOf(
-                listOf(
-                    Topic("compose", "Compose UI"),
-                    Topic("compose_architecture", "Compose Architecture"),
-                    Topic("architecture", "Lifecycle, State & Navigation"),
-                ),
-            ),
+            topicResults = resultsOf(CatalogTopics),
             subtopicResults = mutableMapOf(
                 "compose" to resultsOf(
                     listOf(Subtopic("compose_runtime", "compose", "Compose runtime")),
@@ -590,6 +735,37 @@ internal class TopicBrowserViewModelTest {
             question("q_retired_2", "compose_architecture", "compose_arch_sub"),
             question("q_retired_3", "compose_architecture", "compose_arch_sub"),
         ).associateBy(Question::id)
+
+        /** The same catalogue, with the identity lookups Continue Studying resolves against. */
+        fun continueStudyingRepository(identityFailure: Throwable? = null) =
+            FakeCurriculumRepository(
+                topicResults = resultsOf(CatalogTopics),
+                subtopicResults = mutableMapOf(
+                    "compose" to resultsOf(emptyList()),
+                    "compose_architecture" to resultsOf(emptyList()),
+                    "architecture" to resultsOf(emptyList()),
+                ),
+                questions = ActiveQuestions,
+                identityTopics = CatalogTopics,
+                identityFailure = identityFailure,
+            )
+
+        /** One completed Topic-scoped practice run, which is all a Continue context needs. */
+        fun completedFocusedAttempt(id: String, topicId: String): TestAttempt =
+            TestAttempt(
+                id = id,
+                config = AssessmentConfig.Focused(
+                    scope = AssessmentScope.Topic(topicId),
+                    questionCount = 1,
+                ),
+                questionAttempts = listOf(
+                    QuestionAttempt("q_$id", QuestionAnswerState.Answered(setOf("a"), true)),
+                ),
+                status = AssessmentStatus.COMPLETED,
+                startedAt = Instant.parse("2026-08-29T00:00:00Z"),
+                completedAt = Instant.parse("2026-08-29T00:15:00Z"),
+                score = AssessmentScore(1, 1),
+            )
 
         fun historyRepository(vararg answers: Pair<String, Boolean>) =
             RecordingHistoryRepository(

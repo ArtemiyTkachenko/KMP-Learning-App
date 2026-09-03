@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
+import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -15,7 +16,10 @@ internal fun PracticeBuilderDestination(
     scope: AssessmentScope,
     onBack: () -> Unit,
     onStartPractice: (AssessmentConfig.Focused) -> Unit,
-    viewModel: PracticeBuilderViewModel = koinViewModel { parametersOf(scope) },
+    initialSource: PracticeQuestionSource = PracticeQuestionSource.ALL,
+    viewModel: PracticeBuilderViewModel = koinViewModel {
+        parametersOf(scope, initialSource)
+    },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val currentOnStartPractice by rememberUpdatedState(onStartPractice)

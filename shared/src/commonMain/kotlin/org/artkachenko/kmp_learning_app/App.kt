@@ -126,6 +126,12 @@ private fun AppShell(
                                 ),
                             )
                         },
+                        // Continuing recent study pushes an existing destination — Topic detail or
+                        // the Practice Builder — and never an attempt route: it returns the learner
+                        // to a learning context rather than resuming an assessment.
+                        onContinueStudying = { target ->
+                            navigator.push(target.toAppRoute())
+                        },
                     )
                 }
                 entry<AppRoute.Interview> {
@@ -215,6 +221,9 @@ private fun AppShell(
                         onStartPractice = { config ->
                             navigator.push(config.toPracticeRoute())
                         },
+                        // Only the selection the builder opens on. It still applies its own count
+                        // and level defaults and runs its normal preflight, so nothing starts here.
+                        initialSource = route.source,
                     )
                 }
                 entry<AppRoute.PracticeBuilderSubtopic> { route ->
@@ -224,6 +233,7 @@ private fun AppShell(
                         onStartPractice = { config ->
                             navigator.push(config.toPracticeRoute())
                         },
+                        initialSource = route.source,
                     )
                 }
                 entry<AppRoute.FocusedTopicPractice> { route ->

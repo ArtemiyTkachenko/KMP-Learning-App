@@ -59,6 +59,7 @@ import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResult
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderStartButtonTag
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.practiceLevelTag
+import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserContinueStudyingTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.SubtopicPracticeButtonTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicPracticeButtonTag
 import org.koin.compose.KoinApplication
@@ -231,8 +232,14 @@ internal class FocusedLearningJourneyIntegrationTest {
                 onAllNodesWithText("2 of 2 explored").fetchSemanticsNodes().isNotEmpty()
             }
             onNodeWithText("Not studied yet").assertDoesNotExist()
+            // The same completed history also gives Topics its Continue Studying shortcut, back to
+            // the Topic that run was scoped to. "Android" now labels both it and the Topic card, so
+            // the row is targeted by the coverage line only the card carries.
+            onNodeWithTag(TopicBrowserContinueStudyingTag).assertIsDisplayed()
 
-            onNodeWithText("Android").assertIsDisplayed().performClick()
+            onNode(hasText("Android") and hasText("2 of 2 explored"))
+                .assertIsDisplayed()
+                .performClick()
             // And Topic Detail shows the same two figures as separate, labelled concepts.
             waitUntil(timeoutMillis = 5_000) {
                 onAllNodesWithText("Curriculum coverage").fetchSemanticsNodes().isNotEmpty()

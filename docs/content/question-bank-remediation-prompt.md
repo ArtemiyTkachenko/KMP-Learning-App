@@ -56,8 +56,8 @@ READ FIRST
 Before editing anything, read:
 
 ```
-docs/content-authoring.md            (the editorial contract — it wins on conflict)
-docs/question-authoring-playbook.md  (the method, and the anti-cue audit script)
+docs/content/content-authoring.md            (the editorial contract — it wins on conflict)
+docs/content/question-authoring-playbook.md  (the method, and the anti-cue audit script)
 ```
 
 The contract governs. Where this prompt and the contract disagree, follow the
@@ -218,7 +218,7 @@ Reordering is free and safe: answer identity is by `AnswerOption.id`, never by
 list position. Do NOT rename any ID to match a new order.
 
 2. Extend the playbook's audit script with a multi-answer position check so this
-   cannot silently return, and update `docs/question-authoring-playbook.md`
+   cannot silently return, and update `docs/content/question-authoring-playbook.md`
    Part 3 to include it. Suggested check:
 
 ```python
@@ -904,7 +904,7 @@ CurriculumDatabaseMigrationTest (2). Any regression is a blocker.
 
 2. ANTI-CUE AUDIT
 
-Run the script in `docs/question-authoring-playbook.md` Part 3, plus the
+Run the script in `docs/content/question-authoring-playbook.md` Part 3, plus the
 multi-answer position check added in PHASE 2.
 
 Targets to hold or improve:

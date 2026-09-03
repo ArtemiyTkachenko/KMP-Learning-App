@@ -5,55 +5,37 @@ description: Design and verify tests for behavior changes in this KMP project. U
 
 # Testing Change
 
-Use this skill when adding meaningful behavior, fixing bugs, changing domain/data/presentation logic, adding/modifying tests, or reviewing a known test coverage gap.
+## Use When
 
-Do not use it to add tautological tests or mocks solely to increase coverage.
+Adding meaningful behavior, fixing a bug, changing domain/data/presentation logic, adding
+or modifying tests, or addressing a known coverage gap.
 
-## Current Test Setup
+## Do Not Use When
 
-- Test library currently available in shared code: `kotlin.test`.
-- `shared/src/commonTest` is for genuinely shared behavior.
-- `shared/src/androidHostTest` is for Android host-side behavior.
-- `shared/src/jvmTest` is for JVM/desktop behavior.
-- `shared/src/iosTest` is for iOS behavior.
-- `shared/src/webTest` exists for web-related shared tests.
-- `androidApp` and `desktopApp` currently have no meaningful test sources.
+The goal is to raise a test count with tautological tests or unnecessary mocks, or the
+change is documentation only.
 
-## Test Design
+## Workflow
 
-- Test observable behavior, not implementation details.
-- Put tests in `commonTest` when the behavior is truly shared.
-- Use platform test source sets when behavior depends on platform APIs or platform-specific actual implementations.
-- Prefer simple fakes and real values over mocks when they are clearer.
-- Do not add mocking/test dependencies without a concrete need.
-- Include meaningful boundary and failure cases where relevant.
-- For bug fixes, add regression coverage where practical.
-- Avoid tests that only assert language/library behavior.
+1. Decide what observable behavior changed, and which scope owns it.
+2. Choose the source set from
+   [testing](../../../docs/development/testing.md#test-source-sets) — `commonTest` only
+   when the behavior is genuinely shared.
+3. Find an existing test for a comparable feature and follow its shape.
+4. Write the test against observable behavior, covering meaningful boundary and failure
+   cases; for a bug fix, add regression coverage.
+5. Run the narrowest test task that exercises it, then widen.
 
-## Verification Commands
+## Project References
 
-Use focused commands where possible:
+- [Testing](../../../docs/development/testing.md) — source sets, available libraries, and
+  test design rules.
+- [Validation](../../../docs/development/validation.md) — every test command that exists
+  here.
+- [Kotlin style](../../../docs/development/kotlin.md) — test classes are normally
+  `internal`; confirm discovery after narrowing visibility.
 
-```sh
-./gradlew :shared:jvmTest
-./gradlew :shared:testAndroidHostTest
-./gradlew :shared:iosSimulatorArm64Test
-./gradlew :shared:jsTest
-./gradlew :shared:wasmJsTest
-./gradlew :shared:allTests
-```
+## Output
 
-For Android app changes:
-
-```sh
-./gradlew :androidApp:testDebugUnitTest
-./gradlew :androidApp:assembleDebug
-```
-
-For broader confidence:
-
-```sh
-./gradlew check
-```
-
-Always report the exact commands run and whether any expected validation was skipped or unavailable.
+Report the exact commands run and whether any expected validation was skipped or
+unavailable.

@@ -6,8 +6,8 @@ This document records **what the interview question bank currently covers**, so
 that planning the next expansion does not require re-reading all 399 questions.
 A full coverage review is expensive; this is the checkpoint that replaces it.
 
-`docs/content-authoring.md` is the editorial contract and
-`docs/question-authoring-playbook.md` is the method. This document is neither —
+`docs/content/content-authoring.md` is the editorial contract and
+`docs/content/question-authoring-playbook.md` is the method. This document is neither —
 it is the *state*. Read it first when the task is "add questions", "find gaps",
 or "is X already covered?".
 
@@ -98,7 +98,7 @@ for t in d['topics']:
     print()
 ```
 
-The anti-cue audit script lives in `docs/question-authoring-playbook.md` Part 3;
+The anti-cue audit script lives in `docs/content/question-authoring-playbook.md` Part 3;
 its current output is reproduced under **Audit baselines** below.
 
 ## Headline numbers
@@ -164,7 +164,7 @@ Two caveats before acting on this table:
 
 ## Audit baselines
 
-Current output of the `docs/question-authoring-playbook.md` Part 3 script over
+Current output of the `docs/content/question-authoring-playbook.md` Part 3 script over
 the whole bank:
 
 ```

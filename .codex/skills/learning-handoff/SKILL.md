@@ -5,30 +5,41 @@ description: Explain substantial agent-generated changes for learning and portfo
 
 # Learning Handoff
 
-Use this skill after substantial generated implementation/setup work, or whenever the user explicitly asks for a learning-oriented explanation.
+## Use When
 
-Do not use it for every tiny mechanical edit, and do not explain trivial Kotlin syntax unless it matters to a larger concept.
+Substantial generated implementation or setup work has just finished, or the user asks for
+a learning-oriented explanation.
 
-## Handoff Content
+## Do Not Use When
 
-Cover the relevant subset:
+The edit was small and mechanical.
 
-1. What changed.
-2. Why this approach was chosen.
-3. Android, KMP, Compose, Gradle, or testing concepts involved.
-4. Files the developer should review first.
-5. Non-obvious configuration.
-6. Architectural decisions and tradeoffs.
-7. Alternatives considered.
-8. Tests/checks executed and what they demonstrate.
-9. Anything that was not validated.
-10. A few review questions the developer should be able to answer after reading the diff.
+## Workflow
 
-Keep it concise. Separate facts from inferences, and do not present uncertain architectural claims as established project decisions.
+1. Review the final diff.
+2. Identify the decisions a reader could not infer from the code alone.
+3. Write the handoff, covering the relevant subset of the content listed in
+   [agent workflow](../../../docs/ai/agent-workflow.md#learning-handoff).
+4. Where a decision is likely to matter later, persist the reasoning in repository
+   documentation rather than only in the handoff.
+
+## Project References
+
+- [Agent workflow](../../../docs/ai/agent-workflow.md) — the handoff content list and the
+  decision-documentation preference order.
+- [Architecture](../../../docs/architecture/overview.md) — where a durable architectural
+  decision belongs.
 
 ## Repository Context To Include When Relevant
 
-- Whether code belongs in `commonMain` or a platform source set.
+- Whether code belongs in `commonMain` or a platform source set, and why.
 - Why a dependency belongs in a specific source set or module.
-- Which Gradle command validated the change.
+- Which command validated the change.
 - How the change maps to a backlog issue's acceptance criteria.
+
+## Output
+
+A concise explanation. Separate facts from inferences, do not present uncertain
+architectural claims as established project decisions, and do not explain trivial Kotlin
+syntax unless it matters to a larger concept. Close with a few review questions the
+developer should be able to answer after reading the diff.

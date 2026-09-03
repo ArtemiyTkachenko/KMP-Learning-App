@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`docs/content-authoring.md` is the editorial **contract**: it defines the rules a
+`docs/content/content-authoring.md` is the editorial **contract**: it defines the rules a
 question must satisfy. This playbook is the **method** for satisfying them. It
 records how questions are actually written and audited, and it exists because the
 contract's rule "incorrect answers should be plausible distractors" turned out to
@@ -13,7 +13,7 @@ Read the contract first. Where the two documents disagree, the contract wins.
 This playbook applies to authoring new questions and to reviewing existing ones.
 For *what the bank already covers* — per-subtopic counts, the concept index,
 which empty subtopics are intentional, and the current audit baselines — see
-`docs/question-bank-coverage.md` rather than re-reading the JSON.
+`docs/content/question-bank-coverage.md` rather than re-reading the JSON.
 
 ## The failure mode this exists to prevent
 

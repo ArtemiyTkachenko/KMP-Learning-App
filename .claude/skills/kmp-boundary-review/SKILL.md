@@ -8,5 +8,3 @@ description: Review or guide Kotlin Multiplatform boundaries in this project. Us
 Read `.codex/skills/kmp-boundary-review/SKILL.md` now and follow it exactly. That file
 is the single source of truth for this skill and is shared with Codex — do not restate
 or reinterpret its rules here.
-
-Also apply the "Kotlin Multiplatform Boundaries" section of `AGENTS.md`.

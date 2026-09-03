@@ -8,5 +8,3 @@ description: Implement, continue, fix, or complete work identified by a reposito
 Read `.codex/skills/implement-backlog-issue/SKILL.md` now and follow it exactly. That
 file is the single source of truth for this skill and is shared with Codex — do not
 restate or reinterpret its rules here.
-
-Also apply the "Backlog And Issue Workflow" section of `AGENTS.md`.

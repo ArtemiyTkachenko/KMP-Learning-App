@@ -1,11 +1,23 @@
 # Shared Module Guide
 
-`shared` is the primary Kotlin Multiplatform module. It currently contains shared Compose UI, small shared logic, platform `expect`/`actual` examples, Compose resources, and multiplatform tests.
+`:shared` is the Kotlin Multiplatform module: shared Compose UI, domain and data code,
+platform `expect`/`actual` implementations, Compose resources, and multiplatform tests.
 
-- Keep `commonMain` platform-independent.
-- Use `androidMain`, `iosMain`, `jvmMain`, `jsMain`, or `wasmJsMain` when APIs or behavior are platform-specific.
-- Do not introduce Android, UIKit, JVM, browser, or Wasm APIs into common source sets.
-- Use `expect`/`actual` only when a common contract is needed by shared code.
-- Prefer `commonTest` for shared behavior tests and platform test source sets for platform-specific behavior.
-- Validate shared changes with the narrowest relevant task, commonly `./gradlew :shared:allTests` or `./gradlew :shared:check`.
-- Watch for generated Kotlin/JS files after web-related Gradle tasks; generated stores should not be committed unless intentionally introduced by a build-system task.
+Canonical rules for this module — source sets, what may live in `commonMain`, dependency
+direction, `expect`/`actual` — are in
+[KMP boundaries](../docs/development/kmp.md). Test placement is in
+[testing](../docs/development/testing.md).
+
+Local reminders that are easy to get wrong here:
+
+- Keep Android, UIKit, JVM, browser, and Wasm APIs out of `commonMain`.
+- Web code shared by both browser targets belongs in `webMain`, not in per-target source
+  sets; `:shared` currently has no `jsMain` or `wasmJsMain` sources.
+- Validate with the narrowest relevant task, commonly `./gradlew :shared:jvmTest`, then
+  `./gradlew :shared:allTests` or `./gradlew :shared:check`. See
+  [validation](../docs/development/validation.md).
+- Web-related Gradle tasks can leave generated Kotlin/JS files behind. Do not commit
+  generated stores unless a build-system task intentionally introduced them.
+
+What the code in this module currently does is documented in
+[`docs/architecture/`](../docs/architecture/overview.md).

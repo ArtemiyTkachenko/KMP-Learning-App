@@ -5,43 +5,35 @@ description: Perform a project-specific review of a change, diff, or branch. Use
 
 # Code Review
 
-Use this skill when the user asks to review a diff, branch, implementation, or code quality before PR.
+## Use When
 
-Do not use this skill to implement fixes unless the user explicitly asks for that after the review.
+The user asks to review a diff, branch, implementation, or code quality before a PR.
 
-## Review Focus
+## Do Not Use When
 
-Inspect for:
+The user asked for implementation. Do not implement fixes unless they explicitly ask for
+that after the review.
 
-- Correctness bugs and behavioral regressions.
-- Acceptance-criteria violations for referenced `E##-##` issues.
-- KMP boundary violations.
-- Class visibility correctness
-- Android lifecycle, coroutine, or platform issues where applicable.
-- Compose issues where applicable to current code.
-- Unnecessary complexity, speculative abstraction, or unrelated refactors.
-- Duplication that creates maintenance risk.
-- Dependency/build concerns.
-- Insufficient or misplaced tests.
-- Dead, unreachable, placeholder, or debug code.
-- Accidental unrelated changes.
+## Workflow
 
-## Process
-
-1. Inspect the relevant diff and touched files.
-2. If a backlog key is referenced, read `.github/project/backlog.yml`.
-3. Check affected module/source-set boundaries.
-4. Check tests and validation evidence.
+1. Inspect the relevant diff and the touched files.
+2. If a backlog key is referenced, read it in `.github/project/backlog.yml`.
+3. Check the affected module and source-set boundaries.
+4. Check tests and the validation evidence actually presented.
 5. Report findings first, ordered by severity.
 
-## Finding Format
+## Project References
 
-For each substantive finding include:
+- [Code review](../../../docs/workflows/code-review.md) — what to prioritize, what to omit,
+  and the finding format.
+- [KMP boundaries](../../../docs/development/kmp.md) and
+  [Kotlin style](../../../docs/development/kotlin.md) — the rules most findings cite.
+- [Architecture](../../../docs/architecture/overview.md) — check a change against what the
+  code already does before calling it wrong.
 
-- Severity: blocking, important, or optional.
-- Concrete file and line where possible.
-- Problem.
-- Why it matters.
-- Recommended correction.
+## Output
 
-Do not manufacture findings to make the review longer. If no issues are found, say that clearly and mention residual test or validation risk.
+Findings ordered by severity, each with a severity label, a concrete file and line where
+possible, the problem, why it matters, and the smallest appropriate correction. Do not
+manufacture findings; if nothing substantive is found, say so and name the residual test or
+validation risk.

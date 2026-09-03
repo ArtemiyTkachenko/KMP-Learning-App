@@ -9,10 +9,5 @@ Read `.codex/skills/code-review/SKILL.md` now and follow it exactly. That file i
 single source of truth for this skill and is shared with Codex — do not restate or
 reinterpret its rules here.
 
-The source file is named `code-review` while this skill is named `kmp-code-review`. That
-mismatch is intentional, not an error: Claude Code ships a built-in `code-review` skill,
-and the rename keeps both available. The built-in `/code-review` is a separate,
-general-purpose tool with its own effort levels and multi-agent `ultra` mode; use this
-skill when the review should follow this repository's rules.
-
-Also apply the "Code Review Rules" section of `AGENTS.md`.
+The source file is named `code-review` because this skill is renamed to avoid Claude
+Code's built-in `code-review`; see `CLAUDE.md` for which of the two to use.

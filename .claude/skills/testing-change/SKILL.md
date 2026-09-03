@@ -8,5 +8,3 @@ description: Design and verify tests for behavior changes in this KMP project. U
 Read `.codex/skills/testing-change/SKILL.md` now and follow it exactly. That file is the
 single source of truth for this skill and is shared with Codex — do not restate or
 reinterpret its rules here.
-
-Also apply the "Testing And Verification" section of `AGENTS.md`.

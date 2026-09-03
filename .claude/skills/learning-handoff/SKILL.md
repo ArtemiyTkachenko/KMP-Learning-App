@@ -8,5 +8,3 @@ description: Explain substantial agent-generated changes for learning and portfo
 Read `.codex/skills/learning-handoff/SKILL.md` now and follow it exactly. That file is
 the single source of truth for this skill and is shared with Codex — do not restate or
 reinterpret its rules here.
-
-Also apply the "Learning Handoff" and "Decision Documentation" sections of `AGENTS.md`.

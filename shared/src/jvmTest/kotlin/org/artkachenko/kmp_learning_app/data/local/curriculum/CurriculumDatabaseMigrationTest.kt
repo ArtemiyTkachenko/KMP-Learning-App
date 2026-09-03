@@ -14,7 +14,7 @@ import kotlinx.coroutines.test.runTest
 
 internal class CurriculumDatabaseMigrationTest {
     @Test
-    fun migrationFromOneToSixPreservesCurriculumAndHistoricalAssessmentRows() = runTest {
+    fun migrationFromOneToSevenPreservesCurriculumAndHistoricalAssessmentRows() = runTest {
         val databasePath = Files.createTempDirectory("curriculum-migration-test")
             .resolve("curriculum.db")
         val helper = MigrationTestHelper(
@@ -101,8 +101,8 @@ internal class CurriculumDatabaseMigrationTest {
         }
 
         helper.runMigrationsAndValidate(
-            version = 6,
-            migrations = listOf(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6),
+            version = 7,
+            migrations = listOf(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7),
         ).use { connection ->
             connection.prepare("SELECT selection_mode, level FROM question WHERE id = 'question'").use { statement ->
                 assertTrue(statement.step())
@@ -112,6 +112,10 @@ internal class CurriculumDatabaseMigrationTest {
             connection.prepare("SELECT COUNT(*) FROM question_attempt_selected_answer").use { statement ->
                 assertTrue(statement.step())
                 assertEquals(1, statement.getLong(0).toInt())
+            }
+            connection.prepare("SELECT COUNT(*) FROM saved_question").use { statement ->
+                assertTrue(statement.step())
+                assertEquals(0, statement.getLong(0).toInt())
             }
         }
     }
@@ -503,6 +507,79 @@ internal class CurriculumDatabaseMigrationTest {
                 assertEquals("ADVANCED", statement.getText(0))
             }
             connection.prepare("PRAGMA foreign_key_check").use { statement ->
+                assertTrue(!statement.step())
+            }
+        }
+    }
+
+    @Test
+    fun migrationFromSixToSevenAddsEmptySavedIdentityTableAndPreservesExistingRows() = runTest {
+        val databasePath = Files.createTempDirectory("curriculum-migration-test")
+            .resolve("curriculum.db")
+        val helper = MigrationTestHelper(
+            schemaDirectoryPath = Path.of("schemas").toAbsolutePath(),
+            databasePath = databasePath,
+            driver = BundledSQLiteDriver(),
+            databaseClass = CurriculumDatabase::class,
+            databaseFactory = { CurriculumDatabaseConstructor.initialize() },
+        )
+
+        helper.createDatabase(version = 6).use { connection ->
+            connection.executeSQL("INSERT INTO topic (id, name, status, sort_order) VALUES ('topic', 'Topic', 'ACTIVE', 0)")
+            connection.executeSQL(
+                """
+                INSERT INTO subtopic (id, topic_id, name, status, sort_order)
+                VALUES ('subtopic', 'topic', 'Subtopic', 'ACTIVE', 0)
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO question (
+                    id, topic_id, subtopic_id, text, selection_mode, level, explanation, status, sort_order
+                ) VALUES ('question', 'topic', 'subtopic', 'Question?', 'SINGLE', 'FOUNDATION', 'Explanation.', 'ACTIVE', 0)
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO test_attempt (
+                    id, config_type, requested_question_count, scope_type, scope_id, status,
+                    score_total_questions, score_correct_answers, started_at_epoch_millis,
+                    completed_at_epoch_millis, practice_levels, practice_source
+                ) VALUES ('attempt', 'MIXED', 1, NULL, NULL, 'COMPLETED', 1, 1, 1000, 2000, NULL, NULL)
+                """,
+            )
+        }
+
+        helper.runMigrationsAndValidate(
+            version = 7,
+            migrations = listOf(MIGRATION_6_7),
+        ).use { connection ->
+            connection.prepare("SELECT name FROM topic WHERE id = 'topic'").use { statement ->
+                assertTrue(statement.step())
+                assertEquals("Topic", statement.getText(0))
+            }
+            connection.prepare("SELECT status FROM test_attempt WHERE id = 'attempt'").use { statement ->
+                assertTrue(statement.step())
+                assertEquals("COMPLETED", statement.getText(0))
+            }
+            connection.prepare("SELECT COUNT(*) FROM saved_question").use { statement ->
+                assertTrue(statement.step())
+                assertEquals(0, statement.getLong(0).toInt())
+            }
+            connection.executeSQL(
+                """
+                INSERT INTO saved_question (question_id, saved_at_epoch_millis)
+                VALUES ('missing_question', 3000)
+                """,
+            )
+            connection.prepare(
+                "SELECT question_id, saved_at_epoch_millis FROM saved_question",
+            ).use { statement ->
+                assertTrue(statement.step())
+                assertEquals("missing_question", statement.getText(0))
+                assertEquals(3_000, statement.getLong(1).toInt())
+            }
+            connection.prepare("PRAGMA foreign_key_list('saved_question')").use { statement ->
                 assertTrue(!statement.step())
             }
         }

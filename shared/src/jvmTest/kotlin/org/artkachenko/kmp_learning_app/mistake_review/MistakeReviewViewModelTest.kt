@@ -4,10 +4,12 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -23,6 +25,7 @@ import org.artkachenko.kmp_learning_app.assessment.history.testCacheScope
 import org.artkachenko.kmp_learning_app.assessment.history.testHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
+import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.Question
@@ -31,6 +34,10 @@ import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.saved_questions.FakeSavedQuestionRepository
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
+import org.artkachenko.kmp_learning_app.saved_questions.repository.SavedQuestionRepository
+import org.artkachenko.kmp_learning_app.saved_questions.savedQuestionStateHolder
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class MistakeReviewViewModelTest {
@@ -97,6 +104,96 @@ internal class MistakeReviewViewModelTest {
         val content = assertIs<MistakeReviewUiState.Content>(state.value)
         assertEquals(listOf("q1"), content.mistakes.map { it.questionId })
     }
+    /**
+     * Saved state and unresolved state are separate truths. Saving is learner intent about a
+     * Question; only answering it correctly can take it out of the queue.
+     */
+    @Test
+    fun savingAnUnresolvedMistakeLeavesItInTheQueue() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val repository = VmHistoryRepository(
+            listOf(vmAttempt("a1", "2026-08-29T10:00:00Z", "q1", "q2")),
+        )
+        val savedRepository = FakeSavedQuestionRepository()
+        val viewModel = viewModel(repository, savedRepository = savedRepository)
+        advanceUntilIdle()
+        val before = assertIs<MistakeReviewUiState.Content>(viewModel.uiState.value)
+
+        viewModel.toggleSaved("q1")
+        advanceUntilIdle()
+
+        assertEquals(listOf("q1"), savedRepository.saveCalls)
+        assertEquals(
+            setOf("q1"),
+            assertIs<SavedQuestionsState.Loaded>(viewModel.savedQuestions.value).savedQuestionIds,
+        )
+        assertEquals(before.mistakes, assertIs<MistakeReviewUiState.Content>(viewModel.uiState.value).mistakes)
+
+        viewModel.toggleSaved("q1")
+        advanceUntilIdle()
+        assertEquals(listOf("q1"), savedRepository.unsaveCalls)
+        assertEquals(before.mistakes, assertIs<MistakeReviewUiState.Content>(viewModel.uiState.value).mistakes)
+    }
+
+    @Test
+    fun anUnresolvedQuestionWhoseContentIsGoneIsNeverSaved() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val repository = VmHistoryRepository(
+            listOf(vmAttempt("a1", "2026-08-29T10:00:00Z", "gone")),
+        )
+        val savedRepository = FakeSavedQuestionRepository()
+        val viewModel = viewModel(
+            repository,
+            curriculum = PartialCurriculumRepository(setOf("gone")),
+            savedRepository = savedRepository,
+        )
+        advanceUntilIdle()
+
+        val content = assertIs<MistakeReviewUiState.Content>(viewModel.uiState.value)
+        assertIs<ReviewQuestionItem.Missing>(content.mistakes.single().reviewItem)
+        viewModel.toggleSaved("gone")
+        advanceUntilIdle()
+
+        assertTrue(savedRepository.saveCalls.isEmpty())
+    }
+
+    @Test
+    fun unreadableSavedStateLeavesTheQueueContent() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val repository = VmHistoryRepository(
+            listOf(vmAttempt("a1", "2026-08-29T10:00:00Z", "q1")),
+        )
+        val viewModel = viewModel(
+            repository,
+            savedRepository = FakeSavedQuestionRepository().apply { failReads = true },
+        )
+        advanceUntilIdle()
+
+        assertIs<MistakeReviewUiState.Content>(viewModel.uiState.value)
+        assertIs<SavedQuestionsState.Error>(viewModel.savedQuestions.value)
+    }
+
+    private fun TestScope.viewModel(
+        repository: AssessmentRepository,
+        curriculum: CurriculumRepository = VmCurriculumRepository,
+        savedRepository: SavedQuestionRepository = FakeSavedQuestionRepository(),
+    ): MistakeReviewViewModel {
+        val scope = testCacheScope()
+        val store = testHistoryStore(repository, scope)
+        return MistakeReviewViewModel(
+            historyStore = store,
+            stateHolder = MistakeReviewStateHolder(
+                mistakeReviewService = MistakeReviewService(
+                    assessmentRepository = repository,
+                    assessmentReviewLoader = AssessmentReviewLoader(curriculum),
+                ),
+                historyStore = store,
+                scope = scope,
+            ),
+            savedQuestionStateHolder = savedQuestionStateHolder(savedRepository),
+        )
+    }
+
     /**
      * The queue is derived by [MistakeReviewStateHolder], which outlives the ViewModel; the
      * ViewModel only republishes it, so the behaviour is exercised on the holder.
@@ -193,4 +290,12 @@ private object VmCurriculumRepository : CurriculumRepository {
             explanation = "Explanation",
             sources = listOf(SourceReference("Source", "https://example.com/$questionId")),
         )
+}
+
+/** Review content the curriculum no longer holds, so the queue entry resolves to Missing. */
+private class PartialCurriculumRepository(
+    private val missingIds: Set<String>,
+) : CurriculumRepository by VmCurriculumRepository {
+    override suspend fun getQuestionById(questionId: String): Question? =
+        if (questionId in missingIds) null else VmCurriculumRepository.getQuestionById(questionId)
 }

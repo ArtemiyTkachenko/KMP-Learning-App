@@ -3,8 +3,10 @@ package org.artkachenko.kmp_learning_app.topic_study.focused_result
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runComposeUiTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -12,6 +14,9 @@ import org.artkachenko.kmp_learning_app.assessment_review.ReviewAnswerUiModel
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionUiModel
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewSourceUiModel
+import org.artkachenko.kmp_learning_app.assessment_review.reviewQuestionSaveTag
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestion
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 
 @OptIn(ExperimentalTestApi::class)
 internal class FocusedResultScreenTest {
@@ -107,6 +112,70 @@ internal class FocusedResultScreenTest {
         }
 
         onNodeWithText("This source could not be opened.").assertDoesNotExist()
+    }
+
+    @Test
+    fun availableQuestionsExposeSavedStateAndMissingPlaceholdersDoNot() = runComposeUiTest {
+        val toggled = mutableListOf<String>()
+        setContent {
+            MaterialTheme {
+                FocusedResultScreen(
+                    state = contentState(
+                        questions = listOf(availableQuestion(), ReviewQuestionItem.Missing("q2")),
+                    ),
+                    onRetry = {}, onBack = {}, onSourceClick = {},
+                    onRepeatPractice = {},
+                    savedQuestions = SavedQuestionsState.Loaded(emptyList()),
+                    onToggleSaved = toggled::add,
+                )
+            }
+        }
+
+        onNodeWithTag(reviewQuestionSaveTag("q1")).performScrollTo().performClick()
+        assertEquals(listOf("q1"), toggled)
+        // A Question the curriculum no longer holds cannot be saved from here.
+        onNodeWithTag(reviewQuestionSaveTag("q2")).assertDoesNotExist()
+    }
+
+    @Test
+    fun aSavedQuestionOffersUnsaveAndLeavesTheResultUnchanged() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                FocusedResultScreen(
+                    state = contentState(questions = listOf(availableQuestion())),
+                    onRetry = {}, onBack = {}, onSourceClick = {},
+                    onRepeatPractice = {},
+                    savedQuestions = SavedQuestionsState.Loaded(
+                        listOf(SavedQuestion("q1", savedAtEpochMillis = 1_000)),
+                    ),
+                    onToggleSaved = {},
+                )
+            }
+        }
+
+        onNodeWithText("Unsave").assertIsDisplayed()
+        onNodeWithText("Score: 1 / 1").assertIsDisplayed()
+        onNodeWithTag(FocusedResultPracticeAgainTag).performScrollTo().assertIsDisplayed()
+    }
+
+    /** Saved state that failed to load leaves the result intact, without a misleading affordance. */
+    @Test
+    fun unavailableSavedStateStillShowsTheResult() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                FocusedResultScreen(
+                    state = contentState(questions = listOf(availableQuestion())),
+                    onRetry = {}, onBack = {}, onSourceClick = {},
+                    onRepeatPractice = {},
+                    savedQuestions = SavedQuestionsState.Error,
+                    onToggleSaved = {},
+                )
+            }
+        }
+
+        onNodeWithText("Score: 1 / 1").assertIsDisplayed()
+        onNodeWithText("Question text").assertIsDisplayed()
+        onNodeWithTag(reviewQuestionSaveTag("q1")).assertDoesNotExist()
     }
 
     private fun contentState(questions: List<ReviewQuestionItem>) =

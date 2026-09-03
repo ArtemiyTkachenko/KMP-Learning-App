@@ -36,6 +36,9 @@ import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressTopicViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressViewModel
+import org.artkachenko.kmp_learning_app.saved_questions.FakeSavedQuestionRepository
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder
+import org.artkachenko.kmp_learning_app.saved_questions.repository.SavedQuestionRepository
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
@@ -81,6 +84,9 @@ internal class TopicStudyPresentationModuleTest {
                     // real one is declared alongside the assessment data module.
                     single { AppCoroutineScope() }
                     single { AssessmentHistoryStore(get(), get<AppCoroutineScope>()) }
+                    // Saved Questions are provided by the data module in production; the review
+                    // ViewModels resolve the app-scoped holder built on that repository.
+                    single<SavedQuestionRepository> { FakeSavedQuestionRepository() }
                 },
                 topicStudyPresentationModule,
             )
@@ -151,6 +157,11 @@ internal class TopicStudyPresentationModuleTest {
             )
             assertIs<MistakeReviewService>(app.koin.get<MistakeReviewService>())
             assertIs<MistakeReviewViewModel>(app.koin.get<MistakeReviewViewModel>())
+            // One holder for the whole app: every review surface must observe the same instance.
+            assertEquals(
+                app.koin.get<SavedQuestionStateHolder>(),
+                app.koin.get<SavedQuestionStateHolder>(),
+            )
             advanceUntilIdle()
         } finally {
             app.close()

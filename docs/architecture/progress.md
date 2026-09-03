@@ -195,3 +195,9 @@ reconstructed only for unresolved candidates, and a Question whose content no
 longer resolves stays in the queue as `ReviewQuestionItem.Missing`. No mistake,
 resolved, or dismissed state is stored; Room remains assessment-history
 persistence only.
+
+Mistake Review also presents the shared Saved Questions state described in
+[assessment](assessment.md), through the same `ReviewQuestionCard` the result screens use. The two
+are independent: saving or unsaving an entry never resolves it, and only a later correct answer
+takes it out of the queue. The E17-04 scoped practice shortcut is unchanged and stays a separate
+action on the entry.

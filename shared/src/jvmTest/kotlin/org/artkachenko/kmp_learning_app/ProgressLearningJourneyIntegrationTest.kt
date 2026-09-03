@@ -70,6 +70,7 @@ import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
 import org.artkachenko.kmp_learning_app.progress.ProgressRecentTrendChartTag
 import org.artkachenko.kmp_learning_app.progress.progressHistoryCardTag
 import org.artkachenko.kmp_learning_app.progress.progressTopicCardTag
+import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserContinueStudyingTag
 import org.koin.compose.KoinApplication
@@ -309,6 +310,7 @@ internal class ProgressLearningJourneyIntegrationTest {
             modules = listOf(
                 curriculumDataModule,
                 assessmentDataModule,
+                savedQuestionDataModule,
                 topicStudyPresentationModule,
                 module {
                     single<CurriculumDatabase> { database }

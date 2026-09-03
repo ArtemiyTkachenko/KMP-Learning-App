@@ -33,6 +33,8 @@ import kotlinx.coroutines.SupervisorJob
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
+import org.artkachenko.kmp_learning_app.saved_questions.FakeSavedQuestionRepository
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.Question
@@ -162,6 +164,10 @@ private fun destinationViewModel(
         MistakeReviewViewModel(
             historyStore = store,
             stateHolder = MistakeReviewStateHolder(service, store, scope),
+            savedQuestionStateHolder = SavedQuestionStateHolder(
+                FakeSavedQuestionRepository(),
+                scope,
+            ),
         )
     }
 

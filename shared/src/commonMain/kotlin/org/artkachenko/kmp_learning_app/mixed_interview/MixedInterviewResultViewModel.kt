@@ -17,6 +17,8 @@ import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeServic
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 
 internal class MixedInterviewResultViewModel(
     private val attemptId: String,
@@ -24,6 +26,7 @@ internal class MixedInterviewResultViewModel(
     private val curriculumRepository: CurriculumRepository,
     private val assessmentReviewLoader: AssessmentReviewLoader,
     private val assessmentRetakeService: AssessmentRetakeService,
+    private val savedQuestionStateHolder: SavedQuestionStateHolder,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<MixedInterviewResultUiState>(
         MixedInterviewResultUiState.Loading,
@@ -32,13 +35,32 @@ internal class MixedInterviewResultViewModel(
     private val _events = Channel<MixedInterviewResultEvent>(Channel.BUFFERED)
     val events: Flow<MixedInterviewResultEvent> = _events.receiveAsFlow()
 
+    /**
+     * The same app-scoped saved state the Focused result and Mistake Review observe, so a Question
+     * saved on one of them is already saved here. Score, topic performance, and retake are derived
+     * exactly as before and owe nothing to it.
+     */
+    val savedQuestions: StateFlow<SavedQuestionsState> = savedQuestionStateHolder.state
+
     init {
         require(attemptId.isNotBlank()) { "attemptId must not be blank." }
         load()
+        savedQuestionStateHolder.refresh()
     }
 
     fun retry() {
         load()
+        savedQuestionStateHolder.refresh()
+    }
+
+    /** Ignores any ID this result does not currently show as available review content. */
+    fun toggleSaved(questionId: String) {
+        val content = uiState.value as? MixedInterviewResultUiState.Content ?: return
+        val isAvailable = content.questions.any {
+            it is ReviewQuestionItem.Available && it.question.questionId == questionId
+        }
+        if (!isAvailable) return
+        savedQuestionStateHolder.toggleSaved(questionId)
     }
 
     fun repeatInterview() {

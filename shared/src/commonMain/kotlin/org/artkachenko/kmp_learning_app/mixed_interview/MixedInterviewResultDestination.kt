@@ -19,6 +19,7 @@ internal fun MixedInterviewResultDestination(
     viewModel: MixedInterviewResultViewModel = koinViewModel { parametersOf(attemptId) },
 ) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
+    val savedQuestions = viewModel.savedQuestions.collectAsStateWithLifecycle().value
     val uriHandler = LocalUriHandler.current
     var failedSourceUrl by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(viewModel) {
@@ -34,6 +35,8 @@ internal fun MixedInterviewResultDestination(
         onRetry = viewModel::retry,
         onBack = onBack,
         onRepeatInterview = viewModel::repeatInterview,
+        savedQuestions = savedQuestions,
+        onToggleSaved = viewModel::toggleSaved,
         onSourceClick = { url ->
             // openUri throws when no host handler can open the URI. The failure used to be
             // swallowed here, so a tap on a source looked like a no-op.

@@ -106,6 +106,32 @@ runtime-only session without creating a second attempt. Android and Desktop
 share this presentation and domain flow; Room and DAOs remain below the
 repository boundaries.
 
+## Saved Questions On Review Surfaces
+
+Saving is learner-owned state layered onto review content, never part of it.
+`AssessmentReviewLoader` still means "historical `QuestionAttempt` + curriculum resolution",
+`ReviewQuestionUiModel` still carries authored content only, and neither knows about saving.
+
+`SavedQuestionStateHolder` is the app-scoped projection of the E18-01 `SavedQuestionRepository`,
+registered once in `topicStudyPresentationModule` on `AppCoroutineScope`. It exposes
+`SavedQuestionsState`, which keeps the repository's ordered `List<SavedQuestion>` as the canonical
+value and derives an ID set for per-card membership, plus the `pendingQuestionIds` whose mutation is
+in flight. The repository stays the source of truth: a mutation persists first and the visible state
+is then re-read from it, so a card never shows a saved state that was not written, and a failed
+write leaves the previous one standing.
+
+Focused results, Mixed results, and Mistake Review each observe that one holder as a second,
+independent state stream beside their own content, so a saved-state failure is never a screen-level
+error and result loading never waits on saved state. Each ViewModel's `toggleSaved(questionId)`
+ignores an ID that is not a `ReviewQuestionItem.Available` in its current state, which is why a
+`ReviewQuestionItem.Missing` placeholder cannot be saved even though its stable ID is known.
+Presentation is the shared `ReviewQuestionCard`'s optional `ReviewSaveAction`: a text
+Save/Unsave control beside the question heading, with no affordance at all while saved state is
+`Loading` or `Error`, because "not known to be saved" is not "unsaved".
+
+Saving is orthogonal to everything derived from history. It does not change scoring, coverage,
+weak areas, recommendations, or unresolved-mistake state, and no history invalidation follows it.
+
 Topic detail screens use a Material 3 top app bar for back navigation, with the
 navigation icon invoking the existing Navigation 3 back-stack pop. Detail and
 practice destinations should keep this phone-style toolbar affordance instead

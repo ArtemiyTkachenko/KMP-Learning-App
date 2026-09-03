@@ -10,8 +10,11 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -46,6 +49,8 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDatabase
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImportResult
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImporter
 import org.artkachenko.kmp_learning_app.data.local.curriculum.repository.LocalCurriculumRepository
+import org.artkachenko.kmp_learning_app.data.local.saved_questions.repository.LocalSavedQuestionRepository
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class MixedInterviewResultIntegrationTest {
@@ -58,6 +63,7 @@ internal class MixedInterviewResultIntegrationTest {
         val database = Room.inMemoryDatabaseBuilder<CurriculumDatabase>()
             .setDriver(BundledSQLiteDriver())
             .build()
+        val savedQuestionScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         try {
             assertEquals(
                 CurriculumImportResult.Imported,
@@ -89,6 +95,11 @@ internal class MixedInterviewResultIntegrationTest {
                 curriculumRepository = curriculumRepository,
                 assessmentReviewLoader = AssessmentReviewLoader(curriculumRepository),
                 assessmentRetakeService = retakeService,
+                // The production graph's saved-state holder, on the same database as the result.
+                savedQuestionStateHolder = SavedQuestionStateHolder(
+                    LocalSavedQuestionRepository(database),
+                    savedQuestionScope,
+                ),
             )
             val state = assertIs<MixedInterviewResultUiState.Content>(
                 withContext(Dispatchers.Default) {
@@ -121,6 +132,7 @@ internal class MixedInterviewResultIntegrationTest {
             assertEquals(created, loaded.attempt)
             assertEquals(created.questionAttempts.map { it.questionId }, loaded.questions.map { it.id })
         } finally {
+            savedQuestionScope.cancel()
             database.close()
         }
     }

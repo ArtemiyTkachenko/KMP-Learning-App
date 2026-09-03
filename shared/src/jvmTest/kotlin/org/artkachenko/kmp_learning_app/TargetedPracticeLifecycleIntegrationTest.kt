@@ -66,6 +66,7 @@ import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBui
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderUiState
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toPracticeRoute
+import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.koin.core.Koin
 import org.koin.core.parameter.parametersOf
@@ -475,6 +476,7 @@ private fun runPracticeTest(block: suspend PracticeGraph.() -> Unit) = runTest {
         modules(
             curriculumDataModule,
             assessmentDataModule,
+            savedQuestionDataModule,
             topicStudyPresentationModule,
             module {
                 single<CurriculumDatabase> { database }

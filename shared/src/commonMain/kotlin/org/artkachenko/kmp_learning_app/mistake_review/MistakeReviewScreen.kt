@@ -29,7 +29,9 @@ import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.assessment_review.MissingReviewQuestion
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionCard
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
+import org.artkachenko.kmp_learning_app.assessment_review.reviewSaveAction
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
@@ -61,6 +63,8 @@ internal fun MistakeReviewScreen(
     onBrowseTopics: () -> Unit,
     onSourceClick: (String) -> Unit,
     onPracticePreset: (PracticePreset) -> Unit,
+    savedQuestions: SavedQuestionsState = SavedQuestionsState.Loading,
+    onToggleSaved: (String) -> Unit = {},
     failedSourceUrl: String? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -91,6 +95,8 @@ internal fun MistakeReviewScreen(
                 state = state,
                 onSourceClick = onSourceClick,
                 onPracticePreset = onPracticePreset,
+                savedQuestions = savedQuestions,
+                onToggleSaved = onToggleSaved,
                 failedSourceUrl = failedSourceUrl,
                 modifier = Modifier.weight(1f),
             )
@@ -103,6 +109,8 @@ private fun MistakeReviewContent(
     state: MistakeReviewUiState.Content,
     onSourceClick: (String) -> Unit,
     onPracticePreset: (PracticePreset) -> Unit,
+    savedQuestions: SavedQuestionsState,
+    onToggleSaved: (String) -> Unit,
     failedSourceUrl: String?,
     modifier: Modifier,
 ) {
@@ -134,6 +142,12 @@ private fun MistakeReviewContent(
                         question = item.question,
                         onSourceClick = onSourceClick,
                         failedSourceUrl = failedSourceUrl,
+                        // Saving is learner intent about this Question, independent of the scoped
+                        // practice shortcut below and of whether the mistake is still unresolved.
+                        saveAction = savedQuestions.reviewSaveAction(
+                            questionId = item.question.questionId,
+                            onToggleSaved = onToggleSaved,
+                        ),
                     )
                     // Secondary to the explanation above it, and offered per entry rather than for
                     // the queue as a whole: this Question names its own Subtopic, so the scope is

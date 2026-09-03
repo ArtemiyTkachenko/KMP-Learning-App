@@ -17,6 +17,7 @@ import org.artkachenko.kmp_learning_app.mixed_interview.InterviewStartViewModel
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressTopicViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressViewModel
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
@@ -68,6 +69,15 @@ internal val topicStudyPresentationModule = module {
         )
     }
     single {
+        // One holder for the whole app, alongside the other app-scoped state: the three review
+        // surfaces present the same saved identities, so they must observe the same state rather
+        // than each caching the saved table for itself.
+        SavedQuestionStateHolder(
+            repository = get(),
+            scope = get<AppCoroutineScope>(),
+        )
+    }
+    single {
         ProgressStateHolder(
             learningProgressService = get(),
             curriculumRepository = get(),
@@ -86,6 +96,7 @@ internal val topicStudyPresentationModule = module {
         MistakeReviewViewModel(
             historyStore = get(),
             stateHolder = get(),
+            savedQuestionStateHolder = get(),
         )
     }
     viewModel {
@@ -152,6 +163,7 @@ internal val topicStudyPresentationModule = module {
             assessmentRepository = get(),
             assessmentReviewLoader = get(),
             assessmentRetakeService = get(),
+            savedQuestionStateHolder = get(),
         )
     }
     viewModel { parameters ->
@@ -161,6 +173,7 @@ internal val topicStudyPresentationModule = module {
             curriculumRepository = get(),
             assessmentReviewLoader = get(),
             assessmentRetakeService = get(),
+            savedQuestionStateHolder = get(),
         )
     }
 }

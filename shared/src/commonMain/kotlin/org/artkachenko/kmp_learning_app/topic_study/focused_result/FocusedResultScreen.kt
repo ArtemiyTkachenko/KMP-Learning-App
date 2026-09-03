@@ -31,6 +31,8 @@ import org.artkachenko.kmp_learning_app.assessment_review.MissingReviewQuestion
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionCard
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.assessment_review.UnresolvedReviewQuestionsNotice
+import org.artkachenko.kmp_learning_app.assessment_review.reviewSaveAction
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.layout.PaddingValues
 import kmp_learning_app.shared.generated.resources.focused_result_loading
@@ -51,6 +53,8 @@ internal fun FocusedResultScreen(
     onBack: () -> Unit,
     onSourceClick: (String) -> Unit,
     onRepeatPractice: () -> Unit,
+    savedQuestions: SavedQuestionsState = SavedQuestionsState.Loading,
+    onToggleSaved: (String) -> Unit = {},
     failedSourceUrl: String? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -76,8 +80,15 @@ internal fun FocusedResultScreen(
                 onRetry = onRetry,
                 modifier = Modifier.weight(1f),
             )
-            is FocusedResultUiState.Content ->
-                ResultContent(state, onSourceClick, onRepeatPractice, failedSourceUrl, Modifier.weight(1f))
+            is FocusedResultUiState.Content -> ResultContent(
+                state = state,
+                onSourceClick = onSourceClick,
+                onRepeatPractice = onRepeatPractice,
+                savedQuestions = savedQuestions,
+                onToggleSaved = onToggleSaved,
+                failedSourceUrl = failedSourceUrl,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }
@@ -87,6 +98,8 @@ private fun ResultContent(
     state: FocusedResultUiState.Content,
     onSourceClick: (String) -> Unit,
     onRepeatPractice: () -> Unit,
+    savedQuestions: SavedQuestionsState,
+    onToggleSaved: (String) -> Unit,
     failedSourceUrl: String?,
     modifier: Modifier,
 ) {
@@ -123,9 +136,18 @@ private fun ResultContent(
         }
         items(state.questions) { item ->
             when (item) {
+                // A Question the curriculum no longer holds is not review content the learner can
+                // act on, so the placeholder gets no save action.
                 is ReviewQuestionItem.Missing -> MissingReviewQuestion(item.questionId)
-                is ReviewQuestionItem.Available ->
-                    ReviewQuestionCard(item.question, onSourceClick, failedSourceUrl)
+                is ReviewQuestionItem.Available -> ReviewQuestionCard(
+                    question = item.question,
+                    onSourceClick = onSourceClick,
+                    failedSourceUrl = failedSourceUrl,
+                    saveAction = savedQuestions.reviewSaveAction(
+                        questionId = item.question.questionId,
+                        onToggleSaved = onToggleSaved,
+                    ),
+                )
             }
         }
     }

@@ -3182,3 +3182,252 @@ epics:
         priority: "P2"
         size: "M"
         initial_status: "Backlog"
+  - key: E20
+    github_title: "EPIC-20 Learning Content Foundation"
+
+    goal: >
+      Establish the authored-content foundation for in-app learning so the
+      application can teach interview-relevant Android and KMP concepts in plain
+      English before asking the learner to practise them. Learning content must be
+      comprehensive enough to stand on its own, remain grounded in authoritative
+      sources, cross existing Topic boundaries where understanding requires it,
+      and connect cleanly to the existing assessment taxonomy without mirroring
+      that taxonomy one-to-one.
+
+    issues:
+      - key: E20-01
+        title: "Define the learning-content authoring contract and Compose blueprint"
+
+        issue: >
+          The project has a mature question-authoring standard but no equivalent
+          standard for explanatory learning material. Writing lessons before
+          defining their scope, depth, cross-topic behavior, and editorial rules
+          would make the learning curriculum inconsistent and likely cause
+          duplication as more Topics are added.
+
+        approach: >
+          Define the canonical learning-content authoring contract and use Jetpack
+          Compose as the first complete Topic blueprint. Require authors to map the
+          complete interview-relevant Topic before writing individual lessons,
+          organize material around concepts and mental models rather than API
+          names, distinguish primary concepts from supporting cross-topic context,
+          and explicitly classify material as Teach, Bridge, Reference, or Exclude.
+          Define Core, Practical, and Senior depth as presentation layers rather
+          than separate versions of the same lesson.
+
+        acceptance_criteria:
+          - "A canonical learning-content authoring document exists."
+          - "The authoring process requires mapping the complete interview-relevant Topic before individual lesson authoring begins."
+          - "Learning Units are organized around conceptual understanding rather than API-name inventories."
+          - "The contract distinguishes Teach, Bridge, Reference, and Exclude decisions."
+          - "The contract distinguishes primary concepts, supporting concepts, and related/deeper learning content."
+          - "Supporting concepts may belong to any existing Topic and must be explained sufficiently for the current lesson to remain understandable."
+          - "Supporting context does not require duplicating another Topic's complete treatment."
+          - "Core, Practical, and Senior depth are defined consistently."
+          - "Lessons target approximately 5-10 minutes of focused reading and are split when several independent mental models would otherwise be combined."
+          - "Lessons prefer plain-English mental models, mechanism, practical examples, failure modes, and trade-offs over documentation-style API catalogues."
+          - "Every shipped lesson remains grounded in authoritative sources."
+          - "Runtime AI-generated learning content is explicitly outside the current scope."
+          - "A complete Compose learning blueprint exists covering the agreed learning units, ordering, bridges, references, and exclusions."
+          - "The Compose blueprint identifies the existing assessment Subtopics each planned lesson primarily teaches and those it uses only as supporting context."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E20-02
+        title: "Define the serialized learning-content domain model"
+
+        issue: >
+          Learning material needs a stable shared representation that can express
+          structured explanatory content without embedding Compose UI objects,
+          Markdown-parser assumptions, or database concerns into the authored
+          curriculum.
+
+        approach: >
+          Introduce a serializable shared learning-content model containing
+          Learning Units, Lessons, Sections, depth, structured content blocks,
+          stable taxonomy relationships, related content, Sources, authored order,
+          and lifecycle status. Keep the model independent from presentation,
+          persistence, and learner progress.
+
+        acceptance_criteria:
+          - "LearningUnit has stable identity, a home Topic identity, title, summary, authored lesson order, and lifecycle status."
+          - "LearningLesson has stable identity, title, summary, structured sections, Sources, and lifecycle status."
+          - "Lesson mapping distinguishes primarySubtopicIds from supportingSubtopicIds."
+          - "Primary and supporting Subtopic references are allowed to cross Topic boundaries."
+          - "The home Topic controls navigation placement but does not constrain the Topics referenced by lesson concepts."
+          - "Related learning content can be represented using stable learning-content identity."
+          - "LearningSection can distinguish Core, Practical, and Senior depth."
+          - "Structured blocks support at least paragraphs, bullet lists, code, comparison/tabular content, and semantic callouts."
+          - "The domain model contains no Compose UI types, Room annotations, platform APIs, or learner-progress fields."
+          - "Existing SourceReference and ContentStatus contracts are reused where appropriate rather than duplicated."
+          - "JSON serialization round-trip tests cover every supported content-block type and relationship."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E20-03
+        title: "Validate learning content and cross-curriculum relationships"
+
+        issue: >
+          Learning content will contain stable references into the existing
+          curriculum as well as relationships between learning items. Invalid IDs,
+          malformed structured content, missing Sources, or accidental overlap
+          between primary and supporting concepts should fail authoring validation
+          rather than becoming runtime UI defects.
+
+        approach: >
+          Add a validator for LearningCurriculum that validates both the learning
+          document itself and its references against the existing Curriculum.
+          Follow the existing curriculum-validator pattern of reporting all useful
+          authoring errors from one pass rather than failing on the first problem.
+
+        acceptance_criteria:
+          - "Learning Unit and Lesson IDs must be non-blank and unique."
+          - "Every referenced home Topic exists in the base Curriculum."
+          - "Every primary and supporting Subtopic ID exists in the base Curriculum."
+          - "Cross-Topic Subtopic references are valid and are not rejected merely because they differ from the Unit's home Topic."
+          - "Every active Lesson has at least one primary concept."
+          - "The same Subtopic cannot be both primary and supporting within one Lesson."
+          - "Related Lesson references resolve and cannot reference the Lesson itself."
+          - "Active Lessons contain non-empty Sections and meaningful content blocks."
+          - "Code blocks, lists, tables, callouts, titles, and summaries reject invalid or placeholder authoring content."
+          - "Tables are structurally valid and have consistent column counts."
+          - "Every active Lesson contains at least one valid authoritative Source reference."
+          - "Validation reports multiple independent authoring errors in one result."
+          - "Validator tests cover cross-topic primary/supporting relationships explicitly."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E20-04
+        title: "Establish bundled learning-content loading and repository access"
+
+        issue: >
+          The shared application needs one deterministic offline source for authored
+          learning material, but static document content does not currently need
+          relational persistence or a new Room schema.
+
+        approach: >
+          Add a separate bundled learning_curriculum.json resource, decode and
+          validate it in shared code, and expose it through a small
+          LearningContentRepository. Preserve authored ordering and stable identity.
+          Keep this publisher-owned content outside Room for now; learner-owned
+          lesson progress remains future work.
+
+        acceptance_criteria:
+          - "Learning content is bundled separately from initial_curriculum.json."
+          - "The learning bundle is available to every configured Compose Multiplatform host through shared resources."
+          - "Bundled learning content is decoded through the shared serializable model."
+          - "Bundled learning content is validated against the current base Curriculum before it is exposed to consumers."
+          - "LearningContentRepository can list active Learning Units for a home Topic in authored order."
+          - "LearningContentRepository can resolve a Learning Unit by stable ID."
+          - "LearningContentRepository can resolve a Lesson by stable ID."
+          - "Repository results expose domain learning models rather than serialized DTOs or UI models."
+          - "No Room migration or learning-content Room tables are introduced."
+          - "No learner-progress state is introduced."
+          - "Malformed bundled learning content produces a controlled load failure rather than partially usable content."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E20-05
+        title: "Author the first production Compose learning unit"
+
+        issue: >
+          The learning-content foundation needs real authored material to prove that
+          the model and editorial rules work for explanatory prose, examples,
+          cross-topic concepts, interview guidance, and structured content rather
+          than only synthetic fixtures.
+
+        approach: >
+          Author the first production unit from the approved Compose blueprint:
+          Thinking in Compose. Cover declarative versus imperative UI, composable
+          functions and Composition, unidirectional data flow, and the execution
+          rules that explain why composables should be side-effect free. Write the
+          material as final curriculum content rather than disposable sample data.
+
+        acceptance_criteria:
+          - "Thinking in Compose is present as an active Learning Unit in the bundled learning curriculum."
+          - "The unit contains the agreed lessons for declarative versus imperative UI, composables and Composition, UDF, and composable execution rules."
+          - "Each Lesson identifies its primary and supporting assessment Subtopics explicitly."
+          - "Cross-topic supporting concepts are included where necessary for understanding."
+          - "Core explanations use plain English before introducing precise framework terminology."
+          - "Practical material contains concise Android/Compose examples where they materially improve understanding."
+          - "Senior-depth material explains relevant mechanism or trade-offs without requiring runtime/compiler trivia."
+          - "Lessons contain explicit interview-focus or misconception guidance where useful."
+          - "Lessons do not reveal or coach the wording of existing quiz answers."
+          - "Every Lesson cites current authoritative Sources."
+          - "The authored unit passes learning-content validation and serialization tests."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E20-06
+        title: "Add learning-to-question coverage auditing"
+
+        issue: >
+          The existing Question bank should act as an acceptance aid for the
+          learning curriculum: Foundation questions should be supported by Core
+          material, Applied questions by practical reasoning, and Advanced
+          questions by sufficient mechanism or trade-off coverage. This
+          relationship needs to be inspectable without coupling Lessons directly
+          to individual Question IDs.
+
+        approach: >
+          Build a reproducible coverage report from Learning Lesson primary
+          Subtopic mappings and the existing active Question bank. Report question
+          coverage by QuestionLevel and expose supporting-only relationships
+          separately. Keep semantic judgment in author review rather than claiming
+          that matching IDs alone proves that a Lesson teaches a Question.
+
+        acceptance_criteria:
+          - "The audit derives Question coverage from stable primary Subtopic relationships rather than authored Question-ID lists."
+          - "Foundation, Applied, and Advanced active Question counts are reported separately for each Learning Unit or Lesson."
+          - "Supporting Subtopics are reported separately and do not count as primary practice coverage."
+          - "The audit identifies primary Subtopics with no active Questions."
+          - "The audit identifies active Questions associated with a Unit's primary concepts."
+          - "The report makes clear that structural mapping does not replace semantic review of whether the Lesson actually teaches the required reasoning."
+          - "The report is reproducible from the learning curriculum and current question curriculum."
+          - "Changing learning mappings or the active Question bank invalidates the generated coverage snapshot."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E20-07
+        title: "Verify the learning-content foundation end to end"
+
+        issue: >
+          The model, validation, bundled source, repository, authored Compose
+          material, and question-coverage relationships need to work together
+          before the application builds a user-facing Learn experience on top of
+          them.
+
+        approach: >
+          Exercise the complete publisher-owned learning-content path using the
+          real bundled Compose unit and current Curriculum, including decoding,
+          validation, cross-topic relationships, repository ordering and lookup,
+          Sources, and coverage auditing. Verify that the existing assessment
+          curriculum and persistent database remain unaffected.
+
+        acceptance_criteria:
+          - "The real bundled learning curriculum decodes successfully."
+          - "The real bundled learning curriculum validates successfully against the current base Curriculum."
+          - "Cross-Topic primary and supporting relationships survive the complete load path."
+          - "Repository Topic, Unit, and Lesson queries preserve authored order and stable identity."
+          - "The production Compose unit is returned through the same repository contract future Learn UI will consume."
+          - "The learning-to-question coverage audit succeeds against the current active Question bank."
+          - "No Room schema version change is required by EPIC-20."
+          - "Existing curriculum import, assessment, Saved Questions, and question-bank validation behavior remains green."
+          - "Android, Desktop, Web, and shared CI-equivalent builds remain compatible."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
+

@@ -168,18 +168,31 @@ Current output of the `docs/content/question-authoring-playbook.md` Part 3 scrip
 the whole bank:
 
 ```
-correct-longest 150/356 (42%), mean ratio 1.03, over 10% limit: 0
+correct-longest 151/356 (42%), mean ratio 1.03, over 10% limit: 0
 absolutes: distractors 0.22/opt, correct 0.11/opt
 position: {0: 26%, 1: 27%, 2: 26%, 3: 20%, 4: 1%}
 ```
 
-All 279 unique source URLs returned HTTP 200 at the time of this snapshot.
+All 286 unique source URLs returned HTTP 200 at the time of this snapshot.
 
 These are the numbers a new batch must not degrade. In particular: **zero
 questions exceed the 10% correct-answer length limit**, and correct answers do
 use absolute words (0.12/opt against 0.22/opt in distractors), so "the option
 with 'only' in it is wrong" is not a working strategy. Both properties are easy
 to break by accident and are the reason the audit exists.
+
+The length and absolutes audits are now also enforced by
+`InitialCurriculumContentQualityTest`, so a batch that degrades either fails the build
+rather than only the snapshot above.
+
+**HTTP 200 does not mean the snapshot is clean.** The first-100 review of 2026-09-04 found
+`kotlinlang.org/docs/cancellation-and-timeouts.html` returning 200 while rendering nothing,
+and `kotlinlang.org/docs/coroutines-flow.html` returning 200 after the sections it was cited
+for had been removed. Both were replaced. Two known source problems remain in the bank and
+are not visible to the liveness loop: 14 networking citations (n 107–328) point at
+`lysine.dev`, a third-party mirror adopted when `square.github.io` began 404ing, and should
+move to each project's own repository. `InitialCurriculumContentQualityTest` pins that count
+so it cannot grow.
 
 ## Deprecated questions
 

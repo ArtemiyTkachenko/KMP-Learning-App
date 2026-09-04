@@ -2628,7 +2628,7 @@
       "correctAnswerIds": [
         "predictive_back_handler_registration_d"
       ],
-      "explanation": "Predictive back shows the user where a gesture will land while their finger is still down, so the system has to know in advance whether the app will handle Back and what it would show. A callback registered with OnBackPressedDispatcher, or BackHandler in Compose, supplies that ahead of time. Overriding onBackPressed() reports the decision only once the gesture has committed, leaving nothing to preview, which is why the override is deprecated.",
+      "explanation": "Predictive back shows the user where a gesture will land while their finger is still down, so the system has to know in advance whether the app will handle Back and what it would show. A callback registered with OnBackPressedDispatcher, or BackHandler in Compose, supplies that ahead of time. Overriding onBackPressed() reports the decision only once the gesture has committed, leaving nothing to preview, which is why intercepting Back through that override is no longer supported.",
       "sources": [
         {
           "title": "Predictive Back Gesture",
@@ -3480,7 +3480,7 @@
       "id": "kotlin_nullability_001",
       "topicId": "kotlin_language",
       "subtopicId": "kotlin_nullability",
-      "text": "What does Kotlin's type system express when a variable has nullable type String? instead of non-null type String?",
+      "text": "One Kotlin variable is declared with type String and another with type String?. How does the compiler treat them differently?",
       "answers": [
         {
           "id": "kotlin_nullability_001_e",
@@ -3488,7 +3488,7 @@
         },
         {
           "id": "kotlin_nullability_001_b",
-          "text": "String is non-null, while String? is nullable."
+          "text": "It rejects null for the String variable and requires a null check before using the String? one."
         },
         {
           "id": "kotlin_nullability_001_h",
@@ -3850,7 +3850,7 @@
       "id": "kotlin_sequence_constrained_once",
       "topicId": "kotlin_language",
       "subtopicId": "kotlin_sequences",
-      "text": "A Sequence built with the sequence { } builder is stored in a variable, and two functions each iterate it. What happens on the second iteration?",
+      "text": "A Sequence built with generateSequence { }, the overload taking only a next-value lambda, is stored in a variable, and two functions each iterate it. What happens on the second iteration?",
       "answers": [
         {
           "id": "kotlin_sequence_constrained_once_a",
@@ -3858,7 +3858,7 @@
         },
         {
           "id": "kotlin_sequence_constrained_once_b",
-          "text": "It throws, because a sequence from that builder can be iterated only once."
+          "text": "It throws, because a sequence from that overload can be iterated only once."
         },
         {
           "id": "kotlin_sequence_constrained_once_c",
@@ -3866,7 +3866,7 @@
         },
         {
           "id": "kotlin_sequence_constrained_once_d",
-          "text": "It runs the builder again from the start, because sequences are cold like flows."
+          "text": "It produces the elements again from the start, because sequences are cold like flows."
         }
       ],
       "selectionMode": "SINGLE",
@@ -3874,11 +3874,15 @@
       "correctAnswerIds": [
         "kotlin_sequence_constrained_once_b"
       ],
-      "explanation": "Sequences from the sequence builder are constrained to a single pass: they wrap one underlying iterator, and asking for a second throws IllegalStateException rather than replaying or quietly yielding nothing. That is the practical difference from a cold Flow, which does start its producer again for every collector. A sequence that must be consumed more than once should be materialised into a list, or produced by a function that returns a fresh sequence per call.",
+      "explanation": "The single-lambda generateSequence overload is documented as constrained to be iterated only once, because the lambda carries the iteration state and has no seed to restart from. Asking it for a second iterator throws IllegalStateException rather than replaying or quietly yielding nothing. Most sequences are not like this: the sequence { } builder and the seeded generateSequence overloads both create a fresh iterator per iteration, so re-running them is fine. A once-only sequence that must be consumed twice should be materialised into a list.",
       "sources": [
         {
           "title": "Sequences",
           "url": "https://kotlinlang.org/docs/sequences.html"
+        },
+        {
+          "title": "kotlin.sequences.generateSequence",
+          "url": "https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.sequences/generate-sequence.html"
         }
       ],
       "status": "ACTIVE"
@@ -4105,6 +4109,10 @@
         {
           "title": "Collections Overview",
           "url": "https://kotlinlang.org/docs/collections-overview.html"
+        },
+        {
+          "title": "kotlin.collections.List",
+          "url": "https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/"
         }
       ],
       "status": "ACTIVE"
@@ -4329,8 +4337,8 @@
       "explanation": "Cancellation sets the Job to cancelling and relies on the coroutine to notice. Suspending functions in kotlinx.coroutines check for it, but a tight CPU-bound loop that never suspends keeps running. Such code should call ensureActive(), yield(), or test isActive. Cancellation does not interrupt the thread.",
       "sources": [
         {
-          "title": "Cancellation and Timeouts",
-          "url": "https://kotlinlang.org/docs/cancellation-and-timeouts.html"
+          "title": "Coroutine Cancellation",
+          "url": "https://kotlinlang.org/docs/coroutines-cancellation.html"
         }
       ],
       "status": "ACTIVE"
@@ -4595,6 +4603,10 @@
         {
           "title": "StateFlow and SharedFlow",
           "url": "https://developer.android.com/kotlin/flow/stateflow-and-sharedflow"
+        },
+        {
+          "title": "kotlinx.coroutines.flow.shareIn",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/share-in.html"
         }
       ],
       "status": "ACTIVE"
@@ -4669,6 +4681,10 @@
         {
           "title": "Coroutine Context and Dispatchers",
           "url": "https://kotlinlang.org/docs/coroutine-context-and-dispatchers.html"
+        },
+        {
+          "title": "kotlinx.coroutines.Dispatchers.IO",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-dispatchers/-i-o.html"
         }
       ],
       "status": "ACTIVE"
@@ -4704,8 +4720,12 @@
       "explanation": "Both stop a slow collector from backpressuring the producer, but they discard work differently. conflate keeps only the most recent unconsumed value and lets the current block finish, so processing completes for whichever values survive. collectLatest starts the block for every value and cancels it as soon as a newer one arrives, so a long block may never complete. Choosing between them depends on whether a partially processed value can safely be abandoned.",
       "sources": [
         {
-          "title": "Asynchronous Flow",
-          "url": "https://kotlinlang.org/docs/coroutines-flow.html"
+          "title": "kotlinx.coroutines.flow.conflate",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/conflate.html"
+        },
+        {
+          "title": "kotlinx.coroutines.flow.collectLatest",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/collect-latest.html"
         }
       ],
       "status": "ACTIVE"
@@ -4743,6 +4763,10 @@
         {
           "title": "StateFlow and SharedFlow",
           "url": "https://developer.android.com/kotlin/flow/stateflow-and-sharedflow"
+        },
+        {
+          "title": "SharingStarted.WhileSubscribed",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-sharing-started/-companion/-while-subscribed.html"
         }
       ],
       "status": "ACTIVE"
@@ -5454,7 +5478,7 @@
       "correctAnswerIds": [
         "hilt_field_injection_framework_classes_b"
       ],
-      "explanation": "Android instantiates Activities, Fragments, Services, and BroadcastReceivers itself through a no-argument constructor, so constructor injection is not available. @AndroidEntryPoint generates a base class that performs field injection at the right moment, which for an Activity is before super.onCreate() returns, and that is why injected fields cannot be private and must not be read earlier. Constructor injection stays the default wherever the app controls construction; field injection is the exception the framework forces.",
+      "explanation": "Android instantiates Activities, Fragments, Services, and BroadcastReceivers itself through a no-argument constructor, so constructor injection is not available. @AndroidEntryPoint generates a base class that injects the annotated fields in the lifecycle callback documented for that class, which for an Activity is onCreate(), and Hilt rejects a private field because the generated code has to assign it. Constructor injection stays the default wherever the app controls construction; field injection is the exception the framework forces.",
       "sources": [
         {
           "title": "Dependency Injection with Hilt",
@@ -6004,7 +6028,7 @@
       "id": "datastore_vs_sharedpreferences_async",
       "topicId": "local_data",
       "subtopicId": "datastore_vs_sharedpreferences",
-      "text": "Which advantage does DataStore have over SharedPreferences for reading a stored user setting?",
+      "text": "Which advantage does DataStore have over SharedPreferences?",
       "answers": [
         {
           "id": "datastore_vs_sharedpreferences_async_b",
@@ -11540,8 +11564,8 @@
           "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/run-interruptible.html"
         },
         {
-          "title": "Cancellation and Timeouts",
-          "url": "https://kotlinlang.org/docs/cancellation-and-timeouts.html"
+          "title": "Coroutine Cancellation",
+          "url": "https://kotlinlang.org/docs/coroutines-cancellation.html"
         }
       ],
       "status": "ACTIVE"

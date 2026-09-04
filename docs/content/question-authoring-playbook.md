@@ -10,6 +10,10 @@ be the hardest one to follow and the easiest one to believe you had followed.
 
 Read the contract first. Where the two documents disagree, the contract wins.
 
+`docs/content/question-validation.md` is the third piece: the acceptance standard that says
+when a finished question is allowed to ship. This playbook tells you how to write one; that
+document tells you how to prove it is correct.
+
 This playbook applies to authoring new questions and to reviewing existing ones.
 For *what the bank already covers* — per-subtopic counts, the concept index,
 which empty subtopics are intentional, and the current audit baselines — see
@@ -443,7 +447,22 @@ done
 ```
 
 Where a project's documentation site has moved, the canonical docs in its
-repository are an acceptable primary source.
+repository are an acceptable primary source. A third-party mirror is not: it can
+disappear or drift without notice, and nothing marks it as authoritative.
+
+**A 200 is not a verified source.** The first-100 review of 2026-09-04 found the
+loop above passing two pages it should not have:
+`kotlinlang.org/docs/cancellation-and-timeouts.html` returns 200 and renders
+nothing at all, and `kotlinlang.org/docs/coroutines-flow.html` still returns 200
+after the sections documenting `conflate` and `collectLatest` were removed from
+it. Four questions cited the first and one cited the second, and every one of
+them looked healthy to the script.
+
+Two habits follow. Open the page and locate the sentence, rather than trusting
+that the URL used to be right. And where a question turns on a named parameter or
+a specific contract — `stopTimeoutMillis`, `conflate` versus `collectLatest`,
+`Dispatchers.IO` parallelism — cite the API reference rather than the narrative
+guide. Guides get restructured; reference pages track the code.
 
 ## Part 8 — Stable identity
 

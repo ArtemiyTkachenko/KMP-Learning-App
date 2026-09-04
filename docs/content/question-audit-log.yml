@@ -1,0 +1,342 @@
+# Question bank audit log
+#
+# One entry per bank-wide semantic review, newest first. The rubric, statuses, severities,
+# and source-verification values are defined in docs/content/question-validation.md; this
+# file records results so a later session reads the verdict instead of re-deriving it.
+#
+# Record format for a question with findings:
+#
+#   - id: <question id>
+#     n: <1-based position in initial_curriculum.json questions[]>
+#     status: PASS | PASS_WITH_MINOR_CHANGES | FIXED | REVIEW_REQUIRED | REPLACE
+#     severity: BLOCKER | MAJOR | MINOR          # highest severity found, omit for PASS
+#     confidence: HIGH | MEDIUM | LOW
+#     source_verification: VERIFIED | PARTIALLY_VERIFIED | UNVERIFIED | INVALID
+#     failed_checks: [Q4_SINGLE_CORRECT, ...]    # rubric IDs that failed before the fix
+#     issues:
+#       - <concise issue description>
+#     changes:
+#       - <concise change description>
+#
+# Questions that passed without findings are rolled up by source-verification status rather
+# than written out individually; a verbose record for an unchanged question is noise. Full
+# records are reserved for questions that were changed or flagged.
+
+audits:
+  - review: First 100 questions, canonical order
+    date: 2026-09-04
+    scope: questions[0..99] of shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json
+    reviewed: 100
+    active: 81
+    retired: 19          # ContentStatus.DEPRECATED; reviewed, deliberately not edited
+    deterministic_checks: PASS
+    method: |
+      Each question was solved from its stem and options before its correctAnswerIds were
+      read. Every option was then tested for defensibility, and every source URL was
+      resolved. Where a claim was version-sensitive, contested, or specific enough that a
+      page had to state it, the source page itself was opened and quoted.
+
+    summary:
+      status:
+        PASS: 89
+        PASS_WITH_MINOR_CHANGES: 10
+        FIXED: 1
+        REVIEW_REQUIRED: 0
+        REPLACE: 0
+      severity:
+        BLOCKER: 1
+        MAJOR: 4
+        MINOR: 6
+      source_verification:
+        VERIFIED: 30
+        PARTIALLY_VERIFIED: 4
+        UNVERIFIED: 66
+        INVALID: 0
+
+    findings:
+      - id: kotlin_sequence_constrained_once
+        n: 43
+        status: FIXED
+        severity: BLOCKER
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q4_SINGLE_CORRECT, Q5_CORRECT_VERIFIED, Q7_DISTRACTORS_FALSE, Q13_SOURCE_SUPPORTS_ANSWER, Q15_EXPLANATION_CORRECT]
+        issues:
+          - >-
+            The keyed answer was false. The stem asked about the sequence { } builder, which
+            kotlin-stdlib defines as `Sequence { iterator(block) }` — a fresh iterator per
+            iteration, so the block re-runs and nothing throws. The distractor "runs again
+            from the start" was the true answer, and the cited Sequences guide states only
+            that *some* implementations constrain themselves, not that this one does.
+        changes:
+          - >-
+            Stem now names the single-lambda generateSequence overload, which the stdlib API
+            reference documents as "constrained to be iterated only once" and which throws
+            IllegalStateException on the second iterator(). Keyed answer and its ID are
+            unchanged, so historical attempts keep their meaning.
+          - Explanation rewritten to contrast the once-only overload with sequence { } and the seeded overloads.
+          - Added the kotlin.sequences.generateSequence API reference as a source.
+
+      - id: flow_conflate_vs_collect_latest
+        n: 65
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            The cited Asynchronous Flow guide no longer contains the words "conflate" or
+            "collectLatest" — the page was restructured — so nothing in the sources
+            established the contrast the question turns on.
+        changes:
+          - Replaced the guide with the conflate and collectLatest API references, both of which state the behaviour verbatim.
+
+      - id: flow_state_in_while_subscribed
+        n: 66
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - The cited page mentions SharingStarted.WhileSubscribed but never its stopTimeoutMillis parameter, which is the whole question.
+        changes:
+          - Added the SharingStarted.WhileSubscribed API reference, which defines the timeout as the delay between the last subscriber disappearing and the sharing coroutine stopping.
+
+      - id: coroutine_io_dispatcher_blocking_calls
+        n: 64
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - The cited dispatchers guide does not mention Dispatchers.IO at all, so it could not support the keyed claim about IO growing beyond the core count.
+        changes:
+          - Added the Dispatchers.IO API reference, which documents the 64-or-core-count parallelism limit and the blocking-IO purpose.
+
+      - id: coroutine_cancellation_001
+        n: 55
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            The cited Cancellation and Timeouts page returns HTTP 200 but renders empty. A
+            liveness check passes it; a reader gets nothing. Three further questions outside
+            this review's scope cited the same URL.
+        changes:
+          - >-
+            Repointed to the current Coroutine Cancellation page, which states that
+            cancellation is cooperative and names isActive, ensureActive() and yield(). The
+            same page also covers rethrowing CancellationException and runInterruptible, so
+            the other three citations of the dead URL were corrected with it.
+
+      - id: kotlin_readonly_list_not_immutable
+        n: 49
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MINOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - The collections overview does not state that a read-only reference only removes the mutators, which is precisely the keyed claim.
+        changes:
+          - Added the kotlin.collections.List API reference ("support only read-only access to the list; read/write access is supported through the MutableList interface").
+
+      - id: flow_share_in_vs_state_in
+        n: 62
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MINOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - The cited page names both operators but never contrasts them, so the configurable-replay claim rested on nothing.
+        changes:
+          - Added the shareIn API reference, which documents the replay parameter and single shared upstream instance.
+
+      - id: kotlin_nullability_001
+        n: 33
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MINOR
+        confidence: HIGH
+        source_verification: UNVERIFIED
+        failed_checks: [Q9_NO_ANSWER_CLUES]
+        issues:
+          - >-
+            The stem labelled the two types "nullable" and "non-null", and the keyed answer
+            said only "String is non-null, while String? is nullable" — the one option that
+            echoed the stem's own words, selectable without any Kotlin knowledge. It was
+            also by far the shortest option.
+        changes:
+          - Stem asks how the compiler treats the two declarations differently; the keyed answer now states the compiler behaviour instead of restating the labels. Answer ID unchanged — same claim, said usefully.
+
+      - id: datastore_vs_sharedpreferences_async
+        n: 100
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MINOR
+        confidence: HIGH
+        source_verification: UNVERIFIED
+        failed_checks: [Q9_NO_ANSWER_CLUES]
+        issues:
+          - >-
+            The stem narrowed to "for reading a stored user setting" while only one option
+            concerned reads, so the stem selected the key. The other three stay false with
+            the qualifier removed.
+        changes:
+          - Stem broadened to "Which advantage does DataStore have over SharedPreferences?"
+
+      - id: predictive_back_handler_registration
+        n: 10
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MINOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q17_EXPLANATION_CONSISTENT]
+        issues:
+          - The explanation closed by calling the onBackPressed() override "deprecated", which the cited predictive-back page does not say.
+        changes:
+          - Reworded to the source's own framing — intercepting Back through that override is no longer supported.
+
+      - id: hilt_field_injection_framework_classes
+        n: 85
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MINOR
+        confidence: MEDIUM
+        source_verification: PARTIALLY_VERIFIED
+        failed_checks: [Q17_EXPLANATION_CONSISTENT]
+        issues:
+          - >-
+            The explanation asserted injection happens "before super.onCreate() returns". The
+            claim is true of the generated base class but appears nowhere in the cited Hilt
+            page, which states only that fields cannot be private and links to a component
+            lifetimes table.
+        changes:
+          - Reworded to the documented callback (ActivityComponent is created at Activity#onCreate()) and the documented non-private requirement.
+
+    # Reviewed, no findings. Rolled up by how far their sources were verified.
+    passed:
+      source_verified:
+        - { n: 1, id: android_process_model_001 }
+        - { n: 6, id: android_main_thread_001 }
+        - { n: 13, id: activity_launch_mode_task_stack }
+        - { n: 15, id: saved_state_binder_transaction_limit }
+        - { n: 26, id: compose_phases_deferred_state_read }
+        - { n: 28, id: compose_side_effects_001 }
+        - { n: 30, id: compose_lazy_content_type }
+        - { n: 31, id: compose_stability_001 }
+        - { n: 39, id: kotlin_reified_types_001 }
+        - { n: 42, id: kotlin_sequences_001, retired: true }
+        - { n: 45, id: kotlin_lazy_thread_safety_mode }
+        - { n: 46, id: kotlin_crossinline_non_local_return }
+        - { n: 47, id: kotlin_extension_resolution_static }
+        - { n: 48, id: kotlin_platform_type_null_check }
+        - { n: 53, id: coroutine_async_exception_surfaces_at_await }
+        - { n: 56, id: coroutine_exceptions_001 }
+        - { n: 59, id: flow_context_001 }
+        - { n: 63, id: coroutine_supervisor_scope_direct_children }
+        - { n: 67, id: flow_catch_upstream_only }
+        - { n: 72, id: architecture_ui_event_consumption }
+        - { n: 90, id: di_koin_factory_vs_single }
+        - { n: 98, id: room_transaction_dao_method }
+
+      source_partially_verified:
+        # Page opened; it supports the area but not the exact sentence the question turns on.
+        - { n: 21, id: view_nested_weight_double_measure }
+        - { n: 57, id: coroutine_context_switching_001 }
+        - { n: 60, id: stateflow_001 }
+
+      source_unverified:
+        # URL resolves, host is an approved primary documentation site, and the page is the
+        # right page for the claim — but its text was not opened during this review.
+        - { n: 2, id: android_components_001, retired: true }
+        - { n: 3, id: content_provider_uri_permission_grant }
+        - { n: 4, id: android_context_001 }
+        - { n: 5, id: android_intents_001 }
+        - { n: 7, id: android_resources_001 }
+        - { n: 8, id: activity_lifecycle_001 }
+        - { n: 9, id: fragment_lifecycle_001, retired: true }
+        - { n: 11, id: configuration_changes_001 }
+        - { n: 12, id: process_death_001, retired: true }
+        - { n: 14, id: saved_state_001, retired: true }
+        - { n: 16, id: navigation_fundamentals_001 }
+        - { n: 17, id: back_handling_001, retired: true }
+        - { n: 18, id: navigation_pop_up_to_inclusive }
+        - { n: 19, id: views_fundamentals_001 }
+        - { n: 20, id: view_rendering_001, retired: true }
+        - { n: 22, id: recyclerview_001 }
+        - { n: 23, id: compose_state_001, retired: true }
+        - { n: 24, id: compose_edge_to_edge_insets }
+        - { n: 25, id: compose_recomposition_001, retired: true }
+        - { n: 27, id: compose_state_hoisting_001 }
+        - { n: 29, id: compose_lazy_layouts_001, retired: true }
+        - { n: 32, id: compose_accessibility_001 }
+        - { n: 34, id: kotlin_data_classes_001 }
+        - { n: 35, id: kotlin_objects_001 }
+        - { n: 36, id: kotlin_sealed_types_001 }
+        - { n: 37, id: kotlin_generics_001, retired: true }
+        - { n: 38, id: kotlin_star_projection_use_site }
+        - { n: 40, id: kotlin_equality_001 }
+        - { n: 41, id: kotlin_scope_functions_001 }
+        - { n: 44, id: jvm_fundamentals_001 }
+        - { n: 50, id: kotlin_custom_getter_recomputes }
+        - { n: 51, id: coroutine_fundamentals_001 }
+        - { n: 52, id: coroutine_builders_001, retired: true }
+        - { n: 54, id: structured_concurrency_001 }
+        - { n: 58, id: flow_fundamentals_001 }
+        - { n: 61, id: sharedflow_001, retired: true }
+        - { n: 68, id: coroutine_async_await_sequential }
+        - { n: 69, id: separation_of_concerns_001 }
+        - { n: 70, id: unidirectional_data_flow_001 }
+        - { n: 71, id: repository_pattern_001, retired: true }
+        - { n: 73, id: single_source_of_truth_001 }
+        - { n: 74, id: state_ownership_001 }
+        - { n: 75, id: dependency_direction_001, retired: true }
+        - { n: 76, id: architecture_paging_ownership }
+        - { n: 77, id: architecture_tradeoffs_001, retired: true }
+        - { n: 78, id: architecture_error_mapping_boundary }
+        - { n: 79, id: architecture_error_modeling_result_type }
+        - { n: 80, id: architecture_mvi_single_state }
+        - { n: 81, id: architecture_use_case_reuse }
+        - { n: 82, id: architecture_interface_boundary_ownership }
+        - { n: 83, id: architecture_solid_dependency_substitution }
+        - { n: 84, id: constructor_injection_001, retired: true }
+        - { n: 86, id: composition_root_001 }
+        - { n: 87, id: di_scopes_001 }
+        - { n: 88, id: service_locator_vs_di_001 }
+        - { n: 89, id: di_hilt_viewmodel_scope }
+        - { n: 91, id: di_constructor_injection_testability }
+        - { n: 92, id: di_framework_tradeoff_compile_vs_runtime, retired: true }
+        - { n: 93, id: dagger_multibinding_into_set }
+        - { n: 94, id: storage_selection_001 }
+        - { n: 95, id: room_dao_001 }
+        - { n: 96, id: room_transactions_001 }
+        - { n: 97, id: room_flow_001, retired: true }
+        - { n: 99, id: offline_first_001 }
+
+    systemic:
+      - >-
+        Sourcing, not authoring, is where this bank now fails. Every defect that reached
+        MAJOR was a citation that no longer supported its claim, and none was a weak
+        distractor or an arguable key — the two failure modes the earlier audits found.
+        Vendor documentation moved underneath the bank while the bank stood still.
+      - >-
+        HTTP 200 is not liveness. kotlinlang.org/docs/cancellation-and-timeouts.html returns
+        200 and renders nothing, and kotlinlang.org/docs/coroutines-flow.html still returns
+        200 after the sections on conflation were removed. The playbook's curl loop passes
+        both. Only opening the page catches either.
+      - >-
+        Guide pages drift; API reference pages do not. Where a question turns on a named
+        parameter or a specific contract (stopTimeoutMillis, conflate vs collectLatest,
+        Dispatchers.IO parallelism), the API reference is the durable citation and the
+        narrative guide is the fragile one.
+      - >-
+        Out of scope but recorded: 14 networking questions (n 107-328) cite lysine.dev, a
+        third-party mirror of Square's documentation, adopted after square.github.io began
+        returning 404. A mirror is not a primary source; the canonical replacement is each
+        project's own repository. InitialCurriculumContentQualityTest pins the count so the
+        debt cannot grow.

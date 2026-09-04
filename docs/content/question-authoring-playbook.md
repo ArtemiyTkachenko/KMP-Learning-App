@@ -473,10 +473,48 @@ for url, ns in sorted(anchored.items()):
         except Exception as e:
             cache[base] = 'ERR:' + str(e)
     doc = cache[base]
+    # GitHub prefixes rendered-markdown anchors with "user-content-"; both forms are valid.
+    forms = [frag, 'user-content-' + frag]
     if doc.startswith('ERR:'):
         print(f'FETCH-FAIL {url}')
-    elif not any(p in doc for p in (f'id="{frag}"', f"id='{frag}'", f'name="{frag}"')):
+    elif not any(p in doc for f in forms for p in (f'id="{f}"', f"id='{f}'", f'name="{f}"')):
         print(f'MISSING-ANCHOR {url}  (questions {ns})')
+EOF
+```
+
+**And check the page is not empty.** Three vendor pages in this bank returned 200 while rendering
+nothing at all — `kotlinlang.org/docs/cancellation-and-timeouts.html`, and the whole
+`kotlinlang.org/docs/multiplatform-*.html` set after those pages moved under
+`/docs/multiplatform/`. Eleven questions cited the multiplatform pages and every check the
+repository had passed them. Measure the rendered text:
+
+```bash
+python3 - <<'EOF'
+import json, re, html, urllib.request, concurrent.futures
+P = 'shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json'
+d = json.load(open(P, encoding='utf-8'))
+byurl = {}
+for i, q in enumerate(d['questions'], 1):
+    for s in q['sources']:
+        byurl.setdefault(s['url'].split('#')[0], set()).add(i)
+
+def body_len(u):
+    try:
+        req = urllib.request.Request(u, headers={'User-Agent': 'Mozilla/5.0'})
+        t = urllib.request.urlopen(req, timeout=45).read().decode('utf-8', 'ignore')
+    except Exception as e:
+        return u, -1
+    t = re.sub(r'<script.*?</script>|<style.*?</style>', '', t, flags=re.S)
+    m = (re.search(r'<devsite-content.*?</devsite-content>', t, flags=re.S)
+         or re.search(r'<article.*?</article>', t, flags=re.S)
+         or re.search(r'<main.*?</main>', t, flags=re.S))
+    b = re.sub(r'<[^>]+>', ' ', m.group(0) if m else t)
+    return u, len(re.sub(r'\s+', ' ', html.unescape(b)).strip())
+
+with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
+    for u, n in ex.map(body_len, sorted(byurl)):
+        if n < 800:
+            print(f'EMPTY-OR-STUB {n:6d}  {u}  (questions {sorted(byurl[u])})')
 EOF
 ```
 

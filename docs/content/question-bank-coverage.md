@@ -173,8 +173,8 @@ absolutes: distractors 0.22/opt, correct 0.11/opt
 position: {0: 26%, 1: 27%, 2: 26%, 3: 20%, 4: 1%}
 ```
 
-All 290 unique source URLs returned HTTP 200 at the time of this snapshot, and every
-`#fragment` among them was checked against the target page.
+All 291 unique source URLs returned HTTP 200 at the time of this snapshot, every one
+rendered a non-empty body, and every `#fragment` among them resolved to a real anchor.
 
 These are the numbers a new batch must not degrade. In particular: **zero
 questions exceed the 10% correct-answer length limit**, and correct answers do
@@ -189,17 +189,17 @@ rather than only the snapshot above.
 **HTTP 200 does not mean the snapshot is clean.** The first-100 review of 2026-09-04 found
 `kotlinlang.org/docs/cancellation-and-timeouts.html` returning 200 while rendering nothing,
 and `kotlinlang.org/docs/coroutines-flow.html` returning 200 after the sections it was cited
-for had been removed. Both were replaced. One known source problem remains in the bank and is
-not visible to the liveness loop: 4 networking citations (n 276, 324 twice, and 328) still
-point at `lysine.dev`, a third-party mirror adopted when `square.github.io` began 404ing, and
-should move to each project's own repository. Ten inside the reviewed ranges have been
-replaced; `InitialCurriculumContentQualityTest` pins the remainder at 4 so it cannot grow.
+for had been removed. Both were replaced, along with every other decayed citation the review
+found: all 14 `lysine.dev` mirror links now point at Square's own repositories, the gutted
+`dagger.dev/dev-guide/` links moved to `/dev-guide/basic-usage`, and Kotlin's relocated
+multiplatform pages moved under `/docs/multiplatform/`.
 
-**A 200 does not prove the anchor exists either.** A URL ending in `#some-section` resolves
-whether or not the section survives, so the liveness loop had been passing dead fragments
-since the bank was written. The 226-275 review added an anchor check to the playbook's Part 7
-and found 12; the six outside the reviewed ranges (n 298, 309, 314, 327, 349, 373) are still
-open.
+**A 200 proves almost nothing on its own.** The full review found three independent ways a
+citation can be dead behind a 200: a page whose section was renamed (the anchor check), a
+page whose content was removed (the body-length check), and a page that was replaced by a
+redirect shell (both). All three scripts are now in the playbook's Part 7 and all three pass
+on the whole bank. They are worth running on a schedule rather than only when questions
+change — vendor documentation decayed faster than the questions did.
 
 ## Deprecated questions
 
@@ -447,10 +447,10 @@ multiplatform ViewModel, library compatibility, sharing trade-offs.
 - **Every question in the bank has 4 options except 6 with 5.** Stay at 4 unless
   there is a specific reason.
 - **Source hosts, for reference:** developer.android.com 303 · kotlinlang.org 96
-  · github.com 13 (kotlinx.serialization, OkHttp and Retrofit — `square.github.io`
-  returns 404, so each project's own repository is the primary source) ·
-  dagger.dev 12 · firebase.google.com 12 · rfc-editor.org 8 · lysine.dev 4 (a mirror
-  still to be replaced; see the audit log) · docs.gradle.org 6 · and single-digit
+  · github.com 18 (kotlinx.serialization, OkHttp, Retrofit and SQLDelight —
+  `square.github.io` returns 404, so each project's own repository is the primary
+  source) · dagger.dev 12 · firebase.google.com 12 · rfc-editor.org 8 ·
+  docs.gradle.org 6 · and single-digit
   counts for insert-koin.io, ktor.io, sqldelight.github.io, jetbrains.com,
   source.android.com, sqlite.org, google.aip.dev, docs.cloud.google.com.
 - **Pinned count tests to update** whenever the bank changes:

@@ -44,37 +44,12 @@ internal class InitialCurriculumContentQualityTest {
         val offenders = BundledCurriculumSource.load().questions
             .flatMap { question -> question.sources.map { question.id to it.url } }
             .filterNot { (_, url) -> url.host() in APPROVED_SOURCE_HOSTS }
-            .filterNot { (_, url) -> url.host() in NON_PRIMARY_HOSTS_PENDING_REPLACEMENT }
 
         assertEquals(
             emptyList(),
             offenders,
             "Sources must cite an approved primary documentation host; extend APPROVED_SOURCE_HOSTS " +
                 "deliberately rather than citing a blog, an aggregator, or a placeholder domain.",
-        )
-    }
-
-    /**
-     * Square's documentation site (`square.github.io/okhttp`, `square.github.io/retrofit`) now
-     * returns 404, and the networking questions were re-pointed at a third-party mirror. A mirror
-     * is not a primary source. The canonical replacement is each project's own repository, which
-     * `docs/content/question-authoring-playbook.md` already accepts when a documentation site has
-     * moved.
-     *
-     * This budget exists so the debt cannot grow while it waits for a scoped fix: any new citation
-     * of a non-primary host fails here.
-     */
-    @Test
-    fun nonPrimarySourceHostsDoNotGrowBeyondTheKnownBacklog() = runTest {
-        val pending = BundledCurriculumSource.load().questions
-            .flatMap { question -> question.sources.map { question.id to it.url } }
-            .filter { (_, url) -> url.host() in NON_PRIMARY_HOSTS_PENDING_REPLACEMENT }
-
-        assertEquals(
-            4,
-            pending.size,
-            "Cite the project's own repository rather than a documentation mirror. Lower this " +
-                "number as the remaining citations are replaced; never raise it.",
         )
     }
 
@@ -163,7 +138,5 @@ internal class InitialCurriculumContentQualityTest {
             "www.jetbrains.com",
             "github.com",
         )
-
-        val NON_PRIMARY_HOSTS_PENDING_REPLACEMENT = setOf("lysine.dev")
     }
 }

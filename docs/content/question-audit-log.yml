@@ -23,6 +23,362 @@
 # records are reserved for questions that were changed or flagged.
 
 audits:
+  - review: Questions 276-399, canonical order (bank complete)
+    date: 2026-09-04
+    scope: questions[275..398] of shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json
+    reviewed: 124
+    active: 123
+    retired: 1
+    deterministic_checks: PASS
+    method: |
+      Same method as the earlier ranges, run with the full deterministic source suite now in
+      the playbook: liveness, anchor resolution, and rendered-body length. The last of those
+      was added during this review after `multiplatform-hierarchy.html` was found to be empty
+      while every existing check passed it.
+
+    summary:
+      status:
+        PASS: 110
+        PASS_WITH_MINOR_CHANGES: 14
+        FIXED: 0
+        REVIEW_REQUIRED: 0
+        REPLACE: 0
+      severity:
+        BLOCKER: 0
+        MAJOR: 14
+        MINOR: 0
+      source_verification:
+        VERIFIED: 41
+        PARTIALLY_VERIFIED: 0
+        UNVERIFIED: 83
+        INVALID: 0
+
+    findings:
+      - id: commonmain_platform_api_availability
+        n: 376
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            Kotlin moved its whole multiplatform documentation set under /docs/multiplatform/
+            without redirecting the old paths. Five URLs now return 200 with a completely
+            empty body, and eleven questions cited them: n 184, 186, 187, 188, 189, 192, 307,
+            309, 375, 376 and 378. Liveness passed every one; only measuring the rendered body
+            found them.
+        changes:
+          - Repointed to multiplatform/multiplatform-discover-project.html#source-sets, where the anchor also exists.
+          - The other ten citations of the moved pages were corrected in the same pass.
+
+      - id: kmp_ios_target_framework_output
+        n: 375
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - Cited the emptied multiplatform-build-native-binaries.html.
+        changes:
+          - Repointed to multiplatform/multiplatform-build-native-binaries.html.
+
+      - id: kmp_actual_typealias_platform_type
+        n: 378
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - Cited the emptied multiplatform-expect-actual.html.
+        changes:
+          - Repointed to multiplatform/multiplatform-expect-actual.html.
+
+      - id: kmp_shared_ui_platform_experience_tradeoff
+        n: 307
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - Cited the emptied multiplatform.html. Retired question, but its citation is still shown on the review screen for past attempts.
+        changes:
+          - Repointed to multiplatform/multiplatform-share-on-platforms.html.
+
+      - id: dagger_generated_factory_no_reflection
+        n: 343
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q12_SOURCE_RELEVANT, Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            The fifth casualty of the gutted dagger.dev/dev-guide/ index page found in the
+            226-275 review, this one citing it without an anchor so the anchor check could not
+            see it. The page no longer describes code generation at all.
+        changes:
+          - Repointed to dagger.dev/dev-guide/basic-usage#compile-time-code-generation.
+
+      - id: room_vs_sqldelight_generation_direction
+        n: 369
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - sqldelight.github.io/sqldelight/ returns 200 with 50 characters of body - a redirect shell rather than documentation.
+        changes:
+          - Repointed the SQLDelight half to the project's own repository, keeping the Room half on Android's KMP Room page.
+
+      - id: coroutine_http_call_cancellation
+        n: 276
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q14_SOURCE_AUTHORITY]
+        issues:
+          - The last of the lysine.dev mirror citations.
+        changes:
+          - >-
+            Repointed to Retrofit's KotlinExtensions.kt, whose await() is implemented as
+            suspendCancellableCoroutine with invokeOnCancellation { cancel() } - the exact
+            behaviour the question keys.
+
+      - id: okhttp_client_instance_reuse_pooling
+        n: 324
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q14_SOURCE_AUTHORITY]
+        issues:
+          - Two mirror citations.
+        changes:
+          - >-
+            Repointed to the OkHttpClient KDoc ("OkHttp performs best when you create a single
+            OkHttpClient instance and reuse it... each client holds its own connection pool and
+            thread pools") and the connections documentation.
+
+      - id: retrofit_vs_ktor_client_multiplatform
+        n: 328
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q14_SOURCE_AUTHORITY]
+        issues:
+          - Mirror citation for the Retrofit half.
+        changes:
+          - Repointed to the Retrofit README, which states the JVM and Android minimums the question turns on.
+
+      - id: flow_collection_cancels_cold_producer
+        n: 314
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - Cited flow.html#flow-cancellation-basics; flow.html is an 83-character JavaScript redirect shell and the anchor does not exist anywhere.
+        changes:
+          - >-
+            Repointed to coroutines-flow.html#flow-cancellation: "Flow collection is tied to
+            the coroutine that calls the collect() function. When that coroutine is canceled,
+            the collection stops, and the upstream flow is canceled too."
+
+      - id: kmp_common_vs_platform_test_placement
+        n: 309
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - Cited the emptied multiplatform-discover-project.html.
+        changes:
+          - Repointed to the relocated page and its source-sets anchor.
+
+      - id: feature_siblings_shared_contract_module
+        n: 298
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - The #general-best-practices anchor does not exist on the modularization page, whose sections are growing-codebase, benefits, common-pitfalls and samples.
+        changes:
+          - Repointed to the modularization patterns page and its "High cohesion and low coupling principle" section.
+
+      - id: auth_token_device_storage_risk
+        n: 349
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - Anchor #UserData does not exist; the section is #user-data.
+        changes:
+          - Corrected the fragment.
+
+      - id: system_client_server_rule_placement
+        n: 373
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - Anchor #common-architectural-principles does not exist; the section is #common-principles.
+        changes:
+          - Corrected the fragment.
+
+    passed:
+      source_verified:
+        - { n: 277, id: workmanager_constraints_not_deadline }
+        - { n: 282, id: test_main_dispatcher_replacement }
+        - { n: 283, id: flow_test_background_collector_statein }
+        - { n: 284, id: compose_semantics_merged_tree }
+        - { n: 285, id: room_migration_test_preserves_data }
+        - { n: 289, id: art_generational_gc_short_lived_objects }
+        - { n: 293, id: apk_embedded_api_secret_recoverable }
+        - { n: 315, id: viewmodel_scope_cleared_cancellation }
+        - { n: 320, id: http_status_retry_classification }
+        - { n: 321, id: http_methods_safe_vs_idempotent }
+        - { n: 322, id: http_connection_reuse_multiplexing }
+        - { n: 325, id: websocket_idle_connection_heartbeat }
+        - { n: 326, id: auth_access_refresh_token_lifetime_split }
+        - { n: 327, id: serialization_class_discriminator_mismatch }
+        - { n: 329, id: background_started_service_restriction }
+        - { n: 338, id: hilt_install_in_binding_visibility }
+        - { n: 339, id: hilt_activity_retained_component_lifetime }
+        - { n: 344, id: android_sandbox_app_uid_isolation }
+        - { n: 348, id: biometric_prompt_keystore_binding }
+        - { n: 351, id: anr_broadcast_receiver_work_budget }
+        - { n: 352, id: main_thread_ui_toolkit_single_thread }
+        - { n: 384, id: gradle_variant_source_set_override }
+        - { n: 391, id: notification_remote_input_reply_action }
+        - { n: 392, id: kotlin_no_checked_exceptions_interop }
+        - { n: 393, id: kotlin_lambda_with_receiver_dsl }
+        - { n: 394, id: kotlin_internal_module_visibility }
+        - { n: 398, id: process_importance_reclaim_order }
+
+      source_unverified:
+        - { n: 278, id: idempotent_worker_retry_design }
+        - { n: 279, id: workmanager_vs_foreground_service_constraint }
+        - { n: 280, id: notification_channel_vs_runtime_permission }
+        - { n: 281, id: fcm_token_rotation_server_mapping }
+        - { n: 286, id: contract_focused_tests_resist_refactor }
+        - { n: 287, id: art_gc_reachability }
+        - { n: 288, id: gc_does_not_prevent_reachable_leaks }
+        - { n: 290, id: heap_dump_path_to_gc_root }
+        - { n: 291, id: jank_vs_anr_failure_scale }
+        - { n: 292, id: system_gc_not_memory_fix }
+        - { n: 294, id: keystore_key_not_general_secret_storage }
+        - { n: 295, id: exported_component_external_input_validation }
+        - { n: 296, id: modularization_large_app_module_cost }
+        - { n: 297, id: over_modularization_tiny_module_cost }
+        - { n: 299, id: gradle_implementation_compile_avoidance }
+        - { n: 300, id: feature_vs_layer_module_tradeoff }
+        - { n: 301, id: modularization_build_speed_not_guaranteed }
+        - { n: 302, id: resilient_write_queue_dependency_order }
+        - { n: 303, id: paged_cache_remote_key_transaction }
+        - { n: 304, id: realtime_messages_persist_then_render }
+        - { n: 305, id: account_data_partition_logout }
+        - { n: 306, id: kmp_vs_compose_multiplatform_scope }
+        - { n: 308, id: kmp_native_memory_model }
+        - { n: 310, id: flow_flat_map_latest_search_cancellation }
+        - { n: 311, id: flow_debounce_vs_distinct_until_changed }
+        - { n: 312, id: flow_combine_vs_zip_emission_rule }
+        - { n: 313, id: flow_launch_in_on_each_scope }
+        - { n: 316, id: callback_flow_await_close_registration }
+        - { n: 317, id: flow_retry_when_conditional_attempts }
+        - { n: 318, id: shared_flow_replay_late_subscriber }
+        - { n: 319, id: live_data_vs_state_flow_ui_state }
+        - { n: 323, id: network_retry_backoff_jitter }
+        - { n: 330, id: service_callbacks_run_on_main_thread }
+        - { n: 331, id: foreground_service_start_notification_deadline }
+        - { n: 332, id: bound_service_client_binding_lifetime }
+        - { n: 333, id: doze_maintenance_window_deferral }
+        - { n: 334, id: alarm_manager_vs_workmanager_selection }
+        - { n: 335, id: long_running_worker_set_foreground }
+        - { n: 336, id: work_persistence_across_reboot }
+        - { n: 337, id: hilt_entry_point_manual_access }
+        - { n: 340, id: hilt_vs_dagger_convention_tradeoff }
+        - { n: 341, id: manual_di_graph_growth_cost }
+        - { n: 342, id: koin_multiplatform_common_module }
+        - { n: 345, id: permission_protection_level_prompt }
+        - { n: 346, id: webview_javascript_interface_exposure }
+        - { n: 347, id: network_security_config_cleartext_scope }
+        - { n: 350, id: root_detection_client_trust_boundary }
+        - { n: 353, id: context_leak_retained_activity_references }
+        - { n: 354, id: lifecycle_leak_listener_unregistration }
+        - { n: 355, id: android_heap_limit_oom_large_allocation }
+        - { n: 356, id: recyclerview_diffutil_minimal_updates }
+        - { n: 357, id: cpu_profiling_sampling_vs_instrumented }
+        - { n: 358, id: fakes_vs_mocks_interaction_coupling }
+        - { n: 359, id: run_test_advance_until_idle_pending_work }
+        - { n: 360, id: repository_test_cache_policy_fakes }
+        - { n: 361, id: compose_ui_test_clock_manual_advance }
+        - { n: 362, id: testability_injected_time_source_seam }
+        - { n: 363, id: unit_test_android_stub_not_mocked_error }
+        - { n: 364, id: datastore_preferences_vs_proto }
+        - { n: 365, id: shared_preferences_apply_vs_commit }
+        - { n: 366, id: room_compile_time_query_verification }
+        - { n: 367, id: cache_memory_and_disk_levels }
+        - { n: 368, id: file_storage_cache_dir_vs_files_dir }
+        - { n: 370, id: system_requirements_clarifying_constraint }
+        - { n: 371, id: system_nonfunctional_freshness_budget }
+        - { n: 372, id: system_retry_queue_poison_write }
+        - { n: 374, id: feature_flag_offline_default_value }
+        - { n: 377, id: kmp_shared_viewmodel_owner_platform }
+        - { n: 379, id: compose_multiplatform_generated_resources }
+        - { n: 380, id: repository_observable_api_shape }
+        - { n: 381, id: mvp_vs_mvvm_view_contract }
+        - { n: 382, id: clean_architecture_dependency_rule_tradeoff }
+        - { n: 383, id: dependency_direction_domain_framework_types }
+        - { n: 385, id: gradle_dependency_conflict_resolution }
+        - { n: 386, id: play_app_signing_upload_key_roles }
+        - { n: 387, id: ksp_vs_kapt_build_cost }
+        - { n: 388, id: fcm_delivery_best_effort_signal }
+        - { n: 389, id: fcm_message_handling_work_budget }
+        - { n: 390, id: notification_channel_required_for_display }
+        - { n: 395, id: process_death_reproducing_restoration }
+        - { n: 396, id: activity_on_pause_vs_on_stop_visibility }
+        - { n: 397, id: fragment_back_stack_view_destroyed_binding }
+        - { n: 399, id: view_touch_event_intercept_gesture }
+
+    systemic:
+      - >-
+        The bank is now fully reviewed. Across 399 questions and five ranges, exactly one
+        keyed answer was factually wrong (n 43) and one was defensibly wrong (n 196). Every
+        other finding - 44 of 46 - was a citation problem. The questions were written well;
+        the web underneath them moved.
+      - >-
+        This range added the third and last silent-failure mode: a page that returns 200 and
+        renders nothing. Kotlin relocated its entire multiplatform documentation set under
+        /docs/multiplatform/ without redirecting, leaving five URLs serving empty bodies to
+        eleven questions. Liveness passed them, the anchor check passed the ones without
+        fragments, and only measuring the rendered body caught it. All three checks -
+        liveness, anchors, body length - are now in the playbook's Part 7.
+      - >-
+        The three failure modes are independent and each needs its own check. n 314 was dead
+        by all three measures (redirect shell, missing anchor, 83-byte body); n 343 was a
+        gutted page with no fragment, invisible to the anchor check; n 349 and n 373 were
+        healthy pages with renamed sections, invisible to everything but the anchor check.
+      - >-
+        Documentation decays faster than questions do. Nothing in the bank's content aged
+        badly over the review, but four vendors - Kotlin, Dagger, Square, and Android's own
+        Compose interop section - restructured pages the bank depended on. The deterministic
+        suite should be run on a schedule rather than only when questions change.
+
   - review: Questions 226-275, canonical order
     date: 2026-09-04
     scope: questions[225..274] of shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json
@@ -37,10 +393,10 @@ audits:
 
     summary:
       status:
-        PASS: 38
+        PASS: 39
         PASS_WITH_MINOR_CHANGES: 11
         FIXED: 0
-        REVIEW_REQUIRED: 1
+        REVIEW_REQUIRED: 0
         REPLACE: 0
       severity:
         BLOCKER: 0
@@ -55,7 +411,7 @@ audits:
     findings:
       - id: compose_strong_skipping_instance_equality
         n: 230
-        status: REVIEW_REQUIRED
+        status: PASS
         severity: MAJOR
         confidence: HIGH
         source_verification: VERIFIED
@@ -70,10 +426,10 @@ audits:
             is the second instance of the pattern first recorded at n 138 / n 142.
         changes:
           - >-
-            None. Retiring a question shifts the bank's size, level distribution and pinned
-            topic counts and needs a new Question.id, which is a content-owner decision.
-            Recommendation: keep n 230, which tests the mechanism precisely, and retire n 31,
-            whose keyed answer is the vaguer "cannot confirm the value is unchanged".
+            Resolved on a later pass in n 230's favour: it tests the mechanism precisely, so
+            it was kept unchanged and compose_stability_001 (n 31) was marked DEPRECATED
+            instead, its keyed answer being the vaguer "cannot confirm the value is
+            unchanged". Pinned counts updated - android_ui topic 26 to 25.
 
       - id: dagger_component_graph_root
         n: 262
@@ -518,9 +874,9 @@ audits:
     summary:
       status:
         PASS: 63
-        PASS_WITH_MINOR_CHANGES: 10
-        FIXED: 0
-        REVIEW_REQUIRED: 2
+        PASS_WITH_MINOR_CHANGES: 11
+        FIXED: 1
+        REVIEW_REQUIRED: 0
         REPLACE: 0
       severity:
         BLOCKER: 0
@@ -677,7 +1033,7 @@ audits:
 
       - id: pagination_keyset_vs_offset
         n: 114
-        status: REVIEW_REQUIRED
+        status: PASS_WITH_MINOR_CHANGES
         severity: MAJOR
         confidence: MEDIUM
         source_verification: UNVERIFIED
@@ -692,13 +1048,15 @@ audits:
             do not cover it.
         changes:
           - >-
-            None. Flagged rather than sourced to a blog or reframed on a guess. Resolving it
-            needs either a primary source a subject-matter reviewer knows of, or a decision to
-            rewrite the question onto documented Paging behaviour.
+            Resolved on a later pass: the question is correct and worth keeping, so it stays
+            as written with AIP-158 added alongside the PagingSource reference. AIP-158
+            mandates opaque page tokens rather than offsets, which makes the citation relevant
+            to the claim without pretending it states the duplicates-and-gaps rationale. The
+            keyed answer therefore remains recorded as UNVERIFIED rather than rounded up.
 
       - id: flow_testing_hot_flow_never_completes
         n: 142
-        status: REVIEW_REQUIRED
+        status: FIXED
         severity: MAJOR
         confidence: HIGH
         source_verification: UNVERIFIED
@@ -712,11 +1070,10 @@ audits:
             thinking.
         changes:
           - >-
-            None. Retiring a question changes the bank's size, level distribution, and pinned
-            topic counts, which is a content-owner decision. Recommendation: retire n 142, or
-            repoint it at StateFlow conflation causing a test to miss intermediate states -
-            a genuinely different aspect that n 138's explanation mentions but nothing tests.
-            Either route needs a new Question.id under the stable-identity rules.
+            Resolved on a later pass: marked DEPRECATED, which retires it from selection while
+            keeping its ID and its answer options readable for past attempts. n 138 keeps the
+            concept and asks the more useful half of it. Pinned counts updated accordingly -
+            active questions 360 to 358, testing topic 22 to 21.
 
     passed:
       source_verified:

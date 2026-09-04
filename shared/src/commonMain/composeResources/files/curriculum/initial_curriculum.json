@@ -3433,7 +3433,7 @@
           "url": "https://developer.android.com/develop/ui/compose/performance/stability/strongskipping"
         }
       ],
-      "status": "ACTIVE"
+      "status": "DEPRECATED"
     },
     {
       "id": "compose_accessibility_001",
@@ -6585,6 +6585,10 @@
       "explanation": "An offset names a position in a result set that changes as rows are inserted, so a row can move across the page boundary and be fetched twice or missed entirely. A keyset request instead says where to continue from by value, which stays meaningful under concurrent writes. It is a consistency fix rather than a transport or memory optimisation, and both styles still return one page per request.",
       "sources": [
         {
+          "title": "AIP-158: Pagination",
+          "url": "https://google.aip.dev/158"
+        },
+        {
           "title": "PagingSource",
           "url": "https://developer.android.com/reference/kotlin/androidx/paging/PagingSource"
         }
@@ -7648,7 +7652,7 @@
           "url": "https://developer.android.com/kotlin/flow/test"
         }
       ],
-      "status": "ACTIVE"
+      "status": "DEPRECATED"
     },
     {
       "id": "room_testing_in_memory_database",
@@ -9259,8 +9263,8 @@
       "explanation": "Code belongs in common when the concept itself is platform-independent, such as domain rules, validation, and data transformation. Reaching for expect/actual whenever common code fails to compile inverts that test and produces a shared layer full of platform holes. Limited duplication is preferable to a shared abstraction that fits no platform well.",
       "sources": [
         {
-          "title": "Kotlin Multiplatform",
-          "url": "https://kotlinlang.org/docs/multiplatform.html"
+          "title": "Share Code on Platforms",
+          "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-share-on-platforms.html"
         }
       ],
       "status": "DEPRECATED"
@@ -9334,7 +9338,7 @@
       "sources": [
         {
           "title": "Expected and Actual Declarations",
-          "url": "https://kotlinlang.org/docs/multiplatform-expect-actual.html"
+          "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-expect-actual.html"
         }
       ],
       "status": "ACTIVE"
@@ -9371,7 +9375,7 @@
       "sources": [
         {
           "title": "Hierarchical Project Structure",
-          "url": "https://kotlinlang.org/docs/multiplatform-hierarchy.html"
+          "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-hierarchy.html"
         }
       ],
       "status": "ACTIVE"
@@ -9408,7 +9412,7 @@
       "sources": [
         {
           "title": "Expected and Actual Declarations",
-          "url": "https://kotlinlang.org/docs/multiplatform-expect-actual.html"
+          "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-expect-actual.html"
         }
       ],
       "status": "ACTIVE"
@@ -9444,8 +9448,8 @@
       "explanation": "Code in commonMain has to compile for each declared target, so every dependency it uses must publish artifacts for all of them; an Android-only library has nothing for iOS or Native to link against. That is why multiplatform equivalents such as Ktor and kotlinx.serialization exist for this layer. The library can still be used from androidMain, where only the Android target compiles it.",
       "sources": [
         {
-          "title": "Kotlin Multiplatform",
-          "url": "https://kotlinlang.org/docs/multiplatform.html"
+          "title": "Kotlin Multiplatform Project Structure: Source Sets",
+          "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-discover-project.html#source-sets"
         }
       ],
       "status": "ACTIVE"
@@ -9561,8 +9565,8 @@
       "explanation": "A shared abstraction pays off when the underlying concept really is the same; when the platforms differ, the common contract accumulates flags and escape hatches until it is harder to follow than two direct implementations. Maximising shared code is not the goal, so deliberate duplication is a legitimate outcome. Needing a multiplatform dependency is an ordinary constraint rather than a reason to duplicate, and release cadence is a delivery matter.",
       "sources": [
         {
-          "title": "Kotlin Multiplatform",
-          "url": "https://kotlinlang.org/docs/multiplatform.html"
+          "title": "Share Code on Platforms",
+          "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-share-on-platforms.html"
         }
       ],
       "status": "ACTIVE"
@@ -10353,7 +10357,7 @@
       "id": "android_component_process_lifetime",
       "topicId": "android_platform",
       "subtopicId": "android_components",
-      "text": "Select all that apply. Which statements correctly relate Android component lifetime to app-process lifetime?",
+      "text": "Which statements correctly relate Android component lifetime to app-process lifetime? Select all that apply.",
       "answers": [
         {
           "id": "android_component_process_lifetime_b",
@@ -10650,7 +10654,7 @@
       "id": "configuration_change_vs_process_recreation",
       "topicId": "lifecycle_navigation",
       "subtopicId": "configuration_changes",
-      "text": "Select all that apply. Which statements distinguish configuration recreation from process recreation?",
+      "text": "Which statements distinguish configuration recreation from process recreation? Select all that apply.",
       "answers": [
         {
           "id": "configuration_change_vs_process_recreation_c",
@@ -10799,7 +10803,7 @@
       "id": "compose_state_read_recomposition_scope",
       "topicId": "android_ui",
       "subtopicId": "compose_recomposition",
-      "text": "Select all that apply. Which statements describe how Compose state reads affect recomposition?",
+      "text": "Which statements describe how Compose state reads affect recomposition? Select all that apply.",
       "answers": [
         {
           "id": "compose_state_read_recomposition_scope_a",
@@ -11063,7 +11067,7 @@
       "id": "generic_in_out_variance_tradeoff",
       "topicId": "kotlin_language",
       "subtopicId": "kotlin_generics",
-      "text": "Select all that apply. Which variance choices are type-safe for a generic API?",
+      "text": "Which variance choices are type-safe for a generic API? Select all that apply.",
       "answers": [
         {
           "id": "generic_in_out_variance_tradeoff_c",
@@ -11705,7 +11709,7 @@
       "id": "stateflow_vs_sharedflow_current_value",
       "topicId": "async_reactive",
       "subtopicId": "stateflow",
-      "text": "Select all that apply. Which statements correctly compare StateFlow with SharedFlow?",
+      "text": "Which statements correctly compare StateFlow with SharedFlow? Select all that apply.",
       "answers": [
         {
           "id": "stateflow_vs_sharedflow_current_value_a",
@@ -12039,7 +12043,7 @@
       "id": "dagger_inject_provides_binds_selection",
       "topicId": "dependency_injection",
       "subtopicId": "dagger_bindings",
-      "text": "Select all that apply. Which Dagger binding declarations fit the stated constraint?",
+      "text": "Which Dagger binding declarations fit the stated constraint? Select all that apply.",
       "answers": [
         {
           "id": "dagger_inject_provides_binds_selection_c",
@@ -12188,7 +12192,7 @@
       "id": "dagger_subcomponent_parent_binding_inheritance",
       "topicId": "dependency_injection",
       "subtopicId": "dagger_components",
-      "text": "Select all that apply. Which statements describe a Dagger subcomponent's relationship to its parent component?",
+      "text": "Which statements describe a Dagger subcomponent's relationship to its parent component? Select all that apply.",
       "answers": [
         {
           "id": "dagger_subcomponent_parent_binding_inheritance_b",
@@ -12526,7 +12530,7 @@
       "id": "offline_first_local_write_then_sync",
       "topicId": "local_data",
       "subtopicId": "offline_first",
-      "text": "Select all that apply. An offline-first editor commits locally before syncing. Which design properties make that strategy reliable?",
+      "text": "An offline-first editor commits locally before syncing. Which design properties make that strategy reliable? Select all that apply.",
       "answers": [
         {
           "id": "offline_first_local_write_then_sync_a",
@@ -12605,7 +12609,7 @@
       "id": "okhttp_application_vs_network_interceptor",
       "topicId": "networking",
       "subtopicId": "okhttp_interceptors",
-      "text": "Select all that apply. Which statements correctly compare OkHttp application and network interceptors?",
+      "text": "Which statements correctly compare OkHttp application and network interceptors? Select all that apply.",
       "answers": [
         {
           "id": "okhttp_application_vs_network_interceptor_c",
@@ -12707,8 +12711,8 @@
       "explanation": "A cancellable suspend adapter connects coroutine cancellation to the in-flight call, avoiding network work whose owner no longer needs the result. Cancellation remains coroutine cancellation rather than a fabricated HTTP response or an automatic detached retry.",
       "sources": [
         {
-          "title": "Retrofit",
-          "url": "https://lysine.dev/retrofit/"
+          "title": "Retrofit: suspend call cancellation",
+          "url": "https://github.com/square/retrofit/blob/trunk/retrofit/src/main/java/retrofit2/KotlinExtensions.kt"
         }
       ],
       "status": "ACTIVE"
@@ -12791,7 +12795,7 @@
       "id": "workmanager_vs_foreground_service_constraint",
       "topicId": "background_work",
       "subtopicId": "service_vs_workmanager",
-      "text": "Select all that apply. Which workload characteristics favor a foreground service over ordinary WorkManager?",
+      "text": "Which workload characteristics favor a foreground service over ordinary WorkManager? Select all that apply.",
       "answers": [
         {
           "id": "workmanager_vs_foreground_service_constraint_c",
@@ -12866,7 +12870,7 @@
       "id": "fcm_token_rotation_server_mapping",
       "topicId": "notifications",
       "subtopicId": "fcm_tokens",
-      "text": "Select all that apply. An app sends targeted FCM messages through its backend. What should it do when the registration token changes?",
+      "text": "An app sends targeted FCM messages through its backend. What should it do when the registration token changes? Select all that apply.",
       "answers": [
         {
           "id": "fcm_token_rotation_server_mapping_c",
@@ -13052,7 +13056,7 @@
       "id": "contract_focused_tests_resist_refactor",
       "topicId": "testing",
       "subtopicId": "testing_boundaries",
-      "text": "Select all that apply. Which test choices make a suite more resilient to an internal refactor without weakening behavior coverage?",
+      "text": "Which test choices make a suite more resilient to an internal refactor without weakening behavior coverage? Select all that apply.",
       "answers": [
         {
           "id": "contract_focused_tests_resist_refactor_a",
@@ -13168,7 +13172,7 @@
       "id": "art_generational_gc_short_lived_objects",
       "topicId": "performance",
       "subtopicId": "garbage_collection",
-      "text": "Select all that apply. Why can generational collection improve ART garbage-collection throughput?",
+      "text": "Why can generational collection improve ART garbage-collection throughput? Select all that apply.",
       "answers": [
         {
           "id": "art_generational_gc_short_lived_objects_c",
@@ -13391,7 +13395,7 @@
       "id": "exported_component_external_input_validation",
       "topicId": "security",
       "subtopicId": "intent_security",
-      "text": "Select all that apply. An exported Activity accepts a deep-link URI that selects an account and redirect. Which defenses belong at that boundary?",
+      "text": "An exported Activity accepts a deep-link URI that selects an account and redirect. Which defenses belong at that boundary? Select all that apply.",
       "answers": [
         {
           "id": "exported_component_external_input_validation_a",
@@ -13530,8 +13534,8 @@
       "explanation": "Sibling features should not form horizontal or cyclic implementation dependencies. A small lower-level contract or navigation module gives both a stable abstraction, while the application composition root can connect concrete feature implementations.",
       "sources": [
         {
-          "title": "Modularization: General Best Practices",
-          "url": "https://developer.android.com/topic/modularization#general-best-practices"
+          "title": "Modularization patterns: cohesion and coupling",
+          "url": "https://developer.android.com/topic/modularization/patterns"
         }
       ],
       "status": "ACTIVE"
@@ -13614,7 +13618,7 @@
       "id": "modularization_build_speed_not_guaranteed",
       "topicId": "build_delivery",
       "subtopicId": "modularization_tradeoffs",
-      "text": "Select all that apply. Why can modularization improve incremental builds without making every build faster?",
+      "text": "Why can modularization improve incremental builds without making every build faster? Select all that apply.",
       "answers": [
         {
           "id": "modularization_build_speed_not_guaranteed_a",
@@ -13763,7 +13767,7 @@
       "id": "account_data_partition_logout",
       "topicId": "mobile_system_design",
       "subtopicId": "session_management",
-      "text": "Select all that apply. A multi-account app caches private data locally. Which design choices prevent one account from seeing another's data?",
+      "text": "A multi-account app caches private data locally. Which design choices prevent one account from seeing another's data? Select all that apply.",
       "answers": [
         {
           "id": "account_data_partition_logout_a",
@@ -13865,8 +13869,8 @@
       "explanation": "Sharing logic and sharing UI are separate product choices. Native UIs can preserve platform-specific experience and team autonomy while still reusing stable business and data behavior, at the cost of implementing presentation twice.",
       "sources": [
         {
-          "title": "Kotlin Multiplatform: Share Code on Your Terms",
-          "url": "https://kotlinlang.org/docs/multiplatform.html"
+          "title": "Share code on platforms",
+          "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-share-on-platforms.html"
         }
       ],
       "status": "DEPRECATED"
@@ -13912,7 +13916,7 @@
       "id": "kmp_common_vs_platform_test_placement",
       "topicId": "kmp",
       "subtopicId": "kmp_source_sets",
-      "text": "Select all that apply. Where should tests live in a KMP library with shared validation rules and an Android-only ContentResolver adapter?",
+      "text": "Where should tests live in a KMP library with shared validation rules and an Android-only ContentResolver adapter? Select all that apply.",
       "answers": [
         {
           "id": "kmp_common_vs_platform_test_placement_c",
@@ -13940,8 +13944,8 @@
       "explanation": "Tests follow the same boundary as production code. Platform-independent behavior can run from commonTest across targets, while an adapter that uses Android APIs needs the corresponding Android test source set and environment.",
       "sources": [
         {
-          "title": "Kotlin Multiplatform Source Sets",
-          "url": "https://kotlinlang.org/docs/multiplatform-discover-project.html#source-sets"
+          "title": "Kotlin Multiplatform Project Structure: Source Sets",
+          "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-discover-project.html#source-sets"
         }
       ],
       "status": "ACTIVE"
@@ -14133,8 +14137,8 @@
       "explanation": "A cold Flow has no coroutine of its own: collect runs the producer in the collecting coroutine, so cancelling that coroutine cancels production too. Like all coroutine cancellation this is cooperative — the block stops when it next reaches a cancellable suspension point such as emit(), not in the middle of a CPU-bound statement, and nothing carries on in the background afterwards.",
       "sources": [
         {
-          "title": "Asynchronous Flow: Flow cancellation basics",
-          "url": "https://kotlinlang.org/docs/flow.html#flow-cancellation-basics"
+          "title": "Asynchronous Flow: Flow cancellation",
+          "url": "https://kotlinlang.org/docs/coroutines-flow.html#flow-cancellation"
         }
       ],
       "status": "ACTIVE"
@@ -14291,7 +14295,7 @@
       "id": "live_data_vs_state_flow_ui_state",
       "topicId": "async_reactive",
       "subtopicId": "livedata",
-      "text": "Select all that apply. A team replaces LiveData with StateFlow for exposing screen state from a ViewModel. Which statements about that change are correct?",
+      "text": "A team replaces LiveData with StateFlow for exposing screen state from a ViewModel. Which statements about that change are correct? Select all that apply.",
       "answers": [
         {
           "id": "live_data_vs_state_flow_ui_state_a",
@@ -14333,7 +14337,7 @@
       "id": "http_status_retry_classification",
       "topicId": "networking",
       "subtopicId": "http_status_codes",
-      "text": "Select all that apply. A sync client must decide which failed requests are worth retrying with backoff rather than reporting as a permanent failure. Which responses normally qualify?",
+      "text": "A sync client must decide which failed requests are worth retrying with backoff rather than reporting as a permanent failure. Which responses normally qualify? Select all that apply.",
       "answers": [
         {
           "id": "http_status_retry_classification_a",
@@ -14375,7 +14379,7 @@
       "id": "http_methods_safe_vs_idempotent",
       "topicId": "networking",
       "subtopicId": "http_methods",
-      "text": "Select all that apply. Which statements about HTTP method semantics are correct?",
+      "text": "Which statements about HTTP method semantics are correct? Select all that apply.",
       "answers": [
         {
           "id": "http_methods_safe_vs_idempotent_a",
@@ -14518,12 +14522,12 @@
       "explanation": "OkHttp is designed around one shared client: the connection pool, the dispatcher's thread pools and the response cache all live on the instance. Building a client per call throws that state away, so every request repeats the TCP and TLS handshake and no idle connection is ever reused, which is expensive on mobile. Nothing limits how many clients may exist; the supported way to vary configuration is newBuilder(), which produces a client sharing the same pools and cache.",
       "sources": [
         {
-          "title": "OkHttp: OkHttpClient",
-          "url": "https://lysine.dev/okhttp/5.x/okhttp/okhttp3/-ok-http-client/"
+          "title": "OkHttp: OkHttpClients Should Be Shared",
+          "url": "https://github.com/square/okhttp/blob/master/okhttp/src/commonJvmAndroid/kotlin/okhttp3/OkHttpClient.kt"
         },
         {
-          "title": "OkHttp: Connections",
-          "url": "https://lysine.dev/okhttp/features/connections/"
+          "title": "OkHttp Connections",
+          "url": "https://github.com/square/okhttp/blob/master/docs/features/connections.md"
         }
       ],
       "status": "ACTIVE"
@@ -14675,7 +14679,7 @@
         },
         {
           "title": "Retrofit",
-          "url": "https://lysine.dev/retrofit/"
+          "url": "https://github.com/square/retrofit/blob/trunk/README.md"
         }
       ],
       "status": "ACTIVE"
@@ -15241,8 +15245,8 @@
       "explanation": "Dagger is an annotation processor. For each @Inject constructor it generates a Factory, and for each @Component it generates an implementation that wires those factories together; all of it is ordinary source compiled alongside the app. That makes an unsatisfied dependency a compile error rather than a runtime graph failure. At runtime Dagger follows generated factory and provider calls instead of discovering the graph with reflection, giving it low, predictable overhead rather than zero overhead: dependency resolution, object creation, scopes and lazy providers can still require work. Dagger neither inspects annotations at runtime nor rewrites bytecode, and a service locator is the pattern it exists to replace.",
       "sources": [
         {
-          "title": "Dagger Developer Guide",
-          "url": "https://dagger.dev/dev-guide/"
+          "title": "Dagger Basic Usage: Compile-time Code Generation",
+          "url": "https://dagger.dev/dev-guide/basic-usage#compile-time-code-generation"
         }
       ],
       "status": "ACTIVE"
@@ -15251,7 +15255,7 @@
       "id": "android_sandbox_app_uid_isolation",
       "topicId": "security",
       "subtopicId": "android_sandbox",
-      "text": "Select all that apply. Which statements about the Android application sandbox are correct?",
+      "text": "Which statements about the Android application sandbox are correct? Select all that apply.",
       "answers": [
         {
           "id": "android_sandbox_app_uid_isolation_a",
@@ -15465,7 +15469,7 @@
       "sources": [
         {
           "title": "Security tips: storing data",
-          "url": "https://developer.android.com/privacy-and-security/security-tips#UserData"
+          "url": "https://developer.android.com/privacy-and-security/security-tips#user-data"
         }
       ],
       "status": "ACTIVE"
@@ -15589,7 +15593,7 @@
       "id": "context_leak_retained_activity_references",
       "topicId": "performance",
       "subtopicId": "context_leaks",
-      "text": "Select all that apply. Which of these keep a destroyed Activity reachable and therefore leak it?",
+      "text": "Which of these keep a destroyed Activity reachable and therefore leak it? Select all that apply.",
       "answers": [
         {
           "id": "context_leak_retained_activity_references_a",
@@ -16112,7 +16116,7 @@
       "id": "cache_memory_and_disk_levels",
       "topicId": "local_data",
       "subtopicId": "caching",
-      "text": "Select all that apply. A feed repository caches responses both in an in-memory map and in a Room table. Which statements about that two-level cache are correct?",
+      "text": "A feed repository caches responses both in an in-memory map and in a Room table. Which statements about that two-level cache are correct? Select all that apply.",
       "answers": [
         {
           "id": "cache_memory_and_disk_levels_a",
@@ -16219,7 +16223,7 @@
         },
         {
           "title": "SQLDelight",
-          "url": "https://sqldelight.github.io/sqldelight/"
+          "url": "https://github.com/sqldelight/sqldelight"
         }
       ],
       "status": "ACTIVE"
@@ -16228,7 +16232,7 @@
       "id": "system_requirements_clarifying_constraint",
       "topicId": "mobile_system_design",
       "subtopicId": "requirements_analysis",
-      "text": "Select all that apply. You are asked to design the client for a photo feed. Which clarifying questions change the client architecture most?",
+      "text": "You are asked to design the client for a photo feed. Which clarifying questions change the client architecture most? Select all that apply.",
       "answers": [
         {
           "id": "system_requirements_clarifying_constraint_a",
@@ -16372,7 +16376,7 @@
       "sources": [
         {
           "title": "Guide to app architecture: common principles",
-          "url": "https://developer.android.com/topic/architecture#common-architectural-principles"
+          "url": "https://developer.android.com/topic/architecture#common-principles"
         },
         {
           "title": "Firebase Remote Config use cases",
@@ -16450,7 +16454,7 @@
       "sources": [
         {
           "title": "Build final native binaries",
-          "url": "https://kotlinlang.org/docs/multiplatform-build-native-binaries.html"
+          "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-build-native-binaries.html"
         }
       ],
       "status": "ACTIVE"
@@ -16459,7 +16463,7 @@
       "id": "commonmain_platform_api_availability",
       "topicId": "kmp",
       "subtopicId": "commonmain",
-      "text": "Select all that apply. Which of these can be referenced directly from commonMain in a module targeting Android and iOS?",
+      "text": "Which of these can be referenced directly from commonMain in a module targeting Android and iOS? Select all that apply.",
       "answers": [
         {
           "id": "commonmain_platform_api_availability_a",
@@ -16487,7 +16491,7 @@
       "sources": [
         {
           "title": "Kotlin Multiplatform project structure: source sets",
-          "url": "https://kotlinlang.org/docs/multiplatform-discover-project.html#source-sets"
+          "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-discover-project.html#source-sets"
         }
       ],
       "status": "ACTIVE"
@@ -16561,7 +16565,7 @@
       "sources": [
         {
           "title": "Expected and actual declarations",
-          "url": "https://kotlinlang.org/docs/multiplatform-expect-actual.html"
+          "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-expect-actual.html"
         }
       ],
       "status": "ACTIVE"
@@ -16685,7 +16689,7 @@
       "id": "clean_architecture_dependency_rule_tradeoff",
       "topicId": "architecture",
       "subtopicId": "clean_architecture",
-      "text": "Select all that apply. A team follows Clean Architecture's dependency rule and keeps the domain layer free of framework types. Which consequences follow?",
+      "text": "A team follows Clean Architecture's dependency rule and keeps the domain layer free of framework types. Which consequences follow? Select all that apply.",
       "answers": [
         {
           "id": "clean_architecture_dependency_rule_tradeoff_a",
@@ -16834,7 +16838,7 @@
       "id": "play_app_signing_upload_key_roles",
       "topicId": "build_delivery",
       "subtopicId": "app_signing",
-      "text": "Select all that apply. An app is distributed using Play App Signing. Which statements about its keys are correct?",
+      "text": "An app is distributed using Play App Signing. Which statements about its keys are correct? Select all that apply.",
       "answers": [
         {
           "id": "play_app_signing_upload_key_roles_a",
@@ -17024,7 +17028,7 @@
       "id": "notification_remote_input_reply_action",
       "topicId": "notifications",
       "subtopicId": "notification_actions",
-      "text": "Select all that apply. A messaging notification offers an inline reply from the notification shade. Which statements about that action are correct?",
+      "text": "A messaging notification offers an inline reply from the notification shade. Which statements about that action are correct? Select all that apply.",
       "answers": [
         {
           "id": "notification_remote_input_reply_action_a",
@@ -17140,7 +17144,7 @@
       "id": "kotlin_internal_module_visibility",
       "topicId": "kotlin_language",
       "subtopicId": "kotlin_visibility",
-      "text": "Select all that apply. Which statements about Kotlin's internal visibility modifier are correct?",
+      "text": "Which statements about Kotlin's internal visibility modifier are correct? Select all that apply.",
       "answers": [
         {
           "id": "kotlin_internal_module_visibility_a",
@@ -17251,7 +17255,7 @@
       "id": "fragment_back_stack_view_destroyed_binding",
       "topicId": "lifecycle_navigation",
       "subtopicId": "fragment_lifecycle",
-      "text": "Select all that apply. A Fragment is replaced by another one and added to the back stack. Which statements about it are correct?",
+      "text": "A Fragment is replaced by another one and added to the back stack. Which statements about it are correct? Select all that apply.",
       "answers": [
         {
           "id": "fragment_back_stack_view_destroyed_binding_a",
@@ -17288,7 +17292,7 @@
       "id": "process_importance_reclaim_order",
       "topicId": "android_platform",
       "subtopicId": "android_process_model",
-      "text": "Select all that apply. The system is low on memory and must reclaim some. Which statements about which app process it removes first are correct?",
+      "text": "The system is low on memory and must reclaim some. Which statements about which app process it removes first are correct? Select all that apply.",
       "answers": [
         {
           "id": "process_importance_reclaim_order_a",

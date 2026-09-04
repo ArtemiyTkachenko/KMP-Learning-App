@@ -6126,7 +6126,7 @@
       "correctAnswerIds": [
         "room_relationship_no_foreign_key_join_d"
       ],
-      "explanation": "@Relation tells Room to run an additional query for the related rows and assemble the object graph, which is why the annotated field must be a collection on a plain data class rather than on the entity itself. Constraints and cascading behaviour come from @ForeignKey, which is a separate and independent declaration, and the fetch is not one join.",
+      "explanation": "@Relation tells Room to run an additional query for the related rows and assemble the object graph, which is why the annotated field belongs on a plain data class that pairs the parent with its children rather than on the entity itself. Constraints and cascading behaviour come from @ForeignKey, which is a separate and independent declaration, and the fetch is not one join.",
       "sources": [
         {
           "title": "Room Relationships",
@@ -6240,6 +6240,10 @@
       "explanation": "An index is a second structure the database keeps in step with the table, so every insert, update, or delete touching the indexed column has to update it too, and the file grows. That is the trade the read speedup is bought with, and it is why indexes are added for queries that actually run rather than by default. The planner selects indexes on its own, and transactions are unaffected.",
       "sources": [
         {
+          "title": "SQLite Performance Best Practices",
+          "url": "https://developer.android.com/topic/performance/sqlite-performance-best-practices"
+        },
+        {
           "title": "SQLite Query Planner",
           "url": "https://www.sqlite.org/queryplanner.html"
         }
@@ -6315,7 +6319,7 @@
       "sources": [
         {
           "title": "OkHttp Recipes: Timeouts",
-          "url": "https://lysine.dev/okhttp/recipes/#timeouts-kt-java"
+          "url": "https://github.com/square/okhttp/blob/master/docs/recipes.md"
         }
       ],
       "status": "ACTIVE"
@@ -6352,7 +6356,7 @@
       "sources": [
         {
           "title": "OkHttp Interceptors",
-          "url": "https://lysine.dev/okhttp/features/interceptors/"
+          "url": "https://github.com/square/okhttp/blob/master/docs/features/interceptors.md"
         }
       ],
       "status": "ACTIVE"
@@ -6388,8 +6392,8 @@
       "explanation": "Declaring a service function as suspend lets Retrofit deliver the result through coroutine suspension, so the call fits structured concurrency: it can be cancelled with its scope and composed with other suspending work without callbacks. Body conversion, base URL configuration, and retry behaviour are unchanged and still configured on the client.",
       "sources": [
         {
-          "title": "Retrofit",
-          "url": "https://lysine.dev/retrofit/"
+          "title": "Retrofit Changelog: suspend function support",
+          "url": "https://github.com/square/retrofit/blob/trunk/CHANGELOG.md"
         },
         {
           "title": "Coroutine Basics",
@@ -6463,11 +6467,15 @@
       "correctAnswerIds": [
         "okhttp_authenticator_token_refresh_a"
       ],
-      "explanation": "Authenticator is the hook OkHttp calls specifically when a response carries an authorization challenge, and returning a new request makes the client replay the call; OkHttp also tracks the attempts so a persistently failing refresh stops rather than looping. Retrying from an interceptor is possible but the interceptor has to manage concurrency and its own retry limit, which is exactly the bookkeeping Authenticator already handles.",
+      "explanation": "Authenticator is the hook OkHttp calls specifically when a response is 401, and returning a new request makes the client replay the call with the fresh credential; returning null gives up. Giving up is the implementer's job, not OkHttp's: the documented pattern checks whether the failed request already carried an Authorization header, or counts prior responses, so a refresh that keeps failing stops instead of looping. Retrying from an interceptor is also possible, but then the 401 has to be recognised and the replay driven by hand as well.",
       "sources": [
         {
           "title": "OkHttp Recipes: Handling Authentication",
-          "url": "https://lysine.dev/okhttp/recipes/#handling-authentication-kt-java"
+          "url": "https://github.com/square/okhttp/blob/master/docs/recipes.md"
+        },
+        {
+          "title": "OkHttp Authenticator",
+          "url": "https://github.com/square/okhttp/blob/master/okhttp/src/commonJvmAndroid/kotlin/okhttp3/Authenticator.kt"
         }
       ],
       "status": "ACTIVE"
@@ -6503,8 +6511,8 @@
       "explanation": "max-age=0 makes the stored response stale immediately, and must-revalidate forbids serving it without checking. The client therefore sends a conditional request carrying the ETag, and the server answers 304 when nothing changed, so the body is not re-downloaded even though a round trip happens. That is the difference from no-store, which prevents caching altogether.",
       "sources": [
         {
-          "title": "OkHttp Caching",
-          "url": "https://lysine.dev/okhttp/features/caching/"
+          "title": "RFC 9111: must-revalidate",
+          "url": "https://www.rfc-editor.org/rfc/rfc9111.html#name-must-revalidate"
         }
       ],
       "status": "ACTIVE"
@@ -6615,11 +6623,11 @@
       "sources": [
         {
           "title": "Retrofit: Response",
-          "url": "https://lysine.dev/retrofit/2.x/retrofit/retrofit2/Response.html"
+          "url": "https://github.com/square/retrofit/blob/trunk/retrofit/src/main/java/retrofit2/Response.java"
         },
         {
           "title": "Retrofit: HttpException",
-          "url": "https://lysine.dev/retrofit/2.x/retrofit/retrofit2/HttpException.html"
+          "url": "https://github.com/square/retrofit/blob/trunk/retrofit/src/main/java/retrofit2/HttpException.java"
         }
       ],
       "status": "ACTIVE"
@@ -8137,6 +8145,10 @@
         {
           "title": "Enable App Optimization with R8",
           "url": "https://developer.android.com/topic/performance/app-optimization/enable-app-optimization"
+        },
+        {
+          "title": "Add Keep Rules",
+          "url": "https://developer.android.com/topic/performance/app-optimization/add-keep-rules"
         }
       ],
       "status": "ACTIVE"
@@ -8847,6 +8859,10 @@
         {
           "title": "Enable App Optimization with R8",
           "url": "https://developer.android.com/topic/performance/app-optimization/enable-app-optimization"
+        },
+        {
+          "title": "Add Keep Rules",
+          "url": "https://developer.android.com/topic/performance/app-optimization/add-keep-rules"
         }
       ],
       "status": "ACTIVE"

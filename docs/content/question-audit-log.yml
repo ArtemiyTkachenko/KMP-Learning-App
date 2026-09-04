@@ -23,6 +23,313 @@
 # records are reserved for questions that were changed or flagged.
 
 audits:
+  - review: Questions 101-175, canonical order
+    date: 2026-09-04
+    scope: questions[100..174] of shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json
+    reviewed: 75
+    active: 64
+    retired: 11
+    deterministic_checks: PASS
+    method: |
+      Same method as the first-100 review: solve from the stem and options before reading
+      correctAnswerIds, test every option for defensibility, resolve every source URL, and
+      open the page wherever the claim is specific enough that a document has to state it.
+
+    summary:
+      status:
+        PASS: 63
+        PASS_WITH_MINOR_CHANGES: 10
+        FIXED: 0
+        REVIEW_REQUIRED: 2
+        REPLACE: 0
+      severity:
+        BLOCKER: 0
+        MAJOR: 10
+        MINOR: 2
+      source_verification:
+        VERIFIED: 14
+        PARTIALLY_VERIFIED: 4
+        UNVERIFIED: 57
+        INVALID: 0
+
+    findings:
+      - id: okhttp_authenticator_token_refresh
+        n: 111
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER, Q14_SOURCE_AUTHORITY, Q15_EXPLANATION_CORRECT]
+        issues:
+          - >-
+            The explanation claimed "OkHttp also tracks the attempts so a persistently failing
+            refresh stops rather than looping" and that retry-limit bookkeeping is "exactly
+            what Authenticator already handles". OkHttp's own Authenticator documentation says
+            the opposite: the implementation must check whether the failed request already
+            carried an Authorization header, or count prior responses, and return null to give
+            up. Taught as written, this produces an infinite refresh loop.
+          - The source was a third-party mirror of Square's documentation.
+        changes:
+          - >-
+            Explanation now states that giving up is the implementer's job and names the two
+            documented patterns for it. Keyed answer unchanged - Authenticator is still the
+            mechanism designed for the 401 case.
+          - Sources replaced with OkHttp's own recipes.md and the Authenticator KDoc in the OkHttp repository.
+
+      - id: network_timeouts_001
+        n: 107
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q14_SOURCE_AUTHORITY]
+        issues:
+          - Cited a third-party mirror of Square's documentation rather than a primary source.
+        changes:
+          - Repointed to okhttp/docs/recipes.md ("OkHttp supports connect, write, read, and full call timeouts").
+
+      - id: okhttp_interceptors_001
+        n: 108
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q14_SOURCE_AUTHORITY]
+        issues:
+          - Cited a third-party mirror.
+        changes:
+          - Repointed to okhttp/docs/features/interceptors.md ("Interceptors are a powerful mechanism that can monitor, rewrite, and retry calls").
+
+      - id: retrofit_coroutines_001
+        n: 109
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: MEDIUM
+        source_verification: PARTIALLY_VERIFIED
+        failed_checks: [Q14_SOURCE_AUTHORITY]
+        issues:
+          - >-
+            Cited a third-party mirror. Retrofit's own README does not mention suspend
+            functions at all, so the closest primary record of the feature is the changelog.
+        changes:
+          - Repointed to the Retrofit repository changelog, which documents suspend-function behaviour, alongside the existing coroutines guide.
+
+      - id: http_cache_control_revalidation
+        n: 112
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q14_SOURCE_AUTHORITY]
+        issues:
+          - Cited a mirror of OkHttp's caching page for a question that is entirely about HTTP semantics.
+        changes:
+          - Repointed to RFC 9111 section 5.2.2.2, the specification that defines must-revalidate. A better source than the one it replaced, not merely a working one.
+
+      - id: network_error_transport_vs_http
+        n: 115
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q14_SOURCE_AUTHORITY]
+        issues:
+          - Both citations were mirrored API pages.
+        changes:
+          - Repointed to Response.java and HttpException.java in the Retrofit repository.
+
+      - id: sqlite_index_read_write_tradeoff
+        n: 105
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: MEDIUM
+        source_verification: PARTIALLY_VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            The cited SQLite query planner page discusses only how indexes accelerate reads.
+            It says nothing about what an index costs, which is what the question asks.
+        changes:
+          - >-
+            Added Android's SQLite performance best practices, which states that an index is
+            implemented as an additional table, that its storage cost is real, and that unused
+            indexes should not be maintained. The write-maintenance cost follows from that but
+            is not stated verbatim in any primary source I could find, so this is recorded as
+            partially verified rather than verified.
+
+      - id: performance_r8_minify_reflection
+        n: 155
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: PARTIALLY_VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - The cited R8 page covers shrinking and obfuscation but never mentions reflection, which is the entire question.
+        changes:
+          - Added the keep-rules page, which covers rules for "code patterns that use reflection".
+
+      - id: release_shrinking_responsibilities
+        n: 174
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MINOR
+        confidence: HIGH
+        source_verification: PARTIALLY_VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - The reflection distractor rested on a page that does not discuss reflection.
+        changes:
+          - Added the keep-rules page alongside the existing R8 page.
+
+      - id: room_relationship_no_foreign_key_join
+        n: 102
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MINOR
+        confidence: HIGH
+        source_verification: UNVERIFIED
+        failed_checks: [Q15_EXPLANATION_CORRECT]
+        issues:
+          - >-
+            The explanation said the @Relation field "must be a collection", which is untrue
+            for a one-to-one relation, where it is a single object.
+        changes:
+          - Reworded to the part that is always true - the field belongs on a plain data class pairing parent with children, not on the entity.
+
+      - id: pagination_keyset_vs_offset
+        n: 114
+        status: REVIEW_REQUIRED
+        severity: MAJOR
+        confidence: MEDIUM
+        source_verification: UNVERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            The keyed claim - that offset paging lets rows shift across page boundaries under
+            concurrent inserts, producing duplicates and gaps - is correct and worth teaching,
+            but no primary source states it. The cited PagingSource reference shows page-keyed
+            and item-keyed samples without explaining why keyset is more consistent; AIP-158
+            mandates page tokens without giving this rationale; the SQLite and Paging guides
+            do not cover it.
+        changes:
+          - >-
+            None. Flagged rather than sourced to a blog or reframed on a guess. Resolving it
+            needs either a primary source a subject-matter reviewer knows of, or a decision to
+            rewrite the question onto documented Paging behaviour.
+
+      - id: flow_testing_hot_flow_never_completes
+        n: 142
+        status: REVIEW_REQUIRED
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: UNVERIFIED
+        failed_checks: [Q20_NO_DUPLICATION]
+        issues:
+          - >-
+            Substantially duplicates flow_testing_turbine_bounded_collection (n 138). Both sit
+            in the flow_testing subtopic, both are APPLIED, and both turn on the single fact
+            that a StateFlow never completes so toList() hangs. n 138's first distractor is
+            literally n 142's stem, so a candidate who has seen one answers the other without
+            thinking.
+        changes:
+          - >-
+            None. Retiring a question changes the bank's size, level distribution, and pinned
+            topic counts, which is a content-owner decision. Recommendation: retire n 142, or
+            repoint it at StateFlow conflation causing a test to miss intermediate states -
+            a genuinely different aspect that n 138's explanation mentions but nothing tests.
+            Either route needs a new Question.id under the stable-identity rules.
+
+    passed:
+      source_verified:
+        - { n: 106, id: http_idempotency_001 }
+        - { n: 113, id: json_unknown_keys_compatibility }
+        - { n: 116, id: tls_certificate_pinning_tradeoff }
+        - { n: 119, id: workmanager_expedited_work }
+        - { n: 126, id: notification_channels_001, retired: true }
+        - { n: 127, id: notification_trampoline_restriction }
+        - { n: 130, id: fcm_message_priority_doze }
+        - { n: 133, id: notification_channel_user_control }
+        - { n: 153, id: performance_coroutine_scope_leak }
+
+      source_unverified:
+        - { n: 101, id: room_migration_missing_path }
+        - { n: 103, id: room_type_converter_scope }
+        - { n: 104, id: cache_invalidation_staleness_policy }
+        - { n: 110, id: kotlinx_serialization_001 }
+        - { n: 117, id: workmanager_constraints_001 }
+        - { n: 118, id: foreground_services_001, retired: true }
+        - { n: 120, id: foreground_service_types_001 }
+        - { n: 121, id: background_limits_001 }
+        - { n: 122, id: workmanager_unique_work_policy }
+        - { n: 123, id: workmanager_retry_result_contract }
+        - { n: 124, id: background_exact_alarm_justification }
+        - { n: 125, id: background_api_selection_criteria }
+        - { n: 128, id: notification_permission_001 }
+        - { n: 129, id: fcm_data_messages_001, retired: true }
+        - { n: 131, id: notification_pending_intent_back_stack }
+        - { n: 132, id: fcm_app_state_delivery_behavior }
+        - { n: 134, id: testing_strategy_001 }
+        - { n: 135, id: test_doubles_001 }
+        - { n: 136, id: viewmodel_testing_001 }
+        - { n: 137, id: coroutine_testing_001, retired: true }
+        - { n: 138, id: flow_testing_turbine_bounded_collection }
+        - { n: 139, id: compose_ui_testing_001, retired: true }
+        - { n: 140, id: robolectric_vs_instrumented }
+        - { n: 141, id: coroutine_virtual_time_delay_skipping }
+        - { n: 143, id: room_testing_in_memory_database }
+        - { n: 144, id: local_vs_instrumented_test_placement }
+        - { n: 145, id: test_dependency_substitution_constructor }
+        - { n: 146, id: flaky_test_shared_state_and_time }
+        - { n: 147, id: anr_001, retired: true }
+        - { n: 148, id: performance_cold_warm_hot_start }
+        - { n: 149, id: memory_leaks_001, retired: true }
+        - { n: 150, id: performance_baseline_profile_generation }
+        - { n: 151, id: compose_recomposition_performance_001 }
+        - { n: 152, id: startup_performance_001 }
+        - { n: 154, id: performance_baseline_profile_purpose }
+        - { n: 156, id: performance_rendering_jank_causes }
+        - { n: 157, id: performance_strictmode_role }
+        - { n: 158, id: runtime_permissions_001, retired: true }
+        - { n: 159, id: permission_rationale_state_machine }
+        - { n: 160, id: exported_components_001 }
+        - { n: 161, id: sensitive_logging_001 }
+        - { n: 162, id: security_pending_intent_mutability }
+        - { n: 163, id: security_keystore_key_extraction }
+        - { n: 164, id: security_permission_denied_forever }
+        - { n: 165, id: security_scoped_storage_media_access }
+        - { n: 166, id: dependency_configurations_001, retired: true }
+        - { n: 167, id: gradle_convention_plugin_build_logic }
+        - { n: 168, id: version_catalogs_001 }
+        - { n: 169, id: apk_vs_aab_001 }
+        - { n: 170, id: gradle_api_vs_implementation_leak }
+        - { n: 171, id: build_variants_flavor_vs_type }
+        - { n: 172, id: modularization_dependency_direction, retired: true }
+        - { n: 173, id: gradle_configuration_cache_invalidation }
+        - { n: 175, id: offline_design_001, retired: true }
+
+    systemic:
+      - >-
+        Not one keyed answer in this range was wrong. Every MAJOR finding was a sourcing
+        failure, which repeats and sharpens the first-100 result: the questions are sound and
+        the citations are the part that has decayed.
+      - >-
+        The mirror problem is now half fixed. Seven of the fourteen lysine.dev citations fell
+        in this range and were replaced with Square's own repositories; seven remain at n 273,
+        274, 275, 276, 324 (x2), and 328. InitialCurriculumContentQualityTest pins the
+        remaining count at 7.
+      - >-
+        A second sourcing pattern appeared here that the first 100 only hinted at: a citation
+        that is on the right topic but silent on the specific cost or mechanism being asked
+        about. The R8 page explains shrinking but never mentions reflection; the SQLite query
+        planner explains how indexes speed reads but never what they cost; the PagingSource
+        reference shows keyed loading without saying why offsets drift. All three were keyed on
+        the missing half. When a question asks about a trade-off, check that the source states
+        both sides, not just the one the page was written to explain.
+      - >-
+        First duplication finding in the bank (n 138 / n 142). Both were written to the same
+        subtopic and neither review caught it at authoring time, which suggests checking new
+        questions against the existing questions in their subtopic, not only against the
+        concept index.
+
   - review: First 100 questions, canonical order
     date: 2026-09-04
     scope: questions[0..99] of shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json

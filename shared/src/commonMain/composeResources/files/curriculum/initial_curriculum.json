@@ -9694,7 +9694,7 @@
         },
         {
           "id": "android_intent_filter_matching_c",
-          "text": "The filter must declare the action, accept CATEGORY_DEFAULT, and match the URI's scheme and host."
+          "text": "The filter must declare the action, accept CATEGORY_DEFAULT, and have a data element the URI matches."
         },
         {
           "id": "android_intent_filter_matching_g",
@@ -9706,7 +9706,7 @@
       "correctAnswerIds": [
         "android_intent_filter_matching_c"
       ],
-      "explanation": "Implicit resolution tests the Intent against each filter's action, category, and data declarations, and a filter has to pass all three tests to match. An activity filter must also accept CATEGORY_DEFAULT, because the system adds that category to implicit intents before resolving them. Priority orders competing matches rather than excusing a failed test, and a filter that declares no data element matches only intents that carry no URI.",
+      "explanation": "Implicit resolution tests the Intent against each filter's action, category, and data declarations, and a filter has to pass all three tests to match. An activity filter must also accept CATEGORY_DEFAULT, because the system adds that category to implicit intents before resolving them. The data test compares only the parts the filter actually declares, so a filter naming just a scheme matches every URI using it; what a filter cannot do is omit the data element altogether and still match an Intent that carries a URI. Priority orders competing matches rather than excusing a failed test.",
       "sources": [
         {
           "title": "Intents and intent filters",
@@ -9820,8 +9820,12 @@
       "explanation": "repeatOnLifecycle launches the collection block while the chosen lifecycle is at least STARTED and cancels it below that state. Using the view lifecycle avoids updating a destroyed Fragment view; a process-wide or Fragment-lifetime scope outlives that UI.",
       "sources": [
         {
-          "title": "Use Kotlin coroutines with lifecycle-aware components",
-          "url": "https://developer.android.com/topic/libraries/architecture/coroutines"
+          "title": "androidx.lifecycle: repeatOnLifecycle",
+          "url": "https://developer.android.com/reference/kotlin/androidx/lifecycle/package-summary"
+        },
+        {
+          "title": "Fragment lifecycle",
+          "url": "https://developer.android.com/guide/fragments/lifecycle"
         }
       ],
       "status": "ACTIVE"
@@ -10228,8 +10232,8 @@
       "explanation": "AndroidView keeps a real View in the hierarchy: the factory constructs it once and update pushes new values into it when the composable recomposes with changed inputs. The View keeps its own imperative state, which Compose neither observes nor restores, so anything that must react to state has to be applied in update. Treating the View as if it participated in snapshots is the usual source of stale interop UI.",
       "sources": [
         {
-          "title": "Compose Interoperability APIs",
-          "url": "https://developer.android.com/develop/ui/compose/migrate/interoperability-apis"
+          "title": "Use Views in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/migrate/interoperability-apis/views-in-compose"
         }
       ],
       "status": "ACTIVE"
@@ -10599,8 +10603,8 @@
       "explanation": "A navigation graph back-stack entry can own one ViewModel shared by destinations inside that flow. Popping the graph permanently removes the owner and clears its state, which matches a checkout session better than application or per-destination scope.",
       "sources": [
         {
-          "title": "Navigate with a ViewModel Scoped to a Graph",
-          "url": "https://developer.android.com/guide/navigation/use-graph/programmatic"
+          "title": "ViewModel APIs: ViewModels scoped to the Navigation graph",
+          "url": "https://developer.android.com/topic/libraries/architecture/viewmodel/viewmodel-apis"
         }
       ],
       "status": "ACTIVE"

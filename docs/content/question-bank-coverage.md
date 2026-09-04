@@ -173,7 +173,7 @@ absolutes: distractors 0.22/opt, correct 0.11/opt
 position: {0: 26%, 1: 27%, 2: 26%, 3: 20%, 4: 1%}
 ```
 
-All 291 unique source URLs returned HTTP 200 at the time of this snapshot.
+All 292 unique source URLs returned HTTP 200 at the time of this snapshot.
 
 These are the numbers a new batch must not degrade. In particular: **zero
 questions exceed the 10% correct-answer length limit**, and correct answers do
@@ -440,7 +440,7 @@ multiplatform ViewModel, library compatibility, sharing trade-offs.
   `selectionMode` stays inferable from the answer key.
 - **Every question in the bank has 4 options except 6 with 5.** Stay at 4 unless
   there is a specific reason.
-- **Source hosts, for reference:** developer.android.com 302 · kotlinlang.org 96
+- **Source hosts, for reference:** developer.android.com 303 · kotlinlang.org 96
   · dagger.dev 12 · firebase.google.com 12 · github.com 9 (kotlinx.serialization,
   OkHttp and Retrofit — `square.github.io` returns 404, so each project's own
   repository is the primary source) · rfc-editor.org 8 · lysine.dev 7 (a mirror

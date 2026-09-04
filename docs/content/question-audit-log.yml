@@ -23,6 +23,208 @@
 # records are reserved for questions that were changed or flagged.
 
 audits:
+  - review: Questions 176-225, canonical order
+    date: 2026-09-04
+    scope: questions[175..224] of shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json
+    reviewed: 50
+    active: 49
+    retired: 1
+    deterministic_checks: PASS
+    method: |
+      Same method as the earlier ranges. This range is mostly a later authoring batch with
+      terser explanations, so the emphasis fell on whether each keyed answer is true under
+      every reading of its stem rather than on distractor plausibility.
+
+    summary:
+      status:
+        PASS: 45
+        PASS_WITH_MINOR_CHANGES: 5
+        FIXED: 0
+        REVIEW_REQUIRED: 0
+        REPLACE: 0
+      severity:
+        BLOCKER: 0
+        MAJOR: 4
+        MINOR: 1
+      source_verification:
+        VERIFIED: 8
+        PARTIALLY_VERIFIED: 1
+        UNVERIFIED: 41
+        INVALID: 0
+
+    findings:
+      - id: android_intent_filter_matching
+        n: 196
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q7_DISTRACTORS_FALSE]
+        issues:
+          - >-
+            The keyed answer said a matching filter must "match the URI's scheme and host".
+            The intent-filter documentation says a URI is "compared only to the parts of the
+            URI included in the filter", and that "if a filter specifies only a scheme, all
+            URIs with that scheme match". A filter naming no host still matches, so a
+            candidate who knows the data test could decline the keyed option for being false
+            - the mirror of the distractor rule, and the more damaging half.
+        changes:
+          - Keyed option now requires "a data element the URI matches", which is the actual contract. Answer ID kept; the claim is unchanged, only its precision.
+          - Explanation now states that the data test compares only the parts the filter declares, which is what made the old wording wrong.
+
+      - id: lifecycle_repeat_on_lifecycle
+        n: 199
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            "Use Kotlin coroutines with lifecycle-aware components" has been rewritten around
+            Compose and collectAsStateWithLifecycle. It no longer contains the words
+            repeatOnLifecycle or lifecycleScope, which are the whole question. Another page
+            returning 200 with the cited content removed.
+        changes:
+          - >-
+            Repointed to the androidx.lifecycle package reference, which defines
+            repeatOnLifecycle ("Runs the given block in a new coroutine when this Lifecycle is
+            at least at state and suspends the execution until this Lifecycle is DESTROYED"),
+            plus the Fragment lifecycle page for viewLifecycleOwner.
+
+      - id: navigation_graph_viewmodel_shared_scope
+        n: 220
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q12_SOURCE_RELEVANT, Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            The cited page is "Interact programmatically with the Navigation component", which
+            is about creating a NavHostFragment. It never mentions ViewModel scoping. The
+            citation looks plausible from its URL and is simply the wrong page.
+        changes:
+          - >-
+            Repointed to the ViewModel APIs page, which has a "ViewModels scoped to the
+            Navigation graph" section: "Navigation graphs are also ViewModel store owners...
+            the ViewModel remains in memory as long as that destination is present in the back
+            stack."
+
+      - id: compose_view_interop_disposal
+        n: 210
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - The cited interoperability landing page does not mention AndroidView's factory parameter at all, and both keyed options are about factory and update.
+        changes:
+          - >-
+            Repointed to "Use Views in Compose", which states that AndroidView "provides an
+            update callback that is called when the view is inflated" and that it "recomposes
+            whenever a State read within the callback changes".
+
+      - id: kmp_swift_interop_suspend_flow
+        n: 185
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MINOR
+        confidence: MEDIUM
+        source_verification: PARTIALLY_VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            The suspend half of the keyed answer is documented exactly - suspend functions are
+            "presented in the generated Objective-C headers as functions with callbacks, or
+            completion handlers". The Flow half is not: the interop guide never mentions Flow,
+            and neither does the iOS integration overview or the Android KMP page.
+        changes:
+          - >-
+            None to the question - the keyed answer is still the only defensible one and the
+            Flow claim is not in doubt. Recorded as partially verified rather than rounded up,
+            and left for a reviewer who knows a primary source for the Flow bridging gap.
+
+    passed:
+      source_verified:
+        - { n: 180, id: system_design_api_backward_compatibility }
+        - { n: 201, id: navigation3_back_stack_ownership }
+        - { n: 204, id: compose_derived_state_threshold }
+        - { n: 205, id: compose_snapshot_flow_state }
+
+      source_unverified:
+        - { n: 176, id: system_design_push_vs_poll }
+        - { n: 177, id: background_sync_001 }
+        - { n: 178, id: system_design_conflict_resolution_policy }
+        - { n: 179, id: system_design_observability_signals }
+        - { n: 181, id: system_design_source_of_truth_boundary }
+        - { n: 182, id: system_design_feature_flag_rollout }
+        - { n: 183, id: system_design_pagination_state_ownership }
+        - { n: 184, id: shared_vs_platform_code_001, retired: true }
+        - { n: 186, id: expect_actual_001 }
+        - { n: 187, id: kmp_source_set_hierarchy_resolution }
+        - { n: 188, id: kmp_expect_actual_vs_interface }
+        - { n: 189, id: kmp_android_library_not_multiplatform }
+        - { n: 190, id: kmp_shared_layer_selection }
+        - { n: 191, id: kmp_compose_multiplatform_vs_jetpack }
+        - { n: 192, id: kmp_tradeoff_when_not_to_share }
+        - { n: 193, id: android_manifest_component_exported }
+        - { n: 194, id: android_ipc_binder_contract }
+        - { n: 195, id: android_looper_message_queue }
+        - { n: 197, id: android_context_theme_inflation }
+        - { n: 198, id: viewmodel_destination_scope }
+        - { n: 200, id: deep_link_app_link_verification }
+        - { n: 202, id: saved_state_transient_inputs }
+        - { n: 203, id: fragment_view_lifecycle_collection }
+        - { n: 206, id: compose_launched_effect_key_restart }
+        - { n: 207, id: compose_modifier_order_padding_click }
+        - { n: 208, id: compose_composition_local_tradeoff }
+        - { n: 209, id: compose_key_identity_lazy_state }
+        - { n: 211, id: compose_udf_event_direction }
+        - { n: 212, id: handler_looper_message_queue_roles }
+        - { n: 213, id: binder_ipc_marshalling_boundary }
+        - { n: 214, id: android_component_process_lifetime }
+        - { n: 215, id: binder_thread_pool_ui_handoff }
+        - { n: 216, id: viewmodel_store_configuration_retention }
+        - { n: 217, id: viewmodel_clear_owner_finish }
+        - { n: 218, id: savedstatehandle_process_recreation }
+        - { n: 219, id: remember_saveable_vs_viewmodel_ownership }
+        - { n: 221, id: navigation_back_stack_entry_lifetime }
+        - { n: 222, id: configuration_change_vs_process_recreation }
+        - { n: 223, id: compose_vs_view_ui_model }
+        - { n: 224, id: composition_vs_recomposition }
+        - { n: 225, id: remember_vs_remember_saveable }
+
+    systemic:
+      - >-
+        Third range, third time every keyed answer but one was correct, and the one exception
+        was a precision defect rather than a wrong answer. Sourcing remains the whole risk
+        surface.
+      - >-
+        Two more pages returning 200 with the cited content gone, and one citation that was
+        simply the wrong page. "Use Kotlin coroutines with lifecycle-aware components" was
+        rewritten around Compose and no longer names repeatOnLifecycle; the interoperability
+        landing page never mentions AndroidView's factory. Neither is detectable without
+        opening the page, which is now the third independent confirmation of that lesson.
+      - >-
+        A citation can be wrong while looking right. n 220 pointed at
+        guide/navigation/use-graph/programmatic for a question about graph-scoped ViewModels;
+        the URL reads plausibly and the page is about creating a NavHostFragment. Check the
+        page's subject, not its slug.
+      - >-
+        Style inconsistency across the bank, reported rather than changed: 31 MULTIPLE
+        questions open with "Select all that apply." and 15 close with it, split cleanly by
+        authoring batch (leading placement starts at n 214). Both satisfy the contract. Only
+        n 214 and n 222 fall in this range, so normalising them here would deepen the split
+        rather than fix it. Worth one bank-wide pass whenever the bank is next touched at
+        scale.
+      - >-
+        Question density is high in a few subtopics without any single pair duplicating.
+        android_main_thread now holds three questions (n 6, 195, 212) that all end at "don't
+        block the main thread", and viewmodel_lifecycle holds three (n 198, 216, 217). Each
+        keys a distinct fact, so none is a duplication finding, but the cluster is where the
+        next one will appear.
+
   - review: Questions 101-175, canonical order
     date: 2026-09-04
     scope: questions[100..174] of shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json

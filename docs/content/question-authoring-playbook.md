@@ -446,6 +446,40 @@ print('\n'.join(sorted({s['url'] for q in d['questions'] for s in q['sources']})
 done
 ```
 
+**Verify the fragment resolves too.** A URL ending in `#some-section` returns 200 even when
+that section no longer exists — the reader silently lands on the top of the page. The
+226–275 review ran the check below for the first time and found **12 dead anchors**, none of
+which the loop above could see. Four of them pointed into `dagger.dev/dev-guide/`, whose
+content had moved wholesale to `/dev-guide/basic-usage`.
+
+```bash
+python3 - <<'EOF'
+import json, re, urllib.request, urllib.parse
+P = 'shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json'
+d = json.load(open(P, encoding='utf-8'))
+anchored = {}
+for i, q in enumerate(d['questions'], 1):
+    for s in q['sources']:
+        if '#' in s['url']:
+            anchored.setdefault(s['url'], []).append(i)
+cache = {}
+for url, ns in sorted(anchored.items()):
+    base, frag = url.split('#', 1)
+    frag = urllib.parse.unquote(frag)
+    if base not in cache:
+        req = urllib.request.Request(base, headers={'User-Agent': 'Mozilla/5.0'})
+        try:
+            cache[base] = urllib.request.urlopen(req, timeout=40).read().decode('utf-8', 'ignore')
+        except Exception as e:
+            cache[base] = 'ERR:' + str(e)
+    doc = cache[base]
+    if doc.startswith('ERR:'):
+        print(f'FETCH-FAIL {url}')
+    elif not any(p in doc for p in (f'id="{frag}"', f"id='{frag}'", f'name="{frag}"')):
+        print(f'MISSING-ANCHOR {url}  (questions {ns})')
+EOF
+```
+
 Where a project's documentation site has moved, the canonical docs in its
 repository are an acceptable primary source. A third-party mirror is not: it can
 disappear or drift without notice, and nothing marks it as authoritative.

@@ -65,8 +65,9 @@ never validated anything.
 ./gradlew :shared:jvmTest
 ```
 
-Source liveness needs the network and is not automated — run the curl loop in
-`docs/content/question-authoring-playbook.md`, Part 7, before opening a PR.
+Source liveness and anchor resolution need the network and are not automated — run both
+scripts in `docs/content/question-authoring-playbook.md`, Part 7, before opening a PR. A URL
+whose `#section` has been deleted still returns 200, so the liveness loop alone will pass it.
 
 **A resolving URL is not a verified source.** Pages return HTTP 200 while rendering nothing,
 and vendor guides are restructured with sections silently removed. Open the page and find

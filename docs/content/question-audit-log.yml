@@ -23,6 +23,284 @@
 # records are reserved for questions that were changed or flagged.
 
 audits:
+  - review: Questions 226-275, canonical order
+    date: 2026-09-04
+    scope: questions[225..274] of shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json
+    reviewed: 50
+    active: 43
+    retired: 7
+    deterministic_checks: PASS
+    method: |
+      Same method as the earlier ranges, plus a new check this review introduced: every
+      source URL containing a `#fragment` was fetched and the fragment looked up in the
+      returned HTML. That check is now in the playbook's Part 7 alongside the liveness loop.
+
+    summary:
+      status:
+        PASS: 38
+        PASS_WITH_MINOR_CHANGES: 11
+        FIXED: 0
+        REVIEW_REQUIRED: 1
+        REPLACE: 0
+      severity:
+        BLOCKER: 0
+        MAJOR: 12
+        MINOR: 0
+      source_verification:
+        VERIFIED: 19
+        PARTIALLY_VERIFIED: 0
+        UNVERIFIED: 31
+        INVALID: 0
+
+    findings:
+      - id: compose_strong_skipping_instance_equality
+        n: 230
+        status: REVIEW_REQUIRED
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q20_NO_DUPLICATION]
+        issues:
+          - >-
+            Substantially duplicates compose_stability_001 (n 31). Same subtopic
+            (compose_stability), same scenario - an unstable parameter rebuilt as an equal but
+            fresh instance on every recomposition - and the same underlying fact. n 31's own
+            explanation already states the instance-identity rule that n 230 exists to test,
+            so a candidate who read n 31's review screen answers n 230 without thinking. This
+            is the second instance of the pattern first recorded at n 138 / n 142.
+        changes:
+          - >-
+            None. Retiring a question shifts the bank's size, level distribution and pinned
+            topic counts and needs a new Question.id, which is a content-owner decision.
+            Recommendation: keep n 230, which tests the mechanism precisely, and retire n 31,
+            whose keyed answer is the vaguer "cannot confirm the value is unchanged".
+
+      - id: dagger_component_graph_root
+        n: 262
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q12_SOURCE_RELEVANT, Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            dagger.dev/dev-guide/ has been reduced to an index page. It no longer contains the
+            words Component, Module, Qualifier, Singleton or scoped anywhere in its 2.6 KB of
+            body text, and its only heading anchors are why-dagger-2-is-different and license.
+            Four questions cited anchors into it.
+        changes:
+          - Repointed to dagger.dev/dev-guide/basic-usage#building-the-graph, where that content now lives and where the anchor exists.
+
+      - id: dagger_qualifier_same_type_bindings
+        n: 267
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q12_SOURCE_RELEVANT, Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - Same gutted dagger.dev/dev-guide/ page; the #qualifiers anchor no longer exists.
+        changes:
+          - Repointed to dagger.dev/dev-guide/basic-usage#qualifiers.
+
+      - id: dagger_scope_component_instance_lifetime
+        n: 268
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q12_SOURCE_RELEVANT, Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - Same gutted page; the #singletons-and-scoped-bindings anchor no longer exists.
+        changes:
+          - Repointed to dagger.dev/dev-guide/basic-usage#singletons-and-scoped-bindings.
+
+      - id: dagger_module_binding_declarations
+        n: 260
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q12_SOURCE_RELEVANT, Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - Same gutted page. Retired question, but a dead citation stays visible on the review screen for past attempts.
+        changes:
+          - Repointed to dagger.dev/dev-guide/basic-usage#satisfying-dependencies.
+
+      - id: flow_buffer_producer_consumer_concurrency
+        n: 251
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            coroutines-flow.html#buffering. The page was rewritten and its section list now
+            runs from cold-flows to hot-flows with no buffering, conflation or collectLatest
+            content at all - the same restructuring that broke n 65 in the 101-175 review.
+        changes:
+          - >-
+            Repointed to the buffer API reference: "Buffers flow emissions via channel of a
+            specified capacity and runs collector in a separate coroutine", which states the
+            keyed trade-off directly.
+
+      - id: cancellation_exception_rethrow
+        n: 244
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            Still cited kotlinlang.org/docs/cancellation-and-timeouts.html, the page that
+            returns 200 while rendering nothing. The first-100 review reported this URL as
+            fixed everywhere; it was not. That fix replaced an exact title-and-URL pair, and
+            two questions carried anchored variants of the same URL that the replacement did
+            not match.
+        changes:
+          - Repointed to coroutines-cancellation.html, which states "Always rethrow cancellation exceptions!".
+
+      - id: cpu_loop_cooperative_cancellation
+        n: 245
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - The second anchored survivor of the same dead page.
+        changes:
+          - Repointed to coroutines-cancellation.html, which names isActive, ensureActive() and yield().
+
+      - id: compose_view_disposal_strategy_lifecycle
+        n: 228
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q12_SOURCE_RELEVANT, Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            Cited interoperability-apis#compose-in-views. That page is a hub with no content
+            headings at all, so the anchor is dead and nothing on it describes composition
+            disposal. Same landing page that broke n 210 in the previous review.
+        changes:
+          - Repointed to the compose-in-views sub-page, which documents ViewCompositionStrategy and when the Composition is disposed.
+
+      - id: retrofit_vs_okhttp_responsibilities
+        n: 273
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q14_SOURCE_AUTHORITY]
+        issues:
+          - Cited the lysine.dev mirror.
+        changes:
+          - >-
+            Repointed to the Retrofit class documentation in Square's repository ("Retrofit
+            adapts a Java interface to HTTP calls by using annotations on the declared methods
+            to define how requests are made") and the OkHttp README, which claims connection
+            pooling and response caching for OkHttp - the two halves the question splits.
+
+      - id: okhttp_application_vs_network_interceptor
+        n: 274
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q14_SOURCE_AUTHORITY]
+        issues:
+          - Cited the lysine.dev mirror.
+        changes:
+          - Repointed to okhttp/docs/features/interceptors.md.
+
+      - id: connect_read_write_timeout_distinction
+        n: 275
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q14_SOURCE_AUTHORITY]
+        issues:
+          - Cited the lysine.dev mirror.
+        changes:
+          - Repointed to okhttp/docs/recipes.md.
+
+    passed:
+      source_verified:
+        - { n: 231, id: data_class_copy_is_shallow }
+        - { n: 232, id: object_vs_companion_object_members }
+        - { n: 233, id: generic_in_out_variance_tradeoff }
+        - { n: 236, id: sealed_when_exhaustive_evolution }
+        - { n: 246, id: coroutine_run_interruptible_blocking_call }
+        - { n: 248, id: coroutine_exception_handler_root_boundary }
+        - { n: 270, id: room_flow_invalidation_requery }
+
+      source_unverified:
+        - { n: 226, id: compose_state_read_recomposition_scope }
+        - { n: 227, id: custom_view_invalidate_vs_request_layout }
+        - { n: 229, id: compose_skipping_stable_parameter_contract, retired: true }
+        - { n: 234, id: noinline_vs_crossinline_lambda }
+        - { n: 235, id: sequence_intermediate_allocation_tradeoff }
+        - { n: 237, id: coroutine_vs_thread_suspension, retired: true }
+        - { n: 238, id: coroutine_run_blocking_main_thread }
+        - { n: 239, id: coroutine_scope_job_ownership }
+        - { n: 240, id: parent_cancellation_propagates_children }
+        - { n: 241, id: coroutine_scope_vs_supervisor_scope_failure, retired: true }
+        - { n: 242, id: coroutine_supervisor_job_child_context_noop }
+        - { n: 243, id: launch_vs_async_unawaited_result }
+        - { n: 247, id: suspending_api_dispatcher_assumption }
+        - { n: 249, id: flow_vs_channel_delivery_model }
+        - { n: 250, id: stateflow_vs_sharedflow_current_value }
+        - { n: 252, id: repository_vs_data_source_responsibility, retired: true }
+        - { n: 253, id: architecture_state_holder_taxonomy }
+        - { n: 254, id: viewmodel_vs_repository_responsibility }
+        - { n: 255, id: durable_state_vs_one_off_event }
+        - { n: 256, id: dto_entity_domain_model_boundary }
+        - { n: 257, id: viewmodel_activity_reference_lifetime }
+        - { n: 258, id: domain_layer_passthrough_cost }
+        - { n: 259, id: dagger_inject_provides_binds_selection }
+        - { n: 261, id: dagger_component_dependency_vs_subcomponent }
+        - { n: 263, id: dagger_subcomponent_parent_binding_inheritance }
+        - { n: 264, id: dagger_graph_assembly_generated_component, retired: true }
+        - { n: 265, id: dagger_assisted_injection_viewmodel }
+        - { n: 266, id: dagger_compile_time_graph_validation }
+        - { n: 269, id: datastore_vs_room_data_shape }
+        - { n: 271, id: room_destructive_migration_tradeoff }
+        - { n: 272, id: offline_first_local_write_then_sync }
+
+    systemic:
+      - >-
+        Fourth range, and again not one keyed answer was wrong. Every finding but the
+        duplication was a citation that had stopped supporting its claim. Eleven of twelve.
+      - >-
+        The new anchor check is the most productive check added so far. A URL ending in
+        "#some-section" returns 200 whether or not the section still exists, so the liveness
+        loop had been passing dead anchors since the bank was written. One run over the whole
+        bank found 12: four into the gutted dagger.dev/dev-guide/, two into the empty
+        kotlinlang cancellation page, one into the removed coroutines-flow buffering section,
+        one into a Compose hub page with no headings, and four outside this range (n 298, 309,
+        314, 327, 349, 373). It is now in the playbook's Part 7.
+      - >-
+        A whole vendor guide can move without a redirect. dagger.dev/dev-guide/ is now a 2.6 KB
+        index; everything it used to document lives at /dev-guide/basic-usage. Four questions
+        cited it and all four looked healthy to every check the repository had.
+      - >-
+        A correction reported as complete was not. The first-100 review replaced an exact
+        title-and-URL pair for the dead kotlinlang cancellation page and reported all four
+        citations fixed; two carried "#anchor" suffixes and did not match, so they survived
+        two further reviews. When a fix is applied by string replacement, verify by re-querying
+        the data, not by trusting the replacement's reach.
+      - >-
+        Second duplication finding, same shape as the first: n 230 against n 31, both in
+        compose_stability, both keyed on the strong-skipping instance-identity rule. Two
+        independent instances in 275 questions suggests the duplication check belongs in the
+        authoring loop rather than in periodic audits - compare a new question against the
+        existing questions in its subtopic before writing the distractors.
+
   - review: Questions 176-225, canonical order
     date: 2026-09-04
     scope: questions[175..224] of shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json

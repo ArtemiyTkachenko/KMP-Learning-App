@@ -65,9 +65,11 @@ whether a source substantiates its claim. Do not try to automate those with keyw
 heuristics; a heuristic that pretends to measure pedagogical plausibility is worse than no
 check, because it converts a judgement into a green tick. They belong to the rubric below.
 
-The remaining mechanical check has no automation because it needs the network — confirm
-every source URL still resolves before opening a PR. The script is in
-`docs/content/question-authoring-playbook.md`, Part 7.
+Two mechanical checks have no automation because they need the network. Before opening a PR,
+confirm every source URL still resolves **and** that every `#fragment` still names a real
+anchor — a URL whose section has been deleted still returns 200 and silently drops the reader
+at the top of the page. Both scripts are in `docs/content/question-authoring-playbook.md`,
+Part 7.
 
 ## Semantic rubric
 

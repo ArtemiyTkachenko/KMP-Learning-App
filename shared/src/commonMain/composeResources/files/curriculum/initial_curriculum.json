@@ -10901,8 +10901,8 @@
       "explanation": "A Fragment can outlive its View, so a ComposeView composition should be disposed with the view-tree lifecycle. This releases effects and observation associated with the destroyed View instead of retaining that UI until the Fragment itself is destroyed.",
       "sources": [
         {
-          "title": "Compose in Views",
-          "url": "https://developer.android.com/develop/ui/compose/migrate/interoperability-apis#compose-in-views"
+          "title": "Use Compose in Views: ViewCompositionStrategy",
+          "url": "https://developer.android.com/develop/ui/compose/migrate/interoperability-apis/compose-in-views"
         }
       ],
       "status": "ACTIVE"
@@ -11506,8 +11506,8 @@
       "explanation": "Cancellable suspending functions use CancellationException to unwind cancelled coroutines. A broad Exception handler can intercept it; treating it as an ordinary recoverable failure may continue unwanted work, so it should normally be rethrown.",
       "sources": [
         {
-          "title": "Cancellation Is Cooperative",
-          "url": "https://kotlinlang.org/docs/cancellation-and-timeouts.html#cancellation-is-cooperative"
+          "title": "Coroutine Cancellation",
+          "url": "https://kotlinlang.org/docs/coroutines-cancellation.html"
         }
       ],
       "status": "ACTIVE"
@@ -11543,8 +11543,8 @@
       "explanation": "Coroutine cancellation is cooperative and does not forcibly interrupt arbitrary CPU instructions. A busy loop must reach a cancellable suspension or explicitly inspect the Job through isActive, ensureActive(), or yield().",
       "sources": [
         {
-          "title": "Making Computation Code Cancellable",
-          "url": "https://kotlinlang.org/docs/cancellation-and-timeouts.html#making-computation-code-cancellable"
+          "title": "Coroutine Cancellation",
+          "url": "https://kotlinlang.org/docs/coroutines-cancellation.html"
         }
       ],
       "status": "DEPRECATED"
@@ -11770,8 +11770,8 @@
       "explanation": "buffer() separates upstream emission from downstream collection so they can make progress concurrently until the buffer fills. That can improve throughput at the cost of queued memory and latency; conflate and collectLatest have explicit dropping or cancellation semantics instead.",
       "sources": [
         {
-          "title": "Asynchronous Flow: Buffering",
-          "url": "https://kotlinlang.org/docs/coroutines-flow.html#buffering"
+          "title": "kotlinx.coroutines.flow.buffer",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/buffer.html"
         }
       ],
       "status": "ACTIVE"
@@ -12104,8 +12104,8 @@
       "explanation": "A module groups binding declarations such as @Provides, @Binds, or multibindings. A component includes modules, forms a graph boundary, owns scoped instances, and exposes entry points; a module alone is not a running container.",
       "sources": [
         {
-          "title": "Dagger Modules",
-          "url": "https://dagger.dev/dev-guide/#satisfying-dependencies"
+          "title": "Dagger Basic Usage: Satisfying Dependencies",
+          "url": "https://dagger.dev/dev-guide/basic-usage#satisfying-dependencies"
         }
       ],
       "status": "DEPRECATED"
@@ -12178,8 +12178,8 @@
       "explanation": "A component is the graph API and boundary: Dagger generates its implementation from reachable bindings and declared entry points. Modules contribute bindings but do not themselves assemble or expose a usable component instance.",
       "sources": [
         {
-          "title": "Dagger Components",
-          "url": "https://dagger.dev/dev-guide/#building-the-graph"
+          "title": "Dagger Basic Usage: Building the Graph",
+          "url": "https://dagger.dev/dev-guide/basic-usage#building-the-graph"
         }
       ],
       "status": "ACTIVE"
@@ -12368,8 +12368,8 @@
       "explanation": "Dagger keys include a type and an optional qualifier. Distinct qualifiers make the two OkHttpClient bindings unambiguous and require each consumer to state which policy it needs; scopes control reuse, not selection among same-key bindings.",
       "sources": [
         {
-          "title": "Dagger Qualifiers",
-          "url": "https://dagger.dev/dev-guide/#qualifiers"
+          "title": "Dagger Basic Usage: Qualifiers",
+          "url": "https://dagger.dev/dev-guide/basic-usage#qualifiers"
         }
       ],
       "status": "ACTIVE"
@@ -12405,8 +12405,8 @@
       "explanation": "A scope tells a component to reuse a binding result within that component instance. Creating another component creates another scoped cache, and releasing the owning component makes those objects eligible for collection; the annotation is not a process-global store.",
       "sources": [
         {
-          "title": "Dagger Singletons and Scoped Bindings",
-          "url": "https://dagger.dev/dev-guide/#singletons-and-scoped-bindings"
+          "title": "Dagger Basic Usage: Singletons and Scoped Bindings",
+          "url": "https://dagger.dev/dev-guide/basic-usage#singletons-and-scoped-bindings"
         }
       ],
       "status": "ACTIVE"
@@ -12591,8 +12591,12 @@
       "explanation": "Retrofit turns an annotated service interface into HTTP requests and adapts the results, delegating the transport to the OkHttp client it is built with. Connection pooling, TLS, timeouts, interceptors, and the response cache all belong to OkHttp. Body conversion is neither one's own work: it comes from the converter factory installed on Retrofit.",
       "sources": [
         {
-          "title": "Retrofit",
-          "url": "https://lysine.dev/retrofit/"
+          "title": "Retrofit class documentation",
+          "url": "https://github.com/square/retrofit/blob/trunk/retrofit/src/main/java/retrofit2/Retrofit.java"
+        },
+        {
+          "title": "OkHttp",
+          "url": "https://github.com/square/okhttp/blob/master/README.md"
         }
       ],
       "status": "ACTIVE"
@@ -12630,7 +12634,7 @@
       "sources": [
         {
           "title": "OkHttp Interceptors",
-          "url": "https://lysine.dev/okhttp/features/interceptors/"
+          "url": "https://github.com/square/okhttp/blob/master/docs/features/interceptors.md"
         }
       ],
       "status": "ACTIVE"
@@ -12667,7 +12671,7 @@
       "sources": [
         {
           "title": "OkHttp Recipes: Timeouts",
-          "url": "https://lysine.dev/okhttp/recipes/#timeouts-kt-java"
+          "url": "https://github.com/square/okhttp/blob/master/docs/recipes.md"
         }
       ],
       "status": "ACTIVE"

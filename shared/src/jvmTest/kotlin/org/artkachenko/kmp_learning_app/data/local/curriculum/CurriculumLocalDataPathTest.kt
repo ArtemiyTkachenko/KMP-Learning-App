@@ -102,7 +102,7 @@ internal class CurriculumLocalDataPathTest {
                     questions = 399,
                     answerOptions = 1_602,
                     correctAnswers = 448,
-                    questionSources = 465,
+                    questionSources = 466,
                 ),
                 database.curriculumDao().countRows(),
             )

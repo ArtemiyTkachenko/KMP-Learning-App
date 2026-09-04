@@ -71,7 +71,7 @@ internal class InitialCurriculumContentQualityTest {
             .filter { (_, url) -> url.host() in NON_PRIMARY_HOSTS_PENDING_REPLACEMENT }
 
         assertEquals(
-            7,
+            4,
             pending.size,
             "Cite the project's own repository rather than a documentation mirror. Lower this " +
                 "number as the remaining citations are replaced; never raise it.",

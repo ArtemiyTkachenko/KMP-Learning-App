@@ -92,12 +92,16 @@ does not cover: [CI](docs/workflows/ci.md).
 [code review](docs/workflows/code-review.md) ·
 [CI](docs/workflows/ci.md)
 
-**Content** — the interview question bank, not application code:
+**Content — assessment** — the interview question bank, not application code:
 [curriculum](docs/content/curriculum.md) ·
 [authoring contract](docs/content/content-authoring.md) ·
 [authoring playbook](docs/content/question-authoring-playbook.md) ·
 [validation standard](docs/content/question-validation.md) ·
 [coverage snapshot](docs/content/question-bank-coverage.md)
+
+**Content — learning** — the explanatory study material, not the question bank:
+[learning-content authoring contract](docs/content/learning-content-authoring.md) ·
+[Compose learning blueprint](docs/content/compose-learning-blueprint.md)
 
 ## Skills
 

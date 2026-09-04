@@ -55,7 +55,10 @@ The full command reference is in [docs/development/validation.md](docs/developme
   [testing](docs/development/testing.md), [validation](docs/development/validation.md).
 - **Workflows** — [backlog](docs/workflows/backlog.md),
   [code review](docs/workflows/code-review.md), [CI](docs/workflows/ci.md).
-- **Content** — [curriculum](docs/content/curriculum.md),
+- **Content — assessment** — [curriculum](docs/content/curriculum.md),
   [authoring contract](docs/content/content-authoring.md),
   [authoring playbook](docs/content/question-authoring-playbook.md),
   [coverage snapshot](docs/content/question-bank-coverage.md).
+- **Content — learning** —
+  [learning-content authoring contract](docs/content/learning-content-authoring.md),
+  [Compose learning blueprint](docs/content/compose-learning-blueprint.md).

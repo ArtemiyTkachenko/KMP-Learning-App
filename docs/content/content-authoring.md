@@ -20,6 +20,12 @@ method for meeting them: where plausible distractors come from, the anti-cue
 audits a question must survive, and the checks to run before opening a PR. Where
 the two disagree, this guide wins.
 
+`docs/content/question-validation.md` defines the *acceptance standard*: the generate →
+validate lifecycle, the `Q1`–`Q20` semantic rubric, the severity scale, source-verification
+status, and the gate a question must clear before it ships. Every new or materially
+modified question goes through it, and the `question-bank-change` skill drives that
+process. Prior review verdicts are recorded in `docs/content/question-audit-log.yml`.
+
 `docs/content/question-bank-coverage.md` records the current *state* of the bank: what
 each subtopic already holds, which gaps are real and which are deliberate, and
 the audit baselines a new batch must not degrade. Read it before planning an
@@ -626,18 +632,16 @@ Why a new ID is required: the rewritten question tests a different platform
 constraint, so historical answers to the old question would no longer represent
 the same knowledge.
 
-## Relationship to E06-05 Validation
+## Relationship to Automated Validation
 
-E06-03 defines editorial and quality expectations. E06-05 will implement
-deterministic validation rules such as:
-
-- Unique topic, subtopic, question, and answer IDs.
-- Valid topic and subtopic references.
-- Hierarchy consistency between `topicId` and `subtopicId`.
-- `correctAnswerIds` referencing real answers.
-- `SINGLE` questions not containing several correct answers.
-- Non-empty required fields.
-- Required source presence.
+This guide defines editorial and quality expectations. `CurriculumValidator` enforces the
+deterministic subset at import time — unique IDs, valid topic and subtopic references,
+hierarchy consistency, `correctAnswerIds` referencing real answers, `SINGLE` not carrying
+several correct answers, non-empty required fields, answer options not repeating the same
+text, source presence with a syntactically valid URL, and no authoring placeholder left in
+any authored text. `InitialCurriculumContentQualityTest` enforces the bundled bank's
+editorial invariants: unique stems, the `MULTIPLE` prompt, approved source hosts, and the
+anti-cue length and absolute-word audits.
 
 Some standards remain editorial review concerns because they are not reliably
 machine-verifiable:
@@ -646,6 +650,9 @@ machine-verifiable:
 - Whether wording is ambiguous.
 - Whether an explanation is genuinely educational.
 - Whether a source semantically supports the exact claim being tested.
+
+Those belong to the semantic rubric in `docs/content/question-validation.md`. Do not try to
+approximate them with keyword heuristics.
 
 ## PR Review Checklist
 

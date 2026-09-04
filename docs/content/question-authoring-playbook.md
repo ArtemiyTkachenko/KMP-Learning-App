@@ -10,6 +10,10 @@ be the hardest one to follow and the easiest one to believe you had followed.
 
 Read the contract first. Where the two documents disagree, the contract wins.
 
+`docs/content/question-validation.md` is the third piece: the acceptance standard that says
+when a finished question is allowed to ship. This playbook tells you how to write one; that
+document tells you how to prove it is correct.
+
 This playbook applies to authoring new questions and to reviewing existing ones.
 For *what the bank already covers* — per-subtopic counts, the concept index,
 which empty subtopics are intentional, and the current audit baselines — see
@@ -442,8 +446,95 @@ print('\n'.join(sorted({s['url'] for q in d['questions'] for s in q['sources']})
 done
 ```
 
+**Verify the fragment resolves too.** A URL ending in `#some-section` returns 200 even when
+that section no longer exists — the reader silently lands on the top of the page. The
+226–275 review ran the check below for the first time and found **12 dead anchors**, none of
+which the loop above could see. Four of them pointed into `dagger.dev/dev-guide/`, whose
+content had moved wholesale to `/dev-guide/basic-usage`.
+
+```bash
+python3 - <<'EOF'
+import json, re, urllib.request, urllib.parse
+P = 'shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json'
+d = json.load(open(P, encoding='utf-8'))
+anchored = {}
+for i, q in enumerate(d['questions'], 1):
+    for s in q['sources']:
+        if '#' in s['url']:
+            anchored.setdefault(s['url'], []).append(i)
+cache = {}
+for url, ns in sorted(anchored.items()):
+    base, frag = url.split('#', 1)
+    frag = urllib.parse.unquote(frag)
+    if base not in cache:
+        req = urllib.request.Request(base, headers={'User-Agent': 'Mozilla/5.0'})
+        try:
+            cache[base] = urllib.request.urlopen(req, timeout=40).read().decode('utf-8', 'ignore')
+        except Exception as e:
+            cache[base] = 'ERR:' + str(e)
+    doc = cache[base]
+    # GitHub prefixes rendered-markdown anchors with "user-content-"; both forms are valid.
+    forms = [frag, 'user-content-' + frag]
+    if doc.startswith('ERR:'):
+        print(f'FETCH-FAIL {url}')
+    elif not any(p in doc for f in forms for p in (f'id="{f}"', f"id='{f}'", f'name="{f}"')):
+        print(f'MISSING-ANCHOR {url}  (questions {ns})')
+EOF
+```
+
+**And check the page is not empty.** Three vendor pages in this bank returned 200 while rendering
+nothing at all — `kotlinlang.org/docs/cancellation-and-timeouts.html`, and the whole
+`kotlinlang.org/docs/multiplatform-*.html` set after those pages moved under
+`/docs/multiplatform/`. Eleven questions cited the multiplatform pages and every check the
+repository had passed them. Measure the rendered text:
+
+```bash
+python3 - <<'EOF'
+import json, re, html, urllib.request, concurrent.futures
+P = 'shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json'
+d = json.load(open(P, encoding='utf-8'))
+byurl = {}
+for i, q in enumerate(d['questions'], 1):
+    for s in q['sources']:
+        byurl.setdefault(s['url'].split('#')[0], set()).add(i)
+
+def body_len(u):
+    try:
+        req = urllib.request.Request(u, headers={'User-Agent': 'Mozilla/5.0'})
+        t = urllib.request.urlopen(req, timeout=45).read().decode('utf-8', 'ignore')
+    except Exception as e:
+        return u, -1
+    t = re.sub(r'<script.*?</script>|<style.*?</style>', '', t, flags=re.S)
+    m = (re.search(r'<devsite-content.*?</devsite-content>', t, flags=re.S)
+         or re.search(r'<article.*?</article>', t, flags=re.S)
+         or re.search(r'<main.*?</main>', t, flags=re.S))
+    b = re.sub(r'<[^>]+>', ' ', m.group(0) if m else t)
+    return u, len(re.sub(r'\s+', ' ', html.unescape(b)).strip())
+
+with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
+    for u, n in ex.map(body_len, sorted(byurl)):
+        if n < 800:
+            print(f'EMPTY-OR-STUB {n:6d}  {u}  (questions {sorted(byurl[u])})')
+EOF
+```
+
 Where a project's documentation site has moved, the canonical docs in its
-repository are an acceptable primary source.
+repository are an acceptable primary source. A third-party mirror is not: it can
+disappear or drift without notice, and nothing marks it as authoritative.
+
+**A 200 is not a verified source.** The first-100 review of 2026-09-04 found the
+loop above passing two pages it should not have:
+`kotlinlang.org/docs/cancellation-and-timeouts.html` returns 200 and renders
+nothing at all, and `kotlinlang.org/docs/coroutines-flow.html` still returns 200
+after the sections documenting `conflate` and `collectLatest` were removed from
+it. Four questions cited the first and one cited the second, and every one of
+them looked healthy to the script.
+
+Two habits follow. Open the page and locate the sentence, rather than trusting
+that the URL used to be right. And where a question turns on a named parameter or
+a specific contract — `stopTimeoutMillis`, `conflate` versus `collectLatest`,
+`Dispatchers.IO` parallelism — cite the API reference rather than the narrative
+guide. Guides get restructured; reference pages track the code.
 
 ## Part 8 — Stable identity
 

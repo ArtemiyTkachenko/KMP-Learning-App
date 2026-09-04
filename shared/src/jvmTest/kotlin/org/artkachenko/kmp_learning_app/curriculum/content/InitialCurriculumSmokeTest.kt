@@ -19,11 +19,11 @@ internal class InitialCurriculumSmokeTest {
         assertEquals(361, initialCurriculum.subtopics.size)
         assertEquals(399, initialCurriculum.questions.size)
         assertEquals(
-            360,
+            358,
             initialCurriculum.questions.count { it.status == ContentStatus.ACTIVE },
         )
         assertEquals(
-            39,
+            41,
             initialCurriculum.questions.count { it.status == ContentStatus.DEPRECATED },
         )
         assertEquals(353, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.SINGLE })
@@ -39,13 +39,13 @@ internal class InitialCurriculumSmokeTest {
             initialCurriculum.questions.levelDistribution(),
         )
         assertEquals(
-            LevelDistribution(foundation = 205, applied = 141, advanced = 14),
+            LevelDistribution(foundation = 204, applied = 140, advanced = 14),
             initialCurriculum.questions
                 .filter { it.status == ContentStatus.ACTIVE }
                 .levelDistribution(),
         )
         assertEquals(
-            LevelDistribution(foundation = 33, applied = 6, advanced = 0),
+            LevelDistribution(foundation = 34, applied = 7, advanced = 0),
             initialCurriculum.questions
                 .filter { it.status == ContentStatus.DEPRECATED }
                 .levelDistribution(),
@@ -88,7 +88,7 @@ internal class InitialCurriculumSmokeTest {
             mapOf(
                 "android_platform" to 16,
                 "lifecycle_navigation" to 23,
-                "android_ui" to 26,
+                "android_ui" to 25,
                 "kotlin_language" to 25,
                 "async_reactive" to 38,
                 "architecture" to 22,
@@ -97,7 +97,7 @@ internal class InitialCurriculumSmokeTest {
                 "networking" to 24,
                 "background_work" to 19,
                 "notifications" to 12,
-                "testing" to 22,
+                "testing" to 21,
                 "performance" to 22,
                 "security" to 17,
                 "build_delivery" to 17,

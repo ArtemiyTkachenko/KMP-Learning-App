@@ -168,18 +168,38 @@ Current output of the `docs/content/question-authoring-playbook.md` Part 3 scrip
 the whole bank:
 
 ```
-correct-longest 150/356 (42%), mean ratio 1.03, over 10% limit: 0
+correct-longest 151/356 (42%), mean ratio 1.03, over 10% limit: 0
 absolutes: distractors 0.22/opt, correct 0.11/opt
 position: {0: 26%, 1: 27%, 2: 26%, 3: 20%, 4: 1%}
 ```
 
-All 279 unique source URLs returned HTTP 200 at the time of this snapshot.
+All 291 unique source URLs returned HTTP 200 at the time of this snapshot, every one
+rendered a non-empty body, and every `#fragment` among them resolved to a real anchor.
 
 These are the numbers a new batch must not degrade. In particular: **zero
 questions exceed the 10% correct-answer length limit**, and correct answers do
 use absolute words (0.12/opt against 0.22/opt in distractors), so "the option
 with 'only' in it is wrong" is not a working strategy. Both properties are easy
 to break by accident and are the reason the audit exists.
+
+The length and absolutes audits are now also enforced by
+`InitialCurriculumContentQualityTest`, so a batch that degrades either fails the build
+rather than only the snapshot above.
+
+**HTTP 200 does not mean the snapshot is clean.** The first-100 review of 2026-09-04 found
+`kotlinlang.org/docs/cancellation-and-timeouts.html` returning 200 while rendering nothing,
+and `kotlinlang.org/docs/coroutines-flow.html` returning 200 after the sections it was cited
+for had been removed. Both were replaced, along with every other decayed citation the review
+found: all 14 `lysine.dev` mirror links now point at Square's own repositories, the gutted
+`dagger.dev/dev-guide/` links moved to `/dev-guide/basic-usage`, and Kotlin's relocated
+multiplatform pages moved under `/docs/multiplatform/`.
+
+**A 200 proves almost nothing on its own.** The full review found three independent ways a
+citation can be dead behind a 200: a page whose section was renamed (the anchor check), a
+page whose content was removed (the body-length check), and a page that was replaced by a
+redirect shell (both). All three scripts are now in the playbook's Part 7 and all three pass
+on the whole bank. They are worth running on a schedule rather than only when questions
+change — vendor documentation decayed faster than the questions did.
 
 ## Deprecated questions
 
@@ -426,12 +446,13 @@ multiplatform ViewModel, library compatibility, sharing trade-offs.
   `selectionMode` stays inferable from the answer key.
 - **Every question in the bank has 4 options except 6 with 5.** Stay at 4 unless
   there is a specific reason.
-- **Source hosts, for reference:** developer.android.com 299 · kotlinlang.org 90
-  · lysine.dev 14 (OkHttp/Retrofit — `square.github.io` returns 404) ·
-  dagger.dev 12 · firebase.google.com 12 · rfc-editor.org 7 · docs.gradle.org 6 ·
-  and single-digit counts for insert-koin.io, ktor.io, sqldelight.github.io,
-  jetbrains.com, source.android.com, sqlite.org, google.aip.dev, github.com
-  (kotlinx.serialization docs).
+- **Source hosts, for reference:** developer.android.com 303 · kotlinlang.org 96
+  · github.com 18 (kotlinx.serialization, OkHttp, Retrofit and SQLDelight —
+  `square.github.io` returns 404, so each project's own repository is the primary
+  source) · dagger.dev 12 · firebase.google.com 12 · rfc-editor.org 8 ·
+  docs.gradle.org 6 · and single-digit
+  counts for insert-koin.io, ktor.io, sqldelight.github.io, jetbrains.com,
+  source.android.com, sqlite.org, google.aip.dev, docs.cloud.google.com.
 - **Pinned count tests to update** whenever the bank changes:
   `InitialCurriculumSmokeTest` (totals, status split, selection-mode split, and
   the per-topic map), `CurriculumImporterTest` (`countQuestions`), and

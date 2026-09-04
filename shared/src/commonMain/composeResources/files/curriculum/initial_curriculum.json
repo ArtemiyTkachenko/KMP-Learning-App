@@ -2628,7 +2628,7 @@
       "correctAnswerIds": [
         "predictive_back_handler_registration_d"
       ],
-      "explanation": "Predictive back shows the user where a gesture will land while their finger is still down, so the system has to know in advance whether the app will handle Back and what it would show. A callback registered with OnBackPressedDispatcher, or BackHandler in Compose, supplies that ahead of time. Overriding onBackPressed() reports the decision only once the gesture has committed, leaving nothing to preview, which is why the override is deprecated.",
+      "explanation": "Predictive back shows the user where a gesture will land while their finger is still down, so the system has to know in advance whether the app will handle Back and what it would show. A callback registered with OnBackPressedDispatcher, or BackHandler in Compose, supplies that ahead of time. Overriding onBackPressed() reports the decision only once the gesture has committed, leaving nothing to preview, which is why intercepting Back through that override is no longer supported.",
       "sources": [
         {
           "title": "Predictive Back Gesture",
@@ -3433,7 +3433,7 @@
           "url": "https://developer.android.com/develop/ui/compose/performance/stability/strongskipping"
         }
       ],
-      "status": "ACTIVE"
+      "status": "DEPRECATED"
     },
     {
       "id": "compose_accessibility_001",
@@ -3480,7 +3480,7 @@
       "id": "kotlin_nullability_001",
       "topicId": "kotlin_language",
       "subtopicId": "kotlin_nullability",
-      "text": "What does Kotlin's type system express when a variable has nullable type String? instead of non-null type String?",
+      "text": "One Kotlin variable is declared with type String and another with type String?. How does the compiler treat them differently?",
       "answers": [
         {
           "id": "kotlin_nullability_001_e",
@@ -3488,7 +3488,7 @@
         },
         {
           "id": "kotlin_nullability_001_b",
-          "text": "String is non-null, while String? is nullable."
+          "text": "It rejects null for the String variable and requires a null check before using the String? one."
         },
         {
           "id": "kotlin_nullability_001_h",
@@ -3850,7 +3850,7 @@
       "id": "kotlin_sequence_constrained_once",
       "topicId": "kotlin_language",
       "subtopicId": "kotlin_sequences",
-      "text": "A Sequence built with the sequence { } builder is stored in a variable, and two functions each iterate it. What happens on the second iteration?",
+      "text": "A Sequence built with generateSequence { }, the overload taking only a next-value lambda, is stored in a variable, and two functions each iterate it. What happens on the second iteration?",
       "answers": [
         {
           "id": "kotlin_sequence_constrained_once_a",
@@ -3858,7 +3858,7 @@
         },
         {
           "id": "kotlin_sequence_constrained_once_b",
-          "text": "It throws, because a sequence from that builder can be iterated only once."
+          "text": "It throws, because a sequence from that overload can be iterated only once."
         },
         {
           "id": "kotlin_sequence_constrained_once_c",
@@ -3866,7 +3866,7 @@
         },
         {
           "id": "kotlin_sequence_constrained_once_d",
-          "text": "It runs the builder again from the start, because sequences are cold like flows."
+          "text": "It produces the elements again from the start, because sequences are cold like flows."
         }
       ],
       "selectionMode": "SINGLE",
@@ -3874,11 +3874,15 @@
       "correctAnswerIds": [
         "kotlin_sequence_constrained_once_b"
       ],
-      "explanation": "Sequences from the sequence builder are constrained to a single pass: they wrap one underlying iterator, and asking for a second throws IllegalStateException rather than replaying or quietly yielding nothing. That is the practical difference from a cold Flow, which does start its producer again for every collector. A sequence that must be consumed more than once should be materialised into a list, or produced by a function that returns a fresh sequence per call.",
+      "explanation": "The single-lambda generateSequence overload is documented as constrained to be iterated only once, because the lambda carries the iteration state and has no seed to restart from. Asking it for a second iterator throws IllegalStateException rather than replaying or quietly yielding nothing. Most sequences are not like this: the sequence { } builder and the seeded generateSequence overloads both create a fresh iterator per iteration, so re-running them is fine. A once-only sequence that must be consumed twice should be materialised into a list.",
       "sources": [
         {
           "title": "Sequences",
           "url": "https://kotlinlang.org/docs/sequences.html"
+        },
+        {
+          "title": "kotlin.sequences.generateSequence",
+          "url": "https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.sequences/generate-sequence.html"
         }
       ],
       "status": "ACTIVE"
@@ -4105,6 +4109,10 @@
         {
           "title": "Collections Overview",
           "url": "https://kotlinlang.org/docs/collections-overview.html"
+        },
+        {
+          "title": "kotlin.collections.List",
+          "url": "https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-list/"
         }
       ],
       "status": "ACTIVE"
@@ -4329,8 +4337,8 @@
       "explanation": "Cancellation sets the Job to cancelling and relies on the coroutine to notice. Suspending functions in kotlinx.coroutines check for it, but a tight CPU-bound loop that never suspends keeps running. Such code should call ensureActive(), yield(), or test isActive. Cancellation does not interrupt the thread.",
       "sources": [
         {
-          "title": "Cancellation and Timeouts",
-          "url": "https://kotlinlang.org/docs/cancellation-and-timeouts.html"
+          "title": "Coroutine Cancellation",
+          "url": "https://kotlinlang.org/docs/coroutines-cancellation.html"
         }
       ],
       "status": "ACTIVE"
@@ -4595,6 +4603,10 @@
         {
           "title": "StateFlow and SharedFlow",
           "url": "https://developer.android.com/kotlin/flow/stateflow-and-sharedflow"
+        },
+        {
+          "title": "kotlinx.coroutines.flow.shareIn",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/share-in.html"
         }
       ],
       "status": "ACTIVE"
@@ -4669,6 +4681,10 @@
         {
           "title": "Coroutine Context and Dispatchers",
           "url": "https://kotlinlang.org/docs/coroutine-context-and-dispatchers.html"
+        },
+        {
+          "title": "kotlinx.coroutines.Dispatchers.IO",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-dispatchers/-i-o.html"
         }
       ],
       "status": "ACTIVE"
@@ -4704,8 +4720,12 @@
       "explanation": "Both stop a slow collector from backpressuring the producer, but they discard work differently. conflate keeps only the most recent unconsumed value and lets the current block finish, so processing completes for whichever values survive. collectLatest starts the block for every value and cancels it as soon as a newer one arrives, so a long block may never complete. Choosing between them depends on whether a partially processed value can safely be abandoned.",
       "sources": [
         {
-          "title": "Asynchronous Flow",
-          "url": "https://kotlinlang.org/docs/coroutines-flow.html"
+          "title": "kotlinx.coroutines.flow.conflate",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/conflate.html"
+        },
+        {
+          "title": "kotlinx.coroutines.flow.collectLatest",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/collect-latest.html"
         }
       ],
       "status": "ACTIVE"
@@ -4743,6 +4763,10 @@
         {
           "title": "StateFlow and SharedFlow",
           "url": "https://developer.android.com/kotlin/flow/stateflow-and-sharedflow"
+        },
+        {
+          "title": "SharingStarted.WhileSubscribed",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-sharing-started/-companion/-while-subscribed.html"
         }
       ],
       "status": "ACTIVE"
@@ -5454,7 +5478,7 @@
       "correctAnswerIds": [
         "hilt_field_injection_framework_classes_b"
       ],
-      "explanation": "Android instantiates Activities, Fragments, Services, and BroadcastReceivers itself through a no-argument constructor, so constructor injection is not available. @AndroidEntryPoint generates a base class that performs field injection at the right moment, which for an Activity is before super.onCreate() returns, and that is why injected fields cannot be private and must not be read earlier. Constructor injection stays the default wherever the app controls construction; field injection is the exception the framework forces.",
+      "explanation": "Android instantiates Activities, Fragments, Services, and BroadcastReceivers itself through a no-argument constructor, so constructor injection is not available. @AndroidEntryPoint generates a base class that injects the annotated fields in the lifecycle callback documented for that class, which for an Activity is onCreate(), and Hilt rejects a private field because the generated code has to assign it. Constructor injection stays the default wherever the app controls construction; field injection is the exception the framework forces.",
       "sources": [
         {
           "title": "Dependency Injection with Hilt",
@@ -6004,7 +6028,7 @@
       "id": "datastore_vs_sharedpreferences_async",
       "topicId": "local_data",
       "subtopicId": "datastore_vs_sharedpreferences",
-      "text": "Which advantage does DataStore have over SharedPreferences for reading a stored user setting?",
+      "text": "Which advantage does DataStore have over SharedPreferences?",
       "answers": [
         {
           "id": "datastore_vs_sharedpreferences_async_b",
@@ -6102,7 +6126,7 @@
       "correctAnswerIds": [
         "room_relationship_no_foreign_key_join_d"
       ],
-      "explanation": "@Relation tells Room to run an additional query for the related rows and assemble the object graph, which is why the annotated field must be a collection on a plain data class rather than on the entity itself. Constraints and cascading behaviour come from @ForeignKey, which is a separate and independent declaration, and the fetch is not one join.",
+      "explanation": "@Relation tells Room to run an additional query for the related rows and assemble the object graph, which is why the annotated field belongs on a plain data class that pairs the parent with its children rather than on the entity itself. Constraints and cascading behaviour come from @ForeignKey, which is a separate and independent declaration, and the fetch is not one join.",
       "sources": [
         {
           "title": "Room Relationships",
@@ -6216,6 +6240,10 @@
       "explanation": "An index is a second structure the database keeps in step with the table, so every insert, update, or delete touching the indexed column has to update it too, and the file grows. That is the trade the read speedup is bought with, and it is why indexes are added for queries that actually run rather than by default. The planner selects indexes on its own, and transactions are unaffected.",
       "sources": [
         {
+          "title": "SQLite Performance Best Practices",
+          "url": "https://developer.android.com/topic/performance/sqlite-performance-best-practices"
+        },
+        {
           "title": "SQLite Query Planner",
           "url": "https://www.sqlite.org/queryplanner.html"
         }
@@ -6291,7 +6319,7 @@
       "sources": [
         {
           "title": "OkHttp Recipes: Timeouts",
-          "url": "https://lysine.dev/okhttp/recipes/#timeouts-kt-java"
+          "url": "https://github.com/square/okhttp/blob/master/docs/recipes.md"
         }
       ],
       "status": "ACTIVE"
@@ -6328,7 +6356,7 @@
       "sources": [
         {
           "title": "OkHttp Interceptors",
-          "url": "https://lysine.dev/okhttp/features/interceptors/"
+          "url": "https://github.com/square/okhttp/blob/master/docs/features/interceptors.md"
         }
       ],
       "status": "ACTIVE"
@@ -6364,8 +6392,8 @@
       "explanation": "Declaring a service function as suspend lets Retrofit deliver the result through coroutine suspension, so the call fits structured concurrency: it can be cancelled with its scope and composed with other suspending work without callbacks. Body conversion, base URL configuration, and retry behaviour are unchanged and still configured on the client.",
       "sources": [
         {
-          "title": "Retrofit",
-          "url": "https://lysine.dev/retrofit/"
+          "title": "Retrofit Changelog: suspend function support",
+          "url": "https://github.com/square/retrofit/blob/trunk/CHANGELOG.md"
         },
         {
           "title": "Coroutine Basics",
@@ -6439,11 +6467,15 @@
       "correctAnswerIds": [
         "okhttp_authenticator_token_refresh_a"
       ],
-      "explanation": "Authenticator is the hook OkHttp calls specifically when a response carries an authorization challenge, and returning a new request makes the client replay the call; OkHttp also tracks the attempts so a persistently failing refresh stops rather than looping. Retrying from an interceptor is possible but the interceptor has to manage concurrency and its own retry limit, which is exactly the bookkeeping Authenticator already handles.",
+      "explanation": "Authenticator is the hook OkHttp calls specifically when a response is 401, and returning a new request makes the client replay the call with the fresh credential; returning null gives up. Giving up is the implementer's job, not OkHttp's: the documented pattern checks whether the failed request already carried an Authorization header, or counts prior responses, so a refresh that keeps failing stops instead of looping. Retrying from an interceptor is also possible, but then the 401 has to be recognised and the replay driven by hand as well.",
       "sources": [
         {
           "title": "OkHttp Recipes: Handling Authentication",
-          "url": "https://lysine.dev/okhttp/recipes/#handling-authentication-kt-java"
+          "url": "https://github.com/square/okhttp/blob/master/docs/recipes.md"
+        },
+        {
+          "title": "OkHttp Authenticator",
+          "url": "https://github.com/square/okhttp/blob/master/okhttp/src/commonJvmAndroid/kotlin/okhttp3/Authenticator.kt"
         }
       ],
       "status": "ACTIVE"
@@ -6479,8 +6511,8 @@
       "explanation": "max-age=0 makes the stored response stale immediately, and must-revalidate forbids serving it without checking. The client therefore sends a conditional request carrying the ETag, and the server answers 304 when nothing changed, so the body is not re-downloaded even though a round trip happens. That is the difference from no-store, which prevents caching altogether.",
       "sources": [
         {
-          "title": "OkHttp Caching",
-          "url": "https://lysine.dev/okhttp/features/caching/"
+          "title": "RFC 9111: must-revalidate",
+          "url": "https://www.rfc-editor.org/rfc/rfc9111.html#name-must-revalidate"
         }
       ],
       "status": "ACTIVE"
@@ -6553,6 +6585,10 @@
       "explanation": "An offset names a position in a result set that changes as rows are inserted, so a row can move across the page boundary and be fetched twice or missed entirely. A keyset request instead says where to continue from by value, which stays meaningful under concurrent writes. It is a consistency fix rather than a transport or memory optimisation, and both styles still return one page per request.",
       "sources": [
         {
+          "title": "AIP-158: Pagination",
+          "url": "https://google.aip.dev/158"
+        },
+        {
           "title": "PagingSource",
           "url": "https://developer.android.com/reference/kotlin/androidx/paging/PagingSource"
         }
@@ -6591,11 +6627,11 @@
       "sources": [
         {
           "title": "Retrofit: Response",
-          "url": "https://lysine.dev/retrofit/2.x/retrofit/retrofit2/Response.html"
+          "url": "https://github.com/square/retrofit/blob/trunk/retrofit/src/main/java/retrofit2/Response.java"
         },
         {
           "title": "Retrofit: HttpException",
-          "url": "https://lysine.dev/retrofit/2.x/retrofit/retrofit2/HttpException.html"
+          "url": "https://github.com/square/retrofit/blob/trunk/retrofit/src/main/java/retrofit2/HttpException.java"
         }
       ],
       "status": "ACTIVE"
@@ -7616,7 +7652,7 @@
           "url": "https://developer.android.com/kotlin/flow/test"
         }
       ],
-      "status": "ACTIVE"
+      "status": "DEPRECATED"
     },
     {
       "id": "room_testing_in_memory_database",
@@ -8113,6 +8149,10 @@
         {
           "title": "Enable App Optimization with R8",
           "url": "https://developer.android.com/topic/performance/app-optimization/enable-app-optimization"
+        },
+        {
+          "title": "Add Keep Rules",
+          "url": "https://developer.android.com/topic/performance/app-optimization/add-keep-rules"
         }
       ],
       "status": "ACTIVE"
@@ -8823,6 +8863,10 @@
         {
           "title": "Enable App Optimization with R8",
           "url": "https://developer.android.com/topic/performance/app-optimization/enable-app-optimization"
+        },
+        {
+          "title": "Add Keep Rules",
+          "url": "https://developer.android.com/topic/performance/app-optimization/add-keep-rules"
         }
       ],
       "status": "ACTIVE"
@@ -9219,8 +9263,8 @@
       "explanation": "Code belongs in common when the concept itself is platform-independent, such as domain rules, validation, and data transformation. Reaching for expect/actual whenever common code fails to compile inverts that test and produces a shared layer full of platform holes. Limited duplication is preferable to a shared abstraction that fits no platform well.",
       "sources": [
         {
-          "title": "Kotlin Multiplatform",
-          "url": "https://kotlinlang.org/docs/multiplatform.html"
+          "title": "Share Code on Platforms",
+          "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-share-on-platforms.html"
         }
       ],
       "status": "DEPRECATED"
@@ -9294,7 +9338,7 @@
       "sources": [
         {
           "title": "Expected and Actual Declarations",
-          "url": "https://kotlinlang.org/docs/multiplatform-expect-actual.html"
+          "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-expect-actual.html"
         }
       ],
       "status": "ACTIVE"
@@ -9331,7 +9375,7 @@
       "sources": [
         {
           "title": "Hierarchical Project Structure",
-          "url": "https://kotlinlang.org/docs/multiplatform-hierarchy.html"
+          "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-hierarchy.html"
         }
       ],
       "status": "ACTIVE"
@@ -9368,7 +9412,7 @@
       "sources": [
         {
           "title": "Expected and Actual Declarations",
-          "url": "https://kotlinlang.org/docs/multiplatform-expect-actual.html"
+          "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-expect-actual.html"
         }
       ],
       "status": "ACTIVE"
@@ -9404,8 +9448,8 @@
       "explanation": "Code in commonMain has to compile for each declared target, so every dependency it uses must publish artifacts for all of them; an Android-only library has nothing for iOS or Native to link against. That is why multiplatform equivalents such as Ktor and kotlinx.serialization exist for this layer. The library can still be used from androidMain, where only the Android target compiles it.",
       "sources": [
         {
-          "title": "Kotlin Multiplatform",
-          "url": "https://kotlinlang.org/docs/multiplatform.html"
+          "title": "Kotlin Multiplatform Project Structure: Source Sets",
+          "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-discover-project.html#source-sets"
         }
       ],
       "status": "ACTIVE"
@@ -9521,8 +9565,8 @@
       "explanation": "A shared abstraction pays off when the underlying concept really is the same; when the platforms differ, the common contract accumulates flags and escape hatches until it is harder to follow than two direct implementations. Maximising shared code is not the goal, so deliberate duplication is a legitimate outcome. Needing a multiplatform dependency is an ordinary constraint rather than a reason to duplicate, and release cadence is a delivery matter.",
       "sources": [
         {
-          "title": "Kotlin Multiplatform",
-          "url": "https://kotlinlang.org/docs/multiplatform.html"
+          "title": "Share Code on Platforms",
+          "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-share-on-platforms.html"
         }
       ],
       "status": "ACTIVE"
@@ -9654,7 +9698,7 @@
         },
         {
           "id": "android_intent_filter_matching_c",
-          "text": "The filter must declare the action, accept CATEGORY_DEFAULT, and match the URI's scheme and host."
+          "text": "The filter must declare the action, accept CATEGORY_DEFAULT, and have a data element the URI matches."
         },
         {
           "id": "android_intent_filter_matching_g",
@@ -9666,7 +9710,7 @@
       "correctAnswerIds": [
         "android_intent_filter_matching_c"
       ],
-      "explanation": "Implicit resolution tests the Intent against each filter's action, category, and data declarations, and a filter has to pass all three tests to match. An activity filter must also accept CATEGORY_DEFAULT, because the system adds that category to implicit intents before resolving them. Priority orders competing matches rather than excusing a failed test, and a filter that declares no data element matches only intents that carry no URI.",
+      "explanation": "Implicit resolution tests the Intent against each filter's action, category, and data declarations, and a filter has to pass all three tests to match. An activity filter must also accept CATEGORY_DEFAULT, because the system adds that category to implicit intents before resolving them. The data test compares only the parts the filter actually declares, so a filter naming just a scheme matches every URI using it; what a filter cannot do is omit the data element altogether and still match an Intent that carries a URI. Priority orders competing matches rather than excusing a failed test.",
       "sources": [
         {
           "title": "Intents and intent filters",
@@ -9780,8 +9824,12 @@
       "explanation": "repeatOnLifecycle launches the collection block while the chosen lifecycle is at least STARTED and cancels it below that state. Using the view lifecycle avoids updating a destroyed Fragment view; a process-wide or Fragment-lifetime scope outlives that UI.",
       "sources": [
         {
-          "title": "Use Kotlin coroutines with lifecycle-aware components",
-          "url": "https://developer.android.com/topic/libraries/architecture/coroutines"
+          "title": "androidx.lifecycle: repeatOnLifecycle",
+          "url": "https://developer.android.com/reference/kotlin/androidx/lifecycle/package-summary"
+        },
+        {
+          "title": "Fragment lifecycle",
+          "url": "https://developer.android.com/guide/fragments/lifecycle"
         }
       ],
       "status": "ACTIVE"
@@ -10188,8 +10236,8 @@
       "explanation": "AndroidView keeps a real View in the hierarchy: the factory constructs it once and update pushes new values into it when the composable recomposes with changed inputs. The View keeps its own imperative state, which Compose neither observes nor restores, so anything that must react to state has to be applied in update. Treating the View as if it participated in snapshots is the usual source of stale interop UI.",
       "sources": [
         {
-          "title": "Compose Interoperability APIs",
-          "url": "https://developer.android.com/develop/ui/compose/migrate/interoperability-apis"
+          "title": "Use Views in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/migrate/interoperability-apis/views-in-compose"
         }
       ],
       "status": "ACTIVE"
@@ -10309,7 +10357,7 @@
       "id": "android_component_process_lifetime",
       "topicId": "android_platform",
       "subtopicId": "android_components",
-      "text": "Select all that apply. Which statements correctly relate Android component lifetime to app-process lifetime?",
+      "text": "Which statements correctly relate Android component lifetime to app-process lifetime? Select all that apply.",
       "answers": [
         {
           "id": "android_component_process_lifetime_b",
@@ -10559,8 +10607,8 @@
       "explanation": "A navigation graph back-stack entry can own one ViewModel shared by destinations inside that flow. Popping the graph permanently removes the owner and clears its state, which matches a checkout session better than application or per-destination scope.",
       "sources": [
         {
-          "title": "Navigate with a ViewModel Scoped to a Graph",
-          "url": "https://developer.android.com/guide/navigation/use-graph/programmatic"
+          "title": "ViewModel APIs: ViewModels scoped to the Navigation graph",
+          "url": "https://developer.android.com/topic/libraries/architecture/viewmodel/viewmodel-apis"
         }
       ],
       "status": "ACTIVE"
@@ -10606,7 +10654,7 @@
       "id": "configuration_change_vs_process_recreation",
       "topicId": "lifecycle_navigation",
       "subtopicId": "configuration_changes",
-      "text": "Select all that apply. Which statements distinguish configuration recreation from process recreation?",
+      "text": "Which statements distinguish configuration recreation from process recreation? Select all that apply.",
       "answers": [
         {
           "id": "configuration_change_vs_process_recreation_c",
@@ -10755,7 +10803,7 @@
       "id": "compose_state_read_recomposition_scope",
       "topicId": "android_ui",
       "subtopicId": "compose_recomposition",
-      "text": "Select all that apply. Which statements describe how Compose state reads affect recomposition?",
+      "text": "Which statements describe how Compose state reads affect recomposition? Select all that apply.",
       "answers": [
         {
           "id": "compose_state_read_recomposition_scope_a",
@@ -10857,8 +10905,8 @@
       "explanation": "A Fragment can outlive its View, so a ComposeView composition should be disposed with the view-tree lifecycle. This releases effects and observation associated with the destroyed View instead of retaining that UI until the Fragment itself is destroyed.",
       "sources": [
         {
-          "title": "Compose in Views",
-          "url": "https://developer.android.com/develop/ui/compose/migrate/interoperability-apis#compose-in-views"
+          "title": "Use Compose in Views: ViewCompositionStrategy",
+          "url": "https://developer.android.com/develop/ui/compose/migrate/interoperability-apis/compose-in-views"
         }
       ],
       "status": "ACTIVE"
@@ -11019,7 +11067,7 @@
       "id": "generic_in_out_variance_tradeoff",
       "topicId": "kotlin_language",
       "subtopicId": "kotlin_generics",
-      "text": "Select all that apply. Which variance choices are type-safe for a generic API?",
+      "text": "Which variance choices are type-safe for a generic API? Select all that apply.",
       "answers": [
         {
           "id": "generic_in_out_variance_tradeoff_c",
@@ -11462,8 +11510,8 @@
       "explanation": "Cancellable suspending functions use CancellationException to unwind cancelled coroutines. A broad Exception handler can intercept it; treating it as an ordinary recoverable failure may continue unwanted work, so it should normally be rethrown.",
       "sources": [
         {
-          "title": "Cancellation Is Cooperative",
-          "url": "https://kotlinlang.org/docs/cancellation-and-timeouts.html#cancellation-is-cooperative"
+          "title": "Coroutine Cancellation",
+          "url": "https://kotlinlang.org/docs/coroutines-cancellation.html"
         }
       ],
       "status": "ACTIVE"
@@ -11499,8 +11547,8 @@
       "explanation": "Coroutine cancellation is cooperative and does not forcibly interrupt arbitrary CPU instructions. A busy loop must reach a cancellable suspension or explicitly inspect the Job through isActive, ensureActive(), or yield().",
       "sources": [
         {
-          "title": "Making Computation Code Cancellable",
-          "url": "https://kotlinlang.org/docs/cancellation-and-timeouts.html#making-computation-code-cancellable"
+          "title": "Coroutine Cancellation",
+          "url": "https://kotlinlang.org/docs/coroutines-cancellation.html"
         }
       ],
       "status": "DEPRECATED"
@@ -11540,8 +11588,8 @@
           "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/run-interruptible.html"
         },
         {
-          "title": "Cancellation and Timeouts",
-          "url": "https://kotlinlang.org/docs/cancellation-and-timeouts.html"
+          "title": "Coroutine Cancellation",
+          "url": "https://kotlinlang.org/docs/coroutines-cancellation.html"
         }
       ],
       "status": "ACTIVE"
@@ -11661,7 +11709,7 @@
       "id": "stateflow_vs_sharedflow_current_value",
       "topicId": "async_reactive",
       "subtopicId": "stateflow",
-      "text": "Select all that apply. Which statements correctly compare StateFlow with SharedFlow?",
+      "text": "Which statements correctly compare StateFlow with SharedFlow? Select all that apply.",
       "answers": [
         {
           "id": "stateflow_vs_sharedflow_current_value_a",
@@ -11726,8 +11774,8 @@
       "explanation": "buffer() separates upstream emission from downstream collection so they can make progress concurrently until the buffer fills. That can improve throughput at the cost of queued memory and latency; conflate and collectLatest have explicit dropping or cancellation semantics instead.",
       "sources": [
         {
-          "title": "Asynchronous Flow: Buffering",
-          "url": "https://kotlinlang.org/docs/coroutines-flow.html#buffering"
+          "title": "kotlinx.coroutines.flow.buffer",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/buffer.html"
         }
       ],
       "status": "ACTIVE"
@@ -11995,7 +12043,7 @@
       "id": "dagger_inject_provides_binds_selection",
       "topicId": "dependency_injection",
       "subtopicId": "dagger_bindings",
-      "text": "Select all that apply. Which Dagger binding declarations fit the stated constraint?",
+      "text": "Which Dagger binding declarations fit the stated constraint? Select all that apply.",
       "answers": [
         {
           "id": "dagger_inject_provides_binds_selection_c",
@@ -12060,8 +12108,8 @@
       "explanation": "A module groups binding declarations such as @Provides, @Binds, or multibindings. A component includes modules, forms a graph boundary, owns scoped instances, and exposes entry points; a module alone is not a running container.",
       "sources": [
         {
-          "title": "Dagger Modules",
-          "url": "https://dagger.dev/dev-guide/#satisfying-dependencies"
+          "title": "Dagger Basic Usage: Satisfying Dependencies",
+          "url": "https://dagger.dev/dev-guide/basic-usage#satisfying-dependencies"
         }
       ],
       "status": "DEPRECATED"
@@ -12134,8 +12182,8 @@
       "explanation": "A component is the graph API and boundary: Dagger generates its implementation from reachable bindings and declared entry points. Modules contribute bindings but do not themselves assemble or expose a usable component instance.",
       "sources": [
         {
-          "title": "Dagger Components",
-          "url": "https://dagger.dev/dev-guide/#building-the-graph"
+          "title": "Dagger Basic Usage: Building the Graph",
+          "url": "https://dagger.dev/dev-guide/basic-usage#building-the-graph"
         }
       ],
       "status": "ACTIVE"
@@ -12144,7 +12192,7 @@
       "id": "dagger_subcomponent_parent_binding_inheritance",
       "topicId": "dependency_injection",
       "subtopicId": "dagger_components",
-      "text": "Select all that apply. Which statements describe a Dagger subcomponent's relationship to its parent component?",
+      "text": "Which statements describe a Dagger subcomponent's relationship to its parent component? Select all that apply.",
       "answers": [
         {
           "id": "dagger_subcomponent_parent_binding_inheritance_b",
@@ -12324,8 +12372,8 @@
       "explanation": "Dagger keys include a type and an optional qualifier. Distinct qualifiers make the two OkHttpClient bindings unambiguous and require each consumer to state which policy it needs; scopes control reuse, not selection among same-key bindings.",
       "sources": [
         {
-          "title": "Dagger Qualifiers",
-          "url": "https://dagger.dev/dev-guide/#qualifiers"
+          "title": "Dagger Basic Usage: Qualifiers",
+          "url": "https://dagger.dev/dev-guide/basic-usage#qualifiers"
         }
       ],
       "status": "ACTIVE"
@@ -12361,8 +12409,8 @@
       "explanation": "A scope tells a component to reuse a binding result within that component instance. Creating another component creates another scoped cache, and releasing the owning component makes those objects eligible for collection; the annotation is not a process-global store.",
       "sources": [
         {
-          "title": "Dagger Singletons and Scoped Bindings",
-          "url": "https://dagger.dev/dev-guide/#singletons-and-scoped-bindings"
+          "title": "Dagger Basic Usage: Singletons and Scoped Bindings",
+          "url": "https://dagger.dev/dev-guide/basic-usage#singletons-and-scoped-bindings"
         }
       ],
       "status": "ACTIVE"
@@ -12482,7 +12530,7 @@
       "id": "offline_first_local_write_then_sync",
       "topicId": "local_data",
       "subtopicId": "offline_first",
-      "text": "Select all that apply. An offline-first editor commits locally before syncing. Which design properties make that strategy reliable?",
+      "text": "An offline-first editor commits locally before syncing. Which design properties make that strategy reliable? Select all that apply.",
       "answers": [
         {
           "id": "offline_first_local_write_then_sync_a",
@@ -12547,8 +12595,12 @@
       "explanation": "Retrofit turns an annotated service interface into HTTP requests and adapts the results, delegating the transport to the OkHttp client it is built with. Connection pooling, TLS, timeouts, interceptors, and the response cache all belong to OkHttp. Body conversion is neither one's own work: it comes from the converter factory installed on Retrofit.",
       "sources": [
         {
-          "title": "Retrofit",
-          "url": "https://lysine.dev/retrofit/"
+          "title": "Retrofit class documentation",
+          "url": "https://github.com/square/retrofit/blob/trunk/retrofit/src/main/java/retrofit2/Retrofit.java"
+        },
+        {
+          "title": "OkHttp",
+          "url": "https://github.com/square/okhttp/blob/master/README.md"
         }
       ],
       "status": "ACTIVE"
@@ -12557,7 +12609,7 @@
       "id": "okhttp_application_vs_network_interceptor",
       "topicId": "networking",
       "subtopicId": "okhttp_interceptors",
-      "text": "Select all that apply. Which statements correctly compare OkHttp application and network interceptors?",
+      "text": "Which statements correctly compare OkHttp application and network interceptors? Select all that apply.",
       "answers": [
         {
           "id": "okhttp_application_vs_network_interceptor_c",
@@ -12586,7 +12638,7 @@
       "sources": [
         {
           "title": "OkHttp Interceptors",
-          "url": "https://lysine.dev/okhttp/features/interceptors/"
+          "url": "https://github.com/square/okhttp/blob/master/docs/features/interceptors.md"
         }
       ],
       "status": "ACTIVE"
@@ -12623,7 +12675,7 @@
       "sources": [
         {
           "title": "OkHttp Recipes: Timeouts",
-          "url": "https://lysine.dev/okhttp/recipes/#timeouts-kt-java"
+          "url": "https://github.com/square/okhttp/blob/master/docs/recipes.md"
         }
       ],
       "status": "ACTIVE"
@@ -12659,8 +12711,8 @@
       "explanation": "A cancellable suspend adapter connects coroutine cancellation to the in-flight call, avoiding network work whose owner no longer needs the result. Cancellation remains coroutine cancellation rather than a fabricated HTTP response or an automatic detached retry.",
       "sources": [
         {
-          "title": "Retrofit",
-          "url": "https://lysine.dev/retrofit/"
+          "title": "Retrofit: suspend call cancellation",
+          "url": "https://github.com/square/retrofit/blob/trunk/retrofit/src/main/java/retrofit2/KotlinExtensions.kt"
         }
       ],
       "status": "ACTIVE"
@@ -12743,7 +12795,7 @@
       "id": "workmanager_vs_foreground_service_constraint",
       "topicId": "background_work",
       "subtopicId": "service_vs_workmanager",
-      "text": "Select all that apply. Which workload characteristics favor a foreground service over ordinary WorkManager?",
+      "text": "Which workload characteristics favor a foreground service over ordinary WorkManager? Select all that apply.",
       "answers": [
         {
           "id": "workmanager_vs_foreground_service_constraint_c",
@@ -12818,7 +12870,7 @@
       "id": "fcm_token_rotation_server_mapping",
       "topicId": "notifications",
       "subtopicId": "fcm_tokens",
-      "text": "Select all that apply. An app sends targeted FCM messages through its backend. What should it do when the registration token changes?",
+      "text": "An app sends targeted FCM messages through its backend. What should it do when the registration token changes? Select all that apply.",
       "answers": [
         {
           "id": "fcm_token_rotation_server_mapping_c",
@@ -13004,7 +13056,7 @@
       "id": "contract_focused_tests_resist_refactor",
       "topicId": "testing",
       "subtopicId": "testing_boundaries",
-      "text": "Select all that apply. Which test choices make a suite more resilient to an internal refactor without weakening behavior coverage?",
+      "text": "Which test choices make a suite more resilient to an internal refactor without weakening behavior coverage? Select all that apply.",
       "answers": [
         {
           "id": "contract_focused_tests_resist_refactor_a",
@@ -13120,7 +13172,7 @@
       "id": "art_generational_gc_short_lived_objects",
       "topicId": "performance",
       "subtopicId": "garbage_collection",
-      "text": "Select all that apply. Why can generational collection improve ART garbage-collection throughput?",
+      "text": "Why can generational collection improve ART garbage-collection throughput? Select all that apply.",
       "answers": [
         {
           "id": "art_generational_gc_short_lived_objects_c",
@@ -13343,7 +13395,7 @@
       "id": "exported_component_external_input_validation",
       "topicId": "security",
       "subtopicId": "intent_security",
-      "text": "Select all that apply. An exported Activity accepts a deep-link URI that selects an account and redirect. Which defenses belong at that boundary?",
+      "text": "An exported Activity accepts a deep-link URI that selects an account and redirect. Which defenses belong at that boundary? Select all that apply.",
       "answers": [
         {
           "id": "exported_component_external_input_validation_a",
@@ -13482,8 +13534,8 @@
       "explanation": "Sibling features should not form horizontal or cyclic implementation dependencies. A small lower-level contract or navigation module gives both a stable abstraction, while the application composition root can connect concrete feature implementations.",
       "sources": [
         {
-          "title": "Modularization: General Best Practices",
-          "url": "https://developer.android.com/topic/modularization#general-best-practices"
+          "title": "Modularization patterns: cohesion and coupling",
+          "url": "https://developer.android.com/topic/modularization/patterns"
         }
       ],
       "status": "ACTIVE"
@@ -13566,7 +13618,7 @@
       "id": "modularization_build_speed_not_guaranteed",
       "topicId": "build_delivery",
       "subtopicId": "modularization_tradeoffs",
-      "text": "Select all that apply. Why can modularization improve incremental builds without making every build faster?",
+      "text": "Why can modularization improve incremental builds without making every build faster? Select all that apply.",
       "answers": [
         {
           "id": "modularization_build_speed_not_guaranteed_a",
@@ -13715,7 +13767,7 @@
       "id": "account_data_partition_logout",
       "topicId": "mobile_system_design",
       "subtopicId": "session_management",
-      "text": "Select all that apply. A multi-account app caches private data locally. Which design choices prevent one account from seeing another's data?",
+      "text": "A multi-account app caches private data locally. Which design choices prevent one account from seeing another's data? Select all that apply.",
       "answers": [
         {
           "id": "account_data_partition_logout_a",
@@ -13817,8 +13869,8 @@
       "explanation": "Sharing logic and sharing UI are separate product choices. Native UIs can preserve platform-specific experience and team autonomy while still reusing stable business and data behavior, at the cost of implementing presentation twice.",
       "sources": [
         {
-          "title": "Kotlin Multiplatform: Share Code on Your Terms",
-          "url": "https://kotlinlang.org/docs/multiplatform.html"
+          "title": "Share code on platforms",
+          "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-share-on-platforms.html"
         }
       ],
       "status": "DEPRECATED"
@@ -13864,7 +13916,7 @@
       "id": "kmp_common_vs_platform_test_placement",
       "topicId": "kmp",
       "subtopicId": "kmp_source_sets",
-      "text": "Select all that apply. Where should tests live in a KMP library with shared validation rules and an Android-only ContentResolver adapter?",
+      "text": "Where should tests live in a KMP library with shared validation rules and an Android-only ContentResolver adapter? Select all that apply.",
       "answers": [
         {
           "id": "kmp_common_vs_platform_test_placement_c",
@@ -13892,8 +13944,8 @@
       "explanation": "Tests follow the same boundary as production code. Platform-independent behavior can run from commonTest across targets, while an adapter that uses Android APIs needs the corresponding Android test source set and environment.",
       "sources": [
         {
-          "title": "Kotlin Multiplatform Source Sets",
-          "url": "https://kotlinlang.org/docs/multiplatform-discover-project.html#source-sets"
+          "title": "Kotlin Multiplatform Project Structure: Source Sets",
+          "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-discover-project.html#source-sets"
         }
       ],
       "status": "ACTIVE"
@@ -14085,8 +14137,8 @@
       "explanation": "A cold Flow has no coroutine of its own: collect runs the producer in the collecting coroutine, so cancelling that coroutine cancels production too. Like all coroutine cancellation this is cooperative — the block stops when it next reaches a cancellable suspension point such as emit(), not in the middle of a CPU-bound statement, and nothing carries on in the background afterwards.",
       "sources": [
         {
-          "title": "Asynchronous Flow: Flow cancellation basics",
-          "url": "https://kotlinlang.org/docs/flow.html#flow-cancellation-basics"
+          "title": "Asynchronous Flow: Flow cancellation",
+          "url": "https://kotlinlang.org/docs/coroutines-flow.html#flow-cancellation"
         }
       ],
       "status": "ACTIVE"
@@ -14243,7 +14295,7 @@
       "id": "live_data_vs_state_flow_ui_state",
       "topicId": "async_reactive",
       "subtopicId": "livedata",
-      "text": "Select all that apply. A team replaces LiveData with StateFlow for exposing screen state from a ViewModel. Which statements about that change are correct?",
+      "text": "A team replaces LiveData with StateFlow for exposing screen state from a ViewModel. Which statements about that change are correct? Select all that apply.",
       "answers": [
         {
           "id": "live_data_vs_state_flow_ui_state_a",
@@ -14285,7 +14337,7 @@
       "id": "http_status_retry_classification",
       "topicId": "networking",
       "subtopicId": "http_status_codes",
-      "text": "Select all that apply. A sync client must decide which failed requests are worth retrying with backoff rather than reporting as a permanent failure. Which responses normally qualify?",
+      "text": "A sync client must decide which failed requests are worth retrying with backoff rather than reporting as a permanent failure. Which responses normally qualify? Select all that apply.",
       "answers": [
         {
           "id": "http_status_retry_classification_a",
@@ -14327,7 +14379,7 @@
       "id": "http_methods_safe_vs_idempotent",
       "topicId": "networking",
       "subtopicId": "http_methods",
-      "text": "Select all that apply. Which statements about HTTP method semantics are correct?",
+      "text": "Which statements about HTTP method semantics are correct? Select all that apply.",
       "answers": [
         {
           "id": "http_methods_safe_vs_idempotent_a",
@@ -14470,12 +14522,12 @@
       "explanation": "OkHttp is designed around one shared client: the connection pool, the dispatcher's thread pools and the response cache all live on the instance. Building a client per call throws that state away, so every request repeats the TCP and TLS handshake and no idle connection is ever reused, which is expensive on mobile. Nothing limits how many clients may exist; the supported way to vary configuration is newBuilder(), which produces a client sharing the same pools and cache.",
       "sources": [
         {
-          "title": "OkHttp: OkHttpClient",
-          "url": "https://lysine.dev/okhttp/5.x/okhttp/okhttp3/-ok-http-client/"
+          "title": "OkHttp: OkHttpClients Should Be Shared",
+          "url": "https://github.com/square/okhttp/blob/master/okhttp/src/commonJvmAndroid/kotlin/okhttp3/OkHttpClient.kt"
         },
         {
-          "title": "OkHttp: Connections",
-          "url": "https://lysine.dev/okhttp/features/connections/"
+          "title": "OkHttp Connections",
+          "url": "https://github.com/square/okhttp/blob/master/docs/features/connections.md"
         }
       ],
       "status": "ACTIVE"
@@ -14627,7 +14679,7 @@
         },
         {
           "title": "Retrofit",
-          "url": "https://lysine.dev/retrofit/"
+          "url": "https://github.com/square/retrofit/blob/trunk/README.md"
         }
       ],
       "status": "ACTIVE"
@@ -15193,8 +15245,8 @@
       "explanation": "Dagger is an annotation processor. For each @Inject constructor it generates a Factory, and for each @Component it generates an implementation that wires those factories together; all of it is ordinary source compiled alongside the app. That makes an unsatisfied dependency a compile error rather than a runtime graph failure. At runtime Dagger follows generated factory and provider calls instead of discovering the graph with reflection, giving it low, predictable overhead rather than zero overhead: dependency resolution, object creation, scopes and lazy providers can still require work. Dagger neither inspects annotations at runtime nor rewrites bytecode, and a service locator is the pattern it exists to replace.",
       "sources": [
         {
-          "title": "Dagger Developer Guide",
-          "url": "https://dagger.dev/dev-guide/"
+          "title": "Dagger Basic Usage: Compile-time Code Generation",
+          "url": "https://dagger.dev/dev-guide/basic-usage#compile-time-code-generation"
         }
       ],
       "status": "ACTIVE"
@@ -15203,7 +15255,7 @@
       "id": "android_sandbox_app_uid_isolation",
       "topicId": "security",
       "subtopicId": "android_sandbox",
-      "text": "Select all that apply. Which statements about the Android application sandbox are correct?",
+      "text": "Which statements about the Android application sandbox are correct? Select all that apply.",
       "answers": [
         {
           "id": "android_sandbox_app_uid_isolation_a",
@@ -15417,7 +15469,7 @@
       "sources": [
         {
           "title": "Security tips: storing data",
-          "url": "https://developer.android.com/privacy-and-security/security-tips#UserData"
+          "url": "https://developer.android.com/privacy-and-security/security-tips#user-data"
         }
       ],
       "status": "ACTIVE"
@@ -15541,7 +15593,7 @@
       "id": "context_leak_retained_activity_references",
       "topicId": "performance",
       "subtopicId": "context_leaks",
-      "text": "Select all that apply. Which of these keep a destroyed Activity reachable and therefore leak it?",
+      "text": "Which of these keep a destroyed Activity reachable and therefore leak it? Select all that apply.",
       "answers": [
         {
           "id": "context_leak_retained_activity_references_a",
@@ -16064,7 +16116,7 @@
       "id": "cache_memory_and_disk_levels",
       "topicId": "local_data",
       "subtopicId": "caching",
-      "text": "Select all that apply. A feed repository caches responses both in an in-memory map and in a Room table. Which statements about that two-level cache are correct?",
+      "text": "A feed repository caches responses both in an in-memory map and in a Room table. Which statements about that two-level cache are correct? Select all that apply.",
       "answers": [
         {
           "id": "cache_memory_and_disk_levels_a",
@@ -16171,7 +16223,7 @@
         },
         {
           "title": "SQLDelight",
-          "url": "https://sqldelight.github.io/sqldelight/"
+          "url": "https://github.com/sqldelight/sqldelight"
         }
       ],
       "status": "ACTIVE"
@@ -16180,7 +16232,7 @@
       "id": "system_requirements_clarifying_constraint",
       "topicId": "mobile_system_design",
       "subtopicId": "requirements_analysis",
-      "text": "Select all that apply. You are asked to design the client for a photo feed. Which clarifying questions change the client architecture most?",
+      "text": "You are asked to design the client for a photo feed. Which clarifying questions change the client architecture most? Select all that apply.",
       "answers": [
         {
           "id": "system_requirements_clarifying_constraint_a",
@@ -16324,7 +16376,7 @@
       "sources": [
         {
           "title": "Guide to app architecture: common principles",
-          "url": "https://developer.android.com/topic/architecture#common-architectural-principles"
+          "url": "https://developer.android.com/topic/architecture#common-principles"
         },
         {
           "title": "Firebase Remote Config use cases",
@@ -16402,7 +16454,7 @@
       "sources": [
         {
           "title": "Build final native binaries",
-          "url": "https://kotlinlang.org/docs/multiplatform-build-native-binaries.html"
+          "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-build-native-binaries.html"
         }
       ],
       "status": "ACTIVE"
@@ -16411,7 +16463,7 @@
       "id": "commonmain_platform_api_availability",
       "topicId": "kmp",
       "subtopicId": "commonmain",
-      "text": "Select all that apply. Which of these can be referenced directly from commonMain in a module targeting Android and iOS?",
+      "text": "Which of these can be referenced directly from commonMain in a module targeting Android and iOS? Select all that apply.",
       "answers": [
         {
           "id": "commonmain_platform_api_availability_a",
@@ -16439,7 +16491,7 @@
       "sources": [
         {
           "title": "Kotlin Multiplatform project structure: source sets",
-          "url": "https://kotlinlang.org/docs/multiplatform-discover-project.html#source-sets"
+          "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-discover-project.html#source-sets"
         }
       ],
       "status": "ACTIVE"
@@ -16513,7 +16565,7 @@
       "sources": [
         {
           "title": "Expected and actual declarations",
-          "url": "https://kotlinlang.org/docs/multiplatform-expect-actual.html"
+          "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-expect-actual.html"
         }
       ],
       "status": "ACTIVE"
@@ -16637,7 +16689,7 @@
       "id": "clean_architecture_dependency_rule_tradeoff",
       "topicId": "architecture",
       "subtopicId": "clean_architecture",
-      "text": "Select all that apply. A team follows Clean Architecture's dependency rule and keeps the domain layer free of framework types. Which consequences follow?",
+      "text": "A team follows Clean Architecture's dependency rule and keeps the domain layer free of framework types. Which consequences follow? Select all that apply.",
       "answers": [
         {
           "id": "clean_architecture_dependency_rule_tradeoff_a",
@@ -16786,7 +16838,7 @@
       "id": "play_app_signing_upload_key_roles",
       "topicId": "build_delivery",
       "subtopicId": "app_signing",
-      "text": "Select all that apply. An app is distributed using Play App Signing. Which statements about its keys are correct?",
+      "text": "An app is distributed using Play App Signing. Which statements about its keys are correct? Select all that apply.",
       "answers": [
         {
           "id": "play_app_signing_upload_key_roles_a",
@@ -16976,7 +17028,7 @@
       "id": "notification_remote_input_reply_action",
       "topicId": "notifications",
       "subtopicId": "notification_actions",
-      "text": "Select all that apply. A messaging notification offers an inline reply from the notification shade. Which statements about that action are correct?",
+      "text": "A messaging notification offers an inline reply from the notification shade. Which statements about that action are correct? Select all that apply.",
       "answers": [
         {
           "id": "notification_remote_input_reply_action_a",
@@ -17092,7 +17144,7 @@
       "id": "kotlin_internal_module_visibility",
       "topicId": "kotlin_language",
       "subtopicId": "kotlin_visibility",
-      "text": "Select all that apply. Which statements about Kotlin's internal visibility modifier are correct?",
+      "text": "Which statements about Kotlin's internal visibility modifier are correct? Select all that apply.",
       "answers": [
         {
           "id": "kotlin_internal_module_visibility_a",
@@ -17203,7 +17255,7 @@
       "id": "fragment_back_stack_view_destroyed_binding",
       "topicId": "lifecycle_navigation",
       "subtopicId": "fragment_lifecycle",
-      "text": "Select all that apply. A Fragment is replaced by another one and added to the back stack. Which statements about it are correct?",
+      "text": "A Fragment is replaced by another one and added to the back stack. Which statements about it are correct? Select all that apply.",
       "answers": [
         {
           "id": "fragment_back_stack_view_destroyed_binding_a",
@@ -17240,7 +17292,7 @@
       "id": "process_importance_reclaim_order",
       "topicId": "android_platform",
       "subtopicId": "android_process_model",
-      "text": "Select all that apply. The system is low on memory and must reclaim some. Which statements about which app process it removes first are correct?",
+      "text": "The system is low on memory and must reclaim some. Which statements about which app process it removes first are correct? Select all that apply.",
       "answers": [
         {
           "id": "process_importance_reclaim_order_a",

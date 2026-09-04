@@ -33,6 +33,10 @@ This file is an index. Load a linked document only when the task touches its sub
   [Kotlin style](docs/development/kotlin.md).
 - **Test meaningful behavior changes**, in the source set the behavior belongs to. See
   [testing](docs/development/testing.md).
+- **Validate every question you write or change.** Generation is not validation: solve the
+  finished question yourself before trusting its answer key, and open every source rather
+  than trusting the URL. See
+  [question validation](docs/content/question-validation.md).
 - **Report validation honestly.** Name the commands run; never claim a check, CI run, or
   merge that was not observed.
 - **Check `git status --short` before reporting completion** and keep generated build or
@@ -92,6 +96,7 @@ does not cover: [CI](docs/workflows/ci.md).
 [curriculum](docs/content/curriculum.md) ·
 [authoring contract](docs/content/content-authoring.md) ·
 [authoring playbook](docs/content/question-authoring-playbook.md) ·
+[validation standard](docs/content/question-validation.md) ·
 [coverage snapshot](docs/content/question-bank-coverage.md)
 
 ## Skills
@@ -103,6 +108,7 @@ in both tools.
 | Skill | Use when |
 | --- | --- |
 | `implement-backlog-issue` | Implementing, continuing, or fixing an `E##-##` backlog issue. |
+| `question-bank-change` | Adding, editing, auditing, or fixing questions in the bundled question bank. |
 | `gradle-kmp-change` | Changing build files, version catalog, targets, plugins, or source-set dependencies. |
 | `kmp-boundary-review` | Code moves between common and platform source sets, or `expect`/`actual` changes. |
 | `testing-change` | Designing or verifying tests for a behavior change. |

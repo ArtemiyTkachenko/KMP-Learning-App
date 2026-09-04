@@ -279,6 +279,66 @@ internal class CurriculumValidatorTest {
     }
 
     @Test
+    fun rejectsAuthoringPlaceholdersInAuthoredText() {
+        assertCodes(
+            validCurriculum(
+                questions = listOf(
+                    question(text = "TODO: write the stem"),
+                    question(
+                        id = "placeholder_answer_question",
+                        answers = listOf(
+                            AnswerOption(id = "answer_a", text = "Correct answer"),
+                            AnswerOption(id = "answer_b", text = "FIXME"),
+                        ),
+                    ),
+                    question(id = "placeholder_explanation_question", explanation = "TBD"),
+                    question(
+                        id = "placeholder_source_question",
+                        sources = listOf(SourceReference(title = "TODO", url = "http://localhost:8080/docs")),
+                    ),
+                ),
+            ),
+            CurriculumValidationErrorCode.PLACEHOLDER_QUESTION_TEXT,
+            CurriculumValidationErrorCode.PLACEHOLDER_ANSWER_TEXT,
+            CurriculumValidationErrorCode.PLACEHOLDER_EXPLANATION,
+            CurriculumValidationErrorCode.PLACEHOLDER_SOURCE_TITLE,
+            CurriculumValidationErrorCode.PLACEHOLDER_SOURCE_URL,
+        )
+    }
+
+    @Test
+    fun kotlinTodoFunctionIsNotTreatedAsAPlaceholder() {
+        assertTrue(
+            validator.validate(
+                validCurriculum(
+                    questions = listOf(
+                        question(text = "What does calling TODO() do at runtime in Kotlin?"),
+                    ),
+                ),
+            ).isEmpty(),
+        )
+    }
+
+    @Test
+    fun rejectsAnswerOptionsThatRepeatTheSameText() {
+        assertCodes(
+            validCurriculum(
+                questions = listOf(
+                    question(
+                        answers = listOf(
+                            AnswerOption(id = "answer_a", text = "Correct answer"),
+                            AnswerOption(id = "answer_b", text = "  correct answer  "),
+                        ),
+                    ),
+                ),
+            ),
+            CurriculumValidationErrorCode.DUPLICATE_ANSWER_TEXT,
+            CurriculumValidationErrorCode.DUPLICATE_ANSWER_TEXT,
+        )
+    }
+
+
+    @Test
     fun validatesSources() {
         val curriculum = validCurriculum(
             questions = listOf(

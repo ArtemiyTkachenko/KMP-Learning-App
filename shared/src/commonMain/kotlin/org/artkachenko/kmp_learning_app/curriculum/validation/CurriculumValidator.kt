@@ -128,12 +128,16 @@ internal class CurriculumValidator {
         }
         if (question.text.isBlank()) {
             errors.add(error(CurriculumValidationErrorCode.BLANK_QUESTION_TEXT, question.id, "Question '${question.id}' text must not be blank."))
+        } else if (question.text.containsPlaceholder()) {
+            errors.add(error(CurriculumValidationErrorCode.PLACEHOLDER_QUESTION_TEXT, question.id, "Question '${question.id}' text contains placeholder content."))
         }
         if (question.id in duplicateIds) {
             errors.add(error(CurriculumValidationErrorCode.DUPLICATE_QUESTION_ID, question.id, "Question id '${question.id}' is duplicated."))
         }
         if (question.explanation.isBlank()) {
             errors.add(error(CurriculumValidationErrorCode.BLANK_EXPLANATION, question.id, "Question '${question.id}' explanation must not be blank."))
+        } else if (question.explanation.containsPlaceholder()) {
+            errors.add(error(CurriculumValidationErrorCode.PLACEHOLDER_EXPLANATION, question.id, "Question '${question.id}' explanation contains placeholder content."))
         }
     }
 
@@ -176,15 +180,21 @@ internal class CurriculumValidator {
         }
 
         val duplicateIds = duplicateNonBlankValues(question.answers.map { it.id })
+        val duplicateTexts = duplicateNonBlankValues(question.answers.map { it.text.normalizedForComparison() })
         question.answers.forEach { answer ->
             if (answer.id.isBlank()) {
                 errors.add(error(CurriculumValidationErrorCode.BLANK_ANSWER_ID, question.id, "Question '${question.id}' has an answer with a blank id."))
             }
             if (answer.text.isBlank()) {
                 errors.add(error(CurriculumValidationErrorCode.BLANK_ANSWER_TEXT, answer.id, "Answer '${answer.id}' text must not be blank."))
+            } else if (answer.text.containsPlaceholder()) {
+                errors.add(error(CurriculumValidationErrorCode.PLACEHOLDER_ANSWER_TEXT, answer.id, "Answer '${answer.id}' text contains placeholder content."))
             }
             if (answer.id in duplicateIds) {
                 errors.add(error(CurriculumValidationErrorCode.DUPLICATE_ANSWER_ID, answer.id, "Question '${question.id}' has duplicate answer id '${answer.id}'."))
+            }
+            if (answer.text.normalizedForComparison() in duplicateTexts) {
+                errors.add(error(CurriculumValidationErrorCode.DUPLICATE_ANSWER_TEXT, answer.id, "Question '${question.id}' offers answer '${answer.id}' twice as the same option text."))
             }
         }
     }
@@ -242,11 +252,15 @@ internal class CurriculumValidator {
     ) {
         if (source.title.isBlank()) {
             errors.add(error(CurriculumValidationErrorCode.BLANK_SOURCE_TITLE, question.id, "Question '${question.id}' has a source with a blank title."))
+        } else if (source.title.containsPlaceholder()) {
+            errors.add(error(CurriculumValidationErrorCode.PLACEHOLDER_SOURCE_TITLE, question.id, "Question '${question.id}' has placeholder source title '${source.title}'."))
         }
         if (source.url.isBlank()) {
             errors.add(error(CurriculumValidationErrorCode.BLANK_SOURCE_URL, question.id, "Question '${question.id}' has a source with a blank URL."))
         } else if (!source.url.isValidHttpUrl()) {
             errors.add(error(CurriculumValidationErrorCode.INVALID_SOURCE_URL, question.id, "Question '${question.id}' has invalid source URL '${source.url}'."))
+        } else if (source.url.isPlaceholderUrl()) {
+            errors.add(error(CurriculumValidationErrorCode.PLACEHOLDER_SOURCE_URL, question.id, "Question '${question.id}' has placeholder source URL '${source.url}'."))
         }
     }
 
@@ -261,6 +275,25 @@ internal class CurriculumValidator {
         }
 
         return duplicates
+    }
+
+    private fun String.normalizedForComparison() = trim().lowercase()
+
+    /**
+     * Placeholder detection is deliberately narrow. It catches authoring stubs that no finished
+     * question should ship, and nothing that a real Android or Kotlin question might legitimately
+     * discuss: `TODO(` is excluded because Kotlin's `TODO()` is a fair subject for a question.
+     */
+    private fun String.containsPlaceholder() = PLACEHOLDER_MARKER.containsMatchIn(this)
+
+    private fun String.isPlaceholderUrl(): Boolean {
+        val host = substringAfter("://")
+            .substringBefore('/')
+            .substringBefore('?')
+            .substringBefore('#')
+            .substringBefore(':')
+            .lowercase()
+        return PLACEHOLDER_URL_HOSTS.any { host == it || host.endsWith(".$it") }
     }
 
     private fun String.isValidHttpUrl(): Boolean {
@@ -284,4 +317,20 @@ internal class CurriculumValidator {
         entityId = entityId?.takeUnless { it.isBlank() },
         message = message,
     )
+
+    private companion object {
+        val PLACEHOLDER_MARKER = Regex(
+            """\b(todo(?!\()|tbd|fixme|lorem ipsum|xxx)\b""",
+            RegexOption.IGNORE_CASE,
+        )
+
+        /**
+         * Hosts that can never cite anything. Reserved documentation domains such as
+         * `example.com` are deliberately absent: this repository uses them throughout its test
+         * fixtures, so rejecting them here would fail valid fixtures without catching anything
+         * the bundled bank does. Authoritative-host enforcement for shipped content lives in
+         * `InitialCurriculumContentQualityTest` instead.
+         */
+        val PLACEHOLDER_URL_HOSTS = setOf("localhost", "127.0.0.1", "0.0.0.0")
+    }
 }

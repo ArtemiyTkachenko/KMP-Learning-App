@@ -1,0 +1,1486 @@
+# Question bank audit log
+#
+# One entry per bank-wide semantic review, newest first. The rubric, statuses, severities,
+# and source-verification values are defined in docs/content/question-validation.md; this
+# file records results so a later session reads the verdict instead of re-deriving it.
+#
+# Record format for a question with findings:
+#
+#   - id: <question id>
+#     n: <1-based position in initial_curriculum.json questions[]>
+#     status: PASS | PASS_WITH_MINOR_CHANGES | FIXED | REVIEW_REQUIRED | REPLACE
+#     severity: BLOCKER | MAJOR | MINOR          # highest severity found, omit for PASS
+#     confidence: HIGH | MEDIUM | LOW
+#     source_verification: VERIFIED | PARTIALLY_VERIFIED | UNVERIFIED | INVALID
+#     failed_checks: [Q4_SINGLE_CORRECT, ...]    # rubric IDs that failed before the fix
+#     issues:
+#       - <concise issue description>
+#     changes:
+#       - <concise change description>
+#
+# Questions that passed without findings are rolled up by source-verification status rather
+# than written out individually; a verbose record for an unchanged question is noise. Full
+# records are reserved for questions that were changed or flagged.
+
+audits:
+  - review: Questions 276-399, canonical order (bank complete)
+    date: 2026-09-04
+    scope: questions[275..398] of shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json
+    reviewed: 124
+    active: 123
+    retired: 1
+    deterministic_checks: PASS
+    method: |
+      Same method as the earlier ranges, run with the full deterministic source suite now in
+      the playbook: liveness, anchor resolution, and rendered-body length. The last of those
+      was added during this review after `multiplatform-hierarchy.html` was found to be empty
+      while every existing check passed it.
+
+    summary:
+      status:
+        PASS: 110
+        PASS_WITH_MINOR_CHANGES: 14
+        FIXED: 0
+        REVIEW_REQUIRED: 0
+        REPLACE: 0
+      severity:
+        BLOCKER: 0
+        MAJOR: 14
+        MINOR: 0
+      source_verification:
+        VERIFIED: 41
+        PARTIALLY_VERIFIED: 0
+        UNVERIFIED: 83
+        INVALID: 0
+
+    findings:
+      - id: commonmain_platform_api_availability
+        n: 376
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            Kotlin moved its whole multiplatform documentation set under /docs/multiplatform/
+            without redirecting the old paths. Five URLs now return 200 with a completely
+            empty body, and eleven questions cited them: n 184, 186, 187, 188, 189, 192, 307,
+            309, 375, 376 and 378. Liveness passed every one; only measuring the rendered body
+            found them.
+        changes:
+          - Repointed to multiplatform/multiplatform-discover-project.html#source-sets, where the anchor also exists.
+          - The other ten citations of the moved pages were corrected in the same pass.
+
+      - id: kmp_ios_target_framework_output
+        n: 375
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - Cited the emptied multiplatform-build-native-binaries.html.
+        changes:
+          - Repointed to multiplatform/multiplatform-build-native-binaries.html.
+
+      - id: kmp_actual_typealias_platform_type
+        n: 378
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - Cited the emptied multiplatform-expect-actual.html.
+        changes:
+          - Repointed to multiplatform/multiplatform-expect-actual.html.
+
+      - id: kmp_shared_ui_platform_experience_tradeoff
+        n: 307
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - Cited the emptied multiplatform.html. Retired question, but its citation is still shown on the review screen for past attempts.
+        changes:
+          - Repointed to multiplatform/multiplatform-share-on-platforms.html.
+
+      - id: dagger_generated_factory_no_reflection
+        n: 343
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q12_SOURCE_RELEVANT, Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            The fifth casualty of the gutted dagger.dev/dev-guide/ index page found in the
+            226-275 review, this one citing it without an anchor so the anchor check could not
+            see it. The page no longer describes code generation at all.
+        changes:
+          - Repointed to dagger.dev/dev-guide/basic-usage#compile-time-code-generation.
+
+      - id: room_vs_sqldelight_generation_direction
+        n: 369
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - sqldelight.github.io/sqldelight/ returns 200 with 50 characters of body - a redirect shell rather than documentation.
+        changes:
+          - Repointed the SQLDelight half to the project's own repository, keeping the Room half on Android's KMP Room page.
+
+      - id: coroutine_http_call_cancellation
+        n: 276
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q14_SOURCE_AUTHORITY]
+        issues:
+          - The last of the lysine.dev mirror citations.
+        changes:
+          - >-
+            Repointed to Retrofit's KotlinExtensions.kt, whose await() is implemented as
+            suspendCancellableCoroutine with invokeOnCancellation { cancel() } - the exact
+            behaviour the question keys.
+
+      - id: okhttp_client_instance_reuse_pooling
+        n: 324
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q14_SOURCE_AUTHORITY]
+        issues:
+          - Two mirror citations.
+        changes:
+          - >-
+            Repointed to the OkHttpClient KDoc ("OkHttp performs best when you create a single
+            OkHttpClient instance and reuse it... each client holds its own connection pool and
+            thread pools") and the connections documentation.
+
+      - id: retrofit_vs_ktor_client_multiplatform
+        n: 328
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q14_SOURCE_AUTHORITY]
+        issues:
+          - Mirror citation for the Retrofit half.
+        changes:
+          - Repointed to the Retrofit README, which states the JVM and Android minimums the question turns on.
+
+      - id: flow_collection_cancels_cold_producer
+        n: 314
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - Cited flow.html#flow-cancellation-basics; flow.html is an 83-character JavaScript redirect shell and the anchor does not exist anywhere.
+        changes:
+          - >-
+            Repointed to coroutines-flow.html#flow-cancellation: "Flow collection is tied to
+            the coroutine that calls the collect() function. When that coroutine is canceled,
+            the collection stops, and the upstream flow is canceled too."
+
+      - id: kmp_common_vs_platform_test_placement
+        n: 309
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - Cited the emptied multiplatform-discover-project.html.
+        changes:
+          - Repointed to the relocated page and its source-sets anchor.
+
+      - id: feature_siblings_shared_contract_module
+        n: 298
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - The #general-best-practices anchor does not exist on the modularization page, whose sections are growing-codebase, benefits, common-pitfalls and samples.
+        changes:
+          - Repointed to the modularization patterns page and its "High cohesion and low coupling principle" section.
+
+      - id: auth_token_device_storage_risk
+        n: 349
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - Anchor #UserData does not exist; the section is #user-data.
+        changes:
+          - Corrected the fragment.
+
+      - id: system_client_server_rule_placement
+        n: 373
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - Anchor #common-architectural-principles does not exist; the section is #common-principles.
+        changes:
+          - Corrected the fragment.
+
+    passed:
+      source_verified:
+        - { n: 277, id: workmanager_constraints_not_deadline }
+        - { n: 282, id: test_main_dispatcher_replacement }
+        - { n: 283, id: flow_test_background_collector_statein }
+        - { n: 284, id: compose_semantics_merged_tree }
+        - { n: 285, id: room_migration_test_preserves_data }
+        - { n: 289, id: art_generational_gc_short_lived_objects }
+        - { n: 293, id: apk_embedded_api_secret_recoverable }
+        - { n: 315, id: viewmodel_scope_cleared_cancellation }
+        - { n: 320, id: http_status_retry_classification }
+        - { n: 321, id: http_methods_safe_vs_idempotent }
+        - { n: 322, id: http_connection_reuse_multiplexing }
+        - { n: 325, id: websocket_idle_connection_heartbeat }
+        - { n: 326, id: auth_access_refresh_token_lifetime_split }
+        - { n: 327, id: serialization_class_discriminator_mismatch }
+        - { n: 329, id: background_started_service_restriction }
+        - { n: 338, id: hilt_install_in_binding_visibility }
+        - { n: 339, id: hilt_activity_retained_component_lifetime }
+        - { n: 344, id: android_sandbox_app_uid_isolation }
+        - { n: 348, id: biometric_prompt_keystore_binding }
+        - { n: 351, id: anr_broadcast_receiver_work_budget }
+        - { n: 352, id: main_thread_ui_toolkit_single_thread }
+        - { n: 384, id: gradle_variant_source_set_override }
+        - { n: 391, id: notification_remote_input_reply_action }
+        - { n: 392, id: kotlin_no_checked_exceptions_interop }
+        - { n: 393, id: kotlin_lambda_with_receiver_dsl }
+        - { n: 394, id: kotlin_internal_module_visibility }
+        - { n: 398, id: process_importance_reclaim_order }
+
+      source_unverified:
+        - { n: 278, id: idempotent_worker_retry_design }
+        - { n: 279, id: workmanager_vs_foreground_service_constraint }
+        - { n: 280, id: notification_channel_vs_runtime_permission }
+        - { n: 281, id: fcm_token_rotation_server_mapping }
+        - { n: 286, id: contract_focused_tests_resist_refactor }
+        - { n: 287, id: art_gc_reachability }
+        - { n: 288, id: gc_does_not_prevent_reachable_leaks }
+        - { n: 290, id: heap_dump_path_to_gc_root }
+        - { n: 291, id: jank_vs_anr_failure_scale }
+        - { n: 292, id: system_gc_not_memory_fix }
+        - { n: 294, id: keystore_key_not_general_secret_storage }
+        - { n: 295, id: exported_component_external_input_validation }
+        - { n: 296, id: modularization_large_app_module_cost }
+        - { n: 297, id: over_modularization_tiny_module_cost }
+        - { n: 299, id: gradle_implementation_compile_avoidance }
+        - { n: 300, id: feature_vs_layer_module_tradeoff }
+        - { n: 301, id: modularization_build_speed_not_guaranteed }
+        - { n: 302, id: resilient_write_queue_dependency_order }
+        - { n: 303, id: paged_cache_remote_key_transaction }
+        - { n: 304, id: realtime_messages_persist_then_render }
+        - { n: 305, id: account_data_partition_logout }
+        - { n: 306, id: kmp_vs_compose_multiplatform_scope }
+        - { n: 308, id: kmp_native_memory_model }
+        - { n: 310, id: flow_flat_map_latest_search_cancellation }
+        - { n: 311, id: flow_debounce_vs_distinct_until_changed }
+        - { n: 312, id: flow_combine_vs_zip_emission_rule }
+        - { n: 313, id: flow_launch_in_on_each_scope }
+        - { n: 316, id: callback_flow_await_close_registration }
+        - { n: 317, id: flow_retry_when_conditional_attempts }
+        - { n: 318, id: shared_flow_replay_late_subscriber }
+        - { n: 319, id: live_data_vs_state_flow_ui_state }
+        - { n: 323, id: network_retry_backoff_jitter }
+        - { n: 330, id: service_callbacks_run_on_main_thread }
+        - { n: 331, id: foreground_service_start_notification_deadline }
+        - { n: 332, id: bound_service_client_binding_lifetime }
+        - { n: 333, id: doze_maintenance_window_deferral }
+        - { n: 334, id: alarm_manager_vs_workmanager_selection }
+        - { n: 335, id: long_running_worker_set_foreground }
+        - { n: 336, id: work_persistence_across_reboot }
+        - { n: 337, id: hilt_entry_point_manual_access }
+        - { n: 340, id: hilt_vs_dagger_convention_tradeoff }
+        - { n: 341, id: manual_di_graph_growth_cost }
+        - { n: 342, id: koin_multiplatform_common_module }
+        - { n: 345, id: permission_protection_level_prompt }
+        - { n: 346, id: webview_javascript_interface_exposure }
+        - { n: 347, id: network_security_config_cleartext_scope }
+        - { n: 350, id: root_detection_client_trust_boundary }
+        - { n: 353, id: context_leak_retained_activity_references }
+        - { n: 354, id: lifecycle_leak_listener_unregistration }
+        - { n: 355, id: android_heap_limit_oom_large_allocation }
+        - { n: 356, id: recyclerview_diffutil_minimal_updates }
+        - { n: 357, id: cpu_profiling_sampling_vs_instrumented }
+        - { n: 358, id: fakes_vs_mocks_interaction_coupling }
+        - { n: 359, id: run_test_advance_until_idle_pending_work }
+        - { n: 360, id: repository_test_cache_policy_fakes }
+        - { n: 361, id: compose_ui_test_clock_manual_advance }
+        - { n: 362, id: testability_injected_time_source_seam }
+        - { n: 363, id: unit_test_android_stub_not_mocked_error }
+        - { n: 364, id: datastore_preferences_vs_proto }
+        - { n: 365, id: shared_preferences_apply_vs_commit }
+        - { n: 366, id: room_compile_time_query_verification }
+        - { n: 367, id: cache_memory_and_disk_levels }
+        - { n: 368, id: file_storage_cache_dir_vs_files_dir }
+        - { n: 370, id: system_requirements_clarifying_constraint }
+        - { n: 371, id: system_nonfunctional_freshness_budget }
+        - { n: 372, id: system_retry_queue_poison_write }
+        - { n: 374, id: feature_flag_offline_default_value }
+        - { n: 377, id: kmp_shared_viewmodel_owner_platform }
+        - { n: 379, id: compose_multiplatform_generated_resources }
+        - { n: 380, id: repository_observable_api_shape }
+        - { n: 381, id: mvp_vs_mvvm_view_contract }
+        - { n: 382, id: clean_architecture_dependency_rule_tradeoff }
+        - { n: 383, id: dependency_direction_domain_framework_types }
+        - { n: 385, id: gradle_dependency_conflict_resolution }
+        - { n: 386, id: play_app_signing_upload_key_roles }
+        - { n: 387, id: ksp_vs_kapt_build_cost }
+        - { n: 388, id: fcm_delivery_best_effort_signal }
+        - { n: 389, id: fcm_message_handling_work_budget }
+        - { n: 390, id: notification_channel_required_for_display }
+        - { n: 395, id: process_death_reproducing_restoration }
+        - { n: 396, id: activity_on_pause_vs_on_stop_visibility }
+        - { n: 397, id: fragment_back_stack_view_destroyed_binding }
+        - { n: 399, id: view_touch_event_intercept_gesture }
+
+    systemic:
+      - >-
+        The bank is now fully reviewed. Across 399 questions and five ranges, exactly one
+        keyed answer was factually wrong (n 43) and one was defensibly wrong (n 196). Every
+        other finding - 44 of 46 - was a citation problem. The questions were written well;
+        the web underneath them moved.
+      - >-
+        This range added the third and last silent-failure mode: a page that returns 200 and
+        renders nothing. Kotlin relocated its entire multiplatform documentation set under
+        /docs/multiplatform/ without redirecting, leaving five URLs serving empty bodies to
+        eleven questions. Liveness passed them, the anchor check passed the ones without
+        fragments, and only measuring the rendered body caught it. All three checks -
+        liveness, anchors, body length - are now in the playbook's Part 7.
+      - >-
+        The three failure modes are independent and each needs its own check. n 314 was dead
+        by all three measures (redirect shell, missing anchor, 83-byte body); n 343 was a
+        gutted page with no fragment, invisible to the anchor check; n 349 and n 373 were
+        healthy pages with renamed sections, invisible to everything but the anchor check.
+      - >-
+        Documentation decays faster than questions do. Nothing in the bank's content aged
+        badly over the review, but four vendors - Kotlin, Dagger, Square, and Android's own
+        Compose interop section - restructured pages the bank depended on. The deterministic
+        suite should be run on a schedule rather than only when questions change.
+
+  - review: Questions 226-275, canonical order
+    date: 2026-09-04
+    scope: questions[225..274] of shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json
+    reviewed: 50
+    active: 43
+    retired: 7
+    deterministic_checks: PASS
+    method: |
+      Same method as the earlier ranges, plus a new check this review introduced: every
+      source URL containing a `#fragment` was fetched and the fragment looked up in the
+      returned HTML. That check is now in the playbook's Part 7 alongside the liveness loop.
+
+    summary:
+      status:
+        PASS: 39
+        PASS_WITH_MINOR_CHANGES: 11
+        FIXED: 0
+        REVIEW_REQUIRED: 0
+        REPLACE: 0
+      severity:
+        BLOCKER: 0
+        MAJOR: 12
+        MINOR: 0
+      source_verification:
+        VERIFIED: 19
+        PARTIALLY_VERIFIED: 0
+        UNVERIFIED: 31
+        INVALID: 0
+
+    findings:
+      - id: compose_strong_skipping_instance_equality
+        n: 230
+        status: PASS
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q20_NO_DUPLICATION]
+        issues:
+          - >-
+            Substantially duplicates compose_stability_001 (n 31). Same subtopic
+            (compose_stability), same scenario - an unstable parameter rebuilt as an equal but
+            fresh instance on every recomposition - and the same underlying fact. n 31's own
+            explanation already states the instance-identity rule that n 230 exists to test,
+            so a candidate who read n 31's review screen answers n 230 without thinking. This
+            is the second instance of the pattern first recorded at n 138 / n 142.
+        changes:
+          - >-
+            Resolved on a later pass in n 230's favour: it tests the mechanism precisely, so
+            it was kept unchanged and compose_stability_001 (n 31) was marked DEPRECATED
+            instead, its keyed answer being the vaguer "cannot confirm the value is
+            unchanged". Pinned counts updated - android_ui topic 26 to 25.
+
+      - id: dagger_component_graph_root
+        n: 262
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q12_SOURCE_RELEVANT, Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            dagger.dev/dev-guide/ has been reduced to an index page. It no longer contains the
+            words Component, Module, Qualifier, Singleton or scoped anywhere in its 2.6 KB of
+            body text, and its only heading anchors are why-dagger-2-is-different and license.
+            Four questions cited anchors into it.
+        changes:
+          - Repointed to dagger.dev/dev-guide/basic-usage#building-the-graph, where that content now lives and where the anchor exists.
+
+      - id: dagger_qualifier_same_type_bindings
+        n: 267
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q12_SOURCE_RELEVANT, Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - Same gutted dagger.dev/dev-guide/ page; the #qualifiers anchor no longer exists.
+        changes:
+          - Repointed to dagger.dev/dev-guide/basic-usage#qualifiers.
+
+      - id: dagger_scope_component_instance_lifetime
+        n: 268
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q12_SOURCE_RELEVANT, Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - Same gutted page; the #singletons-and-scoped-bindings anchor no longer exists.
+        changes:
+          - Repointed to dagger.dev/dev-guide/basic-usage#singletons-and-scoped-bindings.
+
+      - id: dagger_module_binding_declarations
+        n: 260
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q12_SOURCE_RELEVANT, Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - Same gutted page. Retired question, but a dead citation stays visible on the review screen for past attempts.
+        changes:
+          - Repointed to dagger.dev/dev-guide/basic-usage#satisfying-dependencies.
+
+      - id: flow_buffer_producer_consumer_concurrency
+        n: 251
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            coroutines-flow.html#buffering. The page was rewritten and its section list now
+            runs from cold-flows to hot-flows with no buffering, conflation or collectLatest
+            content at all - the same restructuring that broke n 65 in the 101-175 review.
+        changes:
+          - >-
+            Repointed to the buffer API reference: "Buffers flow emissions via channel of a
+            specified capacity and runs collector in a separate coroutine", which states the
+            keyed trade-off directly.
+
+      - id: cancellation_exception_rethrow
+        n: 244
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            Still cited kotlinlang.org/docs/cancellation-and-timeouts.html, the page that
+            returns 200 while rendering nothing. The first-100 review reported this URL as
+            fixed everywhere; it was not. That fix replaced an exact title-and-URL pair, and
+            two questions carried anchored variants of the same URL that the replacement did
+            not match.
+        changes:
+          - Repointed to coroutines-cancellation.html, which states "Always rethrow cancellation exceptions!".
+
+      - id: cpu_loop_cooperative_cancellation
+        n: 245
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - The second anchored survivor of the same dead page.
+        changes:
+          - Repointed to coroutines-cancellation.html, which names isActive, ensureActive() and yield().
+
+      - id: compose_view_disposal_strategy_lifecycle
+        n: 228
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q12_SOURCE_RELEVANT, Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            Cited interoperability-apis#compose-in-views. That page is a hub with no content
+            headings at all, so the anchor is dead and nothing on it describes composition
+            disposal. Same landing page that broke n 210 in the previous review.
+        changes:
+          - Repointed to the compose-in-views sub-page, which documents ViewCompositionStrategy and when the Composition is disposed.
+
+      - id: retrofit_vs_okhttp_responsibilities
+        n: 273
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q14_SOURCE_AUTHORITY]
+        issues:
+          - Cited the lysine.dev mirror.
+        changes:
+          - >-
+            Repointed to the Retrofit class documentation in Square's repository ("Retrofit
+            adapts a Java interface to HTTP calls by using annotations on the declared methods
+            to define how requests are made") and the OkHttp README, which claims connection
+            pooling and response caching for OkHttp - the two halves the question splits.
+
+      - id: okhttp_application_vs_network_interceptor
+        n: 274
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q14_SOURCE_AUTHORITY]
+        issues:
+          - Cited the lysine.dev mirror.
+        changes:
+          - Repointed to okhttp/docs/features/interceptors.md.
+
+      - id: connect_read_write_timeout_distinction
+        n: 275
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q14_SOURCE_AUTHORITY]
+        issues:
+          - Cited the lysine.dev mirror.
+        changes:
+          - Repointed to okhttp/docs/recipes.md.
+
+    passed:
+      source_verified:
+        - { n: 231, id: data_class_copy_is_shallow }
+        - { n: 232, id: object_vs_companion_object_members }
+        - { n: 233, id: generic_in_out_variance_tradeoff }
+        - { n: 236, id: sealed_when_exhaustive_evolution }
+        - { n: 246, id: coroutine_run_interruptible_blocking_call }
+        - { n: 248, id: coroutine_exception_handler_root_boundary }
+        - { n: 270, id: room_flow_invalidation_requery }
+
+      source_unverified:
+        - { n: 226, id: compose_state_read_recomposition_scope }
+        - { n: 227, id: custom_view_invalidate_vs_request_layout }
+        - { n: 229, id: compose_skipping_stable_parameter_contract, retired: true }
+        - { n: 234, id: noinline_vs_crossinline_lambda }
+        - { n: 235, id: sequence_intermediate_allocation_tradeoff }
+        - { n: 237, id: coroutine_vs_thread_suspension, retired: true }
+        - { n: 238, id: coroutine_run_blocking_main_thread }
+        - { n: 239, id: coroutine_scope_job_ownership }
+        - { n: 240, id: parent_cancellation_propagates_children }
+        - { n: 241, id: coroutine_scope_vs_supervisor_scope_failure, retired: true }
+        - { n: 242, id: coroutine_supervisor_job_child_context_noop }
+        - { n: 243, id: launch_vs_async_unawaited_result }
+        - { n: 247, id: suspending_api_dispatcher_assumption }
+        - { n: 249, id: flow_vs_channel_delivery_model }
+        - { n: 250, id: stateflow_vs_sharedflow_current_value }
+        - { n: 252, id: repository_vs_data_source_responsibility, retired: true }
+        - { n: 253, id: architecture_state_holder_taxonomy }
+        - { n: 254, id: viewmodel_vs_repository_responsibility }
+        - { n: 255, id: durable_state_vs_one_off_event }
+        - { n: 256, id: dto_entity_domain_model_boundary }
+        - { n: 257, id: viewmodel_activity_reference_lifetime }
+        - { n: 258, id: domain_layer_passthrough_cost }
+        - { n: 259, id: dagger_inject_provides_binds_selection }
+        - { n: 261, id: dagger_component_dependency_vs_subcomponent }
+        - { n: 263, id: dagger_subcomponent_parent_binding_inheritance }
+        - { n: 264, id: dagger_graph_assembly_generated_component, retired: true }
+        - { n: 265, id: dagger_assisted_injection_viewmodel }
+        - { n: 266, id: dagger_compile_time_graph_validation }
+        - { n: 269, id: datastore_vs_room_data_shape }
+        - { n: 271, id: room_destructive_migration_tradeoff }
+        - { n: 272, id: offline_first_local_write_then_sync }
+
+    systemic:
+      - >-
+        Fourth range, and again not one keyed answer was wrong. Every finding but the
+        duplication was a citation that had stopped supporting its claim. Eleven of twelve.
+      - >-
+        The new anchor check is the most productive check added so far. A URL ending in
+        "#some-section" returns 200 whether or not the section still exists, so the liveness
+        loop had been passing dead anchors since the bank was written. One run over the whole
+        bank found 12: four into the gutted dagger.dev/dev-guide/, two into the empty
+        kotlinlang cancellation page, one into the removed coroutines-flow buffering section,
+        one into a Compose hub page with no headings, and four outside this range (n 298, 309,
+        314, 327, 349, 373). It is now in the playbook's Part 7.
+      - >-
+        A whole vendor guide can move without a redirect. dagger.dev/dev-guide/ is now a 2.6 KB
+        index; everything it used to document lives at /dev-guide/basic-usage. Four questions
+        cited it and all four looked healthy to every check the repository had.
+      - >-
+        A correction reported as complete was not. The first-100 review replaced an exact
+        title-and-URL pair for the dead kotlinlang cancellation page and reported all four
+        citations fixed; two carried "#anchor" suffixes and did not match, so they survived
+        two further reviews. When a fix is applied by string replacement, verify by re-querying
+        the data, not by trusting the replacement's reach.
+      - >-
+        Second duplication finding, same shape as the first: n 230 against n 31, both in
+        compose_stability, both keyed on the strong-skipping instance-identity rule. Two
+        independent instances in 275 questions suggests the duplication check belongs in the
+        authoring loop rather than in periodic audits - compare a new question against the
+        existing questions in its subtopic before writing the distractors.
+
+  - review: Questions 176-225, canonical order
+    date: 2026-09-04
+    scope: questions[175..224] of shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json
+    reviewed: 50
+    active: 49
+    retired: 1
+    deterministic_checks: PASS
+    method: |
+      Same method as the earlier ranges. This range is mostly a later authoring batch with
+      terser explanations, so the emphasis fell on whether each keyed answer is true under
+      every reading of its stem rather than on distractor plausibility.
+
+    summary:
+      status:
+        PASS: 45
+        PASS_WITH_MINOR_CHANGES: 5
+        FIXED: 0
+        REVIEW_REQUIRED: 0
+        REPLACE: 0
+      severity:
+        BLOCKER: 0
+        MAJOR: 4
+        MINOR: 1
+      source_verification:
+        VERIFIED: 8
+        PARTIALLY_VERIFIED: 1
+        UNVERIFIED: 41
+        INVALID: 0
+
+    findings:
+      - id: android_intent_filter_matching
+        n: 196
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q7_DISTRACTORS_FALSE]
+        issues:
+          - >-
+            The keyed answer said a matching filter must "match the URI's scheme and host".
+            The intent-filter documentation says a URI is "compared only to the parts of the
+            URI included in the filter", and that "if a filter specifies only a scheme, all
+            URIs with that scheme match". A filter naming no host still matches, so a
+            candidate who knows the data test could decline the keyed option for being false
+            - the mirror of the distractor rule, and the more damaging half.
+        changes:
+          - Keyed option now requires "a data element the URI matches", which is the actual contract. Answer ID kept; the claim is unchanged, only its precision.
+          - Explanation now states that the data test compares only the parts the filter declares, which is what made the old wording wrong.
+
+      - id: lifecycle_repeat_on_lifecycle
+        n: 199
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            "Use Kotlin coroutines with lifecycle-aware components" has been rewritten around
+            Compose and collectAsStateWithLifecycle. It no longer contains the words
+            repeatOnLifecycle or lifecycleScope, which are the whole question. Another page
+            returning 200 with the cited content removed.
+        changes:
+          - >-
+            Repointed to the androidx.lifecycle package reference, which defines
+            repeatOnLifecycle ("Runs the given block in a new coroutine when this Lifecycle is
+            at least at state and suspends the execution until this Lifecycle is DESTROYED"),
+            plus the Fragment lifecycle page for viewLifecycleOwner.
+
+      - id: navigation_graph_viewmodel_shared_scope
+        n: 220
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q12_SOURCE_RELEVANT, Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            The cited page is "Interact programmatically with the Navigation component", which
+            is about creating a NavHostFragment. It never mentions ViewModel scoping. The
+            citation looks plausible from its URL and is simply the wrong page.
+        changes:
+          - >-
+            Repointed to the ViewModel APIs page, which has a "ViewModels scoped to the
+            Navigation graph" section: "Navigation graphs are also ViewModel store owners...
+            the ViewModel remains in memory as long as that destination is present in the back
+            stack."
+
+      - id: compose_view_interop_disposal
+        n: 210
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - The cited interoperability landing page does not mention AndroidView's factory parameter at all, and both keyed options are about factory and update.
+        changes:
+          - >-
+            Repointed to "Use Views in Compose", which states that AndroidView "provides an
+            update callback that is called when the view is inflated" and that it "recomposes
+            whenever a State read within the callback changes".
+
+      - id: kmp_swift_interop_suspend_flow
+        n: 185
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MINOR
+        confidence: MEDIUM
+        source_verification: PARTIALLY_VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            The suspend half of the keyed answer is documented exactly - suspend functions are
+            "presented in the generated Objective-C headers as functions with callbacks, or
+            completion handlers". The Flow half is not: the interop guide never mentions Flow,
+            and neither does the iOS integration overview or the Android KMP page.
+        changes:
+          - >-
+            None to the question - the keyed answer is still the only defensible one and the
+            Flow claim is not in doubt. Recorded as partially verified rather than rounded up,
+            and left for a reviewer who knows a primary source for the Flow bridging gap.
+
+    passed:
+      source_verified:
+        - { n: 180, id: system_design_api_backward_compatibility }
+        - { n: 201, id: navigation3_back_stack_ownership }
+        - { n: 204, id: compose_derived_state_threshold }
+        - { n: 205, id: compose_snapshot_flow_state }
+
+      source_unverified:
+        - { n: 176, id: system_design_push_vs_poll }
+        - { n: 177, id: background_sync_001 }
+        - { n: 178, id: system_design_conflict_resolution_policy }
+        - { n: 179, id: system_design_observability_signals }
+        - { n: 181, id: system_design_source_of_truth_boundary }
+        - { n: 182, id: system_design_feature_flag_rollout }
+        - { n: 183, id: system_design_pagination_state_ownership }
+        - { n: 184, id: shared_vs_platform_code_001, retired: true }
+        - { n: 186, id: expect_actual_001 }
+        - { n: 187, id: kmp_source_set_hierarchy_resolution }
+        - { n: 188, id: kmp_expect_actual_vs_interface }
+        - { n: 189, id: kmp_android_library_not_multiplatform }
+        - { n: 190, id: kmp_shared_layer_selection }
+        - { n: 191, id: kmp_compose_multiplatform_vs_jetpack }
+        - { n: 192, id: kmp_tradeoff_when_not_to_share }
+        - { n: 193, id: android_manifest_component_exported }
+        - { n: 194, id: android_ipc_binder_contract }
+        - { n: 195, id: android_looper_message_queue }
+        - { n: 197, id: android_context_theme_inflation }
+        - { n: 198, id: viewmodel_destination_scope }
+        - { n: 200, id: deep_link_app_link_verification }
+        - { n: 202, id: saved_state_transient_inputs }
+        - { n: 203, id: fragment_view_lifecycle_collection }
+        - { n: 206, id: compose_launched_effect_key_restart }
+        - { n: 207, id: compose_modifier_order_padding_click }
+        - { n: 208, id: compose_composition_local_tradeoff }
+        - { n: 209, id: compose_key_identity_lazy_state }
+        - { n: 211, id: compose_udf_event_direction }
+        - { n: 212, id: handler_looper_message_queue_roles }
+        - { n: 213, id: binder_ipc_marshalling_boundary }
+        - { n: 214, id: android_component_process_lifetime }
+        - { n: 215, id: binder_thread_pool_ui_handoff }
+        - { n: 216, id: viewmodel_store_configuration_retention }
+        - { n: 217, id: viewmodel_clear_owner_finish }
+        - { n: 218, id: savedstatehandle_process_recreation }
+        - { n: 219, id: remember_saveable_vs_viewmodel_ownership }
+        - { n: 221, id: navigation_back_stack_entry_lifetime }
+        - { n: 222, id: configuration_change_vs_process_recreation }
+        - { n: 223, id: compose_vs_view_ui_model }
+        - { n: 224, id: composition_vs_recomposition }
+        - { n: 225, id: remember_vs_remember_saveable }
+
+    systemic:
+      - >-
+        Third range, third time every keyed answer but one was correct, and the one exception
+        was a precision defect rather than a wrong answer. Sourcing remains the whole risk
+        surface.
+      - >-
+        Two more pages returning 200 with the cited content gone, and one citation that was
+        simply the wrong page. "Use Kotlin coroutines with lifecycle-aware components" was
+        rewritten around Compose and no longer names repeatOnLifecycle; the interoperability
+        landing page never mentions AndroidView's factory. Neither is detectable without
+        opening the page, which is now the third independent confirmation of that lesson.
+      - >-
+        A citation can be wrong while looking right. n 220 pointed at
+        guide/navigation/use-graph/programmatic for a question about graph-scoped ViewModels;
+        the URL reads plausibly and the page is about creating a NavHostFragment. Check the
+        page's subject, not its slug.
+      - >-
+        Style inconsistency across the bank, reported rather than changed: 31 MULTIPLE
+        questions open with "Select all that apply." and 15 close with it, split cleanly by
+        authoring batch (leading placement starts at n 214). Both satisfy the contract. Only
+        n 214 and n 222 fall in this range, so normalising them here would deepen the split
+        rather than fix it. Worth one bank-wide pass whenever the bank is next touched at
+        scale.
+      - >-
+        Question density is high in a few subtopics without any single pair duplicating.
+        android_main_thread now holds three questions (n 6, 195, 212) that all end at "don't
+        block the main thread", and viewmodel_lifecycle holds three (n 198, 216, 217). Each
+        keys a distinct fact, so none is a duplication finding, but the cluster is where the
+        next one will appear.
+
+  - review: Questions 101-175, canonical order
+    date: 2026-09-04
+    scope: questions[100..174] of shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json
+    reviewed: 75
+    active: 64
+    retired: 11
+    deterministic_checks: PASS
+    method: |
+      Same method as the first-100 review: solve from the stem and options before reading
+      correctAnswerIds, test every option for defensibility, resolve every source URL, and
+      open the page wherever the claim is specific enough that a document has to state it.
+
+    summary:
+      status:
+        PASS: 63
+        PASS_WITH_MINOR_CHANGES: 11
+        FIXED: 1
+        REVIEW_REQUIRED: 0
+        REPLACE: 0
+      severity:
+        BLOCKER: 0
+        MAJOR: 10
+        MINOR: 2
+      source_verification:
+        VERIFIED: 14
+        PARTIALLY_VERIFIED: 4
+        UNVERIFIED: 57
+        INVALID: 0
+
+    findings:
+      - id: okhttp_authenticator_token_refresh
+        n: 111
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER, Q14_SOURCE_AUTHORITY, Q15_EXPLANATION_CORRECT]
+        issues:
+          - >-
+            The explanation claimed "OkHttp also tracks the attempts so a persistently failing
+            refresh stops rather than looping" and that retry-limit bookkeeping is "exactly
+            what Authenticator already handles". OkHttp's own Authenticator documentation says
+            the opposite: the implementation must check whether the failed request already
+            carried an Authorization header, or count prior responses, and return null to give
+            up. Taught as written, this produces an infinite refresh loop.
+          - The source was a third-party mirror of Square's documentation.
+        changes:
+          - >-
+            Explanation now states that giving up is the implementer's job and names the two
+            documented patterns for it. Keyed answer unchanged - Authenticator is still the
+            mechanism designed for the 401 case.
+          - Sources replaced with OkHttp's own recipes.md and the Authenticator KDoc in the OkHttp repository.
+
+      - id: network_timeouts_001
+        n: 107
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q14_SOURCE_AUTHORITY]
+        issues:
+          - Cited a third-party mirror of Square's documentation rather than a primary source.
+        changes:
+          - Repointed to okhttp/docs/recipes.md ("OkHttp supports connect, write, read, and full call timeouts").
+
+      - id: okhttp_interceptors_001
+        n: 108
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q14_SOURCE_AUTHORITY]
+        issues:
+          - Cited a third-party mirror.
+        changes:
+          - Repointed to okhttp/docs/features/interceptors.md ("Interceptors are a powerful mechanism that can monitor, rewrite, and retry calls").
+
+      - id: retrofit_coroutines_001
+        n: 109
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: MEDIUM
+        source_verification: PARTIALLY_VERIFIED
+        failed_checks: [Q14_SOURCE_AUTHORITY]
+        issues:
+          - >-
+            Cited a third-party mirror. Retrofit's own README does not mention suspend
+            functions at all, so the closest primary record of the feature is the changelog.
+        changes:
+          - Repointed to the Retrofit repository changelog, which documents suspend-function behaviour, alongside the existing coroutines guide.
+
+      - id: http_cache_control_revalidation
+        n: 112
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q14_SOURCE_AUTHORITY]
+        issues:
+          - Cited a mirror of OkHttp's caching page for a question that is entirely about HTTP semantics.
+        changes:
+          - Repointed to RFC 9111 section 5.2.2.2, the specification that defines must-revalidate. A better source than the one it replaced, not merely a working one.
+
+      - id: network_error_transport_vs_http
+        n: 115
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q14_SOURCE_AUTHORITY]
+        issues:
+          - Both citations were mirrored API pages.
+        changes:
+          - Repointed to Response.java and HttpException.java in the Retrofit repository.
+
+      - id: sqlite_index_read_write_tradeoff
+        n: 105
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: MEDIUM
+        source_verification: PARTIALLY_VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            The cited SQLite query planner page discusses only how indexes accelerate reads.
+            It says nothing about what an index costs, which is what the question asks.
+        changes:
+          - >-
+            Added Android's SQLite performance best practices, which states that an index is
+            implemented as an additional table, that its storage cost is real, and that unused
+            indexes should not be maintained. The write-maintenance cost follows from that but
+            is not stated verbatim in any primary source I could find, so this is recorded as
+            partially verified rather than verified.
+
+      - id: performance_r8_minify_reflection
+        n: 155
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: PARTIALLY_VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - The cited R8 page covers shrinking and obfuscation but never mentions reflection, which is the entire question.
+        changes:
+          - Added the keep-rules page, which covers rules for "code patterns that use reflection".
+
+      - id: release_shrinking_responsibilities
+        n: 174
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MINOR
+        confidence: HIGH
+        source_verification: PARTIALLY_VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - The reflection distractor rested on a page that does not discuss reflection.
+        changes:
+          - Added the keep-rules page alongside the existing R8 page.
+
+      - id: room_relationship_no_foreign_key_join
+        n: 102
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MINOR
+        confidence: HIGH
+        source_verification: UNVERIFIED
+        failed_checks: [Q15_EXPLANATION_CORRECT]
+        issues:
+          - >-
+            The explanation said the @Relation field "must be a collection", which is untrue
+            for a one-to-one relation, where it is a single object.
+        changes:
+          - Reworded to the part that is always true - the field belongs on a plain data class pairing parent with children, not on the entity.
+
+      - id: pagination_keyset_vs_offset
+        n: 114
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: MEDIUM
+        source_verification: UNVERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            The keyed claim - that offset paging lets rows shift across page boundaries under
+            concurrent inserts, producing duplicates and gaps - is correct and worth teaching,
+            but no primary source states it. The cited PagingSource reference shows page-keyed
+            and item-keyed samples without explaining why keyset is more consistent; AIP-158
+            mandates page tokens without giving this rationale; the SQLite and Paging guides
+            do not cover it.
+        changes:
+          - >-
+            Resolved on a later pass: the question is correct and worth keeping, so it stays
+            as written with AIP-158 added alongside the PagingSource reference. AIP-158
+            mandates opaque page tokens rather than offsets, which makes the citation relevant
+            to the claim without pretending it states the duplicates-and-gaps rationale. The
+            keyed answer therefore remains recorded as UNVERIFIED rather than rounded up.
+
+      - id: flow_testing_hot_flow_never_completes
+        n: 142
+        status: FIXED
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: UNVERIFIED
+        failed_checks: [Q20_NO_DUPLICATION]
+        issues:
+          - >-
+            Substantially duplicates flow_testing_turbine_bounded_collection (n 138). Both sit
+            in the flow_testing subtopic, both are APPLIED, and both turn on the single fact
+            that a StateFlow never completes so toList() hangs. n 138's first distractor is
+            literally n 142's stem, so a candidate who has seen one answers the other without
+            thinking.
+        changes:
+          - >-
+            Resolved on a later pass: marked DEPRECATED, which retires it from selection while
+            keeping its ID and its answer options readable for past attempts. n 138 keeps the
+            concept and asks the more useful half of it. Pinned counts updated accordingly -
+            active questions 360 to 358, testing topic 22 to 21.
+
+    passed:
+      source_verified:
+        - { n: 106, id: http_idempotency_001 }
+        - { n: 113, id: json_unknown_keys_compatibility }
+        - { n: 116, id: tls_certificate_pinning_tradeoff }
+        - { n: 119, id: workmanager_expedited_work }
+        - { n: 126, id: notification_channels_001, retired: true }
+        - { n: 127, id: notification_trampoline_restriction }
+        - { n: 130, id: fcm_message_priority_doze }
+        - { n: 133, id: notification_channel_user_control }
+        - { n: 153, id: performance_coroutine_scope_leak }
+
+      source_unverified:
+        - { n: 101, id: room_migration_missing_path }
+        - { n: 103, id: room_type_converter_scope }
+        - { n: 104, id: cache_invalidation_staleness_policy }
+        - { n: 110, id: kotlinx_serialization_001 }
+        - { n: 117, id: workmanager_constraints_001 }
+        - { n: 118, id: foreground_services_001, retired: true }
+        - { n: 120, id: foreground_service_types_001 }
+        - { n: 121, id: background_limits_001 }
+        - { n: 122, id: workmanager_unique_work_policy }
+        - { n: 123, id: workmanager_retry_result_contract }
+        - { n: 124, id: background_exact_alarm_justification }
+        - { n: 125, id: background_api_selection_criteria }
+        - { n: 128, id: notification_permission_001 }
+        - { n: 129, id: fcm_data_messages_001, retired: true }
+        - { n: 131, id: notification_pending_intent_back_stack }
+        - { n: 132, id: fcm_app_state_delivery_behavior }
+        - { n: 134, id: testing_strategy_001 }
+        - { n: 135, id: test_doubles_001 }
+        - { n: 136, id: viewmodel_testing_001 }
+        - { n: 137, id: coroutine_testing_001, retired: true }
+        - { n: 138, id: flow_testing_turbine_bounded_collection }
+        - { n: 139, id: compose_ui_testing_001, retired: true }
+        - { n: 140, id: robolectric_vs_instrumented }
+        - { n: 141, id: coroutine_virtual_time_delay_skipping }
+        - { n: 143, id: room_testing_in_memory_database }
+        - { n: 144, id: local_vs_instrumented_test_placement }
+        - { n: 145, id: test_dependency_substitution_constructor }
+        - { n: 146, id: flaky_test_shared_state_and_time }
+        - { n: 147, id: anr_001, retired: true }
+        - { n: 148, id: performance_cold_warm_hot_start }
+        - { n: 149, id: memory_leaks_001, retired: true }
+        - { n: 150, id: performance_baseline_profile_generation }
+        - { n: 151, id: compose_recomposition_performance_001 }
+        - { n: 152, id: startup_performance_001 }
+        - { n: 154, id: performance_baseline_profile_purpose }
+        - { n: 156, id: performance_rendering_jank_causes }
+        - { n: 157, id: performance_strictmode_role }
+        - { n: 158, id: runtime_permissions_001, retired: true }
+        - { n: 159, id: permission_rationale_state_machine }
+        - { n: 160, id: exported_components_001 }
+        - { n: 161, id: sensitive_logging_001 }
+        - { n: 162, id: security_pending_intent_mutability }
+        - { n: 163, id: security_keystore_key_extraction }
+        - { n: 164, id: security_permission_denied_forever }
+        - { n: 165, id: security_scoped_storage_media_access }
+        - { n: 166, id: dependency_configurations_001, retired: true }
+        - { n: 167, id: gradle_convention_plugin_build_logic }
+        - { n: 168, id: version_catalogs_001 }
+        - { n: 169, id: apk_vs_aab_001 }
+        - { n: 170, id: gradle_api_vs_implementation_leak }
+        - { n: 171, id: build_variants_flavor_vs_type }
+        - { n: 172, id: modularization_dependency_direction, retired: true }
+        - { n: 173, id: gradle_configuration_cache_invalidation }
+        - { n: 175, id: offline_design_001, retired: true }
+
+    systemic:
+      - >-
+        Not one keyed answer in this range was wrong. Every MAJOR finding was a sourcing
+        failure, which repeats and sharpens the first-100 result: the questions are sound and
+        the citations are the part that has decayed.
+      - >-
+        The mirror problem is now half fixed. Seven of the fourteen lysine.dev citations fell
+        in this range and were replaced with Square's own repositories; seven remain at n 273,
+        274, 275, 276, 324 (x2), and 328. InitialCurriculumContentQualityTest pins the
+        remaining count at 7.
+      - >-
+        A second sourcing pattern appeared here that the first 100 only hinted at: a citation
+        that is on the right topic but silent on the specific cost or mechanism being asked
+        about. The R8 page explains shrinking but never mentions reflection; the SQLite query
+        planner explains how indexes speed reads but never what they cost; the PagingSource
+        reference shows keyed loading without saying why offsets drift. All three were keyed on
+        the missing half. When a question asks about a trade-off, check that the source states
+        both sides, not just the one the page was written to explain.
+      - >-
+        First duplication finding in the bank (n 138 / n 142). Both were written to the same
+        subtopic and neither review caught it at authoring time, which suggests checking new
+        questions against the existing questions in their subtopic, not only against the
+        concept index.
+
+  - review: First 100 questions, canonical order
+    date: 2026-09-04
+    scope: questions[0..99] of shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json
+    reviewed: 100
+    active: 81
+    retired: 19          # ContentStatus.DEPRECATED; reviewed, deliberately not edited
+    deterministic_checks: PASS
+    method: |
+      Each question was solved from its stem and options before its correctAnswerIds were
+      read. Every option was then tested for defensibility, and every source URL was
+      resolved. Where a claim was version-sensitive, contested, or specific enough that a
+      page had to state it, the source page itself was opened and quoted.
+
+    summary:
+      status:
+        PASS: 89
+        PASS_WITH_MINOR_CHANGES: 10
+        FIXED: 1
+        REVIEW_REQUIRED: 0
+        REPLACE: 0
+      severity:
+        BLOCKER: 1
+        MAJOR: 4
+        MINOR: 6
+      source_verification:
+        VERIFIED: 30
+        PARTIALLY_VERIFIED: 4
+        UNVERIFIED: 66
+        INVALID: 0
+
+    findings:
+      - id: kotlin_sequence_constrained_once
+        n: 43
+        status: FIXED
+        severity: BLOCKER
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q4_SINGLE_CORRECT, Q5_CORRECT_VERIFIED, Q7_DISTRACTORS_FALSE, Q13_SOURCE_SUPPORTS_ANSWER, Q15_EXPLANATION_CORRECT]
+        issues:
+          - >-
+            The keyed answer was false. The stem asked about the sequence { } builder, which
+            kotlin-stdlib defines as `Sequence { iterator(block) }` — a fresh iterator per
+            iteration, so the block re-runs and nothing throws. The distractor "runs again
+            from the start" was the true answer, and the cited Sequences guide states only
+            that *some* implementations constrain themselves, not that this one does.
+        changes:
+          - >-
+            Stem now names the single-lambda generateSequence overload, which the stdlib API
+            reference documents as "constrained to be iterated only once" and which throws
+            IllegalStateException on the second iterator(). Keyed answer and its ID are
+            unchanged, so historical attempts keep their meaning.
+          - Explanation rewritten to contrast the once-only overload with sequence { } and the seeded overloads.
+          - Added the kotlin.sequences.generateSequence API reference as a source.
+
+      - id: flow_conflate_vs_collect_latest
+        n: 65
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            The cited Asynchronous Flow guide no longer contains the words "conflate" or
+            "collectLatest" — the page was restructured — so nothing in the sources
+            established the contrast the question turns on.
+        changes:
+          - Replaced the guide with the conflate and collectLatest API references, both of which state the behaviour verbatim.
+
+      - id: flow_state_in_while_subscribed
+        n: 66
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - The cited page mentions SharingStarted.WhileSubscribed but never its stopTimeoutMillis parameter, which is the whole question.
+        changes:
+          - Added the SharingStarted.WhileSubscribed API reference, which defines the timeout as the delay between the last subscriber disappearing and the sharing coroutine stopping.
+
+      - id: coroutine_io_dispatcher_blocking_calls
+        n: 64
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - The cited dispatchers guide does not mention Dispatchers.IO at all, so it could not support the keyed claim about IO growing beyond the core count.
+        changes:
+          - Added the Dispatchers.IO API reference, which documents the 64-or-core-count parallelism limit and the blocking-IO purpose.
+
+      - id: coroutine_cancellation_001
+        n: 55
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - >-
+            The cited Cancellation and Timeouts page returns HTTP 200 but renders empty. A
+            liveness check passes it; a reader gets nothing. Three further questions outside
+            this review's scope cited the same URL.
+        changes:
+          - >-
+            Repointed to the current Coroutine Cancellation page, which states that
+            cancellation is cooperative and names isActive, ensureActive() and yield(). The
+            same page also covers rethrowing CancellationException and runInterruptible, so
+            the other three citations of the dead URL were corrected with it.
+
+      - id: kotlin_readonly_list_not_immutable
+        n: 49
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MINOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - The collections overview does not state that a read-only reference only removes the mutators, which is precisely the keyed claim.
+        changes:
+          - Added the kotlin.collections.List API reference ("support only read-only access to the list; read/write access is supported through the MutableList interface").
+
+      - id: flow_share_in_vs_state_in
+        n: 62
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MINOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - The cited page names both operators but never contrasts them, so the configurable-replay claim rested on nothing.
+        changes:
+          - Added the shareIn API reference, which documents the replay parameter and single shared upstream instance.
+
+      - id: kotlin_nullability_001
+        n: 33
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MINOR
+        confidence: HIGH
+        source_verification: UNVERIFIED
+        failed_checks: [Q9_NO_ANSWER_CLUES]
+        issues:
+          - >-
+            The stem labelled the two types "nullable" and "non-null", and the keyed answer
+            said only "String is non-null, while String? is nullable" — the one option that
+            echoed the stem's own words, selectable without any Kotlin knowledge. It was
+            also by far the shortest option.
+        changes:
+          - Stem asks how the compiler treats the two declarations differently; the keyed answer now states the compiler behaviour instead of restating the labels. Answer ID unchanged — same claim, said usefully.
+
+      - id: datastore_vs_sharedpreferences_async
+        n: 100
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MINOR
+        confidence: HIGH
+        source_verification: UNVERIFIED
+        failed_checks: [Q9_NO_ANSWER_CLUES]
+        issues:
+          - >-
+            The stem narrowed to "for reading a stored user setting" while only one option
+            concerned reads, so the stem selected the key. The other three stay false with
+            the qualifier removed.
+        changes:
+          - Stem broadened to "Which advantage does DataStore have over SharedPreferences?"
+
+      - id: predictive_back_handler_registration
+        n: 10
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MINOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q17_EXPLANATION_CONSISTENT]
+        issues:
+          - The explanation closed by calling the onBackPressed() override "deprecated", which the cited predictive-back page does not say.
+        changes:
+          - Reworded to the source's own framing — intercepting Back through that override is no longer supported.
+
+      - id: hilt_field_injection_framework_classes
+        n: 85
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MINOR
+        confidence: MEDIUM
+        source_verification: PARTIALLY_VERIFIED
+        failed_checks: [Q17_EXPLANATION_CONSISTENT]
+        issues:
+          - >-
+            The explanation asserted injection happens "before super.onCreate() returns". The
+            claim is true of the generated base class but appears nowhere in the cited Hilt
+            page, which states only that fields cannot be private and links to a component
+            lifetimes table.
+        changes:
+          - Reworded to the documented callback (ActivityComponent is created at Activity#onCreate()) and the documented non-private requirement.
+
+    # Reviewed, no findings. Rolled up by how far their sources were verified.
+    passed:
+      source_verified:
+        - { n: 1, id: android_process_model_001 }
+        - { n: 6, id: android_main_thread_001 }
+        - { n: 13, id: activity_launch_mode_task_stack }
+        - { n: 15, id: saved_state_binder_transaction_limit }
+        - { n: 26, id: compose_phases_deferred_state_read }
+        - { n: 28, id: compose_side_effects_001 }
+        - { n: 30, id: compose_lazy_content_type }
+        - { n: 31, id: compose_stability_001 }
+        - { n: 39, id: kotlin_reified_types_001 }
+        - { n: 42, id: kotlin_sequences_001, retired: true }
+        - { n: 45, id: kotlin_lazy_thread_safety_mode }
+        - { n: 46, id: kotlin_crossinline_non_local_return }
+        - { n: 47, id: kotlin_extension_resolution_static }
+        - { n: 48, id: kotlin_platform_type_null_check }
+        - { n: 53, id: coroutine_async_exception_surfaces_at_await }
+        - { n: 56, id: coroutine_exceptions_001 }
+        - { n: 59, id: flow_context_001 }
+        - { n: 63, id: coroutine_supervisor_scope_direct_children }
+        - { n: 67, id: flow_catch_upstream_only }
+        - { n: 72, id: architecture_ui_event_consumption }
+        - { n: 90, id: di_koin_factory_vs_single }
+        - { n: 98, id: room_transaction_dao_method }
+
+      source_partially_verified:
+        # Page opened; it supports the area but not the exact sentence the question turns on.
+        - { n: 21, id: view_nested_weight_double_measure }
+        - { n: 57, id: coroutine_context_switching_001 }
+        - { n: 60, id: stateflow_001 }
+
+      source_unverified:
+        # URL resolves, host is an approved primary documentation site, and the page is the
+        # right page for the claim — but its text was not opened during this review.
+        - { n: 2, id: android_components_001, retired: true }
+        - { n: 3, id: content_provider_uri_permission_grant }
+        - { n: 4, id: android_context_001 }
+        - { n: 5, id: android_intents_001 }
+        - { n: 7, id: android_resources_001 }
+        - { n: 8, id: activity_lifecycle_001 }
+        - { n: 9, id: fragment_lifecycle_001, retired: true }
+        - { n: 11, id: configuration_changes_001 }
+        - { n: 12, id: process_death_001, retired: true }
+        - { n: 14, id: saved_state_001, retired: true }
+        - { n: 16, id: navigation_fundamentals_001 }
+        - { n: 17, id: back_handling_001, retired: true }
+        - { n: 18, id: navigation_pop_up_to_inclusive }
+        - { n: 19, id: views_fundamentals_001 }
+        - { n: 20, id: view_rendering_001, retired: true }
+        - { n: 22, id: recyclerview_001 }
+        - { n: 23, id: compose_state_001, retired: true }
+        - { n: 24, id: compose_edge_to_edge_insets }
+        - { n: 25, id: compose_recomposition_001, retired: true }
+        - { n: 27, id: compose_state_hoisting_001 }
+        - { n: 29, id: compose_lazy_layouts_001, retired: true }
+        - { n: 32, id: compose_accessibility_001 }
+        - { n: 34, id: kotlin_data_classes_001 }
+        - { n: 35, id: kotlin_objects_001 }
+        - { n: 36, id: kotlin_sealed_types_001 }
+        - { n: 37, id: kotlin_generics_001, retired: true }
+        - { n: 38, id: kotlin_star_projection_use_site }
+        - { n: 40, id: kotlin_equality_001 }
+        - { n: 41, id: kotlin_scope_functions_001 }
+        - { n: 44, id: jvm_fundamentals_001 }
+        - { n: 50, id: kotlin_custom_getter_recomputes }
+        - { n: 51, id: coroutine_fundamentals_001 }
+        - { n: 52, id: coroutine_builders_001, retired: true }
+        - { n: 54, id: structured_concurrency_001 }
+        - { n: 58, id: flow_fundamentals_001 }
+        - { n: 61, id: sharedflow_001, retired: true }
+        - { n: 68, id: coroutine_async_await_sequential }
+        - { n: 69, id: separation_of_concerns_001 }
+        - { n: 70, id: unidirectional_data_flow_001 }
+        - { n: 71, id: repository_pattern_001, retired: true }
+        - { n: 73, id: single_source_of_truth_001 }
+        - { n: 74, id: state_ownership_001 }
+        - { n: 75, id: dependency_direction_001, retired: true }
+        - { n: 76, id: architecture_paging_ownership }
+        - { n: 77, id: architecture_tradeoffs_001, retired: true }
+        - { n: 78, id: architecture_error_mapping_boundary }
+        - { n: 79, id: architecture_error_modeling_result_type }
+        - { n: 80, id: architecture_mvi_single_state }
+        - { n: 81, id: architecture_use_case_reuse }
+        - { n: 82, id: architecture_interface_boundary_ownership }
+        - { n: 83, id: architecture_solid_dependency_substitution }
+        - { n: 84, id: constructor_injection_001, retired: true }
+        - { n: 86, id: composition_root_001 }
+        - { n: 87, id: di_scopes_001 }
+        - { n: 88, id: service_locator_vs_di_001 }
+        - { n: 89, id: di_hilt_viewmodel_scope }
+        - { n: 91, id: di_constructor_injection_testability }
+        - { n: 92, id: di_framework_tradeoff_compile_vs_runtime, retired: true }
+        - { n: 93, id: dagger_multibinding_into_set }
+        - { n: 94, id: storage_selection_001 }
+        - { n: 95, id: room_dao_001 }
+        - { n: 96, id: room_transactions_001 }
+        - { n: 97, id: room_flow_001, retired: true }
+        - { n: 99, id: offline_first_001 }
+
+    systemic:
+      - >-
+        Sourcing, not authoring, is where this bank now fails. Every defect that reached
+        MAJOR was a citation that no longer supported its claim, and none was a weak
+        distractor or an arguable key — the two failure modes the earlier audits found.
+        Vendor documentation moved underneath the bank while the bank stood still.
+      - >-
+        HTTP 200 is not liveness. kotlinlang.org/docs/cancellation-and-timeouts.html returns
+        200 and renders nothing, and kotlinlang.org/docs/coroutines-flow.html still returns
+        200 after the sections on conflation were removed. The playbook's curl loop passes
+        both. Only opening the page catches either.
+      - >-
+        Guide pages drift; API reference pages do not. Where a question turns on a named
+        parameter or a specific contract (stopTimeoutMillis, conflate vs collectLatest,
+        Dispatchers.IO parallelism), the API reference is the durable citation and the
+        narrative guide is the fragile one.
+      - >-
+        Out of scope but recorded: 14 networking questions (n 107-328) cite lysine.dev, a
+        third-party mirror of Square's documentation, adopted after square.github.io began
+        returning 404. A mirror is not a primary source; the canonical replacement is each
+        project's own repository. InitialCurriculumContentQualityTest pins the count so the
+        debt cannot grow.

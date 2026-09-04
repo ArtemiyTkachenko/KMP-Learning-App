@@ -3427,3 +3427,7 @@ epics:
           - "Existing curriculum import, assessment, Saved Questions, and question-bank validation behavior remains green."
           - "Android, Desktop, Web, and shared CI-equivalent builds remain compatible."
 
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
+

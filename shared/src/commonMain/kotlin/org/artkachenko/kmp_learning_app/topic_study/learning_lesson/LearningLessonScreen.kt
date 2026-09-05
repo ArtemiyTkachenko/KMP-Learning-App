@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -34,6 +35,7 @@ import kmp_learning_app.shared.generated.resources.learning_lesson_previous
 import kmp_learning_app.shared.generated.resources.learning_lesson_source_open_failed
 import kmp_learning_app.shared.generated.resources.learning_lesson_sources
 import kmp_learning_app.shared.generated.resources.learning_lesson_title
+import kmp_learning_app.shared.generated.resources.learning_practice_unit
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
@@ -51,6 +53,7 @@ internal const val LearningLessonLoadingTag = "learning_lesson_loading"
 internal const val LearningLessonReadingColumnTag = "learning_lesson_reading_column"
 internal const val LearningLessonPreviousTag = "learning_lesson_previous"
 internal const val LearningLessonNextTag = "learning_lesson_next"
+internal const val LearningLessonPracticeButtonTag = "learning_lesson_practice_button"
 
 /**
  * The Lesson reading surface.
@@ -63,6 +66,10 @@ internal const val LearningLessonNextTag = "learning_lesson_next"
  *
  * [onNavigateLesson] emits a stable Lesson ID and nothing else. What that means for the back stack
  * is the shell's decision, so no route, index, or `LearningLesson` leaves this screen.
+ *
+ * [onPracticeUnit] carries nothing: practising is a Unit-level action, and the Unit it belongs to
+ * is the one the shell is already rendering this Lesson inside. Emitting a Lesson identity here
+ * would invite a Lesson-sized quiz, which is not what this action means.
  */
 @Composable
 internal fun LearningLessonScreen(
@@ -70,6 +77,7 @@ internal fun LearningLessonScreen(
     onBack: () -> Unit,
     onRetry: () -> Unit,
     onNavigateLesson: (String) -> Unit,
+    onPracticeUnit: () -> Unit,
     onOpenSource: (String) -> Unit,
     modifier: Modifier = Modifier,
     failedSourceUrl: String? = null,
@@ -97,6 +105,7 @@ internal fun LearningLessonScreen(
             is LearningLessonUiState.Content -> LearningLessonContent(
                 state = state,
                 onNavigateLesson = onNavigateLesson,
+                onPracticeUnit = onPracticeUnit,
                 onOpenSource = onOpenSource,
                 failedSourceUrl = failedSourceUrl,
                 modifier = Modifier.weight(1f),
@@ -127,6 +136,7 @@ internal fun LearningLessonScreen(
 private fun LearningLessonContent(
     state: LearningLessonUiState.Content,
     onNavigateLesson: (String) -> Unit,
+    onPracticeUnit: () -> Unit,
     onOpenSource: (String) -> Unit,
     failedSourceUrl: String?,
     modifier: Modifier,
@@ -166,6 +176,23 @@ private fun LearningLessonContent(
                 failedSourceUrl = failedSourceUrl,
             )
             AdjacentLessonNavigation(state = state, onNavigateLesson = onNavigateLesson)
+            // Last on the page, after the way on to the next Lesson. Reading on is the ordinary
+            // continuation and stays closest to the material it continues; practising is the step
+            // after the reading is done, so it ends the page rather than interrupting it.
+            //
+            // It practises the whole Unit, not this Lesson: a Lesson teaches part of what the Unit
+            // is responsible for, and quizzing that part alone under a Unit label would be a
+            // different, narrower assessment than the one offered. Reaching it from here only
+            // saves the learner a trip back to the overview.
+            Button(
+                onClick = onPracticeUnit,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = AppSpacing.Section)
+                    .testTag(LearningLessonPracticeButtonTag),
+            ) {
+                Text(text = stringResource(Res.string.learning_practice_unit))
+            }
         }
     }
 }

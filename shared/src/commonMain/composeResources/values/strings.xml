@@ -134,6 +134,7 @@
     <string name="practice_builder_title">Set up practice</string>
     <string name="practice_builder_scope_topic">Topic: %1$s</string>
     <string name="practice_builder_scope_subtopic">Subtopic: %1$s</string>
+    <string name="practice_builder_scope_learning_unit">Learning unit: %1$s</string>
     <string name="practice_builder_scope_unknown">Practice scope</string>
     <string name="practice_builder_question_count">Questions</string>
     <string name="practice_builder_levels">Levels</string>
@@ -150,6 +151,8 @@
     <string name="practice_builder_available_questions">%1$d questions ready</string>
     <string name="practice_builder_no_questions">No questions match this setup. Try more levels.</string>
     <string name="practice_builder_error">Available questions could not be checked.</string>
+    <string name="practice_builder_target_unavailable">This learning unit is no longer available for practice.</string>
+    <string name="practice_builder_no_practiceable_concepts">This learning unit has no practiceable concepts yet.</string>
     <string name="practice_builder_start">Start practice</string>
     <string name="practice_shortcut_weak_area">Practice weak area</string>
     <string name="practice_shortcut_unseen">Practice unseen questions</string>
@@ -206,6 +209,7 @@
     <string name="learning_unit_no_lessons">No lessons are currently available in this unit.</string>
     <string name="learning_unit_not_found">This learning unit is not available.</string>
     <string name="learning_unit_error">Learning content could not be loaded.</string>
+    <string name="learning_practice_unit">Practice this unit</string>
     <string name="learning_lesson_title">Lesson</string>
     <string name="learning_lesson_loading">Loading lesson</string>
     <string name="learning_lesson_not_found">This lesson is not available.</string>

@@ -48,7 +48,10 @@ import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLess
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonViewModel
 import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitUiState
 import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitViewModel
+import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderTarget
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
+import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeScopeKind
+import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeTargetResolver
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
 import org.koin.core.parameter.parametersOf
@@ -138,17 +141,27 @@ internal class TopicStudyPresentationModuleTest {
             assertEquals(
                 PracticeQuestionSource.ALL,
                 app.koin.get<PracticeBuilderViewModel> {
-                    parametersOf(AssessmentScope.Topic("topic"))
+                    parametersOf(PracticeBuilderTarget.Topic("topic"))
                 }.uiState.value.source,
             )
             assertEquals(
                 PracticeQuestionSource.WEAK_AREAS,
                 app.koin.get<PracticeBuilderViewModel> {
                     parametersOf(
-                        AssessmentScope.Subtopic("subtopic"),
+                        PracticeBuilderTarget.Subtopic("subtopic"),
                         PracticeQuestionSource.WEAK_AREAS,
                     )
                 }.uiState.value.source,
+            )
+            // The Learning-Unit target resolves through the same module: it needs the resolver,
+            // which needs both the curriculum and the learning document, so a missing registration
+            // would fail here rather than at the first tap on "Practice this unit".
+            assertIs<PracticeTargetResolver>(app.koin.get<PracticeTargetResolver>())
+            assertEquals(
+                PracticeScopeKind.LEARNING_UNIT,
+                app.koin.get<PracticeBuilderViewModel> {
+                    parametersOf(PracticeBuilderTarget.LearningUnit("unit_thinking_in_compose"))
+                }.uiState.value.scope.kind,
             )
             assertIs<AssessmentSessionLoader>(app.koin.get<AssessmentSessionLoader>())
             assertIs<AssessmentRetakeService>(app.koin.get<AssessmentRetakeService>())

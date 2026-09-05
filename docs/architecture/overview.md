@@ -269,6 +269,30 @@ preserves the open Unit or Lesson, and re-selecting Learn still returns the stac
 to its root. Back is an ordinary `popBack()` from Lesson to Unit to the
 originating Topic; nothing reconstructs a route.
 
+E21-06 connects the study path to practice without adding a second quiz engine.
+Both reading surfaces offer "Practice this unit", and both push
+`AppRoute.PracticeBuilderLearningUnit(unitId)` onto the Learn stack — the Lesson
+reader uses the *owning* Unit ID from the route it is rendering, so finishing a
+Lesson practises the whole Unit rather than that Lesson. The runtime flow is:
+
+```text
+Learning Unit or Lesson -> AppRoute.PracticeBuilderLearningUnit(unitId)
+  -> PracticeTargetResolver reads the current Unit
+  -> primarySubtopicIds of its ACTIVE Lessons, deduplicated
+  -> AssessmentScope.Subtopics -> AssessmentConfig.Focused
+  -> the existing focused assessment, result, and retake
+```
+
+Supporting concepts never enter that scope, deprecated Lessons contribute
+nothing, cross-Topic primary concepts are kept, and the Unit's identity is not
+persisted in assessment history — `TestAttempt.config` records the concepts the
+run actually asked about, so re-authoring a Unit cannot change a finished
+attempt. `PracticeBuilderTarget`, the resolution states, and the missing/empty
+handling are documented in [the Practice Builder](practice-builder.md);
+`LearningUnitPracticeIntegrationTest` runs the shipped Compose Unit through the
+production graph over the bundled curriculum, which is what proves the derived
+scope reaches Questions that actually exist.
+
 `LearningReaderJourneyIntegrationTest` drives the whole reading path over the
 real `App()` on the shipped learning document, including that reading on replaces
 the Lesson entry so one Back press still leaves the reader for its Unit.

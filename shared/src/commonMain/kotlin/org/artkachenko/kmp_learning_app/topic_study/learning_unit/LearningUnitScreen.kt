@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -18,6 +19,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import kmp_learning_app.shared.generated.resources.Res
+import kmp_learning_app.shared.generated.resources.learning_practice_unit
 import kmp_learning_app.shared.generated.resources.learning_unit_error
 import kmp_learning_app.shared.generated.resources.learning_unit_lessons
 import kmp_learning_app.shared.generated.resources.learning_unit_loading
@@ -35,6 +37,7 @@ import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
 import org.jetbrains.compose.resources.stringResource
 
 internal const val LearningUnitLoadingTag = "learning_unit_loading"
+internal const val LearningUnitPracticeButtonTag = "learning_unit_practice_button"
 
 internal fun learningLessonRowTag(lessonId: String): String = "learning_lesson_$lessonId"
 
@@ -50,6 +53,7 @@ internal fun LearningUnitScreen(
     state: LearningUnitUiState,
     onBack: () -> Unit,
     onLessonClick: (String) -> Unit,
+    onPracticeUnit: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -77,6 +81,7 @@ internal fun LearningUnitScreen(
             is LearningUnitUiState.Content -> LearningUnitContent(
                 state = state,
                 onLessonClick = onLessonClick,
+                onPracticeUnit = onPracticeUnit,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -87,6 +92,7 @@ internal fun LearningUnitScreen(
 private fun LearningUnitContent(
     state: LearningUnitUiState.Content,
     onLessonClick: (String) -> Unit,
+    onPracticeUnit: () -> Unit,
     modifier: Modifier,
 ) {
     LazyColumn(
@@ -107,6 +113,22 @@ private fun LearningUnitContent(
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+        }
+        item {
+            // Above the Lessons rather than after them: practising the Unit is the second thing
+            // this screen offers, and burying it under a list the learner may not scroll would
+            // make studying and quizzing look like sequential steps rather than two ways in.
+            //
+            // A labelled Button, not an icon: the action names what it practises, which is what a
+            // screen reader announces and what makes it distinguishable from the Lesson cards.
+            // It opens the builder — nothing is started here, so the learner still chooses the
+            // length, levels, and source.
+            Button(
+                onClick = onPracticeUnit,
+                modifier = Modifier.fillMaxWidth().testTag(LearningUnitPracticeButtonTag),
+            ) {
+                Text(text = stringResource(Res.string.learning_practice_unit))
             }
         }
         if (state.lessons.isEmpty()) {

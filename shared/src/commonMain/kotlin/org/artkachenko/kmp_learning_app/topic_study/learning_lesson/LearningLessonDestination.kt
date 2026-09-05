@@ -28,6 +28,7 @@ internal fun LearningLessonDestination(
     lessonId: String,
     onBack: () -> Unit,
     onNavigateLesson: (String) -> Unit,
+    onPracticeUnit: () -> Unit,
     viewModel: LearningLessonViewModel = koinViewModel { parametersOf(unitId, lessonId) },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -39,6 +40,9 @@ internal fun LearningLessonDestination(
         onBack = onBack,
         onRetry = viewModel::retry,
         onNavigateLesson = onNavigateLesson,
+        // The owning Unit is [unitId] from the route, which the shell holds — this destination
+        // never derives a practice target from the Lesson it is showing.
+        onPracticeUnit = onPracticeUnit,
         onOpenSource = { url ->
             // openUri throws when the host has no handler for the URI. Caught here and reported
             // beside the link, so a tap that cannot succeed does not look like a tap that did

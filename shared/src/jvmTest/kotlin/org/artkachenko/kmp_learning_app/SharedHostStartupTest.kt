@@ -15,7 +15,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
-import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
@@ -41,6 +40,7 @@ import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsViewModel
 import org.artkachenko.kmp_learning_app.saved_questions.repository.SavedQuestionRepository
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
+import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderTarget
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
 import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
@@ -114,7 +114,7 @@ internal class SharedHostStartupTest {
             // content rather than creating an attempt.
             assertIs<PracticeBuilderViewModel>(
                 koin.get<PracticeBuilderViewModel> {
-                    parametersOf(AssessmentScope.Topic("topic"))
+                    parametersOf(PracticeBuilderTarget.Topic("topic"))
                 },
             )
             assertIs<FocusedResultViewModel>(

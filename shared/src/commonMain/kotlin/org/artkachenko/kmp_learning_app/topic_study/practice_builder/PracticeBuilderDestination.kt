@@ -6,19 +6,25 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
-import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
+/**
+ * The Practice Builder destination.
+ *
+ * [target] is what the learner chose, addressed by stable ID. Turning it into an assessment scope —
+ * which for a Learning Unit means reading its current Lessons — happens inside the ViewModel, so no
+ * derived scope travels through navigation and no screen resolves content on the builder's behalf.
+ */
 @Composable
 internal fun PracticeBuilderDestination(
-    scope: AssessmentScope,
+    target: PracticeBuilderTarget,
     onBack: () -> Unit,
     onStartPractice: (AssessmentConfig.Focused) -> Unit,
     initialSource: PracticeQuestionSource = PracticeQuestionSource.ALL,
     viewModel: PracticeBuilderViewModel = koinViewModel {
-        parametersOf(scope, initialSource)
+        parametersOf(target, initialSource)
     },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()

@@ -18,7 +18,7 @@ internal class LearningUnitScreenTest {
     fun loadingStateRenders() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                LearningUnitScreen(LearningUnitUiState.Loading, {}, {}, {})
+                LearningUnitScreen(LearningUnitUiState.Loading, {}, {}, {}, {})
             }
         }
 
@@ -30,7 +30,7 @@ internal class LearningUnitScreenTest {
     fun notFoundStateSaysTheUnitIsUnavailableWithoutOfferingRetry() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                LearningUnitScreen(LearningUnitUiState.NotFound, {}, {}, {})
+                LearningUnitScreen(LearningUnitUiState.NotFound, {}, {}, {}, {})
             }
         }
 
@@ -44,7 +44,7 @@ internal class LearningUnitScreenTest {
         var retryCount = 0
         setContent {
             MaterialTheme {
-                LearningUnitScreen(LearningUnitUiState.Error, {}, {}, { retryCount += 1 })
+                LearningUnitScreen(LearningUnitUiState.Error, {}, {}, {}, { retryCount += 1 })
             }
         }
 
@@ -62,6 +62,7 @@ internal class LearningUnitScreenTest {
                     state = content(),
                     onBack = { backCount += 1 },
                     onLessonClick = {},
+                    onPracticeUnit = {},
                     onRetry = {},
                 )
             }
@@ -87,6 +88,7 @@ internal class LearningUnitScreenTest {
                     state = content(),
                     onBack = {},
                     onLessonClick = { clicked += it },
+                    onPracticeUnit = {},
                     onRetry = {},
                 )
             }
@@ -107,7 +109,7 @@ internal class LearningUnitScreenTest {
     fun lessonRowsAreLaidOutInTheOrderTheStateGaveThem() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                LearningUnitScreen(content(), {}, {}, {})
+                LearningUnitScreen(content(), {}, {}, {}, {})
             }
         }
 
@@ -132,6 +134,7 @@ internal class LearningUnitScreenTest {
                     ),
                     onBack = {},
                     onLessonClick = {},
+                    onPracticeUnit = {},
                     onRetry = {},
                 )
             }
@@ -141,6 +144,67 @@ internal class LearningUnitScreenTest {
         onNodeWithText("No lessons are currently available in this unit.").assertIsDisplayed()
         // The heading belongs to a list; with nothing to list it would be a dangling label.
         onNodeWithText("Lessons").assertDoesNotExist()
+    }
+
+    /**
+     * Study flows into practice from the overview, and the action says what it practises: a visible
+     * label rather than an icon, so the Material button's own semantics are what a screen reader
+     * announces without a second custom description.
+     */
+    @Test
+    fun theUnitOffersPracticeAndTheActionEmitsIt() = runComposeUiTest {
+        var practiceCount = 0
+        setContent {
+            MaterialTheme {
+                LearningUnitScreen(
+                    state = content(),
+                    onBack = {},
+                    onLessonClick = {},
+                    onPracticeUnit = { practiceCount += 1 },
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("Practice this unit").assertIsDisplayed()
+        onNodeWithTag(LearningUnitPracticeButtonTag).performClick()
+
+        assertEquals(1, practiceCount)
+    }
+
+    /** The action is part of the Unit, not of the reading list, so it survives an empty one. */
+    @Test
+    fun practiceStaysAvailableOnAUnitWithNoCurrentLessons() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                LearningUnitScreen(
+                    state = LearningUnitUiState.Content(
+                        unitId = "unit_thinking_in_compose",
+                        title = "Thinking in Compose",
+                        summary = "Why Compose changes how UI is written.",
+                        lessons = emptyList(),
+                    ),
+                    onBack = {},
+                    onLessonClick = {},
+                    onPracticeUnit = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(LearningUnitPracticeButtonTag).assertIsDisplayed()
+    }
+
+    /** Nothing to practise on a screen that is not showing a Unit. */
+    @Test
+    fun practiceIsAbsentWhileTheUnitIsUnavailable() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                LearningUnitScreen(LearningUnitUiState.NotFound, {}, {}, {}, {})
+            }
+        }
+
+        onNodeWithTag(LearningUnitPracticeButtonTag).assertDoesNotExist()
     }
 
     private fun content(): LearningUnitUiState.Content =

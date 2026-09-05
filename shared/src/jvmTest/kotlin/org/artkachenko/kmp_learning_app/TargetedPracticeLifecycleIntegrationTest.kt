@@ -67,6 +67,7 @@ import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResult
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeAvailability
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderEvent
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderUiState
+import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderTarget
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toPracticeRoute
 import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
@@ -615,7 +616,8 @@ private class PracticeGraph(
     val retakeService: AssessmentRetakeService get() = koin.get()
     val sessionLoader: AssessmentSessionLoader get() = koin.get()
 
-    fun builder(scope: AssessmentScope): PracticeBuilderViewModel = koin.get { parametersOf(scope) }
+    fun builder(scope: AssessmentScope): PracticeBuilderViewModel =
+        koin.get { parametersOf(scope.toPracticeBuilderTarget()) }
 
     fun resultViewModel(attemptId: String): FocusedResultViewModel =
         koin.get { parametersOf(attemptId) }
@@ -831,3 +833,15 @@ private fun fixtureQuestion(
 )
 
 // endregion
+
+/**
+ * The scope these scenarios are written in terms of, as the target the builder is now opened on.
+ * Only the two scope-addressed entries exist here: a Learning Unit is not a scope, and the Unit
+ * journey is covered against real learning content in `LearningUnitPracticeIntegrationTest`.
+ */
+private fun AssessmentScope.toPracticeBuilderTarget(): PracticeBuilderTarget =
+    when (this) {
+        is AssessmentScope.Topic -> PracticeBuilderTarget.Topic(topicId)
+        is AssessmentScope.Subtopic -> PracticeBuilderTarget.Subtopic(subtopicId)
+        is AssessmentScope.Subtopics -> error("These scenarios configure one scoped ID at a time.")
+    }

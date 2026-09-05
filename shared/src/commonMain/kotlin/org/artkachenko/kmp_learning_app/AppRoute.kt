@@ -115,6 +115,24 @@ internal sealed interface AppRoute : NavKey {
     ) : AppRoute
 
     /**
+     * The Practice Builder, opened on a Learning Unit.
+     *
+     * Only the stable Unit ID travels, for a stronger reason than the Topic and Subtopic routes
+     * have: what a Unit teaches is authored content that changes between releases. The title *and*
+     * the concepts practised are resolved from `LearningContentRepository` on arrival, so a
+     * re-authored Unit is practised as it currently reads rather than as it read when this entry
+     * was pushed. The derived Subtopic set is deliberately absent — a back-stack entry holding it
+     * would be a second, silently stale copy of the Unit's teaching responsibility.
+     *
+     * No `source` field, unlike the two above: nothing produces a Learning-Unit practice intent, so
+     * both entries open on the builder's own `ALL` default.
+     */
+    @Serializable
+    data class PracticeBuilderLearningUnit(
+        val unitId: String,
+    ) : AppRoute
+
+    /**
      * A configured practice run.
      *
      * Every dimension the builder exposes is carried as a typed field, because the destination
@@ -133,6 +151,23 @@ internal sealed interface AppRoute : NavKey {
     @Serializable
     data class FocusedSubtopicPractice(
         val subtopicId: String,
+        val questionCount: Int,
+        val levels: List<QuestionLevel>,
+        val source: PracticeQuestionSource,
+    ) : AppRoute
+
+    /**
+     * A configured practice run over several Subtopics at once.
+     *
+     * The scope arrives as the stable IDs it was derived into, never as the Learning Unit it came
+     * from: by this point the run is an ordinary focused assessment, and re-deriving the concepts
+     * here would let a mid-run content change alter what the learner is being asked. The list is
+     * sorted for the same reason [levels] is normalised — an identical configuration must be an
+     * identical back-stack entry — and becomes a `Set` again when the config is rebuilt.
+     */
+    @Serializable
+    data class FocusedSubtopicsPractice(
+        val subtopicIds: List<String>,
         val questionCount: Int,
         val levels: List<QuestionLevel>,
         val source: PracticeQuestionSource,

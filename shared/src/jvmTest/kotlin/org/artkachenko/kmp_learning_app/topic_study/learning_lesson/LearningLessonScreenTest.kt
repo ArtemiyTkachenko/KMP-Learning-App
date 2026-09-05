@@ -440,6 +440,45 @@ internal class LearningLessonScreenTest {
     }
 
     /**
+     * Finishing a Lesson should not mean walking back to the overview to practise. The action is
+     * the Unit's, not this Lesson's: it emits no Lesson identity at all, so nothing here can turn
+     * into a Lesson-sized quiz under a Unit label.
+     */
+    @Test
+    fun theReaderOffersPracticeForTheOwningUnit() = runComposeUiTest {
+        var practiceCount = 0
+        setContentWith(onPracticeUnit = { practiceCount += 1 })
+
+        onNodeWithTag(LearningLessonPracticeButtonTag).performClick()
+
+        assertEquals(1, practiceCount)
+    }
+
+    /** After the reading and after the way on, so nothing offers to quiz before the material. */
+    @Test
+    fun practiceFollowsTheReadingAndTheSiblingControls() = runComposeUiTest {
+        setContentWith(
+            sections = listOf(section(LearningBlock.Paragraph("The body of the lesson."))),
+            next = AdjacentLessonUiModel("lesson_b", "The next lesson"),
+        )
+
+        val next = onNodeWithTag(LearningLessonNextTag)
+            .fetchSemanticsNode().positionInRoot.y
+        val practice = onNodeWithTag(LearningLessonPracticeButtonTag)
+            .fetchSemanticsNode().positionInRoot.y
+
+        assertTrue(next < practice, "Practice was placed before the sibling controls.")
+    }
+
+    /** Nothing to practise while there is no Lesson to read. */
+    @Test
+    fun practiceIsAbsentWhileTheLessonIsUnavailable() = runComposeUiTest {
+        setContent { MaterialTheme { LessonScreen(LearningLessonUiState.NotFound) } }
+
+        onNodeWithTag(LearningLessonPracticeButtonTag).assertDoesNotExist()
+    }
+
+    /**
      * Renders the reader inside a fixed viewport so width behaviour is observable, and defaults
      * every callback the test under way does not care about.
      */
@@ -449,6 +488,7 @@ internal class LearningLessonScreenTest {
         previous: AdjacentLessonUiModel? = null,
         next: AdjacentLessonUiModel? = null,
         onNavigateLesson: (String) -> Unit = {},
+        onPracticeUnit: () -> Unit = {},
         onOpenSource: (String) -> Unit = {},
         failedSourceUrl: String? = null,
         width: Dp = NarrowWidth,
@@ -466,6 +506,7 @@ internal class LearningLessonScreenTest {
                         onBack = {},
                         onRetry = {},
                         onNavigateLesson = onNavigateLesson,
+                        onPracticeUnit = onPracticeUnit,
                         onOpenSource = onOpenSource,
                         failedSourceUrl = failedSourceUrl,
                     )
@@ -524,6 +565,7 @@ private fun LessonScreen(
         onBack = onBack,
         onRetry = onRetry,
         onNavigateLesson = {},
+        onPracticeUnit = {},
         onOpenSource = {},
     )
 }

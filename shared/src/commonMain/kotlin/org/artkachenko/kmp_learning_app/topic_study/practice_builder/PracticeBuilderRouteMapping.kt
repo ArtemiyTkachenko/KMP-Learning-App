@@ -58,11 +58,19 @@ internal fun PracticePreset.toPracticeBuilderRoute(): AppRoute =
         is AssessmentScope.Subtopics -> scope.noPracticeBuilderRoute()
     }
 
-internal fun AppRoute.PracticeBuilderTopic.toAssessmentScope(): AssessmentScope =
-    AssessmentScope.Topic(topicId)
+/**
+ * The route says what the learner opened the builder on; what that means for assessment is the
+ * builder's own answer. For a Topic or Subtopic the two are one lookup apart, and for a Learning
+ * Unit they are a document read apart — which is exactly why the mapping stops at the target.
+ */
+internal fun AppRoute.PracticeBuilderTopic.toPracticeBuilderTarget(): PracticeBuilderTarget =
+    PracticeBuilderTarget.Topic(topicId)
 
-internal fun AppRoute.PracticeBuilderSubtopic.toAssessmentScope(): AssessmentScope =
-    AssessmentScope.Subtopic(subtopicId)
+internal fun AppRoute.PracticeBuilderSubtopic.toPracticeBuilderTarget(): PracticeBuilderTarget =
+    PracticeBuilderTarget.Subtopic(subtopicId)
+
+internal fun AppRoute.PracticeBuilderLearningUnit.toPracticeBuilderTarget(): PracticeBuilderTarget =
+    PracticeBuilderTarget.LearningUnit(unitId)
 
 /**
  * Flattens the configured run into route fields.
@@ -87,5 +95,14 @@ internal fun AssessmentConfig.Focused.toPracticeRoute(): AppRoute =
             source = source,
         )
 
-        is AssessmentScope.Subtopics -> scope.noPracticeBuilderRoute()
+        // The derived concepts travel, not the Learning Unit they came from: this is the run, and
+        // re-deriving it at the assessment would let mid-run re-authoring change what is asked.
+        // Sorted for the same reason the levels are normalised — an identical configuration has to
+        // be an identical back-stack entry, and a Set carries no order to preserve.
+        is AssessmentScope.Subtopics -> AppRoute.FocusedSubtopicsPractice(
+            subtopicIds = scope.subtopicIds.sorted(),
+            questionCount = questionCount,
+            levels = levels.inAuthoredOrder(),
+            source = source,
+        )
     }

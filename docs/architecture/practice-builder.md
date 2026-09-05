@@ -1,6 +1,6 @@
 # The Practice Builder
 
-The screen that turns a scope into a runnable `AssessmentConfig.Focused`, and how that configuration is persisted. See [practice selection](practice-selection.md) for the selection policies it previews.
+The screen that turns what the learner chose to practise into a runnable `AssessmentConfig.Focused`, and how that configuration is persisted. See [practice selection](practice-selection.md) for the selection policies it previews.
 
 ## The Practice Builder
 
@@ -50,6 +50,61 @@ through `AssessmentEngine.start`, which persists an attempt. Checking whether
 practice is possible must not create practice as a side effect, so the builder is
 given the read-only selection boundary and no repository or engine at all.
 
+## What the builder is opened on
+
+The builder receives a `PracticeBuilderTarget` — `Topic`, `Subtopic`, or `LearningUnit`
+— rather than an `AssessmentScope`. The two were the same thing while every entry was a
+Topic or a Subtopic, whose stable ID *is* the scope. A Learning Unit breaks that: what it
+practises is the set of concepts its current Lessons are responsible for teaching, which
+does not exist until the Unit has been read. Keeping the distinction in the type is what
+prevents that derived set from being computed on the screen offering practice and carried
+through the back stack, where it would quietly outlive the authoring it came from.
+
+`PracticeTargetResolver` is the one place a target becomes a scope, and it is the only
+crossing from learning content into assessment configuration in the app. It runs in one
+direction: a Unit is read here and leaves as a plain set of Subtopic IDs, so selection,
+the engine, persistence, and retake never learn that Learning Units exist. It lives in
+presentation beside the builder rather than in the assessment domain, which is what keeps
+that dependency edge from reversing.
+
+Resolution answers one of three things. `Resolved(name, scope)` carries the scope and the
+label to show. `Unavailable` means the target names nothing that is current study
+material — a stale or deprecated Unit. `NoPracticeableConcepts` means the Unit resolves
+and is current but teaches nothing assessable. The last two reach the screen as
+`PracticeAvailability.TargetUnavailable` and `NoPracticeableConcepts`, which disable Start
+and offer no Retry: both are settled answers about content, unlike a failed read, which
+stays `Error` and re-resolves on Retry. A Topic or Subtopic target cannot produce either,
+so those flows are unchanged — their scope is known from the ID, and the curriculum is
+read only for a display name whose absence has never blocked practice.
+
+A Learning Unit's scope is the deduplicated union of `primarySubtopicIds` across its
+ACTIVE Lessons. Four authoring rules are enforced by that one derivation:
+
+- **Deprecated Lessons contribute nothing**, even inside an ACTIVE Unit. Retired material
+  must not keep quizzing the learner.
+- **`supportingSubtopicIds` never enter practice.** A supporting concept exists so a
+  Lesson can explain enough surrounding context to stand on its own, which is a different
+  claim from being responsible for teaching it.
+- **Cross-Topic primary concepts survive.** `LearningUnit.topicId` is the home Topic that
+  decides where the Unit is browsed and never narrows what it may teach; the learning
+  curriculum validator already owns structural validity.
+- **A concept named by several Lessons contributes once.** The scope is a `Set`, so a
+  shared primary concept cannot weight selection.
+
+An empty derived set is refused before `AssessmentScope.Subtopics` is constructed. Its
+non-empty requirement is a domain invariant, not a user-facing outcome, so a malformed
+Unit reads as unavailable rather than failing a precondition in front of the learner.
+
+`AppRoute.PracticeBuilderLearningUnit` carries the stable Unit ID and nothing else — no
+title, no concepts, and no source field, since nothing produces a Learning-Unit practice
+intent. Both study surfaces push it: the Unit overview and the Lesson reader each offer
+"Practice this unit", and the reader's action uses the *owning* Unit from the route it is
+being rendered in, so finishing a Lesson practises the whole Unit rather than that Lesson.
+Both are ordinary pushes onto the Learn stack, so Back returns to the surface the learner
+left. The reverse mapping does not exist: a derived multi-Subtopic scope cannot be turned
+back into a builder route, because several Units can teach the same concepts and the whole
+point of resolving on arrival is that the derivation is re-run against current content.
+
 The configured run reaches assessment taking as typed route fields — scope ID,
 count, levels, source — and never as Questions, answers, or curriculum text. Every
 dimension travels because the destination rebuilds the config from the route, and
@@ -58,6 +113,20 @@ the learner asked for one. The level list is normalised to authored order so an
 identical setup is an identical back-stack entry. The scope's display name is
 resolved from its stable ID on arrival rather than carried, so a renamed Topic
 cannot appear under a label frozen into the back stack.
+
+A Unit run travels as `AppRoute.FocusedSubtopicsPractice`, whose `subtopicIds` are the
+derived concepts and not the Unit — by that point the run is an ordinary focused
+assessment, and re-deriving it at the assessment would let a mid-run content change alter
+what is asked. The IDs are sorted for the same reason the levels are normalised: an
+identical configuration has to be an identical back-stack entry.
+
+Learning Unit identity is therefore absent from `AssessmentConfig`, `AssessmentScope`, and
+`TestAttempt`. That is deliberate rather than incidental: `TestAttempt.config` is the
+authoritative record of what a learner was actually asked, so an attempt started when a
+Unit taught `{A, B, C}` stays `{A, B, C}` after the Unit is re-authored to add `D`, and
+retake repeats the run that happened rather than the Unit as it reads today. E21-06 added
+no schema, column, migration, or persistence field — the multi-Subtopic scope E21-05 made
+persistable is what carries it.
 
 ## Persisted practice configuration
 

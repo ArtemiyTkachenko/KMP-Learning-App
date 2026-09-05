@@ -44,8 +44,10 @@ import org.artkachenko.kmp_learning_app.toAppRoute
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.DefaultPracticeQuestionCount
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeAvailability
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderEvent
+import org.artkachenko.kmp_learning_app.topic_study.FakeLearningContentRepository
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
-import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toAssessmentScope
+import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeTargetResolver
+import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toPracticeBuilderTarget
 
 /**
  * E17-05: the seam between a recommendation and the EPIC-16 Practice Builder, over real derivations.
@@ -203,14 +205,20 @@ internal class GuidedLearningPracticePresetIntegrationTest {
         history: AssessmentRepository,
     ): PracticeBuilderViewModel {
         val route = recommendation.target.toAppRoute()
-        val (scope, source) = when (route) {
-            is AppRoute.PracticeBuilderTopic -> route.toAssessmentScope() to route.source
-            is AppRoute.PracticeBuilderSubtopic -> route.toAssessmentScope() to route.source
+        val (target, source) = when (route) {
+            is AppRoute.PracticeBuilderTopic -> route.toPracticeBuilderTarget() to route.source
+            is AppRoute.PracticeBuilderSubtopic -> route.toPracticeBuilderTarget() to route.source
             else -> error("Expected a practice recommendation but was $route.")
         }
         return PracticeBuilderViewModel(
-            scope = scope,
-            curriculumRepository = curriculum,
+            target = target,
+            targetResolver = PracticeTargetResolver(
+                curriculumRepository = curriculum,
+                // A recommendation never names a Learning Unit, so resolving one of its targets
+                // must not read learning content at all: this fails every call to prove it.
+                learningContentRepository =
+                    FakeLearningContentRepository(failuresRemaining = Int.MAX_VALUE),
+            ),
             questionSelector = AssessmentQuestionSelector(
                 curriculumRepository = curriculum,
                 completedHistory = { history.getCompletedAttempts() },

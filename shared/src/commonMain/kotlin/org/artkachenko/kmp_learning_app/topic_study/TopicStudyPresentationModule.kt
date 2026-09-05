@@ -24,6 +24,7 @@ import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResult
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonViewModel
 import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitViewModel
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
+import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeTargetResolver
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
 import org.koin.core.module.dsl.viewModel
@@ -183,12 +184,21 @@ internal val topicStudyPresentationModule = module {
             learningContentRepository = get(),
         )
     }
+    single {
+        // The one crossing from learning content into assessment configuration, and the only place
+        // a Learning Unit becomes a set of Subtopic IDs. It is a `single` beside the other
+        // resolvers because it holds no state: both repositories it reads are already app-scoped.
+        PracticeTargetResolver(
+            curriculumRepository = get(),
+            learningContentRepository = get(),
+        )
+    }
     viewModel { parameters ->
         // The selection boundary, not the engine: the builder reads eligibility before starting
         // practice and must never create an attempt to find out whether one is possible.
         PracticeBuilderViewModel(
-            scope = parameters.get(),
-            curriculumRepository = get(),
+            target = parameters.get(),
+            targetResolver = get(),
             questionSelector = get(),
             // Optional: opening the builder from content passes a scope alone and keeps the
             // builder's own ALL default, while a preset-carrying entry supplies the source.

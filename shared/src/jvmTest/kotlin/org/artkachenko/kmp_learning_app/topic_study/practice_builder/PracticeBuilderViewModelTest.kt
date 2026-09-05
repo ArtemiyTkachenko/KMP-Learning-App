@@ -32,9 +32,13 @@ import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
+import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.topic_study.FakeLearningContentRepository
+import org.artkachenko.kmp_learning_app.topic_study.testLearningLesson
+import org.artkachenko.kmp_learning_app.topic_study.testLearningUnit
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class PracticeBuilderViewModelTest {
@@ -45,7 +49,8 @@ internal class PracticeBuilderViewModelTest {
 
     @Test
     fun opensOnTheLaunchingTopicWithAStartableDefaultSetup() = runViewModelTest {
-        val viewModel = viewModel(AssessmentScope.Topic("topic_a"), FakeCurriculumRepository())
+        val viewModel =
+            viewModel(PracticeBuilderTarget.Topic("topic_a"), FakeCurriculumRepository())
 
         advanceUntilIdle()
 
@@ -65,7 +70,8 @@ internal class PracticeBuilderViewModelTest {
 
     @Test
     fun opensOnTheLaunchingSubtopic() = runViewModelTest {
-        val viewModel = viewModel(AssessmentScope.Subtopic("subtopic_a"), FakeCurriculumRepository())
+        val viewModel =
+            viewModel(PracticeBuilderTarget.Subtopic("subtopic_a"), FakeCurriculumRepository())
 
         advanceUntilIdle()
 
@@ -79,7 +85,7 @@ internal class PracticeBuilderViewModelTest {
     @Test
     fun anUnresolvableScopeNameDoesNotBlockPractice() = runViewModelTest {
         val curriculum = FakeCurriculumRepository(topics = emptyList())
-        val viewModel = viewModel(AssessmentScope.Topic("topic_a"), curriculum)
+        val viewModel = viewModel(PracticeBuilderTarget.Topic("topic_a"), curriculum)
 
         advanceUntilIdle()
 
@@ -89,7 +95,8 @@ internal class PracticeBuilderViewModelTest {
 
     @Test
     fun editingTheQuestionCountUpdatesStateAndTheStartedConfiguration() = runViewModelTest {
-        val viewModel = viewModel(AssessmentScope.Topic("topic_a"), FakeCurriculumRepository())
+        val viewModel =
+            viewModel(PracticeBuilderTarget.Topic("topic_a"), FakeCurriculumRepository())
         advanceUntilIdle()
 
         viewModel.selectQuestionCount(5)
@@ -101,7 +108,8 @@ internal class PracticeBuilderViewModelTest {
     /** The control offers a fixed ladder, which is what keeps the count positive without a guard. */
     @Test
     fun anUnofferedCountIsRejected() = runViewModelTest {
-        val viewModel = viewModel(AssessmentScope.Topic("topic_a"), FakeCurriculumRepository())
+        val viewModel =
+            viewModel(PracticeBuilderTarget.Topic("topic_a"), FakeCurriculumRepository())
         advanceUntilIdle()
 
         viewModel.selectQuestionCount(0)
@@ -113,7 +121,8 @@ internal class PracticeBuilderViewModelTest {
 
     @Test
     fun levelsCanBeDeselectedAndReselected() = runViewModelTest {
-        val viewModel = viewModel(AssessmentScope.Topic("topic_a"), FakeCurriculumRepository())
+        val viewModel =
+            viewModel(PracticeBuilderTarget.Topic("topic_a"), FakeCurriculumRepository())
         advanceUntilIdle()
 
         viewModel.toggleLevel(QuestionLevel.FOUNDATION)
@@ -139,7 +148,8 @@ internal class PracticeBuilderViewModelTest {
      */
     @Test
     fun theFinalSelectedLevelCannotBeRemoved() = runViewModelTest {
-        val viewModel = viewModel(AssessmentScope.Topic("topic_a"), FakeCurriculumRepository())
+        val viewModel =
+            viewModel(PracticeBuilderTarget.Topic("topic_a"), FakeCurriculumRepository())
         advanceUntilIdle()
 
         viewModel.toggleLevel(QuestionLevel.FOUNDATION)
@@ -153,7 +163,8 @@ internal class PracticeBuilderViewModelTest {
 
     @Test
     fun theStartedConfigurationContainsExactlyTheSelectedLevels() = runViewModelTest {
-        val viewModel = viewModel(AssessmentScope.Topic("topic_a"), FakeCurriculumRepository())
+        val viewModel =
+            viewModel(PracticeBuilderTarget.Topic("topic_a"), FakeCurriculumRepository())
         advanceUntilIdle()
 
         viewModel.toggleLevel(QuestionLevel.APPLIED)
@@ -167,7 +178,8 @@ internal class PracticeBuilderViewModelTest {
 
     @Test
     fun everySourceIsRepresentedAndSupported() = runViewModelTest {
-        val viewModel = viewModel(AssessmentScope.Topic("topic_a"), FakeCurriculumRepository())
+        val viewModel =
+            viewModel(PracticeBuilderTarget.Topic("topic_a"), FakeCurriculumRepository())
         advanceUntilIdle()
 
         val options = viewModel.uiState.value.sourceOptions
@@ -179,7 +191,7 @@ internal class PracticeBuilderViewModelTest {
     @Test
     fun choosingMistakesRunsPreflightAndStartsWithTheMistakeSource() = runViewModelTest {
         val viewModel = viewModel(
-            scope = AssessmentScope.Topic("topic_a"),
+            target = PracticeBuilderTarget.Topic("topic_a"),
             curriculum = FakeCurriculumRepository(),
             completedAttempts = listOf(
                 completedHistoryOfAnswers(
@@ -204,7 +216,8 @@ internal class PracticeBuilderViewModelTest {
 
     @Test
     fun mistakesWithoutEligibleHistoryStaySelectableButDisableStart() = runViewModelTest {
-        val viewModel = viewModel(AssessmentScope.Topic("topic_a"), FakeCurriculumRepository())
+        val viewModel =
+            viewModel(PracticeBuilderTarget.Topic("topic_a"), FakeCurriculumRepository())
         advanceUntilIdle()
 
         viewModel.selectSource(PracticeQuestionSource.UNRESOLVED_MISTAKES)
@@ -225,7 +238,7 @@ internal class PracticeBuilderViewModelTest {
     fun choosingUnseenRechecksAvailabilityAgainstTheUnseenPool() = runViewModelTest {
         // One of the three Questions in scope has already been answered in completed history.
         val viewModel = viewModel(
-            scope = AssessmentScope.Topic("topic_a"),
+            target = PracticeBuilderTarget.Topic("topic_a"),
             curriculum = FakeCurriculumRepository(),
             seenQuestionIds = listOf("q_foundation"),
         )
@@ -249,7 +262,7 @@ internal class PracticeBuilderViewModelTest {
     @Test
     fun unseenPracticeWithNothingLeftToAskDisablesStartWithoutChangingTheSource() = runViewModelTest {
         val viewModel = viewModel(
-            scope = AssessmentScope.Topic("topic_a"),
+            target = PracticeBuilderTarget.Topic("topic_a"),
             curriculum = FakeCurriculumRepository(),
             seenQuestionIds = listOf("q_foundation", "q_applied", "q_advanced"),
         )
@@ -271,7 +284,7 @@ internal class PracticeBuilderViewModelTest {
     @Test
     fun choosingWeakAreasRunsPreflightAndStartsWithTheWeakAreaSource() = runViewModelTest {
         val viewModel = viewModel(
-            scope = AssessmentScope.Topic("topic_a"),
+            target = PracticeBuilderTarget.Topic("topic_a"),
             curriculum = FakeCurriculumRepository(),
             completedAttempts = listOf(
                 completedHistoryOfAnswers(
@@ -294,7 +307,8 @@ internal class PracticeBuilderViewModelTest {
 
     @Test
     fun weakAreasWithoutQualifyingHistoryStaySelectableButDisableStart() = runViewModelTest {
-        val viewModel = viewModel(AssessmentScope.Topic("topic_a"), FakeCurriculumRepository())
+        val viewModel =
+            viewModel(PracticeBuilderTarget.Topic("topic_a"), FakeCurriculumRepository())
         advanceUntilIdle()
 
         viewModel.selectSource(PracticeQuestionSource.WEAK_AREAS)
@@ -311,7 +325,8 @@ internal class PracticeBuilderViewModelTest {
 
     @Test
     fun anEligibleConfigurationEnablesStartAndReportsWhatIsAvailable() = runViewModelTest {
-        val viewModel = viewModel(AssessmentScope.Topic("topic_a"), FakeCurriculumRepository())
+        val viewModel =
+            viewModel(PracticeBuilderTarget.Topic("topic_a"), FakeCurriculumRepository())
 
         advanceUntilIdle()
 
@@ -324,7 +339,7 @@ internal class PracticeBuilderViewModelTest {
     @Test
     fun noEligibleQuestionsDisablesStart() = runViewModelTest {
         val curriculum = FakeCurriculumRepository(questions = emptyList())
-        val viewModel = viewModel(AssessmentScope.Topic("topic_a"), curriculum)
+        val viewModel = viewModel(PracticeBuilderTarget.Topic("topic_a"), curriculum)
 
         advanceUntilIdle()
 
@@ -338,7 +353,7 @@ internal class PracticeBuilderViewModelTest {
         val curriculum = FakeCurriculumRepository(
             questions = listOf(question("q_foundation", QuestionLevel.FOUNDATION)),
         )
-        val viewModel = viewModel(AssessmentScope.Topic("topic_a"), curriculum)
+        val viewModel = viewModel(PracticeBuilderTarget.Topic("topic_a"), curriculum)
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.isStartEnabled)
 
@@ -354,7 +369,7 @@ internal class PracticeBuilderViewModelTest {
     @Test
     fun aFailedEligibilityCheckIsAnErrorThatRetryCanRecoverFrom() = runViewModelTest {
         val curriculum = FakeCurriculumRepository(failuresRemaining = 1)
-        val viewModel = viewModel(AssessmentScope.Topic("topic_a"), curriculum)
+        val viewModel = viewModel(PracticeBuilderTarget.Topic("topic_a"), curriculum)
         advanceUntilIdle()
         assertEquals(PracticeAvailability.Error, viewModel.uiState.value.availability)
         assertFalse(viewModel.uiState.value.isStartEnabled)
@@ -373,7 +388,7 @@ internal class PracticeBuilderViewModelTest {
     @Test
     fun availabilityIsReadThroughScopedSelectionOnly() = runViewModelTest {
         val curriculum = FakeCurriculumRepository()
-        val viewModel = viewModel(AssessmentScope.Topic("topic_a"), curriculum)
+        val viewModel = viewModel(PracticeBuilderTarget.Topic("topic_a"), curriculum)
 
         advanceUntilIdle()
 
@@ -383,7 +398,8 @@ internal class PracticeBuilderViewModelTest {
 
     @Test
     fun startEmitsTheCompleteTypedConfiguration() = runViewModelTest {
-        val viewModel = viewModel(AssessmentScope.Subtopic("subtopic_a"), FakeCurriculumRepository())
+        val viewModel =
+            viewModel(PracticeBuilderTarget.Subtopic("subtopic_a"), FakeCurriculumRepository())
         advanceUntilIdle()
         viewModel.selectQuestionCount(15)
         viewModel.toggleLevel(QuestionLevel.APPLIED)
@@ -403,7 +419,7 @@ internal class PracticeBuilderViewModelTest {
     @Test
     fun anArrivingPresetSeedsTheSourceAndKeepsEveryOtherDefault() = runViewModelTest {
         val viewModel = viewModel(
-            scope = AssessmentScope.Topic("topic_a"),
+            target = PracticeBuilderTarget.Topic("topic_a"),
             curriculum = FakeCurriculumRepository(),
             seenQuestionIds = listOf("q_foundation"),
             initialSource = PracticeQuestionSource.UNSEEN,
@@ -425,7 +441,7 @@ internal class PracticeBuilderViewModelTest {
     @Test
     fun anArrivingPresetStartsNothingByItself() = runViewModelTest {
         val viewModel = viewModel(
-            scope = AssessmentScope.Subtopic("subtopic_a"),
+            target = PracticeBuilderTarget.Subtopic("subtopic_a"),
             curriculum = FakeCurriculumRepository(),
             initialSource = PracticeQuestionSource.WEAK_AREAS,
         )
@@ -441,7 +457,7 @@ internal class PracticeBuilderViewModelTest {
     @Test
     fun anArrivingPresetCanStillBeEditedBeforeStarting() = runViewModelTest {
         val viewModel = viewModel(
-            scope = AssessmentScope.Topic("topic_a"),
+            target = PracticeBuilderTarget.Topic("topic_a"),
             curriculum = FakeCurriculumRepository(),
             initialSource = PracticeQuestionSource.UNSEEN,
         )
@@ -459,7 +475,7 @@ internal class PracticeBuilderViewModelTest {
     @Test
     fun startIsIgnoredWhileTheConfigurationCannotRun() = runViewModelTest {
         val curriculum = FakeCurriculumRepository(questions = emptyList())
-        val viewModel = viewModel(AssessmentScope.Topic("topic_a"), curriculum)
+        val viewModel = viewModel(PracticeBuilderTarget.Topic("topic_a"), curriculum)
         advanceUntilIdle()
 
         val event = async { viewModel.events.first() }
@@ -469,6 +485,202 @@ internal class PracticeBuilderViewModelTest {
         assertTrue(event.isActive, "Start must emit nothing while practice cannot run.")
         event.cancel()
     }
+
+    /**
+     * The builder's half of Unit practice: the route named a Unit, and what reaches the assessment
+     * is the concepts its current Lessons teach. Which concepts those are is
+     * [PracticeTargetResolverTest]'s subject; what matters here is that the derived scope — and
+     * nothing about the Unit — becomes the configuration.
+     */
+    @Test
+    fun aLearningUnitTargetPractisesTheConceptsItsActiveLessonsTeach() = runViewModelTest {
+        val viewModel = viewModel(
+            target = PracticeBuilderTarget.LearningUnit("unit_a"),
+            curriculum = FakeCurriculumRepository(),
+            learningContent = FakeLearningContentRepository(units = listOf(practiceableUnit())),
+        )
+
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(PracticeScopeKind.LEARNING_UNIT, state.scope.kind)
+        // The title of the Unit the repository just resolved, not a label carried in the route.
+        assertEquals("Title of unit_a", state.scope.name)
+        assertEquals(
+            AssessmentConfig.Focused(
+                scope = AssessmentScope.Subtopics(setOf("subtopic_a", "subtopic_b")),
+                questionCount = DefaultPracticeQuestionCount,
+                levels = AllQuestionLevels,
+                source = PracticeQuestionSource.ALL,
+            ),
+            startedConfig(viewModel),
+        )
+    }
+
+    /**
+     * Unit practice adds no source semantics of its own: each choice reaches the config as the
+     * ordinary `PracticeQuestionSource` the selector already implements for a multi-Subtopic scope.
+     */
+    @Test
+    fun everySourceChoiceReachesTheUnitConfigurationUnchanged() = runViewModelTest {
+        PracticeQuestionSource.entries.forEach { source ->
+            val viewModel = viewModel(
+                target = PracticeBuilderTarget.LearningUnit("unit_a"),
+                curriculum = FakeCurriculumRepository(),
+                // Enough history for every source to have something to draw from: two wrong
+                // answers give weak areas and unresolved mistakes, and the untouched third
+                // Question keeps unseen non-empty. Which Questions each policy picks is the
+                // selector's own subject; this asserts only that the choice reaches the config.
+                completedAttempts = listOf(
+                    completedHistoryOfAnswers(
+                        "q_foundation" to false,
+                        "q_applied" to false,
+                    ),
+                ),
+                learningContent = FakeLearningContentRepository(units = listOf(practiceableUnit())),
+            )
+            advanceUntilIdle()
+
+            viewModel.selectSource(source)
+            advanceUntilIdle()
+
+            val config = startedConfig(viewModel)
+            assertEquals(source, config.source, "Source ${'$'}source must survive to the config.")
+            assertEquals(
+                AssessmentScope.Subtopics(setOf("subtopic_a", "subtopic_b")),
+                config.scope,
+            )
+        }
+    }
+
+    /** A stale route naming a Unit that no longer resolves fails safely and starts nothing. */
+    @Test
+    fun aUnitThatNoLongerResolvesIsReportedRatherThanPractised() = runViewModelTest {
+        val viewModel = viewModel(
+            target = PracticeBuilderTarget.LearningUnit("unit_gone"),
+            curriculum = FakeCurriculumRepository(),
+            learningContent = FakeLearningContentRepository(units = listOf(practiceableUnit())),
+        )
+
+        val event = async { viewModel.events.first() }
+        advanceUntilIdle()
+        viewModel.startPractice()
+        advanceUntilIdle()
+
+        assertEquals(PracticeAvailability.TargetUnavailable, viewModel.uiState.value.availability)
+        assertFalse(viewModel.uiState.value.isStartEnabled)
+        assertTrue(event.isActive, "An unresolvable Unit must not start an assessment.")
+        event.cancel()
+    }
+
+    /** Retired study material must not become practiceable through a route that still names it. */
+    @Test
+    fun aDeprecatedUnitIsNotPractisedThroughAStaleRoute() = runViewModelTest {
+        val deprecated = testLearningUnit(
+            id = "unit_a",
+            status = ContentStatus.DEPRECATED,
+            lessons = listOf(
+                testLearningLesson("lesson_a", primarySubtopicIds = listOf("subtopic_a")),
+            ),
+        )
+        val viewModel = viewModel(
+            target = PracticeBuilderTarget.LearningUnit("unit_a"),
+            curriculum = FakeCurriculumRepository(),
+            learningContent = FakeLearningContentRepository(units = listOf(deprecated)),
+        )
+
+        advanceUntilIdle()
+
+        assertEquals(PracticeAvailability.TargetUnavailable, viewModel.uiState.value.availability)
+    }
+
+    /**
+     * An empty derived scope is refused before `AssessmentScope.Subtopics` is constructed, so a
+     * malformed Unit reads as unavailable rather than failing a domain precondition on screen.
+     */
+    @Test
+    fun aUnitWithNoActivePrimaryConceptsIsReportedRatherThanRun() = runViewModelTest {
+        val emptyUnit = testLearningUnit(
+            id = "unit_a",
+            lessons = listOf(
+                testLearningLesson(
+                    id = "lesson_supporting_only",
+                    supportingSubtopicIds = listOf("subtopic_a"),
+                ),
+                testLearningLesson(
+                    id = "lesson_retired",
+                    status = ContentStatus.DEPRECATED,
+                    primarySubtopicIds = listOf("subtopic_a"),
+                ),
+            ),
+        )
+        val viewModel = viewModel(
+            target = PracticeBuilderTarget.LearningUnit("unit_a"),
+            curriculum = FakeCurriculumRepository(),
+            learningContent = FakeLearningContentRepository(units = listOf(emptyUnit)),
+        )
+
+        val event = async { viewModel.events.first() }
+        advanceUntilIdle()
+        viewModel.startPractice()
+        advanceUntilIdle()
+
+        assertEquals(
+            PracticeAvailability.NoPracticeableConcepts,
+            viewModel.uiState.value.availability,
+        )
+        assertFalse(viewModel.uiState.value.isStartEnabled)
+        assertTrue(event.isActive, "A Unit with nothing to assess must not start an assessment.")
+        event.cancel()
+    }
+
+    /**
+     * An unreadable document is a failure rather than an answer, so it stays retryable — and the
+     * retry has to re-resolve the Unit, because there is no scope yet to re-preflight.
+     */
+    @Test
+    fun anUnreadableLearningDocumentIsRetryable() = runViewModelTest {
+        val viewModel = viewModel(
+            target = PracticeBuilderTarget.LearningUnit("unit_a"),
+            curriculum = FakeCurriculumRepository(),
+            learningContent = FakeLearningContentRepository(
+                units = listOf(practiceableUnit()),
+                failuresRemaining = 1,
+            ),
+        )
+        advanceUntilIdle()
+        assertEquals(PracticeAvailability.Error, viewModel.uiState.value.availability)
+
+        viewModel.retryAvailability()
+        advanceUntilIdle()
+
+        assertEquals("Title of unit_a", viewModel.uiState.value.scope.name)
+        assertTrue(viewModel.uiState.value.isStartEnabled)
+    }
+
+    /**
+     * One Unit whose ACTIVE Lessons name `subtopic_a` twice and `subtopic_b` once, plus supporting
+     * and deprecated concepts that must not reach practice.
+     */
+    private fun practiceableUnit() = testLearningUnit(
+        id = "unit_a",
+        lessons = listOf(
+            testLearningLesson(
+                id = "lesson_a",
+                primarySubtopicIds = listOf("subtopic_a"),
+                supportingSubtopicIds = listOf("subtopic_supporting"),
+            ),
+            testLearningLesson(
+                id = "lesson_b",
+                primarySubtopicIds = listOf("subtopic_a", "subtopic_b"),
+            ),
+            testLearningLesson(
+                id = "lesson_retired",
+                status = ContentStatus.DEPRECATED,
+                primarySubtopicIds = listOf("subtopic_retired"),
+            ),
+        ),
+    )
 
     private fun availableCount(viewModel: PracticeBuilderViewModel): Int =
         assertIs<PracticeAvailability.Available>(viewModel.uiState.value.availability)
@@ -488,15 +700,23 @@ internal class PracticeBuilderViewModelTest {
      * answer, and proving its derivations belongs to the selector's own tests rather than here.
      */
     private fun viewModel(
-        scope: AssessmentScope,
+        target: PracticeBuilderTarget,
         curriculum: CurriculumRepository,
         seenQuestionIds: List<String> = emptyList(),
         completedAttempts: List<TestAttempt>? = null,
         initialSource: PracticeQuestionSource = PracticeQuestionSource.ALL,
+        // Fails on every read by default. A Topic or Subtopic target must resolve without touching
+        // learning content at all, so a suite that quietly started depending on it would turn every
+        // one of these cases into a resolution error instead of passing silently.
+        learningContent: FakeLearningContentRepository =
+            FakeLearningContentRepository(failuresRemaining = Int.MAX_VALUE),
     ): PracticeBuilderViewModel =
         PracticeBuilderViewModel(
-            scope = scope,
-            curriculumRepository = curriculum,
+            target = target,
+            targetResolver = PracticeTargetResolver(
+                curriculumRepository = curriculum,
+                learningContentRepository = learningContent,
+            ),
             questionSelector = AssessmentQuestionSelector(
                 curriculumRepository = curriculum,
                 completedHistory = {

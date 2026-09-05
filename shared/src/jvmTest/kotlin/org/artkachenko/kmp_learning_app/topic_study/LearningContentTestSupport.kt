@@ -33,13 +33,15 @@ internal fun testLearningLesson(
     status: ContentStatus = ContentStatus.ACTIVE,
     sections: List<LearningSection> = emptyList(),
     sources: List<SourceReference> = emptyList(),
+    primarySubtopicIds: List<String> = emptyList(),
+    supportingSubtopicIds: List<String> = emptyList(),
 ): LearningLesson =
     LearningLesson(
         id = id,
         title = "Title of $id",
         summary = "Summary of $id",
-        primarySubtopicIds = emptyList(),
-        supportingSubtopicIds = emptyList(),
+        primarySubtopicIds = primarySubtopicIds,
+        supportingSubtopicIds = supportingSubtopicIds,
         sections = sections,
         relatedLessonIds = emptyList(),
         sources = sources,

@@ -487,6 +487,67 @@ internal class AppNavigationTest {
         )
     }
 
+    /**
+     * Practice opened from study is an ordinary detail push onto the Learn stack, from either
+     * reading surface, so back returns to the screen the learner left rather than to the Topic.
+     */
+    @Test
+    fun practisingAUnitPushesTheBuilderOntoTheLearnStackFromBothReadingSurfaces() {
+        val fromUnit = navigator()
+        fromUnit.push(AppRoute.Topic("android_ui"))
+        fromUnit.push(AppRoute.LearningUnit("unit_thinking_in_compose"))
+        fromUnit.push(AppRoute.PracticeBuilderLearningUnit("unit_thinking_in_compose"))
+
+        assertEquals(AppTopLevelDestination.TOPICS, fromUnit.area)
+        assertTrue(fromUnit.popBack())
+        assertEquals(AppRoute.LearningUnit("unit_thinking_in_compose"), fromUnit.currentRoute)
+
+        val fromLesson = navigator()
+        fromLesson.push(AppRoute.Topic("android_ui"))
+        fromLesson.push(AppRoute.LearningUnit("unit_thinking_in_compose"))
+        fromLesson.push(
+            AppRoute.LearningLesson("unit_thinking_in_compose", "lesson_declarative_ui"),
+        )
+        fromLesson.push(AppRoute.PracticeBuilderLearningUnit("unit_thinking_in_compose"))
+
+        assertTrue(fromLesson.popBack())
+        assertEquals(
+            AppRoute.LearningLesson("unit_thinking_in_compose", "lesson_declarative_ui"),
+            fromLesson.currentRoute,
+        )
+    }
+
+    /**
+     * Identity only, and nothing derived from it: the concepts the Unit teaches are resolved on
+     * arrival, so no set of Subtopic IDs and no Unit title is serialized into the back stack.
+     */
+    @Test
+    fun theUnitBuilderRouteCarriesTheStableUnitIdOnly() {
+        val route = AppRoute.PracticeBuilderLearningUnit(unitId = "unit_thinking_in_compose")
+
+        assertEquals("unit_thinking_in_compose", route.unitId)
+        assertEquals(AppRoute.PracticeBuilderLearningUnit("unit_thinking_in_compose"), route)
+        assertNotEquals(route, AppRoute.PracticeBuilderLearningUnit("unit_other"))
+    }
+
+    /**
+     * Setting practice up is still browsing, and taking it still is not — the Unit entry inherits
+     * both halves of the existing rule rather than introducing a third behaviour.
+     */
+    @Test
+    fun unitPracticeFollowsTheExistingAreaNavigationRule() {
+        assertNull(AppTopLevelDestination.forRoute(AppRoute.PracticeBuilderLearningUnit("unit")))
+        assertTrue(AppRoute.PracticeBuilderLearningUnit("unit").showsAreaNavigation())
+        assertFalse(
+            AppRoute.FocusedSubtopicsPractice(
+                subtopicIds = listOf("subtopic_a", "subtopic_b"),
+                questionCount = 10,
+                levels = QuestionLevel.entries,
+                source = PracticeQuestionSource.ALL,
+            ).showsAreaNavigation(),
+        )
+    }
+
     @Test
     fun completionReplacesOnlyPersistedAttemptEntry() {
         val backStack = mutableListOf<AppRoute>(

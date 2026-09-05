@@ -27,8 +27,10 @@ import kmp_learning_app.shared.generated.resources.practice_builder_level_advanc
 import kmp_learning_app.shared.generated.resources.practice_builder_level_applied
 import kmp_learning_app.shared.generated.resources.practice_builder_level_foundation
 import kmp_learning_app.shared.generated.resources.practice_builder_levels
+import kmp_learning_app.shared.generated.resources.practice_builder_no_practiceable_concepts
 import kmp_learning_app.shared.generated.resources.practice_builder_no_questions
 import kmp_learning_app.shared.generated.resources.practice_builder_question_count
+import kmp_learning_app.shared.generated.resources.practice_builder_scope_learning_unit
 import kmp_learning_app.shared.generated.resources.practice_builder_scope_subtopic
 import kmp_learning_app.shared.generated.resources.practice_builder_scope_topic
 import kmp_learning_app.shared.generated.resources.practice_builder_scope_unknown
@@ -39,6 +41,7 @@ import kmp_learning_app.shared.generated.resources.practice_builder_source_unava
 import kmp_learning_app.shared.generated.resources.practice_builder_source_unseen
 import kmp_learning_app.shared.generated.resources.practice_builder_source_weak_areas
 import kmp_learning_app.shared.generated.resources.practice_builder_start
+import kmp_learning_app.shared.generated.resources.practice_builder_target_unavailable
 import kmp_learning_app.shared.generated.resources.practice_builder_title
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
@@ -212,6 +215,8 @@ private fun PracticeScopeUiModel.label(): String =
             PracticeScopeKind.TOPIC -> stringResource(Res.string.practice_builder_scope_topic, name)
             PracticeScopeKind.SUBTOPIC ->
                 stringResource(Res.string.practice_builder_scope_subtopic, name)
+            PracticeScopeKind.LEARNING_UNIT ->
+                stringResource(Res.string.practice_builder_scope_learning_unit, name)
         }
     }
 
@@ -225,6 +230,10 @@ private fun PracticeAvailability.message(): String =
         )
         PracticeAvailability.NoEligibleQuestions ->
             stringResource(Res.string.practice_builder_no_questions)
+        PracticeAvailability.TargetUnavailable ->
+            stringResource(Res.string.practice_builder_target_unavailable)
+        PracticeAvailability.NoPracticeableConcepts ->
+            stringResource(Res.string.practice_builder_no_practiceable_concepts)
         PracticeAvailability.Error -> stringResource(Res.string.practice_builder_error)
     }
 

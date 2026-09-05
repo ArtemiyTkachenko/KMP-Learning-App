@@ -31,8 +31,8 @@ import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResult
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonDestination
 import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitDestination
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderDestination
-import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toAssessmentScope
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toPracticeBuilderRoute
+import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toPracticeBuilderTarget
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toPracticeRoute
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailDestination
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserDestination
@@ -274,6 +274,15 @@ private fun AppShell(
                                 ),
                             )
                         },
+                        // Studying flows into practice through the same builder every other
+                        // practice entry uses, pushed onto the Learn stack so back returns to the
+                        // Unit. Only the stable Unit ID travels; what it currently teaches is
+                        // resolved on arrival.
+                        onPracticeUnit = {
+                            navigator.push(
+                                AppRoute.PracticeBuilderLearningUnit(unitId = route.unitId),
+                            )
+                        },
                     )
                 }
                 entry<AppRoute.LearningLesson> { route ->
@@ -296,11 +305,20 @@ private fun AppShell(
                                 ),
                             )
                         },
+                        // The owning Unit from the route being rendered, so finishing a Lesson
+                        // reaches the same Unit practice the overview offers without a trip back.
+                        // Pushed, not replaced: the reader stays underneath, and back returns to
+                        // the Lesson the learner was on.
+                        onPracticeUnit = {
+                            navigator.push(
+                                AppRoute.PracticeBuilderLearningUnit(unitId = route.unitId),
+                            )
+                        },
                     )
                 }
                 entry<AppRoute.PracticeBuilderTopic> { route ->
                     PracticeBuilderDestination(
-                        scope = route.toAssessmentScope(),
+                        target = route.toPracticeBuilderTarget(),
                         onBack = { popBack() },
                         onStartPractice = { config ->
                             navigator.push(config.toPracticeRoute())
@@ -312,12 +330,26 @@ private fun AppShell(
                 }
                 entry<AppRoute.PracticeBuilderSubtopic> { route ->
                     PracticeBuilderDestination(
-                        scope = route.toAssessmentScope(),
+                        target = route.toPracticeBuilderTarget(),
                         onBack = { popBack() },
                         onStartPractice = { config ->
                             navigator.push(config.toPracticeRoute())
                         },
                         initialSource = route.source,
+                    )
+                }
+                entry<AppRoute.PracticeBuilderLearningUnit> { route ->
+                    PracticeBuilderDestination(
+                        // The Unit ID only. The builder resolves it into the concepts its ACTIVE
+                        // Lessons teach, so the run it starts is an ordinary focused assessment
+                        // and this entry stays a navigation identity.
+                        target = route.toPracticeBuilderTarget(),
+                        onBack = { popBack() },
+                        onStartPractice = { config ->
+                            navigator.push(config.toPracticeRoute())
+                        },
+                        // No initialSource: nothing produces a Learning-Unit practice intent, so
+                        // both Unit entries open on the builder's own ALL default.
                     )
                 }
                 entry<AppRoute.FocusedTopicPractice> { route ->
@@ -333,6 +365,21 @@ private fun AppShell(
                     )
                 }
                 entry<AppRoute.FocusedSubtopicPractice> { route ->
+                    FocusedPracticeDestination(
+                        launch = AssessmentTakingLaunch.New(route.toAssessmentConfig()),
+                        onBack = { popBack() },
+                        onAttemptPersisted = { attemptId ->
+                            navigator.replaceTop(AppRoute.FocusedPracticeAttempt(attemptId))
+                        },
+                        onCompleted = { attemptId ->
+                            navigator.replaceTop(AppRoute.FocusedPracticeResult(attemptId))
+                        },
+                    )
+                }
+                entry<AppRoute.FocusedSubtopicsPractice> { route ->
+                    // The same destination, engine, checkpointing, and result the other two use:
+                    // by this point a Unit run is an ordinary focused assessment over a scope that
+                    // happens to name several Subtopics.
                     FocusedPracticeDestination(
                         launch = AssessmentTakingLaunch.New(route.toAssessmentConfig()),
                         onBack = { popBack() },

@@ -26,7 +26,7 @@ internal data class PracticeBuilderUiState(
 /**
  * The scope being practised.
  *
- * [name] is null until the curriculum read resolves the stable ID, and stays null if the scope no
+ * [name] is null until the content read resolves the stable ID, and stays null if the target no
  * longer exists. The kind is known from the route, so the screen can always say what is being
  * configured even before it can say which Topic.
  */
@@ -35,9 +35,15 @@ internal data class PracticeScopeUiModel(
     val name: String? = null,
 )
 
+/**
+ * Which kind of thing the builder was opened on, taken from the route rather than from the derived
+ * [org.artkachenko.kmp_learning_app.assessment.AssessmentScope]. A Learning Unit and a hand-picked
+ * group of Subtopics produce the same assessment scope, and the learner chose one of them.
+ */
 internal enum class PracticeScopeKind {
     TOPIC,
     SUBTOPIC,
+    LEARNING_UNIT,
 }
 
 /**
@@ -64,6 +70,26 @@ internal sealed interface PracticeAvailability {
 
     /** The scope, levels, and source are valid, but no ACTIVE Question matches them. */
     data object NoEligibleQuestions : PracticeAvailability
+
+    /**
+     * The target itself no longer names current material, so there is no scope to filter.
+     *
+     * Distinct from [NoEligibleQuestions], which the learner can resolve by widening levels or
+     * changing the source: nothing on this screen can make a retired Unit practiceable, so the
+     * controls stay visible but Start can never become enabled. Distinct from [Error] too — the
+     * lookup succeeded and gave a settled answer, so offering Retry would promise a different
+     * outcome from repeating it.
+     */
+    data object TargetUnavailable : PracticeAvailability
+
+    /**
+     * The target resolves and is current, but teaches no concept that can be assessed.
+     *
+     * Content validation should prevent this, and it is reported rather than assumed away because
+     * the alternative at this boundary is constructing an empty scope and failing a domain
+     * precondition in front of the learner.
+     */
+    data object NoPracticeableConcepts : PracticeAvailability
 
     /** The eligibility read failed. Distinct from "nothing matched", which is not an error. */
     data object Error : PracticeAvailability

@@ -93,8 +93,9 @@ tests and previews that bypass `AppRoot`.
 | Web JS | `webApp/main.kt` -> `startWebLocalDataGraph` | `CurriculumDatabase.web.kt`, SQLite worker/OPFS | yes |
 | Web Wasm | `webApp/main.kt` -> `startWebLocalDataGraph` | `CurriculumDatabase.web.kt`, SQLite worker/OPFS | yes |
 
-Each startup function installs `curriculumDataModule`, `assessmentDataModule`,
-and `topicStudyPresentationModule` plus exactly one platform database module.
+Each startup function installs `curriculumDataModule`, `learningContentModule`,
+`assessmentDataModule`, `savedQuestionDataModule`, and
+`topicStudyPresentationModule` plus exactly one platform database module.
 The host then composes its thin platform root, which delegates initialization to
 the common `AppRoot` state machine. Database creation and platform storage stay
 below the shared repository boundary; `App()` does not start Koin or select a
@@ -130,3 +131,42 @@ out of the curriculum domain models.
 persistence into assessment presentation. It is deliberately independent from
 `correctAnswerIds`: interaction controls must not reveal answer-key cardinality,
 and scoring continues to compare selected and correct answer-ID sets exactly.
+
+## Learning Content Model
+
+Explanatory study material is a second authored curriculum, bundled as its own
+Compose resource and deliberately kept apart from the assessment curriculum. The
+two have different hierarchies and different lifecycles, so they are never merged
+into one document:
+
+```text
+initial_curriculum.json          learning_curriculum.json
+  -> CurriculumJsonCodec           -> LearningCurriculumJsonCodec
+  -> Curriculum                    -> LearningCurriculum
+  -> CurriculumValidator           -> LearningCurriculumValidator (against Curriculum)
+  -> CurriculumImporter            -> LearningContentLoader
+  -> Room                          -> validated in-memory document
+  -> LocalCurriculumRepository     -> BundledLearningContentRepository
+  -> CurriculumRepository          -> LearningContentRepository
+```
+
+Learning content is publisher-owned static content, so it is not persisted:
+there are no learning-content Room tables, no migration, and no startup
+initializer. `LearningContentLoader` validates the learning document against the
+bundled base `Curriculum` rather than the imported Room copy, so authored Topic
+and Subtopic references are checked against the exact taxonomy they were written
+against, and validation stays off the persistence path.
+
+Validation is all-or-nothing. A bundle that fails to decode or fails validation
+raises `LearningContentLoadException` carrying a `LearningContentLoadFailure`,
+which keeps a malformed bundle distinguishable from a valid bundle that contains
+no Units. `BundledLearningContentRepository` loads and validates once per
+instance behind a mutex and answers later queries from immutable indexes, so a
+failed load leaves no partial content behind.
+
+`getActiveUnitsByTopic` is the browsing eligibility surface and returns only
+ACTIVE Units for a home Topic in authored order; `getUnitById` and
+`getLessonById` resolve stable identity regardless of status. This mirrors the
+split `CurriculumRepository` already makes between active selection and
+historical resolution. A Unit's home Topic decides where it is browsed and does
+not constrain the Topics its Lessons reference.

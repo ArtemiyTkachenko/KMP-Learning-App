@@ -187,6 +187,30 @@ successful read that found no authored material, and only a positive count
 renders a badge. It is publisher-owned availability only; there is no
 lesson-completion or studied-state model in E21.
 
+Topic Detail is the second consumer, and E21-02 corrected its state model to
+make room for it. A Topic is now two independent capabilities — study and
+practice — so `TopicDetailUiState.Content` means only that the Topic exists. The
+old `NoQuestions` state is gone: it collapsed a Topic with zero ACTIVE Questions
+into a terminal message, which would have hidden authored study material on a
+studyable but unpractisable Topic. Practice availability is read from
+`Content.topicQuestionCount` instead, and `topicPracticeScope()` returns `null`
+at zero, so the removed state's guarantee — that an empty scope is never
+startable — is preserved as a count check rather than as a screen identity.
+
+Study material reaches that screen through `TopicLearningUnitsUiState`, which is
+carried inside `Content` and has its own `Loading`, `Available(units)`, and
+`Unavailable`. Three states rather than a nullable list, because
+`Available(emptyList())` — the repository answered, this Topic has no authored
+Units — and `Unavailable` — nobody could read the document — must never render as
+each other. `TopicDetailViewModel` loads the curriculum first, renders, and only
+then reads `getActiveUnitsByTopic`, so the Topic is visible and practiceable
+while study material is still resolving and stays so if it never arrives. Units
+are mapped to `LearningUnitItemUiModel` (id, title, summary, ACTIVE Lesson count)
+in repository order, which is authored pedagogical order and is never re-sorted.
+Selecting a Unit emits its stable Unit ID through an optional callback; until
+E21-03 supplies the destination the shell passes nothing, and the cards render as
+non-interactive study content rather than as controls that lead nowhere.
+
 `LearningContentEndToEndTest` verifies that whole path on the shipped content —
 resource, loader, repository — including authored Unit and Lesson order, stable
 identity, Sources, structured blocks, and the cross-Topic supporting concept the

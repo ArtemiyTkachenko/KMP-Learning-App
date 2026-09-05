@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
+import org.artkachenko.kmp_learning_app.curriculum.learning.LearningLesson
 import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
 
 /**
@@ -25,6 +26,10 @@ import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningC
  * Lesson exists, the Lesson is ACTIVE, and the Lesson belongs to that Unit. Each failure is the
  * same answer — this is not current study material — so they share one state rather than being
  * distinguished in the UI, which would only leak the document's shape to the learner.
+ *
+ * Reading the Lesson through its Unit is also what makes previous/next derivable at all: the
+ * neighbours are the Unit's other ACTIVE Lessons in authored order, which is a fact about this
+ * parent and cannot be recovered from a Lesson alone.
  */
 internal class LearningLessonViewModel(
     private val unitId: String,
@@ -64,15 +69,30 @@ internal class LearningLessonViewModel(
             ?.takeIf { it.status == ContentStatus.ACTIVE }
             ?: return LearningLessonUiState.NotFound
 
-        val lesson = unit.lessons
-            .firstOrNull { it.id == lessonId && it.status == ContentStatus.ACTIVE }
-            ?: return LearningLessonUiState.NotFound
+        // The reading sequence and the containment check are the same list, resolved once. A
+        // deprecated Lesson is absent from it, so it can neither be opened nor be stepped through
+        // on the way between two current ones — retired material must not reappear as a waypoint.
+        val activeLessons = unit.lessons.filter { it.status == ContentStatus.ACTIVE }
+        val index = activeLessons.indexOfFirst { it.id == lessonId }
+        if (index < 0) return LearningLessonUiState.NotFound
+        val lesson = activeLessons[index]
 
         return LearningLessonUiState.Content(
             unitId = unit.id,
             lessonId = lesson.id,
             title = lesson.title,
             summary = lesson.summary,
+            sections = lesson.sections,
+            sources = lesson.sources,
+            previousLesson = activeLessons.getOrNull(index - 1)?.toAdjacentLesson(),
+            nextLesson = activeLessons.getOrNull(index + 1)?.toAdjacentLesson(),
         )
     }
 }
+
+/**
+ * Authored order is the reading order, so neither neighbour is sorted or scored: the Unit's Lessons
+ * are a sequence its author wrote, and position in that list is the only thing "next" can mean.
+ */
+private fun LearningLesson.toAdjacentLesson(): AdjacentLessonUiModel =
+    AdjacentLessonUiModel(lessonId = id, title = title)

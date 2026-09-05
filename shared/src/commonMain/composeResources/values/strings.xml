@@ -210,6 +210,17 @@
     <string name="learning_lesson_loading">Loading lesson</string>
     <string name="learning_lesson_not_found">This lesson is not available.</string>
     <string name="learning_lesson_error">Learning content could not be loaded.</string>
+    <string name="learning_lesson_depth_core">Core</string>
+    <string name="learning_lesson_depth_practical">Practical</string>
+    <string name="learning_lesson_depth_senior">Senior deep dive</string>
+    <string name="learning_lesson_callout_note">Note</string>
+    <string name="learning_lesson_callout_key_takeaway">Key takeaway</string>
+    <string name="learning_lesson_callout_interview_focus">Interview focus</string>
+    <string name="learning_lesson_callout_common_mistake">Common mistake</string>
+    <string name="learning_lesson_sources">Sources</string>
+    <string name="learning_lesson_source_open_failed">This source could not be opened.</string>
+    <string name="learning_lesson_previous">Previous</string>
+    <string name="learning_lesson_next">Next</string>
     <string name="app_startup_loading">Preparing local curriculum</string>
     <string name="app_startup_error">Local curriculum could not be initialized</string>
 </resources>

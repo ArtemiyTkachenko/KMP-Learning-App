@@ -123,6 +123,13 @@
     <string name="topic_detail_start_practice">Start Practice</string>
     <string name="topic_detail_accuracy_caption">All-time accuracy</string>
     <string name="topic_detail_subtopics">Subtopics</string>
+    <string name="topic_detail_study">Study</string>
+    <string name="topic_detail_practice">Practice</string>
+    <plurals name="topic_detail_learning_unit_lessons">
+        <item quantity="one">%1$d lesson</item>
+        <item quantity="other">%1$d lessons</item>
+    </plurals>
+    <string name="topic_detail_learning_unavailable">Learning material could not be loaded.</string>
     <string name="focused_practice_title">Focused practice</string>
     <string name="practice_builder_title">Set up practice</string>
     <string name="practice_builder_scope_topic">Topic: %1$s</string>

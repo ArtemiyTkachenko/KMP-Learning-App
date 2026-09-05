@@ -184,8 +184,15 @@ internal class TopicDiscoveryIntegrationTest {
             waitForText(UnpopulatedSubtopicName)
             onNodeWithText(UnpopulatedSubtopicName).performClick()
             waitForTag(TopicPracticeButtonTag)
-            // Nothing to scroll to, so the Topic simply opens at the top of its own content.
-            onNodeWithText(uiSubtopicName(1)).assertIsDisplayed()
+            // Nothing to scroll to, so the Topic simply opens at the top of its own content — and
+            // for android_ui the top of that content is now the study section, read from the real
+            // bundled learning curriculum through the app's own wiring. The first Subtopic row is
+            // consequently below the fold on a phone-shaped window, which is what a Topic that has
+            // both study material and practice is supposed to look like.
+            waitForText(ThinkingInComposeUnitTitle)
+            onNodeWithText("Study").assertIsDisplayed()
+            onNodeWithText(ThinkingInComposeUnitTitle).assertIsDisplayed()
+            onNodeWithText("3 lessons").assertIsDisplayed()
             onNodeWithText("Topic not available").assertDoesNotExist()
             assertNoPracticeQuestionOnScreen()
         }
@@ -546,6 +553,12 @@ private val HeaderSpacing = 12.dp
 private val NoBandTolerance = 1.dp
 
 private const val UiTopicId = "android_ui"
+
+/**
+ * The Unit the production learning curriculum authors for [UiTopicId]. These tests boot the real
+ * learning-content module, so this is the shipped title rather than a fixture value.
+ */
+private const val ThinkingInComposeUnitTitle = "Thinking in Compose"
 private const val UiTopicName = "UI — Views & Jetpack Compose"
 private const val NetworkingTopicId = "networking"
 private const val NetworkingTopicName = "Networking & Serialization"

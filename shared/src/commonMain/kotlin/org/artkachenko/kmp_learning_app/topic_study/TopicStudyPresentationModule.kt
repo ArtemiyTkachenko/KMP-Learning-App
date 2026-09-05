@@ -154,6 +154,10 @@ internal val topicStudyPresentationModule = module {
         TopicDetailViewModel(
             topicId = parameters.get(),
             curriculumRepository = get(),
+            // The same E20 singleton the Topic Browser resolves, through its interface: the
+            // availability marker on the catalogue row and the Units listed here must come from
+            // one validated document rather than from two reads that could disagree.
+            learningContentRepository = get(),
             learningProgressService = get(),
             historyStore = get(),
         )

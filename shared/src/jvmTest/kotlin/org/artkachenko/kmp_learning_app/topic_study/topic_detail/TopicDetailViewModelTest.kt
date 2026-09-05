@@ -9,6 +9,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -30,11 +31,15 @@ import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStor
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
+import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
+import org.artkachenko.kmp_learning_app.curriculum.learning.LearningLesson
+import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
+import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
 
@@ -87,17 +92,310 @@ internal class TopicDetailViewModelTest {
         assertEquals(0, repository.topicQuestionCalls)
     }
 
+    /**
+     * Both capabilities at once, which is what the production `android_ui` Topic looks like. Study
+     * material and practice are shown together and neither is derived from the other.
+     */
     @Test
-    fun noQuestionsProducesUnavailablePracticeState() = runViewModelTest {
+    fun aStudyableAndPracticeableTopicKeepsBothCapabilities() = runViewModelTest {
+        val topic = Topic("topic_a", "Topic A")
+        val subtopic = Subtopic("subtopic_a", topic.id, "Subtopic A")
+        val viewModel = viewModel(
+            topic.id,
+            FakeCurriculumRepository(
+                topics = listOf(topic),
+                subtopics = listOf(subtopic),
+                questions = listOf(
+                    question("q1", topic.id, subtopic.id),
+                    question("q2", topic.id, subtopic.id),
+                ),
+            ),
+            learningContent = FakeLearningContentRepository(
+                unitsByTopicId = mapOf(topic.id to listOf(learningUnit("unit_a", topic.id))),
+            ),
+        )
+
+        advanceUntilIdle()
+
+        val state = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
+        assertEquals(2, state.topicQuestionCount)
+        assertEquals(listOf("subtopic_a"), state.subtopics.map { it.subtopic.id })
+        val units = assertIs<TopicLearningUnitsUiState.Available>(state.learningUnits)
+        assertEquals(listOf("unit_a"), units.units.map { it.unitId })
+        assertEquals(AssessmentScope.Topic(topic.id), viewModel.topicPracticeScope())
+        assertEquals(
+            AssessmentScope.Subtopic(subtopic.id),
+            viewModel.subtopicPracticeScope(subtopic.id),
+        )
+    }
+
+    /**
+     * The state-model correction this issue exists for: a Topic with authored study material and no
+     * ACTIVE Questions used to become a terminal "no questions" screen that hid the study material
+     * entirely. It is now ordinary Content that simply cannot be practised.
+     */
+    @Test
+    fun aTopicWithLearningUnitsAndNoQuestionsIsStillStudyableContent() = runViewModelTest {
+        val topic = Topic("topic_a", "Topic A")
+        val viewModel = viewModel(
+            topic.id,
+            FakeCurriculumRepository(
+                topics = listOf(topic),
+                subtopics = listOf(Subtopic("subtopic_a", topic.id, "Subtopic A")),
+            ),
+            learningContent = FakeLearningContentRepository(
+                unitsByTopicId = mapOf(topic.id to listOf(learningUnit("unit_a", topic.id))),
+            ),
+        )
+
+        advanceUntilIdle()
+
+        val state = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
+        assertEquals(topic, state.topic)
+        assertEquals(0, state.topicQuestionCount)
+        // No Subtopic has active Questions, so none is offered as a practice row.
+        assertTrue(state.subtopics.isEmpty())
+        val units = assertIs<TopicLearningUnitsUiState.Available>(state.learningUnits)
+        assertEquals(listOf("unit_a"), units.units.map { it.unitId })
+        // Content no longer implies practice: zero Questions still yields no startable scope.
+        assertNull(viewModel.topicPracticeScope())
+        assertNull(viewModel.subtopicPracticeScope("subtopic_a"))
+    }
+
+    /**
+     * The common case today: a Topic the learning curriculum has not been authored for. It is a
+     * successful empty read, not a failure, and the practice experience is untouched.
+     */
+    @Test
+    fun aTopicWithNoLearningUnitsKeepsItsPracticeExperience() = runViewModelTest {
+        val topic = Topic("topic_a", "Topic A")
+        val subtopic = Subtopic("subtopic_a", topic.id, "Subtopic A")
+        val viewModel = viewModel(
+            topic.id,
+            FakeCurriculumRepository(
+                topics = listOf(topic),
+                subtopics = listOf(subtopic),
+                questions = listOf(question("q1", topic.id, subtopic.id)),
+            ),
+        )
+
+        advanceUntilIdle()
+
+        val state = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
+        assertEquals(1, state.topicQuestionCount)
+        assertEquals(
+            TopicLearningUnitsUiState.Available(emptyList()),
+            state.learningUnits,
+        )
+        assertEquals(AssessmentScope.Topic(topic.id), viewModel.topicPracticeScope())
+        assertEquals(
+            AssessmentScope.Subtopic(subtopic.id),
+            viewModel.subtopicPracticeScope(subtopic.id),
+        )
+    }
+
+    /** Neither capability, and still a perfectly valid active Topic rather than NotFound. */
+    @Test
+    fun aTopicWithNeitherQuestionsNorUnitsIsStillFoundContent() = runViewModelTest {
         val topic = Topic("topic_a", "Topic A")
         val viewModel = viewModel(topic.id, FakeCurriculumRepository(topics = listOf(topic)))
 
         advanceUntilIdle()
 
-        val state = assertIs<TopicDetailUiState.NoQuestions>(viewModel.uiState.value)
+        val state = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
         assertEquals(topic, state.topic)
+        assertEquals(0, state.topicQuestionCount)
+        assertTrue(state.subtopics.isEmpty())
+        assertEquals(TopicLearningUnitsUiState.Available(emptyList()), state.learningUnits)
         assertNull(viewModel.topicPracticeScope())
         assertNull(viewModel.subtopicPracticeScope("unknown"))
+    }
+
+    /**
+     * Learning content is a second publisher-owned source, so its failure is reported in its own
+     * state and takes nothing else with it: not the screen, not practice, not analytics.
+     */
+    @Test
+    fun anUnreadableLearningDocumentLeavesTheTopicPracticeableAndAnalysed() = runViewModelTest {
+        val topic = Topic("topic_a", "Topic A")
+        val subtopic = Subtopic("subtopic_a", topic.id, "Subtopic A")
+        val curriculum = FakeCurriculumRepository(
+            topics = listOf(topic),
+            subtopics = listOf(subtopic),
+            questions = listOf(question("q1", topic.id, subtopic.id)),
+        )
+        val history = historyRepository(completedAttempt("attempt", "q1" to true))
+        val viewModel = viewModel(
+            topic.id,
+            curriculum,
+            history,
+            learningContent = FakeLearningContentRepository(
+                failure = IllegalStateException("learning content unavailable"),
+            ),
+        )
+
+        advanceUntilIdle()
+
+        val state = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
+        // Unavailable, never an empty list: "could not be read" and "there is none" are different
+        // statements and the learner must not be told the second one.
+        assertEquals(TopicLearningUnitsUiState.Unavailable, state.learningUnits)
+        assertEquals(AssessmentScope.Topic(topic.id), viewModel.topicPracticeScope())
+        assertEquals(
+            AssessmentScope.Subtopic(subtopic.id),
+            viewModel.subtopicPracticeScope(subtopic.id),
+        )
+        // Analytics derived before the learning read still survive it.
+        assertEquals(100.0, assertNotNull(state.learningContext).accuracyPercentage)
+        assertEquals(
+            100.0,
+            assertNotNull(state.subtopics.single().learningContext).accuracyPercentage,
+        )
+    }
+
+    /** A history refresh after the learning failure re-renders without resurrecting the Units. */
+    @Test
+    fun analyticsArrivingAfterALearningFailureDoNotChangeTheLearningState() = runViewModelTest {
+        val topic = Topic("topic_a", "Topic A")
+        val curriculum = FakeCurriculumRepository(
+            topics = listOf(topic),
+            subtopics = listOf(Subtopic("subtopic_a", topic.id, "Subtopic A")),
+            questions = listOf(question("q1", topic.id, "subtopic_a")),
+        )
+        val history = MutableHistoryRepository()
+        val store = AssessmentHistoryStore(history, CoroutineScope(currentDispatcher()))
+        val viewModel = TopicDetailViewModel(
+            topicId = topic.id,
+            curriculumRepository = curriculum,
+            learningContentRepository = FakeLearningContentRepository(
+                failure = IllegalStateException("learning content unavailable"),
+            ),
+            learningProgressService = LearningProgressService(history, curriculum),
+            historyStore = store,
+        )
+        advanceUntilIdle()
+        assertEquals(
+            TopicLearningUnitsUiState.Unavailable,
+            assertIs<TopicDetailUiState.Content>(viewModel.uiState.value).learningUnits,
+        )
+
+        history.attempts = listOf(completedAttempt("attempt", "q1" to true))
+        store.invalidate()
+        advanceUntilIdle()
+
+        val after = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
+        assertEquals(100.0, assertNotNull(after.learningContext).accuracyPercentage)
+        assertEquals(TopicLearningUnitsUiState.Unavailable, after.learningUnits)
+    }
+
+    /** Authored order is pedagogical order, so it is asserted unsorted and deliberately not A-Z. */
+    @Test
+    fun learningUnitsPreserveTheOrderTheRepositoryReturned() = runViewModelTest {
+        val topic = Topic("topic_a", "Topic A")
+        val viewModel = viewModel(
+            topic.id,
+            FakeCurriculumRepository(topics = listOf(topic)),
+            learningContent = FakeLearningContentRepository(
+                unitsByTopicId = mapOf(
+                    topic.id to listOf(
+                        learningUnit("unit_b", topic.id),
+                        learningUnit("unit_a", topic.id),
+                    ),
+                ),
+            ),
+        )
+
+        advanceUntilIdle()
+
+        val state = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
+        val units = assertIs<TopicLearningUnitsUiState.Available>(state.learningUnits)
+        assertEquals(listOf("unit_b", "unit_a"), units.units.map { it.unitId })
+        assertEquals(listOf("Unit unit_b", "Unit unit_a"), units.units.map { it.title })
+    }
+
+    /** Retired Lessons are not current study material, so they are not counted as any. */
+    @Test
+    fun onlyActiveLessonsAreCounted() = runViewModelTest {
+        val topic = Topic("topic_a", "Topic A")
+        val unit = learningUnit("unit_a", topic.id).copy(
+            lessons = listOf(
+                lesson("lesson_1"),
+                lesson("lesson_2"),
+                lesson("lesson_retired", status = ContentStatus.DEPRECATED),
+            ),
+        )
+        val viewModel = viewModel(
+            topic.id,
+            FakeCurriculumRepository(topics = listOf(topic)),
+            learningContent = FakeLearningContentRepository(
+                unitsByTopicId = mapOf(topic.id to listOf(unit)),
+            ),
+        )
+
+        advanceUntilIdle()
+
+        val state = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
+        val units = assertIs<TopicLearningUnitsUiState.Available>(state.learningUnits)
+        assertEquals(2, units.units.single().activeLessonCount)
+    }
+
+    /**
+     * The Topic must not wait on the second source: it is Content, practiceable, and rendered while
+     * the study section is still resolving.
+     */
+    @Test
+    fun theTopicIsUsableWhileLearningContentIsStillLoading() = runViewModelTest {
+        val topic = Topic("topic_a", "Topic A")
+        val subtopic = Subtopic("subtopic_a", topic.id, "Subtopic A")
+        val learningContent = SuspendingLearningContentRepository()
+        val viewModel = viewModel(
+            topic.id,
+            FakeCurriculumRepository(
+                topics = listOf(topic),
+                subtopics = listOf(subtopic),
+                questions = listOf(question("q1", topic.id, subtopic.id)),
+            ),
+            learningContent = learningContent,
+        )
+
+        advanceUntilIdle()
+
+        val loading = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
+        assertEquals(TopicLearningUnitsUiState.Loading, loading.learningUnits)
+        assertEquals(AssessmentScope.Topic(topic.id), viewModel.topicPracticeScope())
+        assertEquals(
+            AssessmentScope.Subtopic(subtopic.id),
+            viewModel.subtopicPracticeScope(subtopic.id),
+        )
+
+        learningContent.release(listOf(learningUnit("unit_a", topic.id)))
+        advanceUntilIdle()
+
+        val resolved = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
+        val units = assertIs<TopicLearningUnitsUiState.Available>(resolved.learningUnits)
+        assertEquals(listOf("unit_a"), units.units.map { it.unitId })
+    }
+
+    /**
+     * A learning document that names a Topic the assessment curriculum no longer publishes must not
+     * produce orphaned study material: the Topic lookup decides, and it decided NotFound.
+     */
+    @Test
+    fun aMissingTopicIsNotFoundEvenWhenLearningContentNamesIt() = runViewModelTest {
+        val learningContent = FakeLearningContentRepository(
+            unitsByTopicId = mapOf("missing" to listOf(learningUnit("unit_a", "missing"))),
+        )
+        val viewModel = viewModel(
+            "missing",
+            FakeCurriculumRepository(topics = emptyList()),
+            learningContent = learningContent,
+        )
+
+        advanceUntilIdle()
+
+        assertEquals(TopicDetailUiState.NotFound, viewModel.uiState.value)
+        // The learning repository was never asked, because there is no Topic to ask about.
+        assertTrue(learningContent.topicReadIds.isEmpty())
     }
 
     @Test
@@ -352,6 +650,7 @@ internal class TopicDetailViewModelTest {
             val viewModel = TopicDetailViewModel(
                 topicId = topic.id,
                 curriculumRepository = curriculum,
+                learningContentRepository = FakeLearningContentRepository(),
                 learningProgressService = LearningProgressService(history, curriculum),
                 historyStore = store,
             )
@@ -378,10 +677,12 @@ internal class TopicDetailViewModelTest {
         topicId: String,
         curriculum: CurriculumRepository,
         history: AssessmentRepository = EmptyHistoryRepository,
+        learningContent: LearningContentRepository = FakeLearningContentRepository(),
     ): TopicDetailViewModel =
         TopicDetailViewModel(
             topicId = topicId,
             curriculumRepository = curriculum,
+            learningContentRepository = learningContent,
             learningProgressService = LearningProgressService(history, curriculum),
             historyStore = AssessmentHistoryStore(history, CoroutineScope(currentDispatcher())),
         )
@@ -462,6 +763,63 @@ internal class TopicDetailViewModelTest {
         explanation = "Explanation",
         sources = listOf(SourceReference("Source", "https://example.com")),
     )
+
+    private fun learningUnit(id: String, topicId: String) = LearningUnit(
+        id = id,
+        topicId = topicId,
+        title = "Unit $id",
+        summary = "Summary for $id",
+        lessons = listOf(lesson("${id}_lesson")),
+    )
+
+    private fun lesson(id: String, status: ContentStatus = ContentStatus.ACTIVE) = LearningLesson(
+        id = id,
+        title = "Lesson $id",
+        summary = "Summary for $id",
+        primarySubtopicIds = emptyList(),
+        supportingSubtopicIds = emptyList(),
+        sections = emptyList(),
+        relatedLessonIds = emptyList(),
+        sources = emptyList(),
+        status = status,
+    )
+
+    private class FakeLearningContentRepository(
+        private val unitsByTopicId: Map<String, List<LearningUnit>> = emptyMap(),
+        private val failure: Throwable? = null,
+    ) : LearningContentRepository {
+        val topicReadIds = mutableListOf<String>()
+
+        override suspend fun getActiveUnitsByTopic(topicId: String): List<LearningUnit> {
+            failure?.let { throw it }
+            topicReadIds += topicId
+            return unitsByTopicId[topicId].orEmpty()
+        }
+
+        override suspend fun getUnitById(unitId: String): LearningUnit? =
+            error("Not used by TopicDetailViewModel.")
+
+        override suspend fun getLessonById(lessonId: String): LearningLesson? =
+            error("Not used by TopicDetailViewModel.")
+    }
+
+    /** Holds the Topic's Units until [release], so the Topic can be observed without them. */
+    private class SuspendingLearningContentRepository : LearningContentRepository {
+        private val gate = CompletableDeferred<List<LearningUnit>>()
+
+        fun release(units: List<LearningUnit>) {
+            gate.complete(units)
+        }
+
+        override suspend fun getActiveUnitsByTopic(topicId: String): List<LearningUnit> =
+            gate.await()
+
+        override suspend fun getUnitById(unitId: String): LearningUnit? =
+            error("Not used by TopicDetailViewModel.")
+
+        override suspend fun getLessonById(lessonId: String): LearningLesson? =
+            error("Not used by TopicDetailViewModel.")
+    }
 
     private class FakeCurriculumRepository(
         private val topics: List<Topic>,

@@ -3,7 +3,22 @@
 ## Build And Test (`.github/workflows/main.yml`)
 
 Runs on pull requests to `main`, pushes to `main`, and manual dispatch. Ubuntu runner,
-Temurin JDK 21, one Gradle invocation:
+Temurin JDK 21, two steps.
+
+First a standard-library-only Python audit of authored content, which needs no toolchain
+and fails in seconds:
+
+```sh
+python3 -m unittest discover -s tools -p 'test_*.py'
+python3 tools/learning_question_coverage.py --check
+```
+
+`--check` compares the committed snapshot in `docs/content/learning-question-coverage.md`
+against what the two authored curricula currently derive, so a learning-mapping or
+Question change that leaves the snapshot stale fails the build. CI never regenerates the
+snapshot; `--write` stays an authoring step.
+
+Then one Gradle invocation:
 
 ```sh
 ./gradlew --no-daemon :androidApp:assembleDebug :desktopApp:assemble :webApp:assemble :shared:check

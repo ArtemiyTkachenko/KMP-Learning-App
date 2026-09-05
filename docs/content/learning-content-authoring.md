@@ -362,6 +362,20 @@ A blueprint is not required to author production Sources — that is the job of 
 A blueprint should, where useful, identify the likely authoritative **source families** for
 each area so the author does not start from a blank search.
 
+### What validation can and cannot check
+
+`LearningCurriculumValidator` (`shared/.../curriculum/learning/validation/`) enforces the
+machine-checkable half of this rule: every active Lesson carries at least one Source, and
+every Source has a non-blank, non-placeholder title and a syntactically valid `http(s)` URL
+whose host is not an unreachable one such as `localhost`.
+
+Whether a Source is **authoritative**, current, and actually supports the claim it is
+attached to is an editorial judgement and stays with the author and reviewer. It is
+deliberately not expressed as a hostname allowlist: authoritative documentation for
+Android, Kotlin, Room, Ktor, Koin, and every library the curriculum grows into lives on
+hosts no fixed list could enumerate, so an allowlist would reject valid sources while
+proving nothing about the ones it admits.
+
 ## Rule 10 — Relationship to the Question Bank
 
 The existing Question bank is a valuable **acceptance aid** for lesson authoring. A Lesson

@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app
 
+import org.artkachenko.kmp_learning_app.curriculum.learning.content.learningContentModule
 import org.artkachenko.kmp_learning_app.data.local.assessment.assessmentDataModule
 import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDataInitializer
 import org.artkachenko.kmp_learning_app.data.local.curriculum.curriculumDataModule
@@ -15,6 +16,7 @@ public fun startIosLocalDataGraph() {
     startKoin {
         modules(
             curriculumDataModule,
+            learningContentModule,
             assessmentDataModule,
             savedQuestionDataModule,
             topicStudyPresentationModule,

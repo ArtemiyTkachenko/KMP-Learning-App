@@ -1,6 +1,7 @@
 package org.artkachenko.kmp_learning_app
 
 import android.app.Application
+import org.artkachenko.kmp_learning_app.curriculum.learning.content.learningContentModule
 import org.artkachenko.kmp_learning_app.data.local.assessment.assessmentDataModule
 import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDataInitializer
 import org.artkachenko.kmp_learning_app.data.local.curriculum.androidCurriculumDataModule
@@ -18,6 +19,7 @@ public fun startAndroidLocalDataGraph(application: Application) {
         androidContext(application.applicationContext)
         modules(
             curriculumDataModule,
+            learningContentModule,
             assessmentDataModule,
             savedQuestionDataModule,
             topicStudyPresentationModule,

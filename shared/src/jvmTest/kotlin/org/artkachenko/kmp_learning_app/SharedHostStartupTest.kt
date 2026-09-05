@@ -23,6 +23,8 @@ import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.curriculum.learning.content.learningContentModule
+import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
 import org.artkachenko.kmp_learning_app.data.local.assessment.assessmentDataModule
 import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDataInitializer
 import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDatabase
@@ -76,6 +78,7 @@ internal class SharedHostStartupTest {
                 // The only binding a platform host adds on top of the shared modules.
                 module { single<CurriculumDatabase> { database } },
                 curriculumDataModule,
+                learningContentModule,
                 assessmentDataModule,
                 savedQuestionDataModule,
                 topicStudyPresentationModule,
@@ -88,6 +91,7 @@ internal class SharedHostStartupTest {
             assertIs<CurriculumImporter>(koin.get<CurriculumImporter>())
             assertIs<CurriculumDataInitializer>(koin.get<CurriculumDataInitializer>())
             assertIs<CurriculumRepository>(koin.get<CurriculumRepository>())
+            assertIs<LearningContentRepository>(koin.get<LearningContentRepository>())
             assertIs<AssessmentRepository>(koin.get<AssessmentRepository>())
             assertIs<AssessmentQuestionSelector>(koin.get<AssessmentQuestionSelector>())
             assertIs<AssessmentEngine>(koin.get<AssessmentEngine>())

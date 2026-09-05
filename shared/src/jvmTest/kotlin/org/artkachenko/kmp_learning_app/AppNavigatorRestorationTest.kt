@@ -151,6 +151,40 @@ internal class AppNavigatorRestorationTest {
         assertEquals(AppRoute.SavedQuestions, shell.navigator.currentRoute)
     }
 
+    /**
+     * The learning detail the learner had open has to come back with them, and it has to come back
+     * on the Learn stack it was opened from — including the parent Unit the Lesson route carries,
+     * without which the restored destination could no longer prove what it belongs to.
+     */
+    @Test
+    fun anOpenLessonSurvivesRestorationWithItsWholeLearnStack() = runComposeUiTest {
+        val shell = restorableShell()
+        shell.navigator.push(AppRoute.Topic("android_ui"))
+        shell.navigator.push(AppRoute.LearningUnit("unit_thinking_in_compose"))
+        shell.navigator.push(
+            AppRoute.LearningLesson(
+                unitId = "unit_thinking_in_compose",
+                lessonId = "lesson_declarative_ui",
+            ),
+        )
+        waitForIdle()
+
+        restore(shell)
+
+        assertEquals(AppTopLevelDestination.TOPICS, shell.navigator.area)
+        assertEquals(
+            AppRoute.LearningLesson("unit_thinking_in_compose", "lesson_declarative_ui"),
+            shell.navigator.currentRoute,
+        )
+        shell.navigator.popBack()
+        assertEquals(
+            AppRoute.LearningUnit("unit_thinking_in_compose"),
+            shell.navigator.currentRoute,
+        )
+        shell.navigator.popBack()
+        assertEquals(AppRoute.Topic("android_ui"), shell.navigator.currentRoute)
+    }
+
     @Test
     fun topicAndSubtopicSearchTargetSurviveRestorationAsStableIds() = runComposeUiTest {
         val shell = restorableShell()

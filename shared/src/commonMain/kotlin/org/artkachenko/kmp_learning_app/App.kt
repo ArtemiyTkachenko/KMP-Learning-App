@@ -28,6 +28,8 @@ import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsDestinatio
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.FocusedPracticeDestination
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.toAssessmentConfig
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultDestination
+import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonDestination
+import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitDestination
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderDestination
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toAssessmentScope
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toPracticeBuilderRoute
@@ -249,6 +251,38 @@ private fun AppShell(
                         onConfigureTargetedPractice = { preset ->
                             navigator.push(preset.toPracticeBuilderRoute())
                         },
+                        // The study half of the same Topic. Only the stable Unit ID crosses this
+                        // boundary; the Unit itself is resolved on arrival, and Topic Detail stays
+                        // unaware that routes exist.
+                        onLearningUnitClick = { unitId ->
+                            navigator.push(AppRoute.LearningUnit(unitId = unitId))
+                        },
+                    )
+                }
+                entry<AppRoute.LearningUnit> { route ->
+                    LearningUnitDestination(
+                        unitId = route.unitId,
+                        onBack = { popBack() },
+                        // The parent Unit comes from the route being rendered, never from what the
+                        // screen currently has loaded, so the pair pushed here is always the pair
+                        // the learner navigated through.
+                        onLessonClick = { lessonId ->
+                            navigator.push(
+                                AppRoute.LearningLesson(
+                                    unitId = route.unitId,
+                                    lessonId = lessonId,
+                                ),
+                            )
+                        },
+                    )
+                }
+                entry<AppRoute.LearningLesson> { route ->
+                    LearningLessonDestination(
+                        unitId = route.unitId,
+                        lessonId = route.lessonId,
+                        // An ordinary stack pop: the Unit is directly beneath this entry, and the
+                        // Topic beneath that, so nothing is reconstructed and no entry duplicated.
+                        onBack = { popBack() },
                     )
                 }
                 entry<AppRoute.PracticeBuilderTopic> { route ->

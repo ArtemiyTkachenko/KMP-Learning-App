@@ -42,6 +42,39 @@ internal sealed interface AppRoute : NavKey {
         val subtopicId: String? = null,
     ) : AppRoute
 
+    /**
+     * One authored Learning Unit's overview.
+     *
+     * Only the stable Unit ID travels. Title, summary, and the Lessons that make the Unit up are
+     * publisher-owned content resolved from `LearningContentRepository` on arrival, so a re-authored
+     * Unit is never shown under prose that was serialized into the back stack when it was opened.
+     *
+     * The home Topic is deliberately absent: this route is pushed from `Topic`, so back returns
+     * there through the stack rather than through a Topic ID reconstructed here.
+     */
+    @Serializable
+    data class LearningUnit(
+        val unitId: String,
+    ) : AppRoute
+
+    /**
+     * One Lesson, addressed within the Unit it was opened from.
+     *
+     * Lesson IDs are unique across the whole learning document, so [unitId] is not needed to find
+     * the Lesson — it is here to say which Unit the learner is reading it in. The destination
+     * resolves the Lesson *through* that Unit, which makes parent membership a precondition rather
+     * than an assumption: an inconsistent pair becomes a controlled unavailable state instead of
+     * quietly opening another Unit's Lesson. It also keeps the authored ordering context E21-04
+     * needs for previous/next without adding a route then.
+     *
+     * No Lesson prose travels: title, summary, sections, and Sources are resolved on arrival.
+     */
+    @Serializable
+    data class LearningLesson(
+        val unitId: String,
+        val lessonId: String,
+    ) : AppRoute
+
     @Serializable
     data class MixedInterview(
         val questionCount: Int,

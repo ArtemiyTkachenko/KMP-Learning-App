@@ -4,6 +4,7 @@ import androidx.navigation3.runtime.NavKey
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.assertSame
@@ -378,6 +379,112 @@ internal class AppNavigationTest {
         val route: AppRoute = AppRoute.SavedQuestions
 
         assertSame(AppRoute.SavedQuestions, route)
+    }
+
+    /**
+     * The Learn stack EPIC-21 builds: catalogue, Topic, Unit, Lesson. Each step is a push onto the
+     * area's existing stack, so no new area appears and back unwinds it one destination at a time.
+     */
+    @Test
+    fun learningRoutesExtendTheLearnStackAndBackUnwindsItToTheOriginatingTopic() {
+        val navigator = navigator()
+
+        navigator.push(AppRoute.Topic("android_ui"))
+        navigator.push(AppRoute.LearningUnit("unit_thinking_in_compose"))
+        navigator.push(
+            AppRoute.LearningLesson(
+                unitId = "unit_thinking_in_compose",
+                lessonId = "lesson_declarative_ui",
+            ),
+        )
+
+        assertEquals(AppTopLevelDestination.TOPICS, navigator.area)
+        assertEquals(
+            listOf<NavKey>(
+                AppRoute.Topics,
+                AppRoute.Topic("android_ui"),
+                AppRoute.LearningUnit("unit_thinking_in_compose"),
+                AppRoute.LearningLesson("unit_thinking_in_compose", "lesson_declarative_ui"),
+            ),
+            navigator.backStack.toList(),
+        )
+
+        assertTrue(navigator.popBack())
+        assertEquals(AppRoute.LearningUnit("unit_thinking_in_compose"), navigator.currentRoute)
+        assertTrue(navigator.popBack())
+        assertEquals(AppRoute.Topic("android_ui"), navigator.currentRoute)
+    }
+
+    @Test
+    fun learningRoutesAreLearnDetailsAndNotAFifthArea() {
+        assertNull(AppTopLevelDestination.forRoute(AppRoute.LearningUnit("unit")))
+        assertNull(AppTopLevelDestination.forRoute(AppRoute.LearningLesson("unit", "lesson")))
+    }
+
+    @Test
+    fun learningRoutesKeepAreaNavigationVisible() {
+        // Reading is browsing, not an assessment in progress: leaving for another area costs the
+        // learner nothing, exactly as on Topic detail.
+        assertTrue(AppRoute.LearningUnit("unit").showsAreaNavigation())
+        assertTrue(AppRoute.LearningLesson("unit", "lesson").showsAreaNavigation())
+    }
+
+    @Test
+    fun switchingAreasFromALessonLeavesTheLearningStackWhereItWas() {
+        val navigator = navigator()
+        navigator.push(AppRoute.Topic("android_ui"))
+        navigator.push(AppRoute.LearningUnit("unit_thinking_in_compose"))
+        navigator.push(
+            AppRoute.LearningLesson("unit_thinking_in_compose", "lesson_declarative_ui"),
+        )
+
+        navigator.select(AppTopLevelDestination.PROGRESS)
+        assertEquals(AppRoute.Progress, navigator.currentRoute)
+
+        navigator.select(AppTopLevelDestination.TOPICS)
+        assertEquals(
+            AppRoute.LearningLesson("unit_thinking_in_compose", "lesson_declarative_ui"),
+            navigator.currentRoute,
+        )
+    }
+
+    /** The existing reselect policy, which learning detail must not become an exception to. */
+    @Test
+    fun reselectingLearnFromALessonReturnsToTheCatalogueRoot() {
+        val navigator = navigator()
+        navigator.push(AppRoute.Topic("android_ui"))
+        navigator.push(AppRoute.LearningUnit("unit_thinking_in_compose"))
+        navigator.push(
+            AppRoute.LearningLesson("unit_thinking_in_compose", "lesson_declarative_ui"),
+        )
+
+        navigator.select(AppTopLevelDestination.TOPICS)
+
+        assertEquals(AppRoute.Topics, navigator.currentRoute)
+    }
+
+    /**
+     * Identity only. Title, summary, Lesson prose, and Sources are resolved from
+     * `LearningContentRepository` on arrival, so nothing publisher-owned is serialized into the
+     * back stack where a later edit could leave it stale.
+     */
+    @Test
+    fun learningRoutesCarryStableIdentitiesOnly() {
+        val unit = AppRoute.LearningUnit(unitId = "unit_thinking_in_compose")
+        assertEquals("unit_thinking_in_compose", unit.unitId)
+        assertEquals(AppRoute.LearningUnit("unit_thinking_in_compose"), unit)
+
+        val lesson = AppRoute.LearningLesson(
+            unitId = "unit_thinking_in_compose",
+            lessonId = "lesson_declarative_ui",
+        )
+        assertEquals("unit_thinking_in_compose", lesson.unitId)
+        assertEquals("lesson_declarative_ui", lesson.lessonId)
+        // The parent is part of the identity: the same Lesson under another Unit is another route.
+        assertNotEquals(
+            lesson,
+            AppRoute.LearningLesson("unit_other", "lesson_declarative_ui"),
+        )
     }
 
     @Test

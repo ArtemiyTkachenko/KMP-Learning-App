@@ -44,6 +44,10 @@ import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsViewModel
 import org.artkachenko.kmp_learning_app.saved_questions.repository.SavedQuestionRepository
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
+import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonUiState
+import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonViewModel
+import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitUiState
+import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitViewModel
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
@@ -164,6 +168,22 @@ internal class TopicStudyPresentationModuleTest {
             assertIs<ProgressTopicViewModel>(
                 app.koin.get<ProgressTopicViewModel> { parametersOf("topic") },
             )
+            // The learning destinations, resolved against the real bundled document. Asserting on
+            // shipped identities rather than on the type alone is what proves the parameters
+            // arrive intact: the Lesson takes two Strings, and swapping them would resolve to
+            // NotFound instead of the Lesson the learner asked for.
+            val unitViewModel = app.koin.get<LearningUnitViewModel> {
+                parametersOf("unit_thinking_in_compose")
+            }
+            val lessonViewModel = app.koin.get<LearningLessonViewModel> {
+                parametersOf("unit_thinking_in_compose", "lesson_declarative_ui")
+            }
+            advanceUntilIdle()
+            val unitState = assertIs<LearningUnitUiState.Content>(unitViewModel.uiState.value)
+            assertEquals("unit_thinking_in_compose", unitState.unitId)
+            val lessonState = assertIs<LearningLessonUiState.Content>(lessonViewModel.uiState.value)
+            assertEquals("unit_thinking_in_compose", lessonState.unitId)
+            assertEquals("lesson_declarative_ui", lessonState.lessonId)
             assertIs<MistakeReviewService>(app.koin.get<MistakeReviewService>())
             assertIs<MistakeReviewViewModel>(app.koin.get<MistakeReviewViewModel>())
             // One holder for the whole app: every review surface must observe the same instance.

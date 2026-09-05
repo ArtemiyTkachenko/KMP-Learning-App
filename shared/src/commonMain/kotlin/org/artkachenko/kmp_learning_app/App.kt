@@ -283,6 +283,19 @@ private fun AppShell(
                         // An ordinary stack pop: the Unit is directly beneath this entry, and the
                         // Topic beneath that, so nothing is reconstructed and no entry duplicated.
                         onBack = { popBack() },
+                        // Reading on replaces this Lesson instead of stacking another one. A Unit
+                        // is read start to finish, so pushing would leave a learner ten Back
+                        // presses from the Unit they came from — and Back means "leave the
+                        // reader", which is a different action from Previous. The Unit comes from
+                        // the route being rendered, so the pair always names a real containment.
+                        onNavigateLesson = { lessonId ->
+                            navigator.replaceTop(
+                                AppRoute.LearningLesson(
+                                    unitId = route.unitId,
+                                    lessonId = lessonId,
+                                ),
+                            )
+                        },
                     )
                 }
                 entry<AppRoute.PracticeBuilderTopic> { route ->

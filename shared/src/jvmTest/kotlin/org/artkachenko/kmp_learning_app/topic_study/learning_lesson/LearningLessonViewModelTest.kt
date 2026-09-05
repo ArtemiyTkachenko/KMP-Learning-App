@@ -4,6 +4,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -13,6 +14,10 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
+import org.artkachenko.kmp_learning_app.curriculum.SourceReference
+import org.artkachenko.kmp_learning_app.curriculum.learning.LearningBlock
+import org.artkachenko.kmp_learning_app.curriculum.learning.LearningDepth
+import org.artkachenko.kmp_learning_app.curriculum.learning.LearningSection
 import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
 import org.artkachenko.kmp_learning_app.topic_study.FakeLearningContentRepository
 import org.artkachenko.kmp_learning_app.topic_study.testLearningLesson
@@ -44,6 +49,108 @@ internal class LearningLessonViewModelTest {
         assertEquals("lesson_a", state.lessonId)
         assertEquals("Title of lesson_a", state.title)
         assertEquals("Summary of lesson_a", state.summary)
+    }
+
+    /**
+     * The authored body reaches the reader whole and in authored order. Sections are not regrouped
+     * by depth and Sources are not sorted: both sequences are the document's, not the screen's.
+     */
+    @Test
+    fun theAuthoredBodyAndSourcesReachContentInAuthoredOrder() = runViewModelTest {
+        val sections = listOf(
+            LearningSection(LearningDepth.SENIOR, listOf(LearningBlock.Paragraph("deeper"))),
+            LearningSection(LearningDepth.CORE, listOf(LearningBlock.Paragraph("core")), "Basics"),
+        )
+        val sources = listOf(
+            SourceReference("Second in the document", "https://example.com/b"),
+            SourceReference("First in the document", "https://example.com/a"),
+        )
+        val viewModel = viewModel(
+            unitId = "unit_a",
+            lessonId = "lesson_a",
+            repository = FakeLearningContentRepository(
+                units = listOf(
+                    testLearningUnit(
+                        id = "unit_a",
+                        lessons = listOf(
+                            testLearningLesson("lesson_a", sections = sections, sources = sources),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        advanceUntilIdle()
+
+        val state = assertIs<LearningLessonUiState.Content>(viewModel.uiState.value)
+        assertEquals(sections, state.sections)
+        assertEquals(sources, state.sources)
+    }
+
+    @Test
+    fun theFirstLessonHasNoPreviousAndPointsAtTheSecond() = runViewModelTest {
+        val state = adjacentState(lessonId = "lesson_a")
+
+        assertNull(state.previousLesson)
+        assertEquals(AdjacentLessonUiModel("lesson_b", "Title of lesson_b"), state.nextLesson)
+    }
+
+    @Test
+    fun aMiddleLessonHasBothNeighbours() = runViewModelTest {
+        val state = adjacentState(lessonId = "lesson_b")
+
+        assertEquals(AdjacentLessonUiModel("lesson_a", "Title of lesson_a"), state.previousLesson)
+        assertEquals(AdjacentLessonUiModel("lesson_c", "Title of lesson_c"), state.nextLesson)
+    }
+
+    @Test
+    fun theLastLessonHasNoNext() = runViewModelTest {
+        val state = adjacentState(lessonId = "lesson_c")
+
+        assertEquals(AdjacentLessonUiModel("lesson_b", "Title of lesson_b"), state.previousLesson)
+        assertNull(state.nextLesson)
+    }
+
+    /**
+     * A retired Lesson is not a stop on the way between two current ones. It cannot be opened, so
+     * offering it as Next would hand the learner a control that leads to an unavailable page.
+     */
+    @Test
+    fun aDeprecatedSiblingIsSkippedInBothDirections() = runViewModelTest {
+        val repository = FakeLearningContentRepository(
+            units = listOf(
+                testLearningUnit(
+                    id = "unit_a",
+                    lessons = listOf(
+                        testLearningLesson("lesson_a"),
+                        testLearningLesson("lesson_retired", ContentStatus.DEPRECATED),
+                        testLearningLesson("lesson_c"),
+                    ),
+                ),
+            ),
+        )
+
+        val first = contentState("unit_a", "lesson_a", repository)
+        assertEquals(AdjacentLessonUiModel("lesson_c", "Title of lesson_c"), first.nextLesson)
+
+        val last = contentState("unit_a", "lesson_c", repository)
+        assertEquals(AdjacentLessonUiModel("lesson_a", "Title of lesson_a"), last.previousLesson)
+    }
+
+    @Test
+    fun theOnlyLessonInAUnitHasNeitherNeighbour() = runViewModelTest {
+        val state = contentState(
+            unitId = "unit_a",
+            lessonId = "lesson_a",
+            repository = FakeLearningContentRepository(
+                units = listOf(
+                    testLearningUnit("unit_a", lessons = listOf(testLearningLesson("lesson_a"))),
+                ),
+            ),
+        )
+
+        assertNull(state.previousLesson)
+        assertNull(state.nextLesson)
     }
 
     @Test
@@ -176,6 +283,35 @@ internal class LearningLessonViewModelTest {
 
         val state = assertIs<LearningLessonUiState.Content>(viewModel.uiState.value)
         assertEquals("lesson_a", state.lessonId)
+    }
+
+    /** Three current Lessons in authored order, which is the sequence previous/next walks. */
+    private suspend fun TestScope.adjacentState(lessonId: String): LearningLessonUiState.Content =
+        contentState(
+            unitId = "unit_a",
+            lessonId = lessonId,
+            repository = FakeLearningContentRepository(
+                units = listOf(
+                    testLearningUnit(
+                        id = "unit_a",
+                        lessons = listOf(
+                            testLearningLesson("lesson_a"),
+                            testLearningLesson("lesson_b"),
+                            testLearningLesson("lesson_c"),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+    private suspend fun TestScope.contentState(
+        unitId: String,
+        lessonId: String,
+        repository: LearningContentRepository,
+    ): LearningLessonUiState.Content {
+        val viewModel = viewModel(unitId, lessonId, repository)
+        advanceUntilIdle()
+        return assertIs(viewModel.uiState.value)
     }
 
     private fun viewModel(

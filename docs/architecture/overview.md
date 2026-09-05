@@ -233,8 +233,35 @@ Lesson, and a Unit/Lesson mismatch all reach the learner as unavailable, while a
 document that could not be read is a separate, retryable `Error`. The Unit
 overview lists ACTIVE Lessons in authored order and never sorts them, and an
 ACTIVE Unit with no current Lessons renders as an empty overview rather than an
-error. E21-03's Lesson screen presents title and summary only; the structured
-section body and Sources are E21-04's.
+error.
+
+E21-04 makes the Lesson destination the reading surface. `LearningLessonUiState.Content`
+carries the authored `LearningSection` and `SourceReference` values directly rather than
+a parallel UI hierarchy: those models are already presentation-independent, so mirroring
+every block variant would duplicate the document model without adding a boundary. The
+rule runs one way only — no colour, spacing, or icon may enter `LearningBlock`,
+`LearningDepth`, or `LearningCalloutKind`, and every such choice lives in
+`LearningLessonBlocks.kt`. That file renders Sections in authored order (never regrouped
+by depth), with `CORE`/`PRACTICAL`/`SENIOR` shown as localized learner-facing labels and
+the marker drawn once per run of same-depth Sections. Its `when` over `LearningBlock` is
+exhaustive with no `else`, so a future authored variant fails to compile until it has a
+renderer. Paragraph text is rendered as plain text: no Markdown, HTML, or inline-formatting
+parsing exists anywhere in the reader. Code and Comparison blocks each scroll horizontally
+inside their own container, so content wider than the window never widens the page, and the
+whole Comparison shares one scroll state so its columns stay under their headers. Sources
+are optional trailing reference material shown by authored title and opened through
+Compose's shared `LocalUriHandler`; a rejected URI is reported beside the link rather than
+crashing, and no Source URL ever becomes navigation state.
+
+Previous/next is the current Unit's ACTIVE Lessons in authored order — not global Lesson
+order and not `relatedLessonIds` — derived in `LearningLessonViewModel` from the same
+filtered list that enforces containment, so a retired Lesson is neither openable nor a
+waypoint between two current ones. The first Lesson exposes no Previous and the last no
+Next; the controls are absent rather than disabled. The screen emits only a stable Lesson
+ID, and the shell answers with `replaceTop` rather than `push`: a Unit is read end to end,
+so pushing would leave a learner N Back presses from the Unit overview, and Back must keep
+meaning "leave the reader" while Previous means "show the earlier sibling". The reader's
+scroll state is keyed on the Lesson ID so a replaced route starts at the top.
 
 Both routes are Learn details rather than a fifth area, so
 `showsAreaNavigation()` keeps the navigation control on them, switching areas
@@ -242,6 +269,9 @@ preserves the open Unit or Lesson, and re-selecting Learn still returns the stac
 to its root. Back is an ordinary `popBack()` from Lesson to Unit to the
 originating Topic; nothing reconstructs a route.
 
+`LearningReaderJourneyIntegrationTest` drives the whole reading path over the
+real `App()` on the shipped learning document, including that reading on replaces
+the Lesson entry so one Back press still leaves the reader for its Unit.
 `LearningContentEndToEndTest` verifies that whole path on the shipped content —
 resource, loader, repository — including authored Unit and Lesson order, stable
 identity, Sources, structured blocks, and the cross-Topic supporting concept the

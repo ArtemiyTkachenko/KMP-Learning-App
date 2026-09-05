@@ -5,6 +5,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -16,6 +17,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.artkachenko.kmp_learning_app.curriculum.learning.content.BundledLearningContentRepository
 import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
+import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.AdjacentLessonUiModel
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonUiState
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonViewModel
 import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitUiState
@@ -26,8 +28,9 @@ import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitVi
  *
  * Nothing is faked and no title is hardcoded: the Unit and its Lessons are read through the same
  * repository the destinations use, so retiring a Lesson or authoring another one changes what this
- * asserts, which is the point. The Lesson prose itself is not asserted — E21-03 is about identity,
- * order, and navigation, and E21-04 owns what a Lesson renders.
+ * asserts, which is the point. Structure is asserted rather than prose — that a Lesson has
+ * Sections, Sources, and the right neighbours — because pinning authored sentences would make an
+ * editorial improvement look like a regression.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class LearningNavigationIntegrationTest {
@@ -83,6 +86,87 @@ internal class LearningNavigationIntegrationTest {
             navigator.popBack()
             assertEquals(AppRoute.Topic(AndroidUiTopicId), navigator.currentRoute)
         }
+
+    /**
+     * The shipped structured body reaches the reader's state, not just the Lesson's identity.
+     *
+     * Structural rather than textual: every current Lesson must arrive with Sections and with the
+     * authoritative Sources the authoring contract requires, and its neighbours must be its Unit's
+     * other ACTIVE Lessons in authored order — first with no Previous, last with no Next.
+     */
+    @Test
+    fun everyProductionComposeLessonReachesTheReaderWithItsAuthoredBodyAndNeighbours() =
+        runIntegrationTest {
+            val repository: LearningContentRepository = BundledLearningContentRepository()
+            val unit = repository.getUnitById(ComposeUnitId)!!
+            val lessonIds = unit.lessons.map { it.id }
+
+            val states = lessonIds.map { lessonId ->
+                assertIs<LearningLessonUiState.Content>(
+                    lessonState(ComposeUnitId, lessonId, repository),
+                )
+            }
+
+            states.forEachIndexed { index, state ->
+                assertTrue(
+                    state.sections.isNotEmpty(),
+                    "${state.lessonId} reached the reader with no authored sections.",
+                )
+                assertTrue(
+                    state.sections.all { it.blocks.isNotEmpty() },
+                    "${state.lessonId} has an authored section with no blocks.",
+                )
+                assertTrue(
+                    state.sources.isNotEmpty(),
+                    "${state.lessonId} reached the reader with no authoritative sources.",
+                )
+                assertTrue(state.sources.all { it.title.isNotBlank() })
+
+                val previous = lessonIds.getOrNull(index - 1)
+                val next = lessonIds.getOrNull(index + 1)
+                assertEquals(previous, state.previousLesson?.lessonId)
+                assertEquals(next, state.nextLesson?.lessonId)
+            }
+            // The ends of the sequence, stated explicitly: nothing precedes the first Lesson and
+            // nothing follows the last, so neither control is offered where it cannot lead.
+            assertNull(states.first().previousLesson)
+            assertNull(states.last().nextLesson)
+            assertEquals(
+                AdjacentLessonUiModel(lessonIds[1], unit.lessons[1].title),
+                states.first().nextLesson,
+            )
+        }
+
+    /**
+     * Reading on replaces the Lesson entry rather than stacking another one, so a learner who has
+     * read a whole Unit is still one Back press from the Unit overview rather than N.
+     */
+    @Test
+    fun readingOnReplacesTheLessonEntrySoBackStillLeavesTheReader() = runIntegrationTest {
+        val repository: LearningContentRepository = BundledLearningContentRepository()
+        val lessonIds = repository.getUnitById(ComposeUnitId)!!.lessons.map { it.id }
+        val navigator = navigator()
+        navigator.push(AppRoute.Topic(AndroidUiTopicId))
+        navigator.push(AppRoute.LearningUnit(ComposeUnitId))
+        navigator.push(AppRoute.LearningLesson(ComposeUnitId, lessonIds.first()))
+        val depthWhileReading = navigator.backStack.size
+
+        // Next, twice: the shell replaces the top entry with the sibling the reader emitted.
+        navigator.replaceTop(AppRoute.LearningLesson(ComposeUnitId, lessonIds[1]))
+        navigator.replaceTop(AppRoute.LearningLesson(ComposeUnitId, lessonIds[2]))
+
+        assertEquals(AppRoute.LearningLesson(ComposeUnitId, lessonIds[2]), navigator.currentRoute)
+        assertEquals(depthWhileReading, navigator.backStack.size)
+
+        // Previous is a sibling move too, not a pop: it shows the earlier Lesson without leaving.
+        navigator.replaceTop(AppRoute.LearningLesson(ComposeUnitId, lessonIds[1]))
+        assertEquals(AppRoute.LearningLesson(ComposeUnitId, lessonIds[1]), navigator.currentRoute)
+        assertEquals(depthWhileReading, navigator.backStack.size)
+
+        // Back after three sibling moves still leaves the reader for the Unit it was opened from.
+        navigator.popBack()
+        assertEquals(AppRoute.LearningUnit(ComposeUnitId), navigator.currentRoute)
+    }
 
     /**
      * The route-integrity rule against real content: a shipped Lesson paired with a Unit it does

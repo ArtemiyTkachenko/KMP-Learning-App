@@ -1,7 +1,9 @@
 package org.artkachenko.kmp_learning_app.topic_study
 
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
+import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningLesson
+import org.artkachenko.kmp_learning_app.curriculum.learning.LearningSection
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
 import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
 
@@ -29,6 +31,8 @@ internal fun testLearningUnit(
 internal fun testLearningLesson(
     id: String,
     status: ContentStatus = ContentStatus.ACTIVE,
+    sections: List<LearningSection> = emptyList(),
+    sources: List<SourceReference> = emptyList(),
 ): LearningLesson =
     LearningLesson(
         id = id,
@@ -36,9 +40,9 @@ internal fun testLearningLesson(
         summary = "Summary of $id",
         primarySubtopicIds = emptyList(),
         supportingSubtopicIds = emptyList(),
-        sections = emptyList(),
+        sections = sections,
         relatedLessonIds = emptyList(),
-        sources = emptyList(),
+        sources = sources,
         status = status,
     )
 

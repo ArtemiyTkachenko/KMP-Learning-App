@@ -37,6 +37,7 @@ import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingFinishTag
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingSubmitTag
+import org.artkachenko.kmp_learning_app.curriculum.learning.content.learningContentModule
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
@@ -295,6 +296,7 @@ internal class FocusedLearningJourneyIntegrationTest {
             repository = repository,
             modules = listOf(
                 curriculumDataModule,
+                learningContentModule,
                 assessmentDataModule,
                 savedQuestionDataModule,
                 topicStudyPresentationModule,

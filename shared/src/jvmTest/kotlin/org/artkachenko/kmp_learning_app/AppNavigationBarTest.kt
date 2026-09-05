@@ -28,7 +28,7 @@ internal class AppNavigationBarTest {
             }
         }
 
-        onNodeWithText("Topics").assertIsDisplayed()
+        onNodeWithText("Learn").assertIsDisplayed()
         onNodeWithText("Interview").assertIsDisplayed()
         onNodeWithText("Progress").assertIsDisplayed()
         onNodeWithText("Mistakes").assertIsDisplayed()

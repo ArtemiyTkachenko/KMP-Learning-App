@@ -15,6 +15,8 @@ import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
+import org.artkachenko.kmp_learning_app.curriculum.learning.content.learningContentModule
+import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
@@ -90,6 +92,10 @@ internal class TopicStudyPresentationModuleTest {
                     // ViewModels resolve the app-scoped holder built on that repository.
                     single<SavedQuestionRepository> { FakeSavedQuestionRepository() }
                 },
+                // The real E20 module rather than another fake: the Topic Browser must resolve the
+                // same LearningContentRepository singleton the hosts already register, through its
+                // interface, and this is what proves the two modules compose.
+                learningContentModule,
                 topicStudyPresentationModule,
             )
         }
@@ -144,6 +150,7 @@ internal class TopicStudyPresentationModuleTest {
             assertIs<AssessmentRetakeService>(app.koin.get<AssessmentRetakeService>())
             assertIs<AssessmentReviewLoader>(app.koin.get<AssessmentReviewLoader>())
             assertIs<CurriculumRepository>(app.koin.get<CurriculumRepository>())
+            assertIs<LearningContentRepository>(app.koin.get<LearningContentRepository>())
             assertIs<AssessmentRepository>(app.koin.get<AssessmentRepository>())
             assertIs<AssessmentQuestionSelector>(app.koin.get<AssessmentQuestionSelector>())
             assertIs<AssessmentEngine>(app.koin.get<AssessmentEngine>())

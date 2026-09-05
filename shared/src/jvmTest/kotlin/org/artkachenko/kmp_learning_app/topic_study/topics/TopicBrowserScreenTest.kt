@@ -134,7 +134,7 @@ internal class TopicBrowserScreenTest {
             }
         }
 
-        onNodeWithText("Topics").assertIsDisplayed()
+        onNodeWithText("Learn").assertIsDisplayed()
         onNodeWithText("Topic A").assertIsDisplayed()
         onNodeWithText("Topic B").assertIsDisplayed()
         onNodeWithTag(TopicBrowserSearchFieldTag).assertIsDisplayed()
@@ -252,7 +252,10 @@ internal class TopicBrowserScreenTest {
 
         onNodeWithText("ViewModel lifecycle").assertIsDisplayed()
         onNodeWithText("Lifecycle, State & Navigation").assertIsDisplayed()
-        onNodeWithText("Topics").assertIsDisplayed()
+        // The area heading, which stays put while a search is running. The "Topics" result heading
+        // is a different string and is absent here, because there are no Topic matches.
+        onNodeWithText("Learn").assertIsDisplayed()
+        onNodeWithText("Subtopics").assertIsDisplayed()
     }
 
     @Test
@@ -1221,6 +1224,110 @@ internal class TopicBrowserScreenTest {
     }
 
     @Test
+    fun aTopicWithOneLearningUnitShowsTheSingularAvailabilityIndicator() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(
+                            topicItem("android_ui", "UI — Views & Jetpack Compose", learningUnitCount = 1),
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("1 learning unit").assertIsDisplayed()
+    }
+
+    @Test
+    fun aTopicWithSeveralLearningUnitsShowsThePluralForm() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin", learningUnitCount = 3)),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("3 learning units").assertIsDisplayed()
+    }
+
+    @Test
+    fun aTopicWithNoAuthoredUnitsShowsNoMarkerAndStaysClickable() = runComposeUiTest {
+        // Zero is a real answer, but "0 learning units" on most rows of a seventeen-Topic list is
+        // noise: the row must look like an ordinary Topic and keep working exactly as before.
+        var clicked: String? = null
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin", learningUnitCount = 0)),
+                    ),
+                    onTopicClick = { clicked = it },
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("0 learning units").assertDoesNotExist()
+        onNodeWithText("0 learning unit").assertDoesNotExist()
+        onNodeWithText("Kotlin").performClick()
+
+        assertEquals("kotlin", clicked)
+    }
+
+    @Test
+    fun aTopicWithUnknownAvailabilityRendersAsAnOrdinaryRow() = runComposeUiTest {
+        // Unknown availability is what an unreadable learning curriculum leaves behind. It must
+        // read as nothing at all — no marker, no error badge, and no implied zero.
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin", learningUnitCount = null)),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("Kotlin").assertIsDisplayed().assertHasClickAction()
+        onAllNodesWithText("learning unit", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun aTopicSearchMatchKeepsItsLearningAvailabilityIndicator() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(
+                            topicItem("android_ui", "UI — Views & Jetpack Compose", learningUnitCount = 1),
+                        ),
+                        query = "ui",
+                        topicMatches = listOf(
+                            topicItem("android_ui", "UI — Views & Jetpack Compose", learningUnitCount = 1),
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        // A Topic match is the same enriched row, so it carries the same availability marker.
+        onNodeWithText("1 learning unit").assertIsDisplayed()
+    }
+
+    @Test
     fun topicRouteUsesStableIdentityOnly() {
         val route = AppRoute.Topic(topicId = "topic_stable_id")
 
@@ -1248,7 +1355,8 @@ private fun topicItem(
     topicId: String,
     topicName: String,
     learningContext: LearningContextUiModel? = null,
-) = TopicBrowserItemUiModel(topicId, topicName, learningContext)
+    learningUnitCount: Int? = null,
+) = TopicBrowserItemUiModel(topicId, topicName, learningContext, learningUnitCount)
 
 /** A weak-area practice intent: a scope and a source, with the builder owning everything else. */
 private fun weakAreaPractice() = LearningRecommendationTarget.Practice(

@@ -32,11 +32,15 @@ MainActivity
 E08 assessment-engine work. Runtime reads should depend on that interface
 rather than on Room entities, DAOs, or the local repository implementation.
 
-The shell exposes four areas — Topics, Interview, Progress, and Mistakes —
-through `AppTopLevelDestination`, which maps each to its `AppRoute`. Saved Questions is
-deliberately not a fifth: it is `AppRoute.SavedQuestions`, a detail pushed onto the Topics
-stack from a static entry in the Topic Browser, because saved Questions are learner-curated
-curriculum content and belong beside Topic detail and the Practice Builder.
+The shell exposes four areas — Learn, Interview, Progress, and Mistakes —
+through `AppTopLevelDestination`, which maps each to its `AppRoute`. Learn is the visible
+label of the area whose internal identity is still `AppTopLevelDestination.TOPICS` and
+`AppRoute.Topics`: E21-01 renamed the presentation only, because renaming the route, the
+enum constant, the back-stack key, and the `TopicBrowser` classes would have been migration
+churn with no product value. Saved Questions is deliberately not a fifth: it is
+`AppRoute.SavedQuestions`, a detail pushed onto the Learn stack from a static entry in
+the Topic Browser, because saved Questions are learner-curated curriculum content and
+belong beside Topic detail and the Practice Builder.
 
 `AppNavigator` owns navigation state and gives **each area its own back stack**. A
 single shared stack meant switching away from a detail discarded it, so returning to
@@ -170,6 +174,18 @@ ACTIVE Units for a home Topic in authored order; `getUnitById` and
 split `CurriculumRepository` already makes between active selection and
 historical resolution. A Unit's home Topic decides where it is browsed and does
 not constrain the Topics its Lessons reference.
+
+The Topic Browser is the first consumer of that contract. `TopicBrowserViewModel`
+takes `LearningContentRepository` through Koin and, once the assessment catalogue
+has loaded, counts `getActiveUnitsByTopic` per Topic into
+`TopicBrowserItemUiModel.learningUnitCount`. That count is strictly optional
+enrichment: the assessment curriculum remains the authoritative catalogue and is
+the only input that can produce Loading, Empty, or Error, so an unreadable
+learning document costs a row its availability badge and nothing else. The count
+is nullable on purpose — `null` is availability nobody could read, `0` is a
+successful read that found no authored material, and only a positive count
+renders a badge. It is publisher-owned availability only; there is no
+lesson-completion or studied-state model in E21.
 
 `LearningContentEndToEndTest` verifies that whole path on the shipped content —
 resource, loader, repository — including authored Unit and Lesson order, stable

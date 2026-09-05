@@ -40,6 +40,7 @@ import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingLaunch
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingUiState
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingViewModel
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
+import org.artkachenko.kmp_learning_app.curriculum.learning.content.learningContentModule
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
@@ -475,6 +476,7 @@ private fun runPracticeTest(block: suspend PracticeGraph.() -> Unit) = runTest {
     val app = koinApplication {
         modules(
             curriculumDataModule,
+            learningContentModule,
             assessmentDataModule,
             savedQuestionDataModule,
             topicStudyPresentationModule,

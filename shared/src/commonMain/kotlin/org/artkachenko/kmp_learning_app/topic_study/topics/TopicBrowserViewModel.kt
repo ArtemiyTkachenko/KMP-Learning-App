@@ -10,6 +10,7 @@ import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistory
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.curriculum.Topic
+import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingContext
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingResolver
@@ -32,7 +33,11 @@ import org.artkachenko.kmp_learning_app.ui.LearningContextIndex
  *   from the shared history cache. Until a derivation succeeds they stay null, and the screen
  *   simply omits them: unknown history is not empty history, and must never render as "not studied
  *   yet", as a shortcut into a context the learner does not have, or as advice for a learner whose
- *   history nobody could read.
+ *   history nobody could read;
+ * - [learningUnitCounts] is optional enrichment from a different publisher-owned source. It answers
+ *   "what is there to read here?" while the history enrichment answers "what has this learner
+ *   done?", so the two are never mixed. The assessment curriculum stays the authoritative
+ *   catalogue: unreadable learning content costs a Topic its availability marker and nothing else.
  *
  * The two guided surfaces answer different questions and are never combined: [continueStudying] is
  * recency ("take me back to what I was doing"), [recommendedNext] is learning priority ("what
@@ -44,6 +49,7 @@ import org.artkachenko.kmp_learning_app.ui.LearningContextIndex
  */
 internal class TopicBrowserViewModel(
     private val curriculumRepository: CurriculumRepository,
+    private val learningContentRepository: LearningContentRepository,
     private val learningProgressService: LearningProgressService,
     private val historyStore: AssessmentHistoryStore,
     private val continueStudyingResolver: ContinueStudyingResolver,
@@ -53,7 +59,15 @@ internal class TopicBrowserViewModel(
     val uiState: StateFlow<TopicBrowserUiState> = _uiState.asStateFlow()
 
     private var catalog: TopicCatalog = TopicCatalog.Loading
+    /** Identifies the newest catalogue request, so a slower earlier one cannot write over it. */
+    private var catalogGeneration: Int = 0
     private var query: String = ""
+    /**
+     * Active Learning Units per Topic, or `null` while unknown. `null` and an entry of `0` are
+     * deliberately different answers, and the whole map is `null` rather than partially filled
+     * because one read either produced availability for the loaded catalogue or produced none.
+     */
+    private var learningUnitCounts: Map<String, Int>? = null
     private var learningContexts: LearningContextIndex? = null
     private var continueStudying: ContinueStudyingContext? = null
     private var recommendedNext: LearningRecommendation? = null
@@ -121,13 +135,52 @@ internal class TopicBrowserViewModel(
         derive: suspend (List<TestAttempt>) -> T?,
     ): T? = runCatching { derive(this) }.getOrNull()
 
+    /**
+     * Loads the catalogue, then enriches it with learning availability in the same coroutine.
+     *
+     * Sequential rather than parallel, and rendering in between: the catalogue is what decides
+     * Loading, Empty, and Error, so it is published the moment it arrives and the rows become
+     * browsable while availability is still unknown. Learning content never gets a loading state,
+     * an error state, or a say in whether the screen can be used.
+     *
+     * [catalogGeneration] exists because `retry()` can be pressed while a load is still running.
+     * Only the newest request may write, so a slower earlier load — catalogue or enrichment —
+     * cannot land on top of a newer one.
+     */
     private fun loadCatalog() {
+        val generation = ++catalogGeneration
         catalog = TopicCatalog.Loading
+        // The previous catalogue's availability describes Topics that are being reloaded, so it is
+        // dropped back to unknown rather than shown against whatever arrives next.
+        learningUnitCounts = null
         render()
         viewModelScope.launch {
-            catalog = runCatching { readCatalog() }.getOrElse { TopicCatalog.Error }
+            val catalog = runCatching { readCatalog() }.getOrElse { TopicCatalog.Error }
+            if (generation != catalogGeneration) return@launch
+            this@TopicBrowserViewModel.catalog = catalog
             render()
+            if (catalog is TopicCatalog.Loaded) {
+                loadLearningAvailability(catalog.topics, generation)
+            }
         }
+    }
+
+    /**
+     * Counts ACTIVE Units per Topic through the repository boundary, by stable Topic ID.
+     *
+     * A failure leaves availability unknown and returns quietly: there is no error state and no
+     * retry of its own, because the learner loses only a marker. The repository caches one
+     * validated document, so seventeen Topic lookups are seventeen map reads over one load.
+     */
+    private suspend fun loadLearningAvailability(topics: List<Topic>, generation: Int) {
+        val counts = runCatching {
+            topics.associate { topic ->
+                topic.id to learningContentRepository.getActiveUnitsByTopic(topic.id).size
+            }
+        }.getOrNull() ?: return
+        if (generation != catalogGeneration) return
+        learningUnitCounts = counts
+        render()
     }
 
     private suspend fun readCatalog(): TopicCatalog {
@@ -155,6 +208,7 @@ internal class TopicBrowserViewModel(
             TopicCatalog.Error -> TopicBrowserUiState.Error
             is TopicCatalog.Loaded -> catalog.toContent(
                 query = query,
+                learningUnitCounts = learningUnitCounts,
                 learningContexts = learningContexts,
                 continueStudying = continueStudying,
                 recommendedNext = recommendedNext,
@@ -179,6 +233,7 @@ private sealed interface TopicCatalog {
 
 private fun TopicCatalog.Loaded.toContent(
     query: String,
+    learningUnitCounts: Map<String, Int>?,
     learningContexts: LearningContextIndex?,
     continueStudying: ContinueStudyingContext?,
     recommendedNext: LearningRecommendation?,
@@ -189,6 +244,9 @@ private fun TopicCatalog.Loaded.toContent(
             topicName = topic.name,
             // Joined by stable Topic ID against one derivation, never per row.
             learningContext = learningContexts?.forTopic(topic.id),
+            // Absent until the whole map is known, so an unreadable learning curriculum leaves the
+            // row saying nothing rather than claiming the Topic has no study material.
+            learningUnitCount = learningUnitCounts?.get(topic.id),
         )
     }
     val tokens = query.searchTokens()

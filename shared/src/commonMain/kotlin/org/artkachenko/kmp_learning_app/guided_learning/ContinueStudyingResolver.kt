@@ -66,6 +66,13 @@ internal class ContinueStudyingResolver(
                 activeTopic(scope.topicId)?.let { topic -> topicContext(topic, source) }
 
             is AssessmentScope.Subtopic -> subtopicContext(scope.subtopicId, source)
+
+            // Continue Studying names one place to go back to, and a run that deliberately spanned
+            // several concepts has no single one. Degrading it to any of them, or to a shared
+            // parent Topic, would send the learner somewhere they did not leave off, so this entry
+            // is unusable here and the next older attempt is inspected instead — the same
+            // treatment an unresolvable Subtopic already gets.
+            is AssessmentScope.Subtopics -> null
         }
 
     private suspend fun subtopicContext(

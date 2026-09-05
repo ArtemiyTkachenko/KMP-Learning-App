@@ -1,6 +1,10 @@
 package org.artkachenko.kmp_learning_app.data.local.assessment
 
 import kotlin.time.Instant
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.Json
 import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
@@ -20,7 +24,21 @@ private const val ConfigTypeFocused = "FOCUSED"
 private const val ConfigTypeMixed = "MIXED"
 private const val ScopeTypeTopic = "TOPIC"
 private const val ScopeTypeSubtopic = "SUBTOPIC"
+private const val ScopeTypeSubtopics = "SUBTOPICS"
 private const val PracticeLevelSeparator = ","
+
+/**
+ * The durable encoding of a multi-Subtopic scope: a JSON array of stable Subtopic IDs stored in
+ * the existing `scope_id` column.
+ *
+ * Reusing the column rather than adding one is what keeps this off the migration path entirely —
+ * the physical schema already holds a scope discriminator and a scope payload, and only the
+ * payload's shape is new. JSON rather than a delimited string because no rule forbids a separator
+ * character inside a Subtopic ID, and a hand-rolled escaping scheme is a decoding bug waiting for
+ * the first ID that contains one.
+ */
+private val ScopeIdCodec = Json
+private val SubtopicIdsSerializer = ListSerializer(String.serializer())
 
 internal data class AssessmentAttemptPersistenceSnapshot(
     val testAttempt: TestAttemptEntity,
@@ -136,6 +154,19 @@ private fun AssessmentScope.toPersistenceScopeFields(): PersistenceScopeFields =
                 scopeType = ScopeTypeSubtopic,
                 scopeId = subtopicId,
             )
+        // Sorted before encoding because the domain scope is a Set and its iteration order carries
+        // no meaning: two runs configured from the same concepts in a different order have to
+        // produce the same row, or historical inspection, tests, and any future migration would
+        // each have to know that two different strings mean one scope. The order is never read
+        // back as anything; decoding restores Set semantics.
+        is AssessmentScope.Subtopics ->
+            PersistenceScopeFields(
+                scopeType = ScopeTypeSubtopics,
+                scopeId = ScopeIdCodec.encodeToString(
+                    SubtopicIdsSerializer,
+                    subtopicIds.sorted(),
+                ),
+            )
     }
 
 private fun QuestionAttempt.toEntity(
@@ -186,6 +217,7 @@ private fun TestAttemptEntity.toDomainConfig(): AssessmentConfig =
                 scope = when (scopeType) {
                     ScopeTypeTopic -> AssessmentScope.Topic(scopeId)
                     ScopeTypeSubtopic -> AssessmentScope.Subtopic(scopeId)
+                    ScopeTypeSubtopics -> scopeId.toDomainSubtopicsScope()
                     else -> error("Unknown focused assessment scope type: $scopeType.")
                 },
                 questionCount = requestedQuestionCount,
@@ -199,6 +231,26 @@ private fun TestAttemptEntity.toDomainConfig(): AssessmentConfig =
         }
         else -> error("Unknown assessment config type: $configType.")
     }
+
+/**
+ * A malformed payload fails the reconstruction rather than being repaired.
+ *
+ * Every plausible recovery — dropping the IDs that do parse, widening to the parent Topic,
+ * falling back to the whole pool — would hand the learner a different assessment than the one this
+ * row records, which is exactly what an authoritative stored config exists to prevent. An
+ * unreadable scope is therefore an unreadable attempt, like an unknown scope type above.
+ */
+private fun String.toDomainSubtopicsScope(): AssessmentScope.Subtopics {
+    val subtopicIds = try {
+        ScopeIdCodec.decodeFromString(SubtopicIdsSerializer, this)
+    } catch (failure: SerializationException) {
+        throw IllegalStateException(
+            "Malformed multi-Subtopic assessment scope payload: $this.",
+            failure,
+        )
+    }
+    return AssessmentScope.Subtopics(subtopicIds.toSet())
+}
 
 private fun String.toDomainPracticeLevels(): Set<QuestionLevel> =
     if (isEmpty()) {

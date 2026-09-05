@@ -1193,6 +1193,290 @@ internal class AssessmentQuestionSelectorTest {
         assertEquals(listOf("question_b", "question_c", "question_a"), selected.map { it.id })
     }
 
+    // region Multi-Subtopic scope
+
+    /**
+     * The scope is the union of its Subtopics and nothing else: no home Topic, no parent, no
+     * sibling. Each scoped Subtopic is read through the same level-aware call a single-Subtopic run
+     * uses, so eligibility has one definition rather than a second one for multi-scope practice.
+     */
+    @Test
+    fun multiSubtopicSelectionUnionsOnlyTheScopedSubtopics() = runSelectorTest {
+        repository.subtopicQuestions = unionFixture()
+
+        val selected = selector().selectQuestions(
+            AssessmentConfig.Focused(
+                scope = AssessmentScope.Subtopics(setOf("sub_b", "sub_a")),
+                questionCount = 10,
+            ),
+        )
+
+        assertEquals(
+            listOf(
+                "subtopic:sub_a levels:FOUNDATION,APPLIED,ADVANCED",
+                "subtopic:sub_b levels:FOUNDATION,APPLIED,ADVANCED",
+            ),
+            repository.calls,
+        )
+        assertEquals(setOf("a_0", "a_1", "b_0", "b_1"), selected.map { it.id }.toSet())
+        assertUniqueQuestionIds(selected)
+    }
+
+    /**
+     * Scoped reads overlap in principle — a repository could answer two scoped queries with the
+     * same Question — so identity is the stable Question ID rather than the retrieval path. Asking
+     * one Question twice in a run would also distort its own scoring.
+     */
+    @Test
+    fun aQuestionReachedThroughTwoScopedSubtopicsIsAskedOnce() = runSelectorTest {
+        val shared = question("shared", topicId = "topic_a", subtopicId = "sub_a")
+        repository.subtopicQuestions = mapOf(
+            "sub_a" to listOf(shared, question("a_only", topicId = "topic_a", subtopicId = "sub_a")),
+            "sub_b" to listOf(shared),
+        )
+
+        val selected = selector().selectQuestions(
+            AssessmentConfig.Focused(
+                scope = AssessmentScope.Subtopics(setOf("sub_a", "sub_b")),
+                questionCount = 10,
+            ),
+        )
+
+        assertEquals(listOf("shared", "a_only"), selected.map { it.id })
+        assertUniqueQuestionIds(selected)
+    }
+
+    /**
+     * The point of the scope is that the run represents every concept it names, so a short run
+     * spreads before it deepens.
+     */
+    @Test
+    fun multiSubtopicSelectionCoversEachScopedSubtopicBeforeRepeatingOne() = runSelectorTest {
+        repository.subtopicQuestions = coverageFixture()
+
+        val selected = selector().selectQuestions(
+            AssessmentConfig.Focused(
+                scope = AssessmentScope.Subtopics(setOf("sub_a", "sub_b", "sub_c")),
+                questionCount = 3,
+            ),
+        )
+
+        assertEquals(
+            listOf("sub_a", "sub_b", "sub_c"),
+            selected.map { it.subtopicId },
+        )
+        assertUniqueQuestionIds(selected)
+    }
+
+    @Test
+    fun multiSubtopicSelectionFillsRemainingSlotsAfterCoveringEverySubtopic() = runSelectorTest {
+        repository.subtopicQuestions = coverageFixture()
+
+        val selected = selector().selectQuestions(
+            AssessmentConfig.Focused(
+                scope = AssessmentScope.Subtopics(setOf("sub_a", "sub_b", "sub_c")),
+                questionCount = 5,
+            ),
+        )
+
+        assertEquals(5, selected.size)
+        assertEquals(
+            listOf("sub_a", "sub_b", "sub_c"),
+            selected.take(3).map { it.subtopicId },
+        )
+        assertTrue(selected.drop(3).all { it.subtopicId in setOf("sub_a", "sub_b", "sub_c") })
+        assertUniqueQuestionIds(selected)
+    }
+
+    /**
+     * With fewer slots than concepts, which concepts get covered has to come from the injected
+     * randomization. Taking the first IDs instead would make every short run practise the same
+     * alphabetical prefix of the scope forever.
+     */
+    @Test
+    fun aShortMultiSubtopicRunCoversRandomizedSubtopicsRatherThanTheFirstIds() = runSelectorTest {
+        repository.subtopicQuestions = mapOf(
+            "sub_a" to questionsIn("a", 1, "topic_a", "sub_a"),
+            "sub_b" to questionsIn("b", 1, "topic_a", "sub_b"),
+            "sub_c" to questionsIn("c", 1, "topic_a", "sub_c"),
+            "sub_d" to questionsIn("d", 1, "topic_a", "sub_d"),
+        )
+
+        val selected = selector(randomize = { it.reversed() }).selectQuestions(
+            AssessmentConfig.Focused(
+                scope = AssessmentScope.Subtopics(setOf("sub_a", "sub_b", "sub_c", "sub_d")),
+                questionCount = 2,
+            ),
+        )
+
+        assertEquals(listOf("sub_d", "sub_c"), selected.map { it.subtopicId })
+    }
+
+    /**
+     * A scoped Subtopic that contributes nothing is simply absent from the run. Nothing outside the
+     * scope is pulled in to stand for it, and the run is not refused for its sake.
+     */
+    @Test
+    fun anEmptyScopedSubtopicIsSkippedWithoutBroadeningTheScope() = runSelectorTest {
+        repository.subtopicQuestions = mapOf(
+            "sub_a" to questionsIn("a", 2, "topic_a", "sub_a"),
+            "sub_empty" to emptyList(),
+            "sub_b" to questionsIn("b", 2, "topic_a", "sub_b"),
+            "sub_unrelated" to questionsIn("unrelated", 2, "topic_a", "sub_unrelated"),
+        )
+
+        val selected = selector().selectQuestions(
+            AssessmentConfig.Focused(
+                scope = AssessmentScope.Subtopics(setOf("sub_a", "sub_empty", "sub_b")),
+                questionCount = 4,
+            ),
+        )
+
+        assertEquals(setOf("a_0", "a_1", "b_0", "b_1"), selected.map { it.id }.toSet())
+        assertEquals(listOf("sub_a", "sub_b"), selected.take(2).map { it.subtopicId })
+    }
+
+    /**
+     * Level filtering runs first and is not relaxed to reach a Subtopic: coverage spreads across
+     * the concepts that still have eligible Questions, never across the ones that would only
+     * qualify at a level the learner excluded.
+     */
+    @Test
+    fun multiSubtopicCoverageOperatesOnTheLevelFilteredPoolOnly() = runSelectorTest {
+        repository.subtopicQuestions = mapOf(
+            "sub_a" to listOf(
+                question("a_foundation", topicId = "topic_a", subtopicId = "sub_a")
+                    .copy(level = QuestionLevel.FOUNDATION),
+                question("a_advanced", topicId = "topic_a", subtopicId = "sub_a")
+                    .copy(level = QuestionLevel.ADVANCED),
+            ),
+            "sub_b" to listOf(
+                question("b_foundation", topicId = "topic_a", subtopicId = "sub_b")
+                    .copy(level = QuestionLevel.FOUNDATION),
+            ),
+            "sub_c" to listOf(
+                question("c_advanced", topicId = "topic_a", subtopicId = "sub_c")
+                    .copy(level = QuestionLevel.ADVANCED),
+            ),
+        )
+
+        val selected = selector().selectQuestions(
+            AssessmentConfig.Focused(
+                scope = AssessmentScope.Subtopics(setOf("sub_a", "sub_b", "sub_c")),
+                questionCount = 10,
+                levels = setOf(QuestionLevel.ADVANCED),
+            ),
+        )
+
+        assertEquals(
+            listOf(
+                "subtopic:sub_a levels:ADVANCED",
+                "subtopic:sub_b levels:ADVANCED",
+                "subtopic:sub_c levels:ADVANCED",
+            ),
+            repository.calls,
+        )
+        assertEquals(listOf("a_advanced", "c_advanced"), selected.map { it.id })
+    }
+
+    @Test
+    fun multiSubtopicUnseenPracticeStaysInsideTheScopeAndDoesNotFallBack() = runSelectorTest {
+        repository.subtopicQuestions = mapOf(
+            "sub_a" to listOf(
+                question("a_seen", topicId = "topic_a", subtopicId = "sub_a"),
+                question("a_unseen", topicId = "topic_a", subtopicId = "sub_a"),
+            ),
+            "sub_b" to listOf(question("b_unseen", topicId = "topic_a", subtopicId = "sub_b")),
+            "sub_out" to listOf(question("out_unseen", topicId = "topic_b", subtopicId = "sub_out")),
+        )
+        history.attempts = listOf(completedAttempt("a_seen"))
+        val scope = AssessmentScope.Subtopics(setOf("sub_a", "sub_b"))
+
+        val selected = selector().selectQuestions(
+            AssessmentConfig.Focused(
+                scope = scope,
+                questionCount = 10,
+                source = PracticeQuestionSource.UNSEEN,
+            ),
+        )
+
+        assertEquals(listOf("a_unseen", "b_unseen"), selected.map { it.id })
+
+        history.attempts = listOf(completedAttempt("a_seen", "a_unseen", "b_unseen"))
+
+        assertEquals(
+            AssessmentSelectionResult.NoContent.NoEligibleQuestions,
+            selector().select(
+                AssessmentConfig.Focused(
+                    scope = scope,
+                    questionCount = 10,
+                    source = PracticeQuestionSource.UNSEEN,
+                ),
+            ),
+        )
+    }
+
+    /**
+     * Weakness is still derived exactly once, by the same policy Progress uses. Being weak
+     * somewhere else is not a reason to enter this run: the scope decides what can be asked, and
+     * the source only narrows inside it.
+     */
+    @Test
+    fun multiSubtopicWeakPracticeCannotAdmitAWeakSubtopicOutsideTheScope() = runSelectorTest {
+        repository.historicalQuestions =
+            questionsIn("weak_scoped_evidence", 2, "topic_a", "sub_a") +
+                questionsIn("weak_outside_evidence", 2, "topic_b", "sub_out")
+        repository.subtopicQuestions = mapOf(
+            "sub_a" to listOf(question("weak_scoped", topicId = "topic_a", subtopicId = "sub_a")),
+            "sub_b" to listOf(question("healthy_scoped", topicId = "topic_a", subtopicId = "sub_b")),
+            "sub_out" to listOf(question("weak_outside", topicId = "topic_b", subtopicId = "sub_out")),
+        )
+        history.attempts = listOf(
+            completedAttemptWithOutcomes(
+                "weak_everywhere",
+                *repository.historicalQuestions.map { it.id to false }.toTypedArray(),
+            ),
+        )
+
+        val selected = selector().selectQuestions(
+            weakPractice(AssessmentScope.Subtopics(setOf("sub_a", "sub_b")), 10),
+        )
+
+        assertEquals(listOf("weak_scoped"), selected.map { it.id })
+    }
+
+    @Test
+    fun multiSubtopicMistakePracticeOnlyOffersUnresolvedMistakesInsideTheScope() = runSelectorTest {
+        repository.subtopicQuestions = mapOf(
+            "sub_a" to listOf(
+                question("a_unresolved", topicId = "topic_a", subtopicId = "sub_a"),
+                question("a_resolved", topicId = "topic_a", subtopicId = "sub_a"),
+            ),
+            "sub_b" to listOf(question("b_never_missed", topicId = "topic_a", subtopicId = "sub_b")),
+            "sub_out" to listOf(question("out_unresolved", topicId = "topic_b", subtopicId = "sub_out")),
+        )
+        history.attempts = listOf(
+            completedAttemptWithOutcomes(
+                "history",
+                "a_unresolved" to false,
+                "a_resolved" to true,
+                "b_never_missed" to true,
+                "out_unresolved" to false,
+            ),
+        )
+
+        val selected = selector().selectQuestions(
+            mistakePractice(
+                questionCount = 10,
+                scope = AssessmentScope.Subtopics(setOf("sub_a", "sub_b")),
+            ),
+        )
+
+        assertEquals(listOf("a_unresolved"), selected.map { it.id })
+    }
+
+    // endregion
+
     private fun runSelectorTest(
         block: suspend SelectorTestScope.() -> Unit,
     ) {
@@ -1457,6 +1741,20 @@ internal class AssessmentQuestionSelectorTest {
             question("foundation_a").copy(level = QuestionLevel.FOUNDATION),
             question("applied_a").copy(level = QuestionLevel.APPLIED),
             question("advanced_a").copy(level = QuestionLevel.ADVANCED),
+        )
+
+    private fun unionFixture(): Map<String, List<Question>> =
+        mapOf(
+            "sub_a" to questionsIn("a", 2, "topic_a", "sub_a"),
+            "sub_b" to questionsIn("b", 2, "topic_a", "sub_b"),
+            "sub_unrelated" to questionsIn("unrelated", 2, "topic_a", "sub_unrelated"),
+        )
+
+    private fun coverageFixture(): Map<String, List<Question>> =
+        mapOf(
+            "sub_a" to questionsIn("a", 2, "topic_a", "sub_a"),
+            "sub_b" to questionsIn("b", 2, "topic_a", "sub_b"),
+            "sub_c" to questionsIn("c", 2, "topic_a", "sub_c"),
         )
 
     private fun mixedRoundFixture(): List<Question> =

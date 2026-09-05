@@ -37,6 +37,50 @@ untouched. `AssessmentEngine` collapses every no-content reason into
 no-content state and availability is read from selection before starting; what it
 guarantees is that a refused request creates and persists no attempt.
 
+### Scope
+
+`AssessmentScope` has three shapes: one `Topic`, one `Subtopic`, and a
+non-empty set of Subtopics. The third exists because a single body of teaching
+material can be responsible for several concepts, sometimes under different
+Topics, and neither existing shape can express that — a Topic run asks about
+material the learner was never taught, and a Subtopic run leaves half of it out.
+
+The multi-Subtopic scope is a plain set of stable Subtopic IDs and knows nothing
+about what produced it. Whatever resolves a body of material into concepts does
+so before the assessment domain is involved, so selection, persistence,
+reconstruction, and retake have no learning-content dependency, and an attempt
+stays the assessment it originally was even if that material is later
+re-authored. A `Set` rather than a `List` because the scope means "these
+concepts are eligible", not "these concepts have an authored order": `{a, b}`
+and `{b, a}` are one scope and a repeated ID is one concept. `Subtopic` is
+deliberately not redefined as a one-element set — single-Subtopic practice has
+shipped behaviour and its own persisted representation.
+
+Eligibility is the union of the scoped Subtopics and nothing else: no home
+Topic, no parent, no sibling. Each scoped Subtopic is read through the same
+level-aware repository call a single-Subtopic run uses, so there is one
+definition of eligibility rather than a second one for multi-scope practice, and
+the combined pool is deduplicated by stable Question ID. A scoped Subtopic with
+no eligible Question simply contributes nothing; it never causes an unscoped
+Question to be selected, and it does not refuse the run.
+
+Levels and sources behave exactly as they do for every other focused run — the
+scope changes only where eligible Questions may come from. All four sources
+narrow inside the union and never fall back to another source or to a wider
+scope, so an exhausted multi-Subtopic run ends at `NoEligibleQuestions` like any
+other.
+
+Selection for this scope covers distinct scoped Subtopics before deepening in
+one, mirroring the round-robin the Mixed interview runs across Topics: a
+four-question run over three concepts represents all three. Grouping happens
+over the already-randomized pool, so when the requested count is smaller than
+the number of concepts, which ones get covered comes from the injected
+randomization rather than from ID order — otherwise every short run would
+practise the same alphabetical prefix of the scope. The fill pass draws from an
+explicit remainder keyed by Question ID, so no Question is both a coverage pick
+and a fill pick. `Topic` and single-`Subtopic` selection are untouched by this
+and still take the randomized prefix they always have.
+
 ### Unseen practice
 
 "Has the learner seen this Question?" is one definition, `QuestionExposure`, and

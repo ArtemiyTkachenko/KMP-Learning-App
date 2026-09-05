@@ -67,7 +67,56 @@ internal class AssessmentQuestionSelector(
                 loadUnresolvedMistakeQuestions(config.scope, config.levels)
         }
 
-        return toResult(randomizeUnique(eligible).take(config.questionCount))
+        return toResult(config.scope.narrow(randomizeUnique(eligible), config.questionCount))
+    }
+
+    /**
+     * How a scope turns its randomized candidate pool into the questions actually asked.
+     *
+     * Only a multi-Subtopic scope spreads: it was configured as several concepts, so answering
+     * about one of them and calling it practice of the unit would be wrong. Topic and single
+     * Subtopic scopes keep taking the randomized prefix they always have — one scope has no
+     * distinct groups to cover, and re-grouping Topic practice by Subtopic would silently change
+     * shipped selection for every existing focused run.
+     */
+    private fun AssessmentScope.narrow(
+        randomized: List<Question>,
+        questionCount: Int,
+    ): List<Question> =
+        when (this) {
+            is AssessmentScope.Topic,
+            is AssessmentScope.Subtopic,
+            -> randomized.take(questionCount)
+            is AssessmentScope.Subtopics -> randomized.coveringDistinctSubtopics(questionCount)
+        }
+
+    /**
+     * Coverage across the scoped Subtopics first, then the remainder, mirroring the round-robin
+     * the Mixed interview uses across Topics.
+     *
+     * Grouping runs over the already-randomized pool, so first-encounter order — which group is
+     * covered at all when the requested count is smaller than the number of groups — comes from
+     * the injected randomization rather than from ID order. Picking by lexicographic or authored ID
+     * would quietly bias every short run towards the same concepts. A scoped Subtopic that
+     * contributes nothing after the scope, level, and source filters simply has no group and is
+     * skipped; it never lets an unscoped Question in to represent it.
+     *
+     * The fill pass is drawn from an explicit remainder keyed by stable Question ID, so a Question
+     * cannot be both a coverage pick and a fill pick.
+     */
+    private fun List<Question>.coveringDistinctSubtopics(questionCount: Int): List<Question> {
+        val questionsBySubtopic = linkedMapOf<String, MutableList<Question>>()
+        forEach { question ->
+            questionsBySubtopic
+                .getOrPut(question.subtopicId) { mutableListOf() }
+                .add(question)
+        }
+
+        val covering = questionsBySubtopic.values
+            .map { it.first() }
+            .take(questionCount)
+        val coveringIds = covering.mapTo(mutableSetOf()) { it.id }
+        return covering + filterNot { it.id in coveringIds }.take(questionCount - covering.size)
     }
 
     private suspend fun selectMixedQuestions(
@@ -185,5 +234,15 @@ internal class AssessmentQuestionSelector(
                 curriculumRepository.getActiveQuestionsByTopicAndLevels(scope.topicId, levels)
             is AssessmentScope.Subtopic ->
                 curriculumRepository.getActiveQuestionsBySubtopicAndLevels(scope.subtopicId, levels)
+            // The union is read one scoped Subtopic at a time through the same level-aware call a
+            // single-Subtopic run uses, rather than through a multi-ID query added for it: these
+            // scopes hold a handful of concepts, and a new DAO surface would buy nothing while
+            // giving the selector a second definition of eligibility to keep in step. Sorting the
+            // IDs only makes the read order deterministic; it carries no selection meaning, since
+            // randomization decides encounter order immediately afterwards.
+            is AssessmentScope.Subtopics ->
+                scope.subtopicIds.sorted().flatMap { subtopicId ->
+                    curriculumRepository.getActiveQuestionsBySubtopicAndLevels(subtopicId, levels)
+                }
         }
 }

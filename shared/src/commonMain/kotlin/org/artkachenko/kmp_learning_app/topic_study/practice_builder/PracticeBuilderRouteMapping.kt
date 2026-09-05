@@ -14,7 +14,25 @@ internal fun AssessmentScope.toPracticeBuilderRoute(): AppRoute =
     when (this) {
         is AssessmentScope.Topic -> AppRoute.PracticeBuilderTopic(topicId = topicId)
         is AssessmentScope.Subtopic -> AppRoute.PracticeBuilderSubtopic(subtopicId = subtopicId)
+        is AssessmentScope.Subtopics -> noPracticeBuilderRoute()
     }
+
+/**
+ * Multi-Subtopic practice is an assessment-domain capability with no navigation entry point yet.
+ *
+ * Every route in this file is a *UI* entry: content the learner tapped, addressed by the stable ID
+ * that screen knows. A multi-Subtopic scope is produced by resolving a teaching unit into concepts,
+ * and the route that carries such a request has to identify what the learner chose — the unit —
+ * rather than the derived set, so it is defined together with the screen that offers it.
+ *
+ * Failing loudly is deliberate. The two coercions available here — practising only the first
+ * Subtopic, or widening to a parent Topic — both silently run a different assessment than the one
+ * configured, and a wrong quiz is worse than an obviously missing route. Nothing reaches this
+ * today: every scope in this file comes from a Topic or Subtopic route, a weak area, or completed
+ * history, and none of those can produce a multi-Subtopic scope.
+ */
+internal fun AssessmentScope.Subtopics.noPracticeBuilderRoute(): Nothing =
+    error("Multi-Subtopic practice has no Practice Builder entry point: $subtopicIds.")
 
 /**
  * Opening the builder on a semantic practice intent.
@@ -36,6 +54,8 @@ internal fun PracticePreset.toPracticeBuilderRoute(): AppRoute =
             subtopicId = scope.subtopicId,
             source = source,
         )
+
+        is AssessmentScope.Subtopics -> scope.noPracticeBuilderRoute()
     }
 
 internal fun AppRoute.PracticeBuilderTopic.toAssessmentScope(): AssessmentScope =
@@ -66,4 +86,6 @@ internal fun AssessmentConfig.Focused.toPracticeRoute(): AppRoute =
             levels = levels.inAuthoredOrder(),
             source = source,
         )
+
+        is AssessmentScope.Subtopics -> scope.noPracticeBuilderRoute()
     }

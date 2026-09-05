@@ -17,6 +17,7 @@ This file is an index. Load a linked document only when the task touches its sub
 | `iosApp/` | Xcode shell embedding the `:shared` framework. |
 | `.github/` | CI workflows and backlog automation. Has its own `AGENTS.md`. |
 | `docs/` | Canonical project documentation (see below). |
+| `tools/` | Repository authoring tooling. Not part of the application build. |
 | `.codex/skills/`, `.claude/skills/` | Repository skills. |
 
 ## Critical Rules
@@ -101,7 +102,8 @@ does not cover: [CI](docs/workflows/ci.md).
 
 **Content — learning** — the explanatory study material, not the question bank:
 [learning-content authoring contract](docs/content/learning-content-authoring.md) ·
-[Compose learning blueprint](docs/content/compose-learning-blueprint.md)
+[Compose learning blueprint](docs/content/compose-learning-blueprint.md) ·
+[learning-to-question coverage](docs/content/learning-question-coverage.md)
 
 ## Skills
 

@@ -2,13 +2,13 @@
 <resources>
     <string name="app_back">Back</string>
     <string name="app_retry">Retry</string>
-    <string name="destination_topics">Topics</string>
+    <string name="destination_topics">Learn</string>
     <string name="destination_interview">Interview</string>
     <string name="destination_progress">Progress</string>
     <string name="destination_mistakes">Mistakes</string>
     <string name="topic_browser_subtitle">Pick a topic to study or practise.</string>
     <string name="mixed_interview_how_it_works">Questions are drawn across every topic, so a mixed interview is the closest thing to the real conversation.</string>
-    <string name="topic_browser_title">Topics</string>
+    <string name="topic_browser_title">Learn</string>
     <string name="topic_browser_loading">Loading topics</string>
     <string name="topic_browser_empty">No topics available</string>
     <string name="topic_browser_error">Topics could not be loaded</string>
@@ -16,6 +16,10 @@
     <string name="topic_browser_clear_search">Clear search</string>
     <string name="topic_browser_search_topics">Topics</string>
     <string name="topic_browser_search_subtopics">Subtopics</string>
+    <plurals name="topic_browser_learning_units">
+        <item quantity="one">%1$d learning unit</item>
+        <item quantity="other">%1$d learning units</item>
+    </plurals>
     <string name="topic_browser_search_no_results">No topics or subtopics match &quot;%1$s&quot;</string>
     <string name="continue_studying_title">Continue studying</string>
     <string name="continue_studying_source_unseen">Unseen practice</string>

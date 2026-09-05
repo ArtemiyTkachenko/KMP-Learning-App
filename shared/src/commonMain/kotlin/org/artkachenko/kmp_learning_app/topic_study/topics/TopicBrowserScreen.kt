@@ -57,6 +57,7 @@ import kmp_learning_app.shared.generated.resources.saved_questions_entry_subtitl
 import kmp_learning_app.shared.generated.resources.saved_questions_title
 import kmp_learning_app.shared.generated.resources.topic_browser_empty
 import kmp_learning_app.shared.generated.resources.topic_browser_error
+import kmp_learning_app.shared.generated.resources.topic_browser_learning_units
 import kmp_learning_app.shared.generated.resources.topic_browser_loading
 import kmp_learning_app.shared.generated.resources.topic_browser_clear_search
 import kmp_learning_app.shared.generated.resources.topic_browser_search_label
@@ -581,6 +582,10 @@ private fun TopicRow(
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
+                // Above the learner's own figures, and only when there is something to read: what
+                // the Topic contains is a fact about the content, so it is stated before anything
+                // about the person reading it.
+                TopicLearningAvailability(topic.learningUnitCount)
                 topic.learningContext?.let { TopicLearningContext(it) }
             }
             // Absent for an unseen Topic rather than showing 0%: never answered is not the same
@@ -590,6 +595,32 @@ private fun TopicRow(
             }
         }
     }
+}
+
+/**
+ * Whether this Topic publishes explanatory material, and how much of it.
+ *
+ * Drawn as a neutral badge, deliberately not in the semantic colours the weak-area badge below it
+ * uses: this states what exists to read, never how the learner is doing. There is no studied,
+ * started, or completed fact behind it, and E21 has no learner-owned study progress to show.
+ *
+ * Silent for both of the non-positive cases, for different reasons. A `null` count is availability
+ * nobody could read, so claiming anything would be a guess; a `0` count is a Topic with no authored
+ * material, and "0 learning units" is noise on most rows of a seventeen-Topic list. Either way the
+ * row stays an ordinary, clickable Topic.
+ */
+@Composable
+private fun TopicLearningAvailability(learningUnitCount: Int?) {
+    if (learningUnitCount == null || learningUnitCount <= 0) return
+    StatusBadge(
+        text = pluralStringResource(
+            Res.plurals.topic_browser_learning_units,
+            learningUnitCount,
+            learningUnitCount,
+        ),
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+    )
 }
 
 /**
@@ -756,7 +787,8 @@ private fun TopicBrowserScreenPreview() {
         TopicBrowserScreen(
             state = TopicBrowserUiState.Content(
                 // Real curriculum IDs so the preview shows the authored markers, and the three
-                // learning states the card has to keep distinguishable.
+                // learning states the card has to keep distinguishable. The availability counts
+                // match the authored learning curriculum: only android_ui publishes a Unit today.
                 topics = listOf(
                     TopicBrowserItemUiModel(
                         topicId = "android_platform",
@@ -768,6 +800,7 @@ private fun TopicBrowserScreenPreview() {
                             accuracyPercentage = 76.0,
                             isWeak = false,
                         ),
+                        learningUnitCount = 0,
                     ),
                     TopicBrowserItemUiModel(
                         topicId = "android_ui",
@@ -779,6 +812,7 @@ private fun TopicBrowserScreenPreview() {
                             accuracyPercentage = null,
                             isWeak = false,
                         ),
+                        learningUnitCount = 1,
                     ),
                     TopicBrowserItemUiModel(
                         topicId = "architecture",
@@ -790,6 +824,7 @@ private fun TopicBrowserScreenPreview() {
                             accuracyPercentage = 41.0,
                             isWeak = true,
                         ),
+                        learningUnitCount = 0,
                     ),
                 ),
             ),

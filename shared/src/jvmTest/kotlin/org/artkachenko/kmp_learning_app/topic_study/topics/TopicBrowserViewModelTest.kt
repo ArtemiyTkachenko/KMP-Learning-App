@@ -9,6 +9,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -34,6 +35,10 @@ import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
+import org.artkachenko.kmp_learning_app.curriculum.learning.LearningLesson
+import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
+import org.artkachenko.kmp_learning_app.curriculum.learning.content.BundledLearningContentRepository
+import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingContext
@@ -397,6 +402,7 @@ internal class TopicBrowserViewModelTest {
         val store = AssessmentHistoryStore(history, CoroutineScope(currentDispatcher()))
         val viewModel = TopicBrowserViewModel(
             curriculumRepository = repository,
+            learningContentRepository = FakeLearningContentRepository(),
             learningProgressService = LearningProgressService(history, repository),
             historyStore = store,
             continueStudyingResolver = ContinueStudyingResolver(repository),
@@ -519,6 +525,7 @@ internal class TopicBrowserViewModelTest {
         val store = AssessmentHistoryStore(history, CoroutineScope(currentDispatcher()))
         val viewModel = TopicBrowserViewModel(
             curriculumRepository = repository,
+            learningContentRepository = FakeLearningContentRepository(),
             learningProgressService = LearningProgressService(history, repository),
             historyStore = store,
             continueStudyingResolver = ContinueStudyingResolver(repository),
@@ -765,6 +772,7 @@ internal class TopicBrowserViewModelTest {
         val store = AssessmentHistoryStore(history, CoroutineScope(currentDispatcher()))
         val viewModel = TopicBrowserViewModel(
             curriculumRepository = repository,
+            learningContentRepository = FakeLearningContentRepository(),
             learningProgressService = LearningProgressService(history, repository),
             historyStore = store,
             continueStudyingResolver = ContinueStudyingResolver(repository),
@@ -977,6 +985,199 @@ internal class TopicBrowserViewModelTest {
         }
     }
 
+    // --- Learning-content availability (E21-01) ----------------------------------------------
+
+    @Test
+    fun learningAvailabilityIsJoinedOntoTopicRowsInCatalogueOrder() = runViewModelTest {
+        val viewModel = loadedViewModel(
+            learningContent = FakeLearningContentRepository(
+                mapOf(
+                    "compose" to listOf(learningUnit("unit_compose_1", "compose")),
+                    "architecture" to listOf(
+                        learningUnit("unit_arch_1", "architecture"),
+                        learningUnit("unit_arch_2", "architecture"),
+                    ),
+                ),
+            ),
+        )
+
+        val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        // Catalogue order is the curriculum's, and enrichment must not reorder or drop a row.
+        assertEquals(
+            listOf("compose", "compose_architecture", "architecture"),
+            state.topics.map(TopicBrowserItemUiModel::topicId),
+        )
+        assertEquals(1, topic(viewModel, "compose").learningUnitCount)
+        assertEquals(2, topic(viewModel, "architecture").learningUnitCount)
+        // A successful read that found nothing is zero, not unknown: the learner can be told this
+        // Topic has no study material, which is a different statement from saying nothing at all.
+        assertEquals(0, topic(viewModel, "compose_architecture").learningUnitCount)
+    }
+
+    @Test
+    fun onlyTheHomeTopicOfAUnitCountsIt() = runViewModelTest {
+        // The repository decides which Topic owns a Unit; presentation never re-derives it from
+        // the Unit's own topicId or from anything a Lesson references.
+        val learningContent = FakeLearningContentRepository(
+            mapOf("compose" to listOf(learningUnit("unit_compose_1", "compose"))),
+        )
+        val viewModel = loadedViewModel(learningContent = learningContent)
+
+        assertEquals(
+            listOf("compose", "compose_architecture", "architecture"),
+            learningContent.topicReadIds,
+        )
+        assertEquals(1, topic(viewModel, "compose").learningUnitCount)
+    }
+
+    @Test
+    fun aLearningContentFailureLeavesAvailabilityUnknownRatherThanZero() = runViewModelTest {
+        val viewModel = loadedViewModel(
+            learningContent = FakeLearningContentRepository(
+                failure = IllegalStateException("Learning content unavailable"),
+            ),
+        )
+
+        val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        assertEquals(3, state.topics.size)
+        state.topics.forEach { row ->
+            assertNull(
+                row.learningUnitCount,
+                "${row.topicId} reported availability from an unreadable curriculum",
+            )
+        }
+    }
+
+    @Test
+    fun aLearningContentFailureCannotProduceAnErrorOrEraseHistoryEnrichment() = runViewModelTest {
+        val viewModel = loadedViewModel(
+            history = historyRepository(
+                answer("q_compose_1", true),
+                answer("q_compose_2", false),
+            ),
+            repository = namedCatalogRepository(),
+            learningContent = FakeLearningContentRepository(
+                failure = IllegalStateException("Learning content unavailable"),
+            ),
+        )
+
+        // The assessment curriculum is the authoritative catalogue: the rows, the search corpus,
+        // and every history-derived surface survive an unreadable learning document intact.
+        val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        assertEquals(3, state.topics.size)
+        assertNotNull(topic(viewModel, "compose").learningContext)
+        assertNotNull(recommendedNext(viewModel))
+
+        viewModel.onSearchQueryChange("compose")
+        val search = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        assertEquals(
+            listOf("compose", "compose_architecture"),
+            search.topicMatches.map(TopicBrowserItemUiModel::topicId),
+        )
+    }
+
+    @Test
+    fun aCurriculumFailureIsStillAnErrorWhateverLearningContentSays() = runViewModelTest {
+        val viewModel = viewModel(
+            repository = FakeCurriculumRepository(
+                topicResults = ArrayDeque(
+                    listOf(Result.failure<List<Topic>>(IllegalStateException("boom"))),
+                ),
+            ),
+            learningContent = FakeLearningContentRepository(
+                mapOf("compose" to listOf(learningUnit("unit_compose_1", "compose"))),
+            ),
+        )
+        advanceUntilIdle()
+
+        assertEquals(TopicBrowserUiState.Error, viewModel.uiState.value)
+    }
+
+    @Test
+    fun searchMatchesKeepTheirLearningAvailability() = runViewModelTest {
+        val viewModel = loadedViewModel(
+            learningContent = FakeLearningContentRepository(
+                mapOf("compose" to listOf(learningUnit("unit_compose_1", "compose"))),
+            ),
+        )
+
+        viewModel.onSearchQueryChange("compose")
+
+        val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        // A Topic match is the same enriched row, not a second stripped-down result model.
+        assertEquals(
+            listOf(1, 0),
+            state.topicMatches.map(TopicBrowserItemUiModel::learningUnitCount),
+        )
+    }
+
+    @Test
+    fun theCatalogueIsBrowsableBeforeLearningAvailabilityResolves() = runViewModelTest {
+        // Learning content must not hold the screen in Loading, and must not add a second
+        // screen-wide loading state of its own: the rows appear with availability still unknown.
+        val learningContent = SuspendingLearningContentRepository()
+        val viewModel = viewModel(catalogRepository(), learningContent = learningContent)
+        advanceUntilIdle()
+
+        val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        assertEquals(3, state.topics.size)
+        assertNull(state.topics.first().learningUnitCount)
+
+        learningContent.release(listOf(learningUnit("unit_compose_1", "compose")))
+        advanceUntilIdle()
+
+        assertEquals(1, topic(viewModel, "compose").learningUnitCount)
+    }
+
+    @Test
+    fun retryDropsTheAvailabilityOfTheCatalogueBeingReloaded() = runViewModelTest {
+        val repository = FakeCurriculumRepository(
+            topicResults = resultsOf(CatalogTopics, CatalogTopics),
+            subtopicResults = mutableMapOf(
+                "compose" to resultsOf(emptyList(), emptyList()),
+                "compose_architecture" to resultsOf(emptyList(), emptyList()),
+                "architecture" to resultsOf(emptyList(), emptyList()),
+            ),
+        )
+        val learningContent = FakeLearningContentRepository(
+            mapOf("compose" to listOf(learningUnit("unit_compose_1", "compose"))),
+        )
+        val viewModel = viewModel(repository, learningContent = learningContent)
+        advanceUntilIdle()
+        assertEquals(1, topic(viewModel, "compose").learningUnitCount)
+
+        viewModel.retry()
+
+        assertEquals(TopicBrowserUiState.Loading, viewModel.uiState.value)
+        advanceUntilIdle()
+        // Retrying the catalogue re-attempts enrichment with it, rather than needing a retry of
+        // its own or showing the previous catalogue's availability against a new one.
+        assertEquals(1, topic(viewModel, "compose").learningUnitCount)
+    }
+
+    /**
+     * The production relationship, through the real bundled repository: `android_ui` publishes the
+     * authored Thinking in Compose Unit, and presentation composes that into an availability of 1
+     * without knowing the Topic ID or the count itself.
+     */
+    @Test
+    fun productionLearningContentGivesTheAndroidUiTopicOneActiveUnit() = runViewModelTest {
+        val androidUi = Topic("android_ui", "UI — Views & Jetpack Compose")
+        val kotlin = Topic("kotlin_language", "Kotlin Language")
+        val viewModel = viewModel(
+            repository = FakeCurriculumRepository(
+                topicResults = resultsOf(listOf(androidUi, kotlin)),
+            ),
+            learningContent = BundledLearningContentRepository(),
+        )
+        advanceUntilIdle()
+
+        assertEquals(1, topic(viewModel, "android_ui").learningUnitCount)
+        // Every other Topic derives its own real count from the same document rather than a
+        // hardcoded mapping, and no authored Unit currently lives under this one.
+        assertEquals(0, topic(viewModel, "kotlin_language").learningUnitCount)
+    }
+
     private fun recommendedNext(viewModel: TopicBrowserViewModel): RecommendedNextUiModel? =
         assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value).recommendedNext
 
@@ -994,7 +1195,10 @@ internal class TopicBrowserViewModelTest {
     private suspend fun TestScope.loadedViewModel(
         history: AssessmentRepository = historyRepository(),
         repository: CurriculumRepository = catalogRepository(),
-    ): TopicBrowserViewModel = viewModel(repository, history).also { advanceUntilIdle() }
+        learningContent: LearningContentRepository = FakeLearningContentRepository(),
+    ): TopicBrowserViewModel =
+        viewModel(repository, history, learningContent = learningContent)
+            .also { advanceUntilIdle() }
 
     private fun TestScope.viewModel(
         repository: CurriculumRepository,
@@ -1002,9 +1206,11 @@ internal class TopicBrowserViewModelTest {
         continueStudyingResolver: ContinueStudyingResolver = ContinueStudyingResolver(repository),
         learningRecommendationResolver: LearningRecommendationResolver =
             recommendationResolver(repository, history),
+        learningContent: LearningContentRepository = FakeLearningContentRepository(),
     ): TopicBrowserViewModel =
         TopicBrowserViewModel(
             curriculumRepository = repository,
+            learningContentRepository = learningContent,
             learningProgressService = LearningProgressService(history, repository),
             historyStore = AssessmentHistoryStore(history, CoroutineScope(currentDispatcher())),
             continueStudyingResolver = continueStudyingResolver,
@@ -1113,6 +1319,48 @@ internal class TopicBrowserViewModelTest {
         // questions that no longer exist resolve to null and contribute to neither figure.
         override suspend fun getQuestionById(questionId: String): Question? =
             questionsById[questionId] ?: RetiredQuestionsById[questionId]
+    }
+
+    /**
+     * Learning content as authored data, not as a mock: each Topic maps to the ACTIVE Units the
+     * publisher wrote for it, and a Topic absent from the map genuinely has none. [failure] makes
+     * the whole document unreadable, which is the only failure this repository has.
+     */
+    private class FakeLearningContentRepository(
+        private val unitsByTopicId: Map<String, List<LearningUnit>> = emptyMap(),
+        private val failure: Throwable? = null,
+    ) : LearningContentRepository {
+        val topicReadIds = mutableListOf<String>()
+
+        override suspend fun getActiveUnitsByTopic(topicId: String): List<LearningUnit> {
+            failure?.let { throw it }
+            topicReadIds += topicId
+            return unitsByTopicId[topicId].orEmpty()
+        }
+
+        override suspend fun getUnitById(unitId: String): LearningUnit? =
+            error("Not used by TopicBrowserViewModel.")
+
+        override suspend fun getLessonById(lessonId: String): LearningLesson? =
+            error("Not used by TopicBrowserViewModel.")
+    }
+
+    /** Holds the first Topic read until [release], so enrichment can be observed mid-flight. */
+    private class SuspendingLearningContentRepository : LearningContentRepository {
+        private val gate = CompletableDeferred<List<LearningUnit>>()
+
+        fun release(units: List<LearningUnit>) {
+            gate.complete(units)
+        }
+
+        override suspend fun getActiveUnitsByTopic(topicId: String): List<LearningUnit> =
+            gate.await().filter { it.topicId == topicId }
+
+        override suspend fun getUnitById(unitId: String): LearningUnit? =
+            error("Not used by TopicBrowserViewModel.")
+
+        override suspend fun getLessonById(lessonId: String): LearningLesson? =
+            error("Not used by TopicBrowserViewModel.")
     }
 
     private class RecordingHistoryRepository(
@@ -1290,6 +1538,15 @@ internal class TopicBrowserViewModelTest {
                 completedAt = Instant.parse("2026-08-29T00:15:00Z"),
                 score = AssessmentScore(answers.size, answers.count { it.second }),
             )
+
+        /** Identity and home Topic are all availability counting reads; content is irrelevant. */
+        fun learningUnit(id: String, topicId: String) = LearningUnit(
+            id = id,
+            topicId = topicId,
+            title = "Unit $id",
+            summary = "Summary for $id",
+            lessons = emptyList(),
+        )
 
         fun question(id: String, topicId: String, subtopicId: String) = Question(
             id = id,

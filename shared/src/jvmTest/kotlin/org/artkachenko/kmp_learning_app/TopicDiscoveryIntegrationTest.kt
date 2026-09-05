@@ -3,6 +3,7 @@ package org.artkachenko.kmp_learning_app
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.platform.testTag
@@ -15,7 +16,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
-import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.test.v2.runSkikoComposeUiTest
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.room3.Room
@@ -28,6 +29,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import org.artkachenko.kmp_learning_app.curriculum.learning.content.learningContentModule
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
@@ -381,7 +383,10 @@ internal class TopicDiscoveryIntegrationTest {
             Dispatchers.setMain(Dispatchers.Unconfined)
             var database: CurriculumDatabase? = null
             try {
-                runComposeUiTest {
+                // Sized to the window under test rather than left at the default 1024x768
+                // surface: at density 1 that surface silently clips anything taller, so a window
+                // height chosen for the fixture would quietly become a shorter one.
+                runSkikoComposeUiTest(size = Size(windowWidth.value, WindowHeight.value)) {
                     val db = Room.inMemoryDatabaseBuilder<CurriculumDatabase>()
                         .setDriver(BundledSQLiteDriver())
                         .build()
@@ -400,6 +405,7 @@ internal class TopicDiscoveryIntegrationTest {
                                 modules(
                                     listOf(
                                         curriculumDataModule,
+                                        learningContentModule,
                                         assessmentDataModule,
                                         savedQuestionDataModule,
                                         topicStudyPresentationModule,
@@ -518,7 +524,20 @@ private const val WindowTag = "discovery_test_window"
 /** Phone-shaped and wide enough for a rail, either side of AppNavigationRailBreakpoint. */
 private val CompactWidth = 400.dp
 private val WideWidth = 900.dp
-private val WindowHeight = 700.dp
+
+/**
+ * Tall enough to compose the whole fixture catalogue, with room to spare.
+ *
+ * The Topic list is a `LazyColumn`, so a row past the viewport is never composed and is absent
+ * from the semantics tree — which makes any assertion that counts rows really an assertion about
+ * this height. At 700.dp the third Topic card did not fit: it was composed only because a sliver
+ * of it still showed, and that sliver was what the count of three rested on. The learning-unit
+ * badge E21-01 added to the first row pushed the sliver from 43 pixels down to 15, and roughly
+ * one more wrapped line above it would have taken the row out of composition and the count with
+ * it. At this height every card is laid out in full with margin to spare, so the assertion says
+ * what it means. Width stays the knob these tests actually vary.
+ */
+private val WindowHeight = 900.dp
 
 /** Mirrors TopicBrowserHeaderSpacing, which is private to the screen. */
 private val HeaderSpacing = 12.dp

@@ -56,11 +56,14 @@ internal sealed interface TopicBrowserUiState {
 }
 
 /**
- * One Topic as the browser presents it: curriculum identity, plus what the learner has done with it.
+ * One Topic as the browser presents it: curriculum identity, what authored study material exists
+ * for it, and what the learner has done with it.
  *
  * The learning context lives here rather than on `curriculum.Topic` because it describes the
  * learner, not the content — the same Topic reads differently for two people, and the curriculum
- * domain has to stay presentation- and history-agnostic.
+ * domain has to stay presentation- and history-agnostic. [learningUnitCount] stays here for the
+ * mirror-image reason: it comes from a second publisher-owned content source joined by stable Topic
+ * ID, so it is presentation composition rather than base assessment taxonomy.
  */
 internal data class TopicBrowserItemUiModel(
     val topicId: String,
@@ -71,6 +74,23 @@ internal data class TopicBrowserItemUiModel(
      * Topic has never been studied.
      */
     val learningContext: LearningContextUiModel? = null,
+    /**
+     * How many ACTIVE Learning Units the learning curriculum publishes for this Topic.
+     *
+     * Three distinct states, and the distinction is the point:
+     *
+     * - `null` — learning content has not been read yet, or could not be read at all. Availability
+     *   is unknown, so the row says nothing about it;
+     * - `0` — learning content was read and this Topic has no authored study material;
+     * - `> 0` — explanatory material exists.
+     *
+     * A failed read must never collapse into `0`: "we could not read the learning curriculum" and
+     * "this Topic has nothing to read" are different statements to make to a learner.
+     *
+     * This is publisher-owned availability only. It carries no learner-owned study progress —
+     * nothing here is read, started, or completed, because no such fact exists yet.
+     */
+    val learningUnitCount: Int? = null,
 )
 
 /**

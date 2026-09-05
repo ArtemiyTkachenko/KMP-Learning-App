@@ -167,6 +167,9 @@ internal class SharedHostStartupTest {
                         modules(
                             module { single<CurriculumDatabase> { created } },
                             curriculumDataModule,
+                            // The Topic Browser is the first Learn surface to read learning
+                            // content, so the app root cannot start without this module either.
+                            learningContentModule,
                             assessmentDataModule,
                             savedQuestionDataModule,
                             topicStudyPresentationModule,

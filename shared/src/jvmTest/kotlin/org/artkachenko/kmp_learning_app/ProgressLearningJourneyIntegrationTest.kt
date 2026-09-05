@@ -40,6 +40,7 @@ import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
+import org.artkachenko.kmp_learning_app.curriculum.learning.content.learningContentModule
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
@@ -104,7 +105,7 @@ internal class ProgressLearningJourneyIntegrationTest {
                         }
                     }
 
-                    waitForText("Topics")
+                    waitForText("Learn")
                     // The study surface joins the same two figures without collapsing them into
                     // one score: current coverage of the Topic beside its all-time accuracy, both
                     // read from a single derivation of the real snapshot.
@@ -309,6 +310,7 @@ internal class ProgressLearningJourneyIntegrationTest {
             uriHandler = RecordingUriHandler(),
             modules = listOf(
                 curriculumDataModule,
+                learningContentModule,
                 assessmentDataModule,
                 savedQuestionDataModule,
                 topicStudyPresentationModule,

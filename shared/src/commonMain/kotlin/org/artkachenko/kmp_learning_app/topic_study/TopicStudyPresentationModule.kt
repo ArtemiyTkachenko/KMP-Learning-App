@@ -127,6 +127,11 @@ internal val topicStudyPresentationModule = module {
         // Progress and the mistake queue.
         TopicBrowserViewModel(
             curriculumRepository = get(),
+            // The E20 singleton from `learningContentModule`, through its interface: learning
+            // availability is optional enrichment here, so presentation consumes the same
+            // repository contract every other Learn surface will rather than reading the bundled
+            // document for itself.
+            learningContentRepository = get(),
             learningProgressService = get(),
             historyStore = get(),
             continueStudyingResolver = get(),

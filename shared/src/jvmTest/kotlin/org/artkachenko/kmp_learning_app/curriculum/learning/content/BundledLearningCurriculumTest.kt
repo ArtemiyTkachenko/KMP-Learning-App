@@ -3,7 +3,6 @@ package org.artkachenko.kmp_learning_app.curriculum.learning.content
 import kotlinx.coroutines.test.runTest
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.content.BundledCurriculumSource
-import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
 import org.artkachenko.kmp_learning_app.curriculum.learning.validation.LearningCurriculumValidator
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -17,6 +16,9 @@ import kotlin.test.assertTrue
  * authored order, and the primary/supporting mappings later work will consume. Editorial
  * wording is reviewed by a person and deliberately not pinned here, because a test that
  * asserts prose only makes rewriting the prose expensive.
+ *
+ * The subject here is the shipped document itself. What the loader and the repository make
+ * of it is `LearningContentEndToEndTest`'s subject.
  */
 internal class BundledLearningCurriculumTest {
     @Test
@@ -92,23 +94,5 @@ internal class BundledLearningCurriculumTest {
         )
 
         assertEquals(emptyList(), errors)
-    }
-
-    @Test
-    fun theProductionLoadPathExposesTheBundledDocument() = runTest {
-        // The default loader wires both shipped resources together; this is the path the
-        // repository uses at runtime, so a resource-path or packaging mistake fails here.
-        val learningCurriculum = LearningContentLoader().load()
-
-        assertEquals(listOf("unit_thinking_in_compose"), learningCurriculum.units.map { it.id })
-    }
-
-    @Test
-    fun theRepositoryServesTheBundledDocument() = runTest {
-        val repository = BundledLearningContentRepository()
-
-        val units: List<LearningUnit> = repository.getActiveUnitsByTopic("android_ui")
-
-        assertEquals(listOf("unit_thinking_in_compose"), units.map { it.id })
     }
 }

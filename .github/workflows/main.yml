@@ -34,6 +34,16 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      # Cheap authoring audit ahead of the Gradle job: it needs no toolchain and fails
+      # in seconds. `learning_question_coverage.py` derives a committed snapshot from the
+      # two authored curricula, so a mapping or Question change that leaves the snapshot
+      # stale must not merge unnoticed. --check only compares; CI never regenerates
+      # content. The tooling is standard-library-only, so the runner's Python 3 is enough.
+      - name: Validate learning coverage snapshot
+        run: |
+          python3 -m unittest discover -s tools -p 'test_*.py'
+          python3 tools/learning_question_coverage.py --check
+
       # One Gradle invocation rather than several: a single configuration phase and
       # one Kotlin/Native + JS/Wasm toolchain setup. org.gradle.parallel is not
       # enabled, so the requested tasks run sequentially in command-line order,

@@ -170,3 +170,10 @@ ACTIVE Units for a home Topic in authored order; `getUnitById` and
 split `CurriculumRepository` already makes between active selection and
 historical resolution. A Unit's home Topic decides where it is browsed and does
 not constrain the Topics its Lessons reference.
+
+`LearningContentEndToEndTest` verifies that whole path on the shipped content —
+resource, loader, repository — including authored Unit and Lesson order, stable
+identity, Sources, structured blocks, and the cross-Topic supporting concept the
+bundled Compose Unit really uses. CI additionally runs
+`tools/learning_question_coverage.py --check`, so a learning mapping or Question
+change that leaves the committed coverage snapshot stale fails the build.

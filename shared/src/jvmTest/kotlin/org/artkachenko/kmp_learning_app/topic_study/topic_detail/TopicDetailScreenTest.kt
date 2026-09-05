@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onNodeWithTag
@@ -15,6 +17,7 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
@@ -246,12 +249,21 @@ internal class TopicDetailScreenTest {
         assertEquals("subtopic_a", subtopicStarts)
     }
 
+    /**
+     * A Topic with neither capability. It is still a found Topic, so the screen renders it and says
+     * only that there is nothing to practise — it does not become a terminal message.
+     */
     @Test
-    fun noQuestionsAndNotFoundStatesDoNotShowPracticeAction() = runComposeUiTest {
+    fun aTopicWithNoQuestionsShowsAnInlineMessageInsteadOfPracticeActions() = runComposeUiTest {
         setContent {
             MaterialTheme {
                 TopicDetailScreen(
-                    state = TopicDetailUiState.NoQuestions(Topic("topic_a", "Topic A")),
+                    state = TopicDetailUiState.Content(
+                        topic = Topic("topic_a", "Topic A"),
+                        topicQuestionCount = 0,
+                        subtopics = emptyList(),
+                        learningUnits = TopicLearningUnitsUiState.Available(emptyList()),
+                    ),
                     onBack = {},
                     onStartTopicPractice = {},
                     onStartSubtopicPractice = {},
@@ -261,8 +273,303 @@ internal class TopicDetailScreenTest {
             }
         }
 
+        onNodeWithText("Topic A").assertIsDisplayed()
+        onNodeWithText("Practice").assertIsDisplayed()
         onNodeWithText("No practice questions are currently available.").assertIsDisplayed()
         onAllNodesWithText("Start Practice").assertCountEquals(0)
+        // No authored Units, so the study section is absent rather than empty.
+        onAllNodesWithText("Study").assertCountEquals(0)
+        onAllNodesWithText("Subtopics").assertCountEquals(0)
+    }
+
+    /**
+     * Study-only: the correction this issue exists for. Learning material must survive a Topic that
+     * has no assessment questions at all.
+     */
+    @Test
+    fun aStudyOnlyTopicRendersItsUnitsAndNoPracticeActions() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = TopicDetailUiState.Content(
+                        topic = Topic("topic_a", "Topic A"),
+                        topicQuestionCount = 0,
+                        subtopics = emptyList(),
+                        learningUnits = TopicLearningUnitsUiState.Available(
+                            listOf(learningUnitItem("unit_a", "Thinking in Compose", lessons = 3)),
+                        ),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("Study").assertIsDisplayed()
+        onNodeWithText("Thinking in Compose").assertIsDisplayed()
+        onNodeWithText("Summary for unit_a").assertIsDisplayed()
+        onNodeWithText("3 lessons").assertIsDisplayed()
+        onNodeWithText("No practice questions are currently available.").assertIsDisplayed()
+        onNodeWithTag(TopicPracticeButtonTag).assertDoesNotExist()
+        onNodeWithTag(SubtopicPracticeButtonTag).assertDoesNotExist()
+        // Nothing on this surface claims the learner has or has not read anything.
+        onAllNodesWithText("Not started").assertCountEquals(0)
+    }
+
+    /** Practice-only: no authored study material must not make an ordinary Topic look broken. */
+    @Test
+    fun aPracticeOnlyTopicShowsNoStudySection() = runComposeUiTest {
+        var topicStarts = 0
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = TopicDetailUiState.Content(
+                        topic = Topic("topic_a", "Topic A"),
+                        topicQuestionCount = 3,
+                        subtopics = listOf(
+                            SubtopicPracticeItem(
+                                Subtopic("subtopic_a", "topic_a", "Subtopic A"),
+                                2,
+                            ),
+                        ),
+                        learningUnits = TopicLearningUnitsUiState.Available(emptyList()),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = { topicStarts += 1 },
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onAllNodesWithText("Study").assertCountEquals(0)
+        onAllNodesWithText("Learning material could not be loaded.").assertCountEquals(0)
+        // With nothing to separate practice from, the section label is not worth its vertical
+        // space: this is the layout every Topic without authored study material keeps.
+        onAllNodesWithText("Practice").assertCountEquals(0)
+        onNodeWithText("Subtopics").assertIsDisplayed()
+        onNodeWithText("Subtopic A").assertIsDisplayed()
+        onNodeWithTag(TopicPracticeButtonTag).performClick()
+        assertEquals(1, topicStarts)
+    }
+
+    /** Combined: the production android_ui shape. Neither section replaces the other. */
+    @Test
+    fun aStudyableAndPracticeableTopicShowsBothSections() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = TopicDetailUiState.Content(
+                        topic = Topic("topic_a", "Topic A"),
+                        topicQuestionCount = 26,
+                        subtopics = listOf(
+                            SubtopicPracticeItem(
+                                Subtopic("subtopic_a", "topic_a", "Subtopic A"),
+                                10,
+                            ),
+                        ),
+                        learningUnits = TopicLearningUnitsUiState.Available(
+                            listOf(learningUnitItem("unit_a", "Thinking in Compose", lessons = 3)),
+                        ),
+                        learningContext = learningContext(12, 26, accuracy = 76.0),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("Study").assertIsDisplayed()
+        onNodeWithText("Thinking in Compose").assertIsDisplayed()
+        onNodeWithText("3 lessons").assertIsDisplayed()
+        onNodeWithText("Practice").assertIsDisplayed()
+        // The two systems stay separate: lesson counts never join coverage or accuracy.
+        onNodeWithText("12 of 26 questions explored").assertIsDisplayed()
+        onNodeWithText("76%").assertIsDisplayed()
+        onNodeWithTag(TopicPracticeButtonTag).assertIsDisplayed()
+        onNodeWithText("Subtopic A").assertIsDisplayed()
+    }
+
+    /** One lesson, so the plural resource has to select the singular form. */
+    @Test
+    fun aSingleLessonUnitReadsAsOneLesson() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningUnits = TopicLearningUnitsUiState.Available(
+                            listOf(learningUnitItem("unit_a", "Unit A", lessons = 1)),
+                        ),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("1 lesson").assertIsDisplayed()
+    }
+
+    /**
+     * A learning-content failure is inline and local. It says the material could not be read rather
+     * than that there is none, and it takes no practice control with it.
+     */
+    @Test
+    fun anUnreadableLearningDocumentDoesNotHidePracticeControls() = runComposeUiTest {
+        var topicStarts = 0
+        var subtopicStarts: String? = null
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = TopicDetailUiState.Content(
+                        topic = Topic("topic_a", "Topic A"),
+                        topicQuestionCount = 3,
+                        subtopics = listOf(
+                            SubtopicPracticeItem(
+                                Subtopic("subtopic_a", "topic_a", "Subtopic A"),
+                                2,
+                            ),
+                        ),
+                        learningUnits = TopicLearningUnitsUiState.Unavailable,
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = { topicStarts += 1 },
+                    onStartSubtopicPractice = { subtopicStarts = it },
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("Learning material could not be loaded.").assertIsDisplayed()
+        // Not the screen-level curriculum error, and no Retry that would imply the Topic failed.
+        onAllNodesWithText("Topics could not be loaded").assertCountEquals(0)
+        onAllNodesWithText("Retry").assertCountEquals(0)
+        onNodeWithTag(TopicPracticeButtonTag).performClick()
+        onNodeWithTag(SubtopicPracticeButtonTag).performClick()
+        assertEquals(1, topicStarts)
+        assertEquals("subtopic_a", subtopicStarts)
+    }
+
+    /** Learning content that has not resolved yet says nothing at all, and blocks nothing. */
+    @Test
+    fun stillLoadingLearningContentLeavesTheTopicFullyUsable() = runComposeUiTest {
+        var topicStarts = 0
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(learningUnits = TopicLearningUnitsUiState.Loading),
+                    onBack = {},
+                    onStartTopicPractice = { topicStarts += 1 },
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onAllNodesWithText("Study").assertCountEquals(0)
+        onAllNodesWithText("Learning material could not be loaded.").assertCountEquals(0)
+        onNodeWithTag(TopicPracticeButtonTag).performClick()
+        assertEquals(1, topicStarts)
+    }
+
+    /**
+     * The handoff E21-03 will supply navigation for: the card emits the stable Unit ID, never the
+     * presentation model and never the authored Unit.
+     */
+    @Test
+    fun aSelectedUnitEmitsItsStableIdOnly() = runComposeUiTest {
+        val selected = mutableListOf<String>()
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningUnits = TopicLearningUnitsUiState.Available(
+                            listOf(
+                                learningUnitItem("unit_b", "Unit B", lessons = 2),
+                                learningUnitItem("unit_a", "Unit A", lessons = 1),
+                            ),
+                        ),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                    onLearningUnitClick = selected::add,
+                )
+            }
+        }
+
+        onNodeWithTag(learningUnitCardTag("unit_b")).assertHasClickAction().performClick()
+        assertEquals(listOf("unit_b"), selected)
+    }
+
+    /**
+     * The transitional production state: with no handler the card is study content, not a control.
+     * A clickable card that leads nowhere would be worse than no affordance at all.
+     */
+    @Test
+    fun aUnitCardWithNoHandlerAdvertisesNoClickAction() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningUnits = TopicLearningUnitsUiState.Available(
+                            listOf(learningUnitItem("unit_a", "Unit A", lessons = 2)),
+                        ),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(learningUnitCardTag("unit_a")).assertHasNoClickAction()
+        onNodeWithText("Unit A").assertIsDisplayed()
+        onNodeWithText("2 lessons").assertIsDisplayed()
+    }
+
+    /** Authored order is preserved on screen, not just in the state that feeds it. */
+    @Test
+    fun unitsRenderInTheOrderTheStateCarries() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningUnits = TopicLearningUnitsUiState.Available(
+                            listOf(
+                                learningUnitItem("unit_b", "Unit B", lessons = 2),
+                                learningUnitItem("unit_a", "Unit A", lessons = 1),
+                            ),
+                        ),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        val first = onNodeWithText("Unit B").fetchSemanticsNode().positionInRoot.y
+        val second = onNodeWithText("Unit A").fetchSemanticsNode().positionInRoot.y
+        assertTrue(first < second, "Authored order must survive rendering.")
     }
 
     @Test
@@ -641,13 +948,26 @@ internal class TopicDetailScreenTest {
 private fun topicContent(
     learningContext: LearningContextUiModel? = null,
     subtopics: List<SubtopicPracticeItem> = emptyList(),
+    learningUnits: TopicLearningUnitsUiState = TopicLearningUnitsUiState.Loading,
 ): TopicDetailUiState.Content =
     TopicDetailUiState.Content(
         topic = Topic("topic_a", "Topic A"),
         topicQuestionCount = 10,
         subtopics = subtopics,
+        learningUnits = learningUnits,
         learningContext = learningContext,
     )
+
+private fun learningUnitItem(
+    unitId: String,
+    title: String,
+    lessons: Int,
+) = LearningUnitItemUiModel(
+    unitId = unitId,
+    title = title,
+    summary = "Summary for $unitId",
+    activeLessonCount = lessons,
+)
 
 private fun learningContext(
     attempted: Int,

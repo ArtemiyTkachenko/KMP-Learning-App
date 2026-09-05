@@ -43,9 +43,13 @@ import kmp_learning_app.shared.generated.resources.topic_detail_accuracy_caption
 import kmp_learning_app.shared.generated.resources.topic_detail_available_questions
 import kmp_learning_app.shared.generated.resources.topic_detail_heading
 import kmp_learning_app.shared.generated.resources.topic_detail_loading
+import kmp_learning_app.shared.generated.resources.topic_detail_learning_unavailable
+import kmp_learning_app.shared.generated.resources.topic_detail_learning_unit_lessons
 import kmp_learning_app.shared.generated.resources.topic_detail_no_questions
 import kmp_learning_app.shared.generated.resources.topic_detail_not_found
+import kmp_learning_app.shared.generated.resources.topic_detail_practice
 import kmp_learning_app.shared.generated.resources.topic_detail_start_practice
+import kmp_learning_app.shared.generated.resources.topic_detail_study
 import kmp_learning_app.shared.generated.resources.topic_detail_subtopics
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
@@ -68,6 +72,7 @@ import org.artkachenko.kmp_learning_app.ui.StatusBadge
 import org.artkachenko.kmp_learning_app.ui.accuracyColor
 import org.artkachenko.kmp_learning_app.ui.formatAccuracy
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 internal const val TopicDetailLoadingTag = "topic_detail_loading"
@@ -83,6 +88,14 @@ internal fun subtopicWeakPracticeTag(subtopicId: String): String =
 
 internal fun subtopicUnseenPracticeTag(subtopicId: String): String =
     "subtopic_unseen_practice_$subtopicId"
+
+internal fun learningUnitCardTag(unitId: String): String = "learning_unit_$unitId"
+
+/**
+ * How many lazy items sit above the Subtopic rows. The study section, the practice block, and both
+ * headings are deliberately one item, so arriving from search still lands on `index + this`.
+ */
+private const val SubtopicItemOffset = 1
 
 /**
  * The Topic's practice surface, with three kinds of practice entry point that must stay distinct.
@@ -104,6 +117,7 @@ internal fun TopicDetailScreen(
     onStartSubtopicPractice: (String) -> Unit,
     onPracticePreset: (PracticePreset) -> Unit,
     onRetry: () -> Unit,
+    onLearningUnitClick: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val scrollBehavior = rememberAppTopBarScrollBehavior()
@@ -111,7 +125,6 @@ internal fun TopicDetailScreen(
         AppTopBar(
             title = when (state) {
                 is TopicDetailUiState.Content -> state.topic.name
-                is TopicDetailUiState.NoQuestions -> state.topic.name
                 else -> stringResource(Res.string.topic_detail_heading)
             },
             onBack = onBack,
@@ -132,14 +145,10 @@ internal fun TopicDetailScreen(
                     onStartTopicPractice = onStartTopicPractice,
                     onStartSubtopicPractice = onStartSubtopicPractice,
                     onPracticePreset = onPracticePreset,
+                    onLearningUnitClick = onLearningUnitClick,
                     modifier = Modifier.weight(1f),
                 )
             }
-
-            is TopicDetailUiState.NoQuestions -> ScreenMessage(
-                message = stringResource(Res.string.topic_detail_no_questions),
-                modifier = Modifier.weight(1f),
-            )
 
             TopicDetailUiState.NotFound -> ScreenMessage(
                 message = stringResource(Res.string.topic_detail_not_found),
@@ -162,6 +171,7 @@ private fun TopicContent(
     onStartTopicPractice: () -> Unit,
     onStartSubtopicPractice: (String) -> Unit,
     onPracticePreset: (PracticePreset) -> Unit,
+    onLearningUnitClick: ((String) -> Unit)?,
     modifier: Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -170,13 +180,14 @@ private fun TopicContent(
             it.subtopic.id == targetSubtopicId
         }
         if (subtopicIndex >= 0) {
-            // The first lazy-list item is the topic summary and action block.
+            // The first lazy-list item is the study section and the topic summary and action
+            // block; see SubtopicItemOffset.
             //
             // Animated rather than instant: arriving here from search used to place the learner at
             // an arbitrary offset with no indication that the screen had scrolled at all, so a
             // Subtopic partway down a long Topic looked like the top of the list. Travelling there
             // shows that there is content above.
-            listState.animateScrollToItem(subtopicIndex + 1)
+            listState.animateScrollToItem(subtopicIndex + SubtopicItemOffset)
         }
     }
     LazyColumn(
@@ -185,59 +196,87 @@ private fun TopicContent(
         contentPadding = appScreenContentPadding(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // Deliberately one lazy item: the summary, the action, and the Subtopics heading form the
-        // header block, so a Subtopic opened from search still sits at its index plus one.
+        // Deliberately one lazy item: the study section, the practice block, and both headings form
+        // the header, so a Subtopic opened from search still sits at its index plus
+        // SubtopicItemOffset. Learning Units are authored a handful per Topic, while the Subtopic
+        // list is the long one, so keeping the Units inside the header costs nothing and keeps the
+        // list prefix a fixed size regardless of how much study material a Topic has.
         item {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                val context = state.learningContext
-                if (context == null) {
-                    // Analytics are unavailable, so the screen falls back to the authored count and
-                    // says nothing about the learner. Practice is unaffected.
+                StudySection(
+                    state = state.learningUnits,
+                    onLearningUnitClick = onLearningUnitClick,
+                )
+                // The heading earns its space only when it separates something: a Topic that also
+                // has study material above, or one whose practice is unavailable and needs the
+                // inline message below to be labelled. On an ordinary practiceable Topic the whole
+                // screen is practice, and a label saying so would only push the Subtopics down.
+                if (state.learningUnits.hasStudySection || state.topicQuestionCount == 0) {
+                    SectionHeading(
+                        text = stringResource(Res.string.topic_detail_practice),
+                    )
+                }
+                if (state.topicQuestionCount == 0) {
+                    // Inline and local rather than the terminal screen message this used to be: the
+                    // Topic itself is fine, and anything above stays on screen.
                     Text(
-                        text = stringResource(
-                            Res.string.topic_detail_available_questions,
-                            state.topicQuestionCount,
-                        ),
+                        text = stringResource(Res.string.topic_detail_no_questions),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
-                    TopicLearningSummary(context)
-                }
-                // One primary action for the topic; subtopic rows below are the lower-emphasis
-                // path, so the screen no longer shows several filled buttons of equal weight.
-                Button(
-                    onClick = onStartTopicPractice,
-                    modifier = Modifier.fillMaxWidth().testTag(TopicPracticeButtonTag),
-                ) {
-                    Text(text = stringResource(Res.string.topic_detail_start_practice))
-                }
-                // Accelerators beside the primary action, never instead of it: with no analytics
-                // this block is simply empty and ordinary practice is unaffected.
-                TargetedPracticeActions(
-                    context = context,
-                    onPracticeWeakAreas = {
-                        onPracticePreset(
-                            PracticePreset(
-                                scope = AssessmentScope.Topic(state.topic.id),
-                                source = PracticeQuestionSource.WEAK_AREAS,
+                    val context = state.learningContext
+                    if (context == null) {
+                        // Analytics are unavailable, so the screen falls back to the authored count
+                        // and says nothing about the learner. Practice is unaffected.
+                        Text(
+                            text = stringResource(
+                                Res.string.topic_detail_available_questions,
+                                state.topicQuestionCount,
                             ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    },
-                    onPracticeUnseen = {
-                        onPracticePreset(
-                            PracticePreset(
-                                scope = AssessmentScope.Topic(state.topic.id),
-                                source = PracticeQuestionSource.UNSEEN,
-                            ),
-                        )
-                    },
-                    weakTestTag = TopicWeakPracticeTag,
-                    unseenTestTag = TopicUnseenPracticeTag,
-                )
-                SectionHeading(
-                    text = stringResource(Res.string.topic_detail_subtopics),
-                )
+                    } else {
+                        TopicLearningSummary(context)
+                    }
+                    // One primary action for the topic; subtopic rows below are the lower-emphasis
+                    // path, so the screen no longer shows several filled buttons of equal weight.
+                    Button(
+                        onClick = onStartTopicPractice,
+                        modifier = Modifier.fillMaxWidth().testTag(TopicPracticeButtonTag),
+                    ) {
+                        Text(text = stringResource(Res.string.topic_detail_start_practice))
+                    }
+                    // Accelerators beside the primary action, never instead of it: with no analytics
+                    // this block is simply empty and ordinary practice is unaffected.
+                    TargetedPracticeActions(
+                        context = context,
+                        onPracticeWeakAreas = {
+                            onPracticePreset(
+                                PracticePreset(
+                                    scope = AssessmentScope.Topic(state.topic.id),
+                                    source = PracticeQuestionSource.WEAK_AREAS,
+                                ),
+                            )
+                        },
+                        onPracticeUnseen = {
+                            onPracticePreset(
+                                PracticePreset(
+                                    scope = AssessmentScope.Topic(state.topic.id),
+                                    source = PracticeQuestionSource.UNSEEN,
+                                ),
+                            )
+                        },
+                        weakTestTag = TopicWeakPracticeTag,
+                        unseenTestTag = TopicUnseenPracticeTag,
+                    )
+                }
+                if (state.subtopics.isNotEmpty()) {
+                    SectionHeading(
+                        text = stringResource(Res.string.topic_detail_subtopics),
+                    )
+                }
             }
         }
         items(
@@ -339,6 +378,118 @@ private fun TopicContent(
                 )
             }
         }
+    }
+}
+
+/**
+ * The Topic's authored study material, or nothing at all.
+ *
+ * Three states, three different silences and statements. Still loading says nothing, because the
+ * Topic is already usable and the section simply appears when it resolves. A successful empty read
+ * also says nothing: most Topics have no authored Units yet, and "no learning units" on every one of
+ * them would be noise that makes an ordinary Topic look broken. Only a failed read speaks, and it
+ * says the material could not be read rather than that there is none — in ordinary body text, since
+ * an unreadable optional section is not an error the learner has to act on.
+ */
+@Composable
+private fun StudySection(
+    state: TopicLearningUnitsUiState,
+    onLearningUnitClick: ((String) -> Unit)?,
+) {
+    if (!state.hasStudySection) return
+    SectionHeading(text = stringResource(Res.string.topic_detail_study))
+    // Past the guard the state is either a non-empty list or a failure, and nothing else.
+    if (state is TopicLearningUnitsUiState.Available) {
+        // Authored order, rendered in the order the repository returned: that sequence is
+        // pedagogical and is never re-sorted by title, size, or anything the learner has done.
+        state.units.forEach { unit ->
+            LearningUnitCard(unit = unit, onLearningUnitClick = onLearningUnitClick)
+        }
+    } else {
+        Text(
+            text = stringResource(Res.string.topic_detail_learning_unavailable),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * Whether the study section has anything to say. Asked in two places — by the section itself and by
+ * the Practice heading that only exists to separate the two — so the layout cannot disagree with
+ * itself about whether a Topic is showing study material.
+ */
+private val TopicLearningUnitsUiState.hasStudySection: Boolean
+    get() = when (this) {
+        TopicLearningUnitsUiState.Loading -> false
+        TopicLearningUnitsUiState.Unavailable -> true
+        is TopicLearningUnitsUiState.Available -> units.isNotEmpty()
+    }
+
+/**
+ * One Unit, clickable only when something can actually handle the click.
+ *
+ * The learning destinations do not exist yet, so the card is a plain informational surface until a
+ * handler is supplied: advertising a button that goes nowhere is worse than a card that reads as
+ * content. When a handler is present the card becomes an ordinary clickable Card — with the click
+ * semantics that come with it — and emits the stable Unit ID rather than this model or the authored
+ * Unit behind it.
+ */
+@Composable
+private fun LearningUnitCard(
+    unit: LearningUnitItemUiModel,
+    onLearningUnitClick: ((String) -> Unit)?,
+) {
+    val modifier = Modifier.fillMaxWidth().testTag(learningUnitCardTag(unit.unitId))
+    val shape = MaterialTheme.shapes.medium
+    val colors = CardDefaults.cardColors(
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    )
+    if (onLearningUnitClick == null) {
+        Card(modifier = modifier, shape = shape, colors = colors) {
+            LearningUnitCardContent(unit)
+        }
+    } else {
+        Card(
+            onClick = { onLearningUnitClick(unit.unitId) },
+            modifier = modifier,
+            shape = shape,
+            colors = colors,
+        ) {
+            LearningUnitCardContent(unit)
+        }
+    }
+}
+
+/**
+ * Title, summary, and how much there is to read. Nothing about the learner: study progress is not
+ * modelled anywhere yet, and this row must not be the first place to imply that it is.
+ */
+@Composable
+private fun LearningUnitCardContent(unit: LearningUnitItemUiModel) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(AppSpacing.Comfortable),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+    ) {
+        Text(
+            text = unit.title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = unit.summary,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = pluralStringResource(
+                Res.plurals.topic_detail_learning_unit_lessons,
+                unit.activeLessonCount,
+                unit.activeLessonCount,
+            ),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

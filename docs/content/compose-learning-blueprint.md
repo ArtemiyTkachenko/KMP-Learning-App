@@ -110,8 +110,9 @@ The order encodes conceptual dependencies, not convenience:
 - **Objective:** describe the execution rules of a composable function accurately enough
   that effects and recomposition later make sense.
 - **Core:** a composable is a function that emits UI; it may execute repeatedly; it may be
-  skipped; it may execute in any order or in parallel; it must not be treated as a
-  one-time lifecycle callback; composables should be side-effect free.
+  skipped; sibling execution order must not be relied on; optimistic recomposition may be
+  cancelled and its work discarded; it must not be treated as a one-time lifecycle
+  callback; composables should be fast, idempotent, and side-effect free.
 - **Practical:** what breaks when a composable body mutates external state, starts work, or
   assumes it runs once; why a counter incremented in a composable body is a bug rather than
   a feature.
@@ -121,7 +122,12 @@ The order encodes conceptual dependencies, not convenience:
 - **Supporting:** `compose_recomposition`
 - **Notes:** This is the single most important lesson for everything after it. Recomposition
   appears only as "it can run again" — the mechanism is Unit 3. Compiler-generated
-  signatures and runtime internals are **Exclude**.
+  signatures and runtime internals are **Exclude**. Do **not** teach that composables
+  currently run in parallel: the Compose documentation states that they cannot presently be
+  run in parallel and asks only that code be written so a future multithreaded runtime
+  would still be correct. Teach the contract — the number, timing, and relative order of
+  executions are the runtime's decision — rather than a threading claim that is wrong today
+  and would date an interview answer.
 
 #### L1.3 — State Down, Events Up
 
@@ -1006,5 +1012,13 @@ sources on any material edit; guidance older than roughly two releases is suspec
 
 ## Status
 
-This blueprint is complete as a map. No production Compose lesson has been authored. When
+This blueprint is complete as a map. Unit 1 is authored and ships in
+`learning_curriculum.json` as `unit_thinking_in_compose`; Units 2–14 are still plans. When
 authoring reveals a wrong Lesson boundary, update this file in the same change.
+
+Authoring Unit 1 kept all three Lesson boundaries and both concept mappings unchanged, and
+required one accuracy correction: L1.2's Core line previously said a composable "may
+execute in any order or in parallel", which reads as a claim about current runtime
+behaviour that the Compose documentation contradicts. The line now describes ordering,
+skipping, and discarded optimistic recomposition, and the Notes record why the parallel
+claim must not be taught.

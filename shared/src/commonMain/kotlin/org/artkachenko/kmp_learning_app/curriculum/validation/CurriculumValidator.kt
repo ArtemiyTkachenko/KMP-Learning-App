@@ -264,50 +264,6 @@ internal class CurriculumValidator {
         }
     }
 
-    private fun duplicateNonBlankValues(values: List<String>): Set<String> {
-        val seen = mutableSetOf<String>()
-        val duplicates = mutableSetOf<String>()
-
-        values.forEach { value ->
-            if (value.isNotBlank() && !seen.add(value)) {
-                duplicates.add(value)
-            }
-        }
-
-        return duplicates
-    }
-
-    private fun String.normalizedForComparison() = trim().lowercase()
-
-    /**
-     * Placeholder detection is deliberately narrow. It catches authoring stubs that no finished
-     * question should ship, and nothing that a real Android or Kotlin question might legitimately
-     * discuss: `TODO(` is excluded because Kotlin's `TODO()` is a fair subject for a question.
-     */
-    private fun String.containsPlaceholder() = PLACEHOLDER_MARKER.containsMatchIn(this)
-
-    private fun String.isPlaceholderUrl(): Boolean {
-        val host = substringAfter("://")
-            .substringBefore('/')
-            .substringBefore('?')
-            .substringBefore('#')
-            .substringBefore(':')
-            .lowercase()
-        return PLACEHOLDER_URL_HOSTS.any { host == it || host.endsWith(".$it") }
-    }
-
-    private fun String.isValidHttpUrl(): Boolean {
-        val schemeSeparator = indexOf("://")
-        if (schemeSeparator <= 0) return false
-
-        val scheme = substring(0, schemeSeparator)
-        if (scheme != "http" && scheme != "https") return false
-
-        val remainder = substring(schemeSeparator + 3)
-        val host = remainder.takeWhile { it != '/' && it != '?' && it != '#' }
-        return host.isNotBlank()
-    }
-
     private fun error(
         code: CurriculumValidationErrorCode,
         entityId: String?,
@@ -317,20 +273,4 @@ internal class CurriculumValidator {
         entityId = entityId?.takeUnless { it.isBlank() },
         message = message,
     )
-
-    private companion object {
-        val PLACEHOLDER_MARKER = Regex(
-            """\b(todo(?!\()|tbd|fixme|lorem ipsum|xxx)\b""",
-            RegexOption.IGNORE_CASE,
-        )
-
-        /**
-         * Hosts that can never cite anything. Reserved documentation domains such as
-         * `example.com` are deliberately absent: this repository uses them throughout its test
-         * fixtures, so rejecting them here would fail valid fixtures without catching anything
-         * the bundled bank does. Authoritative-host enforcement for shipped content lives in
-         * `InitialCurriculumContentQualityTest` instead.
-         */
-        val PLACEHOLDER_URL_HOSTS = setOf("localhost", "127.0.0.1", "0.0.0.0")
-    }
 }

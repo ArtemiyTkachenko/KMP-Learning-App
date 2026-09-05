@@ -14,10 +14,10 @@ import org.koin.core.parameter.parametersOf
  * with the existing question source the displayed signal justifies. Both end in the same builder;
  * only the source the builder opens on differs.
  *
- * [onLearningUnitClick] is the study half's handoff and is optional because the Learning Unit
- * destination does not exist yet. Absent, the Unit cards render as informational content rather
- * than as controls that lead nowhere; present, each card emits the stable Unit ID and nothing else.
- * The shell owns navigation, so nothing here resolves a Unit or knows what a route looks like.
+ * [onLearningUnitClick] is the study half's handoff: each card emits the stable Unit ID and nothing
+ * else, and the shell turns it into the Learning Unit route. It stays optional so this screen can
+ * be rendered outside the shell — in tests and previews — where the cards are informational content
+ * rather than controls that lead nowhere. Nothing here resolves a Unit or knows what a route is.
  */
 @Composable
 internal fun TopicDetailDestination(

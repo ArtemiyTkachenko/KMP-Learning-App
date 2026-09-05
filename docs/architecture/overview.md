@@ -50,8 +50,8 @@ start area (Topics), and only then reports the event unconsumed so the host can 
 the app. Re-selecting the area already shown returns it to its root.
 
 Which screens keep the navigation control is decided by `AppRoute.showsAreaNavigation()`:
-browsing screens — including the topic and progress-topic details, and Saved Questions —
-keep it, because
+browsing screens — including the topic and progress-topic details, Saved Questions, and the
+Learning Unit and Lesson study destinations — keep it, because
 hiding it on every detail trapped the learner inside an area until they pressed back.
 Screens that own the learner's full attention (an assessment in progress, and its
 result) hide it and rely on their own back affordance.
@@ -207,9 +207,40 @@ then reads `getActiveUnitsByTopic`, so the Topic is visible and practiceable
 while study material is still resolving and stays so if it never arrives. Units
 are mapped to `LearningUnitItemUiModel` (id, title, summary, ACTIVE Lesson count)
 in repository order, which is authored pedagogical order and is never re-sorted.
-Selecting a Unit emits its stable Unit ID through an optional callback; until
-E21-03 supplies the destination the shell passes nothing, and the cards render as
-non-interactive study content rather than as controls that lead nowhere.
+Selecting a Unit emits its stable Unit ID through a callback the shell turns into
+`AppRoute.LearningUnit`; the parameter stays optional so the screen can also be
+rendered outside the shell, where the cards are informational content.
+
+E21-03 completes the study path as ordinary detail navigation on the Learn stack:
+
+```text
+AppRoute.Topics -> AppRoute.Topic -> AppRoute.LearningUnit -> AppRoute.LearningLesson
+```
+
+Both routes carry stable IDs only — the Unit route a Unit ID, the Lesson route a
+Unit ID *and* a Lesson ID — and every title, summary, and Lesson list is resolved
+from `LearningContentRepository` on arrival rather than serialized into the back
+stack. The Lesson route carries its parent because `LearningLessonViewModel`
+resolves the Lesson *through* the Unit's authored Lessons: containment is what
+makes the parent relationship true, so a valid Lesson paired with the wrong Unit
+becomes a controlled `NotFound` instead of opening another Unit's Lesson. It also
+gives E21-04 the ordering context previous/next navigation needs.
+
+Both destinations filter for `ContentStatus.ACTIVE` themselves. `getUnitById` and
+`getLessonById` deliberately resolve retired content, so browsing eligibility is
+presentation's rule rather than the repository's: a deprecated Unit, a deprecated
+Lesson, and a Unit/Lesson mismatch all reach the learner as unavailable, while a
+document that could not be read is a separate, retryable `Error`. The Unit
+overview lists ACTIVE Lessons in authored order and never sorts them, and an
+ACTIVE Unit with no current Lessons renders as an empty overview rather than an
+error. E21-03's Lesson screen presents title and summary only; the structured
+section body and Sources are E21-04's.
+
+Both routes are Learn details rather than a fifth area, so
+`showsAreaNavigation()` keeps the navigation control on them, switching areas
+preserves the open Unit or Lesson, and re-selecting Learn still returns the stack
+to its root. Back is an ordinary `popBack()` from Lesson to Unit to the
+originating Topic; nothing reconstructs a route.
 
 `LearningContentEndToEndTest` verifies that whole path on the shipped content —
 resource, loader, repository — including authored Unit and Lesson order, stable

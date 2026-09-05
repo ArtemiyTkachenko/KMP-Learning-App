@@ -60,6 +60,11 @@ internal fun AppRoute.showsAreaNavigation(): Boolean =
         // learner nothing and the bar stays, exactly as on the Topic this was opened from.
         is AppRoute.PracticeBuilderTopic,
         is AppRoute.PracticeBuilderSubtopic,
+        // Reading is browsing: a Unit overview and a Lesson are study material the learner chose to
+        // open, with nothing in progress to interrupt. They are details of Learn in exactly the way
+        // Topic detail is, so leaving for Progress stays one move away.
+        is AppRoute.LearningUnit,
+        is AppRoute.LearningLesson,
         -> true
 
         is AppRoute.MixedInterview,

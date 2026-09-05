@@ -429,11 +429,11 @@ private val TopicLearningUnitsUiState.hasStudySection: Boolean
 /**
  * One Unit, clickable only when something can actually handle the click.
  *
- * The learning destinations do not exist yet, so the card is a plain informational surface until a
- * handler is supplied: advertising a button that goes nowhere is worse than a card that reads as
- * content. When a handler is present the card becomes an ordinary clickable Card — with the click
- * semantics that come with it — and emits the stable Unit ID rather than this model or the authored
- * Unit behind it.
+ * The shell supplies the handler, which opens the Learning Unit overview. Without one — rendered in
+ * a test or a preview — the card stays a plain informational surface, because advertising a button
+ * that goes nowhere is worse than a card that reads as content. With one it becomes an ordinary
+ * clickable Card, with the click semantics that come with it, and emits the stable Unit ID rather
+ * than this model or the authored Unit behind it.
  */
 @Composable
 private fun LearningUnitCard(

@@ -200,6 +200,16 @@
     <string name="saved_questions_empty_action">Browse topics</string>
     <string name="saved_questions_error">Saved questions could not be loaded.</string>
     <string name="saved_questions_remove">Remove</string>
+    <string name="learning_unit_title">Learning unit</string>
+    <string name="learning_unit_loading">Loading learning unit</string>
+    <string name="learning_unit_lessons">Lessons</string>
+    <string name="learning_unit_no_lessons">No lessons are currently available in this unit.</string>
+    <string name="learning_unit_not_found">This learning unit is not available.</string>
+    <string name="learning_unit_error">Learning content could not be loaded.</string>
+    <string name="learning_lesson_title">Lesson</string>
+    <string name="learning_lesson_loading">Loading lesson</string>
+    <string name="learning_lesson_not_found">This lesson is not available.</string>
+    <string name="learning_lesson_error">Learning content could not be loaded.</string>
     <string name="app_startup_loading">Preparing local curriculum</string>
     <string name="app_startup_error">Local curriculum could not be initialized</string>
 </resources>

@@ -21,6 +21,8 @@ import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionContentReso
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsViewModel
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
+import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonViewModel
+import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitViewModel
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
@@ -160,6 +162,25 @@ internal val topicStudyPresentationModule = module {
             learningContentRepository = get(),
             learningProgressService = get(),
             historyStore = get(),
+        )
+    }
+    viewModel { parameters ->
+        // The same E20 singleton every other Learn surface resolves. Learning content is this
+        // destination's primary capability rather than enrichment, so an unreadable document is a
+        // screen-level error here — but it is still the one validated document, not a second read.
+        LearningUnitViewModel(
+            unitId = parameters.get(),
+            learningContentRepository = get(),
+        )
+    }
+    viewModel { parameters ->
+        // Read by position rather than by type: both identities are Strings, so a type-based
+        // lookup cannot say which is which, and silently resolving both to the Unit ID would make
+        // every Lesson unavailable. The destination passes the Unit first, as the route declares.
+        LearningLessonViewModel(
+            unitId = parameters.get(0),
+            lessonId = parameters.get(1),
+            learningContentRepository = get(),
         )
     }
     viewModel { parameters ->

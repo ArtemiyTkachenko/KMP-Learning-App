@@ -1,3 +1,382 @@
 {
-  "units": []
+  "units": [
+    {
+      "id": "unit_thinking_in_compose",
+      "topicId": "android_ui",
+      "title": "Thinking in Compose",
+      "summary": "Compose becomes much simpler once you stop reading it as a new syntax for building View hierarchies. This unit replaces that habit with the three ideas everything else depends on: UI is described from the current state rather than mutated, a composable body is a description the runtime may run again, skip, or discard, and state flows down while events flow up. State ownership, recomposition, effects and performance all assume this model, so it is worth getting right before any Compose API is introduced.",
+      "lessons": [
+        {
+          "id": "lesson_declarative_ui",
+          "title": "Declarative UI and Why Compose Exists",
+          "summary": "What actually changes when a screen is described from its current state instead of created once and mutated afterwards, and why that removes a whole family of synchronisation bugs rather than merely replacing XML with Kotlin.",
+          "primarySubtopicIds": [
+            "compose_fundamentals"
+          ],
+          "supportingSubtopicIds": [
+            "views_fundamentals",
+            "view_rendering"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "If you have built Android screens with Views, you already carry a mental model of how UI works. You create a tree of widget objects, usually by inflating an XML layout, you keep references to the ones you care about, and when something changes you call setters on them. Each widget is a long-lived object that holds its own state and exposes getters and setters for it, and your code's job is to keep the properties of those objects matching the application state they are supposed to be showing."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Compose asks you to work the other way round. You do not hold a widget and change it; in fact Compose does not hand you the emitted UI as objects to mutate at all. You write a function that says what the screen should look like for a given set of inputs, and when those inputs change the runtime calls the same function again with the new values and works out what to change on screen. That is the whole of what declarative means here: you supply the description, the runtime performs the update."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Concern",
+                    "Imperative Views",
+                    "Declarative Compose"
+                  ],
+                  "rows": [
+                    [
+                      "Creating the UI",
+                      "Instantiate or inflate a tree of widget objects and keep references to the ones that will change.",
+                      "Call a composable function that describes the UI for the current inputs."
+                    ],
+                    [
+                      "Updating the UI",
+                      "Call setters on the widgets you kept references to.",
+                      "Call the same function again with new inputs and let the runtime apply the difference."
+                    ],
+                    [
+                      "Where the displayed state lives",
+                      "Inside each widget, which owns and exposes its own mutable properties.",
+                      "In the application state the description is derived from; the emitted UI is not exposed for mutation."
+                    ],
+                    [
+                      "What you have to get right",
+                      "Every code path that changes application state must also update every widget affected by it.",
+                      "One description that is correct for any state the screen can be in."
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The last row is the one that matters. The imperative version makes correctness a property of every transition: each path through the code has to remember every widget that the change affects, and the number of paths grows faster than the number of screens. The declarative version makes correctness a property of one function: given this state, this is the UI. This is a maintainability argument, not a syntax preference, and it is worth being honest about its limits. Describing UI from state does not make state bugs impossible, because the state you compute can still be wrong. What it removes is the narrower and far more common failure where two representations of the same fact drift apart, because one update path knew about a widget and another did not."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "A frequent answer is that Compose is declarative because layouts are written in Kotlin instead of XML. That is a language change, not a paradigm change: an imperative widget tree can be built entirely in Kotlin, and plenty of View code does exactly that. What makes Compose declarative is that you never obtain a UI object and mutate it. You provide a function from state to a description of UI, and the runtime decides what has to change."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Take a small profile screen that can be loading, can be showing content, can be showing an error, and has a submit button that is only enabled when the form is valid. In the View version the widgets already exist, so every state change is expressed as a set of mutations against them."
+                },
+                {
+                  "type": "code",
+                  "code": "private fun render(state: ProfileUiState) {\n    titleView.text = state.title\n    progressBar.isVisible = state.loading\n    contentGroup.isVisible = !state.loading\n    errorView.isVisible = state.errorMessage != null\n    errorView.text = state.errorMessage.orEmpty()\n    submitButton.isEnabled = state.canSubmit\n}\n\nprivate fun onSubmitFailed(message: String) {\n    progressBar.isVisible = false\n    errorView.text = message\n    errorView.isVisible = true\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Neither function is wrong on its own. The first is a complete mapping from state to widgets. The second is a second update path, added later for one case, that touches a subset of the same widgets and forgets the rest: the content group is still hidden and the submit button is still disabled, so the screen now shows an error the user cannot act on. Nothing in the code forces the two paths to agree. The widget tree has quietly reached a combination of properties that no single application state describes, and every additional path a screen accumulates adds more of those combinations."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun ProfileScreen(\n    state: ProfileUiState,\n    onSubmit: () -> Unit,\n) {\n    if (state.loading) {\n        CircularProgressIndicator()\n    } else {\n        Column {\n            Text(state.title)\n            state.errorMessage?.let { message ->\n                Text(message)\n            }\n            Button(\n                onClick = onSubmit,\n                enabled = state.canSubmit,\n            ) {\n                Text(\"Submit\")\n            }\n        }\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There is now one description of the screen, and every field of the state is read in exactly one place. A failed submission is not a set of widget mutations; it is a new state value with loading false, an error message present and submission enabled again, and the same function produces the matching screen from it. The work has moved rather than disappeared: instead of getting every transition right, you have to model the state well enough that it cannot express a screen you never meant to show. That is why Compose screens usually take one immutable state type rather than a handful of loose flags, and it is a far easier problem to review."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Be able to say what changes, not just to name the two words. Declarative and imperative differ in how an update is expressed: imperative code names the widgets to mutate, declarative code describes the intended result for the current state and leaves the update to the runtime. Compose does not expose the UI it emits for setter-style mutation, so the current state is the only thing driving what is on screen. That is also why Compose fits so naturally with observable state and with unidirectional data flow: once the state is the single input to the UI, giving that state one owner is the obvious next step."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [],
+          "sources": [
+            {
+              "title": "Thinking in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/mental-model"
+            },
+            {
+              "title": "Android is Compose-first",
+              "url": "https://developer.android.com/develop/ui/compose/why-adopt"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_composable_execution",
+          "title": "What a Composable Is and How It Executes",
+          "summary": "A composable function is not a callback that runs once when you call it. It contributes a description of UI to a Composition the runtime may rebuild, skip or throw away, which is what turns fast, idempotent and side-effect free from advice into a contract.",
+          "primarySubtopicIds": [
+            "compose_fundamentals"
+          ],
+          "supportingSubtopicIds": [
+            "compose_recomposition"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The usual answer to what a composable is, that it is a function annotated with Composable, is true and explains nothing: it names the syntax that marks the function rather than saying what the function does. The useful definition is about the runtime. A composable runs inside Compose's runtime, and its job is to contribute a description of some UI. It does not return that description to you and it does not draw anything itself; it emits UI into the structure the runtime maintains, which is why a composable normally returns nothing and why it can only be called from another composable."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Three terms are worth pinning down now, because everything later in the Compose path is phrased in them."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Composition: the tree of UI descriptions that exists because your composables ran. It is the runtime's record of what your UI currently is, and the only way to change it is by running composables again.",
+                    "Initial composition: the first run, in which the composables you called are executed and enter the Composition.",
+                    "Recomposition: a later re-execution, scheduled when state that a composable read has changed, which updates the existing Composition rather than rebuilding it from nothing."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is deliberately as far as this lesson takes recomposition. How Compose knows which state a composable read, which part of the tree is invalidated by a change, and when a composable can be skipped is a mechanism with its own unit later in this path. What you need here is only the consequence: the body of your function is something the runtime may execute again, on its own schedule, without anyone in your code calling it."
+                }
+              ],
+              "title": "What a composable is"
+            },
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The habit worth breaking early is reading a composable body the way you read onCreate, onResume, or an onClick lambda. Those run because something called them, once per call, in an order you can trace, and the work they perform is the point of calling them. A composable body is a description, and the runtime executes it as often as it needs to in order to keep the Composition current. Four assumptions that are safe for a callback are not safe here."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "That the body runs once. It runs during initial composition and again on every recomposition that is not skipped.",
+                    "That the body runs a predictable number of times. How many times depends on what state changed and on what the runtime chose to skip, and that is not part of any contract you can rely on.",
+                    "That calls to other composables happen in the order they are written, or that a sibling has already run. Compose may execute them in another order, for instance to produce higher-priority UI first.",
+                    "That every execution reaches the screen. Recomposition is optimistic: Compose expects the inputs to hold still, and if they change again first it can cancel the recomposition and discard the UI it had produced."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Stated positively, the requirement is simple. Running the body again with the same inputs should describe the same UI and do nothing else. It should not also perform an action for a second time merely because the function ran for a second time. A function with that property is called idempotent, and the contract Compose asks for is that composables be fast, idempotent, and free of side effects."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Treating the body as a place where things happen. The reasoning that this code sits in the function, so it runs when the screen appears, is behind most early Compose bugs: an analytics event that fires five times, a request that is sent again on every keystroke, a count that never matches reality. The body is not an event handler. The event is whatever changed the state; the body only says what the screen should look like now."
+                }
+              ],
+              "title": "The execution contract"
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A side effect is a change that is observable outside the composable's own description of the UI and that happens simply because the body executed. The clearest way to see the problem is a composable that looks entirely reasonable."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun ProfileScreen(user: User) {\n    analytics.trackProfileViewed(user.id)\n    Text(user.name)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Nothing here is invalid Kotlin, and analytics is obviously not forbidden in a Compose app. The problem is that a business event, the user viewed this profile, has been attached to something that is not a business event. That the body of ProfileScreen executed means only that the runtime needed the description: it may happen once, or on every recomposition triggered by an unrelated change nearby, or as part of work that is later discarded. The number your dashboard receives becomes a property of the runtime's scheduling rather than of anything the user did. The same reasoning applies to a counter kept outside the function: what it counts is executions of a function body, which is not a number that means anything to anyone."
+                },
+                {
+                  "type": "code",
+                  "code": "private var profileOpenCount = 0\n\n@Composable\nfun ProfileTitle(user: User) {\n    profileOpenCount++\n    Text(user.name)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The correction is not to move the call somewhere vaguer. It is to attach the work to something that actually happened. Work caused by a user action belongs in the event callback, because an onClick lambda runs once per click and a click is a real event. Work that genuinely belongs to the composition itself, such as starting a load when a screen appears or registering a listener that must later be removed, belongs to Compose's effect APIs, which give that work a defined lifetime tied to the composition instead of to the number of times a function body ran. Those APIs have their own unit later in this path; what matters now is recognising which of the two questions you are answering."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "In practice, these are the lines that should make you look twice when you find them written directly in a composable body."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Starting a network request, a database read, or any other work that should happen once per event.",
+                    "Writing to SharedPreferences, DataStore, or a file.",
+                    "Calling a function on a ViewModel that changes its state.",
+                    "Sending an analytics or logging event that is meant to count something real.",
+                    "Registering an observer, listener, or callback with anything outside Compose.",
+                    "Mutating a variable, collection, or object that is shared with the rest of the app."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is not a rule that composables may not call functions. Reading parameters, formatting a string, mapping a list into the rows it will show, and calling other composables are all part of describing UI, and repeating them costs nothing but the description. The question to ask about a line is whether running it a second time would do something a second time, or would simply describe the same thing again."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "It is worth asking why the runtime demands this, because keep composables pure reads as style advice until you see what it buys. Every mechanism Compose has for making UI updates cheap depends on being free to decide when, whether, and in what order your code runs. Skipping is the obvious one: if the inputs to a part of the tree have not changed, the runtime can leave that part of the Composition alone and not run the function at all, which is only safe when not running it has no consequence beyond not re-describing unchanged UI. Re-execution is the mirror image: the runtime can re-run a scope whenever that is cheaper than tracking a change more precisely, which is only acceptable when running twice costs nothing but the description. Discarding follows from optimistic recomposition, and is only sound when nothing outside the Composition has already acted on the run being thrown away. Ordering freedom is the same argument once more: if execution has no consequence other than the description it produces, the order is the runtime's to choose."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is also why the guidance is phrased as a forward-looking contract, and it is a detail worth getting right. Compose does not currently execute composable functions in parallel, so claiming that it does is wrong. What the documentation asks is that you write code which would remain correct if it did: no side effects, no dependence on execution order, no assumption that the body of a composable is running on a thread you can reason about. The practical point is not really threading. It is that the number, the timing, and the relative order of executions are the runtime's decisions rather than part of the API you are programming against."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Restricting side effects in composables is not a matter of taste. It is what allows the runtime to skip, repeat, reorder, and discard the execution of your UI description without changing how the app behaves. A composable that carries side effects takes that freedom away, and turns an optimisation the runtime is entitled to make into a bug in your feature."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "A strong answer describes the contract rather than the annotation. A composable contributes a description of UI to the Composition; it may run on initial composition, run again on any recomposition, be skipped entirely, run in an order you did not write, or have its work discarded, so correctness must never depend on the body having executed. Side effects therefore belong in event callbacks or in effect APIs with a defined composition lifetime. If parallel execution comes up, the accurate answer is that composables are not run in parallel today and that the requirement is to write code which does not depend on that remaining true."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [],
+          "sources": [
+            {
+              "title": "Thinking in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/mental-model"
+            },
+            {
+              "title": "Lifecycle of composables",
+              "url": "https://developer.android.com/develop/ui/compose/lifecycle"
+            },
+            {
+              "title": "Side-effects in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/side-effects"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_state_down_events_up",
+          "title": "State Down, Events Up",
+          "summary": "Why a Compose screen is built as one owner producing state and children reporting what the user did, what that direction actually buys you, and where the idea stops being a Compose detail and becomes an architectural one.",
+          "primarySubtopicIds": [
+            "compose_udf"
+          ],
+          "supportingSubtopicIds": [
+            "unidirectional_data_flow",
+            "compose_state_hoisting"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A composable describes UI from what it is given, which leaves an obvious question: where does what it is given come from, and what happens when the user types something into it? Compose is built around an answer with a direction. State travels down, from whoever owns it to the composables that display it. Events travel up, from the composable where the interaction happened to that owner. Nothing travels sideways, and the composable that renders a value is not the one that changes it."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "The owner holds the current state and passes it down as parameters.",
+                    "The composable describes itself from those parameters and keeps no separate copy of them.",
+                    "The user interacts, and the composable reports what happened by invoking a callback it was given.",
+                    "The owner interprets that event and decides how the state changes.",
+                    "The new state flows back down, and the description is produced again from it."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is called unidirectional data flow because data makes a one-way trip: down as state, up as events, never back and forth through the same channel. The payoff is that exactly one place changes a given piece of state. When a screen shows the wrong thing you do not have to work out which of several components mutated it; you read the owner, and the answer is in one function. The same property is what makes the UI testable, because the thing that produces state can be exercised without any UI at all."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Note that the owner has deliberately not been called a ViewModel. The owner is whoever is responsible for that piece of state, and it might be the parent composable, a plain state-holder class, or a ViewModel when the state is screen-level and has to outlive a configuration change. Choosing between them is a real decision, and it has its own lesson later in this path. The direction described here is the same whichever owner you pick."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "An event parameter should say what happened, or what the user asked for. It does not have to mean assign this value to a variable further up. The shape people quote most often is a current value plus an onValueChange callback, and it is the right shape for a component that edits a single value, such as a text field. It is one common pattern, not the definition of the direction: a component whose interactions are actions rather than edits should expose those actions."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun ProfileScreen(\n    state: ProfileUiState,\n    onEditProfile: () -> Unit,\n    onRetry: () -> Unit,\n) {\n    Column {\n        ProfileHeader(\n            name = state.name,\n            onEditClick = onEditProfile,\n        )\n        state.errorMessage?.let { message ->\n            ErrorRow(\n                message = message,\n                onRetryClick = onRetry,\n            )\n        }\n    }\n}\n\n@Composable\nprivate fun ProfileHeader(\n    name: String,\n    onEditClick: () -> Unit,\n) {\n    Row {\n        Text(name)\n        Button(onClick = onEditClick) {\n            Text(\"Edit\")\n        }\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "ProfileHeader receives the one value it displays and one callback describing the one thing a user can do to it. It owns nothing, it can be previewed or tested by calling it with a string and a lambda, and it can be reused on a screen where editing means something entirely different, because its caller decides what editing does. Compare that with the version almost every codebase grows at some point."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nprivate fun ProfileHeader(viewModel: ProfileViewModel) {\n    val state by viewModel.state.collectAsStateWithLifecycle()\n    Row {\n        Text(state.name)\n        Button(onClick = { viewModel.onEditClicked() }) {\n            Text(\"Edit\")\n        }\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This compiles and renders the same pixels, and it is the most common way the direction quietly disappears. The component now depends on one specific ViewModel type, so it cannot be reused elsewhere, cannot be previewed without constructing that ViewModel, and cannot be tested by passing values in. The deeper cost is that every child holding the ViewModel is another place where state can be read and written, so who changed this stops having a single answer. Passing a ViewModel down the tree is not a shortcut for state down and events up; it is the thing the pattern exists to prevent. Keeping the dependency at one boundary, where a screen-level composable collects the state and hands its children plain data and lambdas, costs a few more parameters and buys back all of the above."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Concluding that unidirectional data flow means every piece of state belongs in a ViewModel. The direction says that each piece of state has one owner and that events travel to that owner. It says nothing about how far away the owner should be. Whether a checkbox, an expanded row, or a scroll position is owned by the composable showing it or by a screen-level holder depends on who else has to read or change it and on how long it needs to survive."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Unidirectional data flow is not something Compose invented, and it is not really a UI-toolkit idea. It is a single rule applied at the scale of a screen: one source of truth for the state, mutation in one place, and everything else deriving what it shows from that. The Android architecture guidance makes the case in three properties worth being able to justify rather than recite. Consistency, because there is one source of truth for what the UI shows. Testability, because the producer of state is isolated from the UI that renders it. Maintainability, because a state change always has a named cause and a single code path. The direction was equally available in the View system, where a ViewModel exposing state that a Fragment observes and renders is the same loop; Compose makes the pattern natural rather than possible, because a composable that describes itself from its parameters is already the render half of it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The same principle scales into patterns you will be asked about by name: a single immutable state type per screen, user intent modelled as a type rather than a bag of lambdas, and a function that takes the current state plus an event and returns the next state, which is where reducer and MVI-style architectures come from. Those belong to the architecture topic rather than to Compose, and this path deliberately stops at the direction itself."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One term follows directly from all of this and is worth connecting now. When a child needs state that a higher-level owner should control, you move the state up into that owner and pass the current value down with an event callback going back up. That move is called state hoisting, and a child that no longer holds the state is called stateless. How far up to move it, which owner is the right one, and what it costs to hoist further than necessary make up a decision model with its own lesson later in this path."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Expect to be asked why rather than what. Be ready to say what the direction buys: one owner per piece of state so that a change has one cause, children that are reusable and testable because they only receive data and report intent, and a screen that can be reasoned about as a single function from state to UI. Be ready to say that not all state belongs in a ViewModel, and to justify where you would put a specific piece. And be ready to explain why handing a child a ViewModel, or any mutable object it can write to, breaks the pattern even though the screen still looks correct."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [],
+          "sources": [
+            {
+              "title": "State and Jetpack Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state"
+            },
+            {
+              "title": "UI layer",
+              "url": "https://developer.android.com/topic/architecture/ui-layer"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
+    }
+  ]
 }

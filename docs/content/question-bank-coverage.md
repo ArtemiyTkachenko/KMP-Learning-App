@@ -37,6 +37,11 @@ invalidates the numbers.
 sections (triage, concept coverage, notes) are human judgment and need editing
 by hand; the tables are generated.
 
+Anything that changes an active question also invalidates
+`docs/content/learning-question-coverage.md`, which reports the questions each
+learning Lesson currently reaches. Regenerate it in the same PR:
+`python3 tools/learning_question_coverage.py --write`.
+
 ### Regenerating the tables
 
 Run from the repository root. The first block prints the headline numbers and

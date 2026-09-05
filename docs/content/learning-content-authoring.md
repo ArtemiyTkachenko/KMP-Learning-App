@@ -409,6 +409,21 @@ If a lesson would read differently because of how a specific distractor is phras
 is a defect in the lesson. A learner who understands the concept should be able to answer
 questions this bank has not written yet.
 
+### Finding the questions to read
+
+`docs/content/learning-question-coverage.md` lists, per Lesson, the active Questions its
+primary Subtopics currently reach, split by level, with supporting concepts reported
+separately. Use it to find what to read; it is structural evidence, and the judgement of
+whether the Lesson actually teaches that reasoning stays with this rule.
+
+The snapshot is generated, so regenerate it in the same change that alters learning
+content, learning mappings, or any active Question:
+
+```sh
+python3 tools/learning_question_coverage.py --write   # rewrite the snapshot
+python3 tools/learning_question_coverage.py --check    # fail if it is stale
+```
+
 ## Authoring Checklist
 
 Before a blueprint is considered complete:

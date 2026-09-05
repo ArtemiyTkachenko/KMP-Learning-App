@@ -25,3 +25,7 @@ kotlin-js-store/
 # Per-developer Claude Code overrides. The shared agent configuration in .claude/skills/
 # and CLAUDE.md is tracked; only machine-local settings are ignored.
 .claude/settings.local.json
+
+# Python bytecode cache from the authoring tooling in tools/, which is run locally rather
+# than only in CI.
+__pycache__/

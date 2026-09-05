@@ -129,6 +129,9 @@ internal class PracticeBuilderViewModel(
                 kind = when (scope) {
                     is AssessmentScope.Topic -> PracticeScopeKind.TOPIC
                     is AssessmentScope.Subtopic -> PracticeScopeKind.SUBTOPIC
+                    // The builder is reached only through the Topic and Subtopic routes, so a
+                    // multi-Subtopic scope cannot arrive here; see noPracticeBuilderRoute.
+                    is AssessmentScope.Subtopics -> scope.noPracticeBuilderRoute()
                 },
             ),
             questionCount = DefaultPracticeQuestionCount,
@@ -163,6 +166,7 @@ internal class PracticeBuilderViewModel(
                         curriculumRepository.getTopicById(scope.topicId)?.name
                     is AssessmentScope.Subtopic ->
                         curriculumRepository.getSubtopicById(scope.subtopicId)?.name
+                    is AssessmentScope.Subtopics -> scope.noPracticeBuilderRoute()
                 }
             }.getOrNull()
             _uiState.update { it.copy(scope = it.scope.copy(name = name)) }

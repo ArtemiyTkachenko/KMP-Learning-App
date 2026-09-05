@@ -36,6 +36,8 @@ import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeServic
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentSelectionResult
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
+import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoadResult
+import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingLaunch
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingUiState
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingViewModel
@@ -354,6 +356,88 @@ internal class TargetedPracticeLifecycleIntegrationTest {
         assertEquals(listOf(FoundationQuestion), selectedIds(mistakeConfig))
     }
 
+    /**
+     * A multi-Subtopic run through the same pipeline every other focused run uses.
+     *
+     * The scope deliberately spans two Topics, which is the shape no existing scope could express
+     * and the reason this capability exists. What is being proved here is that nothing along the
+     * way — selection, the attempt row, reconstruction from an attempt ID, retake — needs to know
+     * where the set of concepts came from, and that none of them quietly turns it into something
+     * narrower or broader.
+     */
+    @Test
+    fun aMultiSubtopicRunSelectsPersistsReconstructsAndRetakesUnchanged() = runPracticeTest {
+        val config = AssessmentConfig.Focused(
+            scope = AssessmentScope.Subtopics(setOf(SubtopicB1, SubtopicA1)),
+            questionCount = 4,
+            levels = setOf(QuestionLevel.FOUNDATION, QuestionLevel.APPLIED),
+            source = PracticeQuestionSource.ALL,
+        )
+
+        val selected = selectedQuestions(config)
+        assertEquals(
+            setOf(FoundationQuestion, AppliedQuestion, "q_b1_foundation", "q_b1_applied"),
+            selected.map { it.id }.toSet(),
+        )
+        // Coverage before depth: both scoped Subtopics appear before either contributes a second.
+        assertEquals(
+            setOf(SubtopicA1, SubtopicB1),
+            selected.take(2).map { it.subtopicId }.toSet(),
+        )
+        // The excluded level stays excluded, and sharing a Topic with a scoped Subtopic is not
+        // membership: neither the ADVANCED A1 Question nor anything in A2 can enter.
+        assertTrue(selected.none { it.id == AdvancedQuestion })
+        assertTrue(selected.none { it.subtopicId == SubtopicA2 })
+
+        val taking = startTaking(config)
+        val started = requireNotNull(assessmentRepository.getById(FirstAttemptId))
+        assertEquals(config, started.config)
+        val row = requireNotNull(database.assessmentAttemptDao().getTestAttemptById(FirstAttemptId))
+        assertEquals("SUBTOPICS", row.scopeType)
+        assertEquals("""["$SubtopicA1","$SubtopicB1"]""", row.scopeId)
+
+        // One answer, then the configuration route is gone. Everything below reconstructs from the
+        // attempt ID alone, which is what makes the stored config authoritative.
+        taking.answerOneQuestion(questionNumber = 1)
+        val reconstructed = assertIs<AssessmentSessionLoadResult.Loaded>(
+            sessionLoader.load(FirstAttemptId),
+        ).session
+        assertEquals(config, reconstructed.attempt.config)
+        assertEquals(
+            started.questionAttempts.map { it.questionId },
+            reconstructed.questions.map { it.id },
+        )
+
+        val resumed = resumeTaking(FirstAttemptId)
+        assertIs<AssessmentTakingUiState.Content>(resumed.awaitQuestion(questionNumber = 2))
+        // The first question was already answered — incorrectly — before the resume, so the one
+        // correct answer has to come from a question the reconstructed session asked.
+        val completedId = resumed.answerAllAndComplete(
+            correctFor = setOf(AppliedQuestion),
+            fromQuestionNumber = 2,
+        )
+        assertEquals(FirstAttemptId, completedId)
+
+        val completed = requireNotNull(assessmentRepository.getById(completedId))
+        assertEquals(config, completed.config)
+        assertEquals(AssessmentStatus.COMPLETED, completed.status)
+        assertEquals(AssessmentScore(totalQuestions = 4, correctAnswers = 1), completed.score)
+
+        val retake = assertIs<AssessmentRetakeResult.Created>(
+            retakeService.createRetake(completedId),
+        ).session.attempt
+
+        assertNotEquals(completedId, retake.id)
+        assertEquals(config, retake.config)
+        assertEquals(
+            setOf(SubtopicA1, SubtopicB1),
+            assertIs<AssessmentScope.Subtopics>(
+                assertIs<AssessmentConfig.Focused>(retake.config).scope,
+            ).subtopicIds,
+        )
+        assertEquals(completed, assessmentRepository.getById(completedId))
+    }
+
     @Test
     fun retakingATargetedRunRepeatsItsStoredConfigurationAgainstCurrentHistory() = runPracticeTest {
         val narrowed = practiceOnA1(levels = setOf(QuestionLevel.ADVANCED))
@@ -529,6 +613,7 @@ private class PracticeGraph(
     val progressService: LearningProgressService get() = koin.get()
     val mistakeReviewService: MistakeReviewService get() = koin.get()
     val retakeService: AssessmentRetakeService get() = koin.get()
+    val sessionLoader: AssessmentSessionLoader get() = koin.get()
 
     fun builder(scope: AssessmentScope): PracticeBuilderViewModel = koin.get { parametersOf(scope) }
 
@@ -537,6 +622,10 @@ private class PracticeGraph(
 
     private fun takingViewModel(config: AssessmentConfig): AssessmentTakingViewModel =
         koin.get { parametersOf(AssessmentTakingLaunch.New(config)) }
+
+    /** Reopens a persisted in-progress attempt the way the attempt-ID route does. */
+    fun resumeTaking(attemptId: String): AssessmentTakingViewModel =
+        koin.get { parametersOf(AssessmentTakingLaunch.ExistingAttempt(attemptId)) }
 
     suspend fun attemptCount(): Int = database.assessmentAttemptDao().countTestAttempts()
 
@@ -575,8 +664,11 @@ private class PracticeGraph(
  * Driving the real state holder rather than the engine is the point: the attempt is written on
  * start, updated per answer, and completion is what invalidates the shared history.
  */
-private suspend fun AssessmentTakingViewModel.answerAllAndComplete(correctFor: Set<String>): String {
-    var questionNumber = 1
+private suspend fun AssessmentTakingViewModel.answerAllAndComplete(
+    correctFor: Set<String>,
+    fromQuestionNumber: Int = 1,
+): String {
+    var questionNumber = fromQuestionNumber
     while (true) {
         val state = awaitQuestion(questionNumber)
         if (state is AssessmentTakingUiState.ReadyToComplete) break
@@ -596,6 +688,17 @@ private suspend fun AssessmentTakingViewModel.answerAllAndComplete(correctFor: S
     return assertIs<AssessmentTakingUiState.CompletionSucceeded>(
         uiState.await { it is AssessmentTakingUiState.CompletionSucceeded },
     ).attemptId
+}
+
+/**
+ * Answers one question incorrectly and waits for the next, so the in-progress save has landed
+ * before anything reads the attempt back.
+ */
+private suspend fun AssessmentTakingViewModel.answerOneQuestion(questionNumber: Int) {
+    val content = assertIs<AssessmentTakingUiState.Content>(awaitQuestion(questionNumber))
+    selectAnswer(incorrectAnswerId(content.question.id))
+    submitAnswer()
+    awaitQuestion(questionNumber + 1)
 }
 
 private suspend fun AssessmentTakingViewModel.awaitQuestion(

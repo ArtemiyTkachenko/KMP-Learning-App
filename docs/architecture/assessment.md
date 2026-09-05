@@ -106,6 +106,21 @@ runtime-only session without creating a second attempt. Android and Desktop
 share this presentation and domain flow; Room and DAOs remain below the
 repository boundaries.
 
+`AssessmentConfig.Focused` can scope a run to one Topic, one Subtopic, or a
+non-empty set of Subtopics. All three travel through the same selection, engine,
+persistence, result, and retake path; only eligibility and the order questions
+are drawn in differ, and those are described in
+[practice selection](practice-selection.md). The multi-Subtopic scope is a
+generic assessment-domain capability with no learning-content dependency: it
+holds stable Subtopic IDs and nothing that names what grouped them, so a stored
+attempt keeps its original meaning even if that grouping is later re-authored.
+
+The Practice Builder's navigation entry points remain the Topic and Subtopic
+routes; multi-Subtopic practice has no user-facing entry yet, and the route
+helpers refuse such a scope explicitly rather than coercing it into a narrower or
+broader one. A configured multi-Subtopic run still starts, persists, resumes by
+attempt ID, and retakes through the existing lifecycle.
+
 ## Saved Questions On Review Surfaces
 
 Saving is learner-owned state layered onto review content, never part of it.

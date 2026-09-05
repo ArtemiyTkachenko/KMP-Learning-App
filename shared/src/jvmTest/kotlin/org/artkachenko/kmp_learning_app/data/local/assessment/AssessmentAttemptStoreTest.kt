@@ -167,6 +167,166 @@ internal class AssessmentAttemptStoreTest {
         }
     }
 
+    /**
+     * A multi-Subtopic scope is stored inside the existing scope columns: a new discriminator and
+     * a JSON payload in `scope_id`. No column and no schema version was added for it, because the
+     * physical schema already holds "which kind of scope" plus "which content", and only the
+     * payload's shape is new.
+     *
+     * The payload is asserted literally because it is a durable contract: rows written today are
+     * read back by later versions, so the encoding cannot drift silently.
+     */
+    @Test
+    fun aMultiSubtopicFocusedAttemptRoundTripsThroughTheExistingScopeColumns() = runTest {
+        withTestDatabase { database ->
+            insertAttemptFixtureCurriculum(database)
+            val store = AssessmentAttemptStore(database)
+            val config = AssessmentConfig.Focused(
+                scope = AssessmentScope.Subtopics(setOf("compose_udf", "compose_fundamentals")),
+                questionCount = 6,
+                levels = setOf(QuestionLevel.FOUNDATION, QuestionLevel.APPLIED),
+                source = PracticeQuestionSource.UNSEEN,
+            )
+            val attempt = TestAttempt(
+                id = "attempt_subtopics",
+                config = config,
+                questionAttempts = listOf(answeredQuestionAttempt("question_a", "question_a_a")),
+                status = AssessmentStatus.IN_PROGRESS,
+                startedAt = StartedAt,
+            )
+
+            store.save(attempt)
+
+            assertEquals(attempt, store.getById("attempt_subtopics"))
+            val row = requireNotNull(
+                database.assessmentAttemptDao().getTestAttemptById("attempt_subtopics"),
+            )
+            assertEquals("SUBTOPICS", row.scopeType)
+            assertEquals("""["compose_fundamentals","compose_udf"]""", row.scopeId)
+        }
+    }
+
+    /**
+     * The domain scope is a Set, so the order its IDs were named in must not reach the database.
+     * Two learners who configured the same practice have to produce the same row, or a retake, a
+     * historical comparison, or any future migration would have to know that two different strings
+     * mean one scope.
+     */
+    @Test
+    fun equivalentMultiSubtopicScopesPersistIdentically() = runTest {
+        withTestDatabase { database ->
+            insertAttemptFixtureCurriculum(database)
+            val store = AssessmentAttemptStore(database)
+            val declaredOrder = AssessmentScope.Subtopics(setOf("sub_b", "sub_a", "sub_c"))
+            val otherOrder = AssessmentScope.Subtopics(setOf("sub_c", "sub_a", "sub_b"))
+
+            listOf("attempt_declared" to declaredOrder, "attempt_other" to otherOrder)
+                .forEach { (id, scope) ->
+                    store.save(
+                        TestAttempt(
+                            id = id,
+                            config = AssessmentConfig.Focused(scope = scope, questionCount = 3),
+                            questionAttempts = listOf(QuestionAttempt("question_a")),
+                            status = AssessmentStatus.IN_PROGRESS,
+                            startedAt = StartedAt,
+                        ),
+                    )
+                }
+
+            val dao = database.assessmentAttemptDao()
+            assertEquals(
+                dao.getTestAttemptById("attempt_declared")?.scopeId,
+                dao.getTestAttemptById("attempt_other")?.scopeId,
+            )
+            assertEquals(
+                store.getById("attempt_declared")?.config,
+                store.getById("attempt_other")?.config,
+            )
+        }
+    }
+
+    /**
+     * Rows written before multi-Subtopic scopes existed store the scope ID bare, and they still
+     * decode that way. The new scope is additive: a new discriminator with its own decoder rather
+     * than a re-serialisation of every stored scope.
+     */
+    @Test
+    fun preExistingTopicAndSubtopicScopeRowsStillReconstruct() = runTest {
+        withTestDatabase { database ->
+            insertAttemptFixtureCurriculum(database)
+            val dao = database.assessmentAttemptDao()
+            listOf(
+                Triple("attempt_stored_topic", "TOPIC", "topic"),
+                Triple("attempt_stored_subtopic", "SUBTOPIC", "subtopic"),
+            ).forEach { (attemptId, scopeType, scopeId) ->
+                dao.upsertTestAttempt(
+                    storedFocusedAttemptRow(
+                        id = attemptId,
+                        scopeType = scopeType,
+                        scopeId = scopeId,
+                        practiceLevels = "FOUNDATION,ADVANCED",
+                        practiceSource = "WEAK_AREAS",
+                    ),
+                )
+                dao.upsertQuestionAttempts(
+                    listOf(QuestionAttemptEntity(attemptId, "question_a", sortOrder = 0, isCorrect = null)),
+                )
+            }
+
+            val store = AssessmentAttemptStore(database)
+            assertEquals(
+                AssessmentConfig.Focused(
+                    scope = AssessmentScope.Topic("topic"),
+                    questionCount = 10,
+                    levels = setOf(QuestionLevel.FOUNDATION, QuestionLevel.ADVANCED),
+                    source = PracticeQuestionSource.WEAK_AREAS,
+                ),
+                store.getById("attempt_stored_topic")?.config,
+            )
+            assertEquals(
+                AssessmentConfig.Focused(
+                    scope = AssessmentScope.Subtopic("subtopic"),
+                    questionCount = 10,
+                    levels = setOf(QuestionLevel.FOUNDATION, QuestionLevel.ADVANCED),
+                    source = PracticeQuestionSource.WEAK_AREAS,
+                ),
+                store.getById("attempt_stored_subtopic")?.config,
+            )
+        }
+    }
+
+    /**
+     * An unreadable scope fails the reconstruction instead of being repaired. Salvaging the IDs
+     * that happen to parse, or widening to a Topic, would hand the learner a different assessment
+     * than the row records — the exact outcome an authoritative stored config exists to prevent.
+     */
+    @Test
+    fun aMalformedMultiSubtopicScopePayloadFailsReconstruction() = runTest {
+        withTestDatabase { database ->
+            insertAttemptFixtureCurriculum(database)
+            val dao = database.assessmentAttemptDao()
+            listOf(
+                "attempt_not_json" to "compose_fundamentals|compose_udf",
+                "attempt_empty_scope" to "[]",
+            ).forEach { (attemptId, scopeId) ->
+                dao.upsertTestAttempt(
+                    storedFocusedAttemptRow(
+                        id = attemptId,
+                        scopeType = "SUBTOPICS",
+                        scopeId = scopeId,
+                    ),
+                )
+                dao.upsertQuestionAttempts(
+                    listOf(QuestionAttemptEntity(attemptId, "question_a", sortOrder = 0, isCorrect = null)),
+                )
+            }
+
+            val store = AssessmentAttemptStore(database)
+            assertFails { store.getById("attempt_not_json") }
+            assertFails { store.getById("attempt_empty_scope") }
+        }
+    }
+
     /** Mixed has no level or source dimension, so its rows keep both columns null. */
     @Test
     fun mixedAttemptsStoreNoPracticeSelection() = runTest {
@@ -498,6 +658,28 @@ internal class AssessmentAttemptStoreTest {
             explanation = "$id explanation.",
             status = status,
             sortOrder = sortOrder,
+        )
+
+    private fun storedFocusedAttemptRow(
+        id: String,
+        scopeType: String,
+        scopeId: String,
+        practiceLevels: String? = null,
+        practiceSource: String? = null,
+    ): TestAttemptEntity =
+        TestAttemptEntity(
+            id = id,
+            configType = "FOCUSED",
+            requestedQuestionCount = 10,
+            scopeType = scopeType,
+            scopeId = scopeId,
+            practiceLevels = practiceLevels,
+            practiceSource = practiceSource,
+            status = "IN_PROGRESS",
+            scoreTotalQuestions = null,
+            scoreCorrectAnswers = null,
+            startedAtEpochMillis = StartedAt.toEpochMilliseconds(),
+            completedAtEpochMillis = null,
         )
 
     private fun answeredQuestionAttempt(

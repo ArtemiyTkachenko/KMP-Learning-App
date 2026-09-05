@@ -535,6 +535,29 @@ Persisting these matters because retake re-runs the reconstructed configuration:
 without them a narrowed run would widen back across its whole scope, and history
 would describe an attempt the learner never made.
 
+`scope_type` and `scope_id` describe a FOCUSED attempt's scope as a
+discriminator plus a payload. `TOPIC` and `SUBTOPIC` store the stable ID bare, as
+they always have. `SUBTOPICS` — the multi-Subtopic scope — stores a JSON array of
+stable Subtopic IDs in the same `scope_id` column, sorted lexicographically:
+
+```text
+SUBTOPICS   ["compose_fundamentals","compose_udf"]
+```
+
+No column and no schema version was added for it. The physical schema already
+holds "which kind of scope" and "which content", and only the payload's shape is
+new, so the change is a new discriminator with its own decoder rather than a
+re-serialisation of every stored scope; rows written before it existed decode
+exactly as they did. The order is sorted purely so that equal scopes produce
+equal rows — the domain scope is a `Set` and its iteration order carries no
+meaning — and decoding restores `Set` semantics rather than exposing the stored
+order anywhere. JSON rather than a delimited string because nothing forbids a
+separator character inside a Subtopic ID, and a hand-rolled escaping scheme is a
+decoding bug waiting for the first ID that contains one. A malformed payload
+fails the reconstruction: salvaging the IDs that parse, or widening to a parent
+Topic, would hand the learner a different assessment than the row records, which
+is what an authoritative stored config exists to prevent.
+
 `question_attempt` stores `(test_attempt_id, question_id)` as its primary key,
 references the parent attempt and stable curriculum `question.id`, and uses
 `sort_order` for the assessment question sequence. Nullable `is_correct`

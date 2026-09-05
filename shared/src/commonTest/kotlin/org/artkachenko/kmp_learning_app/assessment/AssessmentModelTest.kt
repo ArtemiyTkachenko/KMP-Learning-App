@@ -125,6 +125,58 @@ internal class AssessmentModelTest {
     }
 
     @Test
+    fun focusedMultiSubtopicConfigIsRepresentable() {
+        val config = AssessmentConfig.Focused(
+            scope = AssessmentScope.Subtopics(setOf("compose_fundamentals", "compose_udf")),
+            questionCount = 8,
+        )
+
+        assertEquals(
+            setOf("compose_fundamentals", "compose_udf"),
+            assertIs<AssessmentScope.Subtopics>(config.scope).subtopicIds,
+        )
+        assertEquals(8, config.questionCount)
+    }
+
+    /**
+     * A scope with nothing in it is not a narrower assessment, it is an unanswerable one, and the
+     * only ways to run it would be to broaden it or to refuse it later. Refusing at construction
+     * keeps that decision out of selection and out of persistence.
+     */
+    @Test
+    fun aMultiSubtopicScopeMustNameAtLeastOneSubtopic() {
+        assertFailsWith<IllegalArgumentException> {
+            AssessmentScope.Subtopics(emptySet())
+        }
+    }
+
+    @Test
+    fun aMultiSubtopicScopeRejectsBlankSubtopicIds() {
+        assertFailsWith<IllegalArgumentException> {
+            AssessmentScope.Subtopics(setOf("compose_udf", " "))
+        }
+    }
+
+    /**
+     * The scope means "these concepts are eligible", so the order they were named in and a concept
+     * named twice both have to be invisible: two learners configuring the same practice must
+     * produce the same scope, the same persisted row, and the same retake.
+     */
+    @Test
+    fun multiSubtopicScopeIdentityIgnoresOrderAndDuplicates() {
+        val declared = AssessmentScope.Subtopics(setOf("compose_udf", "compose_fundamentals"))
+        val reversed = AssessmentScope.Subtopics(setOf("compose_fundamentals", "compose_udf"))
+        val fromRepeatedIds = AssessmentScope.Subtopics(
+            listOf("compose_udf", "compose_fundamentals", "compose_udf").toSet(),
+        )
+
+        assertEquals(declared, reversed)
+        assertEquals(declared, fromRepeatedIds)
+        assertEquals(declared.hashCode(), reversed.hashCode())
+        assertEquals(2, fromRepeatedIds.subtopicIds.size)
+    }
+
+    @Test
     fun unansweredStateIsRepresentable() {
         assertEquals(QuestionAnswerState.Unanswered, QuestionAnswerState.Unanswered)
     }

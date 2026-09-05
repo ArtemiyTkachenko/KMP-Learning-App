@@ -153,6 +153,11 @@ private fun RecentStudyContext?.currentTopicId(
                 }
                 .map(SubtopicCoverage::topicId)
                 .minOrNull()
+
+            // Used only to break a tie between equally-uncovered Topics, so a scope that spans
+            // several — possibly across Topics — simply does not break it. Picking one of its
+            // Topics would let an arbitrary member of the set decide a recommendation.
+            is AssessmentScope.Subtopics -> null
         }
 
         RecentStudyContext.Mixed,

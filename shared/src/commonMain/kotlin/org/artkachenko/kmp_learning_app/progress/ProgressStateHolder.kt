@@ -184,6 +184,13 @@ internal class ProgressStateHolder(
                                 subtopicName = subtopic?.name,
                             )
                         }
+                        // A multi-Subtopic run has no single name to show, and inventing one — the
+                        // first ID, the shared parent Topic — would label the attempt as narrower
+                        // or broader than it was. History still lists it as a focused attempt and
+                        // opens on its own result; only the subtitle is absent, which is the same
+                        // unnamed-scope state this card already renders. Naming these belongs with
+                        // the surface that can create one.
+                        is AssessmentScope.Subtopics -> null
                     },
                     totalQuestions = score.totalQuestions,
                     correctAnswers = score.correctAnswers,

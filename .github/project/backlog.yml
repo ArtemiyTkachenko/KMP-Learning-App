@@ -3182,6 +3182,7 @@ epics:
         priority: "P2"
         size: "M"
         initial_status: "Backlog"
+
   - key: E20
     github_title: "EPIC-20 Learning Content Foundation"
 
@@ -3428,6 +3429,274 @@ epics:
           - "Android, Desktop, Web, and shared CI-equivalent builds remain compatible."
 
         priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
+
+  - key: E21
+    github_title: "EPIC-21 Learn Experience & Unit Practice"
+
+    goal: >
+      Make the authored learning curriculum available to learners inside the shared
+      Compose application. Evolve the existing Topics area into the visible Learn
+      experience, allow learners to discover Learning Units for a Topic, read
+      structured Lessons and authoritative Sources, and immediately configure
+      practice covering the Unit's primary assessment concepts through the existing
+      assessment engine. Keep authored learning content, assessment history, and
+      future learner-owned lesson progress as separate responsibilities.
+
+    issues:
+      - key: E21-01
+        title: "Evolve the Topics area into the Learn entry point"
+
+        issue: >
+          The application now contains validated production learning content, but
+          the start area still presents itself only as a Topic catalogue and gives
+          the learner no indication that some Topics contain explanatory study
+          material.
+
+        approach: >
+          Reframe the existing top-level Topics experience as Learn without creating
+          a fifth navigation area. Keep existing internal route/enum identities when
+          renaming them would provide no product value. Enrich Topic discovery with
+          learning-content availability from LearningContentRepository while
+          preserving all existing search, recommendations, Saved Questions,
+          assessment context, and per-area navigation behavior.
+
+        acceptance_criteria:
+          - "The visible top-level destination previously labelled Topics is labelled Learn."
+          - "The existing Topics-area back stack remains the Learn-area back stack; no fifth top-level destination is introduced."
+          - "Internal names such as AppRoute.Topics and AppTopLevelDestination.TOPICS may remain unchanged when keeping them avoids unnecessary migration/churn."
+          - "TopicBrowser presentation can determine how many ACTIVE Learning Units are available for each Topic through LearningContentRepository."
+          - "A Topic with one or more Learning Units exposes a concise learning-availability indicator."
+          - "A Topic with no authored Learning Units remains browsable and practiceable rather than being removed from the catalogue."
+          - "Existing Topic/Subtopic search behavior remains intact."
+          - "Existing Continue Studying, Recommended Next, Saved Questions, learning-context, and practice behavior remains intact."
+          - "Learning-content availability is enrichment: failure to read learning content must not make the existing assessment Topic catalogue unusable."
+          - "The production android_ui Topic exposes the currently authored Thinking in Compose Unit availability."
+          - "No lesson-completion or studied-state model is introduced."
+          - "Presentation tests cover Topics with and without active Learning Units."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E21-02
+        title: "Expose Learning Units from Topic detail"
+
+        issue: >
+          Topic Detail currently describes assessment availability, subtopics,
+          progress context, and practice actions. A learner who opens a Topic with
+          authored study material still has no way to discover the Learning Units
+          that explain that subject.
+
+        approach: >
+          Join active Learning Units from LearningContentRepository into Topic
+          Detail by stable Topic ID and present them as a distinct study section.
+          Preserve the existing assessment/practice section instead of replacing it:
+          learning and practice are complementary capabilities of the same Topic.
+
+        acceptance_criteria:
+          - "TopicDetail presentation loads ACTIVE Learning Units whose home topic matches the current Topic."
+          - "Learning Units preserve authored order from LearningContentRepository."
+          - "Each Learning Unit row/card exposes at least its title, summary, and number of ACTIVE Lessons."
+          - "Selecting a Learning Unit emits its stable Unit ID rather than passing the authored object through navigation."
+          - "The android_ui Topic displays unit_thinking_in_compose."
+          - "Topics without active Learning Units continue to display their existing assessment/practice experience correctly."
+          - "A Topic with Learning Units but zero active Questions remains studyable; zero assessment Questions must not hide valid learning content."
+          - "A Topic with Questions but no Learning Units remains practiceable."
+          - "Learning-content failure is represented independently from the existing curriculum/practice state and does not disable valid practice actions."
+          - "Existing Topic and Subtopic practice actions retain their current behavior."
+          - "No Learning Unit progress/completion state is displayed."
+          - "Tests cover study-only, practice-only, combined, and no-learning-content Topic states."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E21-03
+        title: "Add Learning Unit overview and learning navigation"
+
+        issue: >
+          Learning Units are now discoverable from a Topic, but there is no
+          destination representing the pedagogical Unit or its ordered Lessons.
+
+        approach: >
+          Add stable-ID Navigation 3 routes and a Learning Unit destination inside
+          the Learn area's existing back stack. Resolve publisher-owned content from
+          LearningContentRepository on arrival. Present the Unit as an overview of
+          what will be learned and the Lessons that make it up.
+
+        acceptance_criteria:
+          - "A stable Learning Unit route is introduced carrying the Unit ID rather than the LearningUnit object."
+          - "A stable Lesson route is introduced using stable learning identities; carrying both Unit ID and Lesson ID is acceptable when useful for parent/order context."
+          - "Learning Unit and Lesson routes remain inside the existing Learn/Topics area back stack."
+          - "Learning Unit and Lesson browsing retain top-level area navigation according to the existing browsing/detail navigation rule."
+          - "The Learning Unit destination resolves content through LearningContentRepository."
+          - "Only current ACTIVE Learning Units are exposed as normal study destinations."
+          - "The Unit overview displays title, summary, and ACTIVE Lessons in authored order."
+          - "Each Lesson entry displays its title and concise summary."
+          - "Selecting a Lesson navigates using stable IDs rather than passing serialized lesson prose through the back stack."
+          - "Missing, retired, or inconsistent route identities produce a controlled unavailable/not-found state rather than crashing."
+          - "Back from a Lesson returns to its Unit and back from the Unit returns to the originating Topic."
+          - "The production Thinking in Compose Unit exposes its three Lessons in authored order."
+          - "No practice implementation or completion tracking is required by this issue."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E21-04
+        title: "Build the structured Lesson reader"
+
+        issue: >
+          The E20 domain can represent explanatory prose, lists, code, comparisons,
+          semantic callouts, depth sections, and Sources, but the shared Compose UI
+          has no renderer for that authored document model.
+
+        approach: >
+          Build a shared Compose Lesson reader and presentation-independent block
+          rendering layer for every E20 LearningBlock variant. Optimize for focused
+          reading across phone and larger-window layouts rather than trying to build
+          a generic Markdown/document engine.
+
+        acceptance_criteria:
+          - "The Lesson destination resolves the requested ACTIVE Lesson from the requested Unit."
+          - "Lesson title and summary are displayed."
+          - "CORE, PRACTICAL, and SENIOR sections are rendered in authored order without requiring every Lesson to contain all depths."
+          - "Paragraph blocks render readable explanatory prose."
+          - "BulletList blocks render authored items in order."
+          - "Code blocks render in a readable monospace presentation and handle code wider than the viewport without breaking the page."
+          - "Comparison blocks render structurally and remain usable on narrow screens, including horizontal overflow where necessary."
+          - "Callout blocks visually and semantically distinguish NOTE, KEY_TAKEAWAY, INTERVIEW_FOCUS, and COMMON_MISTAKE without placing presentation properties in the domain model."
+          - "Authored plain text is not interpreted as Markdown or HTML."
+          - "Authoritative Sources are displayed as optional reference material and can be opened through the platform-supported URI mechanism."
+          - "Source URLs are never embedded as raw navigation state."
+          - "The reader supports previous/next navigation across the Unit's ACTIVE Lessons in authored order."
+          - "The first/last Lesson handles absent previous/next actions correctly."
+          - "The production Thinking in Compose Lessons render through the real bundled repository path."
+          - "Compose UI tests exercise every LearningBlock variant and representative depth/callout behavior."
+          - "The reader remains shared Compose UI with no Android-only implementation."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E21-05
+        title: "Support multi-Subtopic focused assessment scopes"
+
+        issue: >
+          A Learning Unit may primarily teach several assessment Subtopics, including
+          Subtopics owned by different Topics. The current AssessmentScope can target
+          only one Topic or one Subtopic, so the existing assessment engine cannot
+          faithfully quiz a Learning Unit without either over-broad Topic practice or
+          a new parallel quiz implementation.
+
+        approach: >
+          Extend the existing focused-assessment scope model with a generic
+          multi-Subtopic scope. Keep the assessment domain independent from
+          LearningUnit: the learning layer resolves Unit primary concepts into a set
+          of Subtopic IDs and the existing assessment system operates only on that
+          generic scope. Reuse the existing level/source filtering, session,
+          persistence, scoring, result, and retake lifecycle.
+
+        acceptance_criteria:
+          - "AssessmentScope supports a non-empty set of stable Subtopic IDs in addition to existing Topic and Subtopic scopes."
+          - "The multi-Subtopic scope contains no LearningUnit or learning-presentation dependency."
+          - "Blank Subtopic IDs are rejected and duplicate IDs have one canonical semantic representation."
+          - "Focused selection treats the scope as the union of eligible ACTIVE Questions from its Subtopics."
+          - "A Question can appear at most once even if malformed/overlapping retrieval would encounter it more than once."
+          - "QuestionLevel filtering behaves exactly as for existing focused practice."
+          - "ALL, UNSEEN, WEAK_AREAS, and UNRESOLVED_MISTAKES source policies operate over the union without fallback to another source."
+          - "When several scoped Subtopics contain eligible Questions and the requested count permits it, selection prefers coverage across distinct scoped Subtopics before filling remaining slots."
+          - "Scoped Subtopics with no eligible Question after filters do not cause unrelated Questions to be selected."
+          - "Existing Topic and single-Subtopic selection behavior remains unchanged."
+          - "The multi-Subtopic scope round-trips through TestAttempt persistence and process reconstruction."
+          - "Retake preserves the persisted multi-Subtopic scope rather than silently broadening to a Topic."
+          - "Persistence uses a stable reversible representation; a Room migration is introduced only if genuinely required rather than by default."
+          - "Existing historical Topic/Subtopic attempt rows remain readable."
+          - "Selector, persistence, reconstruction, and retake tests cover the new scope."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E21-06
+        title: "Connect Learning Units to the existing Practice Builder"
+
+        issue: >
+          After studying a Unit the learner should be able to quiz themselves
+          immediately, but practice must cover only concepts that the Unit is
+          responsible for teaching. Supporting cross-topic context must not silently
+          become assessment scope, and the application should not create a second
+          quiz engine or a separate configuration experience.
+
+        approach: >
+          Add a Learning-Unit entry into the existing Practice Builder. Resolve the
+          Unit by stable ID, derive a deduplicated multi-Subtopic AssessmentScope from
+          primarySubtopicIds of its ACTIVE Lessons, and use the existing builder,
+          preflight, AssessmentConfig.Focused, taking, persistence, scoring, and
+          results flow.
+
+        acceptance_criteria:
+          - "A Practice this Unit action is available from the Learning Unit experience."
+          - "A Practice this Unit action is also available at an appropriate point in the Lesson reader so study can flow directly into assessment."
+          - "The navigation route into the builder carries the stable Learning Unit ID rather than an authored title or Lesson content."
+          - "The builder resolves the Unit through LearningContentRepository and displays the current Unit title."
+          - "The assessment scope is the deduplicated union of primarySubtopicIds from the Unit's ACTIVE Lessons."
+          - "supportingSubtopicIds never enter Unit-practice eligibility."
+          - "Cross-Topic primary Subtopics are allowed and remain part of the Unit scope."
+          - "A primary Subtopic used by multiple Lessons contributes its Questions only once to eligibility."
+          - "The same existing Practice Builder controls question count, levels, and PracticeQuestionSource."
+          - "Builder preflight reports no-content using the existing typed behavior when the selected Unit/filter combination has no eligible Questions."
+          - "Starting Unit practice creates the existing AssessmentConfig.Focused with a multi-Subtopic scope."
+          - "Assessment taking, checkpoint persistence, completion, scoring, result display, and retake continue through the existing engine."
+          - "No LearningUnit-specific assessment engine/session/repository is introduced."
+          - "Navigation from Lesson/Unit to builder and into assessment preserves the existing rule that browsing/configuration shows area navigation while taking/results hide it."
+          - "The current Thinking in Compose Unit resolves only compose_fundamentals and compose_udf as primary practice concepts; View, recomposition, architecture UDF, and state-hoisting supporting concepts are excluded."
+          - "Integration tests prove the production Unit reaches its structurally associated active Questions through the new scope."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E21-07
+        title: "Verify the Learn experience end to end"
+
+        issue: >
+          The first user-facing learning flow crosses the assessment curriculum,
+          bundled learning content, shared presentation, Navigation 3, structured
+          rendering, Practice Builder, assessment selection, and persisted attempts.
+          These boundaries need one coherent verification pass before adding learner
+          completion state or authoring the rest of the Compose course.
+
+        approach: >
+          Exercise the production Thinking in Compose content through the actual
+          Learn UI and Unit-practice handoff. Add cross-boundary tests only where
+          focused issue tests do not already provide sufficient signal, and run the
+          existing CI-equivalent platform checks.
+
+        acceptance_criteria:
+          - "A learner can navigate Learn -> UI — Views & Jetpack Compose -> Thinking in Compose -> each production Lesson."
+          - "The three production Lessons appear in authored order."
+          - "Every structured block type used by production content renders successfully."
+          - "Production Sources are reachable from the Lesson reader."
+          - "Previous/next Lesson navigation preserves Unit context."
+          - "Back navigation preserves the Learn area's stack and other top-level areas retain their independent stacks."
+          - "Learning Unit and Lesson destinations retain area navigation."
+          - "Practice Builder remains browsing/configuration and retains area navigation."
+          - "Assessment taking and results continue to hide area navigation."
+          - "Practice this Unit derives only primary assessment concepts and excludes supporting concepts."
+          - "The production Unit can configure, start, persist, complete, review, and retake a focused multi-Subtopic assessment."
+          - "Existing Topic/Subtopic practice and mixed-interview behavior remains green."
+          - "Existing assessment history, Progress, Mistakes, Saved Questions, recommendations, and Continue Studying behavior remains green."
+          - "No lesson studied/completed persistence is introduced."
+          - "No additional production Learning Units are required for this epic."
+          - "The learning-to-question coverage audit remains current."
+          - "Android, Desktop, Web, and shared CI-equivalent builds remain green."
+          - "Relevant shared Compose UI tests verify readable narrow-window behavior and accessibility semantics for interactive Lesson controls."
+          - "The completion report explicitly identifies any remaining gap before introducing learner-owned study progress."
+
+        priority: "P1"
         size: "M"
         initial_status: "Backlog"
 

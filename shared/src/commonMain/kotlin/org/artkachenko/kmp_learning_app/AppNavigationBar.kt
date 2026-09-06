@@ -24,15 +24,19 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import org.artkachenko.kmp_learning_app.ui.LocalAppSnackbarHostState
 import org.artkachenko.kmp_learning_app.ui.theme.AppLayout
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppContentMargin
 import org.jetbrains.compose.resources.stringResource
@@ -144,6 +148,9 @@ internal fun AppNavigationScaffold(
     badges: AppNavigationBadges = emptyMap(),
     content: @Composable (PaddingValues) -> Unit,
 ) {
+    // One host for the whole shell, placed here because this is the only composable that owns a
+    // Scaffold; see LocalAppSnackbarHostState for why it is not left to each screen.
+    val snackbarHostState = remember { SnackbarHostState() }
     BoxWithConstraints(modifier.fillMaxSize()) {
         val usesRail = maxWidth >= AppNavigationRailBreakpoint
         // This is already the one place that measures the window, so it is also where the content
@@ -170,6 +177,9 @@ internal fun AppNavigationScaffold(
                 // landscape display cutout.
                 contentWindowInsets = WindowInsets.safeDrawing
                     .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
+                // Inside the Scaffold rather than over the whole window, so a message clears the
+                // navigation bar instead of covering it.
+                snackbarHost = { SnackbarHost(snackbarHostState) },
                 bottomBar = {
                     if (showsNavigation && !usesRail) {
                         // Above `AppNavigationBar` rather than within it: the bar pads itself for
@@ -189,7 +199,10 @@ internal fun AppNavigationScaffold(
                     }
                 },
             ) { scaffoldPadding ->
-                CompositionLocalProvider(LocalAppContentMargin provides contentMargin) {
+                CompositionLocalProvider(
+                    LocalAppContentMargin provides contentMargin,
+                    LocalAppSnackbarHostState provides snackbarHostState,
+                ) {
                     // Wide windows stop the layout growing with them. A phone layout stretched
                     // across a desktop window puts a Topic name against the far left edge and its
                     // accuracy figure against the far right, with a foot of empty card between —

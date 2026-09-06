@@ -80,6 +80,7 @@ does not cover: [CI](docs/workflows/ci.md).
 - [Recommendations](docs/architecture/recommendations.md): guided learning policy and Continue Studying.
 - [Practice builder](docs/architecture/practice-builder.md): building and persisting a practice configuration.
 - [Persistence](docs/architecture/persistence.md): Room schema, migrations, import policy, platform storage.
+- [Text selection](docs/architecture/text-selection.md): selectable screens, the copy prompt, and the per-platform selection seams.
 
 **Development** — how to write code here:
 [Kotlin style](docs/development/kotlin.md) ·

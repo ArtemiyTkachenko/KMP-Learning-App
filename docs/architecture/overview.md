@@ -302,3 +302,41 @@ identity, Sources, structured blocks, and the cross-Topic supporting concept the
 bundled Compose Unit really uses. CI additionally runs
 `tools/learning_question_coverage.py --check`, so a learning mapping or Question
 change that leaves the committed coverage snapshot stale fails the build.
+
+E21-07 closes the epic with a verification pass rather than a feature. The
+product path below is exercised end to end on shipped content — no fixture
+stands in for a Unit, a Lesson, or the Question bank behind the builder:
+
+```text
+bundled learning content -> Learn browser -> Unit -> Lesson reader
+  -> Unit practice -> generic focused assessment -> persisted attempt
+  -> result / retake
+```
+
+`LearningProductionContentJourneyTest` drives the reading half through the real
+`App()` at a phone-shaped window: every structured block type the shipped Unit
+authors is seen rendered, a shipped Source reaches the host's `UriHandler` with
+its authored URL, the reader's controls are asserted as operable controls
+carrying their visible labels rather than as test tags, and "Practice this unit"
+reaches the builder from both reading surfaces with area navigation intact.
+`LearningUnitPracticeIntegrationTest` carries the same Unit through configure,
+start, persist, complete, review, and retake, and states that the retake keeps
+the multi-Subtopic scope rather than broadening to the Topic its concepts share.
+
+The ownership boundary the epic establishes, and where it currently stops:
+
+- Lesson content is publisher-owned. It ships in the bundle, is never persisted,
+  and is re-resolved on arrival so a re-authored Unit is read as it currently
+  reads.
+- Assessment history is learner-owned. It records the concepts a run asked
+  about, never the Unit that suggested it, so `TestAttempt` carries no Learning
+  Unit or Lesson identity and no Room migration was needed to practise a Unit.
+- Lesson completion state does not exist yet. Reading a Lesson persists nothing:
+  there is no `lesson_progress` table, no studied/completed flag, and no
+  last-read position. The only durable trace of study is an assessment attempt.
+
+That last point is the gap before learner-owned study progress. Whatever
+introduces it will need a place for learner state over publisher-owned content —
+a stable identity per Lesson to key it on, which the content model already
+provides, and a decision about what happens to recorded progress when a Lesson
+is re-authored or retired, which nothing in the current model answers.

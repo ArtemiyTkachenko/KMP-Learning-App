@@ -448,6 +448,49 @@ internal class AppNavigationTest {
         )
     }
 
+    /**
+     * E21-07: Learn's own stack and another area's, both holding detail at the same time.
+     *
+     * `switchingAreasFromALessonLeavesTheLearningStackWhereItWas` shows Learn surviving a trip to
+     * an empty Progress, and `AppNavigatorTest.backOutOfAnAreaLeavesThatAreaWhereItWas` shows
+     * Progress surviving on its own. Neither can catch a shared stack that happens to look right
+     * while only one area is deep, which is exactly what reading a Lesson and then opening a
+     * Progress detail would expose.
+     */
+    @Test
+    fun learnAndProgressEachKeepTheirOwnStackWhileBothHoldDetail() {
+        val navigator = navigator()
+        navigator.push(AppRoute.Topic("android_ui"))
+        navigator.push(AppRoute.LearningUnit("unit_thinking_in_compose"))
+        navigator.push(
+            AppRoute.LearningLesson("unit_thinking_in_compose", "lesson_declarative_ui"),
+        )
+
+        navigator.select(AppTopLevelDestination.PROGRESS)
+        navigator.push(AppRoute.ProgressTopic("android_ui"))
+
+        // Progress got its own entry rather than inheriting the reader's.
+        assertEquals(
+            listOf<NavKey>(AppRoute.Progress, AppRoute.ProgressTopic("android_ui")),
+            navigator.backStack.toList(),
+        )
+
+        navigator.select(AppTopLevelDestination.TOPICS)
+        assertEquals(
+            listOf<NavKey>(
+                AppRoute.Topics,
+                AppRoute.Topic("android_ui"),
+                AppRoute.LearningUnit("unit_thinking_in_compose"),
+                AppRoute.LearningLesson("unit_thinking_in_compose", "lesson_declarative_ui"),
+            ),
+            navigator.backStack.toList(),
+        )
+
+        // And Progress is still where the learner left it, not rewound by Learn's own depth.
+        navigator.select(AppTopLevelDestination.PROGRESS)
+        assertEquals(AppRoute.ProgressTopic("android_ui"), navigator.currentRoute)
+    }
+
     /** The existing reselect policy, which learning detail must not become an exception to. */
     @Test
     fun reselectingLearnFromALessonReturnsToTheCatalogueRoot() {

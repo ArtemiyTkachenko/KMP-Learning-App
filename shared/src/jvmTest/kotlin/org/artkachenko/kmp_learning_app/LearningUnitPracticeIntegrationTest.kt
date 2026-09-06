@@ -8,6 +8,7 @@ import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
@@ -26,6 +27,7 @@ import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
+import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.assessment.history.AppCoroutineScope
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
@@ -45,6 +47,9 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.Curriculu
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImporter
 import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.toAssessmentConfig
+import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultEvent
+import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultUiState
+import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeAvailability
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderEvent
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderTarget
@@ -174,6 +179,66 @@ internal class LearningUnitPracticeIntegrationTest {
         )
     }
 
+    /**
+     * E21-07: the far end of the journey, on the attempt the shipped Unit actually created.
+     *
+     * `TargetedPracticeLifecycleIntegrationTest` already owns the multi-Subtopic result and retake
+     * rules against a fixture catalogue, and this does not restate them. What it adds is the one
+     * thing a fixture cannot: that the attempt a *Learning Unit* produced is an ordinary member of
+     * assessment history by the time it is reviewed and repeated — reopened by attempt ID alone,
+     * with the Unit that suggested it nowhere in the path.
+     */
+    @Test
+    fun aUnitOriginatedAttemptIsReviewedAndRetakenAsAnOrdinaryFocusedRun() = runUnitPracticeTest {
+        val config = builder(PracticeBuilderTarget.LearningUnit(ComposeUnitId)).also { it.settled() }
+            .start()
+        val attemptId = runPractice(config)
+
+        // Review resolves from the attempt ID and the historical curriculum: no Unit, no Lesson,
+        // and no learning content is consulted to reconstruct what was asked.
+        val result = assertIs<FocusedResultUiState.Content>(result(attemptId).settledResult())
+        assertEquals(attemptId, result.attemptId)
+        assertTrue(result.totalQuestions > 0, "The reviewed attempt asked nothing.")
+        assertEquals(result.totalQuestions, result.questions.size)
+        result.questions.forEach { item ->
+            // Every Question the run asked is still resolvable for review, and each one is inside
+            // the concepts the Unit teaches rather than the wider Topic they happen to share.
+            val available = assertIs<ReviewQuestionItem.Available>(item)
+            assertContains(
+                UnitPracticeConcepts,
+                available.question.subtopicId,
+                "Reviewed ${available.question.questionId} outside the Unit's primary concepts.",
+            )
+        }
+
+        val retakeViewModel = result(attemptId)
+        retakeViewModel.settledResult()
+        retakeViewModel.repeatPractice()
+        val retakeId = assertIs<FocusedResultEvent.RetakeCreated>(
+            withContext(Dispatchers.Default) {
+                withTimeout(AwaitTimeoutMillis) { retakeViewModel.events.first() }
+            },
+        ).attemptId
+
+        // A second attempt, not a mutation of the first: a new stable ID, in progress, carrying the
+        // stored configuration — the multi-Subtopic scope survives rather than broadening to the
+        // Topic the concepts share.
+        assertNotEquals(attemptId, retakeId)
+        val retake = assertNotNull(assessmentRepository.getById(retakeId))
+        assertEquals(AssessmentStatus.IN_PROGRESS, retake.status)
+        assertEquals(config, retake.config)
+        assertEquals(
+            AssessmentScope.Subtopics(UnitPracticeConcepts),
+            assertIs<AssessmentConfig.Focused>(retake.config).scope,
+        )
+
+        // The source attempt is untouched history, and both attempts now stand on their own.
+        val source = assertNotNull(assessmentRepository.getById(attemptId))
+        assertEquals(AssessmentStatus.COMPLETED, source.status)
+        assertEquals(config, source.config)
+        assertEquals(2, attemptCount())
+    }
+
     /** A stale route that names no current Unit fails safely rather than practising something else. */
     @Test
     fun aRouteNamingNoCurrentUnitStartsNothing() = runUnitPracticeTest {
@@ -262,6 +327,9 @@ private class UnitPracticeGraph(
     fun builder(target: PracticeBuilderTarget): PracticeBuilderViewModel =
         koin.get { parametersOf(target) }
 
+    /** The ordinary focused result, addressed the only way the shell addresses it: by attempt ID. */
+    fun result(attemptId: String): FocusedResultViewModel = koin.get { parametersOf(attemptId) }
+
     suspend fun attemptCount(): Int = database.assessmentAttemptDao().countTestAttempts()
 
     suspend fun selectedQuestions(config: AssessmentConfig) =
@@ -310,6 +378,9 @@ private suspend fun AssessmentTakingViewModel.awaitQuestion(
 private suspend fun PracticeBuilderViewModel.settled(): PracticeBuilderUiState =
     uiState.await { it.availability !is PracticeAvailability.Checking }
 
+private suspend fun FocusedResultViewModel.settledResult(): FocusedResultUiState =
+    uiState.await { it !is FocusedResultUiState.Loading }
+
 private suspend fun PracticeBuilderViewModel.start(): AssessmentConfig.Focused {
     startPractice()
     val event = withContext(Dispatchers.Default) {
@@ -330,3 +401,10 @@ private const val EpochMillis = 1_700_000_000_000L
 /** The shipped Unit, not a fixture: see the class comment. */
 private const val ComposeUnitId = "unit_thinking_in_compose"
 private const val ComposeUnitTitle = "Thinking in Compose"
+
+/**
+ * What the shipped Unit teaches, stated once. Asserted literally rather than re-derived, so a
+ * re-authored primary concept has to be acknowledged here instead of being confirmed by the same
+ * code that produced it.
+ */
+private val UnitPracticeConcepts = setOf("compose_fundamentals", "compose_udf")

@@ -1,10 +1,12 @@
 package org.artkachenko.kmp_learning_app.topic_study.learning_lesson
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -14,6 +16,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -21,8 +24,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -51,6 +56,7 @@ import org.jetbrains.compose.resources.stringResource
 
 internal const val LearningLessonLoadingTag = "learning_lesson_loading"
 internal const val LearningLessonReadingColumnTag = "learning_lesson_reading_column"
+internal const val LearningLessonReadingProgressTag = "learning_lesson_reading_progress"
 internal const val LearningLessonPreviousTag = "learning_lesson_previous"
 internal const val LearningLessonNextTag = "learning_lesson_next"
 internal const val LearningLessonPracticeButtonTag = "learning_lesson_practice_button"
@@ -58,11 +64,15 @@ internal const val LearningLessonPracticeButtonTag = "learning_lesson_practice_b
 /**
  * The Lesson reading surface.
  *
- * A reading page, not an assessment one: no score, no question count, no progress figure, and no
- * answer controls, because none of those exist for learning content and borrowing their visual
+ * A reading page, not an assessment one: no score, no question count, no achievement figure, and
+ * no answer controls, because none of those exist for learning content and borrowing their visual
  * weight would imply they do. The page reads top to bottom in authored order — title, summary, the
  * Sections, the Sources, and only then the way to the next Lesson — so nothing offers to move on
  * before the material has been shown.
+ *
+ * The one meter it does carry, [LessonReadingProgress], measures scroll position and nothing else.
+ * That is a property of the document rather than of the learner, so it makes no claim about what
+ * has been understood and is not the kind of progress the paragraph above rules out.
  *
  * [onNavigateLesson] emits a stable Lesson ID and nothing else. What that means for the back stack
  * is the shell's decision, so no route, index, or `LearningLesson` leaves this screen.
@@ -83,10 +93,23 @@ internal fun LearningLessonScreen(
     failedSourceUrl: String? = null,
 ) {
     val scrollBehavior = rememberAppTopBarScrollBehavior()
+    // Hoisted out of the reading column so the column and the meter above it share one
+    // `ScrollState` — the meter sits beside the top bar and the column does not, so neither can own
+    // the state the other needs. Still keyed on the Lesson, for the reason [LearningLessonContent]
+    // gives; the key is null for the states that have no Lesson, which is a key like any other.
+    val scrollState = key((state as? LearningLessonUiState.Content)?.lessonId) {
+        rememberScrollState()
+    }
     Column(modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)) {
         // A stable label, for the same reason as the Unit overview: the Lesson title leads the
         // content, and the bar has to read sensibly before the Lesson has resolved.
         AppTopBar(stringResource(Res.string.learning_lesson_title), onBack, scrollBehavior)
+        // Only under a Lesson. Loading, NotFound, and Error each fill the page with a single
+        // centred message that does not scroll, so a reading meter over one would be measuring
+        // nothing.
+        if (state is LearningLessonUiState.Content) {
+            LessonReadingProgress(scrollState)
+        }
         when (state) {
             LearningLessonUiState.Loading -> ScreenLoading(
                 message = stringResource(Res.string.learning_lesson_loading),
@@ -104,6 +127,7 @@ internal fun LearningLessonScreen(
             )
             is LearningLessonUiState.Content -> LearningLessonContent(
                 state = state,
+                scrollState = scrollState,
                 onNavigateLesson = onNavigateLesson,
                 onPracticeUnit = onPracticeUnit,
                 onOpenSource = onOpenSource,
@@ -111,6 +135,69 @@ internal fun LearningLessonScreen(
                 modifier = Modifier.weight(1f),
             )
         }
+    }
+}
+
+/**
+ * How much of the Lesson is behind the reader, as a hairline directly beneath the top bar.
+ *
+ * Position rather than colour. The bar's own container colour is already spoken for: the pinned
+ * scroll behaviour tints it once content passes underneath, which is the Material cue for where the
+ * bar ends and the page begins, and driving that same colour from reading position would put two
+ * meanings on one channel. A colour is also not a quantity — nobody reads a hue as "three quarters"
+ * — and as a sole channel it says nothing to a reader who cannot separate the two shades.
+ *
+ * Attached to the bar rather than run down the side of the column as a draggable thumb. A thumb is
+ * a way of *seeking* a list being hunted through; a Lesson is a bounded document meant to be read
+ * in authored order, and the page deliberately puts the way onward at the end. A seek handle would
+ * be an invitation to skip past the material. It would also have to be built by hand: Compose
+ * Multiplatform's `VerticalScrollbar` is desktop-only, absent from the Android, iOS, and web
+ * artifacts this module also builds.
+ *
+ * Deliberately not [org.artkachenko.kmp_learning_app.ui.ProgressMeter], which animates its value.
+ * That is right for a measurement that jumps from one figure to another, and wrong here: this one
+ * tracks a finger, and an eased catch-up would read as lag rather than as travel.
+ */
+@Composable
+private fun LessonReadingProgress(scrollState: ScrollState) {
+    // `maxValue` is `Int.MAX_VALUE` until the column has been measured, and `0` for a Lesson short
+    // enough to fit the viewport. Neither is progress worth drawing — a bar pinned at zero for a
+    // page with nothing below the fold would report a journey the reader is not on — so the meter
+    // is absent rather than empty, and appears on the frame the measurement arrives.
+    val scrollRange = scrollState.maxValue
+    if (scrollRange <= 0 || scrollRange == Int.MAX_VALUE) return
+    // `clearAndSetSemantics` on the wrapper rather than on the indicator. It clears the semantics
+    // of a node's *descendants*, not of the node itself, and every semantics modifier in one chain
+    // collapses into a single configuration — so on the indicator it would leave the
+    // `ProgressBarRangeInfo` that `LinearProgressIndicator` publishes from its own `semantics`
+    // block, and clear only the children it does not have.
+    //
+    // Left uncleared, that range info alone makes the meter screen-reader focusable, so a reader
+    // navigating the Lesson element by element hits an unlabelled stop announced as bare "37%"
+    // between the toolbar and the title. It also makes every scrolled frame a value change, and a
+    // value change on a progress node is an accessibility event pushed to every enabled service.
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(ReadingProgressHeight)
+            .testTag(LearningLessonReadingProgressTag)
+            .clearAndSetSemantics {},
+    ) {
+        LinearProgressIndicator(
+            // Read inside the lambda rather than in composition. The indicator samples it while
+            // drawing, so a scroll redraws one hairline instead of recomposing the whole Lesson.
+            progress = { scrollState.value.toFloat() / scrollRange },
+            modifier = Modifier.fillMaxSize(),
+            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            // Square caps and no gap: this spans the window edge to edge as part of the bar above
+            // it, where the rounded, gapped treatment of an inset meter would look like a loose
+            // component that had drifted under the toolbar. The stop indicator goes for the reason
+            // it goes on every meter here — this measures a position, it is not an operation in
+            // flight with an end state to mark.
+            strokeCap = StrokeCap.Butt,
+            gapSize = 0.dp,
+            drawStopIndicator = {},
+        )
     }
 }
 
@@ -127,21 +214,21 @@ internal fun LearningLessonScreen(
  * a shell it can be rendered without. On a phone the cap is never reached and the page is full
  * width behind the ordinary screen margins.
  *
- * The scroll state is keyed on the Lesson: previous/next replaces the route rather than pushing
- * one, and a reader that opened the next Lesson already scrolled halfway down would be reading from
- * a position that belongs to the Lesson it just left. Keying is the whole fix — nothing scrolls
- * itself to the top on recomposition.
+ * The [scrollState] is keyed on the Lesson by the caller: previous/next replaces the route rather
+ * than pushing one, and a reader that opened the next Lesson already scrolled halfway down would be
+ * reading from a position that belongs to the Lesson it just left. Keying is the whole fix —
+ * nothing scrolls itself to the top on recomposition.
  */
 @Composable
 private fun LearningLessonContent(
     state: LearningLessonUiState.Content,
+    scrollState: ScrollState,
     onNavigateLesson: (String) -> Unit,
     onPracticeUnit: () -> Unit,
     onOpenSource: (String) -> Unit,
     failedSourceUrl: String?,
     modifier: Modifier,
 ) {
-    val scrollState = key(state.lessonId) { rememberScrollState() }
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         Column(
             modifier = Modifier
@@ -317,3 +404,10 @@ private fun AdjacentLessonCard(
 }
 
 private val SourceIconSize = 16.dp
+
+/**
+ * A hairline. Thinner than [org.artkachenko.kmp_learning_app.ui.ProgressMeter]'s 8dp, because that
+ * one is a figure a card exists to show and this one is a margin note on the top bar that should
+ * never compete with the Lesson title beneath it.
+ */
+private val ReadingProgressHeight = 3.dp

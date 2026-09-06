@@ -220,6 +220,80 @@ internal class AppNavigationBarTest {
         assertTrue(content.x > topics.x, "content should start after the rail")
     }
 
+    /**
+     * `NavigationRail` paints `surface` and the `Scaffold` beside it paints `background`, and this
+     * app's scheme gives those the same value, so the rail has no edge of its own. The rule is what
+     * makes the boundary visible, and it is only doing that job if it lies between the two.
+     */
+    @Test
+    fun aRailIsSeparatedFromTheContentByARule() = runComposeUiTest {
+        setContent {
+            AppTheme {
+                Box(Modifier.size(AppNavigationRailBreakpoint, 800.dp)) {
+                    AppNavigationScaffold(
+                        selected = AppTopLevelDestination.TOPICS,
+                        onSelect = {},
+                        showsNavigation = true,
+                    ) { Box(Modifier.testTag(ScaffoldContentTag)) }
+                }
+            }
+        }
+
+        val topics = onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.TOPICS))
+            .fetchSemanticsNode().positionInRoot
+        val rule = onNodeWithTag(AppNavigationRailDividerTag).fetchSemanticsNode().positionInRoot
+        val content = onNodeWithTag(ScaffoldContentTag).fetchSemanticsNode().positionInRoot
+
+        assertTrue(rule.x > topics.x, "the rule should follow the rail, not precede it")
+        assertTrue(content.x > rule.x, "the content should start after the rule")
+        onNodeWithTag(AppNavigationBarDividerTag).assertDoesNotExist()
+    }
+
+    /**
+     * The bottom bar's counterpart. It differs from the page by a tonal step of roughly 12/255 per
+     * channel, which is easy to miss, so the rule states the edge instead of implying it. It is
+     * only doing that job if it lies along the bar's top edge rather than anywhere else.
+     */
+    @Test
+    fun aBarIsSeparatedFromTheContentByARule() = runComposeUiTest {
+        setContent {
+            AppTheme {
+                Box(Modifier.size(AppNavigationRailBreakpoint - 1.dp, 800.dp)) {
+                    AppNavigationScaffold(
+                        selected = AppTopLevelDestination.TOPICS,
+                        onSelect = {},
+                        showsNavigation = true,
+                    ) { Box(Modifier.testTag(ScaffoldContentTag)) }
+                }
+            }
+        }
+
+        val rule = onNodeWithTag(AppNavigationBarDividerTag).fetchSemanticsNode().positionInRoot
+        val topics = onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.TOPICS))
+            .fetchSemanticsNode().positionInRoot
+
+        assertTrue(rule.y < topics.y, "the rule should sit above the bar, not inside or below it")
+    }
+
+    @Test
+    fun aPhoneShapedWindowHasNoRailRule() = runComposeUiTest {
+        setContent {
+            AppTheme {
+                Box(Modifier.size(AppNavigationRailBreakpoint - 1.dp, 800.dp)) {
+                    AppNavigationScaffold(
+                        selected = AppTopLevelDestination.TOPICS,
+                        onSelect = {},
+                        showsNavigation = true,
+                    ) { Box(Modifier.testTag(ScaffoldContentTag)) }
+                }
+            }
+        }
+
+        // Navigation is along the bottom here, and the bottom bar separates itself by container
+        // colour. A rule with no rail beside it would be a line across nothing.
+        onNodeWithTag(AppNavigationRailDividerTag).assertDoesNotExist()
+    }
+
     @Test
     fun anImmersiveScreenGetsTheWholeWindow() = runComposeUiTest {
         setContent {
@@ -237,6 +311,8 @@ internal class AppNavigationBarTest {
         AppTopLevelDestination.entries.forEach {
             onNodeWithTag(appNavigationBarItemTag(it)).assertDoesNotExist()
         }
+        onNodeWithTag(AppNavigationRailDividerTag).assertDoesNotExist()
+        onNodeWithTag(AppNavigationBarDividerTag).assertDoesNotExist()
         assertEquals(
             0f,
             onNodeWithTag(ScaffoldContentTag).fetchSemanticsNode().positionInRoot.x,

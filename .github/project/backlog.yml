@@ -3700,3 +3700,253 @@ epics:
         size: "M"
         initial_status: "Backlog"
 
+  - key: E22
+    github_title: "EPIC-22 Learner Study Progress"
+
+    goal: >
+      Give the learner durable, learner-owned study progress over publisher-owned
+      learning content. Record that a Lesson was intentionally studied, keyed on
+      stable Lesson identity and without copying authored content into the
+      database, then derive current Learning Unit and Topic progress from the
+      current ACTIVE learning hierarchy rather than persisting aggregates. Make
+      that state visible and reversible in the existing Learn experience and add a
+      deterministic Continue Learning shortcut. Keep authored learning content,
+      learner study progress, and assessment history as three separate
+      responsibilities: studied is not practised, practised is not mastered, and
+      opened is not studied.
+
+    issues:
+      - key: E22-01
+        title: "Define the learner study-progress contract and lifecycle semantics"
+
+        issue: >
+          E21 deliberately stopped at an ownership boundary: reading a Lesson
+          persists nothing, there is no studied state, and nothing in the current
+          model says what happens to a learner's progress when a Lesson is
+          rewritten, reordered, deprecated, or removed. Introducing a table or a
+          Compose control first would settle those product questions accidentally
+          and leave them undocumented.
+
+        approach: >
+          Define the contract before anything implements it. Record the meaning of
+          studied, its identity key, its lifecycle under re-authoring, and the
+          persist-versus-derive rules in a canonical repository document, and
+          introduce pure shared domain types only where a type expresses the
+          contract better than prose. Follow the ownership split the existing
+          architecture already documents rather than inventing a parallel one.
+
+        acceptance_criteria:
+          - "A canonical learner study-progress contract document exists in the repository documentation and is linked from the documentation map."
+          - "Studied is defined as an intentional learner action, explicitly distinct from opening a Lesson, scrolling it, or navigating past it."
+          - "Studied state is defined as reversible."
+          - "The stable Lesson ID is defined as the only learner-owned persistence key for study state."
+          - "Copying publisher-owned Lesson, Unit, or Topic content into learner-owned study state is explicitly forbidden."
+          - "An editorial revision that keeps a Lesson's stable ID is defined as retaining the existing learner study record."
+          - "A change of learning responsibility that should no longer count as the same learner accomplishment is defined as requiring a new stable Lesson ID."
+          - "Content hashing or body comparison is explicitly rejected as a progress-invalidation mechanism."
+          - "DEPRECATED Lesson study records are defined as retained but excluded from current progress."
+          - "Study records whose Lesson no longer resolves are defined as retained, harmless, and excluded from current progress."
+          - "Whether historical or orphaned study records are surfaced to the learner during this epic is decided and recorded."
+          - "Current Unit progress is defined over the Unit's current ACTIVE Lessons and never over stored study records."
+          - "Current Topic progress is defined over the ACTIVE Learning Units whose home Topic is that Topic."
+          - "Primary and supporting Subtopic mappings into other Topics are defined as not moving study completion into those Topics."
+          - "Studied and practised are defined as independent, with assessment history remaining the only source of practice performance."
+          - "The contract lists which facts are persisted and which values are derived, and forbids persisting aggregate counts, percentages, or completion flags."
+          - "Empty ACTIVE Unit and empty Topic behavior is defined explicitly rather than left to an empty denominator."
+          - "An initial Continue Learning policy is defined deterministically over current ACTIVE content and study records."
+          - "Failure semantics are defined so unreadable or unwritable study state stays distinguishable from nothing studied."
+          - "No Room entity, DAO, migration, repository implementation, ViewModel, or UI control is introduced by this issue."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E22-02
+        title: "Persist learner Lesson study state"
+
+        issue: >
+          Study progress is durable mutable learner state, so it needs a
+          persistence boundary of its own. The application currently has no place
+          to record that a Lesson was studied, and the only durable trace of study
+          is an assessment attempt.
+
+        approach: >
+          Add the smallest learner-owned study fact to the existing database,
+          following the saved-question precedent: stable identity plus a timestamp,
+          no foreign key to content, and display material resolved separately
+          through LearningContentRepository. Introduce a domain-facing repository
+          boundary, register it in the shared data graph, and add the schema
+          increment with an explicit additive migration.
+
+        acceptance_criteria:
+          - "A Lesson can be marked studied by stable Lesson ID."
+          - "A studied Lesson can be unmarked, reversing the recorded state."
+          - "Marking the same Lesson studied repeatedly is idempotent and preserves the original recorded time."
+          - "The persisted row holds learner-owned facts only: the stable Lesson ID and when it was marked studied."
+          - "No Lesson, Unit, or Topic title, summary, body, or authored order is persisted."
+          - "No aggregate count, percentage, or completion flag is persisted."
+          - "No practice, score, mastery, or weakness field is added to study persistence."
+          - "The study table has no foreign key to curriculum content and is not written or cleared by curriculum import."
+          - "The database schema version is incremented and an explicit additive migration creates the new table without rewriting existing rows."
+          - "Android, JVM, iOS, and Web database builders register the new migration."
+          - "A migration test verifies the chain against the exported schemas and leaves curriculum, assessment, and saved-question rows intact."
+          - "Study state survives repository and database reconstruction."
+          - "A domain-facing repository boundary exposes study state without leaking Room types beyond the data layer."
+          - "The repository is registered in the shared Koin data graph alongside the existing learner-owned repositories."
+          - "A study record whose Lesson no longer resolves can still be read and removed without error."
+          - "Persistence tests cover mark, unmark, idempotency, recorded-time behavior, and retained orphan rows."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E22-03
+        title: "Derive Learning Unit and Topic study progress"
+
+        issue: >
+          Persisted study facts answer only whether one Lesson was studied. The
+          learner-facing questions are how far through a Learning Unit and a Topic
+          they are, and those answers must come from the current ACTIVE hierarchy
+          rather than from whatever history happens to be stored.
+
+        approach: >
+          Combine learner study facts with publisher-owned content in a pure shared
+          derivation with its own name and responsibility. Do not extend the
+          assessment-derived progress services, whose responsibility is performance
+          from completed assessments. Compute snapshots on demand and persist
+          nothing.
+
+        acceptance_criteria:
+          - "The derivation reports whether a given Lesson is currently studied."
+          - "Unit study progress reports a studied count, an ACTIVE Lesson total, and a derived completion state."
+          - "The Unit denominator is the Unit's current ACTIVE Lessons and is never derived from stored study records."
+          - "DEPRECATED Lessons raise neither the numerator nor the denominator and cannot block Unit completion."
+          - "Study records for Lessons that no longer resolve are ignored by current progress without error."
+          - "Topic study progress derives from the ACTIVE Learning Units whose home Topic is that Topic, and from those Units' ACTIVE Lessons."
+          - "Primary and supporting Subtopic mappings into other Topics do not move study completion into those Topics."
+          - "A Unit with no ACTIVE Lessons produces the explicitly defined empty result rather than becoming 0 or 100 percent by accident."
+          - "A Topic with no ACTIVE Learning Units produces the explicitly defined empty result."
+          - "Derived results are deterministic for the same content and study state."
+          - "Authored Lesson and Unit order is preserved wherever the derivation exposes per-Lesson or per-Unit results."
+          - "No aggregate study value is persisted."
+          - "The derivation is shared code with no Room, navigation, or Compose dependency."
+          - "The existing assessment-derived progress services are not extended to carry study completion."
+          - "Tests cover unstudied, partially studied, fully studied, deprecated, orphaned, empty, and re-authored same-ID cases."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E22-04
+        title: "Surface study progress in the Learn experience"
+
+        issue: >
+          Persisted and derived study progress is only useful once the learner can
+          see it and change it. The Lesson reader, the Learning Unit overview, and
+          Topic detail currently present publisher-owned availability with no
+          learner state at all.
+
+        approach: >
+          Add the explicit mark and unmark control to the Lesson reader and read-only
+          study indicators to the Unit overview and Topic detail, reusing the
+          existing Learn presentation. Model study state as its own loading,
+          available, and unavailable states in the way TopicLearningUnitsUiState
+          already models optional study material, so a study-state failure costs an
+          indicator rather than a screen.
+
+        acceptance_criteria:
+          - "The Lesson reader displays whether the current Lesson is studied."
+          - "The Lesson reader exposes an explicit, reversible mark and unmark control."
+          - "Opening a Lesson, scrolling it, or navigating to another Lesson never changes studied state."
+          - "The control carries an accessible label and an accessible state reflecting the current value."
+          - "The Learning Unit overview shows studied state for each Lesson row in authored order."
+          - "The Learning Unit overview shows the Unit's current study progress."
+          - "Unstudied Lessons are never hidden, reordered, or locked."
+          - "Topic detail shows current study progress for its Learning Units."
+          - "Topic detail keeps study availability and practice availability separately represented."
+          - "Study progress presentation models loading, available, and unavailable distinctly and never renders unavailable as nothing studied."
+          - "A study-state read failure leaves Lesson, Unit, and Topic content readable and the rest of each screen usable."
+          - "A failed mark or unmark does not leave the control displaying state that was not persisted."
+          - "Whether aggregate study progress belongs on the Topic Browser during this epic is decided deliberately and the decision recorded."
+          - "The Learn UI remains shared Compose with no Android-only implementation."
+          - "Compose tests cover studied and unstudied rendering, mark, unmark, failure state, narrow-window usability, and accessibility semantics."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E22-05
+        title: "Add Continue Learning"
+
+        issue: >
+          Once study progress exists, the learner needs a deterministic answer to
+          what they should study next. The existing Continue Studying card answers a
+          different question from assessment history and must not be redefined to
+          answer this one.
+
+        approach: >
+          Resolve the next Lesson from current ACTIVE learning content in authored
+          order combined with current study records, adding only the narrow ordered
+          read that LearningContentRepository does not yet expose. Present it as
+          optional enrichment alongside, and clearly distinct from, the existing
+          assessment-oriented Continue Studying behavior.
+
+        acceptance_criteria:
+          - "Continue Learning resolves the first current ACTIVE Lesson not yet marked studied, in authored Unit order and authored Lesson order."
+          - "Any ordered content read the policy needs is added to LearningContentRepository as a narrow additive query."
+          - "The result is deterministic for the same content and study state."
+          - "DEPRECATED Units and DEPRECATED Lessons are skipped and can never resolve as the next Lesson."
+          - "Fully studied Units are skipped."
+          - "A course with no remaining unstudied ACTIVE Lesson produces an explicit complete state rather than an arbitrary Lesson."
+          - "Learning content containing no ACTIVE Lessons at all produces an explicit empty state."
+          - "The target is expressed as stable Unit and Lesson IDs and navigates through the existing learning routes."
+          - "Continue Learning never reads assessment attempt history or attempt ordering."
+          - "No last-read Lesson ID, reading position, or resume flag is persisted."
+          - "Existing Continue Studying semantics, wording, inputs, and destinations are unchanged."
+          - "Continue Learning and Continue Studying remain separately named and separately derived."
+          - "Continue Learning is optional enrichment: failing to read study state or learning content must not make its host screen unusable."
+          - "Tests cover no progress, partial progress, a fully studied Unit, deprecated content, an orphaned record, course complete, and empty content."
+
+        priority: "P2"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E22-06
+        title: "Verify learner study progress end to end"
+
+        issue: >
+          Study progress crosses bundled learning content, Room persistence, shared
+          derivation, Navigation 3, and the Learn presentation, and it sits directly
+          beside assessment history without being allowed to touch it. Those
+          boundaries need one coherent verification pass on shipped content before
+          the epic closes.
+
+        approach: >
+          Exercise the production Thinking in Compose Unit through the real Learn UI
+          and real persistence. Add cross-boundary tests only where the focused issue
+          tests do not already give sufficient signal, and run the existing
+          CI-equivalent platform checks.
+
+        acceptance_criteria:
+          - "A learner can reach the production Thinking in Compose Unit from Learn, open a production Lesson, and mark it studied."
+          - "The studied fact is durable in the real database rather than in presentation state."
+          - "Unit study progress changes to match after marking."
+          - "Topic study progress changes to match after marking."
+          - "Continue Learning advances to the next production Lesson."
+          - "Unmarking reverses Lesson, Unit, and Topic study progress."
+          - "Study state survives application and repository recreation."
+          - "An editorial revision that keeps a stable Lesson ID retains the learner study record."
+          - "A DEPRECATED Lesson and a study record whose Lesson is missing leave current progress correct rather than corrupted."
+          - "Marking a Lesson studied creates no TestAttempt and changes no assessment history."
+          - "Completing an assessment fabricates no studied state."
+          - "The existing Learn reading and Unit-practice flow remains green."
+          - "Existing Progress, Mistakes, Saved Questions, recommendations, and Continue Studying behavior remains green."
+          - "The migration chain is verified from the previous schema version."
+          - "No additional production Learning Units are authored for this epic."
+          - "Android, Desktop, Web, and shared CI-equivalent builds remain green."
+          - "iOS status is reported accurately rather than assumed."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+

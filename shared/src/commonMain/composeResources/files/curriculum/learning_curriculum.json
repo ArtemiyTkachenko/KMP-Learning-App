@@ -2922,7 +2922,7 @@
                 {
                   "type": "bullet_list",
                   "items": [
-                    "**A direct calculation filters nothing.** The value is recomputed by every execution of the body, and every execution was caused by something the enclosing scope read.",
+                    "**A direct calculation filters nothing.** The value is recomputed by every execution of the body, whatever caused that execution — the first composition, a caller passing a changed parameter, or a write to state the scope read.",
                     "**`remember(keys)` filters work.** The body executes as often as it did before; the calculation inside it does not.",
                     "**`derivedStateOf` filters notifications.** The calculation runs whenever a state object it read changes; what it withholds is the invalidation of whoever is reading the derived result."
                   ]

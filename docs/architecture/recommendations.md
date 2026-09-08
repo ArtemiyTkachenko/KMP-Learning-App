@@ -146,6 +146,10 @@ land on top of a newer. The card is withheld while a search query is active: a
 learner who has started typing has said what they are looking for, and the
 shortcut is not a search result.
 
+A third question — which current Lesson to study next — belongs to Continue Learning,
+which is separately named, separately derived, and defined in
+[study progress](study-progress.md). It never redefines Continue Studying.
+
 ## Contextual practice shortcuts
 
 A contextual shortcut is a local affordance, not a policy. It fires only where a

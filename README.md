@@ -49,7 +49,8 @@ The full command reference is in [docs/development/validation.md](docs/developme
   [practice selection](docs/architecture/practice-selection.md),
   [recommendations](docs/architecture/recommendations.md),
   [practice builder](docs/architecture/practice-builder.md),
-  [persistence](docs/architecture/persistence.md).
+  [persistence](docs/architecture/persistence.md),
+  [study progress](docs/architecture/study-progress.md).
 - **Development** — [Kotlin style](docs/development/kotlin.md),
   [KMP boundaries](docs/development/kmp.md), [Gradle](docs/development/gradle.md),
   [testing](docs/development/testing.md), [validation](docs/development/validation.md).

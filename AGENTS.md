@@ -80,6 +80,7 @@ does not cover: [CI](docs/workflows/ci.md).
 - [Recommendations](docs/architecture/recommendations.md): guided learning policy and Continue Studying.
 - [Practice builder](docs/architecture/practice-builder.md): building and persisting a practice configuration.
 - [Persistence](docs/architecture/persistence.md): Room schema, migrations, import policy, platform storage.
+- [Study progress](docs/architecture/study-progress.md): learner-owned studied state, its lifecycle under re-authoring, derived Unit and Topic progress.
 
 **Development** — how to write code here:
 [Kotlin style](docs/development/kotlin.md) ·

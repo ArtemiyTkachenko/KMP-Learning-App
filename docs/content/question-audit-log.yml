@@ -135,6 +135,31 @@ audits:
         - { n: 409, id: compose_snapshot_read_records_dependency, gap: GAP-U6-A, level: FOUNDATION }
         - { n: 410, id: compose_snapshot_flow_read_inside_block, gap: GAP-U6-B, level: APPLIED }
         - { n: 411, id: compose_snapshot_flow_conflated_state, gap: GAP-U6-B, level: ADVANCED }
+      pre_merge_fixes: |
+        Three defects were found by PR review after the batch was authored and were fixed
+        before merge. All three are the same shape: a sentence written quickly around a
+        correct core claim.
+
+        compose_work_placement_responsibility_vs_thread — the keyed answer said the move
+        gives the work "an owner that outlives the screen". A screen-scoped ViewModel is
+        cleared when its navigation destination is removed, and moving a call into one of its
+        methods establishes no longer-lived coroutine owner, so a candidate who knows
+        ViewModel scoping could decline the key and be marked wrong. Narrowed to the two
+        things the move does settle: responsibility leaves composition, and the work stays on
+        whichever thread calls it.
+
+        compose_false_stability_promise_cost — the keyed answer joined the technical
+        consequence to "diagnosed far from its cause", which is a prediction about how a team
+        would debug rather than a fact the stem establishes. The option now states only the
+        documented failure, and the correctness-versus-performance asymmetry moved into the
+        explanation where it is commentary rather than a marked claim.
+
+        compose_state_collection_mutation — the explanation offered "items = items + text"
+        as the fix, which does not compile against the stem: items is a val holding
+        MutableState<MutableList<String>>, so it can be neither reassigned nor added to as a
+        list, and items.value + text yields a List rather than a MutableList. The explanation
+        now declares the holder over listOf() and writes items.value = items.value + text.
+
 
     systemic:
       - >-
@@ -156,6 +181,17 @@ audits:
         360/39 and listed two deprecated questions as active. A generated report is only as
         current as the last person who ran the generator; the tests are the thing that fails.
         Both were brought back into line here.
+      - >-
+        Every defect PR review found in this batch was in a keyed answer's qualifying clause
+        or an explanation's example, never in a distractor and never in a stem's premise.
+        That matches the playbook's Part 9 finding exactly, and both keyed-answer defects were
+        the same failure: a true core claim with a second clause attached that the stem does
+        not establish. Read each keyed answer as two claims and test the weaker one.
+      - >-
+        Code in an explanation is a claim like any other and has to compile against the stem
+        it is explaining. The fix offered for the collection-mutation question was written
+        from the Lesson's version of the example, which declares the state differently from
+        the question's stem, and nothing in the deterministic checks can catch that.
       - >-
         Twelve additions moved android_ui from 1.08 to 1.54 active questions per subtopic
         without adding a subtopic, which is the deepest any Topic outside lifecycle and

@@ -173,7 +173,7 @@ Current output of the `docs/content/question-authoring-playbook.md` Part 3 scrip
 the whole bank:
 
 ```
-correct-longest 157/367 (43%), mean ratio 1.03, over 10% limit: 0
+correct-longest 156/367 (43%), mean ratio 1.03, over 10% limit: 0
 absolutes: distractors 0.22/opt, correct 0.11/opt
 position: {0: 28%, 1: 27%, 2: 26%, 3: 19%, 4: 1%}
 ```

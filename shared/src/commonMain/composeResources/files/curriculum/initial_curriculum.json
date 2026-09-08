@@ -17436,7 +17436,7 @@
       "correctAnswerIds": [
         "compose_state_collection_mutation_a"
       ],
-      "explanation": "MutableState observes writes to its own value property; it has no way to learn that the object it points at was modified. The documentation is explicit that mutable objects which are not observable, such as ArrayList or a mutable data class, do not trigger recomposition, and recommends an observable holder such as State<List<T>> together with the read-only listOf(). Assigning items = items + text writes the holder and is recorded. Hoisting changes who owns the state and not whether a mutation is seen; remember caches a value rather than making one observable; and a read of items.value inside the body is already recorded, which is exactly why the holder is the thing that must be written. mutableStateListOf is the other documented fix, and it works because its own mutating operations are the notification.",
+      "explanation": "MutableState observes writes to its own value property; it has no way to learn that the object it points at was modified. The documentation is explicit that mutable objects which are not observable, such as ArrayList or a mutable data class, do not trigger recomposition, and recommends an observable holder such as State<List<T>> together with the read-only listOf(). So declare the holder over listOf() and write it — items.value = items.value + text — where the assignment reaches value and is recorded, and the read-only type no longer offers the mutating methods that produced the bug. Hoisting changes who owns the state and not whether a mutation is seen; remember caches a value rather than making one observable; and a read of items.value inside the body is already recorded, which is exactly why the holder is the thing that must be written. mutableStateListOf is the other documented fix, and it works because its own mutating operations are the notification.",
       "sources": [
         {
           "title": "State and Jetpack Compose",
@@ -17580,7 +17580,7 @@
       "answers": [
         {
           "id": "compose_false_stability_promise_cost_a",
-          "text": "A screen that keeps rendering data the app has already changed, diagnosed far from its cause."
+          "text": "A composable that does not recompose when you expect it to, leaving the screen showing stale data."
         },
         {
           "id": "compose_false_stability_promise_cost_b",
@@ -17600,7 +17600,7 @@
       "correctAnswerIds": [
         "compose_false_stability_promise_cost_a"
       ],
-      "explanation": "@Immutable states that the value of a type's properties can never change after construction, and the guidance is explicit that the annotations do not make a class stable on their own: using them opts you into a contract with the compiler, and incorrectly annotating a class could cause recomposition to break, leading to bugs such as a composable not recomposing when you expect it to. A list mutated behind the promise produces exactly that outcome, and the observable failure is stale UI, which reads as a data-layer bug and is investigated in the repository and the cache long before anyone suspects the annotation. Nothing verifies the promise, so there is no compile error and no exception, and the annotation overrides what the compiler would otherwise infer rather than merely advising it.",
+      "explanation": "@Immutable states that the value of a type's properties can never change after construction, and the guidance is explicit that the annotations do not make a class stable on their own: using them opts you into a contract with the compiler, and incorrectly annotating a class could cause recomposition to break, leading to bugs such as a composable not recomposing when you expect it to. A list mutated behind the promise produces exactly that outcome. Nothing verifies the promise, so there is no compile error and no exception, and the annotation overrides what the compiler would otherwise infer rather than merely advising it. That is why these are correctness tools rather than performance ones: a missed skip is a slow screen, while a false promise is a screen showing data that is no longer true, which presents as a data problem rather than a Compose one.",
       "sources": [
         {
           "title": "Fix Stability Issues",
@@ -17703,7 +17703,7 @@
       "answers": [
         {
           "id": "compose_work_placement_responsibility_vs_thread_a",
-          "text": "It gives the work an owner that outlives the screen, and leaves it on whichever thread calls it."
+          "text": "It moves responsibility out of composition, and leaves the work on whichever thread calls it."
         },
         {
           "id": "compose_work_placement_responsibility_vs_thread_b",
@@ -17723,7 +17723,7 @@
       "correctAnswerIds": [
         "compose_work_placement_responsibility_vs_thread_a"
       ],
-      "explanation": "Two separate decisions are involved and only one of them is being made. Placement is settled by ownership: state holders are the classes responsible for producing UI state and the logic that produces it, and business logic belongs in the domain or data layers and never in the UI layer, so the move is correct and gives the work a home that can report loading and failure and be cancelled. Threading is a separate duty and is not the caller's. The coroutines guidance places it on the code doing the work: a class performing long-running blocking operations is in charge of moving execution off the main thread with withContext, and that applies to every class regardless of which part of the architecture it sits in. An unchanged blocking function called from a ViewModel runs on whatever thread called it, main-safety is still owed, and surviving configuration change is not the same as the call becoming cheaper.",
+      "explanation": "Two separate decisions are involved and only one of them is being made. Placement is settled by ownership: state holders are the classes responsible for producing UI state and the logic that produces it, and business logic belongs in the domain or data layers and never in the UI layer, so the move is correct and puts the work somewhere that can own a coroutine scope and express loading and failure, which a composable body cannot. Threading is a separate duty and is not the caller's. The coroutines guidance places it on the code doing the work: a class performing long-running blocking operations is in charge of moving execution off the main thread with withContext, and that applies to every class regardless of which part of the architecture it sits in. An unchanged blocking function called from a ViewModel runs on whatever thread called it, main-safety is still owed, and surviving configuration change is not the same as the call becoming cheaper.",
       "sources": [
         {
           "title": "UI Layer",

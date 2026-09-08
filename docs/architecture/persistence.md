@@ -462,9 +462,9 @@ Expected platform-specific responsibilities:
 
 Android remains the primary MVP target, but every configured application host
 now supplies a persistent `CurriculumDatabase` to the same shared repositories.
-All platform builders open schema version 7 and register the complete migration chain from
-`MIGRATION_1_2` through `MIGRATION_6_7`; curriculum, assessment history, and saved Question
-identity remain in one database.
+All platform builders open schema version 8 and register the complete migration chain from
+`MIGRATION_1_2` through `MIGRATION_7_8`; curriculum, assessment history, saved Question identity,
+and Lesson study state remain in one database.
 
 Android and Desktop use `BundledSQLiteDriver` with `curriculum.db` in the
 platform application data directory. JVM persistence tests use the same driver
@@ -496,7 +496,7 @@ back to an ephemeral database.
 ## Assessment Attempt History
 
 Schema version 2 introduced assessment attempts; the current schema is version
-7. Version 3 preserves retired answer-option identity, version 4 persists
+8. Version 3 preserves retired answer-option identity, version 4 persists
 authored question selection mode, version 5 persists authored question
 interview level, and version 6 persists the practice levels and question source
 a targeted run was configured with:
@@ -594,6 +594,30 @@ when curriculum content is removed, while display content is resolved separately
 `CurriculumRepository.getQuestionById`. That historical resolver may return ACTIVE or DEPRECATED
 content, or null for a missing ID; none of those results automatically changes the saved row.
 
+## Lesson Study State
+
+Schema version 8 adds `studied_lesson` as learner-owned study state, following the
+`saved_question` shape. Each row stores only `lesson_id` and `studied_at_epoch_millis`; the stable
+Lesson ID is the primary key, and insert-ignore semantics make a repeated mark a no-op that
+preserves the time of the first explicit mark. Unmarking deletes the row rather than recording a
+second historical event, so a later mark records a new time. Repository reads order newest first
+with the stable ID as a deterministic tie-breaker, which is a boundary convenience only: authored
+learning order is publisher-owned and is what the Learn surfaces follow.
+
+The table deliberately has no foreign key to any curriculum table. Learning Lessons are bundled
+publisher documents validated in memory rather than Room rows, so there is nothing to constrain
+against; more importantly a learner's claim is allowed to outlive the material it was made about.
+`LessonStudyRepository` therefore never consults `LearningContentRepository`: it answers only which
+stable Lesson IDs were marked, and a record whose Lesson no longer resolves stays readable and
+removable by its ID. Nothing prunes such a record, because there is no cleanup policy — retention
+is data-lifecycle correctness rather than a surfaced feature.
+
+`CurriculumImporter` neither writes, clears, nor prunes this table, and it takes no part in the
+curriculum-refresh transaction; a regression test in `CurriculumImporterTest` pins that. The table
+also holds nothing derived: Unit and Topic study aggregates remain unimplemented until E22-03,
+which will compute them by joining these facts against the current ACTIVE learning hierarchy. See
+[study progress](study-progress.md) for the semantics this storage serves.
+
 ## Migration and Schema History
 
 E07-03 establishes schema version 1 and enables version-controlled Room schema
@@ -621,6 +645,11 @@ E11-01 adds history read queries only and does not change the schema.
 Schema version 7 adds `saved_question` through `MIGRATION_6_7`. The migration creates the empty
 identity-and-timestamp table without rewriting curriculum or assessment rows and without a
 foreign key to curriculum content.
+Schema version 8 adds `studied_lesson` through `MIGRATION_7_8`, the same shape of pure additive
+create. Nothing is backfilled: absence of a row already means unstudied, and seeding rows from the
+current curriculum would fabricate claims the learner never made. Curriculum, assessment, and
+saved-question rows are left byte-for-byte unchanged, which the 7 -> 8 migration test asserts row
+by row rather than by checking that the tables still exist.
 
 Destructive migration should not be the default production strategy. Migration
 tests validate the migration chain against Room's exported schemas and verify
@@ -639,10 +668,13 @@ Android Application
      -> CurriculumRepository
      -> AssessmentRepository
      -> SavedQuestionRepository
+     -> LessonStudyRepository
 ```
 
 The shared module defines the repository data modules. Each host supplies its platform database
-module, and all three repositories resolve against that single `CurriculumDatabase` instance.
+module, and all four repositories resolve against that single `CurriculumDatabase` instance.
+`lessonStudyDataModule` is separate from `learningContentModule` on purpose: the latter owns the
+publisher-authored learning document, the former the learner's claims about it.
 The project uses Koin's classic DSL only; annotation processing, compiler plugins, Compose
 injection, and ViewModel DSLs remain deferred.
 

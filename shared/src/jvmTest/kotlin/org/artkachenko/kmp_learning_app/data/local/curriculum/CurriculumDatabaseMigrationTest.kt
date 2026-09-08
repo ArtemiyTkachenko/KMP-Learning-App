@@ -14,7 +14,7 @@ import kotlinx.coroutines.test.runTest
 
 internal class CurriculumDatabaseMigrationTest {
     @Test
-    fun migrationFromOneToSevenPreservesCurriculumAndHistoricalAssessmentRows() = runTest {
+    fun migrationFromOneToEightPreservesCurriculumAndHistoricalAssessmentRows() = runTest {
         val databasePath = Files.createTempDirectory("curriculum-migration-test")
             .resolve("curriculum.db")
         val helper = MigrationTestHelper(
@@ -101,8 +101,15 @@ internal class CurriculumDatabaseMigrationTest {
         }
 
         helper.runMigrationsAndValidate(
-            version = 7,
-            migrations = listOf(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7),
+            version = 8,
+            migrations = listOf(
+                MIGRATION_2_3,
+                MIGRATION_3_4,
+                MIGRATION_4_5,
+                MIGRATION_5_6,
+                MIGRATION_6_7,
+                MIGRATION_7_8,
+            ),
         ).use { connection ->
             connection.prepare("SELECT selection_mode, level FROM question WHERE id = 'question'").use { statement ->
                 assertTrue(statement.step())
@@ -114,6 +121,10 @@ internal class CurriculumDatabaseMigrationTest {
                 assertEquals(1, statement.getLong(0).toInt())
             }
             connection.prepare("SELECT COUNT(*) FROM saved_question").use { statement ->
+                assertTrue(statement.step())
+                assertEquals(0, statement.getLong(0).toInt())
+            }
+            connection.prepare("SELECT COUNT(*) FROM studied_lesson").use { statement ->
                 assertTrue(statement.step())
                 assertEquals(0, statement.getLong(0).toInt())
             }
@@ -580,6 +591,152 @@ internal class CurriculumDatabaseMigrationTest {
                 assertEquals(3_000, statement.getLong(1).toInt())
             }
             connection.prepare("PRAGMA foreign_key_list('saved_question')").use { statement ->
+                assertTrue(!statement.step())
+            }
+        }
+    }
+
+    @Test
+    fun migrationFromSevenToEightAddsEmptyStudiedLessonTableAndPreservesExistingRows() = runTest {
+        val databasePath = Files.createTempDirectory("curriculum-migration-test")
+            .resolve("curriculum.db")
+        val helper = MigrationTestHelper(
+            schemaDirectoryPath = Path.of("schemas").toAbsolutePath(),
+            databasePath = databasePath,
+            driver = BundledSQLiteDriver(),
+            databaseClass = CurriculumDatabase::class,
+            databaseFactory = { CurriculumDatabaseConstructor.initialize() },
+        )
+
+        helper.createDatabase(version = 7).use { connection ->
+            connection.executeSQL("INSERT INTO topic (id, name, status, sort_order) VALUES ('topic', 'Topic', 'ACTIVE', 0)")
+            connection.executeSQL(
+                """
+                INSERT INTO subtopic (id, topic_id, name, status, sort_order)
+                VALUES ('subtopic', 'topic', 'Subtopic', 'ACTIVE', 0)
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO question (
+                    id, topic_id, subtopic_id, text, selection_mode, level, explanation, status, sort_order
+                ) VALUES ('question', 'topic', 'subtopic', 'Question?', 'SINGLE', 'APPLIED', 'Explanation.', 'ACTIVE', 0)
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO answer_option (question_id, id, text, sort_order, status)
+                VALUES ('question', 'answer_a', 'Answer A', 0, 'ACTIVE')
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO test_attempt (
+                    id, config_type, requested_question_count, scope_type, scope_id, status,
+                    score_total_questions, score_correct_answers, started_at_epoch_millis,
+                    completed_at_epoch_millis, practice_levels, practice_source
+                ) VALUES ('attempt', 'FOCUSED', 1, 'TOPIC', 'topic', 'COMPLETED', 1, 1, 1000, 2000, 'APPLIED', 'ALL')
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO question_attempt (test_attempt_id, question_id, sort_order, is_correct)
+                VALUES ('attempt', 'question', 0, 1)
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO question_attempt_selected_answer (test_attempt_id, question_id, answer_id)
+                VALUES ('attempt', 'question', 'answer_a')
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO saved_question (question_id, saved_at_epoch_millis)
+                VALUES ('question', 3000)
+                """,
+            )
+        }
+
+        helper.runMigrationsAndValidate(
+            version = 8,
+            migrations = listOf(MIGRATION_7_8),
+        ).use { connection ->
+            connection.prepare(
+                "SELECT name, status, sort_order FROM topic WHERE id = 'topic'",
+            ).use { statement ->
+                assertTrue(statement.step())
+                assertEquals("Topic", statement.getText(0))
+                assertEquals("ACTIVE", statement.getText(1))
+                assertEquals(0, statement.getLong(2).toInt())
+            }
+            connection.prepare(
+                "SELECT text, selection_mode, level, status FROM question WHERE id = 'question'",
+            ).use { statement ->
+                assertTrue(statement.step())
+                assertEquals("Question?", statement.getText(0))
+                assertEquals("SINGLE", statement.getText(1))
+                assertEquals("APPLIED", statement.getText(2))
+                assertEquals("ACTIVE", statement.getText(3))
+            }
+            // Study persistence must be inert for assessment history: the attempt, its per-question
+            // record, and its selected answers all read back exactly as they were written at v7.
+            connection.prepare(
+                """
+                SELECT status, score_total_questions, score_correct_answers, practice_levels, practice_source
+                FROM test_attempt WHERE id = 'attempt'
+                """,
+            ).use { statement ->
+                assertTrue(statement.step())
+                assertEquals("COMPLETED", statement.getText(0))
+                assertEquals(1, statement.getLong(1).toInt())
+                assertEquals(1, statement.getLong(2).toInt())
+                assertEquals("APPLIED", statement.getText(3))
+                assertEquals("ALL", statement.getText(4))
+            }
+            connection.prepare("SELECT is_correct FROM question_attempt WHERE question_id = 'question'").use { statement ->
+                assertTrue(statement.step())
+                assertEquals(1, statement.getLong(0).toInt())
+            }
+            connection.prepare("SELECT answer_id FROM question_attempt_selected_answer").use { statement ->
+                assertTrue(statement.step())
+                assertEquals("answer_a", statement.getText(0))
+            }
+            // The other learner-owned table introduced one version earlier is untouched, row and
+            // timestamp alike, which is what makes this migration purely additive.
+            connection.prepare(
+                "SELECT question_id, saved_at_epoch_millis FROM saved_question",
+            ).use { statement ->
+                assertTrue(statement.step())
+                assertEquals("question", statement.getText(0))
+                assertEquals(3_000, statement.getLong(1).toInt())
+                assertTrue(!statement.step())
+            }
+
+            // Absence of a row already means unstudied, so the upgrade backfills nothing.
+            connection.prepare("SELECT COUNT(*) FROM studied_lesson").use { statement ->
+                assertTrue(statement.step())
+                assertEquals(0, statement.getLong(0).toInt())
+            }
+            connection.executeSQL(
+                """
+                INSERT INTO studied_lesson (lesson_id, studied_at_epoch_millis)
+                VALUES ('lesson_that_no_longer_exists', 4000)
+                """,
+            )
+            connection.prepare(
+                "SELECT lesson_id, studied_at_epoch_millis FROM studied_lesson",
+            ).use { statement ->
+                assertTrue(statement.step())
+                assertEquals("lesson_that_no_longer_exists", statement.getText(0))
+                assertEquals(4_000, statement.getLong(1).toInt())
+            }
+            // A Lesson is a bundled document rather than a Room row, and the record may outlive
+            // it, so there is nothing for a foreign key to point at.
+            connection.prepare("PRAGMA foreign_key_list('studied_lesson')").use { statement ->
+                assertTrue(!statement.step())
+            }
+            connection.prepare("PRAGMA foreign_key_check").use { statement ->
                 assertTrue(!statement.step())
             }
         }

@@ -6,10 +6,13 @@ Learning Content Model this state sits on top of, [progress](progress.md) for th
 separate, assessment-derived statistics, and [persistence](persistence.md) for the
 saved-question precedent the storage shape follows.
 
-This document is a contract, written before anything implements it. It names no Room
-entity, repository, service, or Compose control: E22-02 owns persistence, E22-03 the
-derivation, E22-04 the presentation, and E22-05 Continue Learning. Their job is to satisfy
-the semantics recorded here rather than to settle them independently.
+This document is the contract, written before anything implemented it: E22-02 owns
+persistence, E22-03 the derivation, E22-04 the presentation, and E22-05 Continue Learning.
+Their job is to satisfy the semantics recorded here rather than to settle them
+independently. The persistence half now exists — `studied_lesson`, `MIGRATION_7_8`, and
+`LessonStudyRepository`, described in [persistence](persistence.md) — and left the
+semantics below unchanged. Derivation, presentation, and Continue Learning remain
+unimplemented, so this document still names no service or Compose control.
 
 ## Three responsibilities, not one
 
@@ -360,10 +363,11 @@ would be a decision E22-02, E22-03, or E22-05 is better placed to make once it k
 shape of its own layer. A speculative type here would have to be edited by the issue that
 actually uses it, which is churn rather than a contract.
 
-Also deliberately absent, and owned elsewhere: Room entity, DAO, migration, or schema
-version (E22-02); repository implementation or Koin binding (E22-02); Unit and Topic
-derivation code (E22-03); ViewModel, Compose UI, or a mark/unmark control (E22-04);
-Continue Learning resolver or navigation route (E22-05).
+Also deliberately absent from this document, and owned elsewhere: the Room entity, DAO,
+migration, schema version, repository implementation, and Koin binding, which E22-02 has
+since added and [persistence](persistence.md) describes; Unit and Topic derivation code
+(E22-03); ViewModel, Compose UI, or a mark/unmark control (E22-04); Continue Learning
+resolver or navigation route (E22-05).
 
 Excluded from the epic entirely rather than deferred: content hashes or Lesson version
 stamps, last-read or resume state, a study-history or orphan-record screen, additional

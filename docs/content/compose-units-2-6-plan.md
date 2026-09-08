@@ -41,10 +41,12 @@ identity proposed here lives in documentation until the authoring issue that shi
 | E23-07 | [Assessment gaps](#assessment-gaps-for-e23-07) in full, re-checked against the finished Lessons |
 | E23-08 | [Handoff](#handoff) — sequencing, cross-Unit links, and the limitations recorded here |
 
-**Authoring status.** E23-02 shipped Unit 2 and E23-03 shipped Unit 3; both are ACTIVE in
-`learning_curriculum.json`. What that authoring found is recorded in
-[Authoring outcomes](#authoring-outcomes-for-units-2-and-3). Units 4–6 are still plans, so
-every identity below remains a proposal until its issue ships it.
+**Authoring status.** E23-02, E23-03, E23-04 and E23-05 shipped Units 2, 3, 4 and 5; all
+four are ACTIVE in `learning_curriculum.json`. What that authoring found is recorded in
+[Authoring outcomes for Units 2 and 3](#authoring-outcomes-for-units-2-and-3),
+[Authoring outcomes for Unit 4](#authoring-outcomes-for-unit-4) and
+[Authoring outcomes for Unit 5](#authoring-outcomes-for-unit-5). Unit 6 is still a plan, so
+its identities below remain proposals until E23-06 ships them.
 
 ---
 
@@ -678,6 +680,145 @@ measured one to make a recommendation sound simpler than it is.
 
 ---
 
+## Authoring outcomes for Unit 5
+
+Added by E23-05 after the three Lessons were written. Everything below was read from the
+artifacts this repository resolves or executed against them; nothing here is recalled.
+
+### What did not change
+
+Every proposed Unit id, Lesson id, title, authored order and primary/supporting mapping for
+Unit 5 in the [identity tables](#identity-conventions-and-proposed-identities) shipped
+verbatim. No Lesson boundary moved, no Lesson split or merged, and no blueprint *line* was
+corrected — two blueprint Notes were added, recording the mutable-key failure for L5.1 and
+the capture-and-lifetime material for L5.2. All three Lessons carry Core, Practical and
+Senior depth. Every `relatedLessonIds` entry resolves inside the shipped bundle: Unit 5
+links backwards into Units 1–4 and within itself, and the Effects, Flow, ViewModel and
+Performance Units are named in prose only, as the handoff requires.
+
+All three Lessons map `compose_derived_state` as their only primary concept, so
+`PracticeTargetResolver` resolves the Unit to exactly that one Subtopic and Unit practice
+runs on its single active Question. That is deliberate — the Unit is one decision model
+taught in three passes, and inventing a wider primary mapping would claim practice coverage
+the taxonomy does not have.
+`BundledLearningCurriculumTest.architectureAndPerformanceConceptsStaySupportingRatherThanBecomingUnitPractice`
+pins L5.3's three cross-Topic concepts as supporting, in the same way Unit 3's performance
+mapping and Unit 4's Kotlin mappings are pinned.
+
+### Runtime facts read from the resolved artifacts
+
+| Claim a Lesson makes | How it was verified |
+| --- | --- |
+| `remember(key1)` returns the previous value while `key1` compares equal (`==`) to the value it had in the previous composition | The `remember` KDoc in `Composables.kt` in the sources of the resolved `androidx.compose.runtime:runtime:1.11.2` artifact, whose overloads delegate to `Composer.changed`, documented as `equals`-based |
+| The runtime offers exactly two `derivedStateOf` overloads — `(calculation)` and `(policy, calculation)` | `javap` over the resolved `runtime-desktop-1.11.2` artifact: `SnapshotStateKt` declares those two and nothing else |
+| A derived state with no policy signals an update on every dependency change, and Compose's recomposition machinery is the observer that filters it — comparing the new result with the one the reading scope last saw, using structural equality when no policy was supplied | The `derivedStateOf(calculation)` KDoc in `DerivedState.kt`, together with `RecomposeScopeImpl.checkDerivedStateChanged` in the same resolved sources, which reads `policy ?: structuralEqualityPolicy()` |
+
+**The `computedStateOf` finding is re-confirmed and stays out of scope.** E23-01 recorded
+that the current upstream `DerivedState.kt` KDoc recommends `computedStateOf` for trivial
+calculations while the configured runtime does not ship it. Re-checked here against the
+resolved artifact rather than the plan: `javap` lists only the two overloads above. The
+Lessons teach those two, and the API is not named anywhere in Unit 5, per this issue's
+agreed scope.
+
+### Claims that were executed rather than reasoned about
+
+A throwaway `runComposeUiTest` probe on the JVM target measured each of these and was then
+deleted. Every case counted the calculation and the enclosing composable execution
+separately, so "the body ran and the calculation did not" is an observation.
+
+| Claim a Lesson makes | Measured result |
+| --- | --- |
+| A derived value whose result changes less often than its input spares its readers | Index driven 0 → 1 → 2 → 3 → 4: the derived calculation ran 5 times, the scope reading it executed 2 times — initial composition and the single false → true flip. The three later index changes invalidated nobody |
+| `derivedStateOf` does not reduce how often the calculation runs | Same run: 5 calculations for 4 input changes plus the initial composition, while the consumer ran twice |
+| A trivial derived expression removes nothing | A label rebuilt from an index that changed at every step: the consumer executed 5 times both with and without the wrapper, and the wrapper added a derived-state object and a comparison per change |
+| A missing key serves a stale result | An unkeyed `remember` ran its calculation once and never again, across every later execution of the body |
+| A correctly keyed calculation runs when, and only when, its dependency differs | Keyed on the one value it reads: ran again on that value's change, did not run when an unrelated value changed |
+| An irrelevant key recalculates for nothing | Keyed on one real dependency and one unrelated value: ran for both, producing the same result |
+| Mutating an object used as a key invalidates nothing | The enclosing body executed twice more after the key object was mutated; the calculation did not run again, and the rendered text kept the pre-mutation value |
+| A `derivedStateOf` capturing a non-`State` input goes stale | Threshold captured as an ordinary `Int`, changed from 1 to 5, index then moved to 2: the flag reported `true`, still comparing against the captured 1 |
+
+### The distinction the measurement forced
+
+The single most important correction the probe produced is that **`derivedStateOf` filters
+consumers, not calculations**. The first draft of L5.2 was written around the natural
+shorthand — that the wrapper stops the derived value being recomputed — which the
+measurement contradicts directly: the calculation ran on every dependency change in every
+variant tested. The shipped Lesson states the distinction in Core, restates it in the
+comparison table's middle column, and makes it one of the three promises the API does not
+make. Unit 6 should preserve it: the snapshot lesson explains *why* the consumer is spared
+and must not re-teach this decision rule.
+
+A first-draft ordering mistake is worth recording for the same reason E23-04 recorded
+its two: the initial probe placed a direct-calculation reader and a derived reader in the
+**same** recompose scope, so the direct read invalidated the shared scope and both readers
+executed on every change — which reads as "`derivedStateOf` does nothing". It was the
+measurement setup that was wrong, not the API. Separating the two readers into their own
+scopes produced the result above. Comparative claims about invalidation are only meaningful
+when the thing being compared is the only read in its scope.
+
+### Semantic re-check of `compose_derived_state_threshold`
+
+Re-read in full against the finished prose rather than against this plan's expectation.
+
+| Question | Reasoning it requires | Does the finished Lesson teach it | Evidence |
+| --- | --- | --- | --- |
+| `compose_derived_state_threshold` | That `derivedStateOf` updates consumers only when the derived result changes, and that it is neither a threading nor a persistence API | **Yes, and past what the Question asks** | `lesson_derived_state` Core states that reading a derived value subscribes the scope to the *result* rather than the inputs; the Practical comparison table separates when the calculation runs from when the consumer runs; and the `COMMON_MISTAKE` callout names the three things the API does not do — prevent the calculation, eliminate recomposition, or make expensive computation affordable. The threading distractor is refuted twice over, once here and once in `lesson_work_outside_composition`, which states that neither memoization nor a change of layer moves work to another thread |
+
+This plan asked E23-05 to teach the decision rule rather than the example, because the
+Lesson uses the same scroll-threshold case the Question uses. It does: the canonical
+snippet appears in Core, and the reasoning that transfers — name the inputs, name the
+observed result, compare their change frequencies — is stated separately in Practical
+together with the `fullName` counter-case and the measured trivial case, neither of which
+the Question touches. A reader who understood the Lesson can answer the Question; a reader
+who memorised the Question could not write the Lesson's Practical section.
+
+**One candidate for E23-07, of the shape Units 3 and 4 produced.** The Question is levelled
+`APPLIED` and is the only active Question on `compose_derived_state`, so all three Unit 5
+Lessons and the whole of the Unit's practice rest on it. The Lessons now teach the
+counter-cases, the capture failure, the key-comparison contract and the placement decision,
+none of which is assessed anywhere. That is not a defect in the Question, which remains
+sound and correctly answered; it is a coverage observation, and it makes GAP-U5-A and
+GAP-U5-B more pressing rather than less.
+
+### Assessment gaps confirmed unchanged
+
+Both Unit 5 gaps stand, and teaching a concept does not close an assessment gap.
+
+- **GAP-U5-A stands.** `lesson_remember_key_memoization` now teaches key-based invalidation
+  with three measured failures — the missing key, the irrelevant key, and the mutated key
+  object — and the `==` comparison contract that separates it from Strong Skipping's rule.
+  Nothing active assesses any of it: `compose_derived_state`'s one Question is about
+  `derivedStateOf`, and `compose_state`'s is about saved-state lifetimes.
+- **GAP-U5-B stands, and is now the wider of the two.** `lesson_work_outside_composition`
+  maps `compose_derived_state` as its only primary concept and carries
+  `main_thread_performance`, `layered_architecture` and `use_cases` as supporting, so the
+  Questions those Subtopics hold create no Unit 5 practice coverage — and none of them
+  connects placement of work to composition in any case. The Lesson's most interview-useful
+  claim, that moving work to a `ViewModel` moves responsibility rather than threads, is
+  unassessed anywhere in the bank.
+
+### Editorial decisions worth carrying forward
+
+- **Two comparison rules are kept apart by name.** A `remember` key is compared with `==`;
+  a Strong Skipping parameter comparison for an unstable argument is `===`. L5.1 says so in
+  a `NOTE` rather than leaving the reader to notice, because Unit 4 has just spent five
+  Lessons on the other rule and the transfer error is the obvious one to make.
+- **Illustrative cost is labelled as illustrative.** Unit 5 reports execution counts, which
+  are measurements of this project's toolchain, and reasons about cost, which is not
+  measured. L5.3 says explicitly that nothing in the Unit claims how many milliseconds any
+  of it takes and re-applies Unit 3's symptom / identified work / causal link standard to
+  placement decisions.
+- **The layering bridge stops at ownership.** L5.3 uses the UI-layer and domain-layer
+  guidance to establish that business logic never lives in the UI layer, and immediately
+  uses the same documentation's statement that the domain layer is optional and use cases
+  should be added only when required to refuse the "therefore write a use case" conclusion.
+  The four questions it leaves the reader with — cost, lifetime, reuse, responsibility —
+  are the transferable part, and they are what Unit 8 should build on rather than restate.
+- **The absolute claim is refused in both directions.** "All calculations must leave
+  composition" is named and rejected beside the misplacement failure, because a Lesson that
+  argues only one way produces a state holder whose job is string concatenation.
+
+
 ## Assessment gaps for E23-07
 
 Substantive gaps only. There is no per-Lesson or per-level quota, and a gap here is a
@@ -871,12 +1012,17 @@ confirms GAP-U2-A, GAP-U2-B and GAP-U3-A unchanged, and adds one new candidate �
 coverage of read placement, which `lesson_recomposition_scopes` now teaches well past what
 the single FOUNDATION Question assesses.
 
+Then read [Authoring outcomes for Unit 5](#authoring-outcomes-for-unit-5), which re-checks
+`compose_derived_state_threshold` against the finished prose, confirms GAP-U5-A and
+GAP-U5-B unchanged, and records that all three Unit 5 Lessons and the whole of that Unit's
+practice rest on that single `APPLIED` Question.
+
 Then read [Authoring outcomes for Unit 4](#authoring-outcomes-for-unit-4), which carries the
 one item in this plan that is a possible Question defect rather than a coverage gap:
 `compose_strong_skipping_instance_equality` asserts an outcome for a rebuilt equal `List`
 that this repository's configured compiler does not produce. Re-run the measurement recorded
 there before deciding anything, and treat its `FOUNDATION` level as a second, separate
-question. E23-04 changed no Question.
+question. E23-04 and E23-05 changed no Question.
 
 The nine gap rows are the starting list. Re-read them against the finished prose before
 authoring: a gap this plan predicted may have been answered by a Lesson that turned out deeper

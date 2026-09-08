@@ -36,6 +36,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_state_and_state_ownership",
                 "unit_recomposition",
                 "unit_identity_keys_and_stability",
+                "unit_derived_state_and_expensive_work",
             ),
             units().map { it.id },
         )
@@ -46,6 +47,7 @@ internal class BundledLearningCurriculumTest {
                 "State and State Ownership",
                 "Recomposition",
                 "Identity, Keys, Stability and Immutability",
+                "Derived State and Expensive Work",
             ),
             units().map { it.title },
         )
@@ -97,6 +99,15 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_identity_keys_and_stability").lessons.map { it.id },
         )
+
+        assertEquals(
+            listOf(
+                "lesson_remember_key_memoization",
+                "lesson_derived_state",
+                "lesson_work_outside_composition",
+            ),
+            unit("unit_derived_state_and_expensive_work").lessons.map { it.id },
+        )
     }
 
     @Test
@@ -145,6 +156,18 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_identity_keys_and_stability").lessons.map { it.primarySubtopicIds },
         )
+
+        // All three Unit 5 Lessons own the same concept, so the Unit practises exactly
+        // `compose_derived_state`. The Unit is a decision model rather than three separate
+        // subjects, and splitting the mapping would claim coverage the taxonomy does not have.
+        assertEquals(
+            listOf(
+                listOf("compose_derived_state"),
+                listOf("compose_derived_state"),
+                listOf("compose_derived_state"),
+            ),
+            unit("unit_derived_state_and_expensive_work").lessons.map { it.primarySubtopicIds },
+        )
     }
 
     @Test
@@ -172,6 +195,24 @@ internal class BundledLearningCurriculumTest {
         assertTrue(
             lesson.supportingSubtopicIds.containsAll(
                 listOf("kotlin_data_classes", "kotlin_equality", "kotlin_collections", "kotlin_variables"),
+            ),
+        )
+    }
+
+    @Test
+    fun architectureAndPerformanceConceptsStaySupportingRatherThanBecomingUnitPractice() = runTest {
+        // GAP-U5-B in `docs/content/compose-units-2-6-plan.md`: this Lesson argues where work
+        // belongs, so it leans on `main_thread_performance`, `layered_architecture` and
+        // `use_cases` — all owned by other Topics and all assessed there, if at all, in terms
+        // that have nothing to do with composition. Promoting any of them would hand Unit 5
+        // practice questions it does not teach and would hide the gap E23-07 has to see.
+        val lesson = unit("unit_derived_state_and_expensive_work").lessons
+            .single { it.id == "lesson_work_outside_composition" }
+
+        assertEquals(listOf("compose_derived_state"), lesson.primarySubtopicIds)
+        assertTrue(
+            lesson.supportingSubtopicIds.containsAll(
+                listOf("main_thread_performance", "layered_architecture", "use_cases"),
             ),
         )
     }

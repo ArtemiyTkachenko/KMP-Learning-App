@@ -3950,3 +3950,293 @@ epics:
         size: "M"
         initial_status: "Backlog"
 
+  - key: E23
+    github_title: "EPIC-23 Compose State and Execution"
+
+    goal: >
+      Expand the Compose curriculum so learners can reason about observable
+      state, ownership, recomposition, identity, stability, derived state, and
+      snapshots. Deliver five new Learning Units containing the 18 Lessons
+      defined in existing Compose blueprint Units 2-6, with reviewed assessment
+      coverage and verified integration into the existing learning experience.
+      Effects instruction, a full coroutine or Flow course, new learning UI,
+      database changes, runtime-generated content, and application architecture
+      refactoring remain outside this epic.
+
+    issues:
+      - key: E23-01
+        title: "Confirm the expansion scope and assessment coverage plan"
+
+        issue: >
+          Compose blueprint Units 2-6 need a current review of prerequisites,
+          concept ownership, source freshness, and assessment gaps before
+          production authoring begins.
+
+        approach: >
+          Review the five Units against existing Lessons, the current taxonomy,
+          and ACTIVE Questions. Record a concise authoring and semantic coverage
+          plan in canonical documentation, including prerequisites, concept
+          boundaries, source-sensitive claims, identity choices, and justified
+          blueprint changes. Keep this issue planning-only: do not add production
+          Lessons or Questions.
+
+        acceptance_criteria:
+          - "All 18 Lesson objectives and boundaries are confirmed."
+          - "Unit and Lesson identities are defined using existing conventions."
+          - "Primary and supporting mappings use valid IDs, and taxonomy gaps are documented."
+          - "Prerequisites are already taught, included earlier in the expansion, or explicitly bridged."
+          - "Existing Questions receive a semantic review with gaps and mismatches recorded."
+          - "Version-sensitive claims requiring particular care are identified."
+          - "Necessary blueprint changes are justified and documented."
+          - "This issue introduces no production Lessons or Questions."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Ready"
+
+      - key: E23-02
+        title: "Author State and State Ownership"
+
+        issue: >
+          Learners need a coherent foundation for observable Compose state, its
+          lifetime, and its ownership before they can reason accurately about
+          recomposition and execution.
+
+        approach: >
+          After E23-01, author blueprint Unit 2 in the production learning-content
+          format: Observable State: mutableStateOf and State<T>; remember:
+          Composition Memory; rememberSaveable and State That Must Survive; State
+          Hoisting and the Lowest Sensible Owner; and Collections and Observable
+          Mutation. Follow the learning-content authoring contract, preserve the
+          blueprint's pedagogical order and stable identities, and use clear
+          objectives, substantive Core explanations, practical examples, and
+          Senior-depth reasoning where useful. Explain supporting concepts only
+          as far as this Unit needs them. Use valid taxonomy IDs, distinguish
+          primary from supporting mappings, verify technical claims against
+          specific authoritative sources with extra care for version-sensitive
+          behavior, and semantically review associated Questions against what the
+          Lessons actually teach. Keep the blueprint and generated learning-to-
+          question coverage snapshot current, then run and honestly report the
+          relevant existing content validation.
+
+        acceptance_criteria:
+          - "All five Lessons meet the shared authoring requirements in this issue's approach and use the production content format."
+          - "Examples distinguish remembering an object from observing its changes."
+          - "Restoration coverage distinguishes saved state from durable storage and states its limits."
+          - "Hoisting covers local UI state and externally owned screen state."
+          - "Collection examples explain unobserved mutations and appropriate alternatives."
+          - "Concrete behavior and failure scenarios support the explanations."
+          - "Unit practice mappings contain only primary concepts."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E23-03
+        title: "Author Recomposition"
+
+        issue: >
+          Learners need to understand recomposition as selective execution driven
+          by observed state, rather than treating every execution as a full-screen
+          redraw or an automatic performance defect.
+
+        approach: >
+          After E23-02, author blueprint Unit 3 in the production learning-content
+          format: Composition and Recomposition; Recomposition Scopes and Selective
+          Execution; and Recomposition Is Not the Problem. Follow the learning-
+          content authoring contract, preserve the blueprint's pedagogical order
+          and stable identities, and use clear objectives, substantive Core
+          explanations, practical examples, and Senior-depth reasoning where
+          useful. Explain supporting concepts only as far as this Unit needs them.
+          Use valid taxonomy IDs, distinguish primary from supporting mappings,
+          verify technical claims against specific authoritative sources with
+          extra care for version-sensitive behavior, and semantically review
+          associated Questions against what the Lessons actually teach. Keep the
+          blueprint and generated learning-to-question coverage snapshot current,
+          then run and honestly report the relevant existing content validation.
+
+        acceptance_criteria:
+          - "All three Lessons meet the shared authoring requirements in this issue's approach and use the production content format."
+          - "Composition, recomposition, and rendering phases are distinguished."
+          - "Examples connect state reads to the work they can invalidate."
+          - "Explanations do not imply every change executes the entire screen."
+          - "Composable execution is not presented as a reliable place for uncontrolled side effects."
+          - "Execution observations are distinguished from demonstrated performance problems."
+          - "Detailed effects and later optimization topics remain bounded supporting context."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E23-04
+        title: "Author Identity, Keys, Stability and Immutability"
+
+        issue: >
+          Learners need to reason about how Compose preserves identity and decides
+          whether inputs can be treated as unchanged without relying on outdated
+          skipping advice or annotation folklore.
+
+        approach: >
+          After E23-03, author blueprint Unit 4 in the production learning-content
+          format: Composable Identity; key and Keys in Lazy Lists; Immutability in
+          Kotlin vs. What Compose Needs; Stability and Skipping; and @Stable and
+          @Immutable as Contracts. Follow the learning-content authoring contract,
+          preserve the blueprint's pedagogical order and stable identities, and
+          use clear objectives, substantive Core explanations, practical examples,
+          and Senior-depth reasoning where useful. Explain supporting concepts
+          only as far as this Unit needs them. Use valid taxonomy IDs, distinguish
+          primary from supporting mappings, verify technical claims against
+          specific authoritative sources with extra care for version-sensitive
+          compiler behavior, and semantically review associated Questions against
+          what the Lessons actually teach. Keep the blueprint and generated
+          learning-to-question coverage snapshot current, then run and honestly
+          report the relevant existing content validation.
+
+        acceptance_criteria:
+          - "All five Lessons meet the shared authoring requirements in this issue's approach and use the production content format."
+          - "Examples demonstrate identity problems from insertion, deletion, and reordering."
+          - "Keys are explained as identity mechanisms, including their limits."
+          - "Read-only references and collections are distinguished from immutability guarantees."
+          - "Stability and skipping claims are verified against relevant current compiler behavior."
+          - "Strong Skipping assumptions are explicit where they affect examples."
+          - "Stability annotations are taught as contracts with correctness implications."
+          - "Annotations and reduced recomposition counts are not presented as automatic optimization goals."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E23-05
+        title: "Author Derived State and Expensive Work"
+
+        issue: >
+          Learners need a decision model for direct calculation, memoization,
+          derived state, and work placement instead of wrapping every expression
+          in state APIs or performing expensive work during composition.
+
+        approach: >
+          After E23-04, author blueprint Unit 5 in the production learning-content
+          format: remember(key) as Memoization; derivedStateOf; and Keeping Work Out
+          of Composition. Follow the learning-content authoring contract, preserve
+          the blueprint's pedagogical order and stable identities, and use clear
+          objectives, substantive Core explanations, practical examples, and
+          Senior-depth reasoning where useful. Explain supporting concepts only as
+          far as this Unit needs them. Use valid taxonomy IDs, distinguish primary
+          from supporting mappings, verify technical and performance claims against
+          specific authoritative sources with extra care for version-sensitive
+          behavior, and semantically review associated Questions against what the
+          Lessons actually teach. Keep the blueprint and generated learning-to-
+          question coverage snapshot current, then run and honestly report the
+          relevant existing content validation.
+
+        acceptance_criteria:
+          - "All three Lessons meet the shared authoring requirements in this issue's approach and use the production content format."
+          - "Examples explain key-based cache invalidation and stale-result failures."
+          - "Direct calculation, remembered calculation, and derived state are compared."
+          - "derivedStateOf is not presented as a universal wrapper for state-dependent expressions."
+          - "Examples explain when work belongs outside composition and which responsibility owns it."
+          - "Performance claims have appropriate evidence or are clearly framed as explanatory examples."
+          - "Detailed coroutine execution and effect selection remain outside this Unit."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E23-06
+        title: "Author Snapshot Fundamentals"
+
+        issue: >
+          Learners need a practical snapshot mental model that unifies observable
+          state, invalidation, and derived values and explains how snapshotFlow
+          crosses into Flow without turning the Unit into a runtime-internals or
+          full Flow course.
+
+        approach: >
+          After E23-05, author blueprint Unit 6 in the production learning-content
+          format: How Compose Observes State; and snapshotFlow and Crossing Into
+          Flow. Follow the learning-content authoring contract, preserve the
+          blueprint's pedagogical order and stable identities, and use clear
+          objectives, substantive Core explanations, practical examples, and
+          Senior-depth reasoning where useful. Explain supporting concepts only as
+          far as this Unit needs them. Use valid taxonomy IDs, distinguish primary
+          from supporting mappings, verify technical claims against specific
+          authoritative sources with extra care for version-sensitive behavior,
+          and semantically review associated Questions against what the Lessons
+          actually teach. Keep the blueprint and generated learning-to-question
+          coverage snapshot current, then run and honestly report the relevant
+          existing content validation.
+
+        acceptance_criteria:
+          - "Both Lessons meet the shared authoring requirements in this issue's approach and use the production content format."
+          - "The snapshot model explains observable behavior without requiring runtime implementation knowledge."
+          - "Examples connect reads and changes to observation and invalidation."
+          - "snapshotFlow behavior, collection, and constraints are verified against authoritative documentation."
+          - "Enough Flow context is provided for the Lesson to stand alone."
+          - "Snapshot observation is not presented as a durable event log or a guarantee of every intermediate value."
+          - "Future curriculum references do not create invalid links to unpublished Lessons."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"
+
+      - key: E23-07
+        title: "Address assessment gaps for the new Compose Units"
+
+        issue: >
+          Structural mappings between Lessons and Questions do not establish
+          meaningful practice coverage for the new Compose Units.
+
+        approach: >
+          After E23-02 through E23-06, revisit E23-01's semantic coverage plan
+          against the finished Lessons. Add or correct Questions for substantive
+          gaps using the existing question-authoring and validation workflows,
+          preserve Question identities and lifecycle conventions, and keep the
+          generated coverage reports current.
+
+        acceptance_criteria:
+          - "Each Unit's primary concepts receive a documented semantic coverage review."
+          - "Material gaps are addressed or explicitly justified as deferred."
+          - "Questions assess reasoning rather than copied Lesson wording."
+          - "Difficulty matches required reasoning without per-Lesson or per-level quotas."
+          - "Every changed or added Question is independently solved and its Sources verified."
+          - "Supporting-only mappings do not broaden practice eligibility."
+          - "Question identity and lifecycle conventions are preserved."
+          - "Affected coverage reports are regenerated."
+          - "Every new Unit has meaningful practice or a reviewed explanation for its absence."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E23-08
+        title: "Verify the expanded learning experience and close E23"
+
+        issue: >
+          The five new Units must work as one coherent learning sequence and
+          integrate with study progress, Continue Learning, and Unit practice
+          without changing unrelated product behavior.
+
+        approach: >
+          After E23-07 and completion of E22's learner study-progress
+          functionality, review the five Units as one learning sequence and verify
+          their integration using existing tooling and focused production-content
+          checks. Add tests only for concrete gaps and accurately report content,
+          build, platform, and iOS verification results.
+
+        acceptance_criteria:
+          - "Five Units and 18 Lessons appear in intended authored order."
+          - "Cross-Unit review checks prerequisites, contradictions, duplication, and terminology."
+          - "Structured content, code examples, and Sources render correctly."
+          - "Mark and unmark update Unit and Topic study progress correctly."
+          - "Existing studied records retain their identity and meaning."
+          - "Continue Learning traverses the expanded content and handles completion correctly."
+          - "Unit practice uses intended primary concepts through the existing assessment flow."
+          - "Content and coverage validation passes with current reports."
+          - "New tests address concrete gaps rather than duplicating existing checks."
+          - "Required build and platform checks and iOS verification status are reported accurately."
+          - "Remaining limitations are recorded."
+          - "No unrelated product behavior changes."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"

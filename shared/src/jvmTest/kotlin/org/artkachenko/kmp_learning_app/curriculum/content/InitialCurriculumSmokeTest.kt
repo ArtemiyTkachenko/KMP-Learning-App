@@ -17,17 +17,17 @@ internal class InitialCurriculumSmokeTest {
 
         assertEquals(17, initialCurriculum.topics.size)
         assertEquals(361, initialCurriculum.subtopics.size)
-        assertEquals(399, initialCurriculum.questions.size)
+        assertEquals(411, initialCurriculum.questions.size)
         assertEquals(
-            358,
+            370,
             initialCurriculum.questions.count { it.status == ContentStatus.ACTIVE },
         )
         assertEquals(
             41,
             initialCurriculum.questions.count { it.status == ContentStatus.DEPRECATED },
         )
-        assertEquals(353, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.SINGLE })
-        assertEquals(46, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.MULTIPLE })
+        assertEquals(364, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.SINGLE })
+        assertEquals(47, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.MULTIPLE })
     }
 
     @Test
@@ -35,11 +35,11 @@ internal class InitialCurriculumSmokeTest {
         val initialCurriculum = BundledCurriculumSource.load()
 
         assertEquals(
-            LevelDistribution(foundation = 238, applied = 147, advanced = 14),
+            LevelDistribution(foundation = 239, applied = 156, advanced = 16),
             initialCurriculum.questions.levelDistribution(),
         )
         assertEquals(
-            LevelDistribution(foundation = 204, applied = 140, advanced = 14),
+            LevelDistribution(foundation = 205, applied = 149, advanced = 16),
             initialCurriculum.questions
                 .filter { it.status == ContentStatus.ACTIVE }
                 .levelDistribution(),
@@ -54,7 +54,7 @@ internal class InitialCurriculumSmokeTest {
             mapOf(
                 "android_platform" to LevelDistribution(13, 4, 0),
                 "lifecycle_navigation" to LevelDistribution(19, 8, 0),
-                "android_ui" to LevelDistribution(23, 8, 0),
+                "android_ui" to LevelDistribution(24, 17, 2),
                 "kotlin_language" to LevelDistribution(25, 2, 0),
                 "async_reactive" to LevelDistribution(24, 15, 4),
                 "architecture" to LevelDistribution(11, 15, 0),
@@ -88,7 +88,7 @@ internal class InitialCurriculumSmokeTest {
             mapOf(
                 "android_platform" to 16,
                 "lifecycle_navigation" to 23,
-                "android_ui" to 25,
+                "android_ui" to 37,
                 "kotlin_language" to 25,
                 "async_reactive" to 38,
                 "architecture" to 22,

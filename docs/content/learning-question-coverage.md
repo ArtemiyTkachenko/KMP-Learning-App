@@ -53,7 +53,7 @@ invalidate the snapshot, but changing what it says does.
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
 | Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `3f713ec6f7288ddf23d25b9283468d5a164fcfc7ad297243a1a3e13dfef807b8` |
-| Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `b7956adc1d5c18cb1fc219dde3cb4bad73e4755d1776c7fd33a9f6b5ffbdc1e2` |
+| Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `99477ae0b758d7b9819d86aa5e9a8919e6b19c732d32c296546e012bf0281256` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
 because editing lesson content can change whether the material still teaches an
@@ -72,10 +72,10 @@ Deprecated units, lessons and questions are excluded throughout.
 | Active lessons in those units | 21 |
 | Distinct primary subtopics | 9 |
 | Distinct supporting subtopics | 28 |
-| Unique active questions reached through primary mappings | 10 |
+| Unique active questions reached through primary mappings | 22 |
 | Primary subtopics with at least one active question | 9 |
 | Primary subtopics with no active question | 0 |
-| Active questions in the bank | 358 |
+| Active questions in the bank | 370 |
 | Deprecated questions excluded from this report | 41 |
 
 The two bank-size rows are context, not a target. The learning curriculum is
@@ -92,11 +92,11 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Unit | Lessons | Primary subtopics | Foundation | Applied | Advanced | Unique active questions |
 |---|---:|---:|---:|---:|---:|---:|
 | Thinking in Compose (`unit_thinking_in_compose`) | 3 | 2 | 0 | 2 | 0 | 2 |
-| State and State Ownership (`unit_state_and_state_ownership`) | 5 | 2 | 2 | 0 | 0 | 2 |
-| Recomposition (`unit_recomposition`) | 3 | 1 | 2 | 0 | 0 | 2 |
-| Identity, Keys, Stability and Immutability (`unit_identity_keys_and_stability`) | 5 | 2 | 1 | 1 | 0 | 2 |
-| Derived State and Expensive Work (`unit_derived_state_and_expensive_work`) | 3 | 1 | 0 | 1 | 0 | 1 |
-| Snapshot Fundamentals (`unit_snapshot_fundamentals`) | 2 | 1 | 1 | 0 | 0 | 1 |
+| State and State Ownership (`unit_state_and_state_ownership`) | 5 | 2 | 2 | 2 | 0 | 4 |
+| Recomposition (`unit_recomposition`) | 3 | 1 | 2 | 1 | 0 | 3 |
+| Identity, Keys, Stability and Immutability (`unit_identity_keys_and_stability`) | 5 | 2 | 1 | 4 | 1 | 6 |
+| Derived State and Expensive Work (`unit_derived_state_and_expensive_work`) | 3 | 1 | 0 | 3 | 0 | 3 |
+| Snapshot Fundamentals (`unit_snapshot_fundamentals`) | 2 | 1 | 2 | 1 | 1 | 4 |
 
 ## Unit and lesson detail
 
@@ -152,7 +152,7 @@ Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `compose_recomposition` — Composition and recomposition | 2 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_recomposition` — Composition and recomposition | 3 | `android_ui` — UI — Views & Jetpack Compose |
 
 #### State Down, Events Up (`lesson_state_down_events_up`)
 
@@ -179,7 +179,7 @@ once each however many lessons share the concept.
 | Level | Count | Question IDs |
 |---|---:|---|
 | FOUNDATION | 2 | `compose_state_hoisting_001`, `remember_vs_remember_saveable` |
-| APPLIED | 0 | — |
+| APPLIED | 2 | `compose_state_collection_mutation`, `compose_unremembered_observable_state` |
 | ADVANCED | 0 | — |
 
 #### Observable State: `mutableStateOf` and `State<T>` (`lesson_observable_state`)
@@ -188,13 +188,13 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_state` — Compose state | 1 | 0 | 0 | 1 | `remember_vs_remember_saveable` |
+| `compose_state` — Compose state | 1 | 2 | 0 | 3 | `compose_state_collection_mutation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `compose_snapshot_system` — Compose snapshot-system fundamentals | 1 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_snapshot_system` — Compose snapshot-system fundamentals | 4 | `android_ui` — UI — Views & Jetpack Compose |
 | `kotlin_delegation` — Delegation and delegated properties | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 
 #### `remember`: Composition Memory (`lesson_remember_composition_memory`)
@@ -203,14 +203,14 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_state` — Compose state | 1 | 0 | 0 | 1 | `remember_vs_remember_saveable` |
+| `compose_state` — Compose state | 1 | 2 | 0 | 3 | `compose_state_collection_mutation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `compose_identity_keys` — Identity and keys | 1 | `android_ui` — UI — Views & Jetpack Compose |
-| `compose_recomposition` — Composition and recomposition | 2 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_identity_keys` — Identity and keys | 2 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_recomposition` — Composition and recomposition | 3 | `android_ui` — UI — Views & Jetpack Compose |
 
 #### `rememberSaveable` and State That Must Survive (`lesson_remember_saveable`)
 
@@ -218,7 +218,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_state` — Compose state | 1 | 0 | 0 | 1 | `remember_vs_remember_saveable` |
+| `compose_state` — Compose state | 1 | 2 | 0 | 3 | `compose_state_collection_mutation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
 
 Supporting context — not primary coverage:
 
@@ -249,7 +249,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_state` — Compose state | 1 | 0 | 0 | 1 | `remember_vs_remember_saveable` |
+| `compose_state` — Compose state | 1 | 2 | 0 | 3 | `compose_state_collection_mutation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
 
 Supporting context — not primary coverage:
 
@@ -257,7 +257,7 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `kotlin_collections` — Collections | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 | `kotlin_data_classes` — Data classes | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
-| `compose_stability` — Stability and skippability | 1 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_stability` — Stability and skippability | 4 | `android_ui` — UI — Views & Jetpack Compose |
 
 ### Recomposition (`unit_recomposition`)
 
@@ -269,7 +269,7 @@ once each however many lessons share the concept.
 | Level | Count | Question IDs |
 |---|---:|---|
 | FOUNDATION | 2 | `compose_state_read_recomposition_scope`, `composition_vs_recomposition` |
-| APPLIED | 0 | — |
+| APPLIED | 1 | `compose_recomposition_count_is_not_a_finding` |
 | ADVANCED | 0 | — |
 
 #### Composition and Recomposition (`lesson_composition_and_recomposition`)
@@ -278,14 +278,14 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_recomposition` — Composition and recomposition | 2 | 0 | 0 | 2 | `compose_state_read_recomposition_scope`, `composition_vs_recomposition` |
+| `compose_recomposition` — Composition and recomposition | 2 | 1 | 0 | 3 | `compose_recomposition_count_is_not_a_finding`, `compose_state_read_recomposition_scope`, `composition_vs_recomposition` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `compose_fundamentals` — Compose fundamentals | 1 | `android_ui` — UI — Views & Jetpack Compose |
-| `compose_state` — Compose state | 1 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state` — Compose state | 3 | `android_ui` — UI — Views & Jetpack Compose |
 
 #### Recomposition Scopes and Selective Execution (`lesson_recomposition_scopes`)
 
@@ -293,14 +293,14 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_recomposition` — Composition and recomposition | 2 | 0 | 0 | 2 | `compose_state_read_recomposition_scope`, `composition_vs_recomposition` |
+| `compose_recomposition` — Composition and recomposition | 2 | 1 | 0 | 3 | `compose_recomposition_count_is_not_a_finding`, `compose_state_read_recomposition_scope`, `composition_vs_recomposition` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `compose_snapshot_system` — Compose snapshot-system fundamentals | 1 | `android_ui` — UI — Views & Jetpack Compose |
-| `compose_state` — Compose state | 1 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_snapshot_system` — Compose snapshot-system fundamentals | 4 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state` — Compose state | 3 | `android_ui` — UI — Views & Jetpack Compose |
 
 #### Recomposition Is Not the Problem (`lesson_recomposition_cost`)
 
@@ -308,7 +308,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_recomposition` — Composition and recomposition | 2 | 0 | 0 | 2 | `compose_state_read_recomposition_scope`, `composition_vs_recomposition` |
+| `compose_recomposition` — Composition and recomposition | 2 | 1 | 0 | 3 | `compose_recomposition_count_is_not_a_finding`, `compose_state_read_recomposition_scope`, `composition_vs_recomposition` |
 
 Supporting context — not primary coverage:
 
@@ -326,8 +326,8 @@ once each however many lessons share the concept.
 | Level | Count | Question IDs |
 |---|---:|---|
 | FOUNDATION | 1 | `compose_strong_skipping_instance_equality` |
-| APPLIED | 1 | `compose_key_identity_lazy_state` |
-| ADVANCED | 0 | — |
+| APPLIED | 4 | `compose_call_site_identity_branches`, `compose_false_stability_promise_cost`, `compose_key_identity_lazy_state`, `compose_stability_annotation_contract` |
+| ADVANCED | 1 | `compose_equal_value_write_records_no_change` |
 
 #### Composable Identity (`lesson_composable_identity`)
 
@@ -335,14 +335,14 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_identity_keys` — Identity and keys | 0 | 1 | 0 | 1 | `compose_key_identity_lazy_state` |
+| `compose_identity_keys` — Identity and keys | 0 | 2 | 0 | 2 | `compose_call_site_identity_branches`, `compose_key_identity_lazy_state` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `compose_recomposition` — Composition and recomposition | 2 | `android_ui` — UI — Views & Jetpack Compose |
-| `compose_state` — Compose state | 1 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_recomposition` — Composition and recomposition | 3 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state` — Compose state | 3 | `android_ui` — UI — Views & Jetpack Compose |
 
 #### key and Keys in Lazy Lists (`lesson_keys_and_identity_in_lists`)
 
@@ -350,7 +350,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_identity_keys` — Identity and keys | 0 | 1 | 0 | 1 | `compose_key_identity_lazy_state` |
+| `compose_identity_keys` — Identity and keys | 0 | 2 | 0 | 2 | `compose_call_site_identity_branches`, `compose_key_identity_lazy_state` |
 
 Supporting context — not primary coverage:
 
@@ -364,7 +364,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_stability` — Stability and skippability | 1 | 0 | 0 | 1 | `compose_strong_skipping_instance_equality` |
+| `compose_stability` — Stability and skippability | 1 | 2 | 1 | 4 | `compose_equal_value_write_records_no_change`, `compose_false_stability_promise_cost`, `compose_stability_annotation_contract`, `compose_strong_skipping_instance_equality` |
 
 Supporting context — not primary coverage:
 
@@ -381,13 +381,13 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_stability` — Stability and skippability | 1 | 0 | 0 | 1 | `compose_strong_skipping_instance_equality` |
+| `compose_stability` — Stability and skippability | 1 | 2 | 1 | 4 | `compose_equal_value_write_records_no_change`, `compose_false_stability_promise_cost`, `compose_stability_annotation_contract`, `compose_strong_skipping_instance_equality` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `compose_recomposition` — Composition and recomposition | 2 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_recomposition` — Composition and recomposition | 3 | `android_ui` — UI — Views & Jetpack Compose |
 | `compose_recomposition_performance` — Avoiding unnecessary recomposition | 1 | `performance` — Performance, Memory & Debugging |
 
 #### @Stable and @Immutable as Contracts (`lesson_stability_annotations`)
@@ -396,7 +396,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_stability` — Stability and skippability | 1 | 0 | 0 | 1 | `compose_strong_skipping_instance_equality` |
+| `compose_stability` — Stability and skippability | 1 | 2 | 1 | 4 | `compose_equal_value_write_records_no_change`, `compose_false_stability_promise_cost`, `compose_stability_annotation_contract`, `compose_strong_skipping_instance_equality` |
 
 Supporting context — not primary coverage:
 
@@ -414,7 +414,7 @@ once each however many lessons share the concept.
 | Level | Count | Question IDs |
 |---|---:|---|
 | FOUNDATION | 0 | — |
-| APPLIED | 1 | `compose_derived_state_threshold` |
+| APPLIED | 3 | `compose_derived_state_threshold`, `compose_remember_key_invalidation`, `compose_work_placement_responsibility_vs_thread` |
 | ADVANCED | 0 | — |
 
 #### `remember(key)` as Memoization (`lesson_remember_key_memoization`)
@@ -423,14 +423,14 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_derived_state` — derivedStateOf and derived state | 0 | 1 | 0 | 1 | `compose_derived_state_threshold` |
+| `compose_derived_state` — derivedStateOf and derived state | 0 | 3 | 0 | 3 | `compose_derived_state_threshold`, `compose_remember_key_invalidation`, `compose_work_placement_responsibility_vs_thread` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `compose_state` — Compose state | 1 | `android_ui` — UI — Views & Jetpack Compose |
-| `compose_recomposition` — Composition and recomposition | 2 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state` — Compose state | 3 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_recomposition` — Composition and recomposition | 3 | `android_ui` — UI — Views & Jetpack Compose |
 
 #### `derivedStateOf` (`lesson_derived_state`)
 
@@ -438,13 +438,13 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_derived_state` — derivedStateOf and derived state | 0 | 1 | 0 | 1 | `compose_derived_state_threshold` |
+| `compose_derived_state` — derivedStateOf and derived state | 0 | 3 | 0 | 3 | `compose_derived_state_threshold`, `compose_remember_key_invalidation`, `compose_work_placement_responsibility_vs_thread` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `compose_snapshot_system` — Compose snapshot-system fundamentals | 1 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_snapshot_system` — Compose snapshot-system fundamentals | 4 | `android_ui` — UI — Views & Jetpack Compose |
 | `compose_lazy_layouts` — Lazy layouts | 1 | `android_ui` — UI — Views & Jetpack Compose |
 
 #### Keeping Work Out of Composition (`lesson_work_outside_composition`)
@@ -453,7 +453,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_derived_state` — derivedStateOf and derived state | 0 | 1 | 0 | 1 | `compose_derived_state_threshold` |
+| `compose_derived_state` — derivedStateOf and derived state | 0 | 3 | 0 | 3 | `compose_derived_state_threshold`, `compose_remember_key_invalidation`, `compose_work_placement_responsibility_vs_thread` |
 
 Supporting context — not primary coverage:
 
@@ -472,9 +472,9 @@ once each however many lessons share the concept.
 
 | Level | Count | Question IDs |
 |---|---:|---|
-| FOUNDATION | 1 | `compose_snapshot_flow_state` |
-| APPLIED | 0 | — |
-| ADVANCED | 0 | — |
+| FOUNDATION | 2 | `compose_snapshot_flow_state`, `compose_snapshot_read_records_dependency` |
+| APPLIED | 1 | `compose_snapshot_flow_read_inside_block` |
+| ADVANCED | 1 | `compose_snapshot_flow_conflated_state` |
 
 #### How Compose Observes State (`lesson_snapshot_observation`)
 
@@ -482,14 +482,14 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_snapshot_system` — Compose snapshot-system fundamentals | 1 | 0 | 0 | 1 | `compose_snapshot_flow_state` |
+| `compose_snapshot_system` — Compose snapshot-system fundamentals | 2 | 1 | 1 | 4 | `compose_snapshot_flow_conflated_state`, `compose_snapshot_flow_read_inside_block`, `compose_snapshot_flow_state`, `compose_snapshot_read_records_dependency` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `compose_state` — Compose state | 1 | `android_ui` — UI — Views & Jetpack Compose |
-| `compose_recomposition` — Composition and recomposition | 2 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state` — Compose state | 3 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_recomposition` — Composition and recomposition | 3 | `android_ui` — UI — Views & Jetpack Compose |
 
 #### `snapshotFlow` and Crossing Into Flow (`lesson_snapshot_flow`)
 
@@ -497,7 +497,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_snapshot_system` — Compose snapshot-system fundamentals | 1 | 0 | 0 | 1 | `compose_snapshot_flow_state` |
+| `compose_snapshot_system` — Compose snapshot-system fundamentals | 2 | 1 | 1 | 4 | `compose_snapshot_flow_conflated_state`, `compose_snapshot_flow_read_inside_block`, `compose_snapshot_flow_state`, `compose_snapshot_read_records_dependency` |
 
 Supporting context — not primary coverage:
 

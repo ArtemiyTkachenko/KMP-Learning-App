@@ -38,7 +38,7 @@ identity proposed here lives in documentation until the authoring issue that shi
 | E23-04 | Unit 4 identities and boundaries; the stability rows; the Strong Skipping and compiler-configuration entries in source freshness |
 | E23-05 | Unit 5 identities and boundaries; the derived-state rows; the `derivedStateOf` entry in source freshness |
 | E23-06 | Unit 6 identities and boundaries; the snapshot rows; the `snapshotFlow` entry in source freshness |
-| E23-07 | [Assessment gaps](#assessment-gaps-for-e23-07) in full, re-checked against the finished Lessons |
+| E23-07 | [Assessment gaps](#assessment-gaps-for-e23-07) in full, re-checked against the finished Lessons; results in [Assessment outcomes](#assessment-outcomes-for-e23-07) |
 | E23-08 | [Handoff](#handoff) — sequencing, cross-Unit links, and the limitations recorded here |
 
 **Authoring status.** E23-02 through E23-06 shipped Units 2, 3, 4, 5 and 6; all five are
@@ -48,8 +48,9 @@ than proposed. What that authoring found is recorded in
 [Authoring outcomes for Unit 4](#authoring-outcomes-for-unit-4),
 [Authoring outcomes for Unit 5](#authoring-outcomes-for-unit-5) and
 [Authoring outcomes for Unit 6](#authoring-outcomes-for-unit-6). Lesson authoring for this
-epic is therefore complete; the semantic assessment work stays with E23-07 and the
-end-to-end verification of the five Units together stays with E23-08.
+epic is therefore complete, and E23-07 has since closed the semantic assessment work — see
+[Assessment outcomes for E23-07](#assessment-outcomes-for-e23-07). The end-to-end
+verification of the five Units together stays with E23-08.
 
 ---
 
@@ -382,6 +383,13 @@ missing deprecation. Every count in this document was taken from
 that issue already requires the affected coverage reports to be current — and it was
 deliberately not regenerated here, where no Question changed.
 `docs/content/learning-question-coverage.md` is current and was verified with `--check`.
+
+**Resolved by E23-07.** The discrepancy was re-checked against the production JSON before any
+Question changed and reproduced exactly: 358 / 41, with both deprecations missing from the
+report's own deprecated table. `InitialCurriculumSmokeTest` was already pinning 358 / 41, so
+only the report had drifted. Both generated tables and the deprecated table were regenerated
+from `initial_curriculum.json`, which closed the finding as part of the same change that
+raised the bank to 370 / 41.
 
 ---
 
@@ -1003,6 +1011,11 @@ Substantive gaps only. There is no per-Lesson or per-level quota, and a gap here
 candidate for authoring rather than an automatic defect. Each gap names the reasoning that is
 missing, not a number.
 
+**This table is the finding, not the current status.** All ten gaps have since been addressed;
+the Question that closes each one, and the reasoning behind the two that took two Questions,
+are in [Assessment outcomes for E23-07](#assessment-outcomes-for-e23-07). The rows below are
+kept as authored so a later session can see what was missing and why it mattered.
+
 | Gap | Unit / Lesson | Reasoning no ACTIVE Question assesses | Why it is substantive | Recommended action |
 | --- | --- | --- | --- | --- |
 | GAP-U2-A | Unit 2 / `lesson_observable_state`, `lesson_remember_composition_memory` | Distinguishing "observable" from "remembered": the four combinations of `remember` and `mutableStateOf` and what each does | This is the central confusion Unit 2 exists to resolve, and `compose_state`'s only active Question is about saved-state lifetimes | Add coverage in E23-07 |
@@ -1031,6 +1044,169 @@ Two observations that are **not** gaps and must not be treated as quotas:
   **One correction from authoring:** `lesson_snapshot_flow`'s Question matches it only at
   the level of naming the API, which is why GAP-U6-B was added above after the Lesson was
   finished. Seven of eighteen is the accurate count.
+
+---
+
+## Assessment outcomes for E23-07
+
+Added by E23-07 after the gap table above was re-read against the finished Lessons. The
+table stays as the record of what was found; this section is the record of what was done
+about it. Everything below was measured on this repository's toolchain or read from a
+source that was opened, not recalled.
+
+### Scope
+
+A semantic assessment review of the primary concepts of Units 2–6 and the Questions reached
+through them — **not** a bank-wide audit. Twelve Questions were added and one was corrected;
+the remaining 398 were not re-reviewed. `docs/content/question-audit-log.yml` records the
+review under that scope.
+
+### The Strong Skipping discrepancy, resolved
+
+E23-04 recorded that `compose_strong_skipping_instance_equality` asserted an outcome for a
+rebuilt equal `List` that this repository's compiler does not produce, and asked E23-07 to
+re-run the measurement before deciding anything. It was re-run, and it reproduced.
+
+A throwaway `runComposeUiTest` probe on the JVM target, since deleted, drove a parent through
+three executions while the caller rebuilt a structurally equal argument on every pass.
+Identity hash codes were printed to confirm a genuinely new object reached each call, and a
+control that changed the argument's contents was re-executed every time.
+
+| Parameter type | Comparison the compiler emits | Rebuilt equal argument |
+| --- | --- | --- |
+| `List<Row>` — an interface | **both** `Composer.changed` and `Composer.changedInstance` | parent 3, child **1** — the call was skipped |
+| A class declaring a `var` property, with a value-based `equals` | `Composer.changedInstance` only | parent 3, child **3** — the call executed, as documented |
+| A `data class` whose only property is a `List` | **both** | parent 3, child **1** — skipped |
+| `List<Row>`, contents genuinely changed (control) | — | parent 3, child **3** |
+| The same remembered `List` instance passed again (control) | — | parent 3, child **1** |
+
+`javap -c` over the compiled probe attributes the comparisons to the functions above
+unambiguously. Where the compiler can classify a parameter's type statically it emits one
+comparison; where it cannot — and an interface such as `List` is exactly such a case — it
+emits both and selects at run time from the caller-supplied `$changed` flags. In the measured
+calls no bit marked the argument unstable, so the `equals` branch ran.
+
+**Three things were kept apart in deciding what to do.** The *documented comparison rule* —
+unstable parameters compared with `===`, stable ones with `equals()` — is unchanged and was
+re-verified on the Strong Skipping page. The *compiler's classification of the example's
+parameter* is what the old stem depended on and never stated. The *behaviour observed under
+explicit conditions* is the table above.
+
+The Question was therefore corrected by moving its stem off the interface-typed parameter and
+onto a class declaring a `var` property, which the stability guide gives as its own example of
+a type Compose treats as unstable and which the measurement confirms behaves exactly as the
+documented rule predicts. The documented rule was neither quietly replaced by the observation
+nor defended against it: the Question now assesses the rule on an example where the rule and
+the configured compiler agree.
+
+- **Identity preserved.** `compose_strong_skipping_instance_equality` keeps its id, and all
+  four `AnswerOption` ids keep theirs. The assessed claim — unstable arguments are compared by
+  instance, so a rebuilt equal argument re-runs the call — is unchanged, and each option
+  asserts the same thing it asserted before; only the noun changes with the stem. This is an
+  editorial correction to the same assessment responsibility, which the contract keeps under
+  the existing id.
+- **Level reviewed and left at `FOUNDATION`.** The plan and E23-04 both flagged the level as a
+  candidate. One documented contract directly supplies the answer and the scenario selects no
+  mechanism, which is the contract's own `FOUNDATION`/`APPLIED` boundary. The depth E23-04 was
+  reaching for went into new Questions that require the rule to be *applied* rather than
+  recognised, which is a better answer than re-levelling a recognition item.
+- L4.4's Senior section already records the measurement and instructs the reader not to design
+  against it in either direction. No Lesson was edited: the Lesson was right, the Question's
+  example was the problem.
+
+### Final disposition of the ten gaps
+
+Every gap was re-read against the finished prose before authoring. None was found already
+closed, and none was found to have disappeared. All ten are addressed.
+
+| Gap | Disposition | Question IDs |
+| --- | --- | --- |
+| GAP-U2-A | Addressed | `compose_unremembered_observable_state` |
+| GAP-U2-B | Addressed | `compose_state_collection_mutation` |
+| GAP-U3-A | Addressed | `compose_recomposition_count_is_not_a_finding` |
+| GAP-U4-A | Addressed | `compose_call_site_identity_branches` |
+| GAP-U4-B | Addressed, with two Questions | `compose_stability_annotation_contract`, `compose_false_stability_promise_cost` |
+| GAP-U4-C | Addressed | `compose_equal_value_write_records_no_change` |
+| GAP-U5-A | Addressed | `compose_remember_key_invalidation` |
+| GAP-U5-B | Addressed | `compose_work_placement_responsibility_vs_thread` |
+| GAP-U6-A | Addressed | `compose_snapshot_read_records_dependency` |
+| GAP-U6-B | Addressed, with two Questions | `compose_snapshot_flow_read_inside_block`, `compose_snapshot_flow_conflated_state` |
+
+Two gaps took two Questions each because each names two separable pieces of reasoning that no
+single defensible answer set could carry. GAP-U4-B separates *which annotation a given type
+honestly deserves, and what the annotation is doing* from *what a false promise costs*; a
+learner can hold the first and miss the second entirely, which is the failure the Lesson is
+written against. GAP-U6-B separates *the read must be inside the block* — a debugging question
+with an observable symptom — from *the stream is conflated state rather than an event log* — a
+design decision about whether `snapshotFlow` is the right tool at all. Nothing was combined to
+reduce the count and nothing was split to raise it.
+
+### Candidates recorded by the authoring issues, and what happened to them
+
+- **Applied coverage of read placement** (recorded by E23-03, because
+  `lesson_recomposition_scopes` teaches past what its single `FOUNDATION` Question assesses).
+  **Deferred.** It is not one of the ten gaps, `compose_recomposition` now carries three
+  active Questions, and the inline-lambda caveat and the value-versus-holder distinction that
+  E23-03 named are the two claims in that Lesson that most need a fresh measurement before
+  anything is written about them. Widening this issue's scope to take it would have meant
+  authoring against unverified behaviour.
+- **`android_ui` holds no `ADVANCED` Question at all** (recorded by E23-01, explicitly as an
+  observation and not a quota). Two now exist —
+  `compose_equal_value_write_records_no_change` and `compose_snapshot_flow_conflated_state` —
+  and both earned the level on the contract's own test rather than to fill it. The first
+  requires three mechanisms to be traced together before the answer falls out: `copy()` is
+  shallow, a `data class` generates `equals` over the shared property, and
+  `structuralEqualityPolicy` treats an equal assignment as no change. The second turns on the
+  documented distinction between events and state, and the answer is a decision about whether
+  the tool fits the requirement rather than a fact about the API.
+- **`compose_derived_state_threshold` carries all of Unit 5** (recorded by E23-05). It now
+  carries a third of it, and the Question was not changed: it was re-read in full and remains
+  sound.
+- **`compose_key_identity_lazy_state` carries both identity Lessons** (recorded by E23-04).
+  `compose_call_site_identity_branches` is deliberately framed outside a list, so
+  `lesson_composable_identity` now has practice that reaches its own reasoning.
+
+### What the twelve Questions were built on
+
+No Question asserts an execution count, because Unit 5 and Unit 6 both established that a
+count describes an observation schedule as much as it describes the code. Where a claim was
+behavioural rather than documentary it was executed first, on the JVM target, with the probe
+deleted afterwards.
+
+| Claim a Question depends on | Measured result |
+| --- | --- |
+| `var count by mutableStateOf(0)` with no `remember`, read in the body that creates it, stays at its initial value while the body does re-execute | The displayed value across four passes was `0, 0, 0, 0`; the identical code with `remember` gave `0, 1, 2, 3` |
+| Mutating a nested `MutableList` and then assigning a shallow `copy()` schedules nothing at all | The composable body executed **once** in total across two clicks and went on displaying `0`; replacing the list instead gave three executions and the correct count |
+| Two `if` branches calling the same composable are two identities, and one call site whose argument changes is one | Across three flips the two-branch version produced three **distinct** remembered tokens — re-entering a branch creates a new identity rather than recovering the old one — while the single-call-site version produced the same token every time |
+
+The `snapshotFlow` Questions rest on E23-06's measurements rather than on new ones, and
+neither of them requires a particular sequence of intermediate values. The conflation Question
+asks whether every transition is *guaranteed*, which is a question about the contract, and its
+keyed answer is the documented permission to skip intermediate states rather than a prediction
+that skipping will happen.
+
+### Editorial decisions worth carrying forward
+
+- **The two suppression mechanisms are assessed apart, exactly as L4.3 teaches them.**
+  `compose_equal_value_write_records_no_change` is a *state write* being suppressed inside the
+  holder, and its strongest distractor is the skipping explanation — the tool for the third
+  question applied to a failure at the second. `compose_strong_skipping_instance_equality` is a
+  *call* being skipped at the call site. Neither Question's explanation borrows the other's
+  mechanism.
+- **A ViewModel question that is not an architecture question.**
+  `compose_work_placement_responsibility_vs_thread` states in its stem that the repository
+  function is unchanged, because without that the keyed answer would depend on an unstated
+  assumption about what the callee does. It agrees with `architecture_use_case_reuse`, which
+  independently marks "moves the work off the main thread without a dispatcher change" false —
+  the two were paired by the neighbour scan and read for agreement.
+- **`compose_recomposition_count_is_not_a_finding` deliberately has three real techniques as
+  distractors.** Instability, read placement and memoization are each a correct fix for a
+  specific expense, and each is wrong here because nothing has been diagnosed. A distractor set
+  of implausible options would have tested nothing, since the whole point of the Lesson is that
+  the plausible move is premature.
+- **The one `MULTIPLE` Question says "by itself".** Without it,
+  "passing the `MutableState` to a child as a parameter" is defensible on the reading that the
+  child then reads it, and a defensible distractor is a broken question rather than a hard one.
 
 ---
 
@@ -1192,6 +1368,11 @@ for the Units this blueprint has not yet authored.
 
 ### For E23-07
 
+**Complete.** Twelve Questions were added and `compose_strong_skipping_instance_equality` was
+corrected; all ten gaps are addressed and the coverage reports are current. The results are in
+[Assessment outcomes for E23-07](#assessment-outcomes-for-e23-07), and the guidance below is
+what that issue followed.
+
 Read [Authoring outcomes for Units 2 and 3](#authoring-outcomes-for-units-2-and-3) first: it
 records the semantic re-check of the two recomposition Questions against the finished prose,
 confirms GAP-U2-A, GAP-U2-B and GAP-U3-A unchanged, and adds one new candidate — Applied
@@ -1228,3 +1409,14 @@ The five Units read in blueprint order, and the concept boundaries in this docum
 the cross-Unit review should test: no concept is taught twice, each Unit's prerequisites are
 satisfied by an earlier Unit or bridged in place, and no Lesson links to material that does not
 exist.
+
+E23-07 leaves three things for it. Every new Unit now has practice through its primary
+concepts — `compose_state` 3, `compose_state_hoisting` 1, `compose_recomposition` 3,
+`compose_identity_keys` 2, `compose_stability` 4, `compose_derived_state` 3,
+`compose_snapshot_system` 4 — so the Unit-practice flow can be exercised end to end rather
+than reasoned about; `docs/content/learning-question-coverage.md` reports 22 unique active
+Questions reached through primary mappings, against 10 before. No supporting-only mapping was
+promoted, and the four tests that pin the cross-Topic mappings as supporting still pass, so
+the boundaries E23-08 is asked to verify are the ones this document describes. And one
+candidate is deferred rather than closed — Applied coverage of read placement, recorded by
+E23-03 — which is a content decision for a later issue and not an integration risk.

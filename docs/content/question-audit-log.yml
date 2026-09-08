@@ -23,6 +23,146 @@
 # records are reserved for questions that were changed or flagged.
 
 audits:
+  - review: Compose Units 2-6 assessment gaps (E23-07)
+    date: 2026-09-08
+    scope: >-
+      A semantic assessment review of the seven primary Subtopics of learning Units 2-6 and
+      the Questions reached through them, NOT a bank-wide audit. Twelve Questions were
+      authored and one was corrected; the other 398 questions in
+      shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json were
+      not re-reviewed and their prior verdicts stand.
+    reviewed: 13
+    active: 13
+    retired: 0
+    deterministic_checks: PASS
+    method: |
+      The ten assessment gaps recorded in docs/content/compose-units-2-6-plan.md were
+      re-read against the finished Lesson prose before anything was written, and the
+      Questions already on those Subtopics were re-read in full. Each new Question was then
+      solved from its stem and options alone before correctAnswerIds was consulted, every
+      option was tested for defensibility under the stem as written, and each cited page was
+      opened and the supporting sentence located rather than trusted to a 200.
+
+      Behavioural claims were executed rather than argued. Throwaway runComposeUiTest probes
+      on the JVM target, deleted afterwards, measured: the Strong Skipping comparison for an
+      interface-typed parameter against a statically unstable class (with javap -c confirming
+      which comparison the compiler emits for each); unremembered observable state read in
+      the body that creates it; the shallow-copy-then-assign path; and composition identity
+      across two if branches against a single call site. The snapshotFlow Questions rest on
+      the measurements E23-06 recorded, and neither of them depends on a particular sequence
+      of intermediate values.
+
+      The playbook's Part 3 anti-cue audit, Part 9 neighbour scan against main, and all three
+      Part 7 source scripts (liveness, anchor resolution, rendered-body length) were run over
+      the whole bank.
+
+    summary:
+      status:
+        PASS: 12
+        PASS_WITH_MINOR_CHANGES: 0
+        FIXED: 1
+        REVIEW_REQUIRED: 0
+        REPLACE: 0
+      severity:
+        BLOCKER: 1
+        MAJOR: 0
+        MINOR: 0
+      source_verification:
+        VERIFIED: 13
+        PARTIALLY_VERIFIED: 0
+        UNVERIFIED: 0
+        INVALID: 0
+
+    findings:
+      - id: compose_strong_skipping_instance_equality
+        n: 230
+        status: FIXED
+        severity: BLOCKER
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q4_SINGLE_CORRECT, Q18_CURRENT]
+        issues:
+          - >-
+            The stem asked whether a composable taking an unstable List parameter is skipped
+            when the caller rebuilds an equal list, and keyed "no". Measured on this
+            repository's configured toolchain the call was skipped (parent 3 executions,
+            child 1), so the keyed answer was false for the example the stem gave while
+            distractor _a's outcome was the observed one.
+          - >-
+            The cause is that a List-typed parameter is an interface the compiler cannot
+            classify statically, so it emits both Composer.changed and
+            Composer.changedInstance and resolves at the call site; no bit marked the argument
+            unstable, so the equals branch ran. The stem depended on a classification it never
+            stated.
+        changes:
+          - >-
+            Re-framed the stem onto a class declaring a var property, which the Compose
+            stability guide gives as its own example of a type treated as unstable and which
+            the measurement confirms behaves exactly as the documented === rule predicts
+            (parent 3, child 3). javap -c shows only changedInstance emitted for it.
+          - >-
+            Rewrote the explanation to state the assumption the answer rests on, to say that
+            the type's own equals() is not consulted, and to keep "skippable" and "skipped"
+            apart. Added the stability page as a second source for the unstable-type example.
+          - >-
+            Preserved Question.id and all four AnswerOption ids: the assessed claim and each
+            option's assertion are unchanged, so historical attempts keep their meaning. This
+            is an editorial correction to the same assessment responsibility.
+          - >-
+            Level reviewed and deliberately left at FOUNDATION. One documented contract
+            directly supplies the answer and the scenario selects no mechanism. The depth the
+            earlier suggestion was reaching for went into new Questions that require the rule
+            to be applied rather than recognised.
+
+    new_questions:
+      note: >-
+        Twelve Questions authored against the ten gaps in
+        docs/content/compose-units-2-6-plan.md. Each was independently solved before its key
+        was read, and every source was opened. Two gaps took two Questions each because each
+        names two separable pieces of reasoning; nothing was combined to reduce the count or
+        split to raise it. Final dispositions are recorded in that document under
+        "Assessment outcomes for E23-07".
+      items:
+        - { n: 400, id: compose_unremembered_observable_state, gap: GAP-U2-A, level: APPLIED }
+        - { n: 401, id: compose_state_collection_mutation, gap: GAP-U2-B, level: APPLIED }
+        - { n: 402, id: compose_recomposition_count_is_not_a_finding, gap: GAP-U3-A, level: APPLIED }
+        - { n: 403, id: compose_call_site_identity_branches, gap: GAP-U4-A, level: APPLIED }
+        - { n: 404, id: compose_stability_annotation_contract, gap: GAP-U4-B, level: APPLIED }
+        - { n: 405, id: compose_false_stability_promise_cost, gap: GAP-U4-B, level: APPLIED }
+        - { n: 406, id: compose_equal_value_write_records_no_change, gap: GAP-U4-C, level: ADVANCED }
+        - { n: 407, id: compose_remember_key_invalidation, gap: GAP-U5-A, level: APPLIED }
+        - { n: 408, id: compose_work_placement_responsibility_vs_thread, gap: GAP-U5-B, level: APPLIED }
+        - { n: 409, id: compose_snapshot_read_records_dependency, gap: GAP-U6-A, level: FOUNDATION }
+        - { n: 410, id: compose_snapshot_flow_read_inside_block, gap: GAP-U6-B, level: APPLIED }
+        - { n: 411, id: compose_snapshot_flow_conflated_state, gap: GAP-U6-B, level: ADVANCED }
+
+    systemic:
+      - >-
+        A Question can be faithful to its documentation and still be wrong, because the
+        documented rule and the configured compiler are two different things. This one was
+        verified against the Strong Skipping page in E23-01 and was correct against that page
+        the whole time; what it never stated was which classification its example's parameter
+        would get, and that is the part the compiler decides. Where a Question turns on a
+        compiler decision, choose an example whose classification is documented rather than
+        inferred, and say so in the stem.
+      - >-
+        Interface-typed parameters are the case to avoid in stability questions. The compiler
+        emits both comparisons and resolves at the call site, so no answer about them is
+        stable across toolchains. A class with a var property is the documented, reproducible
+        example and assesses the same reasoning.
+      - >-
+        The coverage snapshot drifted while the pinned tests did not. InitialCurriculumSmokeTest
+        was already asserting 358/41 when docs/content/question-bank-coverage.md still reported
+        360/39 and listed two deprecated questions as active. A generated report is only as
+        current as the last person who ran the generator; the tests are the thing that fails.
+        Both were brought back into line here.
+      - >-
+        Twelve additions moved android_ui from 1.08 to 1.54 active questions per subtopic
+        without adding a subtopic, which is the deepest any Topic outside lifecycle and
+        platform now sits. That is deliberate and matches an epic that shipped 18 Lessons on
+        Compose state and execution, but it is the kind of concentration the authoring
+        contract warns about, and the next expansion should look elsewhere.
+
   - review: Questions 276-399, canonical order (bank complete)
     date: 2026-09-04
     scope: questions[275..398] of shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json

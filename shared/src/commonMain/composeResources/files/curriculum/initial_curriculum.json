@@ -10956,7 +10956,7 @@
       "id": "compose_strong_skipping_instance_equality",
       "topicId": "android_ui",
       "subtopicId": "compose_stability",
-      "text": "With strong skipping enabled, a composable takes an unstable List parameter and the caller rebuilds an equal list on every recomposition. Is the composable skipped?",
+      "text": "Strong skipping is enabled. A composable takes a parameter whose class declares a var property, so Compose treats the type as unstable, and on every recomposition the caller constructs a new instance that compares equal to the previous one. Is that call skipped?",
       "answers": [
         {
           "id": "compose_strong_skipping_instance_equality_a",
@@ -10964,7 +10964,7 @@
         },
         {
           "id": "compose_strong_skipping_instance_equality_b",
-          "text": "No, because unstable parameters are compared by instance and each list is a new object."
+          "text": "No, because unstable parameters are compared by instance and each instance is a new object."
         },
         {
           "id": "compose_strong_skipping_instance_equality_c",
@@ -10980,11 +10980,15 @@
       "correctAnswerIds": [
         "compose_strong_skipping_instance_equality_b"
       ],
-      "explanation": "Strong skipping, on by default since the Compose compiler shipped with Kotlin 2.0.20, makes restartable composables skippable even when a parameter is unstable, but it compares unstable arguments by instance identity rather than with equals(). A freshly built list is a different instance, so the comparison fails and the composable re-runs even though the contents match. Remembering the list, or using a type Compose treats as stable, is what actually restores skipping.",
+      "explanation": "Strong skipping, on by default since the Compose compiler shipped with Kotlin 2.0.20, makes every restartable composable skippable whether or not its parameters are stable, but it compares unstable arguments using instance equality (===) and stable ones with equals(). A class declaring a var property is the documented example of a type Compose treats as unstable, so each freshly constructed instance fails the identity comparison and the call executes even though the contents match — the type's own equals() is not consulted. Skippable therefore does not mean skipped: the comparison still has to pass. And strong skipping relaxes the older rule rather than disabling skipping for unstable parameters. Holding one instance, with remember or by hoisting the construction, or making the type genuinely stable so equals() is used, is what restores skipping.",
       "sources": [
         {
           "title": "Strong Skipping Mode",
           "url": "https://developer.android.com/develop/ui/compose/performance/stability/strongskipping"
+        },
+        {
+          "title": "Stability in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/performance/stability"
         }
       ],
       "status": "ACTIVE"
@@ -17359,6 +17363,507 @@
         {
           "title": "Intercept touch events in a ViewGroup",
           "url": "https://developer.android.com/develop/ui/views/touch-and-input/gestures/viewgroup"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_unremembered_observable_state",
+      "topicId": "android_ui",
+      "subtopicId": "compose_state",
+      "text": "A composable declares var count by mutableStateOf(0) directly in its body, with no remember, and its Text reads count in that same body. Each click increments count, and the label always reads zero. What is happening?",
+      "answers": [
+        {
+          "id": "compose_unremembered_observable_state_a",
+          "text": "The write schedules recomposition, but the body re-runs mutableStateOf(0) and reads a new holder."
+        },
+        {
+          "id": "compose_unremembered_observable_state_b",
+          "text": "The write is never observed, because a holder declared outside remember reports no changes."
+        },
+        {
+          "id": "compose_unremembered_observable_state_c",
+          "text": "The click handler mutates a copy of the state, so the original holder still holds zero."
+        },
+        {
+          "id": "compose_unremembered_observable_state_d",
+          "text": "Compose batches the increments and applies them only when the screen leaves the Composition."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "compose_unremembered_observable_state_a"
+      ],
+      "explanation": "remember and mutableStateOf answer independent questions. mutableStateOf creates an observable MutableState whose writes schedule recomposition of the functions that read value, so the write is observed and the body does execute again. What is missing is memory: remember stores a value in the Composition and returns it on recomposition, and without it the body evaluates mutableStateOf(0) afresh on every pass and reads a brand-new holder still at its initial value. Nothing copies the state and nothing defers the write; the increment reaches the holder that the next execution discards. remember { mutableStateOf(0) } supplies the missing half.",
+      "sources": [
+        {
+          "title": "State and Jetpack Compose",
+          "url": "https://developer.android.com/develop/ui/compose/state"
+        },
+        {
+          "title": "androidx SnapshotState.kt",
+          "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotState.kt"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_state_collection_mutation",
+      "topicId": "android_ui",
+      "subtopicId": "compose_state",
+      "text": "A screen holds val items = remember { mutableStateOf(mutableListOf<String>()) } and appends with items.value.add(text). Logging shows the list growing, and the rendered rows never change. Which change fixes it, and why?",
+      "answers": [
+        {
+          "id": "compose_state_collection_mutation_a",
+          "text": "Assign a new read-only list, because MutableState reports a change only when value is written."
+        },
+        {
+          "id": "compose_state_collection_mutation_b",
+          "text": "Wrap the row list in a remember keyed on items, because the cached rows are stale."
+        },
+        {
+          "id": "compose_state_collection_mutation_c",
+          "text": "Hoist items to the caller, because a composable cannot observe state it declares itself."
+        },
+        {
+          "id": "compose_state_collection_mutation_d",
+          "text": "Read items.value into a local val first, because reads inside a loop are not recorded."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "compose_state_collection_mutation_a"
+      ],
+      "explanation": "MutableState observes writes to its own value property; it has no way to learn that the object it points at was modified. The documentation is explicit that mutable objects which are not observable, such as ArrayList or a mutable data class, do not trigger recomposition, and recommends an observable holder such as State<List<T>> together with the read-only listOf(). Assigning items = items + text writes the holder and is recorded. Hoisting changes who owns the state and not whether a mutation is seen; remember caches a value rather than making one observable; and a read of items.value inside the body is already recorded, which is exactly why the holder is the thing that must be written. mutableStateListOf is the other documented fix, and it works because its own mutating operations are the notification.",
+      "sources": [
+        {
+          "title": "State and Jetpack Compose",
+          "url": "https://developer.android.com/develop/ui/compose/state"
+        },
+        {
+          "title": "Stability in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/performance/stability"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_recomposition_count_is_not_a_finding",
+      "topicId": "android_ui",
+      "subtopicId": "compose_recomposition",
+      "text": "A tool reports that a composable re-executed on almost every frame during an animation. The screen animates smoothly and no user-visible symptom has been reported. What does that count establish?",
+      "answers": [
+        {
+          "id": "compose_recomposition_count_is_not_a_finding_a",
+          "text": "Nothing on its own: frequent re-execution is the designed behaviour, and the cost is the work in the body."
+        },
+        {
+          "id": "compose_recomposition_count_is_not_a_finding_b",
+          "text": "That the composable's parameters are unstable, since a stable set would have let Compose skip it."
+        },
+        {
+          "id": "compose_recomposition_count_is_not_a_finding_c",
+          "text": "That state is being read too high in the tree, so the read should move to a smaller child."
+        },
+        {
+          "id": "compose_recomposition_count_is_not_a_finding_d",
+          "text": "That the body must be wrapped in remember, because a composable should not run once per frame."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "compose_recomposition_count_is_not_a_finding_a"
+      ],
+      "explanation": "The documentation states that a composable function might be re-executed as often as every frame, for example while an animation renders, and asks only that composable functions be fast, idempotent and side-effect free. Frequency is therefore the operating mode rather than the defect, and a count says nothing about what each execution cost or whether a frame was dropped. The other three options are real techniques applied without a diagnosis: instability, read placement and memoization each address a specific expense, and none of them is indicated by a count with no symptom and no identified work behind it. What turns an observation into a finding is expensive work on the executing path and a symptom that tracks it.",
+      "sources": [
+        {
+          "title": "Thinking in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/mental-model"
+        },
+        {
+          "title": "Compose Performance Best Practices",
+          "url": "https://developer.android.com/develop/ui/compose/performance/bestpractices"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_call_site_identity_branches",
+      "topicId": "android_ui",
+      "subtopicId": "compose_identity_keys",
+      "text": "A panel calls NoteField() from inside an if branch and again from its else branch. NoteField holds its draft in remember { mutableStateOf(\"\") }. Toggling the flag discards the user's half-typed draft, while a rewrite that keeps one NoteField() call and varies only its Modifier preserves it. Why?",
+      "answers": [
+        {
+          "id": "compose_call_site_identity_branches_a",
+          "text": "Each call site is a distinct instance, so a branch that stops being composed takes its state."
+        },
+        {
+          "id": "compose_call_site_identity_branches_b",
+          "text": "A conditional forces Compose to discard the state remembered anywhere inside it."
+        },
+        {
+          "id": "compose_call_site_identity_branches_c",
+          "text": "Compose matches instances by their rendered output, and a resized field no longer matches."
+        },
+        {
+          "id": "compose_call_site_identity_branches_d",
+          "text": "remember is discarded whenever any parameter of the enclosing composable changes."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "compose_call_site_identity_branches_a"
+      ],
+      "explanation": "The instance of a composable in the Composition is identified by its call site, and the compiler treats every call site as distinct, so calling a composable from two places creates two instances. Only one branch is composed at a time: flipping the flag removes one identity and creates the other, and everything remembered inside the departing one is forgotten. A single call site stays composed however its arguments change, which is why the Modifier version keeps the draft. It is not the conditional that destroys state but the call site ceasing to be composed, Compose never infers identity from what was rendered, and a changed parameter recomposes an identity rather than replacing it.",
+      "sources": [
+        {
+          "title": "Lifecycle of Composables",
+          "url": "https://developer.android.com/develop/ui/compose/lifecycle"
+        },
+        {
+          "title": "State and Jetpack Compose",
+          "url": "https://developer.android.com/develop/ui/compose/state"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_stability_annotation_contract",
+      "topicId": "android_ui",
+      "subtopicId": "compose_stability",
+      "text": "A form holder exposes var query by mutableStateOf(\"\") and var showAdvanced by mutableStateOf(false), and is passed to a child composable on every pass. Which annotation is honest for this type, and what is the annotation doing?",
+      "answers": [
+        {
+          "id": "compose_stability_annotation_contract_a",
+          "text": "@Stable, asserting that changes to its properties already notify composition."
+        },
+        {
+          "id": "compose_stability_annotation_contract_b",
+          "text": "@Immutable, because a type whose properties are backed by Compose state cannot change."
+        },
+        {
+          "id": "compose_stability_annotation_contract_c",
+          "text": "@Stable, which makes the runtime start observing the properties on the type's behalf."
+        },
+        {
+          "id": "compose_stability_annotation_contract_d",
+          "text": "Neither, because a type declaring var properties is unstable and no annotation can override that."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "compose_stability_annotation_contract_a"
+      ],
+      "explanation": "A type is stable if it is immutable, or if Compose can know whether its value changed; the documentation is explicit that a composable's parameters need not be immutable for it to be skippable, as long as the runtime is notified of every change, and names MutableState as a mutable type that upholds that contract. Backing each property with mutableStateOf is exactly what makes the promise true, so @Stable is honest here. @Immutable is the wrong claim because these properties do change. The annotation asserts that notification already exists rather than creating it. And an annotation does override what the compiler would otherwise infer for a var-carrying type, which is why the guidance warns that the annotations are a contract you opt into and that incorrectly annotating a class could cause recomposition to break.",
+      "sources": [
+        {
+          "title": "Stability in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/performance/stability"
+        },
+        {
+          "title": "Fix Stability Issues",
+          "url": "https://developer.android.com/develop/ui/compose/performance/stability/fix"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_false_stability_promise_cost",
+      "topicId": "android_ui",
+      "subtopicId": "compose_stability",
+      "text": "A team annotates a class @Immutable to stop a child recomposing. One of its public properties is a MutableList that a repository still appends to. What should the team expect?",
+      "answers": [
+        {
+          "id": "compose_false_stability_promise_cost_a",
+          "text": "A screen that keeps rendering data the app has already changed, diagnosed far from its cause."
+        },
+        {
+          "id": "compose_false_stability_promise_cost_b",
+          "text": "A compile-time error, because the compiler rejects an @Immutable type holding a MutableList."
+        },
+        {
+          "id": "compose_false_stability_promise_cost_c",
+          "text": "A runtime exception the first time the list is appended to after composition reads it."
+        },
+        {
+          "id": "compose_false_stability_promise_cost_d",
+          "text": "No effect on skipping, because @Immutable is advisory and the compiler still infers stability itself."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "compose_false_stability_promise_cost_a"
+      ],
+      "explanation": "@Immutable states that the value of a type's properties can never change after construction, and the guidance is explicit that the annotations do not make a class stable on their own: using them opts you into a contract with the compiler, and incorrectly annotating a class could cause recomposition to break, leading to bugs such as a composable not recomposing when you expect it to. A list mutated behind the promise produces exactly that outcome, and the observable failure is stale UI, which reads as a data-layer bug and is investigated in the repository and the cache long before anyone suspects the annotation. Nothing verifies the promise, so there is no compile error and no exception, and the annotation overrides what the compiler would otherwise infer rather than merely advising it.",
+      "sources": [
+        {
+          "title": "Fix Stability Issues",
+          "url": "https://developer.android.com/develop/ui/compose/performance/stability/fix"
+        },
+        {
+          "title": "Stability in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/performance/stability"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_equal_value_write_records_no_change",
+      "topicId": "android_ui",
+      "subtopicId": "compose_stability",
+      "text": "Screen state is a data class holding a MutableList and is held in mutableStateOf. An update runs state.lines.add(line) and then state = state.copy(). A write reaches the holder and the screen still does not update. Why?",
+      "answers": [
+        {
+          "id": "compose_equal_value_write_records_no_change_a",
+          "text": "copy() is shallow, so both instances share the mutated list, compare equal, and equal is no change."
+        },
+        {
+          "id": "compose_equal_value_write_records_no_change_b",
+          "text": "The holder ignores the assignment because the same object is being written back to it."
+        },
+        {
+          "id": "compose_equal_value_write_records_no_change_c",
+          "text": "copy() produces an instance the compiler treats as unstable, so the reading composable is skipped."
+        },
+        {
+          "id": "compose_equal_value_write_records_no_change_d",
+          "text": "The add happened before the assignment, so Compose coalesced the two into a single no-op."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "ADVANCED",
+      "correctAnswerIds": [
+        "compose_equal_value_write_records_no_change_a"
+      ],
+      "explanation": "Three facts combine. copy() passes the constructor properties to a new instance, so the copy shares the very MutableList that was just mutated. A data class generates equals over those constructor properties, so the old and new instances compare the same list against itself and report equal. And mutableStateOf defaults to structuralEqualityPolicy, under which setting value to its current structurally equal value is not considered a change. The assignment is genuinely a different object, so it is not ignored as the same reference; stability decides whether a call is skipped rather than whether a write is recorded, and here nothing was recorded to skip on; and coalescing changes when invalidation is acted on, never whether a change existed. Replacing the list, so the new value genuinely differs, is the fix.",
+      "sources": [
+        {
+          "title": "androidx SnapshotMutationPolicy.kt",
+          "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotMutationPolicy.kt"
+        },
+        {
+          "title": "State and Jetpack Compose",
+          "url": "https://developer.android.com/develop/ui/compose/state"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_remember_key_invalidation",
+      "topicId": "android_ui",
+      "subtopicId": "compose_derived_state",
+      "text": "A composable computes val visible = remember(contacts) { contacts.filter { it.name.contains(query) } } where query is a parameter the search field updates. Typing re-executes the body. What does the user see?",
+      "answers": [
+        {
+          "id": "compose_remember_key_invalidation_a",
+          "text": "Results for the previous query, because the one supplied key did not change."
+        },
+        {
+          "id": "compose_remember_key_invalidation_b",
+          "text": "Correct results, because reaching a remember call re-runs its calculation."
+        },
+        {
+          "id": "compose_remember_key_invalidation_c",
+          "text": "An empty list, because a stale cache is discarded once the body executes again."
+        },
+        {
+          "id": "compose_remember_key_invalidation_d",
+          "text": "Correct results, because Compose adds every value the lambda captures to the key list."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "compose_remember_key_invalidation_a"
+      ],
+      "explanation": "remember stores its result in the Composition and returns it again until a key changes; the documentation states that if any key changes, the next time the function recomposes remember invalidates the cache and executes the calculation block again. Here the result genuinely depends on query and query is not a key, so the cache stays valid by its own rules while the answer it holds stops being true, and the screen serves results for a query the user has already replaced. Reaching a remember call is not running its lambda, an unchanged key never discards anything, and Compose infers nothing about captured values: the key list is the claim you make about what the result is a function of. remember(contacts, query) states it accurately.",
+      "sources": [
+        {
+          "title": "State and Jetpack Compose",
+          "url": "https://developer.android.com/develop/ui/compose/state"
+        },
+        {
+          "title": "Compose Performance Best Practices",
+          "url": "https://developer.android.com/develop/ui/compose/performance/bestpractices"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_work_placement_responsibility_vs_thread",
+      "topicId": "android_ui",
+      "subtopicId": "compose_derived_state",
+      "text": "A composable body performs a blocking repository read. A reviewer proposes moving the call into the screen's ViewModel. Assuming the repository function itself is unchanged, what does that move achieve?",
+      "answers": [
+        {
+          "id": "compose_work_placement_responsibility_vs_thread_a",
+          "text": "It gives the work an owner that outlives the screen, and leaves it on whichever thread calls it."
+        },
+        {
+          "id": "compose_work_placement_responsibility_vs_thread_b",
+          "text": "It moves the work off the main thread, because a ViewModel runs its work on a background scope."
+        },
+        {
+          "id": "compose_work_placement_responsibility_vs_thread_c",
+          "text": "It removes the need for main-safety, because the UI layer no longer touches the repository."
+        },
+        {
+          "id": "compose_work_placement_responsibility_vs_thread_d",
+          "text": "It makes the read cheaper, because a ViewModel caches the result across configuration changes."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "compose_work_placement_responsibility_vs_thread_a"
+      ],
+      "explanation": "Two separate decisions are involved and only one of them is being made. Placement is settled by ownership: state holders are the classes responsible for producing UI state and the logic that produces it, and business logic belongs in the domain or data layers and never in the UI layer, so the move is correct and gives the work a home that can report loading and failure and be cancelled. Threading is a separate duty and is not the caller's. The coroutines guidance places it on the code doing the work: a class performing long-running blocking operations is in charge of moving execution off the main thread with withContext, and that applies to every class regardless of which part of the architecture it sits in. An unchanged blocking function called from a ViewModel runs on whatever thread called it, main-safety is still owed, and surviving configuration change is not the same as the call becoming cheaper.",
+      "sources": [
+        {
+          "title": "UI Layer",
+          "url": "https://developer.android.com/topic/architecture/ui-layer"
+        },
+        {
+          "title": "Best Practices for Coroutines in Android",
+          "url": "https://developer.android.com/kotlin/coroutines/coroutines-best-practices"
+        },
+        {
+          "title": "Compose Performance Best Practices",
+          "url": "https://developer.android.com/develop/ui/compose/performance/bestpractices"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_snapshot_read_records_dependency",
+      "topicId": "android_ui",
+      "subtopicId": "compose_snapshot_system",
+      "text": "Which of these actions, by itself, subscribes the code performing it to later changes of a MutableState? Select all that apply.",
+      "answers": [
+        {
+          "id": "compose_snapshot_read_records_dependency_a",
+          "text": "Reading its value while a composable executes during composition."
+        },
+        {
+          "id": "compose_snapshot_read_records_dependency_b",
+          "text": "Reading its value inside a derivedStateOf calculation."
+        },
+        {
+          "id": "compose_snapshot_read_records_dependency_c",
+          "text": "Passing the MutableState down to a child composable as a parameter."
+        },
+        {
+          "id": "compose_snapshot_read_records_dependency_d",
+          "text": "Reading its value inside an onClick handler that runs after composition has finished."
+        }
+      ],
+      "selectionMode": "MULTIPLE",
+      "level": "FOUNDATION",
+      "correctAnswerIds": [
+        "compose_snapshot_read_records_dependency_a",
+        "compose_snapshot_read_records_dependency_b"
+      ],
+      "explanation": "A dependency is created by a read, and only by a read performed while something is recording. The runtime's contract for MutableState is that reads of value during the execution of a composable subscribe the current recompose scope, and a write then schedules recomposition of the scopes that subscribed. derivedStateOf documents the same relationship for its calculation: reading the derived value causes every State object that was read during the calculation to be read in the current snapshot, which is what subscribes the reader to those dependencies. Passing the holder as a parameter transports a reference and reads nothing, so it records nothing; the dependency appears wherever the child actually reads value. A click handler runs later, when no composition is in progress, so its read returns the current value correctly and is recorded against nothing.",
+      "sources": [
+        {
+          "title": "androidx SnapshotState.kt",
+          "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotState.kt"
+        },
+        {
+          "title": "androidx DerivedState.kt",
+          "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/DerivedState.kt"
+        },
+        {
+          "title": "State and Jetpack Compose",
+          "url": "https://developer.android.com/develop/ui/compose/state"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_snapshot_flow_read_inside_block",
+      "topicId": "android_ui",
+      "subtopicId": "compose_snapshot_system",
+      "text": "A composable computes val index = listState.firstVisibleItemIndex and then, inside LaunchedEffect(listState), collects snapshotFlow { index > 0 }. The collector receives one value and never another, however far the user scrolls. What is wrong?",
+      "answers": [
+        {
+          "id": "compose_snapshot_flow_read_inside_block_a",
+          "text": "The state was read in the composable, so the block reads no snapshot state and has no dependency."
+        },
+        {
+          "id": "compose_snapshot_flow_read_inside_block_b",
+          "text": "The LaunchedEffect key list is wrong, so the collecting coroutine is cancelled after the first value."
+        },
+        {
+          "id": "compose_snapshot_flow_read_inside_block_c",
+          "text": "The boolean result keeps comparing equal to the previous one, so later emissions are suppressed."
+        },
+        {
+          "id": "compose_snapshot_flow_read_inside_block_d",
+          "text": "snapshotFlow emits only its initial value unless the flow is followed by distinctUntilChanged."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "compose_snapshot_flow_read_inside_block_a"
+      ],
+      "explanation": "snapshotFlow runs its block when collected and emits the result of the State objects read in it, and re-runs the block when a state object read inside the block changes. By the time this block runs, index is an ordinary Int captured from the enclosing scope: the read that could have recorded a dependency happened in the composable, so the block reads no snapshot state and nothing can ever re-run it. Moving the read inside, as snapshotFlow { listState.firstVisibleItemIndex > 0 }, is the fix. A wrong key would restart or leak the effect rather than silence it after one value; equality suppression would still show the block re-running and would let a genuine flip through; and a snapshotFlow already compares each result against the previously emitted one, so distinctUntilChanged is a convenience rather than what makes it emit.",
+      "sources": [
+        {
+          "title": "Side-Effects in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/side-effects"
+        },
+        {
+          "title": "androidx SnapshotFlow.kt",
+          "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotFlow.kt"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_snapshot_flow_conflated_state",
+      "topicId": "android_ui",
+      "subtopicId": "compose_snapshot_system",
+      "text": "An audit trail must record every value a Compose State takes. A snapshotFlow over that state is collected by a coroutine that occasionally suspends on a slow write. Is snapshotFlow a sound foundation for the audit trail?",
+      "answers": [
+        {
+          "id": "compose_snapshot_flow_conflated_state_a",
+          "text": "No: snapshot changes are conflated, so the collector may legitimately skip intermediate values."
+        },
+        {
+          "id": "compose_snapshot_flow_conflated_state_b",
+          "text": "No, unless the collector is moved to a background dispatcher so writes stop blocking emission."
+        },
+        {
+          "id": "compose_snapshot_flow_conflated_state_c",
+          "text": "Yes: snapshotFlow buffers changes it cannot deliver, so a slow collector receives them later."
+        },
+        {
+          "id": "compose_snapshot_flow_conflated_state_d",
+          "text": "Yes, provided the block returns a fresh object each run so no emission is suppressed by equality."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "ADVANCED",
+      "correctAnswerIds": [
+        "compose_snapshot_flow_conflated_state_a"
+      ],
+      "explanation": "The runtime documents this as a property of what is being observed rather than a limitation to work around. snapshotFlow models snapshot changes as events, but observable state is a lossy compression of the events that produced it: state change events are conflated, only the most recent state matters, and a state observer may validly skip intermediate states as well as run more than once for the same one. The block itself may run only once after many rapid snapshot changes. A dispatcher changes where the collector runs and not what it is offered, no buffer of skipped states exists to replay, and defeating the equality check makes emissions more frequent without recovering values that were never produced. Anything that must record every transition has to be fed where the change is made.",
+      "sources": [
+        {
+          "title": "androidx SnapshotFlow.kt",
+          "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotFlow.kt"
+        },
+        {
+          "title": "Side-Effects in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/side-effects"
         }
       ],
       "status": "ACTIVE"

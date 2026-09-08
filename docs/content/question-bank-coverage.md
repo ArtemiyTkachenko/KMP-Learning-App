@@ -3,7 +3,7 @@
 ## Purpose
 
 This document records **what the interview question bank currently covers**, so
-that planning the next expansion does not require re-reading all 399 questions.
+that planning the next expansion does not require re-reading all 411 questions.
 A full coverage review is expensive; this is the checkpoint that replaces it.
 
 `docs/content/content-authoring.md` is the editorial contract and
@@ -110,21 +110,21 @@ its current output is reproduced under **Audit baselines** below.
 
 | Metric | Value |
 |---|---:|
-| Total questions | 399 |
-| ACTIVE | 360 |
-| DEPRECATED | 39 |
+| Total questions | 411 |
+| ACTIVE | 370 |
+| DEPRECATED | 41 |
 | Topics | 17 |
 | Subtopics | 361 |
 | Subtopics with ≥1 active question | 283 (78%) |
 | Subtopics with 0 active questions | 78 |
-| SINGLE | 353 |
-| MULTIPLE | 46 |
+| SINGLE | 364 |
+| MULTIPLE | 47 |
 | — of which exactly one correct answer | 3 |
-| Answer options | 1602 (393 questions with 4 options, 6 with 5) |
-| Source references | 454 across 279 unique URLs |
+| Answer options | 1650 (405 questions with 4 options, 6 with 5) |
+| Source references | 494 across 298 unique URLs |
 
-Subtopic depth distribution: **78** subtopics have 0 questions, **220** have 1,
-**52** have 2, **8** have 3, **3** have 4.
+Subtopic depth distribution: **78** subtopics have 0 questions, **216** have 1,
+**52** have 2, **10** have 3, **5** have 4.
 
 The bank averages one question per subtopic. That is the number to keep in mind:
 the taxonomy is deliberately wider than the content, so most subtopics being at
@@ -139,13 +139,13 @@ where the next expansion should look first.
 |---|---|---:|---:|---:|---:|---:|
 | Lifecycle, State & Navigation | `lifecycle_navigation` | 23 | 11 | 11 | 0 | 2.09 |
 | Android Platform & Application Model | `android_platform` | 16 | 8 | 8 | 0 | 2.00 |
+| UI — Views & Jetpack Compose | `android_ui` | 37 | 24 | 20 | 4 | 1.54 |
 | Coroutines, Flow & Reactive Programming | `async_reactive` | 38 | 26 | 24 | 2 | 1.46 |
 | Application Architecture & Design Principles | `architecture` | 22 | 18 | 16 | 2 | 1.22 |
 | Local Persistence & Offline Data | `local_data` | 21 | 19 | 17 | 2 | 1.11 |
 | Kotlin Language & JVM Fundamentals | `kotlin_language` | 25 | 23 | 19 | 4 | 1.09 |
-| UI — Views & Jetpack Compose | `android_ui` | 26 | 24 | 20 | 4 | 1.08 |
-| Testing & Testability | `testing` | 22 | 22 | 19 | 3 | 1.00 |
 | Performance, Memory & Debugging | `performance` | 22 | 23 | 18 | 5 | 0.96 |
+| Testing & Testability | `testing` | 21 | 22 | 19 | 3 | 0.95 |
 | Background Work & OS Constraints | `background_work` | 19 | 20 | 17 | 3 | 0.95 |
 | Dependency Injection | `dependency_injection` | 23 | 25 | 20 | 5 | 0.92 |
 | Networking & Serialization | `networking` | 24 | 28 | 21 | 7 | 0.86 |
@@ -154,7 +154,7 @@ where the next expansion should look first.
 | Build System, Modularization & Delivery | `build_delivery` | 17 | 25 | 15 | 10 | 0.68 |
 | Notifications & Push Messaging | `notifications` | 12 | 18 | 11 | 7 | 0.67 |
 | Kotlin Multiplatform & Compose Multiplatform | `kmp` | 16 | 27 | 15 | 12 | 0.59 |
-| **Total** | | **360** | **361** | **283** | **78** | **1.00** |
+| **Total** | | **370** | **361** | **283** | **78** | **1.02** |
 
 Two caveats before acting on this table:
 
@@ -173,12 +173,12 @@ Current output of the `docs/content/question-authoring-playbook.md` Part 3 scrip
 the whole bank:
 
 ```
-correct-longest 151/356 (42%), mean ratio 1.03, over 10% limit: 0
+correct-longest 157/367 (43%), mean ratio 1.03, over 10% limit: 0
 absolutes: distractors 0.22/opt, correct 0.11/opt
-position: {0: 26%, 1: 27%, 2: 26%, 3: 20%, 4: 1%}
+position: {0: 28%, 1: 27%, 2: 26%, 3: 19%, 4: 1%}
 ```
 
-All 291 unique source URLs returned HTTP 200 at the time of this snapshot, every one
+All 298 unique source URLs returned HTTP 200 at the time of this snapshot, every one
 rendered a non-empty body, and every `#fragment` among them resolved to a real anchor.
 
 These are the numbers a new batch must not degrade. In particular: **zero
@@ -208,7 +208,7 @@ change — vendor documentation decayed faster than the questions did.
 
 ## Deprecated questions
 
-39 questions are `DEPRECATED`. They are retained for stable identity and
+41 questions are `DEPRECATED`. They are retained for stable identity and
 historical attempts, and are excluded from active selection.
 
 **Why this matters when authoring:** a deprecated question still occupies its
@@ -229,6 +229,7 @@ elsewhere in the taxonomy.
 | `compose_state_001` | `android_ui` / `compose_state` |
 | `compose_recomposition_001` | `android_ui` / `compose_recomposition` |
 | `compose_lazy_layouts_001` | `android_ui` / `compose_lazy_layouts` |
+| `compose_stability_001` | `android_ui` / `compose_stability` |
 | `compose_skipping_stable_parameter_contract` | `android_ui` / `compose_stability` |
 | `kotlin_generics_001` | `kotlin_language` / `kotlin_generics` |
 | `kotlin_sequences_001` | `kotlin_language` / `kotlin_sequences` |
@@ -251,6 +252,7 @@ elsewhere in the taxonomy.
 | `fcm_data_messages_001` | `notifications` / `fcm_data_messages` |
 | `coroutine_testing_001` | `testing` / `coroutine_testing` |
 | `compose_ui_testing_001` | `testing` / `compose_ui_testing` |
+| `flow_testing_hot_flow_never_completes` | `testing` / `flow_testing` |
 | `anr_001` | `performance` / `anr` |
 | `memory_leaks_001` | `performance` / `memory_leaks` |
 | `runtime_permissions_001` | `security` / `runtime_permissions` |
@@ -375,6 +377,17 @@ semantics · `AndroidView` interop and disposal · measure/layout/draw ·
 `invalidate` vs `requestLayout` · touch interception · RecyclerView recycling and
 DiffUtil.
 
+Added by E23-07, for the learning Units on Compose state and execution:
+observability versus composition memory · collection mutation that notifies
+nothing · a recomposition count as an observation rather than a finding ·
+call-site identity outside lists · `@Stable`/`@Immutable` as unverified contracts
+and the stale-UI cost of a false one · an equal-value write recording no change ·
+`remember` key invalidation · work placement versus execution context ·
+which reads record a snapshot dependency · `snapshotFlow` block dependencies and
+conflated state. These are the reasoning behind the APIs rather than more of the
+API surface, which is why `android_ui` moved from 1.08 to 1.54 questions per
+subtopic without gaining a subtopic.
+
 Thin: theming, previews, and ViewBinding are untested (deliberately).
 
 ### Kotlin and JVM
@@ -445,18 +458,19 @@ multiplatform ViewModel, library compatibility, sharing trade-offs.
   deprecated-only and several others have a retired predecessor whose concept is
   still taken.
 - **Author 15–25% of a new batch as MULTIPLE.** The bank sits at 11.5%
-  (46/399) because the earliest content used fewer; the last batch ran at 15.6%,
+  (47/411) because the earliest content used fewer; the last batch ran at 15.6%,
   which is the band to aim for. Only three questions in the whole bank are
   MULTIPLE with a single correct answer — keep authoring some that way, or
   `selectionMode` stays inferable from the answer key.
 - **Every question in the bank has 4 options except 6 with 5.** Stay at 4 unless
   there is a specific reason.
-- **Source hosts, for reference:** developer.android.com 303 · kotlinlang.org 96
-  · github.com 18 (kotlinx.serialization, OkHttp, Retrofit and SQLDelight —
+- **Source hosts, for reference:** developer.android.com 324 · kotlinlang.org 96
+  · github.com 24 (kotlinx.serialization, OkHttp, Retrofit and SQLDelight —
   `square.github.io` returns 404, so each project's own repository is the primary
-  source) · dagger.dev 12 · firebase.google.com 12 · rfc-editor.org 8 ·
+  source — plus four androidx runtime files cited where a contract is stated only
+  in the KDoc) · dagger.dev 12 · firebase.google.com 12 · rfc-editor.org 8 ·
   docs.gradle.org 6 · and single-digit
-  counts for insert-koin.io, ktor.io, sqldelight.github.io, jetbrains.com,
+  counts for insert-koin.io, ktor.io, jetbrains.com,
   source.android.com, sqlite.org, google.aip.dev, docs.cloud.google.com.
 - **Pinned count tests to update** whenever the bank changes:
   `InitialCurriculumSmokeTest` (totals, status split, selection-mode split, and
@@ -506,7 +520,7 @@ target subtopic here before authoring to avoid a near-duplicate.
 
 ### UI — Views & Jetpack Compose
 
-`android_ui` — **26 active** across 24 subtopics (20 covered, 4 empty)
+`android_ui` — **37 active** across 24 subtopics (20 covered, 4 empty)
 
 | Subtopic | n | Question IDs |
 |---|---:|---|
@@ -518,17 +532,17 @@ target subtopic here before authoring to avoid a near-duplicate.
 | `view_events` — View event handling | 1 | `view_touch_event_intercept_gesture` |
 | `view_binding` — ViewBinding and DataBinding awareness | 0 | — |
 | `compose_fundamentals` — Compose fundamentals | 1 | `compose_phases_deferred_state_read` |
-| `compose_recomposition` — Composition and recomposition | 2 | `composition_vs_recomposition`, `compose_state_read_recomposition_scope` _(deprecated: `compose_recomposition_001`)_ |
-| `compose_state` — Compose state | 1 | `remember_vs_remember_saveable` _(deprecated: `compose_state_001`)_ |
+| `compose_recomposition` — Composition and recomposition | 3 | `composition_vs_recomposition`, `compose_state_read_recomposition_scope`, `compose_recomposition_count_is_not_a_finding` _(deprecated: `compose_recomposition_001`)_ |
+| `compose_state` — Compose state | 3 | `remember_vs_remember_saveable`, `compose_unremembered_observable_state`, `compose_state_collection_mutation` _(deprecated: `compose_state_001`)_ |
 | `compose_state_hoisting` — State hoisting | 1 | `compose_state_hoisting_001` |
 | `compose_udf` — Unidirectional data flow in Compose | 1 | `compose_udf_event_direction` |
 | `compose_side_effects` — Compose side-effect APIs | 2 | `compose_side_effects_001`, `compose_launched_effect_key_restart` |
-| `compose_derived_state` — derivedStateOf and derived state | 1 | `compose_derived_state_threshold` |
-| `compose_snapshot_system` — Compose snapshot-system fundamentals | 1 | `compose_snapshot_flow_state` |
+| `compose_derived_state` — derivedStateOf and derived state | 3 | `compose_derived_state_threshold`, `compose_remember_key_invalidation`, `compose_work_placement_responsibility_vs_thread` |
+| `compose_snapshot_system` — Compose snapshot-system fundamentals | 4 | `compose_snapshot_flow_state`, `compose_snapshot_read_records_dependency`, `compose_snapshot_flow_read_inside_block`, `compose_snapshot_flow_conflated_state` |
 | `compose_layouts_modifiers` — Layouts and Modifiers | 2 | `compose_edge_to_edge_insets`, `compose_modifier_order_padding_click` |
 | `compose_lazy_layouts` — Lazy layouts | 1 | `compose_lazy_content_type` _(deprecated: `compose_lazy_layouts_001`)_ |
-| `compose_identity_keys` — Identity and keys | 1 | `compose_key_identity_lazy_state` |
-| `compose_stability` — Stability and skippability | 2 | `compose_stability_001`, `compose_strong_skipping_instance_equality` _(deprecated: `compose_skipping_stable_parameter_contract`)_ |
+| `compose_identity_keys` — Identity and keys | 2 | `compose_key_identity_lazy_state`, `compose_call_site_identity_branches` |
+| `compose_stability` — Stability and skippability | 4 | `compose_strong_skipping_instance_equality`, `compose_stability_annotation_contract`, `compose_false_stability_promise_cost`, `compose_equal_value_write_records_no_change` _(deprecated: `compose_stability_001`, `compose_skipping_stable_parameter_contract`)_ |
 | `composition_local` — CompositionLocal | 1 | `compose_composition_local_tradeoff` |
 | `compose_theming` — Material 3 and theming | 0 | — |
 | `compose_accessibility` — Semantics and accessibility | 1 | `compose_accessibility_001` |
@@ -770,7 +784,7 @@ target subtopic here before authoring to avoid a near-duplicate.
 
 ### Testing & Testability
 
-`testing` — **22 active** across 22 subtopics (19 covered, 3 empty)
+`testing` — **21 active** across 22 subtopics (19 covered, 3 empty)
 
 | Subtopic | n | Question IDs |
 |---|---:|---|
@@ -784,7 +798,7 @@ target subtopic here before authoring to avoid a near-duplicate.
 | `fakes_vs_mocks` — Fakes, mocks, and stubs | 1 | `fakes_vs_mocks_interaction_coupling` |
 | `viewmodel_testing` — ViewModel testing | 1 | `viewmodel_testing_001` |
 | `coroutine_testing` — Coroutine testing | 1 | `test_main_dispatcher_replacement` _(deprecated: `coroutine_testing_001`)_ |
-| `flow_testing` — Flow testing | 3 | `flow_testing_turbine_bounded_collection`, `flow_testing_hot_flow_never_completes`, `flow_test_background_collector_statein` |
+| `flow_testing` — Flow testing | 2 | `flow_testing_turbine_bounded_collection`, `flow_test_background_collector_statein` _(deprecated: `flow_testing_hot_flow_never_completes`)_ |
 | `run_test` — runTest | 1 | `run_test_advance_until_idle_pending_work` |
 | `virtual_time` — Virtual time | 1 | `coroutine_virtual_time_delay_skipping` |
 | `repository_testing` — Repository testing | 1 | `repository_test_cache_policy_fakes` |

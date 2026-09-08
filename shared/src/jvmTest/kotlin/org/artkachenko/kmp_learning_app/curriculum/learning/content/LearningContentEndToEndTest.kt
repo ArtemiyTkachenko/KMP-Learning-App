@@ -54,6 +54,7 @@ internal class LearningContentEndToEndTest {
                 "unit_state_and_state_ownership",
                 "unit_recomposition",
                 "unit_identity_keys_and_stability",
+                "unit_derived_state_and_expensive_work",
             ),
             units.map { it.id },
         )

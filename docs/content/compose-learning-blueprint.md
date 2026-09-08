@@ -386,6 +386,11 @@ inputs did not change".
   under-specified keys producing stale results; over-specified keys defeating the cache.
 - **Primary:** `compose_derived_state`
 - **Supporting:** `compose_state`, `compose_recomposition`
+- **Notes:** a third key failure belongs beside the two above and was added during
+  authoring: mutating an object used as a key invalidates nothing, because the stored key
+  and the new key are the same object and the comparison is between an object and itself.
+  The key comparison is `==`; it must be kept apart from Strong Skipping's `===` rule for
+  unstable parameters, which Unit 4 teaches.
 
 #### L5.2 — `derivedStateOf`
 
@@ -400,6 +405,12 @@ inputs did not change".
   rather than filtering result changes.
 - **Primary:** `compose_derived_state`
 - **Supporting:** `compose_snapshot_system`, `compose_lazy_layouts`
+- **Notes:** the derived `State` object's lifetime and what its calculation *captures* were
+  added to Senior during authoring, because a captured non-`State` input is frozen at
+  creation and produces a wrong answer rather than a slow one. The runtime this repository
+  resolves offers `derivedStateOf(calculation)` and `derivedStateOf(policy, calculation)`
+  and nothing else; upstream guidance naming a further API is **Exclude** here, since that
+  API is absent from the configured artifact.
 
 #### L5.3 — Keeping Work Out of Composition
 
@@ -1024,11 +1035,12 @@ sources on any material edit; guidance older than roughly two releases is suspec
 
 ## Status
 
-This blueprint is complete as a map. Units 1–4 are authored and ship in
+This blueprint is complete as a map. Units 1–5 are authored and ship in
 `learning_curriculum.json` as `unit_thinking_in_compose`,
-`unit_state_and_state_ownership`, `unit_recomposition` and
-`unit_identity_keys_and_stability`; Units 5–14 are still plans. When authoring reveals a
-wrong Lesson boundary, update this file in the same change.
+`unit_state_and_state_ownership`, `unit_recomposition`,
+`unit_identity_keys_and_stability` and `unit_derived_state_and_expensive_work`; Units 6–14
+are still plans. When authoring reveals a wrong Lesson boundary, update this file in the
+same change.
 
 Units 2–6 have a confirmed authoring plan in
 [`compose-units-2-6-plan.md`](compose-units-2-6-plan.md), which records their proposed Unit
@@ -1094,3 +1106,27 @@ E23-07:
 - **Unit 4 states no execution counts**, as Unit 3 asked. Its predictions are framed as
   conditions — the same composition identity, the call actually reached, and no independent
   invalidation of the child — rather than as numbers.
+
+Authoring Unit 5 kept every planned Lesson boundary, identity, title and concept mapping
+unchanged. Two blueprint Notes were added above rather than any line being rewritten, and
+three findings matter to Unit 6 and to E23-07:
+
+- **The unit's claims were measured, not argued.** A throwaway `runComposeUiTest` probe on
+  the JVM target counted calculations and composable executions separately for each case
+  the Lessons teach: a `derivedStateOf` whose result changes less often than its input
+  (calculation five times, reading scope twice), a trivial one whose result changes as
+  often as its input (no consumer executions removed at all), the three key failures, and
+  the stale captured input. The probe was deleted; the numbers are recorded in the plan's
+  authoring outcomes.
+- **`derivedStateOf` filters consumers, not calculations — and it is pulled, not pushed.**
+  The measurement makes the first distinction concrete, because "`derivedStateOf` avoids
+  recomputation" is the plausible and wrong summary. Review then corrected the second: a
+  dependency write *invalidates* the derived value and the calculation re-runs when it is
+  next needed, so coalesced writes produce one recalculation and an unread derived state
+  produces none. Unit 6 inherits both: the snapshot lesson explains *why* the consumer is
+  spared, must not re-teach the decision rule, and must not state any "happens on every
+  write" rule that a batching schedule would disprove.
+- **Unit 5 states no benchmark results.** Its cost reasoning is explanatory — where work
+  sits and how often it repeats — and the execution counts it does report are labelled as
+  measurements of this project's toolchain rather than as performance claims. Unit 6 should
+  keep that separation.

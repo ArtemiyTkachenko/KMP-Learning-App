@@ -2703,6 +2703,564 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "unit_derived_state_and_expensive_work",
+      "topicId": "android_ui",
+      "title": "Derived State and Expensive Work",
+      "summary": "The previous two units answered when a composable runs. This one answers what should be happening inside it when it does. Four options look interchangeable and are not: a calculation written directly, a calculation cached against the inputs it depends on, a derived `State` that wakes its readers only when the answer changes, and the decision that the work never belonged in composition at all. Each answers a different question, each has a case where it is the wrong answer, and the last one is the option people reach for last and need most often.",
+      "lessons": [
+        {
+          "id": "lesson_remember_key_memoization",
+          "title": "`remember(key)` as Memoization",
+          "summary": "A key list is a dependency list, and writing it wrong fails in two opposite directions: a missing key serves a stale answer for as long as the screen exists, an irrelevant one throws the cache away for nothing. What the comparison actually is, why mutating an object used as a key invalidates nothing, and how long a cached result really lives.",
+          "primarySubtopicIds": [
+            "compose_derived_state"
+          ],
+          "supportingSubtopicIds": [
+            "compose_state",
+            "compose_recomposition"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Unit 2 introduced `remember(key)` while the subject was state the user edits, where the question was how long a value should survive. The same API answers a second question that has nothing to do with state: this calculation produced a result, does it have to be produced again? That is memoization — a cache — and the interesting part is never the caching. It is deciding when the cached answer stops being true."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The mechanics are small. `remember` stores the result of its calculation in the Composition at that call site. When keys are supplied, the stored result is returned again for as long as every key still compares equal to the value it had last time; when any key differs, the cache is invalidated and the lambda runs again on the next recomposition. The documentation states the comparison directly — Compose uses the class's `equals` implementation to decide whether a key has changed — and the runtime's own contract for `remember(key1)` says the same thing in the other direction: the previous value is returned when `key1` compares equal (`==`) to the value it had in the previous composition."
+                },
+                {
+                  "type": "callout",
+                  "kind": "NOTE",
+                  "text": "This is not the comparison rule the previous unit taught, and the two must not be mixed. Skipping decides whether to execute a **call**, and under Strong Skipping an unstable argument is compared by instance with `===`. A `remember` key decides whether to re-run a **calculation**, and it is compared with `==`. Different mechanism, different comparison, asked at a different moment — a conclusion about one carries nothing to the other."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So a key list is not a tuning parameter with a right number of entries. It is a written claim: *this result is a function of exactly these things*. Make the claim accurately and the cache is correct by construction; make it carelessly and the cache is wrong in a way nothing will report."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun ContactList(contacts: List<Contact>, query: String) {\n    // The visible set is a function of the contacts and the query, and of nothing else.\n    val visible = remember(contacts, query) {\n        contacts\n            .filter { it.name.contains(query, ignoreCase = true) }\n            .sortedBy { it.name }\n    }\n\n    LazyColumn {\n        items(visible, key = { it.id }) { ContactRow(it) }\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Unit 3 left this exact function open as a problem: the filter and the sort were repeated by every execution of the body, including executions caused by something else entirely, and most of those executions produced a list identical to the one before it. The keys close it. The body still runs whenever anything invalidates its scope; the filter and the sort now run only when the contacts or the query genuinely differ."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Read a key list as a dependency list. Everything the calculation reads that can change belongs in it, and nothing else does. Both of the classic failures are failures to write that list honestly — one leaves something out, the other puts something in that the result does not depend on."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The two directions were named in Unit 2 for remembered state. For a remembered *calculation* they look different enough to be worth seeing again, and there is a third failure that is easier to miss than either of them."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**A missing dependency serves a stale answer.**"
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun ContactList(contacts: List<Contact>, query: String) {\n    // Wrong: the result depends on `query`, and `query` is not a key.\n    val visible = remember(contacts) {\n        contacts.filter { it.name.contains(query, ignoreCase = true) }\n    }\n\n    LazyColumn {\n        items(visible, key = { it.id }) { ContactRow(it) }\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Typing in the search field re-executes the body — a parameter it reads has changed — so the `remember` call is reached again. Its cache is still valid by its own rules, because the one key it was given did not change, so the lambda does not run and the previous list is returned. The screen shows results for a query the user has already replaced. Nothing crashes and nothing is logged, which is why this survives review: the first render is correct, and only the second one is wrong."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**An irrelevant key destroys the cache.**"
+                },
+                {
+                  "type": "code",
+                  "code": "// Wrong in the opposite direction: the visible set does not depend on which\n// row is selected, but selecting a row now recomputes the whole thing.\nval visible = remember(contacts, query, selectedId) {\n    contacts\n        .filter { it.name.contains(query, ignoreCase = true) }\n        .sortedBy { it.name }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Selecting a row re-runs the filter and the sort and produces a list identical to the one just discarded. The screen stays correct, which is exactly why this outlives the first failure — the only symptom is work, and work is invisible until something is slow. An over-specified key leaves you with the cost of a cache and the behaviour of not having one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Mutating an object used as a key invalidates nothing at all.**"
+                },
+                {
+                  "type": "code",
+                  "code": "class Filter(var value: String)   // an ordinary mutable class\n\n@Composable\nfun Results(filter: Filter, items: List<Item>) {\n    // The key is never \"different\": it is the same object on every pass.\n    val matching = remember(filter) { items.filter { it.status == filter.value } }\n\n    ItemList(matching)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two independent reasons defeat this, and the second is the one worth carrying away. The first is ordinary Kotlin: a class that does not define `equals` is compared by identity, and an instance is equal to itself whatever has been written into it. The second survives even if you make it a `data class` with a value-based `equals` — the key Compose stored last time **is that same object**. Mutating it changes the stored key and the new key simultaneously, so the comparison is between an object and itself and cannot come out unequal. Invalidation needs a new value to compare against, which is why the reliable key is an immutable value read out of the object — `filter.value` — rather than the object that holds it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Those three failures and the correct case were measured on this project's JVM target rather than reasoned about. Each calculation incremented its own counter and the enclosing composable body incremented another, so \"the body ran and the calculation did not\" is an observation rather than an inference."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "What the key list claims",
+                    "What happened when inputs changed",
+                    "What the learner gets"
+                  ],
+                  "rows": [
+                    [
+                      "No keys at all",
+                      "The calculation ran once, on initial composition, and never again however often the body executed",
+                      "A result computed from the first inputs and served for the lifetime of the call site"
+                    ],
+                    [
+                      "The one value the result depends on",
+                      "Ran again when that value changed; did not run when an unrelated value changed",
+                      "A correct result, computed as often as it genuinely differed and no more"
+                    ],
+                    [
+                      "One real dependency plus one irrelevant one",
+                      "Ran again for the real dependency **and** again for the unrelated value",
+                      "A correct result, computed more often than it needed to be, for no change in what is shown"
+                    ],
+                    [
+                      "A mutable object, then mutated in place",
+                      "The body executed twice more; the calculation did not run again at all",
+                      "A stale result, from a cache that is convinced its key is unchanged"
+                    ]
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Expecting `remember` to make the work cheap. It does not make the calculation faster, it does not move it to another thread, and it does nothing for the first execution — that one pays the full price, synchronously, on the composition path. What memoization removes is **repetition**. If a single execution is already too expensive to sit in a composable body, `remember` has not addressed that problem, and the third lesson of this unit is about the thing that does."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Two events are easy to fuse into one, and almost every confused question about `remember` is really a question about which of them happened."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**The composable executed again.** Something invalidated its scope — a parameter differed, or state it read was written. The body runs from the top, and every `remember` call in it is reached again.",
+                    "**The remembered calculation ran again.** Reaching a `remember` call is not running its lambda. The lambda runs on the first pass, and after that only when a key differs from the one stored beside the result."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A body that has executed forty times may have run its calculation once, and that is the healthy case rather than a suspicious one. It also sharpens Unit 3's point about counting: a recomposition count measures the first event, while the cost you were worried about belongs to the second. The two numbers are not interchangeable and the interesting one is rarely the one the tooling shows first."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The other half of the model is lifetime. A cached result lives in the Composition, at that call site, and it is discarded when the composable leaves — the same lifetime `remember` has always had. Unit 2's positional-identity point applies unchanged: ten rows executing the same line hold ten independent caches, and a row that scrolls out of a lazy layout takes its cache with it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That lifetime is a constraint rather than a detail. It means `remember` cannot be the cache for anything that must outlive a screen, cannot be shared with a second screen that needs the same result, and offers no guarantee that a value was ever computed before something else needs it. A result the application depends on having been computed once has an owner, and a composable is not it."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "The question is usually \"how would you avoid recomputing this on every recomposition?\", and a strong answer has three moves. Name the tool — `remember` with the calculation's inputs as keys. Say what the key list *means*: a claim about what the result is a function of, compared with `equals`. Then volunteer the failures without being asked, because that is what distinguishes someone who has debugged this from someone who has read about it — an under-specified key shows stale data, an over-specified one pays for a cache it never uses, and a mutable object used as a key never invalidates anything."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_remember_composition_memory",
+            "lesson_recomposition_cost",
+            "lesson_stability_and_skipping"
+          ],
+          "sources": [
+            {
+              "title": "State and Jetpack Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state"
+            },
+            {
+              "title": "Follow best practices",
+              "url": "https://developer.android.com/develop/ui/compose/performance/bestpractices"
+            },
+            {
+              "title": "Lifecycle of composables",
+              "url": "https://developer.android.com/develop/ui/compose/lifecycle"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_derived_state",
+          "title": "`derivedStateOf`",
+          "summary": "Three tools that look like one: a calculation written directly, a calculation cached against its keys, and a derived `State` that wakes its readers only when the answer changes. What each of them actually filters, the single situation `derivedStateOf` is for, and why it earns nothing in most of the places people reach for it.",
+          "primarySubtopicIds": [
+            "compose_derived_state"
+          ],
+          "supportingSubtopicIds": [
+            "compose_snapshot_system",
+            "compose_lazy_layouts"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "It helps to stop asking what each of these APIs does and ask what each of them filters."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**A direct calculation filters nothing.** The value is recomputed by every execution of the body, whatever caused that execution — the first composition, a caller passing a changed parameter, or a write to state the scope read.",
+                    "**`remember(keys)` filters work.** The body executes as often as it did before; the calculation inside it does not.",
+                    "**`derivedStateOf` filters notifications.** A change to a state object the calculation read invalidates the derived value, and the calculation re-runs when that value is next needed; what the wrapper withholds is the invalidation of whoever is reading the result."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That third line is the whole idea, and the popular shorthand — \"`derivedStateOf` avoids recomposition\" — loses it. `derivedStateOf` produces a `State` object of its own. Reading that state inside a composable subscribes the reading scope to the **result**, not to the inputs. When an input changes the calculation re-runs; if the value it produces equals the one the reader last saw, the reader is not invalidated and does not execute."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The documented rule is a frequency comparison: use `derivedStateOf` when the inputs to a composable are changing more often than you need to recompose. The guide's own analogy is Flow's `distinctUntilChanged`, and it is a good one to hold on to — values keep arriving, and the operator's entire job is to stop the ones that say nothing new."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun MessageList(messages: List<Message>) {\n    Box {\n        val listState = rememberLazyListState()\n\n        LazyColumn(state = listState) {\n            // ...\n        }\n\n        // `firstVisibleItemIndex` changes constantly while scrolling;\n        // the Boolean it feeds changes twice in a whole scroll.\n        val showButton by remember {\n            derivedStateOf { listState.firstVisibleItemIndex > 0 }\n        }\n\n        AnimatedVisibility(visible = showButton) {\n            ScrollToTopButton()\n        }\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Scrolling drives `firstVisibleItemIndex` through 0, 1, 2, 3, 4 and back again. A composable that reads the index directly executes for every one of those values. A composable that reads `showButton` executes when the answer flips from false to true, and then not again until it flips back."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "The condition is a **frequency mismatch** between an input and the result a consumer observes — not the presence of the word \"derived\" in your description of the code. A high-frequency input feeding a low-frequency meaningful result is the case. Anything else is not."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The three tools are easiest to choose between when they are laid against the same problem with the inputs and the observable result named explicitly."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Tool",
+                    "When the calculation runs",
+                    "When the consumer runs",
+                    "The case it is for"
+                  ],
+                  "rows": [
+                    [
+                      "A calculation written directly in the body",
+                      "Every time the enclosing scope executes",
+                      "Every time the enclosing scope executes",
+                      "Cheap presentation logic whose result is wanted as often as its inputs change"
+                    ],
+                    [
+                      "`remember(keys) { ... }`",
+                      "Only when a key differs from the one stored last time",
+                      "Every time the enclosing scope executes",
+                      "A calculation worth not repeating, whose result the consumer wants whenever it changes"
+                    ],
+                    [
+                      "`remember { derivedStateOf { ... } }`",
+                      "When a dependency has changed and the value is next read or checked",
+                      "Only when the calculation's result differs from the one that consumer last read",
+                      "An input that changes far more often than the result it feeds"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The middle column is where the misconception lives. `derivedStateOf` does not memoize the calculation away: once a dependency has changed, the calculation runs again the next time the value is consulted. What the measurement below removed was executions of the reader, not of the calculation."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Measured on this project's JVM target: a composable scope read a derived `showButton` while an index was driven 0 → 1 → 2 → 3 → 4, letting the runtime settle after each write. The derived calculation ran five times — the initial composition plus one per settled change. The scope reading it executed twice: once initially, and once when the Boolean flipped at 0 → 1. The three later index changes invalidated nobody. That count belongs to this schedule rather than to the API, for a reason the deeper section takes up."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now the case where it earns nothing, which is far more common in real code than the case where it earns something."
+                },
+                {
+                  "type": "code",
+                  "code": "var firstName by remember { mutableStateOf(\"\") }\nvar lastName by remember { mutableStateOf(\"\") }\n\n// Wrong: `fullName` has to change exactly as often as its inputs do.\nval fullNameBad by remember { derivedStateOf { \"$firstName $lastName\" } }\n\n// Right: calculate it.\nval fullName = \"$firstName $lastName\"",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The guide calls this out by name: a common mistake is to assume that combining two Compose state objects means you are \"deriving state\" and therefore want `derivedStateOf`, and it describes the result as purely overhead. The reasoning transfers well past the example, and it is worth stating in the general form — the number of inputs is not the test. Two values combined into a result that changes whenever either of them changes leave no frequency mismatch to exploit, so the filter has nothing to filter."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The same measurement run against a trivial derived expression — a label rebuilt from an index that changed at every step — shows precisely that. The consumer executed five times with the wrapper and five times without it, and the wrapper added a derived-state object, its dependency bookkeeping, and a comparison on every change. The documentation's caution is blunt about the trade: `derivedStateOf` is expensive, and it should only be used to avoid unnecessary recomposition when a result has not changed."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Three promises `derivedStateOf` does not make. It does not memoize the calculation away — a changed dependency means the calculation runs again the next time the value is needed. It does not eliminate recomposition — the reader still executes whenever the result genuinely differs, and every other scope on the screen is untouched either way. And it does not make an expensive computation affordable: a costly calculation inside a derived state is paid for again on every dependency change that gets observed, while you *hope* the result repeats. An expensive calculation behind a fast-changing input is a memoization or a placement problem, and this is neither tool."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The rule that transfers to a problem you have not seen before is a short interrogation, and it does not mention an API until the end. Name the inputs. Name the result the consumer actually observes. Estimate how often each of them changes. If they change at roughly the same rate, calculate directly. If the inputs are expensive to process and change less often than the body executes, that is `remember` with keys. Only when a cheap-to-evaluate result changes much less often than its inputs is there anything for `derivedStateOf` to remove."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "`derivedStateOf` creates an object, and everything surprising about it follows from that."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "First, it needs a `remember`. Written bare in a composable body it constructs a new derived state on every execution, discarding the recorded dependencies and the cached result the whole mechanism depends on — all of the cost and none of the benefit. `remember { derivedStateOf { ... } }` is the shape for a reason, not as idiom."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Second, the object lives as long as its `remember` does — the presence of that call site in the Composition — and its calculation captures **everything** that was in scope when it was created. That capture is where correctness goes wrong, because a captured ordinary value is frozen at creation while a captured `State` is read afresh on every recalculation. Note the word *everything*: the trap is not one input, it is every non-`State` value the lambda closes over."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun ScrollFlag(listState: LazyListState, threshold: Int) {\n    // Wrong: `listState` and `threshold` are both ordinary values, captured\n    // once when the derived state was created, and neither is a key.\n    val past by remember {\n        derivedStateOf { listState.firstVisibleItemIndex >= threshold }\n    }\n\n    ScrollBanner(visible = past)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Measured on this project's JVM target: with the threshold changed from 1 to 5 and the index then moved to 2, the flag reported `true`. Two is not past five — the derived state was still comparing against the 1 it had captured. The fix is to key the `remember` on every captured value, `remember(listState, threshold)`, or to make those inputs snapshot state so the calculation reads them instead of closing over them. Keying on `threshold` alone would look like a fix and would not be one: `listState` is captured on exactly the same terms, so a caller that supplies a different `LazyListState` would keep a derived value still watching the previous list's scroll position. That is the under-specified key of the first lesson in this unit, arriving in a place where it is much harder to see."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Third, the calculation is pulled rather than pushed, and this is the part that corrects the cost model. A write to a dependency marks the derived value invalid; nothing is recalculated until that value is next read, or until the runtime checks whether a scope that read it has to be invalidated. Two measurements on this project's JVM target make the difference concrete. Four writes with no opportunity for the runtime to settle between them produced **one** recalculation rather than four. A derived state that was created and remembered but whose value was never read ran its calculation **zero** times, across the initial composition and four subsequent writes to its dependency."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So \"the calculation runs on every dependency change\" is a useful first approximation and not a rule. The honest version is that a dependency change invalidates the value and the calculation re-runs the next time somebody needs it, which means an execution count for a derived state describes the observation schedule as much as it describes the code. The practical advice is unchanged and now rests on something true: what `derivedStateOf` saves is consumer invalidation, and it is not the tool for making an expensive calculation cheap."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One point of mechanism is worth having, and only one. The runtime this project resolves offers two overloads — `derivedStateOf(calculation)` and `derivedStateOf(policy, calculation)` — where the policy decides what counts as a changed result. Its documentation notes that a derived state carrying no policy signals an update on every dependency change and leaves it to the observer to decide whether that matters, and Compose's own recomposition machinery is exactly such an observer: before invalidating a scope that read a derived value it compares the new result against the one that scope last saw, using structural equality when no policy was supplied. That is why the plain overload behaves inside a composable the way the guide describes. It also means the filter is only as good as the result type's `equals` — a derived state returning a freshly built object that no two runs consider equal filters nothing at all. How the snapshot system records and compares these reads is the next unit's subject; this is as far into it as the decision needs to go."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Expect the scroll-to-top question, and expect it to be a trap for anyone who learned the example rather than the rule. Lead with the frequency mismatch — the index changes with every scrolled row, the Boolean changes twice — and say precisely what is saved: readers of the derived value are not invalidated while the result is unchanged. Then give the counter-case unprompted, because it is what separates understanding from recall — combining two state values into a result that changes as often as they do is not a use for `derivedStateOf`, it is overhead. If you can add that the calculation itself is not saved — a changed dependency invalidates the value and the calculation re-runs when it is next needed — you have described the API rather than repeated the slogan."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_remember_key_memoization",
+            "lesson_recomposition_scopes",
+            "lesson_keys_and_identity_in_lists"
+          ],
+          "sources": [
+            {
+              "title": "Side-effects in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/side-effects"
+            },
+            {
+              "title": "Follow best practices",
+              "url": "https://developer.android.com/develop/ui/compose/performance/bestpractices"
+            },
+            {
+              "title": "State and Jetpack Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_work_outside_composition",
+          "title": "Keeping Work Out of Composition",
+          "summary": "Memoization answers \"how often does this run\". It never answers \"whose job is this\". Where the line falls between a calculation that can stay in a composable, one that needs an owner above the UI, and an operation that must not appear in a composable body at all — and why moving code to a ViewModel is not the same as moving it off the main thread.",
+          "primarySubtopicIds": [
+            "compose_derived_state"
+          ],
+          "supportingSubtopicIds": [
+            "main_thread_performance",
+            "layered_architecture",
+            "use_cases"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Every tool in this unit so far has left the work where it was and changed how often it happens. That is the right move for one class of problem and the wrong move for another, and the two are separated by a question none of the previous lessons asked: whose responsibility is this in the first place?"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A composable body describes UI. The runtime executes it, potentially as often as every frame, in an order you do not control, and it may abandon an execution before it finishes — Unit 1's execution contract, unchanged. Nothing in that description makes it a good host for work whose correctness depends on running once, in order, or at a particular moment."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Three bands settle most decisions, and the middle one is the only one that takes real thought."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The work",
+                    "Where it belongs",
+                    "Why"
+                  ],
+                  "rows": [
+                    [
+                      "Formatting a label, choosing a colour, picking which of two branches to emit",
+                      "In the composable, calculated directly",
+                      "It is presentation, it is cheap, and it exists only for this screen. Extracting it buys nothing and costs indirection"
+                    ],
+                    [
+                      "Filtering, sorting, grouping or mapping a substantial collection into what the screen shows",
+                      "A deliberate decision: memoized here if it is genuinely this screen's presentation, owned above the UI if it is the screen's state",
+                      "The result is identical on most executions, so repeating it is waste — but the more telling question is whether this describes the data or decides what it means"
+                    ],
+                    [
+                      "Reading a file, calling a repository, writing to a database, applying a business rule",
+                      "Never in a composable body",
+                      "Composition has nowhere to put a result, no cancellation of its own, and no guarantee about how often or whether an execution completes. Business logic belongs in the domain or data layers and never in the UI layer"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The guide that introduces `remember` for expensive calculations attaches a note to it that is easy to skim past and is this lesson's entire point: if possible, it is best to move calculations outside of the composable altogether — sorting the list elsewhere, such as in the `ViewModel`, and passing the sorted list in as an input."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "`remember` makes repeated work happen once. It does not make misplaced work correctly placed. \"How expensive is this?\" and \"whose job is this?\" are separate questions, and the second one has answers the first cannot reach."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Held against the middle band, code that looks the same splits along a line that has very little to do with cost."
+                },
+                {
+                  "type": "code",
+                  "code": "// Presentation. Stays. The result is a string this screen draws, and nothing\n// else in the app has an opinion about it.\n@Composable\nfun OrderRow(order: Order) {\n    Text(\"${order.itemCount} items · ${order.total.format()}\")\n}\n\n// The screen's state, not its presentation: which orders are shown is a product\n// decision, the empty state and the summary count both need the same answer,\n// and the UI is not the source of it.\nclass OrdersViewModel(repository: OrdersRepository) : ViewModel() {\n    // Filtering and sorting happen once per data change here, rather than once\n    // per execution of a composable body. The screen receives the answer.\n    val uiState: StateFlow<OrdersUiState> = repository.visibleOrders()\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Neither choice is about how long the operation takes. The row's label would still belong in the row if it were slightly expensive, and the order filter would still belong above the UI if it were trivially cheap, because a second consumer already needs the same answer."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The bottom band deserves to be explicit, because the failure it produces is not a slow screen but a wrong one."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun ProfileScreen(userId: String, repository: UserRepository) {\n    // Wrong, and `remember` does not rescue it.\n    val user = remember(userId) { repository.loadUserBlocking(userId) }\n\n    ProfileBody(user)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The `remember` is doing real work here — the call happens once per `userId` instead of on every execution — and the code is still wrong. A blocking read now sits on the thread running composition; the call cannot be cancelled when the screen goes away; there is no loading or error state, because a composable body has nowhere to express one; and if the composable leaves the Composition and is re-entered, the work starts again from nothing. Memoization made the symptom rarer and left every one of those properties exactly as it found them."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Using `remember` as a substitute for placement — \"I wrapped the call in `remember`, so it only runs once.\" Running once was not the property that was missing. What was missing is an owner that outlives the screen, can report loading and failure, and can be cancelled; and no cache placed **inside** the thing that is supposed to be cancelled can supply any of it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There is a second separation to make, and getting it wrong is the most common way a fix fails to fix anything. **Moving work to a `ViewModel` or a use case moves the responsibility. It does not move the thread.** A function called from a `ViewModel` runs on whatever thread called it, and that is very often the main thread. Kotlin's guidance puts the duty with the code doing the work rather than with its caller: a class performing long-running blocking operations is in charge of moving execution off the main thread, and that applies to every class in the app regardless of which part of the architecture it sits in. Memoization is not background execution either — `remember` runs its lambda synchronously, during composition, on composition's thread."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Which coroutine builder, which dispatcher, and which effect API carries suspending work into a composable are real questions with careful answers, and they belong to the effects and coroutine material later in this path. What this lesson needs from them is only the boundary: \"somewhere else\" and \"some other thread\" are two decisions, and making one does not make the other."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The layering argument is short, and it stops early on purpose. The UI layer's job is to consume application data, convert it into something the UI can present, and display it; the state holder — usually a `ViewModel` at screen level — is the class responsible for producing that state and for the logic that produces it; business logic is placed in the domain or data layers and never in the UI layer. That is enough to answer \"not in the composable\". It is deliberately not enough to answer \"therefore write a use case\"."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The domain layer is documented as optional. The guidance says plainly that not every app needs one, that use cases should be added only when required — for complex business logic, or simple logic reused by several state holders — and that the cost of ignoring this is being forced to add use cases that are simple pass-through calls to the data layer, complexity for little benefit. So \"move it out of the composable\" does not resolve to a fixed destination. Four questions decide it, and they are worth asking in this order."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Cost.** How expensive is one execution, and is it on a path that runs often? A cheap calculation on a screen that rarely recomposes has no problem to solve.",
+                    "**Lifetime.** How long must the result outlive whatever produced it? Anything that has to survive longer than a composable's presence in the Composition cannot be owned by a composable.",
+                    "**Reuse.** Does anything else need the same answer? A second consumer is the clearest signal that a calculation is not presentation.",
+                    "**Responsibility.** Does this describe the data or decide what it means? Decisions about meaning are business logic, and that is the one band with no discretion."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "None of that is a measurement, and saying so matters. The costs described throughout this unit are engineering reasoning about where work sits and how often it repeats — illustrative, not benchmarked — and nothing here claims how many milliseconds any of it takes. Unit 3's standard for turning an observation into a finding is unchanged and applies to placement too: a symptom someone could notice, expensive work identified on the path that produces it, and a causal link between the two. Restructuring code because a diagram says it belongs elsewhere, with no symptom and no measurement, is the same mistake as chasing a recomposition count."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The mirror-image error deserves an equally clear warning, because this lesson is the one most likely to cause it. \"All calculations must leave composition\" is not the conclusion. A screen that formats two fields and picks a colour from a status has nothing to move, and moving it produces a state holder that exists to perform string concatenation. The genuinely interesting cases feel obvious in hindsight because they fail several of the four questions at once: expensive, needed beyond this screen, wanted by more than one consumer, and a decision about data rather than a description of it."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "The question arrives as \"how do you handle an expensive operation in a composable?\", and the checklist answer — `remember`, `derivedStateOf`, stability — is the weak one, because it never asks what the operation is. Split it instead: cheap presentation stays and is calculated directly; a repeated pure transformation is memoized against its inputs; anything that reads, writes or decides belongs above the UI and arrives at the screen as state. Then add the sentence most candidates miss — moving it to a `ViewModel` changes who owns it, not which thread it runs on, and main-safety is the responsibility of the code doing the work."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_recomposition_cost",
+            "lesson_remember_key_memoization",
+            "lesson_derived_state",
+            "lesson_composable_execution",
+            "lesson_state_hoisting"
+          ],
+          "sources": [
+            {
+              "title": "Follow best practices",
+              "url": "https://developer.android.com/develop/ui/compose/performance/bestpractices"
+            },
+            {
+              "title": "UI layer",
+              "url": "https://developer.android.com/topic/architecture/ui-layer"
+            },
+            {
+              "title": "Domain layer",
+              "url": "https://developer.android.com/topic/architecture/domain-layer"
+            },
+            {
+              "title": "Best practices for coroutines in Android",
+              "url": "https://developer.android.com/kotlin/coroutines/coroutines-best-practices"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
     }
   ]
 }

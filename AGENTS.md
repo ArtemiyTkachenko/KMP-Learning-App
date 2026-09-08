@@ -105,6 +105,7 @@ does not cover: [CI](docs/workflows/ci.md).
 **Content — learning** — the explanatory study material, not the question bank:
 [learning-content authoring contract](docs/content/learning-content-authoring.md) ·
 [Compose learning blueprint](docs/content/compose-learning-blueprint.md) ·
+[Compose Units 2-6 plan](docs/content/compose-units-2-6-plan.md) ·
 [learning-to-question coverage](docs/content/learning-question-coverage.md)
 
 ## Skills

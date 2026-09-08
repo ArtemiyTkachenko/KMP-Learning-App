@@ -81,6 +81,7 @@ does not cover: [CI](docs/workflows/ci.md).
 - [Practice builder](docs/architecture/practice-builder.md): building and persisting a practice configuration.
 - [Persistence](docs/architecture/persistence.md): Room schema, migrations, import policy, platform storage.
 - [Study progress](docs/architecture/study-progress.md): learner-owned studied state, its lifecycle under re-authoring, derived Unit and Topic progress.
+- [Text selection](docs/architecture/text-selection.md): selectable screens, the copy prompt, and the per-platform selection seams.
 
 **Development** — how to write code here:
 [Kotlin style](docs/development/kotlin.md) ·

@@ -9,8 +9,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
@@ -87,6 +89,75 @@ internal class LearningLessonScreenTest {
 
         onNodeWithContentDescription("Back").performClick()
         assertEquals(1, backCount)
+    }
+
+    /**
+     * The reading meter measures the document, so it exists only where there is a document to move
+     * through. A Lesson that already fits the viewport has no position to report, and a bar pinned
+     * at zero underneath it would be stating a journey the reader is not on.
+     */
+    @Test
+    fun readingProgressAppearsForALessonTallerThanTheViewport() = runComposeUiTest {
+        setContentWith(
+            sections = List(12) { section(LearningBlock.Paragraph("Body paragraph $it.")) },
+            height = ShortHeight,
+        )
+
+        onNodeWithTag(LearningLessonReadingProgressTag).assertIsDisplayed()
+    }
+
+    @Test
+    fun readingProgressIsAbsentWhenTheWholeLessonFitsOnScreen() = runComposeUiTest {
+        setContentWith(sections = listOf(section(LearningBlock.Paragraph("A one-line lesson."))))
+
+        onNodeWithTag(LearningLessonReadingProgressTag).assertDoesNotExist()
+    }
+
+    /**
+     * Loading, NotFound, and Error fill the page with one centred message that cannot be scrolled,
+     * so a meter over any of them would be measuring nothing.
+     */
+    @Test
+    fun readingProgressIsAbsentOnEveryPageThatIsNotALesson() = runComposeUiTest {
+        var state: LearningLessonUiState by mutableStateOf(LearningLessonUiState.Loading)
+        setContent {
+            MaterialTheme {
+                Box(Modifier.size(NarrowWidth, ShortHeight).testTag(TestRootTag)) {
+                    LessonScreen(state)
+                }
+            }
+        }
+
+        listOf(
+            LearningLessonUiState.Loading,
+            LearningLessonUiState.NotFound,
+            LearningLessonUiState.Error,
+        ).forEach { pageWithoutALesson ->
+            state = pageWithoutALesson
+            waitForIdle()
+            onNodeWithTag(LearningLessonReadingProgressTag).assertDoesNotExist()
+        }
+    }
+
+    /**
+     * Scroll position is not something a screen reader can act on: it moves through the Lesson
+     * element by element and never sees where the viewport happens to sit. A `ProgressBarRangeInfo`
+     * is enough on its own to make a node focusable, so an uncleared meter would be an unlabelled
+     * stop announced as a bare percentage between the toolbar and the title.
+     *
+     * The assertion is on the merged tree, which is what an accessibility service consumes, and it
+     * is what fails if someone later moves the clear onto the indicator itself — where a collapsed
+     * semantics chain would keep the range info rather than drop it.
+     */
+    @Test
+    fun readingProgressIsNotAScreenReaderStop() = runComposeUiTest {
+        setContentWith(
+            sections = List(12) { section(LearningBlock.Paragraph("Body paragraph $it.")) },
+            height = ShortHeight,
+        )
+
+        onNodeWithTag(LearningLessonReadingProgressTag)
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ProgressBarRangeInfo))
     }
 
     @Test
@@ -492,10 +563,11 @@ internal class LearningLessonScreenTest {
         onOpenSource: (String) -> Unit = {},
         failedSourceUrl: String? = null,
         width: Dp = NarrowWidth,
+        height: Dp = TestHeight,
     ) {
         setContent {
             MaterialTheme {
-                Box(Modifier.size(width, TestHeight).testTag(TestRootTag)) {
+                Box(Modifier.size(width, height).testTag(TestRootTag)) {
                     LearningLessonScreen(
                         state = content(
                             sections = sections,

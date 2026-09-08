@@ -36,6 +36,7 @@ import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toPracticeB
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toPracticeRoute
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailDestination
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserDestination
+import org.artkachenko.kmp_learning_app.ui.selection.SelectableContent
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -89,328 +90,341 @@ private fun AppShell(
         modifier = modifier,
         badges = badges,
     ) { contentPadding ->
-        NavDisplay(
-            backStack = backStack,
-            // The shell's insets are applied exactly once, here, and then consumed so nothing
-            // deeper adds them a second time. Previously this padded by contentPadding and then
-            // by safeContentPadding: Scaffold reports its inset padding without consuming it, so
-            // both saw the same system bars and every screen was inset twice.
-            //
-            // contentPadding carries no top, which leaves the status bar unconsumed on purpose:
-            // each screen's TopAppBar pads for it and paints its container behind it, which is
-            // what puts the bar against the top edge of the window.
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(contentPadding)
-                .consumeWindowInsets(contentPadding),
-            entryDecorators = listOf(
-                // Saveable state must be installed before the ViewModel decorator so each
-                // navigation entry owns the state registry used by its ViewModel store owner.
-                rememberSaveableStateHolderNavEntryDecorator(),
-                rememberViewModelStoreNavEntryDecorator(),
-            ),
-            onBack = {
-                popBack()
-            },
-            transitionSpec = appTransitionSpec(),
-            popTransitionSpec = appPopTransitionSpec(),
-            predictivePopTransitionSpec = appPredictivePopTransitionSpec(),
-            entryProvider = entryProvider {
-                entry<AppRoute.Topics> {
-                    TopicBrowserDestination(
-                        onTopicClick = { topicId ->
-                            navigator.push(AppRoute.Topic(topicId = topicId))
-                        },
-                        onSubtopicClick = { topicId, subtopicId ->
-                            navigator.push(
-                                AppRoute.Topic(
-                                    topicId = topicId,
-                                    subtopicId = subtopicId,
-                                ),
-                            )
-                        },
-                        // Continuing recent study pushes an existing destination — Topic detail or
-                        // the Practice Builder — and never an attempt route: it returns the learner
-                        // to a learning context rather than resuming an assessment.
-                        onContinueStudying = { target ->
-                            navigator.push(target.toAppRoute())
-                        },
-                        // The recommended action reaches an existing capability — Topics, Mistake
-                        // Review, or the Practice Builder — and never starts an assessment. Two of
-                        // those are areas rather than details, so the mapping selects or pushes as
-                        // that destination requires.
-                        onRecommendedNext = navigator::openRecommendation,
-                        // A detail of the Topics area, pushed like Topic detail is. Saved
-                        // Questions are learner-curated content, so they stay inside the area the
-                        // catalogue lives in rather than becoming a fifth navigation destination.
-                        onSavedQuestions = {
-                            navigator.push(AppRoute.SavedQuestions)
-                        },
-                    )
-                }
-                entry<AppRoute.SavedQuestions> {
-                    SavedQuestionsDestination(
-                        onBack = { popBack() },
-                        // Back to the Topics catalogue this was opened from, rather than selecting
-                        // the area: this route is already inside Topics.
-                        onBrowseTopics = { popBack() },
-                    )
-                }
-                entry<AppRoute.Interview> {
-                    InterviewStartDestination(
-                        onStartMixedInterview = {
-                            navigator.push(mixedInterviewStartRoute())
-                        },
-                        onOpenResult = { attemptId ->
-                            navigator.push(AppRoute.MixedInterviewResult(attemptId))
-                        },
-                    )
-                }
-                entry<AppRoute.Progress> {
-                    ProgressDestination(
-                        onBrowseTopics = { navigator.select(AppTopLevelDestination.TOPICS) },
-                        onOpenTopic = { topicId ->
-                            navigator.push(AppRoute.ProgressTopic(topicId))
-                        },
-                        onOpenFocusedResult = { attemptId ->
-                            navigator.push(AppRoute.FocusedPracticeResult(attemptId))
-                        },
-                        onOpenMixedResult = { attemptId ->
-                            navigator.push(AppRoute.MixedInterviewResult(attemptId))
-                        },
-                        // A weak-area row's shortcut is a preset, so it opens the same builder the
-                        // Topic screen and Recommended Next open, already on WEAK_AREAS. Nothing
-                        // starts here, and no route exists for "weak practice" specifically.
-                        onConfigurePractice = { preset ->
-                            navigator.push(preset.toPracticeBuilderRoute())
-                        },
-                    )
-                }
-                entry<AppRoute.ProgressTopic> { route ->
-                    ProgressTopicDestination(
-                        topicId = route.topicId,
-                        onBack = { popBack() },
-                    )
-                }
-                entry<AppRoute.MistakeReview> {
-                    MistakeReviewDestination(
-                        onBrowseTopics = { navigator.select(AppTopLevelDestination.TOPICS) },
-                        // The queue entry supplies the Subtopic; the builder decides everything
-                        // else, including whether that Subtopic still has an unresolved mistake.
-                        onConfigurePractice = { preset ->
-                            navigator.push(preset.toPracticeBuilderRoute())
-                        },
-                    )
-                }
-                entry<AppRoute.MixedInterview> { route ->
-                    MixedInterviewDestination(
-                        launch = AssessmentTakingLaunch.New(route.toAssessmentConfig()),
-                        onBack = { popBack() },
-                        onAttemptPersisted = { attemptId ->
-                            navigator.replaceTop(AppRoute.MixedInterviewAttempt(attemptId))
-                        },
-                        onCompleted = { attemptId ->
-                            navigator.replaceTop(AppRoute.MixedInterviewResult(attemptId))
-                        },
-                    )
-                }
-                entry<AppRoute.MixedInterviewAttempt> { route ->
-                    MixedInterviewDestination(
-                        launch = route.toAssessmentTakingLaunch(),
-                        onBack = { popBack() },
-                        onAttemptPersisted = {},
-                        onCompleted = { attemptId ->
-                            navigator.replaceTop(AppRoute.MixedInterviewResult(attemptId))
-                        },
-                    )
-                }
-                entry<AppRoute.MixedInterviewResult> { route ->
-                    MixedInterviewResultDestination(
-                        attemptId = route.attemptId,
-                        onBack = { popBack() },
-                        onRetakeCreated = { attemptId ->
-                            navigator.push(AppRoute.MixedInterviewAttempt(attemptId))
-                        },
-                    )
-                }
-                entry<AppRoute.Topic> { route ->
-                    TopicDetailDestination(
-                        topicId = route.topicId,
-                        targetSubtopicId = route.subtopicId,
-                        onBack = {
-                            popBack()
-                        },
-                        // Practice is configured before it starts, so a Topic or Subtopic action
-                        // opens the builder already scoped to it rather than launching a run.
-                        onConfigurePractice = { scope ->
-                            navigator.push(scope.toPracticeBuilderRoute())
-                        },
-                        // The same builder, opened on the source a visible weak or coverage signal
-                        // justifies. The extra dimension travels in the preset, not in a route of
-                        // its own, so both paths land on one editable configuration screen.
-                        onConfigureTargetedPractice = { preset ->
-                            navigator.push(preset.toPracticeBuilderRoute())
-                        },
-                        // The study half of the same Topic. Only the stable Unit ID crosses this
-                        // boundary; the Unit itself is resolved on arrival, and Topic Detail stays
-                        // unaware that routes exist.
-                        onLearningUnitClick = { unitId ->
-                            navigator.push(AppRoute.LearningUnit(unitId = unitId))
-                        },
-                    )
-                }
-                entry<AppRoute.LearningUnit> { route ->
-                    LearningUnitDestination(
-                        unitId = route.unitId,
-                        onBack = { popBack() },
-                        // The parent Unit comes from the route being rendered, never from what the
-                        // screen currently has loaded, so the pair pushed here is always the pair
-                        // the learner navigated through.
-                        onLessonClick = { lessonId ->
-                            navigator.push(
-                                AppRoute.LearningLesson(
-                                    unitId = route.unitId,
-                                    lessonId = lessonId,
-                                ),
-                            )
-                        },
-                        // Studying flows into practice through the same builder every other
-                        // practice entry uses, pushed onto the Learn stack so back returns to the
-                        // Unit. Only the stable Unit ID travels; what it currently teaches is
-                        // resolved on arrival.
-                        onPracticeUnit = {
-                            navigator.push(
-                                AppRoute.PracticeBuilderLearningUnit(unitId = route.unitId),
-                            )
-                        },
-                    )
-                }
-                entry<AppRoute.LearningLesson> { route ->
-                    LearningLessonDestination(
-                        unitId = route.unitId,
-                        lessonId = route.lessonId,
-                        // An ordinary stack pop: the Unit is directly beneath this entry, and the
-                        // Topic beneath that, so nothing is reconstructed and no entry duplicated.
-                        onBack = { popBack() },
-                        // Reading on replaces this Lesson instead of stacking another one. A Unit
-                        // is read start to finish, so pushing would leave a learner ten Back
-                        // presses from the Unit they came from — and Back means "leave the
-                        // reader", which is a different action from Previous. The Unit comes from
-                        // the route being rendered, so the pair always names a real containment.
-                        onNavigateLesson = { lessonId ->
-                            navigator.replaceTop(
-                                AppRoute.LearningLesson(
-                                    unitId = route.unitId,
-                                    lessonId = lessonId,
-                                ),
-                            )
-                        },
-                        // The owning Unit from the route being rendered, so finishing a Lesson
-                        // reaches the same Unit practice the overview offers without a trip back.
-                        // Pushed, not replaced: the reader stays underneath, and back returns to
-                        // the Lesson the learner was on.
-                        onPracticeUnit = {
-                            navigator.push(
-                                AppRoute.PracticeBuilderLearningUnit(unitId = route.unitId),
-                            )
-                        },
-                    )
-                }
-                entry<AppRoute.PracticeBuilderTopic> { route ->
-                    PracticeBuilderDestination(
-                        target = route.toPracticeBuilderTarget(),
-                        onBack = { popBack() },
-                        onStartPractice = { config ->
-                            navigator.push(config.toPracticeRoute())
-                        },
-                        // Only the selection the builder opens on. It still applies its own count
-                        // and level defaults and runs its normal preflight, so nothing starts here.
-                        initialSource = route.source,
-                    )
-                }
-                entry<AppRoute.PracticeBuilderSubtopic> { route ->
-                    PracticeBuilderDestination(
-                        target = route.toPracticeBuilderTarget(),
-                        onBack = { popBack() },
-                        onStartPractice = { config ->
-                            navigator.push(config.toPracticeRoute())
-                        },
-                        initialSource = route.source,
-                    )
-                }
-                entry<AppRoute.PracticeBuilderLearningUnit> { route ->
-                    PracticeBuilderDestination(
-                        // The Unit ID only. The builder resolves it into the concepts its ACTIVE
-                        // Lessons teach, so the run it starts is an ordinary focused assessment
-                        // and this entry stays a navigation identity.
-                        target = route.toPracticeBuilderTarget(),
-                        onBack = { popBack() },
-                        onStartPractice = { config ->
-                            navigator.push(config.toPracticeRoute())
-                        },
-                        // No initialSource: nothing produces a Learning-Unit practice intent, so
-                        // both Unit entries open on the builder's own ALL default.
-                    )
-                }
-                entry<AppRoute.FocusedTopicPractice> { route ->
-                    FocusedPracticeDestination(
-                        launch = AssessmentTakingLaunch.New(route.toAssessmentConfig()),
-                        onBack = { popBack() },
-                        onAttemptPersisted = { attemptId ->
-                            navigator.replaceTop(AppRoute.FocusedPracticeAttempt(attemptId))
-                        },
-                        onCompleted = { attemptId ->
-                            navigator.replaceTop(AppRoute.FocusedPracticeResult(attemptId))
-                        },
-                    )
-                }
-                entry<AppRoute.FocusedSubtopicPractice> { route ->
-                    FocusedPracticeDestination(
-                        launch = AssessmentTakingLaunch.New(route.toAssessmentConfig()),
-                        onBack = { popBack() },
-                        onAttemptPersisted = { attemptId ->
-                            navigator.replaceTop(AppRoute.FocusedPracticeAttempt(attemptId))
-                        },
-                        onCompleted = { attemptId ->
-                            navigator.replaceTop(AppRoute.FocusedPracticeResult(attemptId))
-                        },
-                    )
-                }
-                entry<AppRoute.FocusedSubtopicsPractice> { route ->
-                    // The same destination, engine, checkpointing, and result the other two use:
-                    // by this point a Unit run is an ordinary focused assessment over a scope that
-                    // happens to name several Subtopics.
-                    FocusedPracticeDestination(
-                        launch = AssessmentTakingLaunch.New(route.toAssessmentConfig()),
-                        onBack = { popBack() },
-                        onAttemptPersisted = { attemptId ->
-                            navigator.replaceTop(AppRoute.FocusedPracticeAttempt(attemptId))
-                        },
-                        onCompleted = { attemptId ->
-                            navigator.replaceTop(AppRoute.FocusedPracticeResult(attemptId))
-                        },
-                    )
-                }
-                entry<AppRoute.FocusedPracticeAttempt> { route ->
-                    FocusedPracticeDestination(
-                        launch = AssessmentTakingLaunch.ExistingAttempt(route.attemptId),
-                        onBack = { popBack() },
-                        onAttemptPersisted = {},
-                        onCompleted = { attemptId ->
-                            navigator.replaceTop(AppRoute.FocusedPracticeResult(attemptId))
-                        },
-                    )
-                }
-                entry<AppRoute.FocusedPracticeResult> { route ->
-                    FocusedResultDestination(
-                        attemptId = route.attemptId,
-                        onBack = { popBack() },
-                        onRetakeCreated = { attemptId ->
-                            navigator.push(AppRoute.FocusedPracticeAttempt(attemptId))
-                        },
-                    )
-                }
-            },
-        )
+        // Every screen's text is selectable, so an explanation can be checked against a source
+        // found elsewhere. The copy affordances are the platform's own; the app adds only a
+        // snackbar confirming a copy happened. See SelectableContent.
+        //
+        // Around NavDisplay rather than around the whole shell: this covers every screen,
+        // including the AppTopBar title each one renders, while leaving the four area-navigation
+        // labels alone. Those are controls rather than content, and a drag that swept them into
+        // the middle of a copied explanation would be answering a question nobody asked.
+        //
+        // No modifier: the container forwards constraints unchanged and places children at the
+        // origin, so NavDisplay measures exactly as it did before.
+        SelectableContent {
+            NavDisplay(
+                backStack = backStack,
+                // The shell's insets are applied exactly once, here, and then consumed so nothing
+                // deeper adds them a second time. Previously this padded by contentPadding and then
+                // by safeContentPadding: Scaffold reports its inset padding without consuming it, so
+                // both saw the same system bars and every screen was inset twice.
+                //
+                // contentPadding carries no top, which leaves the status bar unconsumed on purpose:
+                // each screen's TopAppBar pads for it and paints its container behind it, which is
+                // what puts the bar against the top edge of the window.
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(contentPadding)
+                    .consumeWindowInsets(contentPadding),
+                entryDecorators = listOf(
+                    // Saveable state must be installed before the ViewModel decorator so each
+                    // navigation entry owns the state registry used by its ViewModel store owner.
+                    rememberSaveableStateHolderNavEntryDecorator(),
+                    rememberViewModelStoreNavEntryDecorator(),
+                ),
+                onBack = {
+                    popBack()
+                },
+                transitionSpec = appTransitionSpec(),
+                popTransitionSpec = appPopTransitionSpec(),
+                predictivePopTransitionSpec = appPredictivePopTransitionSpec(),
+                entryProvider = entryProvider {
+                    entry<AppRoute.Topics> {
+                        TopicBrowserDestination(
+                            onTopicClick = { topicId ->
+                                navigator.push(AppRoute.Topic(topicId = topicId))
+                            },
+                            onSubtopicClick = { topicId, subtopicId ->
+                                navigator.push(
+                                    AppRoute.Topic(
+                                        topicId = topicId,
+                                        subtopicId = subtopicId,
+                                    ),
+                                )
+                            },
+                            // Continuing recent study pushes an existing destination — Topic detail or
+                            // the Practice Builder — and never an attempt route: it returns the learner
+                            // to a learning context rather than resuming an assessment.
+                            onContinueStudying = { target ->
+                                navigator.push(target.toAppRoute())
+                            },
+                            // The recommended action reaches an existing capability — Topics, Mistake
+                            // Review, or the Practice Builder — and never starts an assessment. Two of
+                            // those are areas rather than details, so the mapping selects or pushes as
+                            // that destination requires.
+                            onRecommendedNext = navigator::openRecommendation,
+                            // A detail of the Topics area, pushed like Topic detail is. Saved
+                            // Questions are learner-curated content, so they stay inside the area the
+                            // catalogue lives in rather than becoming a fifth navigation destination.
+                            onSavedQuestions = {
+                                navigator.push(AppRoute.SavedQuestions)
+                            },
+                        )
+                    }
+                    entry<AppRoute.SavedQuestions> {
+                        SavedQuestionsDestination(
+                            onBack = { popBack() },
+                            // Back to the Topics catalogue this was opened from, rather than selecting
+                            // the area: this route is already inside Topics.
+                            onBrowseTopics = { popBack() },
+                        )
+                    }
+                    entry<AppRoute.Interview> {
+                        InterviewStartDestination(
+                            onStartMixedInterview = {
+                                navigator.push(mixedInterviewStartRoute())
+                            },
+                            onOpenResult = { attemptId ->
+                                navigator.push(AppRoute.MixedInterviewResult(attemptId))
+                            },
+                        )
+                    }
+                    entry<AppRoute.Progress> {
+                        ProgressDestination(
+                            onBrowseTopics = { navigator.select(AppTopLevelDestination.TOPICS) },
+                            onOpenTopic = { topicId ->
+                                navigator.push(AppRoute.ProgressTopic(topicId))
+                            },
+                            onOpenFocusedResult = { attemptId ->
+                                navigator.push(AppRoute.FocusedPracticeResult(attemptId))
+                            },
+                            onOpenMixedResult = { attemptId ->
+                                navigator.push(AppRoute.MixedInterviewResult(attemptId))
+                            },
+                            // A weak-area row's shortcut is a preset, so it opens the same builder the
+                            // Topic screen and Recommended Next open, already on WEAK_AREAS. Nothing
+                            // starts here, and no route exists for "weak practice" specifically.
+                            onConfigurePractice = { preset ->
+                                navigator.push(preset.toPracticeBuilderRoute())
+                            },
+                        )
+                    }
+                    entry<AppRoute.ProgressTopic> { route ->
+                        ProgressTopicDestination(
+                            topicId = route.topicId,
+                            onBack = { popBack() },
+                        )
+                    }
+                    entry<AppRoute.MistakeReview> {
+                        MistakeReviewDestination(
+                            onBrowseTopics = { navigator.select(AppTopLevelDestination.TOPICS) },
+                            // The queue entry supplies the Subtopic; the builder decides everything
+                            // else, including whether that Subtopic still has an unresolved mistake.
+                            onConfigurePractice = { preset ->
+                                navigator.push(preset.toPracticeBuilderRoute())
+                            },
+                        )
+                    }
+                    entry<AppRoute.MixedInterview> { route ->
+                        MixedInterviewDestination(
+                            launch = AssessmentTakingLaunch.New(route.toAssessmentConfig()),
+                            onBack = { popBack() },
+                            onAttemptPersisted = { attemptId ->
+                                navigator.replaceTop(AppRoute.MixedInterviewAttempt(attemptId))
+                            },
+                            onCompleted = { attemptId ->
+                                navigator.replaceTop(AppRoute.MixedInterviewResult(attemptId))
+                            },
+                        )
+                    }
+                    entry<AppRoute.MixedInterviewAttempt> { route ->
+                        MixedInterviewDestination(
+                            launch = route.toAssessmentTakingLaunch(),
+                            onBack = { popBack() },
+                            onAttemptPersisted = {},
+                            onCompleted = { attemptId ->
+                                navigator.replaceTop(AppRoute.MixedInterviewResult(attemptId))
+                            },
+                        )
+                    }
+                    entry<AppRoute.MixedInterviewResult> { route ->
+                        MixedInterviewResultDestination(
+                            attemptId = route.attemptId,
+                            onBack = { popBack() },
+                            onRetakeCreated = { attemptId ->
+                                navigator.push(AppRoute.MixedInterviewAttempt(attemptId))
+                            },
+                        )
+                    }
+                    entry<AppRoute.Topic> { route ->
+                        TopicDetailDestination(
+                            topicId = route.topicId,
+                            targetSubtopicId = route.subtopicId,
+                            onBack = {
+                                popBack()
+                            },
+                            // Practice is configured before it starts, so a Topic or Subtopic action
+                            // opens the builder already scoped to it rather than launching a run.
+                            onConfigurePractice = { scope ->
+                                navigator.push(scope.toPracticeBuilderRoute())
+                            },
+                            // The same builder, opened on the source a visible weak or coverage signal
+                            // justifies. The extra dimension travels in the preset, not in a route of
+                            // its own, so both paths land on one editable configuration screen.
+                            onConfigureTargetedPractice = { preset ->
+                                navigator.push(preset.toPracticeBuilderRoute())
+                            },
+                            // The study half of the same Topic. Only the stable Unit ID crosses this
+                            // boundary; the Unit itself is resolved on arrival, and Topic Detail stays
+                            // unaware that routes exist.
+                            onLearningUnitClick = { unitId ->
+                                navigator.push(AppRoute.LearningUnit(unitId = unitId))
+                            },
+                        )
+                    }
+                    entry<AppRoute.LearningUnit> { route ->
+                        LearningUnitDestination(
+                            unitId = route.unitId,
+                            onBack = { popBack() },
+                            // The parent Unit comes from the route being rendered, never from what the
+                            // screen currently has loaded, so the pair pushed here is always the pair
+                            // the learner navigated through.
+                            onLessonClick = { lessonId ->
+                                navigator.push(
+                                    AppRoute.LearningLesson(
+                                        unitId = route.unitId,
+                                        lessonId = lessonId,
+                                    ),
+                                )
+                            },
+                            // Studying flows into practice through the same builder every other
+                            // practice entry uses, pushed onto the Learn stack so back returns to the
+                            // Unit. Only the stable Unit ID travels; what it currently teaches is
+                            // resolved on arrival.
+                            onPracticeUnit = {
+                                navigator.push(
+                                    AppRoute.PracticeBuilderLearningUnit(unitId = route.unitId),
+                                )
+                            },
+                        )
+                    }
+                    entry<AppRoute.LearningLesson> { route ->
+                        LearningLessonDestination(
+                            unitId = route.unitId,
+                            lessonId = route.lessonId,
+                            // An ordinary stack pop: the Unit is directly beneath this entry, and the
+                            // Topic beneath that, so nothing is reconstructed and no entry duplicated.
+                            onBack = { popBack() },
+                            // Reading on replaces this Lesson instead of stacking another one. A Unit
+                            // is read start to finish, so pushing would leave a learner ten Back
+                            // presses from the Unit they came from — and Back means "leave the
+                            // reader", which is a different action from Previous. The Unit comes from
+                            // the route being rendered, so the pair always names a real containment.
+                            onNavigateLesson = { lessonId ->
+                                navigator.replaceTop(
+                                    AppRoute.LearningLesson(
+                                        unitId = route.unitId,
+                                        lessonId = lessonId,
+                                    ),
+                                )
+                            },
+                            // The owning Unit from the route being rendered, so finishing a Lesson
+                            // reaches the same Unit practice the overview offers without a trip back.
+                            // Pushed, not replaced: the reader stays underneath, and back returns to
+                            // the Lesson the learner was on.
+                            onPracticeUnit = {
+                                navigator.push(
+                                    AppRoute.PracticeBuilderLearningUnit(unitId = route.unitId),
+                                )
+                            },
+                        )
+                    }
+                    entry<AppRoute.PracticeBuilderTopic> { route ->
+                        PracticeBuilderDestination(
+                            target = route.toPracticeBuilderTarget(),
+                            onBack = { popBack() },
+                            onStartPractice = { config ->
+                                navigator.push(config.toPracticeRoute())
+                            },
+                            // Only the selection the builder opens on. It still applies its own count
+                            // and level defaults and runs its normal preflight, so nothing starts here.
+                            initialSource = route.source,
+                        )
+                    }
+                    entry<AppRoute.PracticeBuilderSubtopic> { route ->
+                        PracticeBuilderDestination(
+                            target = route.toPracticeBuilderTarget(),
+                            onBack = { popBack() },
+                            onStartPractice = { config ->
+                                navigator.push(config.toPracticeRoute())
+                            },
+                            initialSource = route.source,
+                        )
+                    }
+                    entry<AppRoute.PracticeBuilderLearningUnit> { route ->
+                        PracticeBuilderDestination(
+                            // The Unit ID only. The builder resolves it into the concepts its ACTIVE
+                            // Lessons teach, so the run it starts is an ordinary focused assessment
+                            // and this entry stays a navigation identity.
+                            target = route.toPracticeBuilderTarget(),
+                            onBack = { popBack() },
+                            onStartPractice = { config ->
+                                navigator.push(config.toPracticeRoute())
+                            },
+                            // No initialSource: nothing produces a Learning-Unit practice intent, so
+                            // both Unit entries open on the builder's own ALL default.
+                        )
+                    }
+                    entry<AppRoute.FocusedTopicPractice> { route ->
+                        FocusedPracticeDestination(
+                            launch = AssessmentTakingLaunch.New(route.toAssessmentConfig()),
+                            onBack = { popBack() },
+                            onAttemptPersisted = { attemptId ->
+                                navigator.replaceTop(AppRoute.FocusedPracticeAttempt(attemptId))
+                            },
+                            onCompleted = { attemptId ->
+                                navigator.replaceTop(AppRoute.FocusedPracticeResult(attemptId))
+                            },
+                        )
+                    }
+                    entry<AppRoute.FocusedSubtopicPractice> { route ->
+                        FocusedPracticeDestination(
+                            launch = AssessmentTakingLaunch.New(route.toAssessmentConfig()),
+                            onBack = { popBack() },
+                            onAttemptPersisted = { attemptId ->
+                                navigator.replaceTop(AppRoute.FocusedPracticeAttempt(attemptId))
+                            },
+                            onCompleted = { attemptId ->
+                                navigator.replaceTop(AppRoute.FocusedPracticeResult(attemptId))
+                            },
+                        )
+                    }
+                    entry<AppRoute.FocusedSubtopicsPractice> { route ->
+                        // The same destination, engine, checkpointing, and result the other two use:
+                        // by this point a Unit run is an ordinary focused assessment over a scope that
+                        // happens to name several Subtopics.
+                        FocusedPracticeDestination(
+                            launch = AssessmentTakingLaunch.New(route.toAssessmentConfig()),
+                            onBack = { popBack() },
+                            onAttemptPersisted = { attemptId ->
+                                navigator.replaceTop(AppRoute.FocusedPracticeAttempt(attemptId))
+                            },
+                            onCompleted = { attemptId ->
+                                navigator.replaceTop(AppRoute.FocusedPracticeResult(attemptId))
+                            },
+                        )
+                    }
+                    entry<AppRoute.FocusedPracticeAttempt> { route ->
+                        FocusedPracticeDestination(
+                            launch = AssessmentTakingLaunch.ExistingAttempt(route.attemptId),
+                            onBack = { popBack() },
+                            onAttemptPersisted = {},
+                            onCompleted = { attemptId ->
+                                navigator.replaceTop(AppRoute.FocusedPracticeResult(attemptId))
+                            },
+                        )
+                    }
+                    entry<AppRoute.FocusedPracticeResult> { route ->
+                        FocusedResultDestination(
+                            attemptId = route.attemptId,
+                            onBack = { popBack() },
+                            onRetakeCreated = { attemptId ->
+                                navigator.push(AppRoute.FocusedPracticeAttempt(attemptId))
+                            },
+                        )
+                    }
+                },
+            )
+        }
     }
 }

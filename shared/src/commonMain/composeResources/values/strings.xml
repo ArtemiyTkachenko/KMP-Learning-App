@@ -227,4 +227,5 @@
     <string name="learning_lesson_next">Next</string>
     <string name="app_startup_loading">Preparing local curriculum</string>
     <string name="app_startup_error">Local curriculum could not be initialized</string>
+    <string name="selection_copied_snackbar">Copied to clipboard</string>
 </resources>

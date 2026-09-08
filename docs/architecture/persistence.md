@@ -614,9 +614,9 @@ is data-lifecycle correctness rather than a surfaced feature.
 
 `CurriculumImporter` neither writes, clears, nor prunes this table, and it takes no part in the
 curriculum-refresh transaction; a regression test in `CurriculumImporterTest` pins that. The table
-also holds nothing derived: Unit and Topic study aggregates remain unimplemented until E22-03,
-which will compute them by joining these facts against the current ACTIVE learning hierarchy. See
-[study progress](study-progress.md) for the semantics this storage serves.
+also holds nothing derived: `StudyProgressDerivation` computes Unit and Topic study aggregates on
+demand by intersecting these stable IDs with the current ACTIVE learning hierarchy, and stores none
+of them. See [study progress](study-progress.md) for the semantics this storage serves.
 
 ## Migration and Schema History
 

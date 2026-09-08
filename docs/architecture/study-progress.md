@@ -10,9 +10,10 @@ This document is the contract, written before anything implemented it: E22-02 ow
 persistence, E22-03 the derivation, E22-04 the presentation, and E22-05 Continue Learning.
 Their job is to satisfy the semantics recorded here rather than to settle them
 independently. The persistence half now exists — `studied_lesson`, `MIGRATION_7_8`, and
-`LessonStudyRepository`, described in [persistence](persistence.md) — and left the
-semantics below unchanged. Derivation, presentation, and Continue Learning remain
-unimplemented, so this document still names no service or Compose control.
+`LessonStudyRepository`, described in [persistence](persistence.md) — and so does the
+derivation, recorded under [What the derivation computes](#what-the-derivation-computes).
+Both left the semantics below unchanged. Presentation and Continue Learning remain
+unimplemented, so this document still names no Compose control.
 
 ## Three responsibilities, not one
 
@@ -255,6 +256,81 @@ current ACTIVE Learning Units, or when its ACTIVE Units collectively contain no 
 Lessons. There is no meaningful denominator in either case, and a Topic that is
 practisable but not yet studyable is a normal state of this curriculum rather than a
 learner who has fallen behind.
+
+## What the derivation computes
+
+E22-03 implements the two fractions above as `StudyProgressDerivation`, a dependency-free
+`object` in `lesson_study` beside the persisted `StudiedLesson`. It is pure: it reads no
+repository, no clock, and no assessment history, so the same hierarchy and the same studied
+identities always produce the same result.
+
+```text
+deriveUnit(unit: LearningUnit, studiedLessonIds: Set<String>): LearningUnitStudyProgress
+deriveTopic(topicId: String, units: List<LearningUnit>, studiedLessonIds: Set<String>): TopicStudyProgress
+```
+
+Study facts arrive as a `Set` of Lesson IDs rather than as `StudiedLesson` records, which is
+what makes three of the rules above fall out of the arithmetic instead of needing special
+cases: an orphan identity is simply never encountered in current content, a repeated
+identity cannot weight anything, and the repository's newest-first row order — a boundary
+convenience, not curriculum order — cannot reach the output. The persisted `studiedAt` is
+not read at all, because current completion is a question about identity and weighting it
+by recency would make the answer depend on history rather than on the current curriculum.
+
+Three result types carry the answers, all in `StudyProgressModels.kt`:
+
+| Type | Holds |
+| --- | --- |
+| `LessonStudyProgress` | The stable Lesson ID and whether it is currently studied |
+| `LearningUnitStudyProgress` | The Unit ID, its current ACTIVE `LessonStudyProgress` list, and a summary |
+| `TopicStudyProgress` | The Topic ID, its current ACTIVE home Units, and a summary |
+
+`LessonStudyProgress` carries no title, summary, body, or Subtopic mapping: every Learn
+surface already resolves those from `LearningContentRepository`, and a copy could only
+disagree with the Lesson the learner is looking at.
+
+`StudyProgressSummary` is where the empty case becomes explicit rather than accidental:
+
+```kotlin
+sealed interface StudyProgressSummary {
+    data object Empty
+    data class Progress(studiedCount, totalCount) { val isComplete get() = studiedCount == totalCount }
+}
+```
+
+`Progress` requires `totalCount > 0` and `studiedCount in 0..totalCount`, and completion is
+a derived property rather than a third constructor argument, so no caller can assemble a
+result claiming that 2 of 5 Lessons are studied and the Unit is finished.
+`StudyProgressSummary.of(studiedCount, totalCount)` is the single place a zero total becomes
+`Empty`, which is how both empty cases in the contract above are produced rather than
+computed by accident.
+
+The Unit numerator is the count of `isStudied` entries in the Unit's current ACTIVE Lessons,
+and the denominator is the size of that same list; the studied set is never counted. The
+Topic derivation filters the supplied Units to `status == ACTIVE && topicId == topicId`,
+derives each, and then counts over the **flattened** Lessons of those Units. Flattening is
+what makes the Topic aggregate lesson-weighted rather than an average of per-Unit
+percentages, and it is why an empty Unit contributes to neither side. Callers normally pass
+`LearningContentRepository.getActiveUnitsByTopic`, which already satisfies both filters; the
+derivation applies them anyway because it accepts an arbitrary Unit list, and a DEPRECATED
+or foreign Unit reaching a Topic aggregate would be silent rather than obvious. Both
+functions filter with `List.filter` and `List.map`, so authored Unit and Lesson order
+survives the removal of ineligible items.
+
+`StudyProgressService` is the thin IO half: it takes `LessonStudyRepository`, reads
+`getStudiedLessons()` once per snapshot, collapses it to identities, and delegates. It
+deliberately does **not** take `LearningContentRepository`. The Learn surfaces already own
+their content reads, and the two failures must stay apart: an unreadable learning document
+is a content error, while unreadable study state costs only the studied indicator over
+content that still reads perfectly well. Its `isLessonStudied(lessonId)` answers
+persistence's question — does a stored claim exist for this stable ID — and stays true for a
+DEPRECATED or unresolvable Lesson; whether such a Lesson counts toward current progress is
+decided by the content-aware derivation, which never rewrites or deletes the stored fact.
+
+Nothing here is registered in Koin yet. The derivation is an `object`, and the service has no
+consumer until E22-04, which owns the presentation loading behaviour and is therefore the
+issue that knows whether it wants an app-scoped singleton. E22-03 also adds no state holder
+and no `StateFlow` for the same reason.
 
 ## Studied and practised are independent
 

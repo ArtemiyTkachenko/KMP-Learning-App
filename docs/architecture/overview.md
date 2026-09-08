@@ -331,13 +331,14 @@ The ownership boundary the epic establishes, and where it currently stops:
 - Assessment history is learner-owned. It records the concepts a run asked
   about, never the Unit that suggested it, so `TestAttempt` carries no Learning
   Unit or Lesson identity and no Room migration was needed to practise a Unit.
-- Lesson completion state does not exist yet. Reading a Lesson persists nothing:
-  there is no `lesson_progress` table, no studied/completed flag, and no
-  last-read position. The only durable trace of study is an assessment attempt.
+- Reading a Lesson still persists nothing. There is no last-read position and no
+  activity signal, because opening a Lesson is not studying it.
 
-That last point is the gap before learner-owned study progress. Whatever
-introduces it will need a place for learner state over publisher-owned content —
-a stable identity per Lesson to key it on, which the content model already
-provides, and a decision about what happens to recorded progress when a Lesson
-is re-authored or retired, which nothing in the current model answers. Those
-questions are answered by the [study progress](study-progress.md) contract.
+E22 fills the remaining gap without moving that boundary. Study state is
+explicit and learner-owned: `studied_lesson` records the stable Lesson IDs the
+learner marked, described in [persistence](persistence.md), and
+`StudyProgressDerivation` intersects them with the current ACTIVE hierarchy to
+derive Unit and Topic progress on demand, persisting no aggregate. What studied
+means, and what happens to a record when a Lesson is re-authored or retired, is
+the [study progress](study-progress.md) contract; the mark/unmark control and
+Continue Learning are not implemented yet.

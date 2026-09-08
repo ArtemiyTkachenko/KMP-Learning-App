@@ -55,6 +55,7 @@ internal class LearningContentEndToEndTest {
                 "unit_recomposition",
                 "unit_identity_keys_and_stability",
                 "unit_derived_state_and_expensive_work",
+                "unit_snapshot_fundamentals",
             ),
             units.map { it.id },
         )

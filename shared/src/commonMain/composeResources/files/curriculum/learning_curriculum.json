@@ -551,7 +551,8 @@
           ],
           "relatedLessonIds": [
             "lesson_composable_execution",
-            "lesson_declarative_ui"
+            "lesson_declarative_ui",
+            "lesson_snapshot_observation"
           ],
           "sources": [
             {
@@ -1252,7 +1253,8 @@
           ],
           "relatedLessonIds": [
             "lesson_observable_state",
-            "lesson_remember_composition_memory"
+            "lesson_remember_composition_memory",
+            "lesson_snapshot_flow"
           ],
           "sources": [
             {
@@ -1614,7 +1616,8 @@
           ],
           "relatedLessonIds": [
             "lesson_composition_and_recomposition",
-            "lesson_observable_state"
+            "lesson_observable_state",
+            "lesson_snapshot_observation"
           ],
           "sources": [
             {
@@ -3070,7 +3073,8 @@
           "relatedLessonIds": [
             "lesson_remember_key_memoization",
             "lesson_recomposition_scopes",
-            "lesson_keys_and_identity_in_lists"
+            "lesson_keys_and_identity_in_lists",
+            "lesson_snapshot_observation"
           ],
           "sources": [
             {
@@ -3255,6 +3259,431 @@
             {
               "title": "Best practices for coroutines in Android",
               "url": "https://developer.android.com/kotlin/coroutines/coroutines-best-practices"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "unit_snapshot_fundamentals",
+      "topicId": "android_ui",
+      "title": "Snapshot Fundamentals",
+      "summary": "Four units have each answered a different question, and every answer rested on the same unstated machinery: something has to notice that a value changed and work out who cared. This unit names that machinery and stops there. One model — state objects that report reads and changes, contexts that record reads while they run, and invalidation that marks whoever recorded one — explains why the counter did not count, why the list did not appear, why moving a read moved the blast radius, and why a derived value can decline to wake its reader. The second lesson takes the same model somewhere the UI is not, turning observable state into a `Flow` a coroutine can process.",
+      "lessons": [
+        {
+          "id": "lesson_snapshot_observation",
+          "title": "How Compose Observes State",
+          "summary": "The last four units each ended with a rule. All of them come from one mechanism: state objects that report reads and changes, a context that is recording reads while it runs, and invalidation that marks whoever recorded one as out of date. What that model promises, what it does not, and how to use it to find the cause of an update that never arrived.",
+          "primarySubtopicIds": [
+            "compose_snapshot_system"
+          ],
+          "supportingSubtopicIds": [
+            "compose_state",
+            "compose_recomposition"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Each of the last four units left you holding a rule. A plain `var` changes and the screen does not. Adding to a list held in state updates nothing. Moving a read into a child narrows how much re-executes. A derived value can decline to wake the composable reading it. Those read like four separate facts about four separate APIs. They are one mechanism seen from four angles, and this lesson names it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The mechanism is the **snapshot system**, and the first thing to understand about it is that Compose's state objects are not ordinary containers. The values produced by `mutableStateOf`, `mutableStateListOf`, `mutableStateMapOf` and `derivedStateOf` report what happens to them. When one of them is read, whatever is currently recording reads is told which object was read. When one of them is changed, everything that recorded a read of it is marked out of date."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Four things therefore have to line up before anything appears on screen."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**An observable state object.** Only Compose's own state types take part. An `Int` field, an `ArrayList`, a `var` on a class you wrote — none of them can report anything, so none of them is inside this mechanism at all.",
+                    "**A read that happens inside an observing context.** An observing context is code that is recording reads while it runs: a composable executing during composition, a `derivedStateOf` calculation, and — as the next lesson shows — a `snapshotFlow` block. Reading the same object from a click handler or an ordinary function returns the current value perfectly well and records nothing, because nothing was recording.",
+                    "**A change the state object agrees is a change.** `mutableStateOf` compares the new value against the current one with structural equality by default, so assigning a value equal to the one already held is not a change and is never reported.",
+                    "**Invalidation.** What a reported change actually does is mark the contexts that recorded a read as out of date. It does not run them, and it certainly does not draw anything."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That last point is the one worth slowing down on, because the word people reach for is \"refresh\" and nothing about a write refreshes anything. A write is a recording, not a command. It leaves behind the information that some set of contexts is now describing an old value, and the runtime decides when to act on that — possibly coalescing several changes that arrive together into one pass. Composition is also only the first of three phases, with layout and drawing after it, so \"the screen has caught up\" is a strictly later event than \"a write happened\"."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun Counter(count: MutableState<Int>) {\n    // A read inside an executing composable: recorded, because composition is\n    // an observing context and this composable is what is executing.\n    Text(\"Count: ${count.value}\")\n\n    Button(\n        // Two reads and a write inside a click handler: nothing is recorded.\n        // The handler runs later, when no composition is in progress.\n        onClick = { count.value = count.value + 1 },\n    ) {\n        Text(\"Add one\")\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Observation is a relationship between a state object and a read, established at the moment of the read, by whichever context was recording at the time. Declaring state, passing it as a parameter, and writing to it all create nothing. This is why \"why didn't my UI update?\" almost always resolves into one of two findings: no observable change was reported, or the read that would have recorded the dependency happened somewhere other than where you assumed."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two assumptions are worth stating plainly, because the model is easy to over-generalise in both directions. Not every read subscribes anything: a read outside an observing context is just a read. And not every write produces an update: a write of an equal value is not a change, and a genuine change that no context ever read invalidates nobody."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The quickest way to make the model usable is to take three screens that fail in exactly the same visible way — a value demonstrably changes and the UI does not move — and find a different cause in each."
+                },
+                {
+                  "type": "code",
+                  "code": "// 1. Nothing observable exists.\nclass Cart(var itemCount: Int = 0)\n\n@Composable\nfun CartBadge(cart: Cart) {\n    Text(\"${cart.itemCount}\")\n}\n\n// Elsewhere: cart.itemCount = 1",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`Cart` is an ordinary class. Its field can be read inside a composable perfectly well, and that read is recorded against nothing, because there is nothing in an ordinary field to do the reporting. Measured on this project's JVM target: after the field was changed from 0 to 1, the composable did not execute again, and reading the field afterwards confirmed it really did hold 1. No part of the mechanism was ever involved."
+                },
+                {
+                  "type": "code",
+                  "code": "// 2. Something observable exists, and it was never written.\nval items = remember { mutableStateOf(mutableListOf(\"a\")) }\n\nText(\"${items.value.size}\")\n\n// Elsewhere: items.value.add(\"b\")",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This one is more interesting, because a state object *is* present and the composable *is* reading it — `items.value` is a genuine recorded read. Measured on the same target: after `add`, the list held two elements and the composable still did not execute again. The dependency was recorded on the holder, and the holder was never written. `add` changed the object the holder points at, which the holder has no way to notice. This is the failure Unit 2's lesson on collections and observable mutation exists for, and its three fixes live there."
+                },
+                {
+                  "type": "code",
+                  "code": "// 3. The holder was written, and the write was not a change.\nvar count by remember { mutableStateOf(0) }\n\nText(\"$count\")\n\n// Elsewhere: count = 0",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "State object, recorded read, and a write that reaches the holder — and still nothing. Measured: assigning 0 to a state already holding 0 produced no execution at all, while the assignment of 1 that followed produced one. The default policy compares with structural equality, an equal value is not a change, and there was consequently nothing to report."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "What the code does",
+                    "Observable state object?",
+                    "Read recorded?",
+                    "Change reported?",
+                    "What the learner sees"
+                  ],
+                  "rows": [
+                    [
+                      "Mutates a field on an ordinary class",
+                      "No",
+                      "No — there is nothing to record against",
+                      "No",
+                      "Nothing updates, and the value really did change"
+                    ],
+                    [
+                      "Mutates a collection held inside a state object",
+                      "Yes",
+                      "Yes, of the holder",
+                      "No — the holder itself was never written",
+                      "Nothing updates, and the collection really did grow"
+                    ],
+                    [
+                      "Assigns an equal value to a state object",
+                      "Yes",
+                      "Yes",
+                      "No — equal is not a change",
+                      "Nothing updates"
+                    ],
+                    [
+                      "Assigns a different value to a state object",
+                      "Yes",
+                      "Yes",
+                      "Yes",
+                      "The recording context is invalidated and later re-executes"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Those four rows diagnose those four examples, and that is exactly the limit of what this lesson claims. \"Nothing observable was written\" is the first thing to check and it is not a universal explanation for stale UI. A composable can lose its state because its identity changed rather than because a write was missed. A `remember` can hand back a stale result because a captured value was never made a key. A change can be reported correctly and the consumer still be skipped because its parameters compared equal. Those are the identity, stability and derived-state units' subjects, and they are separate failures with separate fixes. What this model gives you is the question that tells them apart: was a change reported at all? If it was, the problem is downstream of observation and this is not the lesson you need."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Reading \"invalidated\" as \"executed\". An invalidated scope is scheduled, not run, and how many times it eventually runs is not something to reason about: changes that land together can be coalesced into a single pass, and a call whose inputs did not change can be skipped inside that pass. Reason about which contexts a change *can* invalidate, which is well defined, and stop there."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Derived state is not an exception to any of this, and noticing that is what makes the model feel like one idea rather than a list. `derivedStateOf` produces a state object, so reading its value inside a composable records a dependency exactly as reading a `mutableStateOf` does. Its calculation is itself an observing context, which is why the state the calculation reads is what the derived value depends on — and why a value the calculation merely closed over is not. And the reason a derived value can withhold an update is the third item in the list above: before invalidating a context that read the result, the runtime compares the new result against the one that context last saw, and an equal result is not a change. One mechanism, applied at two levels."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The name is worth unpacking, because \"snapshot\" is not decoration. A snapshot is a view of the values of state objects, and the guarantee the runtime documents for it is narrow and precise: every state object has the same value inside the snapshot that it had when the snapshot was taken, unless it is explicitly changed inside that snapshot. Code reading state inside one therefore sees a coherent set of values rather than a mixture of before and after, even while something elsewhere is writing."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Be careful how far you carry that, because it is the sentence most likely to be over-claimed in an interview. The guarantee is about state objects — the values held by `mutableStateOf`, the snapshot-aware collections, and derived state. It does not make your own classes transactional, it does not make an `ArrayList` safe to share between threads, and it does not turn an ordinary object graph into anything it was not before. An object reached *through* a state object is still just an object; only the holder takes part. That is the same boundary as the collection failure above, seen from the other side."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What consistency buys, and the reason it belongs in a lesson about observation at all, is that reading Compose state from somewhere that is not composition is a reasonable thing to do. A block of code that reads several related state values inside one snapshot cannot see half an update. The next lesson is built directly on that property."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The design question worth being able to answer is why the system records reads at all, when the write is the thing that actually happens. The answer is that a write knows nothing useful. A state object has no idea which parts of a UI display it; only the act of reading, performed by code that was recording at the time, establishes that relationship. Recording reads is therefore the only way to get invalidation proportional to what is genuinely affected instead of proportional to the size of the tree. It is also why the same machinery extends past composition: anything that can record reads can be a dependent, whether that is a composable, a derived calculation, the layout and drawing phases that track their own reads, or a coroutine building a stream."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Expect \"how does Compose know when to recompose?\" and answer it as a mechanism rather than an API list. State objects report reads and writes; a read performed while an observing context is running records that context as a dependent; a change — a write the state object's own policy agrees is a change — invalidates the contexts that recorded a read, which schedules them rather than running them. Then volunteer the boundaries, because that is what separates the model from the slogan: a read outside an observing context records nothing, an equal write is not a change, and mutation reached through a state object is invisible to it. If pushed on snapshot consistency, say plainly that the guarantee is about state objects and not about your own data structures."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_observable_state",
+            "lesson_recomposition_scopes",
+            "lesson_observable_collections",
+            "lesson_derived_state"
+          ],
+          "sources": [
+            {
+              "title": "State and Jetpack Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state"
+            },
+            {
+              "title": "Lifecycle of composables",
+              "url": "https://developer.android.com/develop/ui/compose/lifecycle"
+            },
+            {
+              "title": "Jetpack Compose phases",
+              "url": "https://developer.android.com/develop/ui/compose/phases"
+            },
+            {
+              "title": "Compose runtime source: Snapshot.kt",
+              "url": "https://raw.githubusercontent.com/androidx/androidx/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/snapshots/Snapshot.kt"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_snapshot_flow",
+          "title": "`snapshotFlow` and Crossing Into Flow",
+          "summary": "Sometimes the code that has to react to a UI value is not UI: an analytics call, a draft that saves itself, a request that follows the scroll position. `snapshotFlow` turns observable Compose state into a cold `Flow` a coroutine can process — what it evaluates and when, why its emissions are not a record of everything that happened, and where the collector's lifetime comes from.",
+          "primarySubtopicIds": [
+            "compose_snapshot_system"
+          ],
+          "supportingSubtopicIds": [
+            "flow_fundamentals",
+            "hot_vs_cold_streams",
+            "compose_side_effects"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Every consumer so far has had the same shape: a composable that reads state and describes UI from it. Some consumers are not that. An analytics event should be sent the first time the user scrolls past the top of a list. A draft should be saved a second after typing stops. A search request should be issued when the query settles. None of those describe UI, all of them need to know when a UI-owned value changed, and none of them can be a composable — composition is for describing, not for doing."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What that kind of consumer wants is a stream it can filter, transform, delay and suspend on. Kotlin already has one, `Flow`, and `snapshotFlow` is the adapter between the two worlds."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Four facts about `Flow` are enough for this lesson to stand on its own. The full subject — operators, hot streams and sharing, back pressure, structured cancellation — belongs to the coroutines and Flow curriculum, which this app does not teach yet; Kotlin's own documentation is where to go for it in the meantime."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**A cold flow produces nothing until it is collected.** The code inside the builder does not run when the flow is created. It runs when a collector arrives, and each new collector starts an independent execution.",
+                    "**Collection is what starts it.** `collect` is a suspending call, so it needs a coroutine, and it does not return until the flow completes or the coroutine is cancelled. A `snapshotFlow` never completes on its own.",
+                    "**The collector's lifetime is the coroutine's lifetime.** Whatever launched the collecting coroutine is what decides how long collection lasts.",
+                    "**Stopping collection means cancelling that coroutine.** Collection stops and the `snapshotFlow` unsubscribes from the state it had been watching. There is nothing to dispose by hand."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "With that in place, `snapshotFlow { }` is short to describe. It takes a block, and:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "when collection begins it runs the block once and emits the result, unconditionally — the first value does not wait for anything to change;",
+                    "while the block runs, it records which snapshot state the block read, which makes the block an observing context in exactly the sense of the previous lesson;",
+                    "when a change is applied to any state the block read, it runs the block again and records the reads again;",
+                    "it emits the new result only if that result is not equal to the last one it emitted. The documentation compares this to `distinctUntilChanged`, and the comparison really is `equals`."
+                  ]
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun ProductList(products: List<Product>, analytics: Analytics) {\n    val listState = rememberLazyListState()\n\n    LazyColumn(state = listState) {\n        items(products, key = { it.id }) { ProductRow(it) }\n    }\n\n    LaunchedEffect(listState, analytics) {\n        snapshotFlow { listState.firstVisibleItemIndex }\n            .map { index -> index > 0 }\n            .distinctUntilChanged()\n            .filter { scrolledPast -> scrolledPast }\n            .collect { analytics.scrolledPastFirstItem() }\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`firstVisibleItemIndex` is snapshot state owned by the list state, and it is read **inside** the block. That is the whole reason it becomes a dependency: the block is the observing context, and the read happened while the block was running. Everything after `snapshotFlow` in that chain is ordinary `Flow`, doing ordinary `Flow` things."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "`snapshotFlow` is the previous lesson's model with a different kind of dependent attached. The block plays the part the composable played: it reads state while something is recording, so a reported change re-runs it. What is new is only the destination — instead of invalidating a scope that will describe UI, the result travels to a coroutine as a `Flow` value."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A cold flow needs a collector, and the collector needs a coroutine whose lifetime is tied to the UI that produced the value. Inside composition that is `LaunchedEffect`: it launches a coroutine when it enters the Composition, cancels that coroutine when it leaves, and — if it is recomposed with different keys — cancels the running one and launches a new one. That is as much as this lesson needs; the effect APIs as a family, and how to choose between them, are a later unit's subject."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The keys in `LaunchedEffect(listState, analytics)` are doing real work, and getting them wrong is a correctness bug rather than a style point. The coroutine captures both values, and a captured value stays frozen for as long as that coroutine lives — the same capture problem `remember` and `derivedStateOf` have. In the snippet above `listState` comes from `rememberLazyListState()`, so it is stable for the life of that call site, while `analytics` is a parameter a caller can change at any recomposition: keyed only on `listState`, the effect would go on reporting to the `Analytics` it captured first. Hoist that list state to a caller and the mirror-image failure becomes possible too — an effect still watching the previous list's scroll position. The rule transfers without having to work out which holders happen to be stable today: key on every holder the effect must not outlive."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The mistake that produces the most confusing behaviour, though, is not about keys. It is about which side of the block the state is read on."
+                },
+                {
+                  "type": "code",
+                  "code": "// Wrong: the read happens in the composable, and the block only sees an Int.\nval index = listState.firstVisibleItemIndex\n\nLaunchedEffect(listState) {\n    snapshotFlow { index > 0 }\n        .collect { scrolledPast -> analytics.report(scrolledPast) }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This compiles, it runs, and it emits exactly one value and then nothing ever again. By the time the block sees `index` it is an ordinary `Int`; the read that could have recorded a dependency happened in the composable, so the block reads no snapshot state at all. Measured on this project's JVM target: a block returning a captured plain value evaluated once, emitted once, and was never evaluated again after the underlying state changed. Note what this does *not* say — capturing a value is not a defect in itself and an ordinary captured value is not somehow half-observable. It is simply not observable. There is also a second, quieter cost here: the composable now reads `firstVisibleItemIndex` itself, so it is invalidated by every scrolled row, which is precisely what routing the value through a flow was supposed to avoid."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A subtler version of the same question arrives as soon as the state is a snapshot-aware collection, and it is worth being explicit about because the intuitive code is the wrong code."
+                },
+                {
+                  "type": "code",
+                  "code": "val selected = remember { mutableStateListOf<String>() }\n\nLaunchedEffect(selected) {\n    // Wrong: the block hands back the live collection object itself.\n    snapshotFlow { selected }.collect { saveSelection(it) }\n}\n\nLaunchedEffect(selected) {\n    // Right: toList() reads the contents and returns an immutable list of them.\n    snapshotFlow { selected.toList() }.collect { saveSelection(it) }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The first block returns the `SnapshotStateList` reference without reading its contents, so two things go wrong at once and either alone would be fatal. No element read is recorded, so a change to the list never re-runs the block; and if it did re-run, the value it produced would be the same object it produced last time, equal to itself, so the emission would be suppressed anyway. Measured on this project's JVM target: adding an element after collection began produced no further evaluation and no further emission. The second block calls `toList()`, which reads the contents — creating the dependency — and returns an immutable list that genuinely differs from the previous one; the same measurement gave two evaluations and two emissions. This is not a trick to memorise: the runtime's own documentation for `SnapshotStateList.toList()` recommends it specifically for returning the value of the list from a `snapshotFlow`, and records that it is an O(1) operation returning the immutable list used internally rather than copying anything."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "With that settled, the comparison people actually reach for — `snapshotFlow` or `derivedStateOf`? — turns out not to be a close call, because the two are not competing for the same job."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Question",
+                    "`derivedStateOf`",
+                    "`snapshotFlow`"
+                  ],
+                  "rows": [
+                    [
+                      "Who consumes the result",
+                      "Composition — a composable reads it",
+                      "A coroutine — a collector receives it"
+                    ],
+                    [
+                      "What it produces",
+                      "A `State<T>`",
+                      "A cold `Flow<T>`"
+                    ],
+                    [
+                      "What it is for",
+                      "Keeping a reading scope from being invalidated while the answer is unchanged",
+                      "Applying stream processing — `map`, `filter`, `debounce`, suspend calls — to a changing value"
+                    ],
+                    [
+                      "What starts it",
+                      "Reading the value",
+                      "Collecting the flow"
+                    ],
+                    [
+                      "Where it lives",
+                      "In the Composition, held by a `remember`",
+                      "In a coroutine, held by whatever launched it"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The single question that decides between them is who is on the other end. If a composable is going to read the answer, you want observable state and `derivedStateOf` is the tool that can filter its invalidations. If a coroutine is going to process the answer, you want a stream. Two things are true of both and worth saying out loud: neither is a persistence mechanism — nothing either produces outlives the Composition or the coroutine holding it — and neither moves work to another thread for you. A `snapshotFlow` collector runs in whatever context its coroutine was given, so if the work it does is not safe on the main thread, arranging a dispatcher is your job."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Using `snapshotFlow` as a record of what happened. It is a stream of *states*, not of *events*, and the runtime's documentation is unusually direct about the difference: state changes are conflated, only the most recent state matters, and an observer may legitimately skip intermediate values or see the same value twice. If a value moves through 0, 1, 2, 3 faster than the collector is scheduled, seeing only 0 and 3 is correct behaviour rather than a dropped event. Anything that must record every transition — an undo stack, an audit trail, a keystroke log — has to be fed where the change is made, not observed afterwards."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Evaluations of the block, writes to the state, and emissions to the collector are three different counts, and expecting them to line up is where most of the surprising behaviour comes from."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Measured on this project's JVM target, with the collector already running before any change was made and each change allowed to be applied and the scheduler allowed to settle before the next one, unless a row says otherwise:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "A block returning an `Int` state: one evaluation and one emission when collection began, then one evaluation and one emission for the change that followed.",
+                    "The same block, then assigned the value the state already held: no evaluation and no emission at all. An equal write is not a change, so nothing was ever reported.",
+                    "A block returning `index > 2`, with the index driven through 1, 2, 3 and 4: five evaluations and two emissions. Every reported change re-ran the block; only the two results that differed from the previous one were emitted.",
+                    "The `Int` block of the first row again, with 1, 2 and 3 written with no opportunity to settle in between: two evaluations and two emissions, the second carrying 3. The values 1 and 2 were read by nobody."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The first and last rows use the identical block, and the only difference between them is whether each write was allowed to be applied before the next one was made — which is what decides whether the collector sees every value or only the latest. Those numbers therefore describe when things were observed at least as much as they describe the code, which is why the runtime's documentation declines to promise any of them: the block \"may run more than once for equal sets of inputs or only once after many rapid snapshot changes\"."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That sentence is also the reason for the constraint on what the block may contain. Because it can run an unpredictable number of times, it must be idempotent and free of side effects — and Compose enforces the strong half of that rather than trusting you with it. The block runs inside a read-only snapshot, and writing snapshot state from within it fails collection with an `IllegalStateException`; running that case on this project's JVM target produces exactly that, with the message `Cannot modify a state object in a read-only snapshot`. Which rules out the tempting debugging move of counting evaluations by incrementing a counter held in state. Keep the calculation a calculation and do the work in the collector, where side effects belong."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The deeper framing behind all of it is in the runtime's own words, and it is a good thing to be able to say: observable state is a lossy compression of the events that produced it. An event happens at a point in time and every one of them may carry meaning, so an observer of events must see all of them. State is only ever the latest value, so an observer of state has to be able to arrive late and still be correct. `snapshotFlow` models snapshot changes as events, but what it is observing is state, so the events it can offer are conflated by construction. That is a property of the thing being observed, not a limitation waiting to be worked around."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Expect the identification question — which API turns Compose `State` into a cold `Flow` — and answer it, but do not stop there, because it tests recall rather than understanding. Say what the block is: an observing context whose reads become the flow's dependencies, which is why the state has to be read *inside* it rather than captured from outside. Say what governs emission: the block re-runs on a reported change and emits only when its result is not equal to the previous one. Say where collection lives and what ends it: a coroutine, usually launched by `LaunchedEffect` and keyed on the holders it captures, cancelled when that effect leaves the Composition. Then give the boundary unprompted — conflated states rather than an event log — because that is the reasoning that decides whether `snapshotFlow` is the right tool for the problem in front of you."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_snapshot_observation",
+            "lesson_derived_state",
+            "lesson_observable_collections"
+          ],
+          "sources": [
+            {
+              "title": "Side-effects in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/side-effects"
+            },
+            {
+              "title": "Flows",
+              "url": "https://kotlinlang.org/docs/coroutines-flow.html"
+            },
+            {
+              "title": "Compose runtime source: SnapshotFlow.kt",
+              "url": "https://raw.githubusercontent.com/androidx/androidx/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotFlow.kt"
+            },
+            {
+              "title": "Compose runtime source: SnapshotStateList.kt",
+              "url": "https://raw.githubusercontent.com/androidx/androidx/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/snapshots/SnapshotStateList.kt"
             }
           ],
           "status": "ACTIVE"

@@ -35,12 +35,18 @@ internal class BundledLearningCurriculumTest {
                 "unit_thinking_in_compose",
                 "unit_state_and_state_ownership",
                 "unit_recomposition",
+                "unit_identity_keys_and_stability",
             ),
             units().map { it.id },
         )
 
         assertEquals(
-            listOf("Thinking in Compose", "State and State Ownership", "Recomposition"),
+            listOf(
+                "Thinking in Compose",
+                "State and State Ownership",
+                "Recomposition",
+                "Identity, Keys, Stability and Immutability",
+            ),
             units().map { it.title },
         )
 
@@ -80,6 +86,17 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_recomposition").lessons.map { it.id },
         )
+
+        assertEquals(
+            listOf(
+                "lesson_composable_identity",
+                "lesson_keys_and_identity_in_lists",
+                "lesson_immutability_vs_stability",
+                "lesson_stability_and_skipping",
+                "lesson_stability_annotations",
+            ),
+            unit("unit_identity_keys_and_stability").lessons.map { it.id },
+        )
     }
 
     @Test
@@ -114,6 +131,20 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_recomposition").lessons.map { it.primarySubtopicIds },
         )
+
+        // Three Lessons share `compose_stability` at different depths, which the authoring
+        // contract allows: a Subtopic is touched by more than one Lesson, and the identity
+        // pair is a separate concept from the stability pair.
+        assertEquals(
+            listOf(
+                listOf("compose_identity_keys"),
+                listOf("compose_identity_keys"),
+                listOf("compose_stability"),
+                listOf("compose_stability"),
+                listOf("compose_stability"),
+            ),
+            unit("unit_identity_keys_and_stability").lessons.map { it.primarySubtopicIds },
+        )
     }
 
     @Test
@@ -126,6 +157,23 @@ internal class BundledLearningCurriculumTest {
 
         assertTrue(lesson.supportingSubtopicIds.contains("compose_recomposition_performance"))
         assertEquals(listOf("compose_recomposition"), lesson.primarySubtopicIds)
+    }
+
+    @Test
+    fun kotlinLanguageConceptsStaySupportingRatherThanBecomingUnitPractice() = runTest {
+        // GAP-U4-C in `docs/content/compose-units-2-6-plan.md`: the Kotlin facts this Lesson
+        // bridges are assessed in the `kotlin_language` Topic, and the Compose consequence of
+        // read-only-but-mutable data is not assessed anywhere. Promoting any of these to
+        // primary would claim Unit 4 practice coverage that no Question provides.
+        val lesson = unit("unit_identity_keys_and_stability").lessons
+            .single { it.id == "lesson_immutability_vs_stability" }
+
+        assertEquals(listOf("compose_stability"), lesson.primarySubtopicIds)
+        assertTrue(
+            lesson.supportingSubtopicIds.containsAll(
+                listOf("kotlin_data_classes", "kotlin_equality", "kotlin_collections", "kotlin_variables"),
+            ),
+        )
     }
 
     @Test

@@ -30,14 +30,20 @@ internal class TopicDetailLearningContentTest {
                 "unit_thinking_in_compose",
                 "unit_state_and_state_ownership",
                 "unit_recomposition",
+                "unit_identity_keys_and_stability",
             ),
             items.map { it.unitId },
         )
         assertEquals(
-            listOf("Thinking in Compose", "State and State Ownership", "Recomposition"),
+            listOf(
+                "Thinking in Compose",
+                "State and State Ownership",
+                "Recomposition",
+                "Identity, Keys, Stability and Immutability",
+            ),
             items.map { it.title },
         )
-        assertEquals(listOf(3, 5, 3), items.map { it.activeLessonCount })
+        assertEquals(listOf(3, 5, 3, 5), items.map { it.activeLessonCount })
         // A discovery row without prose would be a title and a number, so the summary has to survive
         // the mapping rather than merely being present in the document.
         assertTrue(items.all { it.summary.isNotBlank() })

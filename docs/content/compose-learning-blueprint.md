@@ -1024,10 +1024,10 @@ sources on any material edit; guidance older than roughly two releases is suspec
 
 ## Status
 
-This blueprint is complete as a map. Units 1–2 are authored and ship in
-`learning_curriculum.json` as `unit_thinking_in_compose` and
-`unit_state_and_state_ownership`; Units 3–14 are still plans. When authoring reveals a
-wrong Lesson boundary, update this file in the same change.
+This blueprint is complete as a map. Units 1–3 are authored and ship in
+`learning_curriculum.json` as `unit_thinking_in_compose`,
+`unit_state_and_state_ownership` and `unit_recomposition`; Units 4–14 are still plans. When
+authoring reveals a wrong Lesson boundary, update this file in the same change.
 
 Units 2–6 have a confirmed authoring plan in
 [`compose-units-2-6-plan.md`](compose-units-2-6-plan.md), which records their proposed Unit
@@ -1044,8 +1044,8 @@ behaviour that the Compose documentation contradicts. The line now describes ord
 skipping, and discarded optimistic recomposition, and the Notes record why the parallel
 claim must not be taught.
 
-Authoring Unit 2 kept every planned Lesson boundary, identity and concept mapping
-unchanged; no blueprint correction was required. Two findings are worth recording because
+Authoring Units 2 and 3 kept every planned Lesson boundary, identity and concept mapping
+unchanged; no blueprint correction was required. Four findings are worth recording because
 they affect later Units:
 
 - **L2.3's lifetime ladder gained a rung.** The Core line above says "three lifetimes —
@@ -1059,3 +1059,13 @@ they affect later Units:
   the Android guarantee precisely and says plainly that Compose Multiplatform documents no
   equivalent for desktop, iOS or web, per the plan's instruction. The unresolved question
   recorded there is unchanged by this authoring.
+- **L3.2's inline caveat is now taught, and it was verified rather than assumed.**
+  `Column`, `Row` and `Box` are declared `inline` in the Compose Multiplatform 1.11.1
+  sources this repository resolves, so their content lambdas are compiled into the calling
+  composable and form no recomposition scope of their own. The Lesson teaches this
+  explicitly, because "wrap it in a `Column` to narrow recomposition" is a plausible and
+  wrong conclusion to draw from the rest of the Lesson.
+- **Unit 3 states no execution counts.** Executions can be coalesced, cancelled and
+  restarted, or skipped, so the Lessons reason about which scopes a change *can* invalidate
+  and deliberately promise no number. Unit 4 should keep that discipline when it introduces
+  skipping properly.

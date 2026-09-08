@@ -34,12 +34,13 @@ internal class BundledLearningCurriculumTest {
             listOf(
                 "unit_thinking_in_compose",
                 "unit_state_and_state_ownership",
+                "unit_recomposition",
             ),
             units().map { it.id },
         )
 
         assertEquals(
-            listOf("Thinking in Compose", "State and State Ownership"),
+            listOf("Thinking in Compose", "State and State Ownership", "Recomposition"),
             units().map { it.title },
         )
 
@@ -70,6 +71,15 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_state_and_state_ownership").lessons.map { it.id },
         )
+
+        assertEquals(
+            listOf(
+                "lesson_composition_and_recomposition",
+                "lesson_recomposition_scopes",
+                "lesson_recomposition_cost",
+            ),
+            unit("unit_recomposition").lessons.map { it.id },
+        )
     }
 
     @Test
@@ -95,6 +105,27 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_state_and_state_ownership").lessons.map { it.primarySubtopicIds },
         )
+
+        assertEquals(
+            listOf(
+                listOf("compose_recomposition"),
+                listOf("compose_recomposition"),
+                listOf("compose_recomposition"),
+            ),
+            unit("unit_recomposition").lessons.map { it.primarySubtopicIds },
+        )
+    }
+
+    @Test
+    fun aPerformanceConceptStaysSupportingRatherThanBecomingUnitPractice() = runTest {
+        // GAP-U3-A in `docs/content/compose-units-2-6-plan.md`: the one active Question on
+        // `compose_recomposition_performance` lives in the `performance` Topic and is reached
+        // only as supporting context. Promoting it to primary would silently claim Unit 3
+        // practice coverage that no Question actually provides, which E23-07 must still see.
+        val lesson = unit("unit_recomposition").lessons.single { it.id == "lesson_recomposition_cost" }
+
+        assertTrue(lesson.supportingSubtopicIds.contains("compose_recomposition_performance"))
+        assertEquals(listOf("compose_recomposition"), lesson.primarySubtopicIds)
     }
 
     @Test

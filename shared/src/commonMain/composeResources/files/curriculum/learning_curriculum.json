@@ -1276,6 +1276,495 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "unit_recomposition",
+      "topicId": "android_ui",
+      "title": "Recomposition",
+      "summary": "Recomposition is the mechanism that turns a state change into a different screen, and it is routinely described in a way that makes it sound both more dramatic and less predictable than it is. This unit separates the steps — a write, an invalidation, an execution, a frame — shows how the location of a state read decides how much work a change can cause, and ends by disposing of the belief that recomposition is itself a performance defect. The units on stability and derived state are answers to problems framed here.",
+      "lessons": [
+        {
+          "id": "lesson_composition_and_recomposition",
+          "title": "Composition and Recomposition",
+          "summary": "What actually happens between a button being clicked and the screen looking different: a write, an invalidation, a scheduled execution, and a frame — four separate things that a single sentence about recomposition usually collapses into one.",
+          "primarySubtopicIds": [
+            "compose_recomposition"
+          ],
+          "supportingSubtopicIds": [
+            "compose_fundamentals",
+            "compose_state"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Two units have now supplied the halves of the mechanism. The first said that a composable contributes a description of UI to the Composition and that the runtime may run that description again. The second said that reading a state value during execution records a dependency, and writing it schedules recomposition of whatever recorded one. This lesson puts them together and, more usefully, takes apart the single word that hides the details."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Start with the two events in the title. **Initial composition** is the first run: the composables you called are executed, and the Composition — the runtime's record of what your UI currently is — is built from what they emitted. **Recomposition** is a later re-execution of part of that work, in response to state that was read having changed, which updates the existing Composition rather than rebuilding it from nothing. A composable's whole lifecycle is exactly this: it enters the Composition, is recomposed zero or more times, and leaves."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "\"Zero or more\" is worth pausing on. A composable that is displayed for a minute and never recomposed is not idle or broken; it simply read nothing that changed. Recomposition is not a heartbeat."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Recomposition is Compose re-executing the composables that may have changed in response to state changes, and then updating the Composition to reflect any changes. Every word of that is load-bearing: it re-executes some composables, not all of them; it does so because state changed, not on a timer; and what it updates is the description, which is not yet the screen."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That last clause is where most confusion lives, so it is worth naming the three phases now rather than later. Producing a frame runs through them in order, and composition is only the first."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Phase",
+                    "Question it answers",
+                    "What it does"
+                  ],
+                  "rows": [
+                    [
+                      "Composition",
+                      "*What* to show",
+                      "Runs composable functions and produces a description of the UI."
+                    ],
+                    [
+                      "Layout",
+                      "*Where* to put it",
+                      "Measures each element and places it, in two steps, in 2D coordinates."
+                    ],
+                    [
+                      "Drawing",
+                      "*How* it renders",
+                      "Draws the elements into a canvas — usually the device screen."
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Recomposition is a re-run of the first phase only. Whether the other two follow is a separate question with a real answer: conceptually each phase happens for every frame, but Compose avoids repeating work that would compute the same result from the same inputs, and it may skip layout and drawing entirely when the content, size and position are unchanged. So \"recomposition redraws the screen\" is not a simplification, it is wrong in both directions — a recomposition need not reach drawing, and drawing can happen with no recomposition at all when the state that changed was read during the draw phase."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Describing recomposition as rebuilding the layout tree and remeasuring and redrawing it on every state change. That describes neither what recomposition is nor what it triggers. Recomposition re-executes the affected composables and applies the difference to the Composition; measuring and drawing are later phases that Compose runs only to the extent the change actually requires."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Take a concrete interaction and follow it the whole way. A screen with a counter and a static header, plus a click."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun CounterScreen() {\n    var count by remember { mutableStateOf(0) }\n\n    Column {\n        Header(title = \"Counter\")\n        CountLabel(count = count)\n        Button(onClick = { count++ }) { Text(\"Increment\") }\n    }\n}\n\n@Composable\nprivate fun Header(title: String) {\n    Text(title, style = MaterialTheme.typography.titleLarge)\n}\n\n@Composable\nprivate fun CountLabel(count: Int) {\n    Text(\"Count: $count\")\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Before the click, initial composition has already run: `CounterScreen`, `Header`, `CountLabel` and the `Button` all executed once, the Composition holds what they emitted, and the remembered state holder sits in `CounterScreen`'s slot. Note which code read `count`. The body of `CounterScreen` did, in order to pass it as an argument. `CountLabel` did not — it read its `count` parameter, which is an ordinary `Int`, not the state object."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now the user taps the button. Four distinct things happen, in this order."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**An event.** The `onClick` lambda runs. This is ordinary code running once, because a click happened — it is not composition, and nothing is being described.",
+                    "**A write to observable state.** `count++` reads the current value and assigns a new one. Because the new value differs from the old under the default equality policy, this counts as a change.",
+                    "**Invalidation.** The runtime marks the regions that recorded a read of that state object as out of date and schedules them. Here that is the body of `CounterScreen`. Nothing has executed yet; being invalid is a recorded fact, not an action.",
+                    "**Execution and application.** On the next composition pass the runtime runs the invalidated code, `CounterScreen`'s body produces a description with `count` = 1, the difference is applied to the Composition, and the layout and drawing phases then do whatever that difference requires."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Which composables re-executed? `CounterScreen`'s body did, and `CountLabel` did because it was called with a different argument. `Header` did not: it is called with the same `String` it had before, so the runtime can skip it. The button's content lambda emits a constant `Text` and has no reason to produce anything new either. One state change, one label updated — not a screen rebuilt."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Keeping steps three and four apart is what makes the rest of this unit predictable. Invalidation is bookkeeping and is nearly free; execution is the thing that costs something and happens later, on the runtime's schedule. Several writes in quick succession do not queue up several executions of the same code — the scope is already invalid, and one pass brings it up to date with the newest values. This is why counting assignments tells you nothing about how many times a composable ran, and why neither number is the number of frames drawn."
+                },
+                {
+                  "type": "callout",
+                  "kind": "NOTE",
+                  "text": "The order above is causal, not temporal in any guaranteed way. A state write does not synchronously call your composable, so code after `count++` in the same lambda cannot assume the UI has caught up, and there is no supported way to ask \"has it recomposed yet?\". Write the next state instead of waiting for the last one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is also the concrete reason the previous unit's rule about side effects is a contract rather than advice. Consider a line placed in `CountLabel`."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nprivate fun CountLabel(count: Int) {\n    analytics.track(\"count_shown\", count)   // wrong: not an event\n    Text(\"Count: $count\")\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What does the resulting number mean? Not how many times the user saw a count, because `CountLabel` may be skipped when the value is unchanged, may run because something unrelated in its parent was invalidated, and may run as part of work that is later discarded. The count is a property of the runtime's scheduling decisions. Neither the number of executions nor their order relative to sibling composables is something the API promises, so nothing whose correctness depends on either belongs in a composable body. Work caused by a user action belongs in the event callback, where the click really did happen once; work that genuinely belongs to the composition itself belongs to Compose's effect APIs, which give it a defined lifetime, and which have their own unit later in this path."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Two refinements separate a confident answer from a recited one, and both are about not over-promising."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The first is that recomposition is optimistic. Compose expects to finish a recomposition before the parameters change again, and if they do change first it may cancel that recomposition and restart it with the new values. Work performed during an execution that gets cancelled is thrown away — which is fine for a description and not at all fine for anything that had an effect elsewhere. This is the same argument as the side-effect rule, arriving from a different direction: the runtime reserves the right to discard an execution, which is only sound if executing had no consequences beyond the description."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second is about frequency. Composable functions may be re-executed as often as every frame, for instance while an animation is running. That is not a pathology to be designed away; it is the normal operating mode of a framework whose job is to describe the current state cheaply. It does, however, mean the body is on a path that can run sixty times a second, which is what makes \"fast\" part of the contract alongside idempotent and side-effect free."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "It is worth being precise about what the phases buy, without straying into performance work that belongs later. Because the three phases are separate and each tracks its own state reads, a change can enter the pipeline at different points: state read during composition schedules a re-run of composition, state read during layout schedules layout, and state read only during drawing schedules just the draw phase. Even the measurement and placement steps within layout have separate restart scopes. That is the mechanism behind a fact worth carrying into the next lesson — the screen can change without anything recomposing — and the technique that exploits it deliberately belongs to the performance unit."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "\"How does initial composition differ from recomposition?\" is a standard opener. Say that initial composition executes the composables once to build the Composition and record what UI to emit, and that recomposition re-executes only the parts whose observed state changed and applies the difference, skipping composables whose inputs are unchanged. Then add the sentence most answers omit: composition is separate from layout and drawing, so recomposition does not remeasure and redraw the screen, and state read only during layout or drawing can change what is displayed without recomposing anything at all."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_composable_execution",
+            "lesson_observable_state",
+            "lesson_declarative_ui"
+          ],
+          "sources": [
+            {
+              "title": "Lifecycle of composables",
+              "url": "https://developer.android.com/develop/ui/compose/lifecycle"
+            },
+            {
+              "title": "Thinking in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/mental-model"
+            },
+            {
+              "title": "Jetpack Compose phases",
+              "url": "https://developer.android.com/develop/ui/compose/phases"
+            },
+            {
+              "title": "State and Jetpack Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_recomposition_scopes",
+          "title": "Recomposition Scopes and Selective Execution",
+          "summary": "The same state, read in two different places, invalidates two different amounts of your screen. What a recomposition scope actually is, why extracting a function is not the same as creating one, and why the read location rather than the write location decides the blast radius.",
+          "primarySubtopicIds": [
+            "compose_recomposition"
+          ],
+          "supportingSubtopicIds": [
+            "compose_snapshot_system",
+            "compose_state"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The previous lesson said the runtime invalidates \"the regions that recorded a read\". That phrase was doing a lot of work, and this lesson unpacks it, because the size of those regions is the difference between a keystroke updating one label and a keystroke re-executing an entire screen."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A **recomposition scope** is a region of code the runtime can re-run on its own. The compiler generates that capability for composable functions by default — the annotation that opts out of it, `@NonRestartableComposable`, exists precisely to prevent code being generated that allows a function's execution to be skipped or restarted. When state is read, the subscription is recorded against the scope that is executing at that moment. The runtime's own description of `MutableState` says it exactly: reads to `value` during the execution of a composable subscribe the currently executing recompose scope, and a write schedules recomposition of the scopes so subscribed."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "The read is recorded by whoever is running, not by whoever declared the state and not by whoever wrote to it. Two composables reading the same state object have two independent subscriptions; a composable that never reads it has none, however close to the state it sits in the source."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So compare two versions of the same screen. They render identically and differ only in where the state is read."
+                },
+                {
+                  "type": "code",
+                  "code": "// A — the screen body reads the value and passes it down.\n@Composable\nfun ProfileScreenA(repository: Repository) {\n    var name by remember { mutableStateOf(\"\") }\n\n    Column {\n        ExpensiveChart(data = repository.chartData)\n        NameField(name = name, onNameChange = { name = it })\n    }\n}\n\n@Composable\nprivate fun NameField(name: String, onNameChange: (String) -> Unit) {\n    TextField(value = name, onValueChange = onNameChange)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "code",
+                  "code": "// B — the screen body passes the holder; the field reads the value.\n@Composable\nfun ProfileScreenB(repository: Repository) {\n    val name = remember { mutableStateOf(\"\") }\n\n    Column {\n        ExpensiveChart(data = repository.chartData)\n        NameField(name = name)\n    }\n}\n\n@Composable\nprivate fun NameField(name: MutableState<String>) {\n    TextField(value = name.value, onValueChange = { name.value = it })\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "In version A the read happens in `ProfileScreenA`'s own body, because producing the argument `name = name` requires reading `value` there. That body is therefore the subscribed scope, and typing a character invalidates the whole of it. In version B `ProfileScreenB` passes the holder without reading it; the read happens inside `NameField`, so `NameField` is the subscribed scope and typing invalidates only that."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Note what did **not** change: the state lives in the same place in both versions, and it is written from the same place. Only the read moved, and that alone moved the invalidation."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Version A is not a bug, and this is the point at which people usually overcorrect. Invalidating a scope means the runtime will re-run it; it does not mean everything inside it does expensive work again. When `ProfileScreenA`'s body re-executes it calls `ExpensiveChart` with the same `data` argument, and a composable whose inputs are unchanged can be skipped rather than run. In a well-behaved tree the practical difference between A and B is often small."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "It stops being small when skipping cannot happen, and the honest summary at this stage of the path is that whether a given call is skipped depends on the types of its arguments and on how the compiler is configured — which is the subject of the next unit, not something to guess at here. What version B gives you is independence from that question: work that is never invalidated does not need to be skippable."
+                },
+                {
+                  "type": "callout",
+                  "kind": "NOTE",
+                  "text": "Two separate things are easy to merge into one. **Invalidation** is what a state write does to the scopes that read that state. **Skipping** is a decision the runtime makes about a call it reaches while executing an invalidated scope. Narrowing the read narrows invalidation; stability decides skipping. This lesson is about the first."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now the trap. Having seen that moving a read into `NameField` narrowed things, it is natural to conclude that wrapping code in something — anything — creates a boundary. It does not, and the counter-example is the most common construct in Compose."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun ProfileScreenC(repository: Repository) {\n    var name by remember { mutableStateOf(\"\") }\n\n    Column {\n        ExpensiveChart(data = repository.chartData)\n\n        Column {\n            // Still ProfileScreenC's scope. The Column changes nothing.\n            TextField(value = name, onValueChange = { name = it })\n        }\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`Column`, `Row` and `Box` are declared `inline`, so their content lambdas are compiled into the calling function rather than existing as separate functions the runtime could restart. The read of `name` inside that inner `Column` is a read inside `ProfileScreenC`, and the whole body is invalidated exactly as it would be without the wrapper. Nesting layout does not partition anything."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The same caution applies to extracting a helper: it is the *kind* of function that matters, not the act of extraction. A composable function that returns `Unit` and is not inline gives you a scope. A function that is inline does not. A composable with a non-`Unit` return type is not eligible for skipping either, which is one reason the convention is that composables emit UI rather than return it."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Written as",
+                    "Own scope?",
+                    "Effect on a read inside it"
+                  ],
+                  "rows": [
+                    [
+                      "A separate `@Composable fun` returning `Unit`",
+                      "Yes",
+                      "The read is recorded against that function, so only it is invalidated."
+                    ],
+                    [
+                      "A `Column`, `Row` or `Box` content lambda",
+                      "No — these are `inline`",
+                      "The read belongs to the enclosing composable, exactly as if the wrapper were not there."
+                    ],
+                    [
+                      "A private helper function that is not `@Composable`",
+                      "No",
+                      "It runs as part of whatever composable called it, and any read inside it is recorded there."
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is also why the distinction between passing a value and passing a holder is worth having in your hands. `name` versus `name.value` is not a style question: the first defers the read to the callee and the second performs it in the caller. The same idea appears in other shapes — passing `() -> Int` instead of an `Int`, or a lambda that the callee invokes where it needs the value — and they all do the one thing: move the read closer to the code that actually depends on it. The default should still be plain values, because they are simpler to read, preview and test; deferring is a deliberate move for a place that has a reason."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Restructuring a screen around scopes before knowing there is a problem, and sometimes for a mistaken reason — for example wrapping content in extra layouts that create no scope at all. The reasoning here is for deciding where to read state as you write, and for explaining a measured problem afterwards. It is not a reason to thread `State` objects through an API that reads better with values."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The question worth being able to answer is why Compose keys invalidation on the read rather than the write, since the write is what actually happens. The answer is that the write does not know anything useful. A state object has no idea which parts of a UI display it; only the act of reading, performed by code the runtime was executing at the time, establishes that relationship. Recording reads is therefore the only way to get invalidation that is proportional to what is affected instead of proportional to the size of the tree."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "It also explains something that otherwise looks arbitrary: why a read outside composition creates no dependency at all. Reading `count` inside an `onClick` lambda gives you the current value and subscribes nothing, because no scope was executing. That is not a limitation to work around — it is what makes event handlers safe to read state in."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Where this reasoning goes next is worth flagging so it is not reinvented. Because layout and drawing track their own reads, the same technique applies one level further: a value read only where it is used for placement or painting can change the screen without invalidating any composition scope at all. That is the deferred-read technique, it belongs to the performance unit, and it is the same principle as this lesson rather than a new one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A caution to carry with all of it. It is tempting to want an exact number — how many times did this composable run? — and the framework deliberately does not promise one. Executions can be coalesced when several writes land together, cancelled and restarted when values change mid-pass, and skipped when inputs are unchanged. Reason about which scopes a change *can* invalidate, which is well defined, rather than about a count, which is not."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Expect to be asked how state reads affect recomposition, often as a select-all-that-apply. The two true statements are that a composable reading changing `State` can be scheduled for recomposition, and that moving a read into a smaller child narrows what is invalidated. The two tempting falsehoods are that everything on screen recomposes when any state changes, and that reading state somehow consumes or untracks it. If you can then explain that the read location rather than the write location defines the scope, and that wrapping code in a `Column` creates no scope because it is inline, you are well past the level the question is testing."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_composition_and_recomposition",
+            "lesson_observable_state"
+          ],
+          "sources": [
+            {
+              "title": "Lifecycle of composables",
+              "url": "https://developer.android.com/develop/ui/compose/lifecycle"
+            },
+            {
+              "title": "State and Jetpack Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state"
+            },
+            {
+              "title": "Jetpack Compose phases",
+              "url": "https://developer.android.com/develop/ui/compose/phases"
+            },
+            {
+              "title": "Thinking in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/mental-model"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_recomposition_cost",
+          "title": "Recomposition Is Not the Problem",
+          "summary": "A short lesson with one job: replace \"avoid recomposition\" with \"avoid unnecessary expensive work\", so that the units on stability and derived state are read as tools for a real problem rather than as ways to drive a counter down.",
+          "primarySubtopicIds": [
+            "compose_recomposition"
+          ],
+          "supportingSubtopicIds": [
+            "compose_recomposition_performance"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Having spent two lessons on what invalidates what, it is easy to draw the wrong conclusion: that recomposition is a cost to be minimised and that a composable running often is a defect waiting to be fixed. That belief is common, it is wrong, and it does real damage — it turns the next two units into a checklist of annotations applied to code that never had a problem."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Recomposition is how Compose works. It is not an error path, an unfortunate consequence of the design, or something the framework would rather not do. Composable functions may be re-executed as often as every frame — while an animation runs, that is exactly what happens — and the runtime is built on the assumption that re-running a description is cheap. Running frequently is the system operating as designed."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A recomposition count is not a defect count. Knowing that a composable ran forty times tells you how often it was asked to describe itself; it says nothing about whether that was expensive, whether it caused a dropped frame, or whether anything reached the screen. The number is an observation, and an observation is not yet a finding."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What actually costs something is the work performed during composition. A composable body is supposed to be a description: read some parameters, format a string, decide which of two branches to emit, call some children. Repeating that is close to free by design. The cost appears when something that is not description has been placed on that path, because then every execution pays for it, and the path can run once per frame."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "This is description — repeating it is cheap",
+                    "This is work — repeating it is not"
+                  ],
+                  "rows": [
+                    [
+                      "Reading parameters and formatting them into a string",
+                      "Sorting or filtering a thousand-element list on every execution"
+                    ],
+                    [
+                      "Choosing between branches based on state",
+                      "Parsing, decoding, or deserialising on every execution"
+                    ],
+                    [
+                      "Calling child composables and passing values down",
+                      "Allocating large objects that a `remember` would have kept"
+                    ],
+                    [
+                      "Deciding a colour or a size from the current state",
+                      "Blocking I/O, disk reads, or anything that waits"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The right-hand column is not expensive because recomposition happens. It is expensive because it was put somewhere that runs repeatedly, and it would be just as wrong in a `View` that re-bound on every frame. The fix is almost never to stop the recomposition; it is to move the work off the path, which is what the unit on keeping work out of composition is about."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "So when is an observed recomposition worth investigating? The useful question is not how many, but what happened as a result, and there are three kinds of evidence that turn an observation into something worth acting on."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**A symptom a user could notice.** Jank while scrolling, a laggy text field, an animation that stutters, a screen that takes too long to appear. Without one of these, a high count is trivia.",
+                    "**Expensive work identified on the recomposing path.** Something in the body that belongs in the right-hand column above — not merely a body that runs often.",
+                    "**A causal link between the two.** The work is on the path that runs when the symptom appears, and the symptom tracks it. This is the step that is skipped most often and the one that prevents optimising code that was never the cause."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Held against those, most reports of \"too much recomposition\" evaporate. A composable re-executing on every frame of an animation and emitting two `Text`s is doing what it should. A composable re-executing twice per keystroke and re-sorting a list each time is a problem — and it is a problem because of the sort, which would be worth fixing even if it ran half as often."
+                },
+                {
+                  "type": "code",
+                  "code": "// The cost is the sort, not the recomposition. Every execution pays for it.\n@Composable\nfun ContactList(contacts: List<Contact>, query: String) {\n    val visible = contacts\n        .filter { it.name.contains(query, ignoreCase = true) }\n        .sortedBy { it.name }\n\n    LazyColumn {\n        items(visible) { ContactRow(it) }\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Note what is and is not wrong here. It is not wrong that `ContactList` recomposes when `query` changes — it must, because the visible set genuinely differs. It is wrong that the full filter and sort is recomputed by every execution of this body, including executions caused by something else changing entirely. The list is unchanged between most of those runs and the result is identical, so the work is not just repeated but repeated for nothing."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The tools for that are the subject of later units, and are named here only so the problem has a visible destination: caching a computation against the inputs it depends on, describing to the runtime which of your types it can compare and therefore skip, deriving one piece of state from others so that consumers wake up only when the result changes, and moving work out of the UI layer entirely when it was never a UI concern. Each solves a specific version of \"this ran again and should not have needed to\". None of them is a reason to reach for an annotation before there is a symptom."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Two opposite errors, and the second is the one this lesson creates if it is read carelessly. The first is treating any recomposition as a bug and contorting code to prevent it. The second is concluding that recomposition is free and that performance can be ignored — it cannot: composable bodies are on a path that can run every frame, which is exactly why \"fast\" is part of the contract. The position between them is that frequency is expected and cost is the variable you control."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "If you are asked how to reduce unnecessary recomposition, resist the checklist. Say that recomposition is the normal operating mode and that the target is unnecessary *work*, then give the two levers this unit has actually established: read state close to where it is used, so less is invalidated, and keep expensive computation out of composable bodies. Naming stability and memoization as the next tools is good; leading with them, before saying what problem they solve, is the answer that sounds rehearsed."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_composition_and_recomposition",
+            "lesson_recomposition_scopes"
+          ],
+          "sources": [
+            {
+              "title": "Thinking in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/mental-model"
+            },
+            {
+              "title": "Jetpack Compose phases",
+              "url": "https://developer.android.com/develop/ui/compose/phases"
+            },
+            {
+              "title": "Lifecycle of composables",
+              "url": "https://developer.android.com/develop/ui/compose/lifecycle"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
     }
   ]
 }

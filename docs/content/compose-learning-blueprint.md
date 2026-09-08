@@ -1118,11 +1118,14 @@ three findings matter to Unit 6 and to E23-07:
   often as its input (no consumer executions removed at all), the three key failures, and
   the stale captured input. The probe was deleted; the numbers are recorded in the plan's
   authoring outcomes.
-- **`derivedStateOf` filters consumers, not calculations.** The measurement makes the
-  distinction concrete and the Lessons state it explicitly, because "`derivedStateOf`
-  avoids recomputation" is the plausible and wrong summary. Unit 6 inherits this: the
-  snapshot lesson explains *why* the consumer is spared, and must not re-teach the decision
-  rule.
+- **`derivedStateOf` filters consumers, not calculations — and it is pulled, not pushed.**
+  The measurement makes the first distinction concrete, because "`derivedStateOf` avoids
+  recomputation" is the plausible and wrong summary. Review then corrected the second: a
+  dependency write *invalidates* the derived value and the calculation re-runs when it is
+  next needed, so coalesced writes produce one recalculation and an unread derived state
+  produces none. Unit 6 inherits both: the snapshot lesson explains *why* the consumer is
+  spared, must not re-teach the decision rule, and must not state any "happens on every
+  write" rule that a batching schedule would disprove.
 - **Unit 5 states no benchmark results.** Its cost reasoning is explanatory — where work
   sits and how often it repeats — and the execution counts it does report are labelled as
   measurements of this project's toolchain rather than as performance claims. Unit 6 should

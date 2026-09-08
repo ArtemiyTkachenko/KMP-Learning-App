@@ -728,25 +728,41 @@ separately, so "the body ran and the calculation did not" is an observation.
 
 | Claim a Lesson makes | Measured result |
 | --- | --- |
-| A derived value whose result changes less often than its input spares its readers | Index driven 0 → 1 → 2 → 3 → 4: the derived calculation ran 5 times, the scope reading it executed 2 times — initial composition and the single false → true flip. The three later index changes invalidated nobody |
-| `derivedStateOf` does not reduce how often the calculation runs | Same run: 5 calculations for 4 input changes plus the initial composition, while the consumer ran twice |
+| A derived value whose result changes less often than its input spares its readers | Index driven 0 → 1 → 2 → 3 → 4, settling after each write: the derived calculation ran 5 times, the scope reading it executed 2 times — initial composition and the single false → true flip. The three later index changes invalidated nobody |
+| `derivedStateOf` does not memoize the calculation away | Same run: 5 calculations for 4 settled input changes plus the initial composition, while the consumer ran twice |
+| The calculation is **pulled, not pushed** — a dependency write invalidates the value, and recalculation happens when it is next needed | Four writes with no chance for the runtime to settle between them produced **1** recalculation, not 4. A derived state created and remembered but never read ran its calculation **0** times across the initial composition and four dependency writes. Confirmed in `DerivedState.kt` in the resolved `runtime:1.11.2` sources: `currentRecord` returns the cached record when `isValid` holds, and is entered from a read of `value` or from a validity check — never from the write itself |
 | A trivial derived expression removes nothing | A label rebuilt from an index that changed at every step: the consumer executed 5 times both with and without the wrapper, and the wrapper added a derived-state object and a comparison per change |
 | A missing key serves a stale result | An unkeyed `remember` ran its calculation once and never again, across every later execution of the body |
 | A correctly keyed calculation runs when, and only when, its dependency differs | Keyed on the one value it reads: ran again on that value's change, did not run when an unrelated value changed |
 | An irrelevant key recalculates for nothing | Keyed on one real dependency and one unrelated value: ran for both, producing the same result |
 | Mutating an object used as a key invalidates nothing | The enclosing body executed twice more after the key object was mutated; the calculation did not run again, and the rendered text kept the pre-mutation value |
 | A `derivedStateOf` capturing a non-`State` input goes stale | Threshold captured as an ordinary `Int`, changed from 1 to 5, index then moved to 2: the flag reported `true`, still comparing against the captured 1 |
+| Every captured non-`State` value needs a key, not just the one the example is about | Not measured — found in review. The Lesson's first shipped fix keyed the `remember` on `threshold` alone while the same lambda also captured `listState`, so a replaced `LazyListState` would have left the derived value watching the previous list. The fix is `remember(listState, threshold)`, and the Lesson now names the under-specified key as the L5.1 failure arriving somewhere harder to see |
 
 ### The distinction the measurement forced
 
 The single most important correction the probe produced is that **`derivedStateOf` filters
 consumers, not calculations**. The first draft of L5.2 was written around the natural
 shorthand — that the wrapper stops the derived value being recomputed — which the
-measurement contradicts directly: the calculation ran on every dependency change in every
-variant tested. The shipped Lesson states the distinction in Core, restates it in the
-comparison table's middle column, and makes it one of the three promises the API does not
-make. Unit 6 should preserve it: the snapshot lesson explains *why* the consumer is spared
-and must not re-teach this decision rule.
+measurement contradicts directly. The shipped Lesson states the distinction in Core,
+restates it in the comparison table's middle column, and makes it one of the three promises
+the API does not make. Unit 6 should preserve it: the snapshot lesson explains *why* the
+consumer is spared and must not re-teach this decision rule.
+
+**The second correction is to how that distinction is stated, and it came from review.**
+The first shipped wording said the calculation "runs whenever a state object it read
+changes", which reads as an unconditional per-write rule and is not one. Recalculation is
+pull-based: a write invalidates the derived value, and the calculation re-runs when the
+value is next read or when the runtime checks whether a reader must be invalidated. The
+original probe wrote once and waited for idle each time, so it could only ever observe one
+calculation per change — the schedule produced the rule, not the runtime. Re-measured
+deliberately, coalesced writes produced one recalculation for four writes and an unobserved
+derived state produced none at all. L5.2 now teaches invalidation-then-evaluation, carries
+both counts in Senior, and says plainly that an execution count for a derived state
+describes the observation schedule as much as the code. **This is a general warning for
+Unit 6:** any claim of the form "X happens on every write" should be checked against a
+schedule that batches writes, because a probe that settles after each one cannot
+distinguish eager from lazy.
 
 A first-draft ordering mistake is worth recording for the same reason E23-04 recorded
 its two: the initial probe placed a direct-calculation reader and a derived reader in the

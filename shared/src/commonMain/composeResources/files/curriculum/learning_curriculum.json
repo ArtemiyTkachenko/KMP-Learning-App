@@ -2924,7 +2924,7 @@
                   "items": [
                     "**A direct calculation filters nothing.** The value is recomputed by every execution of the body, whatever caused that execution — the first composition, a caller passing a changed parameter, or a write to state the scope read.",
                     "**`remember(keys)` filters work.** The body executes as often as it did before; the calculation inside it does not.",
-                    "**`derivedStateOf` filters notifications.** The calculation runs whenever a state object it read changes; what it withholds is the invalidation of whoever is reading the derived result."
+                    "**`derivedStateOf` filters notifications.** A change to a state object the calculation read invalidates the derived value, and the calculation re-runs when that value is next needed; what the wrapper withholds is the invalidation of whoever is reading the result."
                   ]
                 },
                 {
@@ -2981,7 +2981,7 @@
                     ],
                     [
                       "`remember { derivedStateOf { ... } }`",
-                      "Whenever a state object the calculation read changes",
+                      "When a dependency has changed and the value is next read or checked",
                       "Only when the calculation's result differs from the one that consumer last read",
                       "An input that changes far more often than the result it feeds"
                     ]
@@ -2989,11 +2989,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The middle column is where the misconception lives. `derivedStateOf` does not make the calculation run less often. In the measurement below it ran on every single input change; what it removed was executions of the reader."
+                  "text": "The middle column is where the misconception lives. `derivedStateOf` does not memoize the calculation away: once a dependency has changed, the calculation runs again the next time the value is consulted. What the measurement below removed was executions of the reader, not of the calculation."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Measured on this project's JVM target: a composable scope read a derived `showButton` while an index was driven 0 → 1 → 2 → 3 → 4. The derived calculation ran five times — once per change plus the initial composition. The scope reading it executed twice: once initially, and once when the Boolean flipped at 0 → 1. The three later index changes invalidated nobody."
+                  "text": "Measured on this project's JVM target: a composable scope read a derived `showButton` while an index was driven 0 → 1 → 2 → 3 → 4, letting the runtime settle after each write. The derived calculation ran five times — the initial composition plus one per settled change. The scope reading it executed twice: once initially, and once when the Boolean flipped at 0 → 1. The three later index changes invalidated nobody. That count belongs to this schedule rather than to the API, for a reason the deeper section takes up."
                 },
                 {
                   "type": "paragraph",
@@ -3015,7 +3015,7 @@
                 {
                   "type": "callout",
                   "kind": "COMMON_MISTAKE",
-                  "text": "Three promises `derivedStateOf` does not make. It does not stop the calculation from running — it runs on every dependency change. It does not eliminate recomposition — the reader still executes whenever the result genuinely differs, and every other scope on the screen is untouched either way. And it does not make an expensive computation affordable: putting a costly calculation inside a derived state means paying for it on every input change while *hoping* the result repeats. An expensive calculation behind a fast-changing input is a memoization or a placement problem, and this is neither tool."
+                  "text": "Three promises `derivedStateOf` does not make. It does not memoize the calculation away — a changed dependency means the calculation runs again the next time the value is needed. It does not eliminate recomposition — the reader still executes whenever the result genuinely differs, and every other scope on the screen is untouched either way. And it does not make an expensive computation affordable: a costly calculation inside a derived state is paid for again on every dependency change that gets observed, while you *hope* the result repeats. An expensive calculation behind a fast-changing input is a memoization or a placement problem, and this is neither tool."
                 },
                 {
                   "type": "paragraph",
@@ -3036,16 +3036,24 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Second, the object lives as long as its `remember` does — the presence of that call site in the Composition — and its calculation captures whatever was in scope when it was created. That capture is where correctness goes wrong, because a captured ordinary value is frozen at creation while a captured `State` is read afresh on every recalculation."
+                  "text": "Second, the object lives as long as its `remember` does — the presence of that call site in the Composition — and its calculation captures **everything** that was in scope when it was created. That capture is where correctness goes wrong, because a captured ordinary value is frozen at creation while a captured `State` is read afresh on every recalculation. Note the word *everything*: the trap is not one input, it is every non-`State` value the lambda closes over."
                 },
                 {
                   "type": "code",
-                  "code": "@Composable\nfun ScrollFlag(listState: LazyListState, threshold: Int) {\n    // Wrong: `threshold` is an ordinary Int, captured once when the derived\n    // state was created, and the `remember` is not keyed on it.\n    val past by remember {\n        derivedStateOf { listState.firstVisibleItemIndex >= threshold }\n    }\n\n    ScrollBanner(visible = past)\n}",
+                  "code": "@Composable\nfun ScrollFlag(listState: LazyListState, threshold: Int) {\n    // Wrong: `listState` and `threshold` are both ordinary values, captured\n    // once when the derived state was created, and neither is a key.\n    val past by remember {\n        derivedStateOf { listState.firstVisibleItemIndex >= threshold }\n    }\n\n    ScrollBanner(visible = past)\n}",
                   "language": "kotlin"
                 },
                 {
                   "type": "paragraph",
-                  "text": "Measured on this project's JVM target: with the threshold changed from 1 to 5 and the index then moved to 2, the flag reported `true`. Two is not past five — the derived state was still comparing against the 1 it had captured. The fix is either to key the `remember` on the captured input, `remember(threshold)`, or to make the input snapshot state so the calculation reads it instead of closing over it. Any example with a non-`State` input is worth checking this way before it is trusted, including examples you find written down."
+                  "text": "Measured on this project's JVM target: with the threshold changed from 1 to 5 and the index then moved to 2, the flag reported `true`. Two is not past five — the derived state was still comparing against the 1 it had captured. The fix is to key the `remember` on every captured value, `remember(listState, threshold)`, or to make those inputs snapshot state so the calculation reads them instead of closing over them. Keying on `threshold` alone would look like a fix and would not be one: `listState` is captured on exactly the same terms, so a caller that supplies a different `LazyListState` would keep a derived value still watching the previous list's scroll position. That is the under-specified key of the first lesson in this unit, arriving in a place where it is much harder to see."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Third, the calculation is pulled rather than pushed, and this is the part that corrects the cost model. A write to a dependency marks the derived value invalid; nothing is recalculated until that value is next read, or until the runtime checks whether a scope that read it has to be invalidated. Two measurements on this project's JVM target make the difference concrete. Four writes with no opportunity for the runtime to settle between them produced **one** recalculation rather than four. A derived state that was created and remembered but whose value was never read ran its calculation **zero** times, across the initial composition and four subsequent writes to its dependency."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So \"the calculation runs on every dependency change\" is a useful first approximation and not a rule. The honest version is that a dependency change invalidates the value and the calculation re-runs the next time somebody needs it, which means an execution count for a derived state describes the observation schedule as much as it describes the code. The practical advice is unchanged and now rests on something true: what `derivedStateOf` saves is consumer invalidation, and it is not the tool for making an expensive calculation cheap."
                 },
                 {
                   "type": "paragraph",
@@ -3054,7 +3062,7 @@
                 {
                   "type": "callout",
                   "kind": "INTERVIEW_FOCUS",
-                  "text": "Expect the scroll-to-top question, and expect it to be a trap for anyone who learned the example rather than the rule. Lead with the frequency mismatch — the index changes with every scrolled row, the Boolean changes twice — and say precisely what is saved: readers of the derived value are not invalidated while the result is unchanged. Then give the counter-case unprompted, because it is what separates understanding from recall — combining two state values into a result that changes as often as they do is not a use for `derivedStateOf`, it is overhead. If you can add that the calculation still runs on every dependency change, you have described the API rather than repeated the slogan."
+                  "text": "Expect the scroll-to-top question, and expect it to be a trap for anyone who learned the example rather than the rule. Lead with the frequency mismatch — the index changes with every scrolled row, the Boolean changes twice — and say precisely what is saved: readers of the derived value are not invalidated while the result is unchanged. Then give the counter-case unprompted, because it is what separates understanding from recall — combining two state values into a result that changes as often as they do is not a use for `derivedStateOf`, it is overhead. If you can add that the calculation itself is not saved — a changed dependency invalidates the value and the calculation re-runs when it is next needed — you have described the API rather than repeated the slogan."
                 }
               ]
             }

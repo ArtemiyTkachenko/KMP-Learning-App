@@ -3,6 +3,7 @@ package org.artkachenko.kmp_learning_app.topic_study.topics
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingContext
 import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationRationale
 import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationTarget
+import org.artkachenko.kmp_learning_app.lesson_study.ContinueLearningTarget
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 
 internal sealed interface TopicBrowserUiState {
@@ -48,6 +49,19 @@ internal sealed interface TopicBrowserUiState {
          * not a search result, and its reason is not searchable text.
          */
         val recommendedNext: RecommendedNextUiModel? = null,
+        /**
+         * The next Lesson to read, the fact that there is none left, or `null`.
+         *
+         * A third piece of optional enrichment beside the two above, on the same terms: unreadable
+         * learning content, an unreadable study record, or a curriculum with nothing to study all
+         * leave it `null` and cost the learner nothing else. It answers a third question — "what
+         * should I read next?" — from a third pair of inputs, so it is neither derived from nor
+         * suppressed by [continueStudying] or [recommendedNext], and the three may point at three
+         * different places.
+         *
+         * Absent while a query is active, for the reason the other two are.
+         */
+        val continueLearning: ContinueLearningUiModel? = null,
     ) : TopicBrowserUiState
 
     data object Empty : TopicBrowserUiState
@@ -115,6 +129,34 @@ internal data class RecommendedNextUiModel(
      */
     val topicName: String? = null,
 )
+
+/**
+ * Continue Learning as the browser presents it.
+ *
+ * Only two of the domain's three outcomes are representable, which is the deliberate presentation
+ * decision: `ContinueLearningOutcome.Empty` — a curriculum publishing no ACTIVE Lesson at all — maps
+ * to no model and therefore to no card, because a learner with nothing to read is not helped by a
+ * card telling them so, and the catalogue rows already carry the per-Topic availability marker.
+ * [Complete] does get a card, because "you have finished" is a fact about the learner that is worth
+ * stating and must never be shown as an arbitrary Lesson to open.
+ */
+internal sealed interface ContinueLearningUiModel {
+    /**
+     * An unstudied Lesson to open, named as the curriculum names it *now*.
+     *
+     * [target] is the policy's own decision, copied verbatim. The two titles are resolved from the
+     * same publisher-owned Units the policy walked, so a re-authored Lesson reads correctly here
+     * with nothing stored and nothing migrated.
+     */
+    data class Next(
+        val target: ContinueLearningTarget,
+        val lessonTitle: String,
+        val unitTitle: String,
+    ) : ContinueLearningUiModel
+
+    /** Every current ACTIVE Lesson is studied. There is nothing to open, so nothing is offered. */
+    data object Complete : ContinueLearningUiModel
+}
 
 internal data class SubtopicSearchResult(
     val subtopicId: String,

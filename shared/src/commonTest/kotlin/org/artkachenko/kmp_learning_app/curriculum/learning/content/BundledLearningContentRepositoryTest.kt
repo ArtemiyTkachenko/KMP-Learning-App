@@ -31,6 +31,26 @@ internal class BundledLearningContentRepositoryTest {
         assertEquals(listOf("unit_b", "unit_a"), units.map { it.id })
     }
 
+    /**
+     * The fixture interleaves Topics — Android UI, coroutines, then Android UI again — so a result
+     * that grouped Units by Topic, or sorted them by ID, would differ from the authored sequence.
+     * That is the property Continue Learning walks, so it is asserted rather than assumed.
+     */
+    @Test
+    fun everyActiveUnitIsReturnedInGlobalAuthoredOrderAcrossTopics() = runTest {
+        val units = repository().getActiveUnits()
+
+        assertEquals(listOf("unit_b", "unit_c", "unit_a"), units.map { it.id })
+    }
+
+    @Test
+    fun theGlobalActiveUnitListExcludesDeprecatedUnits() = runTest {
+        val units = repository().getActiveUnits()
+
+        assertEquals(emptyList(), units.filter { it.status != ContentStatus.ACTIVE })
+        assertEquals(null, units.firstOrNull { it.id == "unit_d" })
+    }
+
     @Test
     fun activeUnitsAreScopedToTheirHomeTopic() = runTest {
         val repository = repository()
@@ -78,6 +98,7 @@ internal class BundledLearningContentRepositoryTest {
         var loads = 0
         val repository = repository(onLoad = { loads++ })
 
+        repository.getActiveUnits()
         repository.getActiveUnitsByTopic("android_ui")
         repository.getUnitById("unit_a")
         repository.getLessonById("lesson_side_effects")
@@ -102,6 +123,7 @@ internal class BundledLearningContentRepositoryTest {
         assertIs<LearningContentLoadFailure.Validation>(failure.failure)
 
         // No query may quietly succeed with partial content once loading has failed.
+        assertFailsWith<LearningContentLoadException> { repository.getActiveUnits() }
         assertFailsWith<LearningContentLoadException> { repository.getActiveUnitsByTopic("unknown_topic") }
         assertFailsWith<LearningContentLoadException> { repository.getUnitById("unit_a") }
         assertFailsWith<LearningContentLoadException> { repository.getLessonById("lesson_side_effects") }

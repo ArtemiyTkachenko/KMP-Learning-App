@@ -230,6 +230,9 @@
     <string name="learning_lesson_mark_studied">Mark as studied</string>
     <string name="learning_lesson_unmark_studied">Mark as not studied</string>
     <string name="learning_study_progress_unavailable">Study progress unavailable</string>
+    <string name="continue_learning_title">Continue learning</string>
+    <string name="continue_learning_complete_title">All lessons studied</string>
+    <string name="continue_learning_complete_message">You have studied every lesson available.</string>
     <plurals name="learning_unit_lessons_studied">
         <item quantity="one">%1$d of %2$d lesson studied</item>
         <item quantity="other">%1$d of %2$d lessons studied</item>

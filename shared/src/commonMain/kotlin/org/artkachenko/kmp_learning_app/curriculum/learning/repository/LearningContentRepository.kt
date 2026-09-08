@@ -21,6 +21,16 @@ import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
  * than a runtime condition a caller can recover from.
  */
 internal interface LearningContentRepository {
+    /**
+     * Every ACTIVE Unit in the document, in global authored order.
+     *
+     * The order is the whole point of the query: [getActiveUnitsByTopic] answers "what is there to
+     * read about this Topic?", and grouping its results back together would reconstruct a sequence
+     * out of Topic order rather than reading the authored one. Continue Learning needs the
+     * curriculum's own pedagogical sequencing across Topics, which only the undivided document has.
+     */
+    suspend fun getActiveUnits(): List<LearningUnit>
+
     /** ACTIVE Units whose home Topic is [topicId], in authored order. */
     suspend fun getActiveUnitsByTopic(topicId: String): List<LearningUnit>
 

@@ -74,6 +74,11 @@ internal class FakeLearningContentRepository(
     var lessonReadIds = mutableListOf<String>()
         private set
 
+    override suspend fun getActiveUnits(): List<LearningUnit> {
+        failIfRequested()
+        return allUnits.filter { it.status == ContentStatus.ACTIVE }
+    }
+
     override suspend fun getActiveUnitsByTopic(topicId: String): List<LearningUnit> {
         failIfRequested()
         return allUnits.filter { it.topicId == topicId && it.status == ContentStatus.ACTIVE }

@@ -9,6 +9,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
@@ -33,6 +34,7 @@ import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingTarget
 import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationRationale
 import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationTarget
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
+import org.artkachenko.kmp_learning_app.lesson_study.ContinueLearningTarget
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 import org.artkachenko.kmp_learning_app.ui.topicVisualMarkerTag
 
@@ -1344,6 +1346,217 @@ internal class TopicBrowserScreenTest {
 
         assertEquals("topic_stable_id", route.topicId)
         assertEquals("subtopic_stable_id", route.subtopicId)
+    }
+
+    // --- Continue Learning (E22-05) -----------------------------------------------------------
+
+    @Test
+    fun theContinueLearningCardNamesTheLessonAndTheUnitItBelongsTo() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                        continueLearning = ContinueLearningUiModel.Next(
+                            target = ContinueLearningTarget("unit_compose", "lesson_recomposition"),
+                            lessonTitle = "Recomposition",
+                            unitTitle = "Thinking in Compose",
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(TopicBrowserContinueLearningTag).assertIsDisplayed()
+        // Named apart from the other shortcut, and reading as its own thing rather than a variant.
+        onNodeWithText("Continue learning").assertIsDisplayed()
+        onNodeWithText("Continue studying").assertDoesNotExist()
+        onNodeWithText("Recomposition").assertIsDisplayed()
+        onNodeWithText("Thinking in Compose").assertIsDisplayed()
+    }
+
+    @Test
+    fun theContinueLearningCardIsOneTargetEmittingItsStableIds() = runComposeUiTest {
+        var clicked: ContinueLearningTarget? = null
+        val target = ContinueLearningTarget("unit_compose", "lesson_recomposition")
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                        continueLearning = ContinueLearningUiModel.Next(
+                            target = target,
+                            lessonTitle = "Recomposition",
+                            unitTitle = "Thinking in Compose",
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                    onContinueLearningClick = { clicked = it },
+                )
+            }
+        }
+
+        onNodeWithTag(TopicBrowserContinueLearningTag)
+            .assertHasClickAction()
+            .assertHeightIsAtLeast(MinimumTouchTarget)
+            .performClick()
+
+        assertEquals(target, clicked)
+    }
+
+    /**
+     * Complete has nothing to open, so it must not be tappable. A card that looked like the Next
+     * card but did nothing would be worse than no card at all.
+     */
+    @Test
+    fun aCompletedCourseIsStatedWithoutOfferingADestination() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                        continueLearning = ContinueLearningUiModel.Complete,
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(TopicBrowserContinueLearningTag)
+            .assertIsDisplayed()
+            .assertHasNoClickAction()
+        onNodeWithText("All lessons studied").assertIsDisplayed()
+        onNodeWithText("You have studied every lesson available.").assertIsDisplayed()
+    }
+
+    @Test
+    fun noContinueLearningModelLeavesTheCatalogueExactlyAsItWas() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(TopicBrowserContinueLearningTag).assertDoesNotExist()
+        onNodeWithText("Continue learning").assertDoesNotExist()
+        onNodeWithText("Kotlin").assertIsDisplayed()
+    }
+
+    @Test
+    fun theContinueLearningCardIsAbsentFromSearchResults() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                        query = "kotlin",
+                        topicMatches = listOf(topicItem("kotlin", "Kotlin")),
+                        // The ViewModel already withholds it while a query is active; this asserts
+                        // the screen cannot reintroduce it even if one arrives.
+                        continueLearning = ContinueLearningUiModel.Next(
+                            target = ContinueLearningTarget("unit_compose", "lesson_recomposition"),
+                            lessonTitle = "Recomposition",
+                            unitTitle = "Thinking in Compose",
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(TopicBrowserContinueLearningTag).assertDoesNotExist()
+        onNodeWithText("Kotlin").assertIsDisplayed()
+    }
+
+    /**
+     * The three guided cards coexist and stay separate: three headings, three targets, and the
+     * Continue Studying card is not altered by the reading shortcut sitting under it.
+     */
+    @Test
+    fun allThreeGuidedCardsRenderTogetherAndStaySeparatelyNamed() = runComposeUiTest {
+        var continueStudyingTarget: ContinueStudyingTarget? = null
+        var continueLearningTarget: ContinueLearningTarget? = null
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                        continueStudying = ContinueStudyingContext(
+                            target = ContinueStudyingTarget.Topic("kotlin"),
+                            scopeName = "Kotlin",
+                        ),
+                        recommendedNext = RecommendedNextUiModel(
+                            target = LearningRecommendationTarget.Topics,
+                            rationale = LearningRecommendationRationale.NewUser,
+                        ),
+                        continueLearning = ContinueLearningUiModel.Next(
+                            target = ContinueLearningTarget("unit_compose", "lesson_recomposition"),
+                            lessonTitle = "Recomposition",
+                            unitTitle = "Thinking in Compose",
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                    onContinueStudyingClick = { continueStudyingTarget = it },
+                    onContinueLearningClick = { continueLearningTarget = it },
+                )
+            }
+        }
+
+        onNodeWithTag(TopicBrowserRecommendedNextTag).assertIsDisplayed()
+        onNodeWithText("Recommended next").assertIsDisplayed()
+        onNodeWithTag(TopicBrowserContinueStudyingTag).assertIsDisplayed()
+        onNodeWithText("Continue studying").assertIsDisplayed()
+        onNodeWithTag(TopicBrowserContinueLearningTag).assertIsDisplayed()
+        onNodeWithText("Continue learning").assertIsDisplayed()
+
+        // Each card emits only its own target: the two continue shortcuts are not one control.
+        onNodeWithTag(TopicBrowserContinueLearningTag).performClick()
+        assertEquals(ContinueLearningTarget("unit_compose", "lesson_recomposition"), continueLearningTarget)
+        assertEquals(null, continueStudyingTarget)
+
+        onNodeWithTag(TopicBrowserContinueStudyingTag).performClick()
+        assertEquals(ContinueStudyingTarget.Topic("kotlin"), continueStudyingTarget)
+    }
+
+    @Test
+    fun theContinueLearningCardStaysReadableOnACompactScreen() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                Box(Modifier.size(320.dp, 640.dp)) {
+                    TopicBrowserScreen(
+                        state = TopicBrowserUiState.Content(
+                            topics = listOf(topicItem("kotlin", "Kotlin")),
+                            continueLearning = ContinueLearningUiModel.Next(
+                                target = ContinueLearningTarget("unit_compose", "lesson_recomposition"),
+                                lessonTitle = "State hoisting and unidirectional data flow",
+                                unitTitle = "Thinking in Compose",
+                            ),
+                        ),
+                        onTopicClick = {},
+                        onRetry = {},
+                        topWindowInsets = WindowInsets(0, 0, 0, 0),
+                    )
+                }
+            }
+        }
+
+        onNodeWithTag(TopicBrowserContinueLearningTag)
+            .assertIsDisplayed()
+            .assertHeightIsAtLeast(MinimumTouchTarget)
+        onNodeWithText("State hoisting and unidirectional data flow").assertIsDisplayed()
+        onNodeWithText("Kotlin").assertIsDisplayed()
     }
 }
 

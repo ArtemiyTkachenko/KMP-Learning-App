@@ -632,7 +632,7 @@
                       "`var count = 0`",
                       "No",
                       "No",
-                      "A variable reset on every execution that notifies nobody. The screen never updates and the value never accumulates."
+                      "A variable nothing observes. The click really does change it, and it keeps changing — Kotlin's closure captures the variable itself, so repeated clicks accumulate in memory — but no dependency was recorded, so nothing is scheduled and the screen never changes. It returns to its initial value whenever this body executes again."
                     ],
                     [
                       "`val config = remember { loadConfig() }`",
@@ -1012,7 +1012,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Now consider the decision this lesson is really about. A settings screen has a switch. Where should `enabled` live? Work through the three tests. If only the switch reads it, the switch can own it. If a summary line elsewhere on the screen also shows it, the lowest common parent of the two is the screen, so it belongs there. If a save button has to submit it, the writer is higher again and it goes with whatever owns the form. If it must survive rotation, it needs an owner that survives rotation."
+                  "text": "Now consider the decision this lesson is really about. A settings screen has a switch. Where should `enabled` live? Work through the three tests. If only the switch reads it, the switch can own it. If a summary line elsewhere on the screen also shows it, the lowest common parent of the two is the screen, so it belongs there. If a save button has to submit it, the writer is higher again and it goes with whatever owns the form. And if it must survive a rotation, nothing moves at all: that is a question about the persistence mechanism, not about the owner, and the switch keeps the state with `rememberSaveable`."
                 },
                 {
                   "type": "paragraph",
@@ -1034,7 +1034,7 @@
                 {
                   "type": "callout",
                   "kind": "COMMON_MISTAKE",
-                  "text": "Treating \"hoist it\" and \"put it in the ViewModel\" as the same instruction. They are different claims: hoisting says the state has an owner above this composable, and choosing a `ViewModel` says that owner must outlive the Composition and sits next to business logic. Whether a row is expanded is real state with a real owner, and that owner is almost never a `ViewModel`."
+                  "text": "Two collapses to avoid, and they are the same mistake in different clothes. Treating \"hoist it\" and \"put it in the ViewModel\" as the same instruction. They are different claims: hoisting says the state has an owner above this composable, and choosing a `ViewModel` says that owner must outlive the Composition and sits next to business logic. Whether a row is expanded is real state with a real owner, and that owner is almost never a `ViewModel`. And treating \"it has to survive something\" as a reason to hoist: where state lives and how long it persists are chosen separately, which is why a composable can own its state and still keep it across a rotation."
                 }
               ]
             },
@@ -1050,7 +1050,7 @@
                   "items": [
                     "Who reads it? The owner must be at or above the lowest common ancestor of every reader.",
                     "Who writes it? The owner must be at or above everything that can change it, including a save button, a retry, or a navigation event.",
-                    "How long must it live? Longer than the composable, and the owner is outside the Composition; longer than the process, and the answer is saved or durable storage rather than an owner at all."
+                    "How long must it live? This is the test that is most often misread, because lifetime and ownership are separate axes. Surviving the UI being recreated is a mechanism question that `rememberSaveable` answers without the state moving anywhere. Ownership only has to change when the state must outlive the composable's own place in the Composition — a branch that closes, a screen popped off a back stack — and surviving the process needs saved or durable storage whoever owns it."
                   ]
                 },
                 {

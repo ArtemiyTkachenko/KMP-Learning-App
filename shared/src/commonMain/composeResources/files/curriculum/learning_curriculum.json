@@ -3422,7 +3422,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The name is worth unpacking, because \"snapshot\" is not decoration. A snapshot is a view of the values of state objects, and the guarantee the runtime documents for it is narrow and precise: every state object has the same value inside the snapshot that it had when the snapshot was taken, unless it is explicitly changed inside that snapshot. Code reading state inside one therefore sees a coherent set of values rather than a mixture of before and after, even while something elsewhere is writing."
+                  "text": "The name is worth unpacking, because \"snapshot\" is not decoration. A snapshot is a view of the values of state objects, and the guarantee the runtime documents for it is narrow and precise: every state object has the same value inside the snapshot that it had when the snapshot was taken, unless it is explicitly changed inside that snapshot. Code reading state inside one is therefore pinned to a single version of the world — a write landing elsewhere while it reads does not change what it sees partway through."
                 },
                 {
                   "type": "paragraph",
@@ -3430,7 +3430,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "What consistency buys, and the reason it belongs in a lesson about observation at all, is that reading Compose state from somewhere that is not composition is a reasonable thing to do. A block of code that reads several related state values inside one snapshot cannot see half an update. The next lesson is built directly on that property."
+                  "text": "What consistency buys, and the reason it belongs in a lesson about observation at all, is that reading Compose state from somewhere that is not composition is a reasonable thing to do: a reader is never handed a value that shifts underneath it mid-read. The next lesson is built directly on that property."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There is a second limit, and it is the one that actually bites in production code. The guarantee is about one version of the values; it is not a guarantee about one *update* of yours. Two ordinary assignments to two state holders are two separate changes, and an observer that gets a chance to run between them sees the first holder's new value beside the second holder's old one. Measured on this project's JVM target: a reader of both holders observed the pair `(1, 0)` between `(0, 0)` and `(1, 1)` when each write was applied before the next was made, and observed only `(0, 0)` and `(1, 1)` when both writes landed before either was applied. The second outcome is a scheduling accident rather than a promise, so it is not something to design around. When two values form one invariant, the answer is not to hope they are written closely enough together — it is to put them in one state object, so that changing them is a single assignment of a single new value. That is the conclusion Unit 2 reached about collections and nested data, arriving here from the other direction."
                 },
                 {
                   "type": "paragraph",
@@ -3439,7 +3443,7 @@
                 {
                   "type": "callout",
                   "kind": "INTERVIEW_FOCUS",
-                  "text": "Expect \"how does Compose know when to recompose?\" and answer it as a mechanism rather than an API list. State objects report reads and writes; a read performed while an observing context is running records that context as a dependent; a change — a write the state object's own policy agrees is a change — invalidates the contexts that recorded a read, which schedules them rather than running them. Then volunteer the boundaries, because that is what separates the model from the slogan: a read outside an observing context records nothing, an equal write is not a change, and mutation reached through a state object is invisible to it. If pushed on snapshot consistency, say plainly that the guarantee is about state objects and not about your own data structures."
+                  "text": "Expect \"how does Compose know when to recompose?\" and answer it as a mechanism rather than an API list. State objects report reads and writes; a read performed while an observing context is running records that context as a dependent; a change — a write the state object's own policy agrees is a change — invalidates the contexts that recorded a read, which schedules them rather than running them. Then volunteer the boundaries, because that is what separates the model from the slogan: a read outside an observing context records nothing, an equal write is not a change, and mutation reached through a state object is invisible to it. If pushed on snapshot consistency, say plainly what it is and what it is not: it is about state objects rather than your own data structures, and it pins a reader to one version rather than making an update spread across several writes atomic."
                 }
               ]
             }

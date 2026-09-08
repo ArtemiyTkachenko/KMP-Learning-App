@@ -1164,6 +1164,13 @@ rewritten, and four findings matter to Unit 7 and to E23-07:
   `IllegalStateException` an unequal write produces there. Both Unit 6 Lessons lean on
   this, and it is the cleanest available demonstration that a write and a change are
   different things.
+- **Snapshot consistency is a per-version read guarantee, not application-level
+  atomicity.** Review caught the draft claiming that a block reading several related values
+  inside one snapshot "cannot see half an update". It can: two ordinary assignments to two
+  holders are two separate changes, and an observer running between them sees a torn pair,
+  which was measured. L6.1 now states the limit and points at the in-scope fix — one state
+  object for values that form one invariant. Unit 7 will meet the same boundary from the
+  effects side and should not inherit the stronger claim.
 - **Unit 6 states evaluation and emission counts, and states their conditions with them.**
   Unit 3 asked for no counts and Unit 5 relaxed that to counts labelled as measurements of
   this project's toolchain. L6.2 needs numbers, because "evaluations, writes and emissions

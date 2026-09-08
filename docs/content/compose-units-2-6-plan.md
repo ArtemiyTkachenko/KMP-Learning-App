@@ -908,6 +908,7 @@ before any change was made, and counted block evaluations and emissions separate
 | A plain value captured outside the block creates no dependency | One evaluation and one emission; a later change to the underlying state produced **no** further evaluation |
 | Returning a `SnapshotStateList` itself emits once and never again | `snapshotFlow { list }`: **one** evaluation, **one** emission, and adding an element afterwards produced neither. `snapshotFlow { list.toList() }` on the same sequence: **two** evaluations, **two** emissions |
 | Writing snapshot state inside the block fails collection | `IllegalStateException: Cannot modify a state object in a read-only snapshot` |
+| Snapshot consistency does **not** make a multi-write application update atomic | Two ordinary assignments to two holders, read as a pair: the collector observed `(1, 0)` between `(0, 0)` and `(1, 1)` when each write was applied before the next was made, and only `(0, 0)` and `(1, 1)` when both landed before either was applied. A snapshot taken between the two writes also saw `(1, 0)`. Added during review — see the correction below |
 
 Two notes on how those numbers should be read, both of which the shipped Lesson states
 rather than leaving to the reader.
@@ -979,6 +980,18 @@ GAP-U6-B.
   transactional or an `ArrayList` thread-safe, and uses it only to justify why reading state
   outside composition is reasonable — which is what L6.2 needs. MVCC, state records, apply
   and merge remain **Exclude**, and no Lesson names a manual snapshot API.
+- **The consistency claim was over-stated in the first draft and was corrected in review.**
+  The draft said a block reading several related state values inside one snapshot "cannot
+  see half an update", which reads as application-level atomicity across several writes and
+  is false. The guarantee is per snapshot *version*: a reader is pinned and nothing shifts
+  under it mid-read, but two ordinary assignments to two holders are two separate changes
+  and an observer that runs between them sees a torn pair. That was measured rather than
+  argued — the row above — and the Lesson now states the limit, notes that the untorn
+  outcome is a scheduling accident rather than a promise, and gives the in-scope fix: values
+  that form one invariant belong in one state object, which is Unit 2's conclusion about
+  collections and nested data reached from the other direction. Grouping writes into one
+  mutable snapshot would be the other answer and stays **Exclude**, because manual snapshot
+  management is outside this Unit.
 - **Neither API is presented as persistence or as threading.** The `snapshotFlow` versus
   `derivedStateOf` comparison ends by saying that nothing either produces outlives its
   Composition or coroutine, and that a collector runs in whatever context its coroutine was

@@ -142,6 +142,49 @@ internal class LearningProductionContentJourneyTest {
     }
 
     /**
+     * The same loop over every Unit the document ships, not only the first one.
+     *
+     * [everyBlockTypeTheShippedUnitUsesRendersInTheReader] proves the renderer handles every block
+     * *type*; this proves that every authored Lesson currently in the bundle has actually been
+     * through it. The distinction matters because a Unit is authored one issue at a time, and the
+     * failure this catches is prose that ships without anyone having seen it rendered — a
+     * comparison row that overflows its table, a code block that never became scrollable, a
+     * callout whose text never reached the screen.
+     *
+     * The Units are read from the repository rather than listed, so this widens by itself as the
+     * curriculum grows.
+     */
+    @Test
+    fun everyShippedUnitsAuthoredBlocksRenderInTheReader() = runProductionJourneyTest {
+        assertTrue(ShippedUnits.size > 1, "Expected the Compose Topic to ship more than one Unit.")
+
+        var asserted = 0
+        ShippedUnits.forEach { unit ->
+            openFirstShippedLesson(unit)
+
+            unit.lessons.forEachIndexed { index, lesson ->
+                waitForText(lesson.title)
+                lesson.blocks().forEach { block ->
+                    assertRenders(block)
+                    asserted += 1
+                }
+                if (index < unit.lessons.lastIndex) {
+                    onNodeWithTag(LearningLessonNextTag).performScrollTo().performClick()
+                }
+            }
+
+            // Back to the Topic list so the next Unit is opened the way a learner would.
+            onNodeWithTag(LearnAreaTag).performClick()
+        }
+
+        assertEquals(
+            ShippedUnits.sumOf { unit -> unit.lessons.sumOf { it.blocks().size } },
+            asserted,
+            "Not every authored block reached an assertion.",
+        )
+    }
+
+    /**
      * A Source the shipped Lesson really carries, opened the way the app really opens it.
      *
      * The URL is never compared against a literal: it is read from the bundle, so re-pointing an
@@ -400,23 +443,35 @@ private val ShippedUnit: LearningUnit by lazy {
     }
 }
 
+/**
+ * Every Unit the document currently ships under the Compose Topic, in authored order.
+ *
+ * Read rather than listed, so authoring a Unit brings it under the renderer automatically
+ * instead of leaving newly authored prose as the one thing this suite never looked at.
+ */
+private val ShippedUnits: List<LearningUnit> by lazy {
+    runBlocking {
+        BundledLearningContentRepository().getActiveUnitsByTopic(UiTopicId)
+    }
+}
+
 private val LearnAreaTag: String = appNavigationBarItemTag(AppTopLevelDestination.TOPICS)
 
-/** Learn -> the Topic -> the shipped Unit, by clicking what a learner clicks. */
+/** Learn -> the Topic -> a shipped Unit, by clicking what a learner clicks. */
 @OptIn(ExperimentalTestApi::class)
-private suspend fun ComposeUiTest.openShippedUnit() {
+private suspend fun ComposeUiTest.openShippedUnit(unit: LearningUnit = ShippedUnit) {
     waitForText(UiTopicName)
     onNodeWithText(UiTopicName).performClick()
-    waitForTag(learningUnitCardTag(ShippedUnitId))
-    onNodeWithTag(learningUnitCardTag(ShippedUnitId)).performClick()
-    waitForTag(learningLessonRowTag(ShippedUnit.lessons.first().id))
+    waitForTag(learningUnitCardTag(unit.id))
+    onNodeWithTag(learningUnitCardTag(unit.id)).performScrollTo().performClick()
+    waitForTag(learningLessonRowTag(unit.lessons.first().id))
 }
 
 @OptIn(ExperimentalTestApi::class)
-private suspend fun ComposeUiTest.openFirstShippedLesson() {
-    openShippedUnit()
-    onNodeWithTag(learningLessonRowTag(ShippedUnit.lessons.first().id)).performClick()
-    waitForText(ShippedUnit.lessons.first().title)
+private suspend fun ComposeUiTest.openFirstShippedLesson(unit: LearningUnit = ShippedUnit) {
+    openShippedUnit(unit)
+    onNodeWithTag(learningLessonRowTag(unit.lessons.first().id)).performClick()
+    waitForText(unit.lessons.first().title)
 }
 
 @OptIn(ExperimentalTestApi::class)
@@ -449,5 +504,6 @@ private val WindowHeight: Dp = 900.dp
 
 /** Shipped identities, not fixtures: see the class comment. */
 private const val ShippedUnitId = "unit_thinking_in_compose"
+private const val UiTopicId = "android_ui"
 private const val UiTopicName = "UI — Views & Jetpack Compose"
 private const val ShippedUnitBuilderLabel = "Learning unit: Thinking in Compose"

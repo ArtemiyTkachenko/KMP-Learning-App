@@ -1166,11 +1166,12 @@ internal class TopicBrowserViewModelTest {
 
     /**
      * The production relationship, through the real bundled repository: `android_ui` publishes the
-     * authored Thinking in Compose Unit, and presentation composes that into an availability of 1
-     * without knowing the Topic ID or the count itself.
+     * authored Compose Units, and presentation composes those into an availability count without
+     * knowing the Topic ID or the number itself. The expected count is read from the same document
+     * rather than restated, so authoring another Unit does not make this a maintenance edit.
      */
     @Test
-    fun productionLearningContentGivesTheAndroidUiTopicOneActiveUnit() = runViewModelTest {
+    fun productionLearningContentCountsTheAndroidUiTopicsAuthoredUnits() = runViewModelTest {
         val androidUi = Topic("android_ui", "UI — Views & Jetpack Compose")
         val kotlin = Topic("kotlin_language", "Kotlin Language")
         val viewModel = viewModel(
@@ -1181,7 +1182,10 @@ internal class TopicBrowserViewModelTest {
         )
         advanceUntilIdle()
 
-        assertEquals(1, topic(viewModel, "android_ui").learningUnitCount)
+        val authoredUnitCount = BundledLearningContentRepository()
+            .getActiveUnitsByTopic("android_ui")
+            .size
+        assertEquals(authoredUnitCount, topic(viewModel, "android_ui").learningUnitCount)
         // Every other Topic derives its own real count from the same document rather than a
         // hardcoded mapping, and no authored Unit currently lives under this one.
         assertEquals(0, topic(viewModel, "kotlin_language").learningUnitCount)

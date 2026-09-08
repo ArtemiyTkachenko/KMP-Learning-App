@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `cea9a13af71283a5a89f444d6ede01ad12db50f8f8f1dcdbd707f8da0598dcb5` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `cf88b5874b7cd7d9436711236986a603e2a9d69d91774687e360d93095c06f6a` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `b7956adc1d5c18cb1fc219dde3cb4bad73e4755d1776c7fd33a9f6b5ffbdc1e2` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,12 +68,12 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 1 |
-| Active lessons in those units | 3 |
-| Distinct primary subtopics | 2 |
-| Distinct supporting subtopics | 5 |
-| Unique active questions reached through primary mappings | 2 |
-| Primary subtopics with at least one active question | 2 |
+| Active learning units | 2 |
+| Active lessons in those units | 8 |
+| Distinct primary subtopics | 4 |
+| Distinct supporting subtopics | 16 |
+| Unique active questions reached through primary mappings | 4 |
+| Primary subtopics with at least one active question | 4 |
 | Primary subtopics with no active question | 0 |
 | Active questions in the bank | 358 |
 | Deprecated questions excluded from this report | 41 |
@@ -92,6 +92,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Unit | Lessons | Primary subtopics | Foundation | Applied | Advanced | Unique active questions |
 |---|---:|---:|---:|---:|---:|---:|
 | Thinking in Compose (`unit_thinking_in_compose`) | 3 | 2 | 0 | 2 | 0 | 2 |
+| State and State Ownership (`unit_state_and_state_ownership`) | 5 | 2 | 2 | 0 | 0 | 2 |
 
 ## Unit and lesson detail
 
@@ -163,6 +164,96 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `unidirectional_data_flow` — Unidirectional data flow | 1 | `architecture` — Application Architecture & Design Principles |
 | `compose_state_hoisting` — State hoisting | 1 | `android_ui` — UI — Views & Jetpack Compose |
+
+### State and State Ownership (`unit_state_and_state_ownership`)
+
+Home topic: `android_ui` — UI — Views & Jetpack Compose.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 2 | `compose_state_hoisting_001`, `remember_vs_remember_saveable` |
+| APPLIED | 0 | — |
+| ADVANCED | 0 | — |
+
+#### Observable State: `mutableStateOf` and `State<T>` (`lesson_observable_state`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_state` — Compose state | 1 | 0 | 0 | 1 | `remember_vs_remember_saveable` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `compose_snapshot_system` — Compose snapshot-system fundamentals | 1 | `android_ui` — UI — Views & Jetpack Compose |
+| `kotlin_delegation` — Delegation and delegated properties | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+
+#### `remember`: Composition Memory (`lesson_remember_composition_memory`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_state` — Compose state | 1 | 0 | 0 | 1 | `remember_vs_remember_saveable` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `compose_identity_keys` — Identity and keys | 1 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_recomposition` — Composition and recomposition | 2 | `android_ui` — UI — Views & Jetpack Compose |
+
+#### `rememberSaveable` and State That Must Survive (`lesson_remember_saveable`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_state` — Compose state | 1 | 0 | 0 | 1 | `remember_vs_remember_saveable` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `saved_state` — Saved-state mechanisms | 4 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `configuration_changes` — Configuration changes | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `process_death` — Process death and recreation | 1 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+
+#### State Hoisting and the Lowest Sensible Owner (`lesson_state_hoisting`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_state_hoisting` — State hoisting | 1 | 0 | 0 | 1 | `compose_state_hoisting_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `compose_udf` — Unidirectional data flow in Compose | 1 | `android_ui` — UI — Views & Jetpack Compose |
+| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+
+#### Collections and Observable Mutation (`lesson_observable_collections`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_state` — Compose state | 1 | 0 | 0 | 1 | `remember_vs_remember_saveable` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `kotlin_collections` — Collections | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_data_classes` — Data classes | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `compose_stability` — Stability and skippability | 1 | `android_ui` — UI — Views & Jetpack Compose |
 
 ## Primary assessment gaps
 

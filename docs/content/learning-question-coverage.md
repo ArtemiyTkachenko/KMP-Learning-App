@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `a936276ef5e0d033ce9e09cc02ee3ce374c3e57084d6b6462a188bd2bd4eb857` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `9e1fe8cae99bf04acaae92b14e3c7bf5e13ab9a18a41c208ac25414a6c07d83f` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `b7956adc1d5c18cb1fc219dde3cb4bad73e4755d1776c7fd33a9f6b5ffbdc1e2` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,12 +68,12 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 3 |
-| Active lessons in those units | 11 |
-| Distinct primary subtopics | 5 |
-| Distinct supporting subtopics | 19 |
-| Unique active questions reached through primary mappings | 6 |
-| Primary subtopics with at least one active question | 5 |
+| Active learning units | 4 |
+| Active lessons in those units | 16 |
+| Distinct primary subtopics | 7 |
+| Distinct supporting subtopics | 22 |
+| Unique active questions reached through primary mappings | 8 |
+| Primary subtopics with at least one active question | 7 |
 | Primary subtopics with no active question | 0 |
 | Active questions in the bank | 358 |
 | Deprecated questions excluded from this report | 41 |
@@ -94,6 +94,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Thinking in Compose (`unit_thinking_in_compose`) | 3 | 2 | 0 | 2 | 0 | 2 |
 | State and State Ownership (`unit_state_and_state_ownership`) | 5 | 2 | 2 | 0 | 0 | 2 |
 | Recomposition (`unit_recomposition`) | 3 | 1 | 2 | 0 | 0 | 2 |
+| Identity, Keys, Stability and Immutability (`unit_identity_keys_and_stability`) | 5 | 2 | 1 | 1 | 0 | 2 |
 
 ## Unit and lesson detail
 
@@ -312,6 +313,94 @@ Supporting context — not primary coverage:
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `compose_recomposition_performance` — Avoiding unnecessary recomposition | 1 | `performance` — Performance, Memory & Debugging |
+
+### Identity, Keys, Stability and Immutability (`unit_identity_keys_and_stability`)
+
+Home topic: `android_ui` — UI — Views & Jetpack Compose.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 1 | `compose_strong_skipping_instance_equality` |
+| APPLIED | 1 | `compose_key_identity_lazy_state` |
+| ADVANCED | 0 | — |
+
+#### Composable Identity (`lesson_composable_identity`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_identity_keys` — Identity and keys | 0 | 1 | 0 | 1 | `compose_key_identity_lazy_state` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `compose_recomposition` — Composition and recomposition | 2 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state` — Compose state | 1 | `android_ui` — UI — Views & Jetpack Compose |
+
+#### key and Keys in Lazy Lists (`lesson_keys_and_identity_in_lists`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_identity_keys` — Identity and keys | 0 | 1 | 0 | 1 | `compose_key_identity_lazy_state` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `compose_lazy_layouts` — Lazy layouts | 1 | `android_ui` — UI — Views & Jetpack Compose |
+
+#### Immutability in Kotlin vs. What Compose Needs (`lesson_immutability_vs_stability`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_stability` — Stability and skippability | 1 | 0 | 0 | 1 | `compose_strong_skipping_instance_equality` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `kotlin_data_classes` — Data classes | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_equality` — Structural vs referential equality | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_collections` — Collections | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_variables` — val, var, and basic declarations | 0 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+
+#### Stability and Skipping (`lesson_stability_and_skipping`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_stability` — Stability and skippability | 1 | 0 | 0 | 1 | `compose_strong_skipping_instance_equality` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `compose_recomposition` — Composition and recomposition | 2 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_recomposition_performance` — Avoiding unnecessary recomposition | 1 | `performance` — Performance, Memory & Debugging |
+
+#### @Stable and @Immutable as Contracts (`lesson_stability_annotations`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_stability` — Stability and skippability | 1 | 0 | 0 | 1 | `compose_strong_skipping_instance_equality` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `kotlin_equality` — Structural vs referential equality | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 
 ## Primary assessment gaps
 

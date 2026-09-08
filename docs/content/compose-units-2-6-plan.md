@@ -498,6 +498,156 @@ desktop, iOS or web behaviour in either direction.
 
 ---
 
+## Authoring outcomes for Unit 4
+
+Added by E23-04 after the five Lessons were written. Everything below was checked against
+the artifacts this repository resolves or executed against them; nothing here is recalled.
+
+### What did not change
+
+Every proposed Unit id, Lesson id, title, authored order and primary/supporting mapping for
+Unit 4 in the [identity tables](#identity-conventions-and-proposed-identities) shipped
+verbatim. No Lesson boundary moved, no Lesson split or merged, and no blueprint correction
+was required. All five Lessons carry Core, Practical and Senior depth. Every
+`relatedLessonIds` entry resolves inside the shipped bundle: Unit 4 links backwards to
+Units 1–3 and within itself, and the references to the lazy-layout, performance and effects
+Units are prose naming the Unit, as the handoff requires.
+
+### Compiler configuration the Lessons assume
+
+Re-read at authoring time rather than taken from this plan's earlier table. Kotlin is
+2.4.10, the Compose compiler plugin is versioned with it, Compose Multiplatform is 1.11.1,
+and no module declares a `composeCompiler { }` block, so no compiler option is customised
+anywhere in the repository. **Strong Skipping is enabled**, and it is no longer a mode that
+can be chosen: the Gradle plugin's own `StrongSkipping` feature flag is deprecated at
+`ERROR` level with the message "This flag should be enabled by default and will be removed
+with Kotlin 2.5.0", read from the `ComposeFeatureFlag` class in the resolved
+`compose-compiler-gradle-plugin-2.4.10` artifact. No stability configuration file and no
+compiler metrics are configured, and L4.4 and L4.5 say so rather than presenting either as
+something a reader can inspect here.
+
+### Claims that were executed rather than reasoned about
+
+A throwaway `runComposeUiTest` probe on the JVM target measured each of these and was then
+deleted. Composables recorded their own executions, and identity was measured by giving
+each composable a `remember`ed token, so a changed token means a discarded remember slot.
+
+| Claim a Lesson makes | Measured result |
+| --- | --- |
+| Two `if` branches calling the same composable are two identities | Token 1 in the `then` branch; a new token 10 appeared in the `else` branch after the flag flipped |
+| One call site whose modifier changes keeps its identity | Token unchanged across the flip |
+| A changed `key(...)` value discards the instance | Token 3 replaced by token 11 |
+| Without keys, remembered state stays with the position when a list is reordered | Reversing `[a, b, c]` left tokens 4, 5, 6 in place, so the item labelled `a` occupied the slot that had belonged to `c` |
+| With `key(item)`, remembered state travels with the item | Tokens 7, 8, 9 stayed with `a`, `b`, `c` across the same reversal |
+| Strong Skipping is on: the same unstable instance passed again is skipped | Parent executed 3 times, child once — under pre–Strong Skipping rules a required unstable parameter made the function unskippable, so it would have run 3 times |
+| A fresh but structurally equal unstable instance re-executes the child | Parent 3, child 3 |
+| A stable value equal to the previous one is skipped | Parent 3, child 1 |
+| A `@Stable` type whose property is backed by `mutableStateOf` still updates its reader when only the property changes | Writing the property left the parent at 1 execution and ran the child a second time; a later unrelated parent invalidation with the same instance skipped the child |
+| A type whose `equals` ignores the mutable data the UI displays produces a stale screen | The composable displaying a track count was never re-executed while the backing list grew from one entry to three |
+
+### The Strong Skipping comparison rule did not reproduce for collections
+
+This is the most important finding in this issue and it is deliberately recorded in full.
+
+The Strong Skipping documentation states that unstable parameters are compared using
+instance equality (`===`) and stable ones with `equals`, and the stability page states that
+collections such as `List`, `Set` and `Map` are always considered unstable. Under this
+repository's configured toolchain a composable taking a `List<Row>` parameter, whose caller
+built a fresh and structurally equal list on every pass, was **not** re-executed — parent 3
+executions, child 1 — while a control that changed the list's contents was re-executed
+every time. Distinct instances were confirmed by printing identity hash codes, so a genuinely
+new object reached the call on each pass. The same experiment against a class with a `var`
+property behaved exactly as documented.
+
+`javap -c` over the compiled probe explains it without speculation. For a statically stable
+parameter the compiler emits `Composer.changed`; for a statically unstable one it emits
+`Composer.changedInstance`; for a parameter typed as the `List` interface it emits **both**
+and selects at run time from a bit in the caller-supplied `$changed` flags. In the measured
+calls the call site set no bit marking the argument unstable, so the `equals` branch ran.
+`GapComposer.kt` in the resolved `androidx.compose.runtime:runtime:1.11.2` sources confirms
+the semantics: `changed` compares with `!=` and `changedInstance` with `!==`.
+
+**How L4.4 handles it.** The documented rules are taught as the rules, because they are the
+guarantee and they are what an interview asks for. The observation is recorded beside them
+as an observation about a configured toolchain, with the conclusion that which comparison a
+given compiler picks for a given call is an implementation decision that has already changed
+once and must not be designed against in either direction. The two design rules the Lesson
+leaves the reader with — hold a stable identity for values passed repeatedly, and make types
+genuinely stable so `equals` is meaningful — survive whichever answer a future compiler gives.
+
+### Semantic re-check of the two Unit 4 Questions
+
+Both were re-read against the finished prose rather than against this plan's expectation.
+
+| Question | Reasoning it requires | Does the finished Lesson teach it | Evidence |
+| --- | --- | --- | --- |
+| `compose_key_identity_lazy_state` | Identity is positional without a key, so remembered state stays with the slot; and Compose never infers identity from contents | **Yes** | `lesson_keys_and_identity_in_lists` Core carries a four-row table of what insertion, deletion and reordering do to positional identity, the measured reversal result, and an explicit statement that the runtime never compares item contents. Its `INTERVIEW_FOCUS` names both distractor shapes — the list being rebuilt, and identity inferred from contents. `lesson_composable_identity` supplies the underlying model |
+| `compose_strong_skipping_instance_equality` | Strong Skipping makes restartable composables skippable but compares unstable arguments by instance, so a fresh equal list still re-runs | **Partly, and with a conflict** | `lesson_stability_and_skipping` Practical teaches exactly this rule and the three-row comparison table the Question is built on, so a reader can answer it. Its Senior section then records that the specific scenario in the Question's stem — a rebuilt equal `List` — did not reproduce on this toolchain. A reader who takes the documented rule answers correctly; a reader who takes the measured observation answers `a` and is marked wrong |
+
+**Two findings for E23-07, in priority order.**
+
+1. **Correctness, not level.** `compose_strong_skipping_instance_equality` asserts an
+   outcome for a rebuilt equal `List` that this repository's compiler does not produce. The
+   Question is faithful to the documentation and was verified against it on 2026-09-08; it
+   is the *configured behaviour* that diverges. E23-07 should re-run the measurement before
+   deciding anything, and then choose deliberately between re-framing the stem around a type
+   the compiler classifies as unstable statically — which would assess the same reasoning
+   without depending on interface-typed parameters — and leaving it as an assessment of the
+   documented rule with the explanation made explicit about that being what it tests. No
+   Question was added, edited, re-levelled or re-mapped in E23-04.
+2. **Level, as this plan already predicted.** The same Question is levelled `FOUNDATION`
+   while identifying a comparison rule is compiler-behaviour reasoning rather than recall.
+   That remains a candidate for review, not a defect.
+
+One further candidate, of the same shape as the one Unit 3 produced.
+`compose_key_identity_lazy_state` is levelled `APPLIED` and is the only active Question on
+`compose_identity_keys`, so both identity Lessons rest on it. `lesson_composable_identity`
+now teaches call-site identity, the recomposition-versus-re-entry distinction, and the
+counter-example that a single call site keeps its state however much it moves — none of
+which the Question reaches. That is GAP-U4-A, confirmed below rather than closed.
+
+### Assessment gaps confirmed unchanged
+
+All three Unit 4 gaps stand, and teaching a concept does not close an assessment gap.
+
+- **GAP-U4-A stands.** The one active identity Question is entirely lazy-list framed.
+  `lesson_composable_identity` maps `compose_identity_keys` as its only primary concept and
+  now teaches the branch-versus-call-site distinction and the three-event table separating
+  recomposition, leaving the Composition and re-entering it. Nothing active assesses any of
+  it outside a list.
+- **GAP-U4-B stands, and is now the widest gap in the Unit.** Nothing in the bank assesses
+  `@Stable` or `@Immutable` at all, while `lesson_stability_annotations` is the Lesson with
+  the highest interview signal in Unit 4 and teaches the annotations as correctness
+  contracts with a measured stale-UI failure behind them.
+- **GAP-U4-C stands.** `lesson_immutability_vs_stability` maps `compose_stability` as its
+  only primary concept and carries `kotlin_data_classes`, `kotlin_equality`,
+  `kotlin_collections` and `kotlin_variables` as supporting, so the Kotlin Questions those
+  Subtopics carry create no Unit 4 practice coverage.
+  `BundledLearningCurriculumTest.kotlinLanguageConceptsStaySupportingRatherThanBecomingUnitPractice`
+  now pins that, in the same way Unit 3's performance mapping is pinned, so a later change
+  cannot quietly promote one of them and make the gap disappear silently.
+
+### Editorial decisions worth carrying forward
+
+- **The three questions are the Unit's spine.** Every Lesson keeps "is this the same
+  composition identity", "was an observable change recorded" and "can execution be skipped"
+  apart, and L4.3 turns them into an explicit diagnostic order. The instruction that
+  produced this is worth repeating in Units 5 and 6: do not attribute a stale screen to
+  skipping before establishing that an observable write happened at all.
+- **Two suppression mechanisms are kept apart.** `mutableStateOf` comparing an assigned
+  value with the previous one under `structuralEqualityPolicy` is a *state write* being
+  suppressed inside the holder; the compiler-generated parameter comparison is a *call*
+  being skipped at the call site. L4.3 states this in a `NOTE` because conflating them is
+  what sends people to stability tooling for a bug that is two steps earlier.
+- **The annotation example is reported honestly.** Removing `@Immutable` from the failing
+  type did not change the outcome on this toolchain, because the compiler could not classify
+  the type either and its `equals` still reported the two instances equal. L4.5 says so, and
+  frames the annotation's damage as converting a cautious compiler judgement into a
+  guarantee the compiler is entitled to rely on — latent and toolchain-dependent rather than
+  absent. Manufacturing a cleaner demonstration would have taught something untrue.
+
+---
+
 ## Assessment gaps for E23-07
 
 Substantive gaps only. There is no per-Lesson or per-level quota, and a gap here is a
@@ -509,9 +659,9 @@ missing, not a number.
 | GAP-U2-A | Unit 2 / `lesson_observable_state`, `lesson_remember_composition_memory` | Distinguishing "observable" from "remembered": the four combinations of `remember` and `mutableStateOf` and what each does | This is the central confusion Unit 2 exists to resolve, and `compose_state`'s only active Question is about saved-state lifetimes | Add coverage in E23-07 |
 | GAP-U2-B | Unit 2 / `lesson_observable_collections` | That mutating a collection held in state notifies nothing, and what the alternatives cost | No Question in any Topic connects collection mutation to a missing Compose update. `kotlin_readonly_list_not_immutable` and `data_class_copy_is_shallow` are Kotlin-side and supporting-only, so they create no Unit 2 practice | Add coverage in E23-07 |
 | GAP-U3-A | Unit 3 / `lesson_recomposition_cost` | That recomposition is the normal operating mode and the cost is the work done during composition | Unit 3's two active Questions cover the definition and the scope rule only. `compose_recomposition_performance_001` sits in the `performance` Topic and is supporting-only here, so it must not be counted as Unit 3 coverage | Add coverage in E23-07 |
-| GAP-U4-A | Unit 4 / `lesson_composable_identity` | Call-site identity outside lists — state discarded because a composable moved in the tree | The one active identity Question is entirely lazy-list framed, so the Lesson that supplies the underlying model is unassessed | Add coverage in E23-07 |
-| GAP-U4-B | Unit 4 / `lesson_stability_annotations` | That `@Stable` and `@Immutable` are promises the compiler trusts, and that a false promise is a correctness bug | Nothing in the bank assesses the annotations at all, and this is the Lesson with the highest interview signal in Unit 4 | Add coverage in E23-07 |
-| GAP-U4-C | Unit 4 / `lesson_immutability_vs_stability` | The Compose consequence of read-only-but-not-immutable data, as opposed to the Kotlin fact | The Kotlin fact is assessed (`kotlin_readonly_list_not_immutable`), but only as supporting context for this Lesson | Add coverage in E23-07, after GAP-U4-A and GAP-U4-B |
+| GAP-U4-A | Unit 4 / `lesson_composable_identity` | Call-site identity outside lists — state discarded because the branch holding it stopped being composed, and preserved when one call site merely moves on screen | The one active identity Question is entirely lazy-list framed. Confirmed after authoring: the finished Lesson also teaches the recomposition-versus-re-entry distinction and the single-call-site counter-example, none of which is assessed | Add coverage in E23-07 |
+| GAP-U4-B | Unit 4 / `lesson_stability_annotations` | That `@Stable` and `@Immutable` are promises the compiler trusts, and that a false promise is a correctness bug presenting as stale UI | Nothing in the bank assesses the annotations at all, and this is the Lesson with the highest interview signal in Unit 4. Confirmed after authoring as the widest gap in the Unit | Add coverage in E23-07; the strongest candidate of the three |
+| GAP-U4-C | Unit 4 / `lesson_immutability_vs_stability` | The Compose consequence of read-only-but-not-immutable data, as opposed to the Kotlin fact — including that an assignment of an equal value records no change | The Kotlin fact is assessed (`kotlin_readonly_list_not_immutable`), but only as supporting context for this Lesson. The four supporting Kotlin Subtopics are pinned as supporting by a test, so they cannot become Unit practice by accident | Add coverage in E23-07, after GAP-U4-A and GAP-U4-B |
 | GAP-U5-A | Unit 5 / `lesson_remember_key_memoization` | Key-based cache invalidation: stale results from under-specified keys, no cache from over-specified ones | `compose_derived_state` carries one Question and it is about `derivedStateOf`; the memoization half of the Unit is unassessed | Add coverage in E23-07 |
 | GAP-U5-B | Unit 5 / `lesson_work_outside_composition` | Deciding that work does not belong in composition at all, and which layer owns it | `main_thread_performance` is View-toolkit framed and supporting-only; no Question connects placement of work to composition | Add coverage in E23-07 |
 | GAP-U6-A | Unit 6 / `lesson_snapshot_observation` | The observation model itself: which reads create dependencies and what a write invalidates | The only Question on `compose_snapshot_system` identifies an API. Unit 6's primary Lesson has no assessment of its own reasoning | Add coverage in E23-07 |
@@ -685,11 +835,18 @@ None changes the Unit or Lesson count.
 
 ### For E23-07
 
-Read [Authoring outcomes](#authoring-outcomes-for-units-2-and-3) first: it records the
-semantic re-check of the two recomposition Questions against the finished prose, confirms
-GAP-U2-A, GAP-U2-B and GAP-U3-A unchanged, and adds one new candidate — Applied coverage of
-read placement, which `lesson_recomposition_scopes` now teaches well past what the single
-FOUNDATION Question assesses.
+Read [Authoring outcomes for Units 2 and 3](#authoring-outcomes-for-units-2-and-3) first: it
+records the semantic re-check of the two recomposition Questions against the finished prose,
+confirms GAP-U2-A, GAP-U2-B and GAP-U3-A unchanged, and adds one new candidate — Applied
+coverage of read placement, which `lesson_recomposition_scopes` now teaches well past what
+the single FOUNDATION Question assesses.
+
+Then read [Authoring outcomes for Unit 4](#authoring-outcomes-for-unit-4), which carries the
+one item in this plan that is a possible Question defect rather than a coverage gap:
+`compose_strong_skipping_instance_equality` asserts an outcome for a rebuilt equal `List`
+that this repository's configured compiler does not produce. Re-run the measurement recorded
+there before deciding anything, and treat its `FOUNDATION` level as a second, separate
+question. E23-04 changed no Question.
 
 The nine gap rows are the starting list. Re-read them against the finished prose before
 authoring: a gap this plan predicted may have been answered by a Lesson that turned out deeper

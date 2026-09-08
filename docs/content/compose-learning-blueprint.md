@@ -1024,10 +1024,11 @@ sources on any material edit; guidance older than roughly two releases is suspec
 
 ## Status
 
-This blueprint is complete as a map. Units 1–3 are authored and ship in
+This blueprint is complete as a map. Units 1–4 are authored and ship in
 `learning_curriculum.json` as `unit_thinking_in_compose`,
-`unit_state_and_state_ownership` and `unit_recomposition`; Units 4–14 are still plans. When
-authoring reveals a wrong Lesson boundary, update this file in the same change.
+`unit_state_and_state_ownership`, `unit_recomposition` and
+`unit_identity_keys_and_stability`; Units 5–14 are still plans. When authoring reveals a
+wrong Lesson boundary, update this file in the same change.
 
 Units 2–6 have a confirmed authoring plan in
 [`compose-units-2-6-plan.md`](compose-units-2-6-plan.md), which records their proposed Unit
@@ -1069,3 +1070,27 @@ they affect later Units:
   restarted, or skipped, so the Lessons reason about which scopes a change *can* invalidate
   and deliberately promise no number. Unit 4 should keep that discipline when it introduces
   skipping properly.
+
+Authoring Unit 4 kept every planned Lesson boundary, identity, title and concept mapping
+unchanged, and required no blueprint correction. Three findings matter to Units 5–6 and to
+E23-07:
+
+- **The identity examples were run, not reasoned about.** L4.1's claim that two `if`
+  branches calling the same composable are two identities, and its counter-example that one
+  call site whose modifier changes keeps its state, were both measured by giving each
+  composable a remembered token and watching whether the token changed. So were L4.2's
+  keyed and unkeyed reorder outcomes. The blueprint's L4.1 Practical line — "state that
+  unexpectedly resets because a composable moved between branches of an `if`" — is accurate
+  as written, but the Lesson deliberately teaches the counter-example beside it, because
+  "conditionals destroy state" is the wrong generalisation to leave a learner holding.
+- **The documented Strong Skipping comparison rule did not reproduce for collections.**
+  Under this repository's toolchain a composable taking a `List` parameter was *not*
+  re-executed when its caller supplied a fresh but structurally equal list, although the
+  documentation specifies instance comparison for unstable parameters and states that
+  collections are always unstable. L4.4 teaches the documented rule as the guarantee and
+  records the observation separately. See the plan's authoring outcomes for the evidence;
+  this is the clearest case so far of configured behaviour running ahead of the
+  documentation, and Units 5 and 6 should expect more of it rather than fewer.
+- **Unit 4 states no execution counts**, as Unit 3 asked. Its predictions are framed as
+  conditions — the same composition identity, the call actually reached, and no independent
+  invalidation of the child — rather than as numbers.

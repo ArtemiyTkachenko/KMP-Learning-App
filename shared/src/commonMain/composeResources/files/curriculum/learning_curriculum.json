@@ -1765,6 +1765,932 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "unit_identity_keys_and_stability",
+      "topicId": "android_ui",
+      "title": "Identity, Keys, Stability and Immutability",
+      "summary": "Every time the runtime reaches a call it has seen before it answers three separate questions: is this the same composition identity, was an observable change recorded, and may this execution be skipped. Collapsing them into one is behind most of the confusion in this area and most of the advice that no longer holds. This unit takes them apart — identity from the call site and from keys you supply, the gap between Kotlin's several kinds of \"cannot change\" and the guarantee Compose actually needs, and the stability rules that decide skipping under the compiler this project builds with — and ends with the two annotations that let you answer the third question yourself, along with what it costs when the answer is wrong.",
+      "lessons": [
+        {
+          "id": "lesson_composable_identity",
+          "title": "Composable Identity",
+          "summary": "Compose has to decide whether the thing it is about to run is the same thing it ran last time, and it does not decide by looking at your data. What actually gives a composable an identity, why remembered state belongs to that identity rather than to a variable, and why the same visual change discards state on one screen and preserves it on another.",
+          "primarySubtopicIds": [
+            "compose_identity_keys"
+          ],
+          "supportingSubtopicIds": [
+            "compose_recomposition",
+            "compose_state"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Three units have built up a working model: composables describe UI, reading observable state records a dependency, and a write invalidates the scopes that recorded one. There is a question underneath all of it that has not been asked yet. When the runtime executes your code a second time and reaches a call it has seen before, how does it know that it is the *same* call — the one whose remembered value it is holding — rather than a different one that happens to look similar?"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That question is separate from two others this unit will keep separate throughout, because collapsing them is where almost all of the confusion in this area comes from."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The question",
+                    "What decides the answer",
+                    "What it is not"
+                  ],
+                  "rows": [
+                    [
+                      "Is this the same composition identity?",
+                      "Where the call appears in your source, plus its position among repeated calls from that same place",
+                      "It is not decided by comparing your data, and it is not decided by what appears on screen"
+                    ],
+                    [
+                      "Was an observable change recorded?",
+                      "Whether a write reached a state holder that something read",
+                      "It is not decided by whether an object was modified"
+                    ],
+                    [
+                      "Can execution be skipped when this call is reached?",
+                      "Whether the runtime judges every argument unchanged",
+                      "It is not a promise that the call never runs"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This lesson is entirely the first question. The second was Unit 2's subject and returns here only as a contrast; the third is two lessons away."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The answer is the **call site**: the source-code location where a composable is called. The instance of a composable in the Composition is identified by its call site, and the compiler treats every call site as distinct. Calling the same composable from two places in your source therefore creates two instances in the Composition, with nothing shared between them."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun SettingsScreen() {\n    // Two call sites, so two identities, so two independent remembered drafts.\n    LabelledField(label = \"Display name\")\n    LabelledField(label = \"Email\")\n}\n\n@Composable\nprivate fun LabelledField(label: String) {\n    var text by remember { mutableStateOf(\"\") }\n\n    Column {\n        Text(label)\n        TextField(value = text, onValueChange = { text = it })\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Typing in the first field does not touch the second, and neither of them is \"the\" `LabelledField`. There is one function and two instances of it, distinguished by nothing more than the fact that the two calls appear at different points in the source. This is also the answer to a question the `remember` lesson deferred: `remember` has no name you supply, because the slot it uses is the identity itself."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A composable's identity comes from its position in the Composition, not from its parameters and not from what it draws. Remembered state belongs to that identity. As long as the identity survives, the remembered value survives with it; when the identity goes, so does everything remembered inside it."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The interesting case is not two obviously separate fields. It is the screen where an identity changes without anyone intending it, because the resulting bug — a user's half-typed input disappearing — looks like a state-management problem and is not one."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun EditorPanel(compact: Boolean) {\n    if (compact) {\n        NoteField()      // one call site\n    } else {\n        NoteField()      // a different call site\n    }\n}\n\n@Composable\nprivate fun NoteField() {\n    var note by remember { mutableStateOf(\"\") }\n    TextField(value = note, onValueChange = { note = it })\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There are two `NoteField` calls in this source, so there are two call sites and two identities. Only one of them is composed at a time. Flipping `compact` removes the identity in the branch being left and creates a new one in the branch being entered, and the draft the user was typing is discarded with the first. The screen still shows a text field in roughly the same place, which is exactly why this is confusing to debug: nothing visible suggests that the field was destroyed and replaced."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The natural conclusion — that conditionals destroy state — is the wrong lesson to take from it, and taking it leads people to restructure screens that were never broken. What matters is whether the call site holding the state stops being composed. Compare the version that produces the same visual change from one call site."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun EditorPanel(compact: Boolean) {\n    Column(modifier = if (compact) Modifier.width(240.dp) else Modifier.fillMaxWidth()) {\n        NoteField()      // one call site, whatever `compact` is\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Here the field genuinely moves and resizes on screen, and it keeps the draft, because `NoteField` is called from one place and that place is composed in both states. The conditional is in the argument, not in the structure. So the diagnostic question is never \"is there an `if` here\" but \"does the branch I am taking contain a different call to the composable that owns the state\"."
+                },
+                {
+                  "type": "callout",
+                  "kind": "NOTE",
+                  "text": "Both versions of `EditorPanel` above were run rather than reasoned about. Each `NoteField` was given a remembered token so a new remembered slot would be visible: in the two-branch version the token changed when `compact` flipped, and in the one-call-site version it did not. The distinction is real, and it is not one you can see by looking at the rendered screen."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Once the cause is clear the fix follows from it, and it is usually not a Compose trick. If the draft should outlive the branch, the state does not belong inside the branch — it belongs to a caller that stays composed, which is hoisting, and the earlier lesson on where to hoist state is the decision procedure for it. If the draft *should* be discarded when the panel changes shape, then nothing is wrong and the behaviour was correct all along."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Reading identity off the screen. Two things that look like the same widget across a state change may be two identities, and one thing that visibly moves, resizes or reorders may be a single identity that never went anywhere. The rendered result is not evidence either way; the call sites in your source are."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "There is a second distinction worth having precisely, because \"my state resets sometimes\" is really two different bugs with two different fixes. Recomposing an existing identity and leaving-then-re-entering the Composition are not the same event, even though both end with your composable executing."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Event",
+                    "What happens to the identity",
+                    "What happens to remembered state"
+                  ],
+                  "rows": [
+                    [
+                      "Recomposition",
+                      "The same identity executes again",
+                      "Kept — `remember` returns the value it already stored"
+                    ],
+                    [
+                      "Leaving the Composition",
+                      "The identity is removed",
+                      "Forgotten, along with everything else in that subtree"
+                    ],
+                    [
+                      "Entering again at the same call site",
+                      "A new identity is created",
+                      "Computed from scratch, as if for the first time"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A value that resets on every recomposition was never remembered at all — that is Unit 2's failure and it is a missing `remember`. A value that survives for a while and then resets when the user opens a drawer, switches a tab or collapses a panel was remembered correctly and lost its identity, and no amount of adding `remember` will fix it. Knowing which of the two you are looking at is most of the diagnosis."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "It is worth understanding why Compose keys identity on position rather than on your data, because the alternative sounds better than it is. To match by contents the runtime would have to guess which of two structurally similar values is \"the same one\" as before, and it would have to make that guess for every call in the tree, on every pass, without knowing anything about your domain. A wrong guess would not be a missed optimisation; it would move one user's half-typed text into another user's row. Positional identity is instead total, cheap and completely predictable: the same source location with the same position is the same instance, always. Where position genuinely is the wrong answer — a list whose items move — you supply the identity yourself, which is the next lesson."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Where the runtime keeps this information is deliberately out of scope. It is an internal structure with its own vocabulary, and being able to name it adds nothing to an interview answer that the model above does not already give you. What matters is the contract: identity is positional, remembered state hangs off it, and you can override it explicitly when position is not the identity you mean."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "\"Why did my state disappear?\" is a debugging question and the strong answer separates the two causes in one breath: either the value was never remembered, in which case it resets on every recomposition, or the composable that remembered it left the Composition, in which case its identity — and everything attached to it — was discarded. Then add the part most answers miss: identity comes from the call site, so two branches of an `if` calling the same composable are two identities, while a single call whose modifier or arguments change is one identity that keeps its state however much it moves on screen."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_remember_composition_memory",
+            "lesson_state_hoisting",
+            "lesson_composition_and_recomposition"
+          ],
+          "sources": [
+            {
+              "title": "Lifecycle of composables",
+              "url": "https://developer.android.com/develop/ui/compose/lifecycle"
+            },
+            {
+              "title": "State and Jetpack Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state"
+            },
+            {
+              "title": "Where to hoist state",
+              "url": "https://developer.android.com/develop/ui/compose/state-hoisting"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_keys_and_identity_in_lists",
+          "title": "key and Keys in Lazy Lists",
+          "summary": "One call site executed many times needs something more than position to tell its instances apart, and lists are where positional identity stops being a reasonable default. What a key actually identifies, why an index key fails at exactly the moment a key was needed, and why three different things in Compose called \"key\" are not interchangeable.",
+          "primarySubtopicIds": [
+            "compose_identity_keys"
+          ],
+          "supportingSubtopicIds": [
+            "compose_lazy_layouts"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The previous lesson said identity comes from the call site. A loop breaks that on its own: one call site, executed once per item, produces many instances that the runtime still has to keep apart. Its answer is documented and unsurprising — when a composable is called several times from one call site, Compose has no information that would distinguish the calls, so it uses the **execution order** in addition to the call site."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is positional identity, and it is a perfectly good default until the positions move. Then the consequences separate sharply depending on *how* the data changed."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "What changes in the list",
+                    "What happens to positional identity",
+                    "What the user sees"
+                  ],
+                  "rows": [
+                    [
+                      "An item is appended at the end",
+                      "Every existing item keeps its position, and one new position appears",
+                      "Nothing surprising — existing rows are untouched"
+                    ],
+                    [
+                      "An item is inserted at the top or middle",
+                      "Every item after the insertion point shifts into the next slot",
+                      "Rows keep the state of whichever row previously occupied their position"
+                    ],
+                    [
+                      "An item is removed",
+                      "Every item after it shifts back one slot",
+                      "The same shift, in the other direction"
+                    ],
+                    [
+                      "The list is reordered",
+                      "Every moved item lands in a slot that belonged to a different item",
+                      "State appears attached to the wrong rows"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The last row is the one worth being able to predict out loud, because it is the shape most interview questions take. Reverse a three-item list whose rows each hold something in `remember` — an expanded flag, a draft, a running animation — and the remembered values do not move. They stay in their slots, and the items move through them."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The fix is to say what the identity is, instead of letting position stand in for it. The runtime's `key` composable does that for ordinary composition."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun MovieList(movies: List<Movie>) {\n    Column {\n        for (movie in movies) {\n            key(movie.id) {          // this instance is \"the movie with this id\"\n                MovieRow(movie)\n            }\n        }\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The values passed to `key` are combined and used to identify that instance in the composition. They are compared with `equals` and `hashCode`, and — this is the part that surprises people — they do **not** need to be globally unique. A key needs to be unique only among the invocations at that point in the composition, so two unrelated loops elsewhere in the app may use the same ids without interfering."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A key replaces \"which position is this\" with \"which thing is this\". It does not make Compose look at your data: the runtime never compares item contents to infer that two instances are the same thing. Identity is either positional or something you stated, and the `key` parameter exists precisely because there is no third option."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Lazy layouts have their own key parameter rather than requiring you to wrap items yourself, and it carries the same idea with one extra job. By default each item's state is keyed against its position in the list; supplying a stable, unique key ties the state to the item instead, and the layout also uses the key to keep the scroll position anchored when items are added or removed above the visible range."
+                },
+                {
+                  "type": "code",
+                  "code": "LazyColumn {\n    items(\n        items = movies,\n        key = { movie -> movie.id },\n    ) { movie ->\n        MovieRow(movie)\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The version of this that gets written by accident is the index, and it deserves a moment because it looks like a key and is not one."
+                },
+                {
+                  "type": "code",
+                  "code": "// This is not a key. It is the identity you already had, spelled out.\nitems(\n    count = movies.size,\n    key = { index -> index },\n) { index ->\n    MovieRow(movies[index])\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Keying on the index says \"this item is the item in position *n*\", which is exactly what positional identity already said. It costs nothing and buys nothing while the list is static, and it fails in precisely the situations that motivated adding a key at all — insertion above the current item, deletion, reordering — because in every one of those the index of an item is the thing that changed. An index key is not a weaker key; it is the absence of one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The word \"key\" now appears in three places in Compose that a reader meets within a few lessons of each other, and they answer different questions. Treating them as one mechanism produces confident, wrong predictions."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Where it appears",
+                    "What it identifies",
+                    "What changing it does"
+                  ],
+                  "rows": [
+                    [
+                      "`key(value) { ... }` from the runtime",
+                      "A composition instance among the invocations at one call site",
+                      "Discards that instance and composes a new one, so everything remembered inside it is gone"
+                    ],
+                    [
+                      "The `key` argument of a lazy `item` or `items`",
+                      "A list item across dataset changes, for the lazy layout's own bookkeeping as well as identity",
+                      "Moves the item's identity, and the state attached to it, with the item rather than leaving it in the slot"
+                    ],
+                    [
+                      "The key arguments of `remember(key)`",
+                      "Nothing about identity — the inputs a remembered value is a function of",
+                      "Recomputes that one remembered value in place; the surrounding identity is untouched"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The third row is the one most often merged into the other two. `remember(user.id) { ... }` does not give the composable an identity of `user.id`; it says that this cached value should be thrown away when `user.id` changes, inside an identity that continues to exist either way."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Expecting a key to fix a screen that is not updating. A key answers \"is this the same instance\". It does not make an in-place mutation observable — a `MutableList` edited behind a state holder is still invisible with or without keys — and it does not decide whether a call can be skipped. Those are the second and third questions of this unit, and reaching for a key when the write never happened just adds a correct mechanism to a screen that has a different bug."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The two uniqueness rules genuinely differ, and the difference is not pedantry. The runtime's `key` needs uniqueness only among the invocations at that point in composition. A lazy layout's item key is stricter: using the same key for more than one item in the list is not allowed, because the layout indexes items by key across the whole dataset. Duplicate keys are the failure the runtime's own documentation warns about — children and local state may then be reused in ways nobody intended, which shows up as one row wearing another row's state and is close to impossible to reason about after the fact."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Choosing the key is therefore a small design decision rather than a mechanical step, and three of the plausible choices are wrong in different ways."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**A stable domain identifier** — a database id, a server id, a natural key — is the right answer almost every time, because it is the thing that stays the same when everything else about the item changes.",
+                    "**The index** reproduces positional identity exactly, so it is never an improvement on omitting the key.",
+                    "**A hash or a copy of the item's contents** identifies the item by its current value, so editing an item changes its identity and destroys the state attached to it — the opposite of what a key is for.",
+                    "**A freshly generated value**, for instance a UUID created inside the loop, differs on every pass, so every identity is replaced on every recomposition and nothing survives at all."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One practical constraint is Android-specific and worth knowing rather than deriving: the type used as a lazy item key has to be one the platform's saved-state mechanism can store, which in practice means primitives, enums and `Parcelable` types. That is a consequence of how item state is preserved on that platform, not a property of composition identity in general."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Finally, a limit that is easy to over-promise. A stable key makes identity survive *dataset changes* — reordering, insertion, deletion — while the item is present. It does not promise that ordinary remembered state survives the item being disposed of. A lazy layout composes what it needs and disposes of what it does not, and when an item is disposed its `remember` slots go with it exactly as they would anywhere else. What happens as items scroll in and out, how a lazy layout reuses what it already built, and what `contentType` changes about that, all belong to the lazy-layout unit later in this path; this lesson uses a list as the setting where positional identity fails, not as its subject."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "The standard question is a reordered `LazyColumn` whose items hold remembered state and no key. The answer is that without a key an item is identified by its position, so the remembered state stays with the slot and a moved row displays the state that belonged to whatever was previously in that position. Then close off the two tempting alternatives explicitly: the list is not rebuilt from scratch, and Compose does not match items by their contents — it has no way to, which is exactly why the key parameter exists. If you can add that the key needs to be unique across the list and that an index key is not a key at all, the answer is complete."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_composable_identity",
+            "lesson_remember_composition_memory",
+            "lesson_observable_collections"
+          ],
+          "sources": [
+            {
+              "title": "Lifecycle of composables",
+              "url": "https://developer.android.com/develop/ui/compose/lifecycle"
+            },
+            {
+              "title": "Lazy lists and lazy grids",
+              "url": "https://developer.android.com/develop/ui/compose/lists"
+            },
+            {
+              "title": "State and Jetpack Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_immutability_vs_stability",
+          "title": "Immutability in Kotlin vs. What Compose Needs",
+          "summary": "Kotlin gives you several things that read as \"this cannot change\" and guarantee less than they appear to. Which of them are guarantees about a reference, which are guarantees about an object, and what each one actually leaves Compose able to conclude when it compares a value against the one it saw last time.",
+          "primarySubtopicIds": [
+            "compose_stability"
+          ],
+          "supportingSubtopicIds": [
+            "kotlin_data_classes",
+            "kotlin_equality",
+            "kotlin_collections",
+            "kotlin_variables"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The lesson on observable collections established the first half of this: mutating a collection held in state writes nothing to the holder, so nothing is recorded and nothing updates. This lesson asks the question that comes next and matters more. Once a value *has* been handed to Compose, what is anyone entitled to conclude from \"it did not change\"?"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Kotlin offers four things that are routinely read as immutability and are not the same claim. Being able to separate them is the whole content of this lesson; the Compose consequences follow from the separation almost mechanically."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "What it looks like",
+                    "What it actually guarantees",
+                    "What it does not"
+                  ],
+                  "rows": [
+                    [
+                      "`val x = ...`",
+                      "The *reference* will not be reassigned",
+                      "Nothing at all about the object it points to, which may be mutable and mutated"
+                    ],
+                    [
+                      "A `List`, `Set` or `Map` type",
+                      "*This reference* offers no mutating operations",
+                      "That the underlying object is immutable — the same object may be held as a `MutableList` elsewhere and changed"
+                    ],
+                    [
+                      "`data class` and its generated `copy()`",
+                      "A new instance whose constructor properties are the same values",
+                      "That nested objects were copied — a copied reference points at the same nested object"
+                    ],
+                    [
+                      "`==` returning `true`",
+                      "`equals` said these two values are equal",
+                      "That they are the same object, or that `equals` looked at everything the screen displays"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read down the third column and a single theme appears: each of these is a guarantee about a *reference* or a *comparison*, and Compose needs a guarantee about an *object*. `val` fixes a reference. A read-only collection type removes writers from one reference. `copy()` produces a new outer instance over the same inner ones. Equality is whatever `equals` was written to say."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The reason this matters is that everything the runtime concludes from \"unchanged\" is a conclusion about the comparison it was given, using the values it was handed. If a change cannot be seen by that comparison, then as far as Compose is concerned the change did not happen — and the screen is a faithful rendering of a value that is no longer true."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Read-only is a property of a reference. Immutable is a property of an object. Compose reasons about objects, so a screen built out of read-only references over shared mutable data has no guarantee behind it, however carefully the types were chosen."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The way to make this concrete is to fix one screen-state type, then follow the mutation paths a real codebase actually takes. Start with the version that has the gap in it."
+                },
+                {
+                  "type": "code",
+                  "code": "// The nested collection is mutable, so the outer `val` guarantees nothing useful.\ndata class CartState(\n    val lines: MutableList<CartLine>,\n    val note: String,\n)\n\n@Composable\nfun CartScreen() {\n    var cart by remember { mutableStateOf(CartState(mutableListOf(), \"\")) }\n    // ...\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Three mutation paths, and only one of them updates the screen."
+                },
+                {
+                  "type": "code",
+                  "code": "// Path 1 — mutate in place. No write to the holder at all.\ncart.lines.add(line)\n\n// Path 2 — mutate in place, then reassign a copy. A write happens.\ncart.lines.add(line)\ncart = cart.copy()\n\n// Path 3 — produce a genuinely different value.\ncart = cart.copy(lines = (cart.lines + line).toMutableList())",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Path 1 is the failure the earlier lesson covered: nothing was assigned, so nothing was recorded. Path 2 is the more interesting one, because it looks like the fix and is not. A write really does reach the holder — and it still schedules nothing. `copy()` is shallow, so the new `CartState` holds the *same* `lines` object; `CartState` is a data class, so `equals` compares that same object against itself and reports the two states equal; and `mutableStateOf` compares a new value against the old one with structural equality before deciding that anything changed. An assignment of an equal value is not a change."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Path 3 works because the new value genuinely differs. But note what had to be true for it to work: the list had to be replaced rather than edited, which is a property of *how the state is written*, not of how it is typed."
+                },
+                {
+                  "type": "callout",
+                  "kind": "NOTE",
+                  "text": "Two different mechanisms in this lesson can both suppress an update, and they sit at different places. `mutableStateOf` compares an assigned value with the previous one and records no change when they are equal — that is a **state write** being suppressed, inside the holder. The comparison the compiler generates for a composable's parameters is a **call** being skipped, at the call site. Path 2 is the first. Neither of them is the other, and reaching for the tools that address the second when you are looking at the first is the most common wasted afternoon in this subject."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Which gives a diagnostic order that is worth internalising, because it is cheap and it eliminates whole categories of investigation in seconds."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Did a write to an observable holder happen at all?** For a collection or a nested object, very often it did not. Stop here if so.",
+                    "**Did the holder treat the new value as a change?** `mutableStateOf` uses structural equality by default, so assigning something that compares equal to what is already there records nothing.",
+                    "**Only then**: was the child call reached, and did the runtime judge its arguments unchanged? That is skipping, and it is the next lesson."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The type-level fix is to close the gap rather than to be careful about the mutation path, because being careful does not survive the next person to touch the file."
+                },
+                {
+                  "type": "code",
+                  "code": "data class CartState(\n    val lines: List<CartLine>,   // read-only type and, by construction, never shared mutably\n    val note: String,\n)\n\n// Every update is now a replacement, and every replacement is a real change.\ncart = cart.copy(lines = cart.lines + line)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Diagnosing a stale screen by reaching for stability annotations, a compiler configuration file, or advice about reducing recomposition, before establishing that anything was ever recorded as changed. Those tools all answer the third question. If the answer to the first or second is \"no\", they will not help, and applying them adds a false promise to a codebase that already has a real bug."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Underneath all of this is a dependency that is easy to miss: everything the runtime infers from \"unchanged\" rests on `equals` being a truthful answer to \"are these the same value\". Kotlin's `==` is translated to an `equals` call, and `equals` is inherited from `Any` as referential equality unless a type overrides it — which `data class` and value classes do, and ordinary classes do not. So the meaning of \"equal\" for your screen state is whatever your types happen to implement, and Compose has no way to audit that."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There are two ways for it to be wrong, pointing in opposite directions. A type that does not override `equals` at all compares by reference, so two structurally identical values are treated as different and the work is repeated — wasteful and harmless. A type whose `equals` ignores something the screen displays is the dangerous direction, because it reports \"unchanged\" about a value that changed."
+                },
+                {
+                  "type": "code",
+                  "code": "// Entity equality by id — a common and often correct pattern in a data layer.\nclass Playlist(val id: String, val tracks: MutableList<String>) {\n    override fun equals(other: Any?): Boolean = other is Playlist && other.id == id\n    override fun hashCode(): Int = id.hashCode()\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This type is perfectly reasonable in a repository and actively dangerous as screen state. Its `equals` says two playlists with the same id are the same value, while the thing the UI actually renders — the tracks — is a mutable list that is not part of the comparison. Composing a screen that takes a `Playlist` and then adding tracks to it produces a UI that does not update, and running exactly this shows it: with the track list growing behind it, the composable displaying the track count was not re-executed once, and the screen went on reporting the original count. Nothing in the composable is wrong. The type told the runtime the value had not changed, and the runtime believed it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The rule that falls out is a modelling rule rather than a Compose rule. Screen state should be a value: a `data class` of `val` properties over read-only collections whose nested data is itself made of values, so that `equals` is meaningful and `copy(...)` produces something genuinely different. Domain types with identity semantics are a different kind of thing, and passing one straight into a composable is where the two kinds get confused."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Where the collection genuinely cannot be replaced wholesale, the kotlinx immutable collections library provides types that are immutable rather than merely read-only, and the Compose compiler recognises them as such. It is worth knowing the option exists; it is not the first thing to reach for, and it is not a substitute for owning the mutation path."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "\"Is a Kotlin `List` immutable?\" is a warm-up, and the answer is that it is a read-only interface — it removes the mutating operations from that reference and guarantees nothing about the object, which may be held as a `MutableList` somewhere else. The follow-up worth preparing is what that costs you in Compose: a value can change without any assignment happening, `copy()` is shallow so a copied state can share the very object that changed, and `mutableStateOf` treats an assignment of an equal value as no change. If you can then say that `equals` correctness is a precondition for anything the runtime infers from \"unchanged\", you have the whole argument."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_observable_collections",
+            "lesson_observable_state",
+            "lesson_composition_and_recomposition"
+          ],
+          "sources": [
+            {
+              "title": "Collections overview",
+              "url": "https://kotlinlang.org/docs/collections-overview.html"
+            },
+            {
+              "title": "Data classes",
+              "url": "https://kotlinlang.org/docs/data-classes.html"
+            },
+            {
+              "title": "Equality",
+              "url": "https://kotlinlang.org/docs/equality.html"
+            },
+            {
+              "title": "State and Jetpack Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state"
+            },
+            {
+              "title": "Stability in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/performance/stability"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_stability_and_skipping",
+          "title": "Stability and Skipping",
+          "summary": "The third question of the unit: when the runtime reaches a call, may it decline to run it? What stability actually is, why \"stable\" does not mean \"immutable\" and \"skippable\" does not mean \"never executes\", and how to make a prediction that states its conditions instead of guessing.",
+          "primarySubtopicIds": [
+            "compose_stability"
+          ],
+          "supportingSubtopicIds": [
+            "compose_recomposition",
+            "compose_recomposition_performance"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Invalidation decides which scopes will execute. Skipping decides what happens inside one that is executing. When a scope re-runs and reaches a call to a child composable, the runtime compares the arguments it is about to pass with the ones it passed last time, and if it judges them all unchanged it can decline to execute that child at all, leaving the child's part of the Composition as it stands."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So skipping is a decision about **one call**, taken at the moment that call is reached. It is not a property a composable has permanently, and it is not something a state write does."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Stability** is what makes that comparison trustworthy. A type is stable if it is immutable, or if it is possible for Compose to know whether its value has changed between recompositions; it is unstable if Compose cannot know that. The wording matters, because the second half of it is the half people drop. A type whose properties change is still stable as long as those changes notify composition — the documentation is explicit that a composable's parameters do not have to be immutable for it to be skippable, only that the runtime is told about every change."
+                },
+                {
+                  "type": "code",
+                  "code": "// Stable and mutable at the same time, and this is not a contradiction:\n// the property is backed by observable state, so every change is notified.\n@Stable\nclass FormState {\n    var query by mutableStateOf(\"\")\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What the compiler treats as stable without being told: primitive types, `String`, enums, function types, and classes whose properties are all `val`s of stable types. What it treats as unstable: classes with `var` properties, and collection types such as `List`, `Set` and `Map` — the latter because their immutability cannot be guaranteed, which is precisely the gap the previous lesson took apart."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Stable does not mean immutable; it means changes are detectable. Skippable does not mean the call will not run; it means the call *may* be skipped when its arguments are judged unchanged and nothing else requires it to run. Both phrases are routinely shortened into something stronger than they say."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Any concrete prediction about skipping depends on the compiler, so it is worth stating what this project is actually built with rather than inheriting assumptions from older writing. The Kotlin version is 2.4.10 and the Compose compiler plugin is versioned with it; Compose Multiplatform is 1.11.1; and no module declares a `composeCompiler { }` block, so no compiler option is customised anywhere in the repository."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That settles one question completely. **Strong Skipping is enabled**, because it has been the default since the Compose compiler shipped with Kotlin 2.0.20, and nothing here turns it off. It is not really a mode any more either: the Gradle plugin's own flag for it is deprecated with the message that it should be enabled by default and will be removed in Kotlin 2.5.0."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Under Strong Skipping the documented rules are these. All restartable composable functions become skippable, whether or not they have unstable parameters — non-restartable ones remain unskippable. Unstable parameters are compared using instance equality, `===`; stable parameters are compared with `equals`. And lambdas written inside a composable are automatically remembered, so passing a lambda no longer defeats skipping the way it once did."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Repeating the pre–Strong Skipping rule that a composable with a non-stable parameter cannot be skipped, so passing a `List` \"always forces recomposition\". That was true before the default changed and it is the single most durable piece of stale Compose advice in circulation. It still appears in current documentation: the composable lifecycle page lists \"a required parameter is of a non-stable type\" among the disqualifiers for skipping and only adds afterwards that Strong Skipping relaxes it. Read that page alone and you will reproduce the folklore."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Three comparisons are worth being able to run in your head, and the third is the one that catches people out."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "What the caller passes",
+                    "How the argument is compared",
+                    "Result"
+                  ],
+                  "rows": [
+                    [
+                      "The same unstable instance it passed last time",
+                      "By instance — it is the same object",
+                      "The call is skipped"
+                    ],
+                    [
+                      "A fresh but structurally equal unstable instance",
+                      "By instance — a new object is not the same object",
+                      "The call executes, even though the values are equal"
+                    ],
+                    [
+                      "A stable value equal to the one it passed last time",
+                      "With `equals` — the values are equal",
+                      "The call is skipped"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The middle row is where the real advice lives. If a caller rebuilds an object on every pass — mapping a domain type into a UI type in a composable body, say — the child receives a different instance every time and no amount of stability annotation on the child's parameter type will change that, because the annotation cannot make a new object be an old one. What changes it is holding the value still: `remember` it against the inputs it derives from, or hoist the mapping out of composition entirely."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Any prediction of this kind is only meaningful with its conditions stated, and there are three of them."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**The same composition identity is executing.** A new identity has nothing to compare against, so its first execution is not a skip candidate at all.",
+                    "**The call is actually reached.** Skipping is decided when the runtime arrives at the call; a call inside a branch that is not taken is not skipped, it simply does not exist this time.",
+                    "**Nothing invalidated the child independently.** Parameters are not the only reason a composable runs."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That third condition is worth demonstrating, because it dissolves a common confusion about what skipping controls. Take the `FormState` above, pass the very same instance to a child on every pass, and write to `query` from outside. The parent is not invalidated and does not run; the child runs anyway and shows the new value, because the child *read* `query` and that read subscribed it. Then invalidate the parent for an unrelated reason with the same instance still being passed, and the child is skipped. Same argument, same instance, opposite outcomes — decided by whether the child had a reason of its own to execute."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "There is an honest complication to record here, because it is exactly the kind of thing that turns into folklore if it is quietly smoothed over. The rules above are the documented ones. They are what to reason from and what to say in an interview. They are not, in every case, what the compiler in front of you does."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Running the middle row of that table against this repository's own toolchain does not reproduce it for collections. A composable taking a `List` parameter, whose caller built a fresh and structurally equal list on every pass, was **not** re-executed; a control that changed the list's contents was re-executed every time, so the comparison was certainly happening. The same experiment with a class carrying a `var` property behaved exactly as documented: a fresh but equal instance re-ran the child, and the same instance passed again skipped it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The mechanism, kept to what is needed and no further: when the compiler can classify a parameter's type statically it emits one comparison — `equals` for a stable type, instance equality for an unstable one. When it cannot, and an interface such as `List` is precisely a case it cannot, it emits both and selects between them at run time using information the call site supplies. In the cases measured here the call site had nothing marking the argument as unstable, so the `equals` comparison ran and an equal list counted as unchanged."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The useful conclusion is not a new rule to memorise, it is a boundary. Which comparison a particular compiler chooses for a particular call is an implementation decision that has already changed once and is not part of any promise; the documented rule is the promise. So design against the documented rule, and do not build behaviour that depends on the observed one in either direction — neither \"my equal list will be skipped\" nor \"my equal list will re-run\" is something to rely on. The two design rules that survive whichever answer you get are the ones already stated: keep a stable identity for values you pass repeatedly, and make types genuinely stable so that `equals` is a meaningful question."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "It is also worth saying plainly what none of this is for. Skipping is a mechanism, not a target. The previous unit's argument stands unchanged: a recomposition count is an observation, the thing that costs something is the work performed during composition, and \"make this skippable\" is only worth doing when an actual symptom traces to an actual expense. The tools for inspecting what the compiler decided — the compiler metrics and reports that list which functions came out skippable and which types came out stable — exist and are the right instrument when you have a measured problem. They are not configured in this project, they are not something you can read here today, and they belong to the performance unit later in this path."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Expect \"what is stability and when does Compose skip a composable?\". Lead with the definition rather than the annotation list: a type is stable when the runtime can tell whether its value changed, which includes mutable types whose changes notify composition. Then give the Strong Skipping rules — every restartable composable is skippable, unstable arguments are compared by instance and stable ones with `equals` — and explicitly retire the older claim that an unstable parameter always forces re-execution. The sentence that distinguishes a strong answer is the one about scope: skipping is decided per call, only when that call is reached, and a child that reads state which changed will run regardless of what its parameters look like."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_immutability_vs_stability",
+            "lesson_recomposition_scopes",
+            "lesson_recomposition_cost"
+          ],
+          "sources": [
+            {
+              "title": "Stability in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/performance/stability"
+            },
+            {
+              "title": "Strong Skipping Mode",
+              "url": "https://developer.android.com/develop/ui/compose/performance/stability/strongskipping"
+            },
+            {
+              "title": "Lifecycle of composables",
+              "url": "https://developer.android.com/develop/ui/compose/lifecycle"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_stability_annotations",
+          "title": "@Stable and @Immutable as Contracts",
+          "summary": "Two annotations that look like optimisation switches and are nothing of the kind. What each one promises, what it deliberately does not enforce, and why an unjustified one produces a screen showing the wrong data rather than a screen that is merely slow.",
+          "primarySubtopicIds": [
+            "compose_stability"
+          ],
+          "supportingSubtopicIds": [
+            "kotlin_equality"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The previous lesson left one thread open. The compiler works out stability by looking at a type, and there are types it cannot work out — an interface whose implementations it has never seen, a class from a library, a class whose property types it cannot analyse. `@Stable` and `@Immutable` are how you answer on its behalf."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "They are promises, and the wording of the runtime's own documentation is unusually direct about what that means. `@Stable`, applied to a class or interface, states that three things must be true: `equals` will always return the same result for the same two instances; when a public property of the type changes, composition will be notified; and all public property types are themselves stable. `@Immutable` states something stronger and simpler — that all publicly accessible properties and fields will not change after the instance is constructed, which the documentation notes is a stronger promise than `val`, because `val` only says the value cannot be changed *through a setter*."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What neither of them does is check. The invariants are used for optimisations by the compiler and, in the documentation's own words, have undefined behaviour if the assumptions are not met — so one should not use the annotation unless certain the conditions are satisfied. The guidance on the platform side says the same thing in the language of contracts: these annotations do not make a class stable on their own; by using them you opt in to a contract with the compiler, and incorrectly annotating a class can break recomposition."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Annotation",
+                    "What you are promising",
+                    "What it does not do"
+                  ],
+                  "rows": [
+                    [
+                      "`@Immutable`",
+                      "The public properties will not change after construction — stronger than `val`",
+                      "It does not freeze anything. Nothing prevents the object behind a property from being mutated, and the compiler will not notice if it is"
+                    ],
+                    [
+                      "`@Stable`",
+                      "`equals` is consistent, property changes notify composition, and property types are stable",
+                      "It does not add observation. It asserts that observation already exists — it cannot create it"
+                    ]
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "These are declarations about code you are responsible for, not instructions to the runtime. The compiler does not verify them, so an annotation is only ever as true as the type it is attached to, and the cost of it being false is paid somewhere else entirely."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Start with a contract that holds, because it also settles the \"stable versus immutable\" confusion in one example."
+                },
+                {
+                  "type": "code",
+                  "code": "@Stable\nclass FormState {\n    var query by mutableStateOf(\"\")\n    var showAdvanced by mutableStateOf(false)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Every clause is satisfied and none of them requires immutability. The properties change; they are backed by observable state, so composition is notified when they do; `equals` is inherited and referential, which is consistent for the same two instances; and the property types are primitives. Running this behaves exactly as the promise implies: writing `query` re-executes the composable that reads it, while an unrelated invalidation of the parent, with the very same instance still being passed down, skips the child. That is the promise being kept — a mutable object the runtime can nevertheless reason about."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now a contract that does not hold, using the entity type from the previous lesson."
+                },
+                {
+                  "type": "code",
+                  "code": "@Immutable\nclass Playlist(val id: String, val tracks: MutableList<String>) {\n    override fun equals(other: Any?): Boolean = other is Playlist && other.id == id\n    override fun hashCode(): Int = id.hashCode()\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The annotation says the public properties will not change after construction. `tracks` is a `MutableList` handed out through a public property, so the promise is false the moment anything adds to it. Compose a screen that displays the track count, keep the same playlist id while the list grows behind it, and the composable is not re-executed: the screen goes on reporting the original count while the data holds three tracks. Run exactly that and it is what happens."
+                },
+                {
+                  "type": "callout",
+                  "kind": "NOTE",
+                  "text": "One honest detail, because the tempting version of this story is not quite true. Removing the annotation from `Playlist` did not fix it under this project's toolchain — the unannotated type was skipped in the same way, since the compiler could not classify it either and its `equals` still reported the two playlists equal. So the annotation was not the sole cause of the stale screen here. What the annotation contributes is worse than being the cause: it converts a judgement the compiler was making cautiously, and might make differently in a future version, into a guarantee it is entitled to rely on. The bug becomes latent and toolchain-dependent rather than absent."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The two fixes are both fixes to the type, and neither of them is a different annotation."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Make the promise true.** Hold `tracks` as a read-only `List` that is replaced rather than edited, so the type really is immutable and the annotation becomes unnecessary — which is the preferred outcome, since the guidance is explicit that if a class can be made stable without an annotation, that is how it should be done.",
+                    "**Make the change observable instead.** If the collection must be edited in place, back it with a snapshot-aware collection and mark the type `@Stable` rather than `@Immutable`, because now the honest claim is not that it never changes but that changes are notified."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Applying `@Stable` or `@Immutable` because a screen recomposes more than expected. That reasoning starts from a number rather than a symptom, treats a correctness contract as a performance switch, and frequently annotates a type that the compiler had already inferred correctly — in which case the annotation adds a promise to maintain and buys nothing. If the type is genuinely eligible, say so by making it so."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The reason to treat these as correctness tools rather than performance tools is what a false promise costs, and the asymmetry is stark. A missed skip is a slow screen: measurable, local, visible in a profile, and harmless while nobody notices it. A false promise is a screen showing data that is no longer true — and stale UI does not look like a Compose problem at all. It looks like a data problem, so it is investigated in the repository, then the network layer, then the cache, then the ViewModel, and only afterwards does anyone consider that the value arrived correctly and was never rendered. It is also intermittent by nature, since it only bites when the composition shape happens to reach a skip, which makes it hard to reproduce and easy to dismiss."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Interfaces are the case where an annotation is genuinely doing work nothing else can do, and are for the same reason where a false promise is most dangerous."
+                },
+                {
+                  "type": "code",
+                  "code": "// The compiler cannot analyse implementations it has not seen, so this is\n// a promise made on behalf of every implementation that will ever exist.\n@Stable\ninterface SearchUiState {\n    val query: String\n    val results: List<Result>\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is a legitimate and useful thing to write, provided the implementations really do notify composition when their properties change — typically because they are backed by observable state. It is also a promise you are making about code that has not been written yet, including by other people, which is an argument for keeping such interfaces small and for stating the requirement where implementers will read it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two adjacent mechanisms exist and are worth one line each rather than a section. A **stability configuration file** lets you opt types you do not own — a standard-library date type, a module you cannot annotate — into the same contract at compile time; it is the same kind of promise with the same warning attached, and it does not make a class stable on its own. The **kotlinx immutable collections** library provides collection types that are genuinely immutable rather than read-only, and the compiler treats them as such, which removes the most common reason a UI type comes out unstable. Neither is configured in this project, and neither is where to start."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Which leaves the actual design question, and it is not \"which annotation\". It is what kind of thing this type is. Screen state is a value, and values want to be immutable data classes over read-only collections, at which point the compiler infers everything on its own and there is nothing to annotate. Something that holds live, changing state for the UI — a form, a controller, a scroll position — is not a value and should not be pretending to be one; it should expose its changes through observable state and may then honestly be `@Stable`. Almost every case where an annotation feels necessary is a case where those two kinds of type have been mixed together."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "\"What do `@Stable` and `@Immutable` do?\" invites the weak answer that they help Compose skip recomposition. Say instead that they are contracts the compiler trusts without verifying: `@Immutable` promises the public properties never change after construction, `@Stable` promises consistent `equals`, notified changes, and stable property types. Then make the consequence explicit — a false promise is a correctness bug that surfaces as stale UI, which is far more expensive to diagnose than the recomposition it was meant to avoid — and finish with the point that carries the most signal: if a type can be made stable by construction, that is the fix, and the annotation is unnecessary."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_stability_and_skipping",
+            "lesson_immutability_vs_stability",
+            "lesson_observable_collections"
+          ],
+          "sources": [
+            {
+              "title": "Stability in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/performance/stability"
+            },
+            {
+              "title": "Fix stability issues",
+              "url": "https://developer.android.com/develop/ui/compose/performance/stability/fix"
+            },
+            {
+              "title": "Stable annotation source",
+              "url": "https://raw.githubusercontent.com/androidx/androidx/androidx-main/compose/runtime/runtime-annotation/src/commonMain/kotlin/androidx/compose/runtime/Stable.kt"
+            },
+            {
+              "title": "Immutable annotation source",
+              "url": "https://raw.githubusercontent.com/androidx/androidx/androidx-main/compose/runtime/runtime-annotation/src/commonMain/kotlin/androidx/compose/runtime/Immutable.kt"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
     }
   ]
 }

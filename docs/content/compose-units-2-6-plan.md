@@ -41,12 +41,15 @@ identity proposed here lives in documentation until the authoring issue that shi
 | E23-07 | [Assessment gaps](#assessment-gaps-for-e23-07) in full, re-checked against the finished Lessons |
 | E23-08 | [Handoff](#handoff) — sequencing, cross-Unit links, and the limitations recorded here |
 
-**Authoring status.** E23-02, E23-03, E23-04 and E23-05 shipped Units 2, 3, 4 and 5; all
-four are ACTIVE in `learning_curriculum.json`. What that authoring found is recorded in
+**Authoring status.** E23-02 through E23-06 shipped Units 2, 3, 4, 5 and 6; all five are
+ACTIVE in `learning_curriculum.json`, so every identity proposed below is now shipped rather
+than proposed. What that authoring found is recorded in
 [Authoring outcomes for Units 2 and 3](#authoring-outcomes-for-units-2-and-3),
-[Authoring outcomes for Unit 4](#authoring-outcomes-for-unit-4) and
-[Authoring outcomes for Unit 5](#authoring-outcomes-for-unit-5). Unit 6 is still a plan, so
-its identities below remain proposals until E23-06 ships them.
+[Authoring outcomes for Unit 4](#authoring-outcomes-for-unit-4),
+[Authoring outcomes for Unit 5](#authoring-outcomes-for-unit-5) and
+[Authoring outcomes for Unit 6](#authoring-outcomes-for-unit-6). Lesson authoring for this
+epic is therefore complete; the semantic assessment work stays with E23-07 and the
+end-to-end verification of the five Units together stays with E23-08.
 
 ---
 
@@ -835,6 +838,165 @@ Both Unit 5 gaps stand, and teaching a concept does not close an assessment gap.
   argues only one way produces a state holder whose job is string concatenation.
 
 
+## Authoring outcomes for Unit 6
+
+Added by E23-06 after both Lessons were written. Everything below was read from the
+artifacts this repository resolves or executed against them; nothing here is recalled.
+
+### What did not change
+
+Both proposed Lesson ids, titles, authored order and primary/supporting mappings for Unit 6
+in the [identity tables](#identity-conventions-and-proposed-identities) shipped verbatim,
+as did the Unit id and title. No Lesson boundary moved and no blueprint *line* was
+corrected — two blueprint Notes were extended, generalising L6.1's "reading state inside a
+composable" to any observing context and recording the `SnapshotStateList` emission failure
+found while authoring L6.2. Both Lessons carry Core, Practical and Senior depth. Every
+`relatedLessonIds` entry resolves inside the shipped bundle: Unit 6 links backwards into
+Units 2, 3 and 5 and within itself, and the Effects Unit and the Flow curriculum are named
+in prose only with external documentation cited, exactly as the L6.2 pointer constraint
+requires.
+
+Both Lessons map `compose_snapshot_system` as their only primary concept, so the Unit
+resolves to that single Subtopic and Unit practice runs on its one active Question. The
+three Flow and side-effect concepts L6.2 bridges stay supporting and create no Unit 6
+practice;
+`BundledLearningCurriculumTest.flowConceptsStaySupportingRatherThanBecomingUnitPractice`
+pins that, in the same way Unit 3's performance mapping and Units 4 and 5's cross-Topic
+mappings are pinned.
+
+Four backward cross-references were added to published Lessons whose prose already pointed
+at this Unit: `lesson_observable_state`, `lesson_recomposition_scopes` and
+`lesson_derived_state` now relate to `lesson_snapshot_observation`, and
+`lesson_observable_collections` — the Lesson that introduces `mutableStateListOf` — relates
+to `lesson_snapshot_flow`, which is where the `toList()` rule for that type is taught. No
+prose in those Lessons was edited.
+
+### Runtime facts read from the resolved artifacts
+
+| Claim a Lesson makes | How it was verified |
+| --- | --- |
+| `snapshotFlow` runs its block on collection and emits the result, records the snapshot state the block read, re-runs the block when an applied change touches that state, and emits only when the new result is not `equals` to the previously emitted one | `SnapshotFlow.kt` in the sources of the resolved `androidx.compose.runtime:runtime:1.11.2` artifact — both the public KDoc and `snapshotFlowImpl`, whose loop is literally `if (newValue != lastValue) { lastValue = newValue; emit(newValue) }` after an unconditional first `emit` |
+| The block runs in a read-only snapshot, may not modify snapshot data, may run more than once for equal inputs or only once after many rapid changes, and must be idempotent and free of side effects | The same KDoc in the same resolved artifact |
+| Snapshot-state observation is conflated state rather than an event log — "only the most recent state matters", and an observer may skip intermediate states or run twice for the same one | The events-versus-state paragraphs of the same KDoc |
+| A snapshot guarantees that every state object holds the value it held when the snapshot was taken, unless changed inside that snapshot | The `Snapshot` class KDoc in `Snapshot.kt` in the same resolved sources. This is the *only* consistency claim L6.1 makes, and it is scoped to state objects rather than to application objects |
+| `SnapshotStateList.toList()` returns an immutable list, is O(1) rather than a copy, and is recommended specifically for returning the list's value from a `snapshotFlow` | The `toList()` KDoc in `SnapshotStateList.nonAndroid.kt` in the same resolved sources |
+
+**Upstream and the resolved version agree here, which is worth recording because Unit 5
+found the opposite.** The `androidx-main` copies of `SnapshotFlow.kt` and
+`SnapshotStateList.kt` were fetched and compared against the resolved 1.11.2 sources for
+each claim above; the wording is identical. The three source-file URLs cited by the shipped
+Lessons therefore point at text that matches the artifact the reader's app is built
+against. That agreement is a fact about today, not a guarantee — E23-05's `computedStateOf`
+finding is the counter-example — so it should be re-checked on any material edit.
+
+### Claims that were executed rather than reasoned about
+
+Two throwaway probes on the JVM target measured each of these and were then deleted. The
+L6.1 probe used `runComposeUiTest` and counted composable executions; the L6.2 probe used
+`runTest`, collected on an unconfined test dispatcher so collection was already running
+before any change was made, and counted block evaluations and emissions separately.
+
+| Claim a Lesson makes | Measured result |
+| --- | --- |
+| Mutating a field on an ordinary class changes nothing observable | Field driven 0 → 1; the reading composable executed **once** in total. The field really did hold 1 afterwards |
+| Mutating a collection held inside a `mutableStateOf` notifies nothing | `items.value.add("b")` on a `mutableStateOf(mutableListOf("a"))`; the reading composable executed **once** in total. The list really did hold two elements afterwards |
+| An equal write is not a change | Assigning 0 to a state already holding 0 produced **no** further composable execution; the following assignment of 1 produced one |
+| A `snapshotFlow` emits its first value on collection, unconditionally | One evaluation and one emission before any change was made |
+| An equal write reaches a `snapshotFlow` collector as nothing at all | After the equal write, evaluations and emissions were both **unchanged** — the write was skipped before any notification could exist |
+| Equal results are suppressed while the block still runs | Block `index > 2`, index driven 1, 2, 3, 4 with each change allowed to settle: **five** evaluations, **two** emissions |
+| Intermediate values can be missed | The same block with 1, 2, 3 written with no opportunity to settle between them: **two** evaluations, **two** emissions, the second carrying 3 |
+| A plain value captured outside the block creates no dependency | One evaluation and one emission; a later change to the underlying state produced **no** further evaluation |
+| Returning a `SnapshotStateList` itself emits once and never again | `snapshotFlow { list }`: **one** evaluation, **one** emission, and adding an element afterwards produced neither. `snapshotFlow { list.toList() }` on the same sequence: **two** evaluations, **two** emissions |
+| Writing snapshot state inside the block fails collection | `IllegalStateException: Cannot modify a state object in a read-only snapshot` |
+| Snapshot consistency does **not** make a multi-write application update atomic | Two ordinary assignments to two holders, read as a pair: the collector observed `(1, 0)` between `(0, 0)` and `(1, 1)` when each write was applied before the next was made, and only `(0, 0)` and `(1, 1)` when both landed before either was applied. A snapshot taken between the two writes also saw `(1, 0)`. Added during review — see the correction below |
+
+Two notes on how those numbers should be read, both of which the shipped Lesson states
+rather than leaving to the reader.
+
+- **Every count describes an observation schedule as much as it describes the code.** The
+  two conflation rows are the same mechanism producing different-looking outcomes, and the
+  only difference between them is whether each change was allowed to settle. L6.2 reports
+  both, side by side, with the condition attached to each — which is the discipline Unit 3
+  asked for and Unit 5 relaxed to "measurements of this project's toolchain", tightened
+  here to "measurements under a stated schedule".
+- **The equal-write row is the reason the read-only enforcement had to be probed twice.**
+  The first attempt wrote a state the value it already held, which is skipped before the
+  read-only check is ever reached, so nothing was thrown. Only an unequal write inside the
+  block produces the documented `IllegalStateException`. That is a real and slightly
+  surprising interaction between two of the Unit's own claims, and it is why L6.2 tells the
+  reader not to instrument the block with a state-held counter.
+
+### Semantic re-check of `compose_snapshot_flow_state`
+
+Re-read in full — stem, options, correct set, explanation and Source — against the finished
+prose rather than against this plan's expectation.
+
+| Question | Reasoning it requires | Does the finished Lesson teach it | Evidence |
+| --- | --- | --- | --- |
+| `compose_snapshot_flow_state` | That `snapshotFlow` is the API producing a cold `Flow` from Compose `State`, and that `rememberSaveable`, `produceState` and `CompositionLocal` do something else | **Yes, and the Lesson is far wider than the Question** | `lesson_snapshot_flow` Core states that `snapshotFlow` produces a cold `Flow` from snapshot-state reads, defines what cold means in four bullets, and shows the canonical `LaunchedEffect` + `snapshotFlow` chain the Question's stem describes. The Practical comparison table separates it from `derivedStateOf` by consumer and purpose, which is the same discrimination the distractors test, one level up |
+
+The Question is sound and correctly answered, and the Lesson does not coach its wording:
+nothing in the Lesson mentions `rememberSaveable`, `produceState` or `CompositionLocal`, so
+a reader answers it by knowing what `snapshotFlow` *is for* rather than by recognising a
+list. But the Question is `FOUNDATION` and tests **API identification**, while the Lesson's
+whole substance is behavioural — the read must be inside the block, emissions are
+equality-suppressed, the stream is conflated states rather than an event log, and
+collection has a lifetime. None of that is assessed anywhere. That is recorded below as
+GAP-U6-B.
+
+### Assessment gaps confirmed and one added
+
+- **GAP-U6-A stands, unchanged and confirmed by the finished prose.**
+  `lesson_snapshot_observation` now teaches the observation model as four measured
+  contrasts — no observable object, an observable holder that was never written, a write
+  that was not a change, and a write that was — plus the invalidation-is-not-execution
+  distinction and the bounded consistency guarantee. Nothing active assesses any of it. The
+  one Question on `compose_snapshot_system` identifies an API name.
+- **GAP-U6-B is new, and is the wider of the two.** No active Question assesses
+  `snapshotFlow` *behaviour*: that the state must be read inside the block for a dependency
+  to exist, that emission is suppressed when the result is equal to the previous one, and
+  that the result is a conflated view of state rather than a record of every transition.
+  The single Question on the Subtopic is a `FOUNDATION` API-identification item, and the
+  three Flow and side-effect Subtopics L6.2 bridges are supporting-only and pinned as such
+  by a test, so they cannot become Unit 6 practice by accident. This is the strongest
+  Advanced candidate the epic has produced: it is the one place where the reasoning is
+  genuinely deep enough to justify the level on merit rather than to fill it.
+
+### Editorial decisions worth carrying forward
+
+- **"Observing context" is the Unit's own term, introduced deliberately.** The blueprint
+  said "reading state inside a composable registers a dependency". Shipped as written, that
+  makes L6.2 look like a special case bolted on. L6.1 therefore names the general thing —
+  code that is recording reads while it runs — and lists the three instances a reader has
+  met or is about to meet. L6.2 then needs one sentence to place `snapshotFlow` inside the
+  model instead of a second explanation of it.
+- **The single-cause diagnosis is shipped with its limits attached.** "Nothing observable
+  was written" is stated as the first question to ask and immediately bounded: identity,
+  captured values, equality and skipping are named as separate failures with separate
+  fixes, taught in Units 4 and 5. A learner who leaves Unit 6 with one universal
+  explanation for stale UI has been taught something false.
+- **Snapshot consistency is stated once, scoped, and not developed.** L6.1 gives the
+  documented guarantee, says explicitly that it does not make application classes
+  transactional or an `ArrayList` thread-safe, and uses it only to justify why reading state
+  outside composition is reasonable — which is what L6.2 needs. MVCC, state records, apply
+  and merge remain **Exclude**, and no Lesson names a manual snapshot API.
+- **The consistency claim was over-stated in the first draft and was corrected in review.**
+  The draft said a block reading several related state values inside one snapshot "cannot
+  see half an update", which reads as application-level atomicity across several writes and
+  is false. The guarantee is per snapshot *version*: a reader is pinned and nothing shifts
+  under it mid-read, but two ordinary assignments to two holders are two separate changes
+  and an observer that runs between them sees a torn pair. That was measured rather than
+  argued — the row above — and the Lesson now states the limit, notes that the untorn
+  outcome is a scheduling accident rather than a promise, and gives the in-scope fix: values
+  that form one invariant belong in one state object, which is Unit 2's conclusion about
+  collections and nested data reached from the other direction. Grouping writes into one
+  mutable snapshot would be the other answer and stays **Exclude**, because manual snapshot
+  management is outside this Unit.
+- **Neither API is presented as persistence or as threading.** The `snapshotFlow` versus
+  `derivedStateOf` comparison ends by saying that nothing either produces outlives its
+  Composition or coroutine, and that a collector runs in whatever context its coroutine was
+  given. Unit 7 will meet the threading question properly; this is the bounded version.
+
 ## Assessment gaps for E23-07
 
 Substantive gaps only. There is no per-Lesson or per-level quota, and a gap here is a
@@ -852,6 +1014,7 @@ missing, not a number.
 | GAP-U5-A | Unit 5 / `lesson_remember_key_memoization` | Key-based cache invalidation: stale results from under-specified keys, no cache from over-specified ones | `compose_derived_state` carries one Question and it is about `derivedStateOf`; the memoization half of the Unit is unassessed | Add coverage in E23-07 |
 | GAP-U5-B | Unit 5 / `lesson_work_outside_composition` | Deciding that work does not belong in composition at all, and which layer owns it | `main_thread_performance` is View-toolkit framed and supporting-only; no Question connects placement of work to composition | Add coverage in E23-07 |
 | GAP-U6-A | Unit 6 / `lesson_snapshot_observation` | The observation model itself: which reads create dependencies and what a write invalidates | The only Question on `compose_snapshot_system` identifies an API. Unit 6's primary Lesson has no assessment of its own reasoning | Add coverage in E23-07 |
+| GAP-U6-B | Unit 6 / `lesson_snapshot_flow` | `snapshotFlow` behaviour rather than its name: that the state must be read inside the block, that an equal result is not emitted, and that the stream is conflated state rather than a record of every transition | Added by E23-06 after authoring. The one Question on `compose_snapshot_system` is a `FOUNDATION` API-identification item, and the Flow and side-effect Subtopics L6.2 bridges are supporting-only and pinned by a test, so they create no Unit 6 practice. The Lesson's whole substance is behavioural and none of it is assessed | Add coverage in E23-07; the strongest `ADVANCED` candidate in the epic |
 
 Two observations that are **not** gaps and must not be treated as quotas:
 
@@ -865,6 +1028,9 @@ Two observations that are **not** gaps and must not be treated as quotas:
   to a Subtopic that has at least one active Question, which is exactly why the review above
   was read rather than counted. Eight of eighteen with matching reasoning is the expected
   shape for a bank averaging one Question per Subtopic — not a coverage failure.
+  **One correction from authoring:** `lesson_snapshot_flow`'s Question matches it only at
+  the level of naming the API, which is why GAP-U6-B was added above after the Lesson was
+  finished. Seven of eighteen is the accurate count.
 
 ---
 
@@ -999,6 +1165,10 @@ None changes the Unit or Lesson count.
 
 ### For E23-02 through E23-06
 
+All five authoring issues are complete: Units 2 through 6 ship in `learning_curriculum.json`
+and each recorded its outcomes above. The guidance below is what they followed and is kept
+for the Units this blueprint has not yet authored.
+
 - Take Unit and Lesson ids from the [identity tables](#identity-conventions-and-proposed-identities)
   verbatim. They are checked unique against production content; changing one later costs a
   learner's study-progress record.
@@ -1032,6 +1202,13 @@ Then read [Authoring outcomes for Unit 5](#authoring-outcomes-for-unit-5), which
 `compose_derived_state_threshold` against the finished prose, confirms GAP-U5-A and
 GAP-U5-B unchanged, and records that all three Unit 5 Lessons and the whole of that Unit's
 practice rest on that single `APPLIED` Question.
+
+Then read [Authoring outcomes for Unit 6](#authoring-outcomes-for-unit-6), which re-checks
+`compose_snapshot_flow_state` against the finished prose, confirms GAP-U6-A unchanged, and
+adds GAP-U6-B — `snapshotFlow` behaviour rather than its API name — as the epic's strongest
+`ADVANCED` candidate on merit. It also records the runtime facts both Unit 6 Lessons rest
+on and the measured numbers behind them, so E23-07 can write against verified behaviour
+rather than re-deriving it.
 
 Then read [Authoring outcomes for Unit 4](#authoring-outcomes-for-unit-4), which carries the
 one item in this plan that is a possible Question defect rather than a coverage gap:

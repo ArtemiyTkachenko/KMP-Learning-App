@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `bc295aa29e7b945af1dfbd30a65ab8e8f0cf047d45233c530304a9f0dde1b324` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `3f713ec6f7288ddf23d25b9283468d5a164fcfc7ad297243a1a3e13dfef807b8` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `b7956adc1d5c18cb1fc219dde3cb4bad73e4755d1776c7fd33a9f6b5ffbdc1e2` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,12 +68,12 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 5 |
-| Active lessons in those units | 19 |
-| Distinct primary subtopics | 8 |
-| Distinct supporting subtopics | 25 |
-| Unique active questions reached through primary mappings | 9 |
-| Primary subtopics with at least one active question | 8 |
+| Active learning units | 6 |
+| Active lessons in those units | 21 |
+| Distinct primary subtopics | 9 |
+| Distinct supporting subtopics | 28 |
+| Unique active questions reached through primary mappings | 10 |
+| Primary subtopics with at least one active question | 9 |
 | Primary subtopics with no active question | 0 |
 | Active questions in the bank | 358 |
 | Deprecated questions excluded from this report | 41 |
@@ -96,6 +96,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Recomposition (`unit_recomposition`) | 3 | 1 | 2 | 0 | 0 | 2 |
 | Identity, Keys, Stability and Immutability (`unit_identity_keys_and_stability`) | 5 | 2 | 1 | 1 | 0 | 2 |
 | Derived State and Expensive Work (`unit_derived_state_and_expensive_work`) | 3 | 1 | 0 | 1 | 0 | 1 |
+| Snapshot Fundamentals (`unit_snapshot_fundamentals`) | 2 | 1 | 1 | 0 | 0 | 1 |
 
 ## Unit and lesson detail
 
@@ -461,6 +462,50 @@ Supporting context — not primary coverage:
 | `main_thread_performance` — Main-thread performance | 1 | `performance` — Performance, Memory & Debugging |
 | `layered_architecture` — Layered architecture | 2 | `architecture` — Application Architecture & Design Principles |
 | `use_cases` — Use cases and when to introduce them | 2 | `architecture` — Application Architecture & Design Principles |
+
+### Snapshot Fundamentals (`unit_snapshot_fundamentals`)
+
+Home topic: `android_ui` — UI — Views & Jetpack Compose.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 1 | `compose_snapshot_flow_state` |
+| APPLIED | 0 | — |
+| ADVANCED | 0 | — |
+
+#### How Compose Observes State (`lesson_snapshot_observation`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_snapshot_system` — Compose snapshot-system fundamentals | 1 | 0 | 0 | 1 | `compose_snapshot_flow_state` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `compose_state` — Compose state | 1 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_recomposition` — Composition and recomposition | 2 | `android_ui` — UI — Views & Jetpack Compose |
+
+#### `snapshotFlow` and Crossing Into Flow (`lesson_snapshot_flow`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_snapshot_system` — Compose snapshot-system fundamentals | 1 | 0 | 0 | 1 | `compose_snapshot_flow_state` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `flow_fundamentals` — Flow fundamentals | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `hot_vs_cold_streams` — Hot vs cold streams | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `compose_side_effects` — Compose side-effect APIs | 2 | `android_ui` — UI — Views & Jetpack Compose |
 
 ## Primary assessment gaps
 

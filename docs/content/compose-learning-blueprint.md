@@ -447,7 +447,15 @@ inputs did not change".
 - **Primary:** `compose_snapshot_system`
 - **Supporting:** `compose_state`, `compose_recomposition`
 - **Notes:** Intentionally bounded. Snapshot MVCC implementation, slot-table layout, and
-  apply/merge internals are **Exclude** — deep internals are **Reference** at most.
+  apply/merge internals are **Exclude** — deep internals are **Reference** at most. Two
+  additions from authoring: the Core line's "reading state inside a composable registers a
+  dependency" is generalised in the shipped Lesson to *any* observing context — an
+  executing composable, a `derivedStateOf` calculation, a `snapshotFlow` block — because
+  the composable-only framing makes L6.2 look like a special case rather than the same
+  mechanism. And the Practical line's "the answer is almost always 'nothing observable was
+  written'" is shipped with its limits attached: it diagnoses the missing-write family, and
+  the Lesson says explicitly that identity, captured values, equality and skipping are
+  separate failures taught in Units 4 and 5.
 
 #### L6.2 — `snapshotFlow` and Crossing Into Flow
 
@@ -463,7 +471,11 @@ inputs did not change".
   then a pointer. Collection inside `LaunchedEffect` is taught in Unit 7; this lesson
   precedes it deliberately so the effect lesson has a concrete use. While Unit 7 and the
   Flow curriculum are unauthored, both pointers name the subject in prose and cite external
-  documentation: `relatedLessonIds` cannot reference a Lesson that does not exist.
+  documentation: `relatedLessonIds` cannot reference a Lesson that does not exist. Authoring added one
+  concrete failure the blueprint did not plan: a block returning a `SnapshotStateList`
+  itself records no element read *and* produces a value equal to the previous one, so it
+  emits once and never again. The runtime's own `SnapshotStateList.toList()` documentation
+  recommends `toList()` for exactly this case, and the shipped Lesson teaches it.
 
 ---
 
@@ -1035,12 +1047,12 @@ sources on any material edit; guidance older than roughly two releases is suspec
 
 ## Status
 
-This blueprint is complete as a map. Units 1–5 are authored and ship in
+This blueprint is complete as a map. Units 1–6 are authored and ship in
 `learning_curriculum.json` as `unit_thinking_in_compose`,
 `unit_state_and_state_ownership`, `unit_recomposition`,
-`unit_identity_keys_and_stability` and `unit_derived_state_and_expensive_work`; Units 6–14
-are still plans. When authoring reveals a wrong Lesson boundary, update this file in the
-same change.
+`unit_identity_keys_and_stability`, `unit_derived_state_and_expensive_work` and
+`unit_snapshot_fundamentals`; Units 7–14 are still plans. When authoring reveals a wrong
+Lesson boundary, update this file in the same change.
 
 Units 2–6 have a confirmed authoring plan in
 [`compose-units-2-6-plan.md`](compose-units-2-6-plan.md), which records their proposed Unit
@@ -1130,3 +1142,38 @@ three findings matter to Unit 6 and to E23-07:
   sits and how often it repeats — and the execution counts it does report are labelled as
   measurements of this project's toolchain rather than as performance claims. Unit 6 should
   keep that separation.
+
+Authoring Unit 6 kept both planned Lesson boundaries, identities, titles and concept
+mappings unchanged. Two blueprint Notes were extended above rather than any line being
+rewritten, and four findings matter to Unit 7 and to E23-07:
+
+- **The Unit's behavioural claims were measured against the resolved runtime.** Two
+  throwaway probes on the JVM target — one `runComposeUiTest` probe for L6.1 and one
+  `runTest` probe for L6.2 — checked every claim the Lessons make about what is observed
+  and what is emitted, rather than reading them off a documentation page. Both probes were
+  deleted; the numbers and the conditions they were taken under are recorded in the plan's
+  authoring outcomes.
+- **`snapshotFlow` was verified against `androidx.compose.runtime:runtime:1.11.2`, not
+  against upstream.** The resolved artifact's `SnapshotFlow.kt` and the current
+  `androidx-main` file agree word for word on every claim the Lesson makes, which is worth
+  recording because Unit 5 found the opposite for `derivedStateOf`. Unit 7 should keep
+  checking rather than assuming the agreement holds.
+- **An equal write is not a write at all.** Assigning a `mutableStateOf` the value it
+  already holds skips the write entirely — it produced no composable execution, no
+  `snapshotFlow` evaluation and, when attempted inside a read-only snapshot, not even the
+  `IllegalStateException` an unequal write produces there. Both Unit 6 Lessons lean on
+  this, and it is the cleanest available demonstration that a write and a change are
+  different things.
+- **Snapshot consistency is a per-version read guarantee, not application-level
+  atomicity.** Review caught the draft claiming that a block reading several related values
+  inside one snapshot "cannot see half an update". It can: two ordinary assignments to two
+  holders are two separate changes, and an observer running between them sees a torn pair,
+  which was measured. L6.1 now states the limit and points at the in-scope fix — one state
+  object for values that form one invariant. Unit 7 will meet the same boundary from the
+  effects side and should not inherit the stronger claim.
+- **Unit 6 states evaluation and emission counts, and states their conditions with them.**
+  Unit 3 asked for no counts and Unit 5 relaxed that to counts labelled as measurements of
+  this project's toolchain. L6.2 needs numbers, because "evaluations, writes and emissions
+  are not one-to-one" is not believable as an assertion; every number it reports names the
+  collection readiness and settling schedule it was taken under, and the Lesson says
+  plainly that the numbers describe an observation schedule rather than the API.

@@ -37,6 +37,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_recomposition",
                 "unit_identity_keys_and_stability",
                 "unit_derived_state_and_expensive_work",
+                "unit_snapshot_fundamentals",
             ),
             units().map { it.id },
         )
@@ -48,6 +49,7 @@ internal class BundledLearningCurriculumTest {
                 "Recomposition",
                 "Identity, Keys, Stability and Immutability",
                 "Derived State and Expensive Work",
+                "Snapshot Fundamentals",
             ),
             units().map { it.title },
         )
@@ -107,6 +109,14 @@ internal class BundledLearningCurriculumTest {
                 "lesson_work_outside_composition",
             ),
             unit("unit_derived_state_and_expensive_work").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "lesson_snapshot_observation",
+                "lesson_snapshot_flow",
+            ),
+            unit("unit_snapshot_fundamentals").lessons.map { it.id },
         )
     }
 
@@ -168,6 +178,17 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_derived_state_and_expensive_work").lessons.map { it.primarySubtopicIds },
         )
+
+        // Both Unit 6 Lessons own `compose_snapshot_system`: the Unit is one mental model
+        // and its second Lesson applies that model to a non-UI consumer rather than
+        // teaching a separate concept.
+        assertEquals(
+            listOf(
+                listOf("compose_snapshot_system"),
+                listOf("compose_snapshot_system"),
+            ),
+            unit("unit_snapshot_fundamentals").lessons.map { it.primarySubtopicIds },
+        )
     }
 
     @Test
@@ -213,6 +234,26 @@ internal class BundledLearningCurriculumTest {
         assertTrue(
             lesson.supportingSubtopicIds.containsAll(
                 listOf("main_thread_performance", "layered_architecture", "use_cases"),
+            ),
+        )
+    }
+
+    @Test
+    fun flowConceptsStaySupportingRatherThanBecomingUnitPractice() = runTest {
+        // GAP-U6-A in `docs/content/compose-units-2-6-plan.md`: the single active Question on
+        // `compose_snapshot_system` identifies an API name, and nothing assesses the observation
+        // model this Unit is built on. The Flow concepts the second Lesson bridges are assessed
+        // in the `async_reactive` Topic in terms that have nothing to do with Compose, and
+        // `compose_side_effects` belongs to the Effects Unit that E23 does not author. Promoting
+        // any of them would hand Unit 6 practice it does not teach and would hide the gap that
+        // E23-07 still has to close.
+        val lesson = unit("unit_snapshot_fundamentals").lessons
+            .single { it.id == "lesson_snapshot_flow" }
+
+        assertEquals(listOf("compose_snapshot_system"), lesson.primarySubtopicIds)
+        assertTrue(
+            lesson.supportingSubtopicIds.containsAll(
+                listOf("flow_fundamentals", "hot_vs_cold_streams", "compose_side_effects"),
             ),
         )
     }

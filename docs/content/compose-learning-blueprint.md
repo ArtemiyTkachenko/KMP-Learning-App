@@ -193,7 +193,11 @@ The order encodes conceptual dependencies, not convenience:
   (lifecycle_navigation)
 - **Notes:** **Bridge** to the lifecycle Topic. Explain process death only as far as
   "the process can be killed and recreated with the user's task intact". Do **not**
-  reproduce the lifecycle and process-death curriculum here.
+  reproduce the lifecycle and process-death curriculum here. The documented saved-state
+  guarantee is Android's; Compose Multiplatform documents no equivalent for desktop, iOS or
+  web, so teach the lifetime ladder — recomposition, composition removal, process
+  recreation — and say plainly that host restoration beyond Android is not a documented
+  guarantee.
 
 #### L2.4 — State Hoisting and the Lowest Sensible Owner
 
@@ -207,11 +211,14 @@ The order encodes conceptual dependencies, not convenience:
 - **Senior:** the framing that matters is not "Compose or ViewModel" but **who is the lowest
   sensible owner of this state?** — with the tests being who reads it, who writes it, and
   how long it must live.
-- **Primary:** `compose_state_hoisting`, `compose_udf`
-- **Supporting:** `state_ownership` (architecture)
+- **Primary:** `compose_state_hoisting`
+- **Supporting:** `compose_udf`, `state_ownership` (architecture)
 - **Notes:** The `architecture` Topic owns state ownership as a general principle —
   **Bridge**. `ViewModel`-owned screen state is introduced by name here and taught in
-  Unit 8.
+  Unit 8. `compose_udf` is **supporting**, not primary: L1.3 owns unidirectional data flow
+  and this lesson uses the direction to reason about ownership rather than teaching it.
+  Two lessons claiming the same primary concept would also make Unit 2 practice assess a
+  concept Unit 1 is responsible for.
 
 #### L2.5 — Collections and Observable Mutation
 
@@ -250,6 +257,9 @@ recomposition is a defect.
   the reading composable; what does *not* re-execute.
 - **Primary:** `compose_recomposition`
 - **Supporting:** `compose_fundamentals`, `compose_state`
+- **Notes:** Name composition, layout and drawing as distinct phases at **Bridge** depth —
+  without that distinction "recomposition redraws the screen" cannot be refuted. Per-phase
+  state reads and deferred reads stay in Unit 13.
 
 #### L3.2 — Recomposition Scopes and Selective Execution
 
@@ -440,7 +450,9 @@ inputs did not change".
   `compose_side_effects`
 - **Notes:** **Bridge** to the Flow curriculum — cold-stream semantics get one paragraph,
   then a pointer. Collection inside `LaunchedEffect` is taught in Unit 7; this lesson
-  precedes it deliberately so the effect lesson has a concrete use.
+  precedes it deliberately so the effect lesson has a concrete use. While Unit 7 and the
+  Flow curriculum are unauthored, both pointers name the subject in prose and cite external
+  documentation: `relatedLessonIds` cannot reference a Lesson that does not exist.
 
 ---
 
@@ -1015,6 +1027,14 @@ sources on any material edit; guidance older than roughly two releases is suspec
 This blueprint is complete as a map. Unit 1 is authored and ships in
 `learning_curriculum.json` as `unit_thinking_in_compose`; Units 2–14 are still plans. When
 authoring reveals a wrong Lesson boundary, update this file in the same change.
+
+Units 2–6 have a confirmed authoring plan in
+[`compose-units-2-6-plan.md`](compose-units-2-6-plan.md), which records their proposed Unit
+and Lesson identities, prerequisites and boundaries, the semantic review of the Questions on
+their primary Subtopics, and the version-sensitive claims their Lessons depend on. Four
+corrections from that review are already applied above: `compose_udf` demoted to supporting
+in L2.4, the phases Note on L3.1, the platform caveat on L2.3, and the pointer constraint on
+L6.2.
 
 Authoring Unit 1 kept all three Lesson boundaries and both concept mappings unchanged, and
 required one accuracy correction: L1.2's Core line previously said a composable "may

@@ -27,6 +27,8 @@ import org.artkachenko.kmp_learning_app.data.local.assessment.AssessmentAttemptS
 import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDao
 import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDatabase
 import org.artkachenko.kmp_learning_app.data.local.curriculum.repository.LocalCurriculumRepository
+import org.artkachenko.kmp_learning_app.data.local.lesson_study.repository.LocalLessonStudyRepository
+import org.artkachenko.kmp_learning_app.lesson_study.StudiedLesson
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -700,6 +702,38 @@ internal class CurriculumImporterTest {
             assertEquals(
                 listOf("topic_a_answer_a", "topic_a_answer_b", "topic_a_answer_c", "topic_a_answer_e"),
                 repository.getQuestionById("topic_a_question")?.answers?.map { it.id }?.sorted(),
+            )
+        }
+    }
+
+    @Test
+    fun curriculumImportLeavesLearnerOwnedStudyRecordsUntouched() = runTest {
+        withTestDatabase { database ->
+            val studyRepository = LocalLessonStudyRepository(
+                database = database,
+                now = { Instant.fromEpochMilliseconds(1_000) },
+            )
+            studyRepository.markStudied("lesson_a")
+            // An ID no current bundle authors: import must not treat absence as a cleanup signal.
+            studyRepository.markStudied("lesson_that_no_longer_exists")
+
+            assertEquals(
+                CurriculumImportResult.Imported,
+                CurriculumImporter(database).importCurriculum(),
+            )
+            assertEquals(
+                CurriculumImportResult.Imported,
+                CurriculumImporter(database).importCurriculum(),
+            )
+
+            // Study state is learner-owned, so a curriculum refresh neither writes, clears, nor
+            // prunes it, and the original recorded times survive unchanged.
+            assertEquals(
+                listOf(
+                    StudiedLesson("lesson_a", studiedAtEpochMillis = 1_000),
+                    StudiedLesson("lesson_that_no_longer_exists", studiedAtEpochMillis = 1_000),
+                ),
+                studyRepository.getStudiedLessons().sortedBy { it.lessonId },
             )
         }
     }

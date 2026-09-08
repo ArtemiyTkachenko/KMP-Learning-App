@@ -29,7 +29,9 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDataInit
 import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDatabase
 import org.artkachenko.kmp_learning_app.data.local.curriculum.curriculumDataModule
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImporter
+import org.artkachenko.kmp_learning_app.data.local.lesson_study.lessonStudyDataModule
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
+import org.artkachenko.kmp_learning_app.lesson_study.repository.LessonStudyRepository
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewViewModel
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultViewModel
@@ -81,6 +83,7 @@ internal class SharedHostStartupTest {
                 learningContentModule,
                 assessmentDataModule,
                 savedQuestionDataModule,
+                lessonStudyDataModule,
                 topicStudyPresentationModule,
             )
         }
@@ -128,6 +131,10 @@ internal class SharedHostStartupTest {
             // destination's ViewModel is what proves a host gets that whole chain rather than the
             // review surfaces alone.
             assertIs<SavedQuestionRepository>(koin.get<SavedQuestionRepository>())
+            // Learner-owned Lesson study state is bound in its own data module rather than in
+            // learningContentModule, which owns the publisher document, so a host that installed
+            // only the content module would fail here.
+            assertIs<LessonStudyRepository>(koin.get<LessonStudyRepository>())
             assertIs<SavedQuestionContentResolver>(koin.get<SavedQuestionContentResolver>())
             assertIs<SavedQuestionsViewModel>(koin.get<SavedQuestionsViewModel>())
             // Exactly one app-scoped holder: the review surfaces and the browser share saved state
@@ -172,6 +179,7 @@ internal class SharedHostStartupTest {
                             learningContentModule,
                             assessmentDataModule,
                             savedQuestionDataModule,
+                            lessonStudyDataModule,
                             topicStudyPresentationModule,
                         )
                     }.koin

@@ -6,6 +6,7 @@ import org.artkachenko.kmp_learning_app.data.local.assessment.assessmentDataModu
 import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDataInitializer
 import org.artkachenko.kmp_learning_app.data.local.curriculum.androidCurriculumDataModule
 import org.artkachenko.kmp_learning_app.data.local.curriculum.curriculumDataModule
+import org.artkachenko.kmp_learning_app.data.local.lesson_study.lessonStudyDataModule
 import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.koin.android.ext.koin.androidContext
@@ -22,6 +23,7 @@ public fun startAndroidLocalDataGraph(application: Application) {
             learningContentModule,
             assessmentDataModule,
             savedQuestionDataModule,
+            lessonStudyDataModule,
             topicStudyPresentationModule,
             androidCurriculumDataModule,
         )

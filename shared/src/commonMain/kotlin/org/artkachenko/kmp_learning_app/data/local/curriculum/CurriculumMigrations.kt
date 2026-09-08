@@ -158,3 +158,27 @@ internal val MIGRATION_6_7 = Migration(
         """,
     )
 }
+
+/**
+ * Adds learner-owned Lesson study identity without coupling it to publisher content lifetime.
+ *
+ * A pure additive create with no backfill: absence of a row already means unstudied, so the new
+ * table is correct while empty. Seeding "unstudied" rows from the current curriculum would also
+ * be wrong in principle, because a study record exists only when the learner explicitly made a
+ * claim. Nothing points a foreign key at the Lesson, which is a bundled document rather than a
+ * Room row, and which the record is allowed to outlive.
+ */
+internal val MIGRATION_7_8 = Migration(
+    startVersion = 7,
+    endVersion = 8,
+) { connection ->
+    connection.executeSQL(
+        """
+        CREATE TABLE IF NOT EXISTS `studied_lesson` (
+            `lesson_id` TEXT NOT NULL,
+            `studied_at_epoch_millis` INTEGER NOT NULL,
+            PRIMARY KEY(`lesson_id`)
+        )
+        """,
+    )
+}

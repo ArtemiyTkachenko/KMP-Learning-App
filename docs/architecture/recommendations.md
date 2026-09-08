@@ -14,6 +14,10 @@ All three hand the same `PracticePreset(scope, source)` to the same
 `toPracticeBuilderRoute()` mapping, and the Practice Builder never learns which
 one produced it.
 
+Continue Learning is a fourth concept and shares none of that payload: it selects
+a Lesson to read rather than practice to configure, reads no assessment history,
+and is documented in [study progress](study-progress.md).
+
 ## Guided learning recommendation policy
 
 `LearningRecommendationPolicy` is a pure `commonMain` decision over already-derived
@@ -146,9 +150,15 @@ land on top of a newer. The card is withheld while a search query is active: a
 learner who has started typing has said what they are looking for, and the
 shortcut is not a search result.
 
-A third question — which current Lesson to study next — belongs to Continue Learning,
-which is separately named, separately derived, and defined in
+A third question — which current Lesson to study next — belongs to Continue
+Learning, which is separately named, separately derived, and defined in
 [study progress](study-progress.md). It never redefines Continue Studying.
+E22-05 added it as a third card on the same Topic Browser, below this one:
+`ContinueLearningPolicy` walks current ACTIVE learning content against the
+learner's study records and reads no assessment history at all, so the three
+cards may point at three different places and none suppresses, deduplicates, or
+re-decides another. Continue Studying's semantics, wording, inputs, and
+destinations are unchanged by it.
 
 ## Contextual practice shortcuts
 
@@ -204,7 +214,7 @@ apart deliberately, and a claim proved at one layer is not re-proved at another:
 | --- | --- |
 | `LearningRecommendationPolicy` tests | Which action wins, for given facts: precedence, weak-area order, coverage tie-breaks, determinism |
 | `LearningRecommendationResolver` tests | That the facts handed to the policy are the established ones, and that an unknown count fails rather than reading as zero |
-| `TopicBrowserViewModel` tests | The whole derivation over real progress and mistake components: representative learner states, and the two guided surfaces coexisting from one history emission |
+| `TopicBrowserViewModel` tests | The whole derivation over real progress and mistake components: representative learner states, and the guided surfaces coexisting from one history emission |
 | `GuidedLearningPracticePresetIntegrationTest` | That a preset the policy produced is still runnable and editable once the real Practice Builder has preflighted it |
 | `AppNavigationTest` | That a target reaches an existing capability, and never an attempt, result, or configured run |
 | Compose tests | Rendering and callbacks for an already-derived model, never policy |

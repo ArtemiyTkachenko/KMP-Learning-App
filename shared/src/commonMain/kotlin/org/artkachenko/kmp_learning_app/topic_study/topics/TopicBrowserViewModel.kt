@@ -10,6 +10,7 @@ import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistory
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.curriculum.Topic
+import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
 import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingContext
@@ -18,6 +19,11 @@ import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendation
 import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationRationale
 import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationResolver
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
+import org.artkachenko.kmp_learning_app.lesson_study.ContinueLearningOutcome
+import org.artkachenko.kmp_learning_app.lesson_study.ContinueLearningPolicy
+import org.artkachenko.kmp_learning_app.lesson_study.ContinueLearningTarget
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressState
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressStateHolder
 import org.artkachenko.kmp_learning_app.ui.LearningContextIndex
 
 /**
@@ -37,12 +43,17 @@ import org.artkachenko.kmp_learning_app.ui.LearningContextIndex
  * - [learningUnitCounts] is optional enrichment from a different publisher-owned source. It answers
  *   "what is there to read here?" while the history enrichment answers "what has this learner
  *   done?", so the two are never mixed. The assessment curriculum stays the authoritative
- *   catalogue: unreadable learning content costs a Topic its availability marker and nothing else.
+ *   catalogue: unreadable learning content costs a Topic its availability marker and nothing else;
+ * - [continueLearning] is a third kind of enrichment again, over the authored learning sequence and
+ *   the learner's own study record. It shares the learning-content read above and observes the
+ *   app-scoped study projection every other Learn surface observes, so it can disagree with neither.
+ *   Either input being unknown costs the card and nothing else.
  *
- * The two guided surfaces answer different questions and are never combined: [continueStudying] is
+ * The three guided surfaces answer different questions and are never combined: [continueStudying] is
  * recency ("take me back to what I was doing"), [recommendedNext] is learning priority ("what
- * should I do now?"). They may point somewhere different, and neither is suppressed, deduplicated,
- * or re-decided because of the other.
+ * should I do now?"), and [continueLearning] is authored sequence ("what should I read next?"). They
+ * may point somewhere different, and none is suppressed, deduplicated, or re-decided because of
+ * another. Only [continueLearning] is derived without touching assessment history at all.
  *
  * Each writer updates its own input and re-renders, rather than the state being combined
  * asynchronously, so a retry shows its spinner on the same frame it is requested.
@@ -54,6 +65,7 @@ internal class TopicBrowserViewModel(
     private val historyStore: AssessmentHistoryStore,
     private val continueStudyingResolver: ContinueStudyingResolver,
     private val learningRecommendationResolver: LearningRecommendationResolver,
+    private val studyProgressStateHolder: StudyProgressStateHolder,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<TopicBrowserUiState>(TopicBrowserUiState.Loading)
     val uiState: StateFlow<TopicBrowserUiState> = _uiState.asStateFlow()
@@ -68,17 +80,49 @@ internal class TopicBrowserViewModel(
      * because one read either produced availability for the loaded catalogue or produced none.
      */
     private var learningUnitCounts: Map<String, Int>? = null
+    /**
+     * ACTIVE Units in global authored order, or `null` while unknown.
+     *
+     * Held as domain Units rather than as a resolved next Lesson so a study-state change re-derives
+     * the answer without reading learning content again — the same reason Topic Detail keeps its own
+     * ACTIVE Unit list beside its row models.
+     */
+    private var activeLearningUnits: List<LearningUnit>? = null
+    private var studyState: StudyProgressState = StudyProgressState.Loading
     private var learningContexts: LearningContextIndex? = null
     private var continueStudying: ContinueStudyingContext? = null
     private var recommendedNext: LearningRecommendation? = null
 
     init {
         observeLearningContext()
+        observeStudyState()
         loadCatalog()
     }
 
     fun retry() {
+        // The study record is re-read too, so a learner who retries after a failed read recovers the
+        // Continue Learning card as well as the catalogue. Content and study state stay independent
+        // reads; this only triggers both.
+        studyProgressStateHolder.refresh()
         loadCatalog()
+    }
+
+    /**
+     * Follows the app-scoped study projection rather than reading the study table for itself.
+     *
+     * This screen usually stays alive underneath Topic Detail, the Unit overview, and the Lesson
+     * reader, so a Lesson marked three destinations deeper has to reach it on the way back without
+     * anything being reloaded. Observing the one holder is what makes that true, and is also what
+     * stops Continue Learning from disagreeing with the studied indicators shown on those screens.
+     */
+    private fun observeStudyState() {
+        studyProgressStateHolder.refresh()
+        viewModelScope.launch {
+            studyProgressStateHolder.state.collect { state ->
+                studyState = state
+                render()
+            }
+        }
     }
 
     fun onSearchQueryChange(query: String) {
@@ -151,8 +195,10 @@ internal class TopicBrowserViewModel(
         val generation = ++catalogGeneration
         catalog = TopicCatalog.Loading
         // The previous catalogue's availability describes Topics that are being reloaded, so it is
-        // dropped back to unknown rather than shown against whatever arrives next.
+        // dropped back to unknown rather than shown against whatever arrives next. The authored
+        // sequence goes with it: both describe the same document read.
         learningUnitCounts = null
+        activeLearningUnits = null
         render()
         viewModelScope.launch {
             val catalog = runCatching { readCatalog() }.getOrElse { TopicCatalog.Error }
@@ -160,26 +206,33 @@ internal class TopicBrowserViewModel(
             this@TopicBrowserViewModel.catalog = catalog
             render()
             if (catalog is TopicCatalog.Loaded) {
-                loadLearningAvailability(catalog.topics, generation)
+                loadLearningContent(catalog.topics, generation)
             }
         }
     }
 
     /**
-     * Counts ACTIVE Units per Topic through the repository boundary, by stable Topic ID.
+     * Reads what the learning document says, in one pass: ACTIVE Unit counts per Topic for the
+     * availability markers, and the ACTIVE Units in global authored order for Continue Learning.
      *
-     * A failure leaves availability unknown and returns quietly: there is no error state and no
-     * retry of its own, because the learner loses only a marker. The repository caches one
-     * validated document, so seventeen Topic lookups are seventeen map reads over one load.
+     * Both come from the same cached document through the same boundary, and both are published
+     * together, so an availability marker and the next-Lesson answer can never describe different
+     * reads. A failure leaves both unknown and returns quietly: there is no error state and no retry
+     * of its own, because the learner loses two decorations and no capability. The repository caches
+     * one validated document, so every lookup here is a map read over one load.
      */
-    private suspend fun loadLearningAvailability(topics: List<Topic>, generation: Int) {
-        val counts = runCatching {
-            topics.associate { topic ->
-                topic.id to learningContentRepository.getActiveUnitsByTopic(topic.id).size
-            }
+    private suspend fun loadLearningContent(topics: List<Topic>, generation: Int) {
+        val content = runCatching {
+            LearningContentEnrichment(
+                unitCounts = topics.associate { topic ->
+                    topic.id to learningContentRepository.getActiveUnitsByTopic(topic.id).size
+                },
+                activeUnits = learningContentRepository.getActiveUnits(),
+            )
         }.getOrNull() ?: return
         if (generation != catalogGeneration) return
-        learningUnitCounts = counts
+        learningUnitCounts = content.unitCounts
+        activeLearningUnits = content.activeUnits
         render()
     }
 
@@ -212,9 +265,60 @@ internal class TopicBrowserViewModel(
                 learningContexts = learningContexts,
                 continueStudying = continueStudying,
                 recommendedNext = recommendedNext,
+                continueLearning = continueLearning(),
             )
         }
     }
+
+    /**
+     * Resolves the next Lesson from the two current inputs, or nothing when either is unknown.
+     *
+     * Unknown content and an unknown or unreadable study record both return `null` rather than being
+     * treated as an empty document or an empty studied set — an unreadable study record would
+     * otherwise present the very first Lesson of the curriculum as "next" to a learner who has read
+     * half of it, which is the fabrication the study-progress contract exists to forbid.
+     *
+     * Derived on every render rather than cached, from state this screen already holds: the walk is
+     * a pass over a list already in memory, and caching it would be a fourth place study state could
+     * go stale.
+     */
+    private fun continueLearning(): ContinueLearningUiModel? {
+        val units = activeLearningUnits ?: return null
+        val studiedLessonIds = (studyState as? StudyProgressState.Loaded)
+            ?.studiedLessonIds
+            ?: return null
+
+        return when (val outcome = ContinueLearningPolicy.resolve(units, studiedLessonIds)) {
+            is ContinueLearningOutcome.Next -> units.toUiModel(outcome.target)
+            // Worth saying: the learner has finished everything currently published.
+            ContinueLearningOutcome.Complete -> ContinueLearningUiModel.Complete
+            // Not worth saying: there is nothing to study, and no card can change that.
+            ContinueLearningOutcome.Empty -> null
+        }
+    }
+}
+
+/** The two answers one read of the learning document gives this screen. */
+private class LearningContentEnrichment(
+    val unitCounts: Map<String, Int>,
+    val activeUnits: List<LearningUnit>,
+)
+
+/**
+ * Names the chosen Lesson and its Unit from the same list the policy walked.
+ *
+ * The lookup cannot fail — the target was produced from these very Units — but it is expressed as a
+ * lookup rather than as a `require`, so a future policy that ever returned a foreign ID would cost
+ * the card instead of crashing the catalogue.
+ */
+private fun List<LearningUnit>.toUiModel(target: ContinueLearningTarget): ContinueLearningUiModel? {
+    val unit = firstOrNull { it.id == target.unitId } ?: return null
+    val lesson = unit.lessons.firstOrNull { it.id == target.lessonId } ?: return null
+    return ContinueLearningUiModel.Next(
+        target = target,
+        lessonTitle = lesson.title,
+        unitTitle = unit.title,
+    )
 }
 
 /** The catalog half of the screen, kept separate from the query and from learning context. */
@@ -237,6 +341,7 @@ private fun TopicCatalog.Loaded.toContent(
     learningContexts: LearningContextIndex?,
     continueStudying: ContinueStudyingContext?,
     recommendedNext: LearningRecommendation?,
+    continueLearning: ContinueLearningUiModel?,
 ): TopicBrowserUiState.Content {
     val items = topics.map { topic ->
         TopicBrowserItemUiModel(
@@ -255,11 +360,12 @@ private fun TopicCatalog.Loaded.toContent(
             topics = items,
             searchableSubtopics = searchableSubtopics,
             query = query,
-            // Both guided surfaces belong to browsing, so they are attached here and nowhere else:
-            // an active query keeps the screen on what was asked for rather than adding unrelated
-            // cards. Neither is a search result, and neither is filtered by the query text.
+            // All three guided surfaces belong to browsing, so they are attached here and nowhere
+            // else: an active query keeps the screen on what was asked for rather than adding
+            // unrelated cards. None is a search result, and none is filtered by the query text.
             continueStudying = continueStudying,
             recommendedNext = recommendedNext?.let { toUiModel(it) },
+            continueLearning = continueLearning,
         )
     }
     return TopicBrowserUiState.Content(

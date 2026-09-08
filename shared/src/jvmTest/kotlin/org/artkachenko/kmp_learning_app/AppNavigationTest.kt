@@ -4,6 +4,7 @@ import androidx.navigation3.runtime.NavKey
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -13,6 +14,7 @@ import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingTarget
 import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationTarget
+import org.artkachenko.kmp_learning_app.lesson_study.ContinueLearningTarget
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toPracticeBuilderRoute
 
@@ -131,6 +133,43 @@ internal class AppNavigationTest {
                 ),
             ).toAppRoute(),
         )
+    }
+
+    @Test
+    fun continuingLearningReachesTheExistingLessonRouteWithBothStableIds() {
+        assertEquals(
+            AppRoute.LearningLesson(unitId = "unit_compose", lessonId = "lesson_recomposition"),
+            ContinueLearningTarget("unit_compose", "lesson_recomposition").toAppRoute(),
+        )
+    }
+
+    /**
+     * The Lesson destination is a detail of the Topics area, not an area of its own, so it is
+     * pushed rather than selected — the same treatment `AppRoute.LearningUnit` and Topic detail get.
+     */
+    @Test
+    fun theLessonDestinationIsAnAreaDetailRatherThanATopLevelDestination() {
+        val route = ContinueLearningTarget("unit_compose", "lesson_recomposition").toAppRoute()
+
+        assertNull(AppTopLevelDestination.forRoute(route))
+    }
+
+    /**
+     * Continue Learning answers a question about reading, so its target must not be able to reach
+     * an assessment of any kind — running, finished, or configured to start.
+     */
+    @Test
+    fun noContinueLearningTargetCanReachAnAssessment() {
+        val route = ContinueLearningTarget("unit_compose", "lesson_recomposition").toAppRoute()
+
+        assertIs<AppRoute.LearningLesson>(route)
+        assertFalse(route is AppRoute.FocusedPracticeAttempt, "$route resumes an attempt")
+        assertFalse(route is AppRoute.MixedInterviewAttempt, "$route resumes an attempt")
+        assertFalse(route is AppRoute.FocusedPracticeResult, "$route reopens a result")
+        assertFalse(route is AppRoute.MixedInterviewResult, "$route reopens a result")
+        assertFalse(route is AppRoute.FocusedTopicPractice, "$route starts an assessment")
+        assertFalse(route is AppRoute.FocusedSubtopicPractice, "$route starts an assessment")
+        assertFalse(route is AppRoute.MixedInterview, "$route starts an assessment")
     }
 
     /**

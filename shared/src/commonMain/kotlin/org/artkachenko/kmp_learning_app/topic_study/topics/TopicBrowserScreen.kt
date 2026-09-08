@@ -29,10 +29,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
+import kmp_learning_app.shared.generated.resources.continue_learning_complete_message
+import kmp_learning_app.shared.generated.resources.continue_learning_complete_title
+import kmp_learning_app.shared.generated.resources.continue_learning_title
 import kmp_learning_app.shared.generated.resources.continue_studying_source_mistakes
 import kmp_learning_app.shared.generated.resources.continue_studying_source_unseen
 import kmp_learning_app.shared.generated.resources.continue_studying_source_weak_areas
@@ -71,6 +75,7 @@ import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingContext
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingTarget
 import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationRationale
 import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationTarget
+import org.artkachenko.kmp_learning_app.lesson_study.ContinueLearningTarget
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 import org.artkachenko.kmp_learning_app.ui.SectionHeading
@@ -95,6 +100,7 @@ internal const val TopicBrowserViewportTag = "topic_browser_viewport"
 internal const val TopicBrowserSearchFieldTag = "topic_browser_search_field"
 internal const val TopicBrowserContinueStudyingTag = "topic_browser_continue_studying"
 internal const val TopicBrowserRecommendedNextTag = "topic_browser_recommended_next"
+internal const val TopicBrowserContinueLearningTag = "topic_browser_continue_learning"
 internal const val TopicBrowserSavedQuestionsTag = "topic_browser_saved_questions"
 
 /**
@@ -119,6 +125,7 @@ internal fun TopicBrowserScreen(
     onSearchQueryChange: (String) -> Unit = {},
     onContinueStudyingClick: (ContinueStudyingTarget) -> Unit = {},
     onRecommendedNextClick: (LearningRecommendationTarget) -> Unit = {},
+    onContinueLearningClick: (ContinueLearningTarget) -> Unit = {},
     onSavedQuestionsClick: () -> Unit = {},
 ) {
     Column(
@@ -170,6 +177,8 @@ internal fun TopicBrowserScreen(
                         onRecommendedNextClick = onRecommendedNextClick,
                         continueStudying = state.continueStudying,
                         onContinueStudyingClick = onContinueStudyingClick,
+                        continueLearning = state.continueLearning,
+                        onContinueLearningClick = onContinueLearningClick,
                         onSavedQuestionsClick = onSavedQuestionsClick,
                     )
                     state.topicMatches.isEmpty() && state.subtopicMatches.isEmpty() -> {
@@ -239,6 +248,8 @@ private fun TopicList(
     onRecommendedNextClick: (LearningRecommendationTarget) -> Unit,
     continueStudying: ContinueStudyingContext?,
     onContinueStudyingClick: (ContinueStudyingTarget) -> Unit,
+    continueLearning: ContinueLearningUiModel?,
+    onContinueLearningClick: (ContinueLearningTarget) -> Unit,
     onSavedQuestionsClick: () -> Unit,
 ) {
     LazyColumn(
@@ -248,7 +259,8 @@ private fun TopicList(
     ) {
         // Inside the list rather than pinned above it: guidance is worth one glance on arrival, and
         // scrolls away for a learner who came to browse the catalogue instead. At most one of each,
-        // and in priority order — what to do now, then the way back to what was being done.
+        // and in priority order — what to do now, then the way back to what was being done, then
+        // what to read next.
         recommendedNext?.let { recommendation ->
             item(key = "recommended_next") {
                 RecommendedNextCard(
@@ -265,8 +277,20 @@ private fun TopicList(
                 )
             }
         }
+        // Below the two assessment-derived cards rather than between them: those two already state a
+        // priority between themselves, and inserting a card derived from entirely different inputs
+        // into that pair would restate it as a three-way ranking nobody decided. This is a third
+        // axis — reading rather than practice — so it sits after them and before the catalogue.
+        continueLearning?.let { model ->
+            item(key = "continue_learning") {
+                ContinueLearningCard(
+                    model = model,
+                    onClick = onContinueLearningClick,
+                )
+            }
+        }
         // Below the guidance and above the catalogue, and always present: it is a way into content
-        // the learner curated themselves, not a third thing the app is suggesting they do.
+        // the learner curated themselves, not one more thing the app is suggesting they do.
         item(key = "saved_questions") {
             SavedQuestionsEntry(onClick = onSavedQuestionsClick)
         }
@@ -285,9 +309,9 @@ private fun TopicList(
 /**
  * The way into the Questions the learner saved for themselves.
  *
- * Not a third guided-learning card, and drawn so that it cannot be read as one: the two cards above
- * it are filled with the primary and secondary containers because a policy chose them, while this is
- * an outlined utility row that says only where it goes. Nothing about it is derived — it carries no
+ * Not a fourth guided-learning card, and drawn so that it cannot be read as one: the cards above it
+ * are filled containers because something derived chose them, while this is an outlined utility row
+ * that says only where it goes. Nothing about it is derived — it carries no
  * count, no recommendation, and no reason, so it never has to read saved state to decide whether the
  * destination is worth offering. The empty state lives on the destination, which is exactly why the
  * entry must remain reachable when nothing has been saved yet.
@@ -341,9 +365,10 @@ private fun SavedQuestionsEntry(
  * supporting line, not a choice presented here.
  *
  * It remains a compact continuity shortcut beneath the one policy-driven action above it: Recommended
- * Next is the primary guidance, this is the secondary way back, and there are deliberately still only
- * those two guided-learning cards. The Saved Questions entry below them is a learner-owned collection
- * rather than a third suggestion. Neither card turns the Topic rows below into recommendation cards.
+ * Next is the primary guidance, and this is the secondary way back. E22-05 added Continue Learning
+ * below it, which answers a third question from inputs neither of these two reads; the Saved
+ * Questions entry under all three is a learner-owned collection rather than a further suggestion. No
+ * card here turns the Topic rows below into recommendation cards.
  */
 @Composable
 private fun ContinueStudyingCard(
@@ -422,6 +447,112 @@ private fun ContinueStudyingContext.supportingLabel(): String? =
     }
 
 /**
+ * The next Lesson in the authored sequence, or the fact that there is not one.
+ *
+ * Named "Continue learning" against the other card's "Continue studying", and drawn in the tertiary
+ * container so the three guided cards read as three different things rather than as a ranked list of
+ * one kind of thing: Recommended Next is primary, Continue Studying secondary, and this is the
+ * reading shortcut beside them. It answers a question neither of the others asks, from inputs
+ * neither of them reads.
+ *
+ * [ContinueLearningUiModel.Complete] deliberately loses both the accent container and the chevron
+ * and takes no click: a state with nowhere to go must not look like a state with somewhere to go.
+ * Compose gives a `Card` without `onClick` no click semantics at all, so the completion card is
+ * announced as content rather than as an action, which is exactly what it is.
+ *
+ * There is no card for a curriculum with no ACTIVE Lesson: `TopicBrowserViewModel` maps that outcome
+ * to nothing, so an empty document costs the learner a card rather than earning them a notice.
+ */
+@Composable
+private fun ContinueLearningCard(
+    model: ContinueLearningUiModel,
+    onClick: (ContinueLearningTarget) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    when (model) {
+        is ContinueLearningUiModel.Next -> Card(
+            onClick = { onClick(model.target) },
+            modifier = modifier.fillMaxWidth().testTag(TopicBrowserContinueLearningTag),
+            shape = MaterialTheme.shapes.medium,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+            ),
+        ) {
+            ContinueLearningCardContent(
+                label = stringResource(Res.string.continue_learning_title),
+                // Resolved from the current learning document, so a re-authored Lesson is named
+                // correctly here without anything stored being migrated.
+                headline = model.lessonTitle,
+                supporting = model.unitTitle,
+                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                showChevron = true,
+            )
+        }
+
+        ContinueLearningUiModel.Complete -> Card(
+            modifier = modifier.fillMaxWidth().testTag(TopicBrowserContinueLearningTag),
+            shape = MaterialTheme.shapes.medium,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            ),
+        ) {
+            ContinueLearningCardContent(
+                label = stringResource(Res.string.continue_learning_title),
+                headline = stringResource(Res.string.continue_learning_complete_title),
+                supporting = stringResource(Res.string.continue_learning_complete_message),
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                showChevron = false,
+            )
+        }
+    }
+}
+
+/** The shared body of both Continue Learning states, so only the container and the action differ. */
+@Composable
+private fun ContinueLearningCardContent(
+    label: String,
+    headline: String,
+    supporting: String,
+    contentColor: Color,
+    showChevron: Boolean,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(AppSpacing.Comfortable),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = contentColor,
+            )
+            Text(
+                text = headline,
+                style = MaterialTheme.typography.titleMedium,
+                color = contentColor,
+            )
+            Text(
+                text = supporting,
+                style = MaterialTheme.typography.bodyMedium,
+                color = contentColor,
+            )
+        }
+        if (showChevron) {
+            Icon(
+                imageVector = AppIcons.ChevronRight,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+/**
  * The single most useful thing to do now, and the fact that makes it so.
  *
  * One card, one tap, and no alternatives: there is no ranking, no score, no second suggestion, no
@@ -429,9 +560,9 @@ private fun ContinueStudyingContext.supportingLabel(): String? =
  * action from an ordered decision tree, and the card's job is to say what it chose and why — the
  * rationale is already typed, so nothing here infers a reason of its own.
  *
- * It uses the primary container while Continue Studying stays on the secondary one, which is the
- * whole visual statement being made: of the two guided cards, this is the one to act on, and the
- * other is the way back to where the learner was.
+ * It uses the primary container while Continue Studying stays on the secondary one and Continue
+ * Learning on the tertiary, which is the whole visual statement being made: of the guided cards,
+ * this is the one to act on, and the others are the way back and the way onward.
  */
 @Composable
 private fun RecommendedNextCard(

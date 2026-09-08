@@ -175,6 +175,14 @@ split `CurriculumRepository` already makes between active selection and
 historical resolution. A Unit's home Topic decides where it is browsed and does
 not constrain the Topics its Lessons reference.
 
+`getActiveUnits` is the fourth query, added by E22-05: every ACTIVE Unit in the
+document, in global authored order. It exists because sequence across Topics is
+information only the undivided document has — concatenating the per-Topic reads
+would order Units by Topic rather than as the author wrote them — and Continue
+Learning walks exactly that sequence. Both active-Unit queries are derived from
+one filtered list inside the loaded document, so they can never disagree about
+which Units are ACTIVE.
+
 The Topic Browser is the first consumer of that contract. `TopicBrowserViewModel`
 takes `LearningContentRepository` through Koin and, once the assessment catalogue
 has loaded, counts `getActiveUnitsByTopic` per Topic into
@@ -187,6 +195,12 @@ successful read that found no authored material, and only a positive count
 renders a badge. It is publisher-owned availability only, and it stays that way:
 E22-04 deliberately added no aggregate study progress to the browser, for the
 reasons recorded in [study progress](study-progress.md).
+
+The same read now also fetches `getActiveUnits`, in the same `runCatching` and
+published in the same step, so the availability markers and Continue Learning
+always describe one read of one document. E22-05 added the Continue Learning card
+to this screen as a third piece of optional enrichment; it is described in
+[study progress](study-progress.md).
 
 Topic Detail is the second consumer, and E21-02 corrected its state model to
 make room for it. A Topic is now two independent capabilities — study and

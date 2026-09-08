@@ -385,9 +385,9 @@ needs; anything cleverer would be a second recommendation policy.
 The policy reads no assessment history, no most recent `TestAttempt`, no weak areas,
 mistakes, or coverage, no navigation history, and no wall-clock time. It persists nothing:
 there is no `lastReadLessonId`, `resumeLessonId`, or `currentLessonId`, because the answer
-is already a function of content and study records. E22-05 may add the smallest additive
-ordered read `LearningContentRepository` does not yet expose in order to walk global
-authored Unit order.
+is already a function of content and study records. E22-05 added the smallest additive
+ordered read `LearningContentRepository` did not yet expose in order to walk global
+authored Unit order: `getActiveUnits()`, described in [overview](overview.md).
 
 Three outcomes are distinguishable, and the last two must not collapse into each other:
 
@@ -399,8 +399,90 @@ Three outcomes are distinguishable, and the last two must not collapse into each
 
 "You have studied everything" and "there is nothing here to study" are different
 statements about the learner and about the content, and rendering one as the other would
-either congratulate a learner who has done nothing or hide a finished course. Exact type
-names belong to E22-05.
+either congratulate a learner who has done nothing or hide a finished course.
+
+### What E22-05 implemented
+
+`ContinueLearningPolicy.resolve(units, studiedLessonIds)` is the whole decision, and it is
+an ordinary nested walk over a list and a set — no repository, no coroutine, no clock. It
+returns `ContinueLearningOutcome`: `Next(ContinueLearningTarget(unitId, lessonId))`,
+`Complete`, or `Empty`. Fully studied Units, DEPRECATED Units, DEPRECATED Lessons, empty
+Units, and orphaned study identities all fall out of the walk rather than needing rules of
+their own: retired content is filtered as it is reached, a finished Unit simply contains no
+remaining unstudied Lesson, and an identity naming a Lesson that no longer resolves is
+never encountered.
+
+It lives in `lesson_study`, beside `StudyProgressDerivation`, rather than in
+`guided_learning` beside `ContinueStudyingResolver`. Nothing in `lesson_study` can reach a
+`TestAttempt`, so "Continue Learning never reads assessment history" is a property of where
+the code sits rather than a rule a future change has to remember. The two features stay
+separately named and separately derived, exactly as the table above requires.
+
+There is deliberately no loading or failure case in `ContinueLearningOutcome`. The policy
+answers only when both inputs are known; a caller that cannot read one of them has no
+outcome, and manufacturing one — an empty studied set, an empty curriculum — is the
+fabrication [failure semantics](#failure-semantics) forbids.
+
+### Where it appears
+
+Continue Learning is a third card on the Topic Browser, beside Recommended Next and
+Continue Studying, and it is optional enrichment on `TopicBrowserUiState.Content` in
+exactly the way those two are. `TopicBrowserViewModel` derives it on every render from two
+inputs it already holds:
+
+```text
+LearningContentRepository.getActiveUnits()  ->  activeLearningUnits
+StudyProgressStateHolder.state              ->  studiedLessonIds
+                                            ->  ContinueLearningPolicy.resolve
+```
+
+The study half is the app-scoped `StudyProgressStateHolder` the three Learn destinations
+already observe, not a read of its own. That is what makes a Lesson marked in the reader
+move the card here without this screen being rebuilt — the Topic Browser is usually still
+alive underneath Topic Detail, the Unit overview, and the reader — and it is also what
+stops Continue Learning from disagreeing with the studied indicators shown on those
+screens. The content half rides along with the availability read the browser already
+performed, published in the same step, so the markers and the card describe one read of one
+document. Nothing about the answer is cached: the walk is a pass over a list already in
+memory, and a cached next Lesson would be one more place study state could go stale.
+
+Four deliberate presentation decisions, recorded here so they are choices rather than
+omissions:
+
+| Decision | Choice | Why |
+| --- | --- | --- |
+| Placement | Third card, below Continue Studying and above Saved Questions | The two assessment-derived cards already state a priority between themselves; inserting a card derived from different inputs into that pair would restate it as a three-way ranking nobody decided |
+| Search visibility | Withheld while a query is active | The same rule the other two guided cards follow: a learner who has started typing has said what they are looking for, and none of the three is a search result |
+| `Complete` | A card with no click action, on a neutral surface rather than an accent container | "You have finished" is worth stating, and a state with nowhere to go must not look like a state with somewhere to go. Compose gives a `Card` without `onClick` no click semantics, so it is announced as content, not as a button |
+| `Empty` | No card at all | A learner with nothing to read is not helped by a card telling them so, and the catalogue rows already carry the per-Topic availability marker |
+
+Navigation reuses the existing Lesson destination. `ContinueLearningTarget.toAppRoute()`
+maps to `AppRoute.LearningLesson(unitId, lessonId)` — the same route the Unit overview
+pushes, carrying the same two stable IDs — and the shell pushes it once rather than
+reconstructing a Unit-then-Lesson stack, so Back returns to the screen the shortcut was
+tapped on. That mirrors Continue Studying, which likewise pushes one Topic route. No prose
+travels: the Lesson is resolved from current content on arrival, and the card's own labels
+are read from the same Units the policy walked, so a re-authored Lesson reads correctly
+with nothing stored and nothing migrated.
+
+The card is enrichment in the strict sense the [failure semantics](#failure-semantics)
+below require. An unreadable study record, an unreadable learning document, or a study
+record that is merely still arriving each leave it absent and cost the learner nothing
+else: Topic rows, search, Topic access, practice, and both assessment-derived guided
+surfaces are exactly as they were. `retry()` re-reads the study record along with the
+catalogue, so a card lost to a transient failure comes back without a restart.
+
+### How Continue Learning is verified
+
+| Layer | What it establishes |
+| --- | --- |
+| `ContinueLearningPolicyTest` | The whole decision: no progress, partial progress, an earlier gap beating a later mark, skipped full Units, global authored order across Topics, deprecated Units and Lessons, orphaned identities, empty Units, Complete versus Empty, determinism |
+| `BundledLearningContentRepositoryTest` | That `getActiveUnits()` really returns global authored order across interleaved Topics and excludes DEPRECATED Units |
+| `TopicBrowserViewModelTest` | That the screen composes the two inputs correctly: titles from current content, refresh after mark and unmark while the browser stays alive, unknown and unreadable inputs withholding the card, search suppression, and coexistence with an unchanged Continue Studying |
+| `TopicBrowserScreenTest` | Rendering and callbacks for an already-derived model: naming, the single click target, `Complete` having no click action, absence from search, and the three guided cards coexisting |
+| `AppNavigationTest` | That the target reaches the existing Lesson route and can never reach an assessment |
+
+Policy cases are proved once, in the policy tests, and are not re-proved through Compose.
 
 ## Failure semantics
 
@@ -658,6 +740,10 @@ Unit-specific current progress belongs, and E22-05's Continue Learning is the ac
 catalogue-level affordance — a place to go next, rather than one more number. The decision
 is recorded here so it is deliberate rather than an omission.
 
+E22-05 has since added that card, and the decision stands: the browser gained one
+actionable shortcut into the next Lesson, and still carries no per-Topic or aggregate study
+figure. See [Where it appears](#where-it-appears).
+
 ## Non-goals and future boundaries
 
 E22-01 introduces no Kotlin type. Prose specifies this contract completely, and every
@@ -670,9 +756,11 @@ Also deliberately absent from this document, and owned elsewhere: the Room entit
 migration, schema version, repository implementation, and Koin binding, which E22-02 has
 since added and [persistence](persistence.md) describes; Unit and Topic derivation code
 (E22-03); the Learn presentation and the mark/unmark control, which E22-04 has since added
-and [Presenting study progress](#presenting-study-progress) describes; Continue Learning
-resolver or navigation route (E22-05). E22-04 added no schema change: the database remains
-at version 8, and no aggregate, percentage, or completion flag is persisted.
+and [Presenting study progress](#presenting-study-progress) describes; the Continue
+Learning policy, presentation, and navigation route, which E22-05 has since added and
+[What E22-05 implemented](#what-e22-05-implemented) describes. Neither E22-04 nor E22-05
+added a schema change: the database remains at version 8, and no aggregate, percentage,
+completion flag, last-read Lesson, or resume flag is persisted.
 
 Excluded from the epic entirely rather than deferred: content hashes or Lesson version
 stamps, last-read or resume state, a study-history or orphan-record screen, additional

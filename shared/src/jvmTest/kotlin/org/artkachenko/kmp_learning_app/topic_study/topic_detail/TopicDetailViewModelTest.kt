@@ -981,6 +981,9 @@ internal class TopicDetailViewModelTest {
     ) : LearningContentRepository {
         val topicReadIds = mutableListOf<String>()
 
+        override suspend fun getActiveUnits(): List<LearningUnit> =
+            error("Not used by TopicDetailViewModel.")
+
         override suspend fun getActiveUnitsByTopic(topicId: String): List<LearningUnit> {
             failure?.let { throw it }
             topicReadIds += topicId
@@ -1001,6 +1004,9 @@ internal class TopicDetailViewModelTest {
         fun release(units: List<LearningUnit>) {
             gate.complete(units)
         }
+
+        override suspend fun getActiveUnits(): List<LearningUnit> =
+            error("Not used by TopicDetailViewModel.")
 
         override suspend fun getActiveUnitsByTopic(topicId: String): List<LearningUnit> =
             gate.await()

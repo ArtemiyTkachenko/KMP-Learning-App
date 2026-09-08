@@ -29,6 +29,7 @@ import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
+import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
@@ -51,6 +52,11 @@ import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 import org.artkachenko.kmp_learning_app.guided_learning.UnresolvedMistakeCounter
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
 import org.artkachenko.kmp_learning_app.learning_progress.WeakArea
+import org.artkachenko.kmp_learning_app.lesson_study.ContinueLearningTarget
+import org.artkachenko.kmp_learning_app.lesson_study.FakeLessonStudyRepository
+import org.artkachenko.kmp_learning_app.lesson_study.StudiedLesson
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressStateHolder
+import org.artkachenko.kmp_learning_app.lesson_study.studyProgressStateHolder
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 
@@ -407,6 +413,7 @@ internal class TopicBrowserViewModelTest {
             historyStore = store,
             continueStudyingResolver = ContinueStudyingResolver(repository),
             learningRecommendationResolver = recommendationResolver(repository, history),
+            studyProgressStateHolder = studyProgressStateHolder(),
         )
         advanceUntilIdle()
 
@@ -530,6 +537,7 @@ internal class TopicBrowserViewModelTest {
             historyStore = store,
             continueStudyingResolver = ContinueStudyingResolver(repository),
             learningRecommendationResolver = recommendationResolver(repository, history),
+            studyProgressStateHolder = studyProgressStateHolder(),
         )
         advanceUntilIdle()
 
@@ -777,6 +785,7 @@ internal class TopicBrowserViewModelTest {
             historyStore = store,
             continueStudyingResolver = ContinueStudyingResolver(repository),
             learningRecommendationResolver = recommendationResolver(repository, history),
+            studyProgressStateHolder = studyProgressStateHolder(),
         )
         advanceUntilIdle()
 
@@ -1178,6 +1187,293 @@ internal class TopicBrowserViewModelTest {
         assertEquals(0, topic(viewModel, "kotlin_language").learningUnitCount)
     }
 
+    // --- Continue Learning (E22-05) -----------------------------------------------------------
+
+    @Test
+    fun continueLearningNamesTheFirstUnstudiedLessonFromCurrentContent() = runViewModelTest {
+        val viewModel = loadedViewModel(
+            learningContent = learningContentWithSequence(),
+            studyProgress = studyProgressStateHolder(FakeLessonStudyRepository()),
+        )
+
+        val model = assertIs<ContinueLearningUiModel.Next>(continueLearning(viewModel))
+        assertEquals(ContinueLearningTarget("unit_compose_1", "lesson_c1"), model.target)
+        // Both labels come from the learning document this screen already read, not from anything
+        // persisted alongside the study record.
+        assertEquals("Lesson lesson_c1", model.lessonTitle)
+        assertEquals("Unit unit_compose_1", model.unitTitle)
+    }
+
+    /**
+     * The Units are authored Compose, Architecture, Compose, so a policy fed the per-Topic reads
+     * this screen also makes would answer `unit_compose_2` once the first Unit is finished. The
+     * global ordered query is what makes the Architecture Unit the correct answer.
+     */
+    @Test
+    fun continueLearningFollowsGlobalAuthoredOrderRatherThanTopicGrouping() = runViewModelTest {
+        val viewModel = loadedViewModel(
+            learningContent = learningContentWithSequence(),
+            studyProgress = studyProgressStateHolder(
+                FakeLessonStudyRepository(studied("lesson_c1")),
+            ),
+        )
+
+        val model = assertIs<ContinueLearningUiModel.Next>(continueLearning(viewModel))
+        assertEquals(ContinueLearningTarget("unit_arch_1", "lesson_a1"), model.target)
+    }
+
+    @Test
+    fun everyActiveLessonStudiedRendersCompleteRatherThanADestination() = runViewModelTest {
+        val viewModel = loadedViewModel(
+            learningContent = learningContentWithSequence(),
+            studyProgress = studyProgressStateHolder(
+                FakeLessonStudyRepository(
+                    studied("lesson_c1"),
+                    studied("lesson_a1"),
+                    studied("lesson_c2"),
+                ),
+            ),
+        )
+
+        assertEquals(ContinueLearningUiModel.Complete, continueLearning(viewModel))
+    }
+
+    /**
+     * Empty content and a finished course are different outcomes, and only one of them earns a
+     * card: a learner with nothing to read is not helped by being told so.
+     */
+    @Test
+    fun contentWithNoActiveLessonShowsNoCardAtAll() = runViewModelTest {
+        val viewModel = loadedViewModel(
+            learningContent = FakeLearningContentRepository(
+                orderedUnits = listOf(learningUnit("unit_compose_1", "compose")),
+            ),
+            studyProgress = studyProgressStateHolder(FakeLessonStudyRepository()),
+        )
+
+        assertNull(continueLearning(viewModel))
+    }
+
+    /**
+     * The refresh path the Learn back stack depends on: this screen stays alive underneath Topic
+     * Detail, the Unit overview, and the reader, so a Lesson marked in the reader has to move
+     * Continue Learning on without this screen being rebuilt or reloading anything.
+     */
+    @Test
+    fun markingALessonAdvancesContinueLearningWhileTheBrowserStaysAlive() = runViewModelTest {
+        val studyRepository = FakeLessonStudyRepository()
+        val holder = studyProgressStateHolder(studyRepository)
+        val learningContent = learningContentWithSequence()
+        val viewModel = loadedViewModel(learningContent = learningContent, studyProgress = holder)
+
+        assertEquals(
+            ContinueLearningTarget("unit_compose_1", "lesson_c1"),
+            assertIs<ContinueLearningUiModel.Next>(continueLearning(viewModel)).target,
+        )
+
+        // Exactly what the Lesson reader does, on the same app-scoped holder.
+        holder.toggleStudied("lesson_c1")
+        advanceUntilIdle()
+
+        assertEquals(
+            ContinueLearningTarget("unit_arch_1", "lesson_a1"),
+            assertIs<ContinueLearningUiModel.Next>(continueLearning(viewModel)).target,
+        )
+
+        // And unmarking reverses it, without the learning document being read again.
+        val readsBefore = learningContent.orderedReads
+        holder.toggleStudied("lesson_c1")
+        advanceUntilIdle()
+
+        assertEquals(
+            ContinueLearningTarget("unit_compose_1", "lesson_c1"),
+            assertIs<ContinueLearningUiModel.Next>(continueLearning(viewModel)).target,
+        )
+        assertEquals(readsBefore, learningContent.orderedReads)
+    }
+
+    @Test
+    fun anUnreadableStudyRecordWithholdsTheCardRatherThanStartingFromTheBeginning() =
+        runViewModelTest {
+            val studyRepository = FakeLessonStudyRepository(studied("lesson_c1"))
+            studyRepository.failReads = true
+            val viewModel = loadedViewModel(
+                repository = namedCatalogRepository(),
+                history = historyRepository(answer("q_compose_1", false)),
+                learningContent = learningContentWithSequence(),
+                studyProgress = studyProgressStateHolder(studyRepository),
+            )
+
+            // The learner has studied the first Lesson; presenting it as "next" because the record
+            // could not be read would be the fabrication the study contract forbids.
+            assertNull(continueLearning(viewModel))
+
+            // And the screen loses nothing else: rows, availability, search, and both
+            // assessment-derived guided surfaces are exactly as they were.
+            val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+            assertEquals(3, state.topics.size)
+            assertNotNull(topic(viewModel, "compose").learningContext)
+            assertEquals(2, topic(viewModel, "compose").learningUnitCount)
+            assertNotNull(recommendedNext(viewModel))
+
+            viewModel.onSearchQueryChange("compose")
+            assertEquals(
+                listOf("compose", "compose_architecture"),
+                assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+                    .topicMatches
+                    .map(TopicBrowserItemUiModel::topicId),
+            )
+        }
+
+    @Test
+    fun anUnreadableLearningDocumentWithholdsTheCardAndLeavesTheScreenUsable() = runViewModelTest {
+        val viewModel = loadedViewModel(
+            repository = namedCatalogRepository(),
+            history = historyRepository(answer("q_compose_1", false)),
+            learningContent = FakeLearningContentRepository(
+                failure = IllegalStateException("Learning content unavailable"),
+            ),
+            studyProgress = studyProgressStateHolder(FakeLessonStudyRepository()),
+        )
+
+        assertNull(continueLearning(viewModel))
+        val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        assertEquals(3, state.topics.size)
+        assertNotNull(recommendedNext(viewModel))
+    }
+
+    @Test
+    fun theCardIsWithheldWhileTheStudyRecordIsStillArriving() = runViewModelTest {
+        val studyRepository = FakeLessonStudyRepository()
+        studyRepository.readGate = CompletableDeferred()
+        val viewModel = loadedViewModel(
+            learningContent = learningContentWithSequence(),
+            studyProgress = studyProgressStateHolder(studyRepository),
+        )
+
+        // Loading is not "nothing studied": content is browsable, and the card simply has not
+        // earned the right to say anything yet.
+        assertNull(continueLearning(viewModel))
+        assertEquals(2, topic(viewModel, "compose").learningUnitCount)
+
+        studyRepository.readGate?.complete(Unit)
+        advanceUntilIdle()
+
+        assertIs<ContinueLearningUiModel.Next>(continueLearning(viewModel))
+    }
+
+    @Test
+    fun theCardIsAbsentWhileASearchQueryIsActive() = runViewModelTest {
+        val viewModel = loadedViewModel(
+            learningContent = learningContentWithSequence(),
+            studyProgress = studyProgressStateHolder(FakeLessonStudyRepository()),
+        )
+        assertNotNull(continueLearning(viewModel))
+
+        viewModel.onSearchQueryChange("compose")
+
+        assertNull(continueLearning(viewModel))
+
+        viewModel.onSearchQueryChange("")
+
+        assertNotNull(continueLearning(viewModel))
+    }
+
+    /**
+     * The three guided surfaces answer three questions from three inputs. Continue Studying's
+     * target is unchanged by Continue Learning existing, and neither suppresses the other.
+     */
+    @Test
+    fun continueLearningCoexistsWithAnUnchangedContinueStudyingShortcut() = runViewModelTest {
+        val repository = continueStudyingRepository()
+        val viewModel = viewModel(
+            repository = repository,
+            history = historyRepository(
+                listOf(completedFocusedAttempt("attempt_compose", "compose")),
+            ),
+            learningContent = learningContentWithSequence(),
+            studyProgress = studyProgressStateHolder(FakeLessonStudyRepository()),
+        )
+        advanceUntilIdle()
+
+        assertEquals(
+            ContinueStudyingTarget.Topic("compose"),
+            assertNotNull(continueStudying(viewModel)).target,
+        )
+        assertEquals(
+            ContinueLearningTarget("unit_compose_1", "lesson_c1"),
+            assertIs<ContinueLearningUiModel.Next>(continueLearning(viewModel)).target,
+        )
+    }
+
+    /**
+     * Continue Learning is derived from content and study records alone. A history repository that
+     * fails every read leaves the two assessment-derived surfaces absent and this one untouched.
+     */
+    @Test
+    fun continueLearningSurvivesHistoryThatCannotBeReadAtAll() = runViewModelTest {
+        val viewModel = viewModel(
+            repository = catalogRepository(),
+            history = FailingHistoryRepository,
+            learningContent = learningContentWithSequence(),
+            studyProgress = studyProgressStateHolder(FakeLessonStudyRepository()),
+        )
+        advanceUntilIdle()
+
+        assertNull(continueStudying(viewModel))
+        assertNull(recommendedNext(viewModel))
+        assertIs<ContinueLearningUiModel.Next>(continueLearning(viewModel))
+    }
+
+    @Test
+    fun retryReReadsTheStudyRecordSoAFailedCardCanRecover() = runViewModelTest {
+        val studyRepository = FakeLessonStudyRepository()
+        studyRepository.failReads = true
+        // Two catalogue results queued, because Retry reloads the catalogue as well.
+        val viewModel = loadedViewModel(
+            repository = FakeCurriculumRepository(
+                topicResults = resultsOf(CatalogTopics, CatalogTopics),
+                subtopicResults = mutableMapOf(
+                    "compose" to resultsOf(emptyList(), emptyList()),
+                    "compose_architecture" to resultsOf(emptyList(), emptyList()),
+                    "architecture" to resultsOf(emptyList(), emptyList()),
+                ),
+            ),
+            learningContent = learningContentWithSequence(),
+            studyProgress = studyProgressStateHolder(studyRepository),
+        )
+        assertNull(continueLearning(viewModel))
+
+        studyRepository.failReads = false
+        viewModel.retry()
+        advanceUntilIdle()
+
+        assertIs<ContinueLearningUiModel.Next>(continueLearning(viewModel))
+    }
+
+    private fun continueLearning(viewModel: TopicBrowserViewModel): ContinueLearningUiModel? =
+        assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value).continueLearning
+
+    /**
+     * Three Units authored Compose, Architecture, Compose, so global authored order and Topic
+     * grouping disagree. The per-Topic map is populated from the same Units so availability and
+     * Continue Learning describe the same document.
+     */
+    private fun learningContentWithSequence(): FakeLearningContentRepository {
+        val units = listOf(
+            learningUnit("unit_compose_1", "compose", listOf(learningLesson("lesson_c1"))),
+            learningUnit("unit_arch_1", "architecture", listOf(learningLesson("lesson_a1"))),
+            learningUnit("unit_compose_2", "compose", listOf(learningLesson("lesson_c2"))),
+        )
+        return FakeLearningContentRepository(
+            unitsByTopicId = units.groupBy(LearningUnit::topicId),
+            orderedUnits = units,
+        )
+    }
+
+    private fun studied(lessonId: String): StudiedLesson =
+        StudiedLesson(lessonId = lessonId, studiedAtEpochMillis = 1_000)
+
     private fun recommendedNext(viewModel: TopicBrowserViewModel): RecommendedNextUiModel? =
         assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value).recommendedNext
 
@@ -1196,9 +1492,14 @@ internal class TopicBrowserViewModelTest {
         history: AssessmentRepository = historyRepository(),
         repository: CurriculumRepository = catalogRepository(),
         learningContent: LearningContentRepository = FakeLearningContentRepository(),
+        studyProgress: StudyProgressStateHolder = studyProgressStateHolder(),
     ): TopicBrowserViewModel =
-        viewModel(repository, history, learningContent = learningContent)
-            .also { advanceUntilIdle() }
+        viewModel(
+            repository,
+            history,
+            learningContent = learningContent,
+            studyProgress = studyProgress,
+        ).also { advanceUntilIdle() }
 
     private fun TestScope.viewModel(
         repository: CurriculumRepository,
@@ -1207,6 +1508,7 @@ internal class TopicBrowserViewModelTest {
         learningRecommendationResolver: LearningRecommendationResolver =
             recommendationResolver(repository, history),
         learningContent: LearningContentRepository = FakeLearningContentRepository(),
+        studyProgress: StudyProgressStateHolder = studyProgressStateHolder(),
     ): TopicBrowserViewModel =
         TopicBrowserViewModel(
             curriculumRepository = repository,
@@ -1215,6 +1517,7 @@ internal class TopicBrowserViewModelTest {
             historyStore = AssessmentHistoryStore(history, CoroutineScope(currentDispatcher())),
             continueStudyingResolver = continueStudyingResolver,
             learningRecommendationResolver = learningRecommendationResolver,
+            studyProgressStateHolder = studyProgress,
         )
 
     /**
@@ -1326,11 +1629,27 @@ internal class TopicBrowserViewModelTest {
      * publisher wrote for it, and a Topic absent from the map genuinely has none. [failure] makes
      * the whole document unreadable, which is the only failure this repository has.
      */
+    /**
+     * [orderedUnits] is the global authored sequence, which is deliberately not reconstructed from
+     * [unitsByTopicId]: Continue Learning's whole contract is that document order survives, so a
+     * fake that rebuilt it by concatenating Topic groups could not fail the test that proves it.
+     */
     private class FakeLearningContentRepository(
         private val unitsByTopicId: Map<String, List<LearningUnit>> = emptyMap(),
+        private val orderedUnits: List<LearningUnit> = emptyList(),
         private val failure: Throwable? = null,
     ) : LearningContentRepository {
         val topicReadIds = mutableListOf<String>()
+
+        /** Counted so a re-derivation triggered by study state can be proved to read no content. */
+        var orderedReads = 0
+            private set
+
+        override suspend fun getActiveUnits(): List<LearningUnit> {
+            failure?.let { throw it }
+            orderedReads += 1
+            return orderedUnits
+        }
 
         override suspend fun getActiveUnitsByTopic(topicId: String): List<LearningUnit> {
             failure?.let { throw it }
@@ -1352,6 +1671,8 @@ internal class TopicBrowserViewModelTest {
         fun release(units: List<LearningUnit>) {
             gate.complete(units)
         }
+
+        override suspend fun getActiveUnits(): List<LearningUnit> = gate.await()
 
         override suspend fun getActiveUnitsByTopic(topicId: String): List<LearningUnit> =
             gate.await().filter { it.topicId == topicId }
@@ -1539,13 +1860,37 @@ internal class TopicBrowserViewModelTest {
                 score = AssessmentScore(answers.size, answers.count { it.second }),
             )
 
-        /** Identity and home Topic are all availability counting reads; content is irrelevant. */
-        fun learningUnit(id: String, topicId: String) = LearningUnit(
+        /**
+         * Identity and home Topic are all availability counting reads need; [lessons] matter only
+         * to Continue Learning, which walks them.
+         */
+        fun learningUnit(
+            id: String,
+            topicId: String,
+            lessons: List<LearningLesson> = emptyList(),
+            status: ContentStatus = ContentStatus.ACTIVE,
+        ) = LearningUnit(
             id = id,
             topicId = topicId,
             title = "Unit $id",
             summary = "Summary for $id",
-            lessons = emptyList(),
+            lessons = lessons,
+            status = status,
+        )
+
+        fun learningLesson(
+            id: String,
+            status: ContentStatus = ContentStatus.ACTIVE,
+        ) = LearningLesson(
+            id = id,
+            title = "Lesson $id",
+            summary = "Summary for $id",
+            primarySubtopicIds = emptyList(),
+            supportingSubtopicIds = emptyList(),
+            sections = emptyList(),
+            relatedLessonIds = emptyList(),
+            sources = emptyList(),
+            status = status,
         )
 
         fun question(id: String, topicId: String, subtopicId: String) = Question(

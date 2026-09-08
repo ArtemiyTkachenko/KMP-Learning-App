@@ -24,6 +24,8 @@ internal class BundledLearningContentRepository(
     private val mutex = Mutex()
     private var content: LoadedLearningContent? = null
 
+    override suspend fun getActiveUnits(): List<LearningUnit> = content().activeUnits
+
     override suspend fun getActiveUnitsByTopic(topicId: String): List<LearningUnit> =
         content().activeUnitsByTopicId[topicId].orEmpty()
 
@@ -49,10 +51,16 @@ internal class BundledLearningContentRepository(
 private class LoadedLearningContent(
     learningCurriculum: LearningCurriculum,
 ) {
+    /**
+     * The document's own Unit order, ACTIVE only. [activeUnitsByTopicId] is derived from this rather
+     * than filtered again, so the two can never disagree about which Units are ACTIVE, and the
+     * global list stays the one place authored sequence survives.
+     */
+    val activeUnits: List<LearningUnit> =
+        learningCurriculum.units.filter { it.status == ContentStatus.ACTIVE }
+
     val activeUnitsByTopicId: Map<String, List<LearningUnit>> =
-        learningCurriculum.units
-            .filter { it.status == ContentStatus.ACTIVE }
-            .groupBy { it.topicId }
+        activeUnits.groupBy { it.topicId }
 
     val unitsById: Map<String, LearningUnit> =
         learningCurriculum.units.associateBy { it.id }

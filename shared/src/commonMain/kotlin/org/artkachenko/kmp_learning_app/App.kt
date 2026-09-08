@@ -153,6 +153,13 @@ private fun AppShell(
                             // those are areas rather than details, so the mapping selects or pushes as
                             // that destination requires.
                             onRecommendedNext = navigator::openRecommendation,
+                            // The next Lesson to read, opened through the same Lesson route the Unit
+                            // overview pushes. One push rather than a reconstructed Unit-then-Lesson
+                            // stack, exactly as Continue Studying pushes one Topic: the learner
+                            // tapped a shortcut on this screen, so Back returns to this screen.
+                            onContinueLearning = { target ->
+                                navigator.push(target.toAppRoute())
+                            },
                             // A detail of the Topics area, pushed like Topic detail is. Saved
                             // Questions are learner-curated content, so they stay inside the area the
                             // catalogue lives in rather than becoming a fifth navigation destination.

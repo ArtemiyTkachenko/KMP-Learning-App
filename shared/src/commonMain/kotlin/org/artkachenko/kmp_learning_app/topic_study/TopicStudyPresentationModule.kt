@@ -151,6 +151,10 @@ internal val topicStudyPresentationModule = module {
             historyStore = get(),
             continueStudyingResolver = get(),
             learningRecommendationResolver = get(),
+            // The same app-scoped projection the three Learn destinations observe. Continue Learning
+            // has to agree with the studied indicators shown deeper in the stack, and this screen is
+            // usually still alive beneath them when a Lesson is marked.
+            studyProgressStateHolder = get(),
         )
     }
     viewModel {

@@ -11,9 +11,10 @@ persistence, E22-03 the derivation, E22-04 the presentation, and E22-05 Continue
 Their job is to satisfy the semantics recorded here rather than to settle them
 independently. The persistence half now exists — `studied_lesson`, `MIGRATION_7_8`, and
 `LessonStudyRepository`, described in [persistence](persistence.md) — and so does the
-derivation, recorded under [What the derivation computes](#what-the-derivation-computes).
-Both left the semantics below unchanged. Presentation and Continue Learning remain
-unimplemented, so this document still names no Compose control.
+derivation, recorded under [What the derivation computes](#what-the-derivation-computes),
+and the Learn presentation, recorded under
+[Presenting study progress](#presenting-study-progress). All three left the semantics below
+unchanged. Continue Learning remains unimplemented.
 
 ## Three responsibilities, not one
 
@@ -431,6 +432,232 @@ records could not be read" says nothing about the authored content and must not 
 it. Continue Learning needs both inputs and so may be unavailable if either is missing,
 but a study-record failure alone leaves the authored curriculum entirely readable.
 
+## Presenting study progress
+
+E22-04 makes the state above visible and changeable on the three Learn destinations that
+already exist — the Lesson reader, the Learning Unit overview, and Topic Detail — without
+adding a fourth screen, a Room query, or a second progress model.
+
+### One app-scoped projection, not three caches
+
+Navigation 3 keeps the Learn back stack alive, so the realistic flow is
+
+```text
+Topic Detail -> Learning Unit -> Lesson -> mark studied -> Back -> Back
+```
+
+with both parents still constructed and still observing their own state. Three ViewModels
+each reading `studied_lesson` for themselves would mean going back through two screens that
+still show the value from before the mark, and "Back probably rebuilds the ViewModel" is
+not an invalidation strategy.
+
+`StudyProgressStateHolder` is therefore a single app-scoped projection, built on
+`AppCoroutineScope` and following the `SavedQuestionStateHolder` precedent exactly, which is
+the established pattern here for one learner-owned truth shown on several live surfaces. It
+is registered in `topicStudyPresentationModule`, because it is shared presentation state;
+`lessonStudyDataModule` continues to own only the Room-backed repository, and
+`learningContentModule` continues to own publisher content alone. All three Learn
+ViewModels take it, and `SharedHostStartupTest` pins that exactly one instance resolves.
+
+Its state is `StudyProgressState`:
+
+```kotlin
+sealed interface StudyProgressState {
+    data object Loading
+    data class Loaded(studiedLessons: List<StudiedLesson>, pendingLessonIds: Set<String>) {
+        val studiedLessonIds: Set<String>
+    }
+    data object Error
+}
+```
+
+The database stays authoritative. Nothing is stored in the holder that persistence does not
+already hold, and nothing becomes visible that was not read back from it:
+
+| Event | Result |
+| --- | --- |
+| `refresh()` succeeds | `Loaded` with what the repository returned — an empty list included |
+| First read fails | `Error`, never `Loaded(empty)` |
+| A later read fails | The previous `Loaded` stands; a transient failure must not repaint the Learn stack as unstudied |
+| Concurrent `refresh()` | A `Mutex.tryLock` collapses them into one query |
+
+Every Learn ViewModel calls `refresh()` when it is constructed and again on `retry()`, which
+is what lets a surface recover from an earlier failed read instead of losing the mark
+control for the rest of the session.
+
+### Mutation is persist-then-read-back
+
+`toggleStudied(lessonId)` is the single mutation path, and it is ignored while study state
+is unknown — a toggle needs a persisted value to reverse — and while that Lesson already has
+a write in flight. The Lesson goes into `pendingLessonIds`, the repository is written, the
+repository is read again, and only that read becomes visible. Nothing is flipped
+optimistically, so a control can never display a state that was not persisted.
+
+| Outcome | What the learner sees |
+| --- | --- |
+| Write and read-back succeed | The read-back value, and pending cleared |
+| Write fails | The previous persisted value, and pending cleared |
+| Write succeeds, read-back fails | The previous persisted value, and pending cleared |
+
+The last row is a deliberate choice rather than an oversight. The write may well have
+landed, but this process did not observe it, and the contract is that visible state comes
+from a read. Inventing the value the write "should" have produced is exactly the
+fabrication the model forbids, so the holder keeps the last state it actually read and the
+next `refresh()` — the next time any Learn destination opens — discovers the truth. A test
+documents both halves of that behaviour.
+
+`pendingLessonIds` is per Lesson, so a write on one Lesson disables that Lesson's control
+and nothing else.
+
+### One snapshot, all derived figures
+
+The holder performs the single canonical read; presentation then derives from the identities
+it publishes, using the pure `StudyProgressDerivation` directly:
+
+```text
+StudyProgressStateHolder.state -> Loaded.studiedLessonIds
+  + the ViewModel's current LearningUnit(s)
+  -> StudyProgressDerivation.deriveUnit / deriveTopic
+```
+
+`StudyProgressService` is deliberately not on this path and remains unregistered. Its
+methods read `LessonStudyRepository` themselves, so calling it on every holder emission
+would query Room again for every screen and every mark — several independent samples of one
+fact, which is how a Unit and its Topic come to disagree. The service stays as the
+single-IO boundary for a caller that has no shared projection, which E22-05 may well be; it
+was not redesigned or deleted for this issue.
+
+The Unit overview and Topic Detail therefore retain the domain objects they need:
+`LearningUnitViewModel` keeps the resolved `LearningUnit`, and `TopicDetailViewModel` keeps
+the ACTIVE `List<LearningUnit>` from `getActiveUnitsByTopic`. The row models
+(`LearningLessonItemUiModel`, `LearningUnitItemUiModel`) are deliberately not given Lesson
+bodies to make the arithmetic possible — a discovery row must not carry the authored
+document. A study-state change re-derives from the retained content, so publisher content
+is not re-read when only learner state moved.
+
+### Loading, Available, Unavailable
+
+Every Learn surface carries study state as `StudyProgressUiState<T>`:
+
+```kotlin
+sealed interface StudyProgressUiState<out T> {
+    data object Loading
+    data class Available<T>(val value: T)
+    data object Unavailable
+}
+```
+
+`StudyProgressState.toUiState { … }` is the one place `Error` becomes `Unavailable`, so no
+destination can decide for itself that an unreadable record means an empty one. The wrapper
+is narrow on purpose: it models study state on three screens and is not a general async
+result type for the application.
+
+The nesting matters as much as the three cases. Study state lives *inside* the content
+state of each screen, never beside it:
+
+| Screen state | Means |
+| --- | --- |
+| `LearningLessonUiState.Error` | The Lesson document could not be read |
+| `LearningLessonUiState.Content(studyState = Unavailable)` | The Lesson reads fine; the learner's record could not be read |
+| `TopicLearningUnitsUiState.Unavailable` | The Topic's authored Units could not be read |
+| `Content(learningUnits = Available, studyProgress = Unavailable)` | The Units are readable; the study record is not |
+
+A study-state failure can never produce a screen-level `Error`, can never turn
+`TopicLearningUnitsUiState.Available` into `Unavailable`, and can never affect practice: no
+practice action anywhere reads `StudyProgressState`.
+
+### Lesson reader
+
+`LearningLessonUiState.Content` gains
+`studyState: StudyProgressUiState<LessonStudyUiModel>`, where `LessonStudyUiModel` is
+`isStudied` plus `isPending` for this Lesson alone.
+
+The control sits directly under the Lesson's title and summary, before the body — the
+learner can see whether they already studied it without reading to the end, and can reverse
+the claim from the same place — and is a quiet status badge beside an `OutlinedButton`
+rather than anything with the weight of "Practice this unit".
+
+| Study state | Rendering |
+| --- | --- |
+| `Loading` | Nothing. A badge before the record is read would be a guess |
+| `Available(isStudied = false)` | Badge "Not studied", button "Mark as studied" |
+| `Available(isStudied = true)` | Badge "Studied", button "Mark as not studied" |
+| `Available(isPending = true)` | The persisted badge unchanged, button disabled |
+| `Unavailable` | "Study progress unavailable" — never "Not studied", and no control |
+
+Accessibility is carried by words in two channels: the button's visible label is the action
+it performs, which is what Material's own semantics announce, and the current value is
+published as the button's `stateDescription`. No tick, colour, or icon is load-bearing, and
+no redundant content description is added on top of what Material already exposes.
+
+`onToggleStudied` is the only thing on the page that changes study state. Opening the
+Lesson, scrolling it, reaching the bottom, pressing Previous or Next, opening a Source, and
+pressing "Practice this unit" all leave the record untouched — asserted at the ViewModel
+level against the repository, not only through screen callbacks. The reading-progress meter
+under the top bar remains a measure of scroll position through the document and is
+unrelated: it is not labelled study progress, does not drive the control, and keeps its
+existing non-focusable semantics.
+
+### Learning Unit overview
+
+`LearningUnitUiState.Content` gains
+`studyProgress: StudyProgressUiState<LearningUnitStudyProgress>` — the E22-03 result
+verbatim, not a second model. The per-Lesson list is joined to the rows by stable Lesson ID.
+
+The aggregate sits under the Unit's summary and above "Practice this unit", so the page's
+pedagogical order is unchanged. It renders as the written figure — "1 of 3 lessons studied"
+— with a `ProgressMeter` beneath it as a second channel. The ratio is computed at the moment
+of drawing from the derived counts; no percentage is added to a domain model or persisted,
+and no second progress-bar component was introduced.
+
+`StudyProgressSummary.Empty` renders nothing at all: `0 / 0` reads as complete and 0% claims
+outstanding work that does not exist, and the overview's existing "No lessons are currently
+available in this unit." is the honest explanation. `Loading` renders nothing either.
+`Unavailable` renders "Study progress unavailable" in place of the aggregate.
+
+Each ACTIVE Lesson row states "Studied" or "Not studied" in words when study state is
+`Available`, and says nothing in the other two cases — so a row with no marker cannot be
+mistaken for one that is merely unstudied. Study state is an annotation and never a
+navigation rule: rows keep authored order, unstudied Lessons are not hidden, moved, locked,
+or made unclickable, and completion is described as studied rather than mastered.
+
+### Topic Detail
+
+`TopicDetailUiState.Content` gains
+`studyProgress: StudyProgressUiState<TopicStudyProgress>` as a fourth independently failing
+input, beside the curriculum, the authored Units, and the assessment-derived
+`learningContext`. Study progress is not folded into `LearningContextUiModel`: studied
+Lessons are a claim about reading and coverage is measured from attempts, and a screen that
+merged them could manufacture either from the other.
+
+Per-Unit results are joined to the Unit cards by stable Unit ID. The card's last line is one
+line either way — the learner's own progress ("1 of 3 lessons studied") when a record has
+been read, and the authored count ("3 lessons") while it is loading, unreadable, or
+describes a Unit with no current Lessons. Showing both would state the total twice.
+
+An unreadable record shows one concise message under the Study heading rather than repeating
+itself inside every card. Units stay listed, stay in authored order, and stay clickable;
+`Start Practice`, Subtopic practice, and the targeted shortcuts are untouched in all three
+study states.
+
+No Topic-level study aggregate card was added. The issue asks for progress for a Topic's
+Learning Units, Topic Detail already carries an assessment summary card, a coverage meter,
+and a Subtopic list, and a second large progress figure would compete with the first while
+answering a question the per-Unit lines already answer.
+
+### Topic Browser: deliberately unchanged
+
+**E22-04 does not add aggregate study progress to the Topic Browser.**
+
+The Topic Browser is the catalogue and guidance surface: it already carries search,
+Topic and Subtopic discovery, the learning-availability marker, Continue Studying,
+Recommended Next, Saved Questions, and assessment-derived learning context. Another
+per-Topic figure there would add density without making study state actionable, since the
+learner still has to open the Topic to do anything about it. Topic Detail is where
+Unit-specific current progress belongs, and E22-05's Continue Learning is the actionable
+catalogue-level affordance — a place to go next, rather than one more number. The decision
+is recorded here so it is deliberate rather than an omission.
+
 ## Non-goals and future boundaries
 
 E22-01 introduces no Kotlin type. Prose specifies this contract completely, and every
@@ -442,8 +669,10 @@ actually uses it, which is churn rather than a contract.
 Also deliberately absent from this document, and owned elsewhere: the Room entity, DAO,
 migration, schema version, repository implementation, and Koin binding, which E22-02 has
 since added and [persistence](persistence.md) describes; Unit and Topic derivation code
-(E22-03); ViewModel, Compose UI, or a mark/unmark control (E22-04); Continue Learning
-resolver or navigation route (E22-05).
+(E22-03); the Learn presentation and the mark/unmark control, which E22-04 has since added
+and [Presenting study progress](#presenting-study-progress) describes; Continue Learning
+resolver or navigation route (E22-05). E22-04 added no schema change: the database remains
+at version 8, and no aggregate, percentage, or completion flag is persisted.
 
 Excluded from the epic entirely rather than deferred: content hashes or Lesson version
 stamps, last-read or resume state, a study-history or orphan-record screen, additional

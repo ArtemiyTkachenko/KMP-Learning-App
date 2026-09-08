@@ -11,15 +11,20 @@ import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistory
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
+import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
 import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressDerivation
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressState
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressStateHolder
+import org.artkachenko.kmp_learning_app.lesson_study.toUiState
 import org.artkachenko.kmp_learning_app.ui.LearningContextIndex
 
 /**
  * One Topic's study and practice surface, enriched with what the learner has done with it.
  *
- * Three inputs, held apart because they fail and change independently:
+ * Four inputs, held apart because they fail and change independently:
  *
  * - the [curriculum] is the primary capability and the only one that can produce Loading, NotFound,
  *   or Error. It decides whether the Topic exists — and, through its question count alone, whether
@@ -30,7 +35,14 @@ import org.artkachenko.kmp_learning_app.ui.LearningContextIndex
  *   its Units must stay fully practiceable while it does;
  * - [learningContexts] is optional analytics derived from the shared history cache. Until a
  *   derivation succeeds it stays null and the screen omits the summary: unknown history is not
- *   empty history, and an optional statistic must never block starting practice.
+ *   empty history, and an optional statistic must never block starting practice;
+ * - [studyState] is the learner's study record, observed from the app-scoped
+ *   [studyProgressStateHolder] that the Unit overview and the Lesson reader also observe. It is a
+ *   fourth independent input rather than part of either of the two above: publisher availability
+ *   asks whether the Units can be read, assessment analytics measure practice, and this says what
+ *   the learner claims to have studied. A failure in it costs the per-Unit study figures and
+ *   nothing else — the Units stay Available, and every practice action stays exactly as available
+ *   as it was.
  *
  * Each writer updates its own input and re-renders rather than the state being awaited together, so
  * the Topic becomes visible and practiceable the moment the curriculum lands.
@@ -41,6 +53,7 @@ internal class TopicDetailViewModel(
     private val learningContentRepository: LearningContentRepository,
     private val learningProgressService: LearningProgressService,
     private val historyStore: AssessmentHistoryStore,
+    private val studyProgressStateHolder: StudyProgressStateHolder,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<TopicDetailUiState>(TopicDetailUiState.Loading)
     val uiState: StateFlow<TopicDetailUiState> = _uiState.asStateFlow()
@@ -50,16 +63,30 @@ internal class TopicDetailViewModel(
     /** Identifies the newest load, so a slower earlier one cannot write over it. */
     private var loadGeneration: Int = 0
     private var learningContexts: LearningContextIndex? = null
+    private var studyState: StudyProgressState = StudyProgressState.Loading
+
+    /**
+     * The ACTIVE domain Units the study derivation needs, kept beside the row models rather than
+     * inside them.
+     *
+     * `LearningUnitItemUiModel` deliberately carries only what a discovery row shows, so it cannot
+     * be turned back into a `LearningUnit`; giving it Lesson bodies to make a count possible would
+     * put the whole authored document on a card. Retaining the domain list instead is also what
+     * lets a study-state change re-derive progress without reading learning content again.
+     */
+    private var activeUnits: List<LearningUnit> = emptyList()
 
     init {
         require(topicId.isNotBlank()) {
             "topicId must not be blank."
         }
         observeLearningContext()
+        observeStudyState()
         loadTopic()
     }
 
     fun retry() {
+        studyProgressStateHolder.refresh()
         loadTopic()
     }
 
@@ -85,6 +112,21 @@ internal class TopicDetailViewModel(
             ?.subtopics
             ?.firstOrNull { it.subtopic.id == subtopicId }
             ?.let { item -> AssessmentScope.Subtopic(item.subtopic.id) }
+
+    /**
+     * Follows the app-scoped study projection for the same reason the history cache is followed:
+     * this screen is often still alive underneath the Unit overview and the Lesson reader, and a
+     * Lesson marked two destinations up must reach it without the Topic being loaded again.
+     */
+    private fun observeStudyState() {
+        studyProgressStateHolder.refresh()
+        viewModelScope.launch {
+            studyProgressStateHolder.state.collect { state ->
+                studyState = state
+                render()
+            }
+        }
+    }
 
     /**
      * Follows the app-scoped history cache rather than reading completed attempts again, so
@@ -122,6 +164,7 @@ internal class TopicDetailViewModel(
         // The previous read described a Topic that is being loaded again, so study material drops
         // back to unknown rather than being shown against whatever arrives next.
         learningUnits = TopicLearningUnitsUiState.Loading
+        activeUnits = emptyList()
         render()
         viewModelScope.launch {
             val curriculum = runCatching { readCurriculum() }.getOrElse { TopicCurriculum.Error }
@@ -143,12 +186,13 @@ internal class TopicDetailViewModel(
      * told there is none — and keeps every practice action either way.
      */
     private suspend fun loadLearningUnits(topicId: String, generation: Int) {
-        val units = runCatching {
-            TopicLearningUnitsUiState.Available(
-                learningContentRepository.getActiveUnitsByTopic(topicId).toLearningUnitItems(),
-            )
-        }.getOrElse { TopicLearningUnitsUiState.Unavailable }
+        val read = runCatching { learningContentRepository.getActiveUnitsByTopic(topicId) }
+        val units = read.fold(
+            onSuccess = { TopicLearningUnitsUiState.Available(it.toLearningUnitItems()) },
+            onFailure = { TopicLearningUnitsUiState.Unavailable },
+        )
         if (generation != loadGeneration) return
+        activeUnits = read.getOrDefault(emptyList())
         learningUnits = units
         render()
     }
@@ -196,6 +240,17 @@ internal class TopicDetailViewModel(
                 },
                 learningUnits = learningUnits,
                 learningContext = contexts?.forTopic(curriculum.topic.id),
+                // Derived here, from the studied identities the shared holder already read, rather
+                // than through StudyProgressService: the holder performs the one canonical read for
+                // the whole Learn stack, and going back to the service would query Room again for
+                // every screen and every mark. One persisted snapshot, all derived figures.
+                studyProgress = studyState.toUiState { loaded ->
+                    StudyProgressDerivation.deriveTopic(
+                        topicId = curriculum.topic.id,
+                        units = activeUnits,
+                        studiedLessonIds = loaded.studiedLessonIds,
+                    )
+                },
             )
         }
     }

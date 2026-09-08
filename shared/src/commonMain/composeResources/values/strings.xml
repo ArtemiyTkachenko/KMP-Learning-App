@@ -225,6 +225,15 @@
     <string name="learning_lesson_source_open_failed">This source could not be opened.</string>
     <string name="learning_lesson_previous">Previous</string>
     <string name="learning_lesson_next">Next</string>
+    <string name="learning_lesson_studied">Studied</string>
+    <string name="learning_lesson_not_studied">Not studied</string>
+    <string name="learning_lesson_mark_studied">Mark as studied</string>
+    <string name="learning_lesson_unmark_studied">Mark as not studied</string>
+    <string name="learning_study_progress_unavailable">Study progress unavailable</string>
+    <plurals name="learning_unit_lessons_studied">
+        <item quantity="one">%1$d of %2$d lesson studied</item>
+        <item quantity="other">%1$d of %2$d lessons studied</item>
+    </plurals>
     <string name="app_startup_loading">Preparing local curriculum</string>
     <string name="app_startup_error">Local curriculum could not be initialized</string>
     <string name="selection_copied_snackbar">Copied to clipboard</string>

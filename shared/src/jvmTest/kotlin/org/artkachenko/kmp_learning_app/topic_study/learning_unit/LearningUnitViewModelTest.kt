@@ -1,7 +1,9 @@
 package org.artkachenko.kmp_learning_app.topic_study.learning_unit
 
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -11,10 +13,15 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import kotlin.test.AfterTest
-import kotlin.test.assertIs
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
+import org.artkachenko.kmp_learning_app.lesson_study.FakeLessonStudyRepository
+import org.artkachenko.kmp_learning_app.lesson_study.LearningUnitStudyProgress
+import org.artkachenko.kmp_learning_app.lesson_study.StudiedLesson
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressStateHolder
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressSummary
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressUiState
+import org.artkachenko.kmp_learning_app.lesson_study.studyProgressStateHolder
 import org.artkachenko.kmp_learning_app.topic_study.FakeLearningContentRepository
 import org.artkachenko.kmp_learning_app.topic_study.testLearningLesson
 import org.artkachenko.kmp_learning_app.topic_study.testLearningUnit
@@ -162,13 +169,147 @@ internal class LearningUnitViewModelTest {
         assertTrue(state.lessons.isEmpty())
     }
 
-    private fun viewModel(
+
+    @Test
+    fun unitStudyProgressIsDerivedFromTheCurrentActiveLessonsAndTheStudiedIdentities() =
+        runViewModelTest {
+            val viewModel = viewModel(
+                unitId = "unit_a",
+                repository = threeLessonUnit(),
+                studyProgressStateHolder = studyProgressStateHolder(
+                    FakeLessonStudyRepository(
+                        StudiedLesson("lesson_b", 2_000),
+                        // A record for a Lesson this Unit retired, and one for a Lesson that no
+                        // longer resolves at all: neither may reach either side of the fraction.
+                        StudiedLesson("lesson_retired", 3_000),
+                        StudiedLesson("lesson_deleted", 4_000),
+                    ),
+                ),
+            )
+            advanceUntilIdle()
+
+            val progress = studyProgress(viewModel)
+            assertEquals(
+                listOf("lesson_a", "lesson_b", "lesson_c"),
+                progress.lessons.map { it.lessonId },
+            )
+            assertEquals(listOf(false, true, false), progress.lessons.map { it.isStudied })
+            assertEquals(StudyProgressSummary.Progress(studiedCount = 1, totalCount = 3), progress.summary)
+        }
+
+    /** A Unit whose Lessons have all been retired reports the explicit empty result, not 0 or 100%. */
+    @Test
+    fun aUnitWithNoCurrentLessonsReportsEmptyStudyProgress() = runViewModelTest {
+        val viewModel = viewModel(
+            unitId = "unit_a",
+            repository = FakeLearningContentRepository(
+                units = listOf(
+                    testLearningUnit(
+                        "unit_a",
+                        lessons = listOf(
+                            testLearningLesson("lesson_retired", status = ContentStatus.DEPRECATED),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        advanceUntilIdle()
+
+        assertEquals(StudyProgressSummary.Empty, studyProgress(viewModel).summary)
+    }
+
+    @Test
+    fun anUnreadableStudyRecordLeavesTheUnitReadableWithUnavailableStudyProgress() =
+        runViewModelTest {
+            val repository = FakeLessonStudyRepository()
+            repository.failReads = true
+            val viewModel = viewModel(
+                unitId = "unit_a",
+                repository = threeLessonUnit(),
+                studyProgressStateHolder = studyProgressStateHolder(repository),
+            )
+            advanceUntilIdle()
+
+            val state = assertIs<LearningUnitUiState.Content>(viewModel.uiState.value)
+            assertEquals(3, state.lessons.size)
+            assertEquals(StudyProgressUiState.Unavailable, state.studyProgress)
+        }
+
+    /**
+     * The reason the projection is app-scoped rather than per-screen.
+     *
+     * Navigation 3 keeps this overview alive while the learner reads a Lesson below it, so a mark
+     * made down there has to reach *this* instance. Asserted on the same ViewModel object across the
+     * mutation, and on the content read count, because rebuilding the screen or refetching the
+     * document would both hide the bug this exists to catch.
+     */
+    @Test
+    fun aMarkMadeElsewhereUpdatesThisLiveUnitWithoutReloadingTheDocument() = runViewModelTest {
+        val studyRepository = FakeLessonStudyRepository()
+        val holder = studyProgressStateHolder(studyRepository)
+        val content = threeLessonUnit()
+        val viewModel = viewModel("unit_a", content, holder)
+        advanceUntilIdle()
+
+        assertEquals(
+            StudyProgressSummary.Progress(studiedCount = 0, totalCount = 3),
+            studyProgress(viewModel).summary,
+        )
+        val documentReads = content.unitReadIds.size
+
+        // The Lesson reader's mutation, through the one holder both screens observe.
+        holder.toggleStudied("lesson_b")
+        advanceUntilIdle()
+
+        val progress = studyProgress(viewModel)
+        assertEquals(StudyProgressSummary.Progress(studiedCount = 1, totalCount = 3), progress.summary)
+        assertEquals(listOf(false, true, false), progress.lessons.map { it.isStudied })
+        // Publisher content and learner state have independent lifecycles: nothing was re-authored.
+        assertEquals(documentReads, content.unitReadIds.size)
+    }
+
+    /** Opening the overview reads study state and writes none of it. */
+    @Test
+    fun openingTheUnitPersistsNoStudyState() = runViewModelTest {
+        val studyRepository = FakeLessonStudyRepository()
+        viewModel("unit_a", threeLessonUnit(), studyProgressStateHolder(studyRepository))
+        advanceUntilIdle()
+
+        assertEquals(emptyList(), studyRepository.markCalls)
+        assertEquals(emptyList(), studyRepository.unmarkCalls)
+    }
+
+    private fun threeLessonUnit(): FakeLearningContentRepository =
+        FakeLearningContentRepository(
+            units = listOf(
+                testLearningUnit(
+                    "unit_a",
+                    lessons = listOf(
+                        testLearningLesson("lesson_a"),
+                        testLearningLesson("lesson_b"),
+                        testLearningLesson("lesson_retired", status = ContentStatus.DEPRECATED),
+                        testLearningLesson("lesson_c"),
+                    ),
+                ),
+            ),
+        )
+
+    private fun studyProgress(viewModel: LearningUnitViewModel): LearningUnitStudyProgress {
+        val state = assertIs<LearningUnitUiState.Content>(viewModel.uiState.value)
+        return assertIs<StudyProgressUiState.Available<LearningUnitStudyProgress>>(
+            state.studyProgress,
+        ).value
+    }
+
+    private fun TestScope.viewModel(
         unitId: String,
         repository: LearningContentRepository,
+        studyProgressStateHolder: StudyProgressStateHolder = studyProgressStateHolder(),
     ): LearningUnitViewModel =
         LearningUnitViewModel(
             unitId = unitId,
             learningContentRepository = repository,
+            studyProgressStateHolder = studyProgressStateHolder,
         )
 
     private fun runViewModelTest(block: suspend TestScope.() -> Unit) = runTest {

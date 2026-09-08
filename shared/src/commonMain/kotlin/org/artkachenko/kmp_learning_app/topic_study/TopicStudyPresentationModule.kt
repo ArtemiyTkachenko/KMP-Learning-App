@@ -10,6 +10,7 @@ import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingViewModel
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingResolver
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressStateHolder
 import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationResolver
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewViewModel
@@ -90,6 +91,17 @@ internal val topicStudyPresentationModule = module {
         )
     }
     single {
+        // App-scoped for the reason the Learn stack demands it: Topic Detail, the Unit overview,
+        // and the Lesson reader are alive at the same time and show the same learner-owned truth,
+        // so marking a Lesson in the reader has to be what the two screens underneath show on the
+        // way back. It lives here rather than in `lessonStudyDataModule`, which owns only the
+        // Room-backed repository, and not in `learningContentModule`, which owns publisher content.
+        StudyProgressStateHolder(
+            repository = get(),
+            scope = get<AppCoroutineScope>(),
+        )
+    }
+    single {
         ProgressStateHolder(
             learningProgressService = get(),
             curriculumRepository = get(),
@@ -163,6 +175,7 @@ internal val topicStudyPresentationModule = module {
             learningContentRepository = get(),
             learningProgressService = get(),
             historyStore = get(),
+            studyProgressStateHolder = get(),
         )
     }
     viewModel { parameters ->
@@ -172,6 +185,9 @@ internal val topicStudyPresentationModule = module {
         LearningUnitViewModel(
             unitId = parameters.get(),
             learningContentRepository = get(),
+            // The same app-scoped holder the reader below mutates, so a Lesson marked one level
+            // deeper reaches this overview without it being rebuilt.
+            studyProgressStateHolder = get(),
         )
     }
     viewModel { parameters ->
@@ -182,6 +198,7 @@ internal val topicStudyPresentationModule = module {
             unitId = parameters.get(0),
             lessonId = parameters.get(1),
             learningContentRepository = get(),
+            studyProgressStateHolder = get(),
         )
     }
     single {

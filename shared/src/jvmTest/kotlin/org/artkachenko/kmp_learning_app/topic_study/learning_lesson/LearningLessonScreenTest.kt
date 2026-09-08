@@ -14,9 +14,13 @@ import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -33,6 +37,7 @@ import org.artkachenko.kmp_learning_app.curriculum.learning.LearningBlock
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningCalloutKind
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningDepth
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningSection
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressUiState
 
 /**
  * The Lesson reader as a learner meets it: every authored block variant, the depth layers, the
@@ -564,6 +569,8 @@ internal class LearningLessonScreenTest {
         failedSourceUrl: String? = null,
         width: Dp = NarrowWidth,
         height: Dp = TestHeight,
+        studyState: StudyProgressUiState<LessonStudyUiModel> = StudyProgressUiState.Loading,
+        onToggleStudied: () -> Unit = {},
     ) {
         setContent {
             MaterialTheme {
@@ -574,6 +581,7 @@ internal class LearningLessonScreenTest {
                             sources = sources,
                             previous = previous,
                             next = next,
+                            studyState = studyState,
                         ),
                         onBack = {},
                         onRetry = {},
@@ -581,11 +589,211 @@ internal class LearningLessonScreenTest {
                         onPracticeUnit = onPracticeUnit,
                         onOpenSource = onOpenSource,
                         failedSourceUrl = failedSourceUrl,
+                        onToggleStudied = onToggleStudied,
                     )
                 }
             }
         }
     }
+
+
+    /**
+     * Unstudied: the state is stated in words, and the control names the action that changes it.
+     * The two together are what a screen reader announces — no tick, no colour, and no reliance on
+     * either.
+     */
+    @Test
+    fun anUnstudiedLessonShowsItsStateAndOffersTheMarkAction() = runComposeUiTest {
+        var toggles = 0
+        setContentWith(
+            studyState = available(isStudied = false),
+            onToggleStudied = { toggles += 1 },
+        )
+
+        onNodeWithTag(LearningLessonStudyStatusTag).assertIsDisplayed()
+        onNodeWithText("Not studied").assertIsDisplayed()
+        onNodeWithTag(LearningLessonStudyActionTag)
+            .assertIsDisplayed()
+            .assertIsEnabled()
+            .assertHasClickAction()
+            // The action's own label, so the control says what it will do and not only what is true.
+            .assert(hasText("Mark as studied"))
+            // ... and the current value, so what is true is available from the control as well.
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Not studied"))
+
+        onNodeWithTag(LearningLessonStudyActionTag).performClick()
+        assertEquals(1, toggles)
+    }
+
+    @Test
+    fun aStudiedLessonShowsItsStateAndOffersTheUnmarkAction() = runComposeUiTest {
+        setContentWith(studyState = available(isStudied = true))
+
+        onNodeWithText("Studied").assertIsDisplayed()
+        onNodeWithTag(LearningLessonStudyActionTag)
+            .assertIsEnabled()
+            .assert(hasText("Mark as not studied"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Studied"))
+    }
+
+    /**
+     * A pending write is not a persisted one. The badge keeps saying what the database says, and the
+     * control cannot be fired again while its own write is in flight.
+     */
+    @Test
+    fun aPendingMutationKeepsThePersistedValueAndDisablesTheAction() = runComposeUiTest {
+        var toggles = 0
+        setContentWith(
+            studyState = available(isStudied = false, isPending = true),
+            onToggleStudied = { toggles += 1 },
+        )
+
+        onNodeWithText("Not studied").assertIsDisplayed()
+        onNodeWithText("Studied").assertDoesNotExist()
+        onNodeWithTag(LearningLessonStudyActionTag)
+            .assertIsNotEnabled()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Not studied"))
+
+        onNodeWithTag(LearningLessonStudyActionTag).performClick()
+        assertEquals(0, toggles)
+    }
+
+    /** Reading is unaffected while a write is in flight: the page still scrolls and still navigates. */
+    @Test
+    fun aPendingMutationLeavesTheLessonReadableAndNavigable() = runComposeUiTest {
+        setContentWith(
+            sections = List(12) { section(LearningBlock.Paragraph("Body paragraph $it.")) },
+            next = AdjacentLessonUiModel("lesson_b", "State down, events up"),
+            studyState = available(isStudied = false, isPending = true),
+            height = ShortHeight,
+        )
+
+        onNodeWithText("Title of lesson_a").assertIsDisplayed()
+        onNodeWithTag(LearningLessonNextTag).performScrollTo().assertIsDisplayed()
+        onNodeWithTag(LearningLessonPracticeButtonTag).performScrollTo().assertIsDisplayed()
+    }
+
+    /**
+     * An unreadable study record costs the indicator and the action, and nothing else. It must not
+     * claim the Lesson is unstudied, and it must not become the screen-level error component.
+     */
+    @Test
+    fun anUnavailableStudyRecordLeavesTheWholeLessonUsableWithoutClaimingNotStudied() =
+        runComposeUiTest {
+            setContentWith(
+                sections = List(12) { section(LearningBlock.Paragraph("Body paragraph $it.")) },
+                sources = listOf(SourceReference("Thinking in Compose", "https://example.test/a")),
+                previous = AdjacentLessonUiModel("lesson_z", "Declarative UI"),
+                next = AdjacentLessonUiModel("lesson_b", "State down, events up"),
+                studyState = StudyProgressUiState.Unavailable,
+                height = ShortHeight,
+            )
+
+            onNodeWithText("Title of lesson_a").assertIsDisplayed()
+            onNodeWithTag(LearningLessonStudyUnavailableTag).assertIsDisplayed()
+            onNodeWithText("Study progress unavailable").assertIsDisplayed()
+            // Never fabricated, in either direction.
+            onNodeWithText("Not studied").assertDoesNotExist()
+            onNodeWithText("Studied").assertDoesNotExist()
+            onNodeWithTag(LearningLessonStudyActionTag).assertDoesNotExist()
+            // The screen-level retry component belongs to an unreadable Lesson, not to this.
+            onNodeWithText("Retry").assertDoesNotExist()
+
+            onNodeWithText("Thinking in Compose").performScrollTo().assertIsDisplayed()
+            onNodeWithTag(LearningLessonPreviousTag).performScrollTo().assertIsDisplayed()
+            onNodeWithTag(LearningLessonNextTag).performScrollTo().assertIsDisplayed()
+            onNodeWithTag(LearningLessonPracticeButtonTag).performScrollTo().assertIsDisplayed()
+        }
+
+    /** Silence while the record is being read: a badge before the answer would be a guess. */
+    @Test
+    fun aLoadingStudyRecordSaysNothingAboutTheLearner() = runComposeUiTest {
+        setContentWith(studyState = StudyProgressUiState.Loading)
+
+        onNodeWithText("Title of lesson_a").assertIsDisplayed()
+        onNodeWithTag(LearningLessonStudyStatusTag).assertDoesNotExist()
+        onNodeWithTag(LearningLessonStudyActionTag).assertDoesNotExist()
+        onNodeWithTag(LearningLessonStudyUnavailableTag).assertDoesNotExist()
+        onNodeWithText("Not studied").assertDoesNotExist()
+    }
+
+    /**
+     * Reading the whole Lesson changes nothing. Scrolling to the bottom, opening a Source, stepping
+     * to the next Lesson, and starting practice all leave the study callback untouched — the screen
+     * has exactly one way to change study state, and it is the control.
+     */
+    @Test
+    fun readingNavigatingAndPractisingNeverToggleStudyState() = runComposeUiTest {
+        var toggles = 0
+        setContentWith(
+            sections = List(12) { section(LearningBlock.Paragraph("Body paragraph $it.")) },
+            sources = listOf(SourceReference("Thinking in Compose", "https://example.test/a")),
+            next = AdjacentLessonUiModel("lesson_b", "State down, events up"),
+            onNavigateLesson = {},
+            onPracticeUnit = {},
+            onOpenSource = {},
+            studyState = available(isStudied = false),
+            onToggleStudied = { toggles += 1 },
+            height = ShortHeight,
+        )
+
+        onNodeWithText("Thinking in Compose").performScrollTo().performClick()
+        onNodeWithTag(LearningLessonNextTag).performScrollTo().performClick()
+        onNodeWithTag(LearningLessonPracticeButtonTag).performScrollTo().performClick()
+
+        assertEquals(0, toggles)
+    }
+
+    /**
+     * The narrow contract: on a phone-shaped window the control fits the viewport, the reading
+     * content is still usable, and the way onward is still reachable.
+     */
+    @Test
+    fun theStudyControlFitsANarrowWindowWithoutCrowdingTheReading() = runComposeUiTest {
+        setContentWith(
+            sections = List(12) { section(LearningBlock.Paragraph("Body paragraph $it.")) },
+            next = AdjacentLessonUiModel("lesson_b", "State down, events up"),
+            studyState = available(isStudied = true),
+            width = NarrowWidth,
+            height = ShortHeight,
+        )
+
+        val rootWidth = onNodeWithTag(TestRootTag).fetchSemanticsNode().boundsInRoot.width
+        assertWithinRootWidth(LearningLessonStudyStatusTag, rootWidth)
+        assertWithinRootWidth(LearningLessonStudyActionTag, rootWidth)
+        onNodeWithTag(LearningLessonStudyActionTag).assertIsDisplayed()
+        onNodeWithText("Title of lesson_a").assertIsDisplayed()
+        onNodeWithTag(LearningLessonNextTag).performScrollTo().assertIsDisplayed()
+        onNodeWithTag(LearningLessonPracticeButtonTag).performScrollTo().assertIsDisplayed()
+    }
+
+    /**
+     * The reading meter and the study control measure different things and must not be confused for
+     * one another: scrolling to the very bottom moves the meter and leaves the badge alone.
+     */
+    @Test
+    fun reachingTheBottomMovesTheReadingMeterAndNotTheStudyState() = runComposeUiTest {
+        setContentWith(
+            sections = List(12) { section(LearningBlock.Paragraph("Body paragraph $it.")) },
+            studyState = available(isStudied = false),
+            height = ShortHeight,
+        )
+
+        onNodeWithTag(LearningLessonReadingProgressTag).assertIsDisplayed()
+        onNodeWithTag(LearningLessonPracticeButtonTag).performScrollTo()
+        waitForIdle()
+
+        // The control is above the fold now, so it is asserted on existence rather than on being
+        // visible; what matters is that reaching the end of the document did not change it.
+        onNodeWithText("Not studied").assertExists()
+        onNodeWithTag(LearningLessonStudyActionTag).assert(hasText("Mark as studied"))
+    }
+
+    private fun available(
+        isStudied: Boolean,
+        isPending: Boolean = false,
+    ): StudyProgressUiState<LessonStudyUiModel> =
+        StudyProgressUiState.Available(LessonStudyUiModel(isStudied = isStudied, isPending = isPending))
 
     private fun ComposeUiTest.assertWithinRootWidth(tag: String, rootWidth: Float) {
         val width = onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot.width
@@ -610,6 +818,7 @@ private fun content(
     sources: List<SourceReference> = emptyList(),
     previous: AdjacentLessonUiModel? = null,
     next: AdjacentLessonUiModel? = null,
+    studyState: StudyProgressUiState<LessonStudyUiModel> = StudyProgressUiState.Loading,
 ): LearningLessonUiState.Content =
     LearningLessonUiState.Content(
         unitId = "unit_a",
@@ -620,6 +829,7 @@ private fun content(
         sources = sources,
         previousLesson = previous,
         nextLesson = next,
+        studyState = studyState,
     )
 
 /**

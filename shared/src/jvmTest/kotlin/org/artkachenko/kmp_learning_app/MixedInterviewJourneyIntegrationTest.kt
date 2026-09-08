@@ -63,6 +63,7 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.repository.LocalCu
 import org.artkachenko.kmp_learning_app.mixed_interview.InterviewStartButtonTag
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewDefaults
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedResultPracticeAgainTag
+import org.artkachenko.kmp_learning_app.data.local.lesson_study.lessonStudyDataModule
 import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.koin.compose.KoinApplication
@@ -294,6 +295,7 @@ internal class MixedInterviewJourneyIntegrationTest {
                 learningContentModule,
                 assessmentDataModule,
                 savedQuestionDataModule,
+                lessonStudyDataModule,
                 topicStudyPresentationModule,
                 module {
                     single<CurriculumDatabase> { database }

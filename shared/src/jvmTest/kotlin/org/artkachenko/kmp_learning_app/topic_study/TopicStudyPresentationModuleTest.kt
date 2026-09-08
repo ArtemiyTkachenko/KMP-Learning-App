@@ -11,13 +11,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import org.artkachenko.kmp_learning_app.curriculum.Question
-import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
-import org.artkachenko.kmp_learning_app.curriculum.Subtopic
-import org.artkachenko.kmp_learning_app.curriculum.Topic
-import org.artkachenko.kmp_learning_app.curriculum.learning.content.learningContentModule
-import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
-import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
@@ -25,17 +18,26 @@ import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.history.AppCoroutineScope
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
-import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
+import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingLaunch
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingViewModel
-import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
-import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultViewModel
+import org.artkachenko.kmp_learning_app.curriculum.Question
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
+import org.artkachenko.kmp_learning_app.curriculum.Subtopic
+import org.artkachenko.kmp_learning_app.curriculum.Topic
+import org.artkachenko.kmp_learning_app.curriculum.learning.content.learningContentModule
+import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
+import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
+import org.artkachenko.kmp_learning_app.lesson_study.FakeLessonStudyRepository
+import org.artkachenko.kmp_learning_app.lesson_study.repository.LessonStudyRepository
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewViewModel
+import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressTopicViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressViewModel
 import org.artkachenko.kmp_learning_app.saved_questions.FakeSavedQuestionRepository
@@ -52,8 +54,8 @@ import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBui
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeScopeKind
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeTargetResolver
-import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
+import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
 import org.koin.core.parameter.parametersOf
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
@@ -98,6 +100,9 @@ internal class TopicStudyPresentationModuleTest {
                     // Saved Questions are provided by the data module in production; the review
                     // ViewModels resolve the app-scoped holder built on that repository.
                     single<SavedQuestionRepository> { FakeSavedQuestionRepository() }
+                    // Learner study state is provided by `lessonStudyDataModule` in production;
+                    // the three Learn ViewModels resolve the app-scoped projection built on it.
+                    single<LessonStudyRepository> { FakeLessonStudyRepository() }
                 },
                 // The real E20 module rather than another fake: the Topic Browser must resolve the
                 // same LearningContentRepository singleton the hosts already register, through its

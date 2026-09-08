@@ -6,7 +6,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
-import org.artkachenko.kmp_learning_app.lesson_study.repository.LessonStudyRepository
 
 internal class StudyProgressServiceTest {
     @Test
@@ -70,31 +69,5 @@ internal class StudyProgressServiceTest {
         // and neither reinterprets nor deletes the record because the Lesson was retired.
         assertTrue(service.isLessonStudied("lesson_retired"))
         assertFalse(service.isLessonStudied("lesson_a"))
-    }
-}
-
-private class FakeLessonStudyRepository(
-    vararg studiedLessons: StudiedLesson,
-) : LessonStudyRepository {
-    private val studiedLessons = studiedLessons.toMutableList()
-
-    var studiedLessonReads = 0
-        private set
-
-    override suspend fun markStudied(lessonId: String) {
-        if (studiedLessons.none { it.lessonId == lessonId }) {
-            studiedLessons += StudiedLesson(lessonId = lessonId, studiedAtEpochMillis = 0)
-        }
-    }
-
-    override suspend fun unmarkStudied(lessonId: String) {
-        studiedLessons.removeAll { it.lessonId == lessonId }
-    }
-
-    override suspend fun isStudied(lessonId: String): Boolean = studiedLessons.any { it.lessonId == lessonId }
-
-    override suspend fun getStudiedLessons(): List<StudiedLesson> {
-        studiedLessonReads++
-        return studiedLessons.toList()
     }
 }

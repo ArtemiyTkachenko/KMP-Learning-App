@@ -4,6 +4,7 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,6 +19,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -30,24 +32,32 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.learning_lesson_error
 import kmp_learning_app.shared.generated.resources.learning_lesson_loading
+import kmp_learning_app.shared.generated.resources.learning_lesson_mark_studied
 import kmp_learning_app.shared.generated.resources.learning_lesson_next
 import kmp_learning_app.shared.generated.resources.learning_lesson_not_found
+import kmp_learning_app.shared.generated.resources.learning_lesson_not_studied
 import kmp_learning_app.shared.generated.resources.learning_lesson_previous
 import kmp_learning_app.shared.generated.resources.learning_lesson_source_open_failed
 import kmp_learning_app.shared.generated.resources.learning_lesson_sources
+import kmp_learning_app.shared.generated.resources.learning_lesson_studied
 import kmp_learning_app.shared.generated.resources.learning_lesson_title
+import kmp_learning_app.shared.generated.resources.learning_lesson_unmark_studied
 import kmp_learning_app.shared.generated.resources.learning_practice_unit
+import kmp_learning_app.shared.generated.resources.learning_study_progress_unavailable
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressUiState
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
 import org.artkachenko.kmp_learning_app.ui.SectionHeading
+import org.artkachenko.kmp_learning_app.ui.StatusBadge
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.theme.AppLayout
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
@@ -60,6 +70,9 @@ internal const val LearningLessonReadingProgressTag = "learning_lesson_reading_p
 internal const val LearningLessonPreviousTag = "learning_lesson_previous"
 internal const val LearningLessonNextTag = "learning_lesson_next"
 internal const val LearningLessonPracticeButtonTag = "learning_lesson_practice_button"
+internal const val LearningLessonStudyStatusTag = "learning_lesson_study_status"
+internal const val LearningLessonStudyActionTag = "learning_lesson_study_action"
+internal const val LearningLessonStudyUnavailableTag = "learning_lesson_study_unavailable"
 
 /**
  * The Lesson reading surface.
@@ -80,6 +93,11 @@ internal const val LearningLessonPracticeButtonTag = "learning_lesson_practice_b
  * [onPracticeUnit] carries nothing: practising is a Unit-level action, and the Unit it belongs to
  * is the one the shell is already rendering this Lesson inside. Emitting a Lesson identity here
  * would invite a Lesson-sized quiz, which is not what this action means.
+ *
+ * [onToggleStudied] carries nothing either, and it is the *only* thing on this page that changes
+ * study state. Reaching the bottom, pressing Next, opening a Source, and starting practice all
+ * leave the learner's record exactly as it was: studied is a claim they make, not one the page
+ * makes on their behalf.
  */
 @Composable
 internal fun LearningLessonScreen(
@@ -91,6 +109,7 @@ internal fun LearningLessonScreen(
     onOpenSource: (String) -> Unit,
     modifier: Modifier = Modifier,
     failedSourceUrl: String? = null,
+    onToggleStudied: () -> Unit = {},
 ) {
     val scrollBehavior = rememberAppTopBarScrollBehavior()
     // Hoisted out of the reading column so the column and the meter above it share one
@@ -131,6 +150,7 @@ internal fun LearningLessonScreen(
                 onNavigateLesson = onNavigateLesson,
                 onPracticeUnit = onPracticeUnit,
                 onOpenSource = onOpenSource,
+                onToggleStudied = onToggleStudied,
                 failedSourceUrl = failedSourceUrl,
                 modifier = Modifier.weight(1f),
             )
@@ -226,6 +246,7 @@ private fun LearningLessonContent(
     onNavigateLesson: (String) -> Unit,
     onPracticeUnit: () -> Unit,
     onOpenSource: (String) -> Unit,
+    onToggleStudied: () -> Unit,
     failedSourceUrl: String?,
     modifier: Modifier,
 ) {
@@ -250,6 +271,7 @@ private fun LearningLessonContent(
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            LessonStudyState(studyState = state.studyState, onToggleStudied = onToggleStudied)
             state.sections.forEachIndexed { index, section ->
                 LearningSectionContent(
                     section = section,
@@ -280,6 +302,103 @@ private fun LearningLessonContent(
             ) {
                 Text(text = stringResource(Res.string.learning_practice_unit))
             }
+        }
+    }
+}
+
+/**
+ * Whether this Lesson is studied, and the one control that changes it.
+ *
+ * Placed directly under the title and summary rather than after the Sources and the way onward, so
+ * a learner can see whether they already studied this Lesson without reading the whole document
+ * first — and can reverse the claim from the same place. It is a row of two quiet elements rather
+ * than a card or a filled button: the page is for reading, and a study control with the visual
+ * weight of "Practice this unit" would read as the point of the screen.
+ *
+ * Nothing is shown while study state is loading. A badge saying "Not studied" over a record that
+ * has not been read yet would be a claim about the learner, and the page is already readable
+ * without it.
+ */
+@Composable
+private fun LessonStudyState(
+    studyState: StudyProgressUiState<LessonStudyUiModel>,
+    onToggleStudied: () -> Unit,
+) {
+    when (studyState) {
+        StudyProgressUiState.Loading -> Unit
+        // Says what is missing, not what the answer is. "Not studied" here would invent a record
+        // the app could not read, which is the one thing this state exists to prevent. The Lesson,
+        // its Sources, its neighbours, and Practice this unit are all untouched.
+        StudyProgressUiState.Unavailable -> Text(
+            text = stringResource(Res.string.learning_study_progress_unavailable),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.testTag(LearningLessonStudyUnavailableTag),
+        )
+        is StudyProgressUiState.Available -> LessonStudyAction(
+            study = studyState.value,
+            onToggleStudied = onToggleStudied,
+        )
+    }
+}
+
+/**
+ * The persisted state as a badge, and beside it the action that reverses it.
+ *
+ * Both halves are words. The badge says "Studied" or "Not studied" rather than relying on a tick or
+ * a colour, and the button's visible label is the action it performs — which is what a screen
+ * reader announces from the Material button's own semantics, with no second content description.
+ * The current value is additionally published as the button's `stateDescription`, so the control
+ * itself carries both facts a learner needs before pressing it: what it will do, and what is true
+ * now. Together they satisfy the rule that state is never conveyed by colour alone.
+ *
+ * The button is disabled only while this Lesson's own write is being persisted, and the badge keeps
+ * showing the stored value throughout: a pending mark must never be drawn as though it had already
+ * been saved.
+ */
+@Composable
+private fun LessonStudyAction(
+    study: LessonStudyUiModel,
+    onToggleStudied: () -> Unit,
+) {
+    val stateLabel = stringResource(
+        if (study.isStudied) Res.string.learning_lesson_studied else Res.string.learning_lesson_not_studied,
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        StatusBadge(
+            text = stateLabel,
+            contentColor = if (study.isStudied) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            containerColor = if (study.isStudied) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerHighest
+            },
+            modifier = Modifier.testTag(LearningLessonStudyStatusTag),
+        )
+        OutlinedButton(
+            onClick = onToggleStudied,
+            enabled = !study.isPending,
+            modifier = Modifier
+                .testTag(LearningLessonStudyActionTag)
+                .semantics { stateDescription = stateLabel },
+        ) {
+            Text(
+                text = stringResource(
+                    if (study.isStudied) {
+                        Res.string.learning_lesson_unmark_studied
+                    } else {
+                        Res.string.learning_lesson_mark_studied
+                    },
+                ),
+            )
         }
     }
 }

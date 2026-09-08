@@ -41,10 +41,10 @@ identity proposed here lives in documentation until the authoring issue that shi
 | E23-07 | [Assessment gaps](#assessment-gaps-for-e23-07) in full, re-checked against the finished Lessons |
 | E23-08 | [Handoff](#handoff) — sequencing, cross-Unit links, and the limitations recorded here |
 
-**Authoring status.** E23-02 shipped Unit 2; it is ACTIVE in `learning_curriculum.json`.
-What that authoring found is recorded in [Authoring outcomes](#authoring-outcomes-for-unit-2).
-Units 3–6 are still plans, so every identity below remains a proposal until its issue ships
-it.
+**Authoring status.** E23-02 shipped Unit 2 and E23-03 shipped Unit 3; both are ACTIVE in
+`learning_curriculum.json`. What that authoring found is recorded in
+[Authoring outcomes](#authoring-outcomes-for-units-2-and-3). Units 4–6 are still plans, so
+every identity below remains a proposal until its issue ships it.
 
 ---
 
@@ -380,19 +380,52 @@ deliberately not regenerated here, where no Question changed.
 
 ---
 
-## Authoring outcomes for Unit 2
+## Authoring outcomes for Units 2 and 3
 
-Added by E23-02 after the Lessons were written, so E23-03 through E23-08 re-check findings
-rather than re-deriving them.
+Added by E23-02 and E23-03 after the Lessons were written, so E23-04 through E23-08 re-check
+findings rather than re-deriving them.
 
 ### What did not change
 
 Every proposed Unit id, Lesson id, title, authored order, and primary/supporting mapping for
-Unit 2 in the [identity tables](#identity-conventions-and-proposed-identities) shipped
+Units 2 and 3 in the [identity tables](#identity-conventions-and-proposed-identities) shipped
 verbatim. No Lesson boundary moved, no Lesson split or merged, and no blueprint correction
-was needed beyond the four this review had already made.
+was needed beyond the four this review had already made. The eight Lessons carry Core and
+Practical depth throughout; `lesson_recomposition_cost` deliberately carries no Senior
+section, because the plan asked for a short Lesson and manufacturing deeper material would
+have pulled Unit 13's content forward.
+
+### Semantic re-check of the two recomposition Questions
+
+Both were re-read against the finished prose rather than against the plan's expectation.
+
+| Question | Reasoning it requires | Does the finished Lesson teach it | Evidence |
+| --- | --- | --- | --- |
+| `composition_vs_recomposition` | Initial composition records emitted UI; recomposition updates only affected parts; **and** composition is not layout and drawing | **Yes**, and the phase distinction the plan flagged as missing is now explicit | `lesson_composition_and_recomposition` Core names the three phases in a table, states that recomposition re-runs the first only, and refutes the exact distractor wording in a `COMMON_MISTAKE` callout; its `INTERVIEW_FOCUS` restates the phase separation |
+| `compose_state_read_recomposition_scope` | Reads are recorded by the executing scope; moving a read into a smaller child narrows invalidation; unrelated scopes are not invalidated | **Yes** | `lesson_recomposition_scopes` Core builds the whole Lesson on two versions of one screen that differ only in read location, and its `INTERVIEW_FOCUS` names both true statements and both distractor shapes |
+
+The blueprint Note added by this review for L3.1 — that the three phases must be named at
+Bridge depth — is therefore discharged. It is recorded as taught, not as planned.
+
+One honest mismatch is worth stating rather than smoothing over.
+`compose_state_read_recomposition_scope` is levelled FOUNDATION, and the finished Lesson
+reaches well past what the Question asks: the inline-lambda caveat and the
+value-versus-holder distinction are not assessed by anything in the bank. That is a Lesson
+teaching its concept rather than the question, which is the intended direction, but it means
+the Question no longer represents the Lesson's depth. E23-07 may want Applied coverage of
+read placement; it is a candidate, not a defect.
 
 ### Assessment gaps confirmed unchanged
+
+**GAP-U3-A stands exactly as recorded.** `lesson_recomposition_cost` maps
+`compose_recomposition` as its only primary concept and carries
+`compose_recomposition_performance` as supporting, so the one active Question on that
+Subtopic — `compose_recomposition_performance_001`, which lives in the `performance` Topic —
+creates no Unit 3 practice coverage. Nothing in Unit 3's practice mappings assesses that
+recomposition is the normal operating mode or that cost is the work done during composition.
+`BundledLearningCurriculumTest.aPerformanceConceptStaysSupportingRatherThanBecomingUnitPractice`
+now pins this, so a later change cannot quietly promote the mapping and make the gap
+disappear without the test failing.
 
 GAP-U2-A and GAP-U2-B stand exactly as recorded. Unit 2 teaches both bodies of reasoning —
 `lesson_remember_composition_memory` carries the four-combination table GAP-U2-A describes,
@@ -412,6 +445,8 @@ memory or from upstream `androidx-main` alone.
 | A non-inline `@Composable` lambda argument — such as a `Button`'s `content` — forms its own restart scope, so an unremembered holder read only inside one is not reset by the write the click caused | Executed, not reasoned about: a throwaway `runComposeUiTest` probe composed both variants and clicked them. See [the unremembered-state example](#the-unremembered-state-example) |
 | `rememberSaveable` unregisters its value provider when its composable leaves the Composition, so it does not by itself restore across a branch closing and reopening; `SaveableStateHolder` is what saves a subtree before disposing it | `RememberSaveable.kt` (`onForgotten` → `entry?.unregister()`) and the `SaveableStateHolder` KDoc in the resolved `androidx.compose.runtime:runtime-saveable:1.11.2` sources |
 | `rememberSaveable` offers both a `saver` overload for a value and a `stateSaver` overload for a `MutableState`, and `listSaver` takes `save`/`restore` | `RememberSaveable.kt` and `ListSaver.kt` in the same resolved sources |
+| `Column`, `Row` and `Box` are `inline`, so their content lambdas form no recomposition scope | `Column.kt`, `Row.kt` and `Box.kt` in the sources of the resolved `org.jetbrains.compose.foundation:foundation-layout-desktop:1.11.1` artifact |
+| Composable functions are compiled as restartable by default | The `@NonRestartableComposable` KDoc in the resolved runtime: the annotation exists to *prevent* code being generated that allows skipping or restarting |
 
 ### The unremembered-state example
 
@@ -431,7 +466,7 @@ enclosing body never re-runs, so `mutableStateOf(0)` is never called again.
 
 The shipped Lesson uses the second variant, and a `NOTE` states the guarantee accurately:
 the value is lost whenever the composable that called `mutableStateOf` executes again, while
-*when* the reset becomes visible depends on which scope recorded the read. **Units 3–6 should
+*when* the reset becomes visible depends on which scope recorded the read. **Units 4–6 should
 take the same care.** "Unremembered state resets immediately" and "extracting a function
 creates a scope" are both plausible, both wrong, and both easy to write by accident.
 
@@ -637,10 +672,11 @@ None changes the Unit or Lesson count.
   *backwards* to published Lessons only. Pointing forward is a prose sentence naming the Unit,
   and the issue that ships that Unit may then add the reciprocal link. Unit 2 followed this:
   every `relatedLessonIds` entry it ships resolves inside the bundle, and every reference to
-  Units 3–6 and to the Effects and ViewModel Units is prose naming the Unit.
+  Units 4–6 and to the Effects, ViewModel and Performance Units is prose naming the Unit.
   `BundledLearningCurriculumTest.relatedLessonReferencesResolveWithinTheShippedDocument` now
-  enforces it. **E23-03 through E23-06 should add the reciprocal backward links** from their
-  own Lessons; Unit 2 does not need editing to receive them.
+  enforces it. Unit 3 followed it too. **E23-04 through E23-06 should add the reciprocal
+  backward links** from their own Lessons; Units 2 and 3 do not need editing to receive
+  them.
 - Prerequisites outside the Compose path — lifecycle, Kotlin, architecture, Flow — have no
   authored learning Unit and must be bridged in place to the depth the Lesson needs, then
   pointed at their Topic. No Lesson in Units 2–6 depends on an unpublished Lesson except in the
@@ -649,8 +685,11 @@ None changes the Unit or Lesson count.
 
 ### For E23-07
 
-Read [Authoring outcomes](#authoring-outcomes-for-unit-2) first: it confirms GAP-U2-A and
-GAP-U2-B unchanged against the finished Unit 2 prose.
+Read [Authoring outcomes](#authoring-outcomes-for-units-2-and-3) first: it records the
+semantic re-check of the two recomposition Questions against the finished prose, confirms
+GAP-U2-A, GAP-U2-B and GAP-U3-A unchanged, and adds one new candidate — Applied coverage of
+read placement, which `lesson_recomposition_scopes` now teaches well past what the single
+FOUNDATION Question assesses.
 
 The nine gap rows are the starting list. Re-read them against the finished prose before
 authoring: a gap this plan predicted may have been answered by a Lesson that turned out deeper

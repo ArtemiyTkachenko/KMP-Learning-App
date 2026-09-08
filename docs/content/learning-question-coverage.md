@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `8b11be31b36db45fa4d72d05a75107d3535dde64863a60df4cb7b54aee2f3e24` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `a936276ef5e0d033ce9e09cc02ee3ce374c3e57084d6b6462a188bd2bd4eb857` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `b7956adc1d5c18cb1fc219dde3cb4bad73e4755d1776c7fd33a9f6b5ffbdc1e2` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,12 +68,12 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 2 |
-| Active lessons in those units | 8 |
-| Distinct primary subtopics | 4 |
-| Distinct supporting subtopics | 16 |
-| Unique active questions reached through primary mappings | 4 |
-| Primary subtopics with at least one active question | 4 |
+| Active learning units | 3 |
+| Active lessons in those units | 11 |
+| Distinct primary subtopics | 5 |
+| Distinct supporting subtopics | 19 |
+| Unique active questions reached through primary mappings | 6 |
+| Primary subtopics with at least one active question | 5 |
 | Primary subtopics with no active question | 0 |
 | Active questions in the bank | 358 |
 | Deprecated questions excluded from this report | 41 |
@@ -93,6 +93,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 |---|---:|---:|---:|---:|---:|---:|
 | Thinking in Compose (`unit_thinking_in_compose`) | 3 | 2 | 0 | 2 | 0 | 2 |
 | State and State Ownership (`unit_state_and_state_ownership`) | 5 | 2 | 2 | 0 | 0 | 2 |
+| Recomposition (`unit_recomposition`) | 3 | 1 | 2 | 0 | 0 | 2 |
 
 ## Unit and lesson detail
 
@@ -254,6 +255,63 @@ Supporting context — not primary coverage:
 | `kotlin_collections` — Collections | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 | `kotlin_data_classes` — Data classes | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 | `compose_stability` — Stability and skippability | 1 | `android_ui` — UI — Views & Jetpack Compose |
+
+### Recomposition (`unit_recomposition`)
+
+Home topic: `android_ui` — UI — Views & Jetpack Compose.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 2 | `compose_state_read_recomposition_scope`, `composition_vs_recomposition` |
+| APPLIED | 0 | — |
+| ADVANCED | 0 | — |
+
+#### Composition and Recomposition (`lesson_composition_and_recomposition`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_recomposition` — Composition and recomposition | 2 | 0 | 0 | 2 | `compose_state_read_recomposition_scope`, `composition_vs_recomposition` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `compose_fundamentals` — Compose fundamentals | 1 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state` — Compose state | 1 | `android_ui` — UI — Views & Jetpack Compose |
+
+#### Recomposition Scopes and Selective Execution (`lesson_recomposition_scopes`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_recomposition` — Composition and recomposition | 2 | 0 | 0 | 2 | `compose_state_read_recomposition_scope`, `composition_vs_recomposition` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `compose_snapshot_system` — Compose snapshot-system fundamentals | 1 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state` — Compose state | 1 | `android_ui` — UI — Views & Jetpack Compose |
+
+#### Recomposition Is Not the Problem (`lesson_recomposition_cost`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_recomposition` — Composition and recomposition | 2 | 0 | 0 | 2 | `compose_state_read_recomposition_scope`, `composition_vs_recomposition` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `compose_recomposition_performance` — Avoiding unnecessary recomposition | 1 | `performance` — Performance, Memory & Debugging |
 
 ## Primary assessment gaps
 

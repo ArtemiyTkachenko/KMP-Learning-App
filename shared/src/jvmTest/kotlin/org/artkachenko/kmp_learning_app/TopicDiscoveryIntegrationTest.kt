@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.DividerDefaults
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.test.ComposeUiTest
@@ -550,7 +551,13 @@ private val WindowHeight = 900.dp
 private val HeaderSpacing = 12.dp
 
 /** Anything above a hairline here would be the background band E13-01 removed. */
-private val NoBandTolerance = 1.dp
+/**
+ * Rounding allowance, plus the rule the shell draws along the navigation bar's top edge. That rule
+ * is the boundary itself rather than the band of exposed background this assertion guards against,
+ * so it is expected space: measured at density 1 the content ends exactly where the rule begins,
+ * and the whole gap is the rule's own thickness.
+ */
+private val NoBandTolerance = 1.dp + DividerDefaults.Thickness
 
 private const val UiTopicId = "android_ui"
 

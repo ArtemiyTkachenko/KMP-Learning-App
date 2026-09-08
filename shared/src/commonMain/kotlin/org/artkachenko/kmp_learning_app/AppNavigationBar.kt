@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -22,14 +24,19 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import org.artkachenko.kmp_learning_app.ui.LocalAppSnackbarHostState
 import org.artkachenko.kmp_learning_app.ui.theme.AppLayout
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppContentMargin
 import org.jetbrains.compose.resources.stringResource
@@ -51,6 +58,20 @@ private fun DestinationIcon(destination: AppTopLevelDestination, badges: AppNavi
 
 internal fun appNavigationBarItemTag(destination: AppTopLevelDestination): String =
     "app_nav_${destination.name.lowercase()}"
+
+/**
+ * Tags for the rules that mark where area navigation ends and the page begins.
+ *
+ * Both layouts carry one so the boundary reads the same way whichever the window gets, but they
+ * start from different places. The rail has no edge at all: `NavigationRail` paints `surface` and
+ * the `Scaffold` beside it paints `background`, and this app's scheme gives those the same value
+ * in both themes, so without a rule the items simply float in the content. The bottom bar does
+ * have an edge — it paints `surfaceContainer` — but the step from the page is about 12/255 per
+ * channel, slight enough to miss. A rule states the boundary in both cases rather than leaving it
+ * to a tonal difference that is either absent or nearly so.
+ */
+internal const val AppNavigationRailDividerTag = "app_nav_rail_divider"
+internal const val AppNavigationBarDividerTag = "app_nav_bar_divider"
 
 /**
  * Below this a window is phone-shaped and navigation sits along the bottom edge; at or above it
@@ -127,6 +148,9 @@ internal fun AppNavigationScaffold(
     badges: AppNavigationBadges = emptyMap(),
     content: @Composable (PaddingValues) -> Unit,
 ) {
+    // One host for the whole shell, placed here because this is the only composable that owns a
+    // Scaffold; see LocalAppSnackbarHostState for why it is not left to each screen.
+    val snackbarHostState = remember { SnackbarHostState() }
     BoxWithConstraints(modifier.fillMaxSize()) {
         val usesRail = maxWidth >= AppNavigationRailBreakpoint
         // This is already the one place that measures the window, so it is also where the content
@@ -136,6 +160,11 @@ internal fun AppNavigationScaffold(
         Row(Modifier.fillMaxSize()) {
             if (showsNavigation && usesRail) {
                 AppNavigationRail(selected = selected, onSelect = onSelect, badges = badges)
+                // Inside the same condition as the rail, so the rule cannot outlive what it marks.
+                VerticalDivider(
+                    modifier = Modifier.testTag(AppNavigationRailDividerTag),
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                )
             }
             Scaffold(
                 modifier = Modifier.fillMaxSize(),
@@ -148,17 +177,32 @@ internal fun AppNavigationScaffold(
                 // landscape display cutout.
                 contentWindowInsets = WindowInsets.safeDrawing
                     .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
+                // Inside the Scaffold rather than over the whole window, so a message clears the
+                // navigation bar instead of covering it.
+                snackbarHost = { SnackbarHost(snackbarHostState) },
                 bottomBar = {
                     if (showsNavigation && !usesRail) {
-                        AppNavigationBar(
-                            selected = selected,
-                            onSelect = onSelect,
-                            badges = badges,
-                        )
+                        // Above `AppNavigationBar` rather than within it: the bar pads itself for
+                        // the gesture inset, and a rule inside that padding would sit below the
+                        // edge it is meant to draw rather than on it.
+                        Column {
+                            HorizontalDivider(
+                                modifier = Modifier.testTag(AppNavigationBarDividerTag),
+                                color = MaterialTheme.colorScheme.outlineVariant,
+                            )
+                            AppNavigationBar(
+                                selected = selected,
+                                onSelect = onSelect,
+                                badges = badges,
+                            )
+                        }
                     }
                 },
             ) { scaffoldPadding ->
-                CompositionLocalProvider(LocalAppContentMargin provides contentMargin) {
+                CompositionLocalProvider(
+                    LocalAppContentMargin provides contentMargin,
+                    LocalAppSnackbarHostState provides snackbarHostState,
+                ) {
                     // Wide windows stop the layout growing with them. A phone layout stretched
                     // across a desktop window puts a Topic name against the far left edge and its
                     // accuracy figure against the far right, with a foot of empty card between —

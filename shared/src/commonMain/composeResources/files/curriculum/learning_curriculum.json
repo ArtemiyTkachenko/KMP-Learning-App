@@ -377,6 +377,905 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "unit_state_and_state_ownership",
+      "topicId": "android_ui",
+      "title": "State and State Ownership",
+      "summary": "A declarative UI is only as good as the values it is described from, and Compose will not notice a value changing unless it was told how to. This unit covers what makes state observable, what makes it survive a function running again, what makes it survive the screen being recreated, and who should own it in the first place. It closes on the failure that catches almost everyone once: a collection mutated in place, changing nothing anybody can see. Recomposition, stability and effects all assume this material, so it comes before any of them.",
+      "lessons": [
+        {
+          "id": "lesson_observable_state",
+          "title": "Observable State: `mutableStateOf` and `State<T>`",
+          "summary": "Why an ordinary variable can change without anything appearing on screen, what makes a value observable to Compose instead, and why it is the read rather than the write that decides which part of your UI depends on it.",
+          "primarySubtopicIds": [
+            "compose_state"
+          ],
+          "supportingSubtopicIds": [
+            "compose_snapshot_system",
+            "kotlin_delegation"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The previous unit left a deliberate gap. A composable describes the UI for the values it is given, and the runtime may run that description again whenever it needs to. What it did not say is how the runtime ever finds out that it needs to. Nothing so far connects a value changing to your description being produced again, and without that connection a declarative UI would simply show whatever it showed the first time."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "State, in this context, means any value that can change while the screen is alive and that the screen is described from: a counter, the text in a field, whether a row is expanded, the list of items loaded from the network. The question this lesson answers is what has to be true of such a value for Compose to notice when it changes."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "An ordinary Kotlin variable does not qualify. Assigning to a `var` changes the variable and tells nobody, because a plain variable has no mechanism for announcing that it was written. Compose therefore has its own value holder. `mutableStateOf` creates an observable `MutableState<T>`, a single-value holder whose reads and writes the runtime can see."
+                },
+                {
+                  "type": "code",
+                  "code": "interface State<out T> {\n    val value: T\n}\n\ninterface MutableState<T> : State<T> {\n    override var value: T\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There are two types because there are two capabilities, and they are worth separating from the start. `State<T>` is a value you can read and observe. `MutableState<T>` adds the ability to write. Handing a composable the read-only type is how you say that it displays this value but does not change it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The mechanism has two halves, and only one of them is the obvious one. Writing to `value` is the half everyone expects: change the value and the runtime is told. The half that decides how much of your UI is affected is the read. When a composable reads `value` while it is executing, the runtime records that this particular piece of executing code depends on this particular state object. A later write then schedules a recomposition of the code that recorded a read, and of nothing else."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "The dependency is created by the read, not by the declaration and not by the write. A composable does not depend on a state object because the object was created nearby or passed in as a parameter; it depends on it because it actually read the value while executing. This one sentence explains most of what the rest of the Compose path is about."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two consequences follow immediately. Writing the same value again is not a change: the default policy compares the new value to the current one with structural equality, and setting `value` to something already equal schedules nothing. And reading state outside composition — in a click handler, in a coroutine, in a plain function — reads the current value perfectly well but creates no dependency, because there is no executing composable to record one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "How the runtime records those reads and applies those writes is the snapshot system, which is also what makes state changes consistent rather than half-applied. It has its own unit later in this path. Everything in this unit and the next works from the contract just described, without needing the machinery."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The failure that teaches this best is a counter that will not count. It compiles, the click handler runs, the variable really does change, and the number on screen never moves."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun BrokenCounter() {\n    var count = 0\n\n    Button(onClick = { count++ }) {\n        Text(\"Clicked $count times\")\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Reach for the debugger and you will confirm that `count` becomes 1. That is the confusing part, and it is why the bug survives so long: nothing is broken about the increment. What is missing is the announcement. `count` is a plain `Int` in a plain local variable, so writing it notifies nothing, no composable recorded a dependency on it, and the runtime has no reason to produce the description again. The screen is not stale in the sense of being wrong; it is simply the last description anyone asked for."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Making the value observable is the first correction. It is not yet the whole fix, which is the point of this example."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun StillBrokenCounter() {\n    val count: MutableState<Int> = mutableStateOf(0)\n    val label = \"Clicked ${count.value} times\"\n\n    Button(onClick = { count.value++ }) {\n        Text(label)\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This version does more than the last one. The body reads `count.value` while it is executing, so a dependency is recorded; the click writes a new value, so a recomposition is scheduled. And the counter still shows zero. The reason is that `mutableStateOf(0)` is a function call inside a function body, so re-executing that body calls it again and produces a brand new holder initialised to zero. The value was observable and the write was seen, but the holder that received the write was discarded and replaced before anything was displayed."
+                },
+                {
+                  "type": "callout",
+                  "kind": "NOTE",
+                  "text": "The symptom is worth stating carefully, because it is not always a counter frozen at zero. What is guaranteed is that the value is lost every time the composable that called `mutableStateOf` executes again — it cannot be otherwise, because the holder is created by that call. Whether the reset is immediate or arrives later depends on which piece of code read the value, and therefore on what the write invalidated. Written as above, with the read in the same body, the reset is immediate. Move the read into a lambda passed to another composable and the number can climb normally until something unrelated re-executes the body, at which point it silently returns to zero — the same defect, with a far more confusing symptom. Which code a read belongs to is the subject of the Recomposition unit."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is exactly the distinction the next lesson exists for: being observable and surviving re-execution are two independent properties, and a working counter needs both. For the rest of this lesson, take the second property on trust — `remember` supplies it — so the observability half can be looked at on its own."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun Counter() {\n    var count by remember { mutableStateOf(0) }\n\n    Button(onClick = { count++ }) {\n        Text(\"Clicked $count times\")\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The `by` here is Kotlin's property delegation, not a Compose feature. A delegated property routes reads and writes to another object's `getValue` and `setValue` operators, and Compose defines those for `State` and `MutableState`. The effect is purely notational: `count` now behaves like an ordinary `Int` variable while still being a `MutableState<Int>` underneath, so `count` is a read of `value` and `count++` is a read followed by a write. It needs two imports that are easy to forget, `androidx.compose.runtime.getValue` and `androidx.compose.runtime.setValue`."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Form",
+                    "Declaration",
+                    "Reads like",
+                    "Use when"
+                  ],
+                  "rows": [
+                    [
+                      "Property delegate",
+                      "`var count by remember { mutableStateOf(0) }`",
+                      "`count`, `count++`",
+                      "Almost always. It keeps the call sites free of `.value` noise."
+                    ],
+                    [
+                      "Explicit holder",
+                      "`val count = remember { mutableStateOf(0) }`",
+                      "`count.value`, `count.value++`",
+                      "When the holder itself has to be passed somewhere, so the object rather than the value is the thing you need."
+                    ],
+                    [
+                      "Destructured",
+                      "`val (count, setCount) = remember { mutableStateOf(0) }`",
+                      "`count`, `setCount(1)`",
+                      "When a value and a setter are handed to something separately, which mirrors the value-plus-callback shape hoisting uses."
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "All three are the same object with the same behaviour, and the choice carries no runtime consequence. Where a real decision does appear is at a composable's boundary. A composable that only displays a value should take the value, not the holder: `fun Badge(count: Int)` can be previewed and tested with a literal and cannot possibly write to anything. Taking `State<Int>` is occasionally the right call and has real consequences for how much of the UI re-executes, which the recomposition unit covers. Taking `MutableState<Int>` hands a child a second write path into state it does not own, which is the pattern the previous unit's lesson on data flow direction warned about."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Reading an assignment to `value` as an instruction that refreshes the screen. It is not a command and nothing is drawn at that moment. It records a new value and marks the code that read the old one as out of date; the runtime decides when to act on that, and may coalesce several writes made in quick succession. The difference matters as soon as you try to write code that assumes the UI has already caught up on the next line."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "It is worth being precise about what the runtime records, because the imprecise version — \"the composable subscribes to the state\" — quietly loses the detail that everything about performance later depends on. The subscription belongs to the region of code that was executing at the moment of the read, not to the function you happen to have written it in and not to the state object's neighbourhood. The runtime's own description of `MutableState` is that reads to `value` during the execution of a composable subscribe the currently executing recompose scope, and that a write schedules recomposition of the scopes so subscribed."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So the same state object read in two places produces two independent dependencies, and moving a read from a parent into a child moves the dependency with it. This is the reasoning the next unit is built on, and it is why \"where do I read this?\" turns out to be a design question rather than a matter of taste."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The equality behaviour is worth knowing for the same reason. `mutableStateOf` defaults to a structural-equality policy, so assigning a value equal to the current one is not treated as a change and schedules nothing. That is usually what you want and occasionally surprising: a state holding a mutable object can be assigned an instance that is `equals` to the old one and correctly produce no update, even though the object's contents differ from what is on screen. That failure has its own lesson at the end of this unit."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Be ready to explain the counter that does not count, because it is a standard opening and it has two separate causes. A plain `var` is not observable, so nothing is scheduled. A `mutableStateOf` without `remember` is observable, but the holder is recreated whenever the composable that created it executes again, so the value it was carrying is discarded. Then make the point that separates a strong answer: the dependency comes from reading `value` during composition, which is why the location of the read decides how much of the UI a change affects — and, in this case, whether the reset is immediate or turns up later as a value that mysteriously falls back to its initial one."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_composable_execution",
+            "lesson_declarative_ui"
+          ],
+          "sources": [
+            {
+              "title": "State and Jetpack Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state"
+            },
+            {
+              "title": "Thinking in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/mental-model"
+            },
+            {
+              "title": "Delegated properties",
+              "url": "https://kotlinlang.org/docs/delegated-properties.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_remember_composition_memory",
+          "title": "`remember`: Composition Memory",
+          "summary": "Observability and memory are two different properties, and conflating them is behind most early Compose confusion. What `remember` actually stores, why `remember { mutableStateOf(x) }` is the pair you see everywhere, and what a wrong key does to a value that should have changed.",
+          "primarySubtopicIds": [
+            "compose_state"
+          ],
+          "supportingSubtopicIds": [
+            "compose_identity_keys",
+            "compose_recomposition"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The previous lesson ended on a counter that was observable and still did not count, because `mutableStateOf(0)` sat in a function body that runs again. That is the second half of the problem, and it has nothing to do with observation. A composable body is re-executed, so every local it declares is created afresh, and a value that must outlive one execution needs somewhere to live that is not a local variable."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`remember` is that somewhere. A value computed by `remember` is stored in the Composition during initial composition, and on recomposition the stored value is returned instead of the lambda being run again. The value is forgotten when the composable that called `remember` is removed from the Composition."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read that as a small cache whose key is a position in the Composition and whose lifetime is the presence of that position. Not a global cache, not a singleton, and not storage that outlives the screen: when the composable leaves — a branch stops being taken, a list item scrolls out of a lazy layout, the screen is navigated away from — the remembered value goes with it."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "`remember` and `mutableStateOf` answer two independent questions. `remember` answers \"does this value survive my function running again?\" and `mutableStateOf` answers \"does changing this value tell anyone?\" Neither implies the other, which is why the working pattern needs both and why either one alone produces a screen that looks broken in a different way."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`remember` also takes keys. The value is stored with the keys it was computed from, and if any of them change, the next recomposition invalidates the cache and runs the calculation again. Compose compares keys with the class's `equals` implementation. Keys are how you say what the remembered value is a function of, which is the same as saying when it should be discarded."
+                },
+                {
+                  "type": "code",
+                  "code": "// No key: computed once for as long as this composable stays in the Composition.\nval formatter = remember { DateTimeFormatter.ofPattern(\"d MMM\") }\n\n// Keyed: recomputed whenever the pattern changes, and only then.\nval formatter = remember(pattern) { DateTimeFormatter.ofPattern(pattern) }",
+                  "language": "kotlin"
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Because the two properties are independent, there are four combinations, and each of them appears in real code. Being able to predict all four is most of what this lesson is for."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Written as",
+                    "Survives re-execution",
+                    "Change is observed",
+                    "What you actually get"
+                  ],
+                  "rows": [
+                    [
+                      "`var count = 0`",
+                      "No",
+                      "No",
+                      "A variable nothing observes. The click really does change it, and it keeps changing — Kotlin's closure captures the variable itself, so repeated clicks accumulate in memory — but no dependency was recorded, so nothing is scheduled and the screen never changes. It returns to its initial value whenever this body executes again."
+                    ],
+                    [
+                      "`val config = remember { loadConfig() }`",
+                      "Yes",
+                      "No",
+                      "A stable value computed once. Correct and common for something that is created rather than changed — a formatter, a `Paint`, a derived constant."
+                    ],
+                    [
+                      "`var count by mutableStateOf(0)`",
+                      "No",
+                      "Yes",
+                      "A write is seen and schedules recomposition, but the holder is recreated at its initial value every time this body executes. Looks like a counter frozen at zero when the read is in the same body; looks like a value that works and then silently resets when the read sits in a lambda that can recompose on its own."
+                    ],
+                    [
+                      "`var count by remember { mutableStateOf(0) }`",
+                      "Yes",
+                      "Yes",
+                      "State a composable owns: it persists while the composable is in the Composition and changing it updates the UI. This is the pair you want almost every time."
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second row deserves more credit than it usually gets. Not everything a composable needs to keep is state: a value that is expensive to construct and never changes wants `remember` and emphatically does not want `mutableStateOf`, because wrapping it in observable state suggests to every reader that something writes to it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The mistakes that survive review are almost always about keys, and there are two of them pointing in opposite directions. Under-specify and you keep a value you should have discarded."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun UserEditor(user: User) {\n    // Wrong: the draft is initialised from `user` but does not depend on it.\n    var draftName by remember { mutableStateOf(user.name) }\n\n    TextField(value = draftName, onValueChange = { draftName = it })\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "As long as this composable stays at the same place in the Composition, the remembered holder stays with it. Show a different `user` and the field keeps the previous person's name — or the half-typed edit made to it — because nothing told `remember` that the draft was a function of which user is being edited. Naming that dependency is the fix, and it reads as a statement about the data rather than a workaround."
+                },
+                {
+                  "type": "code",
+                  "code": "var draftName by remember(user.id) { mutableStateOf(user.name) }",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Over-specify and you get the mirror image. A key that changes more often than the value conceptually does throws the value away for no reason, which for remembered state means the user's input disappears. Keying the draft above on the whole `user` object would do it whenever any unrelated field of `User` differs, and keying it on something recreated every execution would discard it every time."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Reaching for `remember` when the real requirement is that state survives the screen being recreated. `remember` retains a value across recomposition; it does not survive a configuration change, because the Composition itself is not what outlives that. Which mechanism does is the next lesson."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The part of `remember` that is easy to miss is that it has no name. There is no key you supply that identifies the slot; the slot is the call site's position in the Composition. That is why the same line of code can be a different remembered value in each of ten list rows without any of them being confused, and it is also why where you write `remember` matters as much as what you store in it."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun Panel(expanded: Boolean, item: Item) {\n    if (expanded) {\n        // Leaves the Composition when `expanded` goes false, so the draft is\n        // forgotten and typing starts over when the panel is opened again.\n        var note by remember { mutableStateOf(\"\") }\n        TextField(value = note, onValueChange = { note = it })\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Whether that is a bug depends entirely on intent. Discarding a draft when a panel closes may be exactly right; losing it because the panel briefly collapsed during an animation is not. The decision is about lifetime, and the tool for changing the answer is to move the `remember` to a caller that stays in the Composition longer — which is hoisting, two lessons from here."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There is a matching subtlety in what identifies a call site when the same one runs several times, as it does for the rows of a list. Compose has a mechanism for telling those instances apart, and getting it wrong makes remembered state stick to the wrong item after a reorder. That is composition identity, and it has its own unit later in this path; this lesson only needs the fact that `remember` is attached to a position rather than to a name."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "The question is usually \"what is the difference between `remember` and `mutableStateOf`?\", and the weak answer treats them as two ways of doing one thing. Say that they are orthogonal: one gives a value memory across executions, the other makes changes to it observable, and the familiar pairing is a composition of the two rather than an idiom to memorise. Then be ready for the follow-up about keys, where the interesting content is that an under-specified key shows stale data and an over-specified one destroys the user's work."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_observable_state",
+            "lesson_composable_execution"
+          ],
+          "sources": [
+            {
+              "title": "State and Jetpack Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state"
+            },
+            {
+              "title": "Lifecycle of composables",
+              "url": "https://developer.android.com/develop/ui/compose/lifecycle"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_remember_saveable",
+          "title": "`rememberSaveable` and State That Must Survive",
+          "summary": "Four things a piece of UI state might have to live through — re-execution, leaving the Composition, the screen being recreated, the process being killed — and how to pick a mechanism for a given piece of state without treating saved state as a database.",
+          "primarySubtopicIds": [
+            "compose_state"
+          ],
+          "supportingSubtopicIds": [
+            "saved_state",
+            "configuration_changes",
+            "process_death"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "\"Does this state survive?\" is not one question, and the reason people get it wrong is that they answer it as though it were. There are four different events a value might have to live through, ordered here from cheap and frequent to rare and destructive, and they are not survived by the same mechanism. The second is the one most often skipped over, and it is the one that catches people out."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The value has to survive",
+                    "How often",
+                    "What survives it"
+                  ],
+                  "rows": [
+                    [
+                      "Recomposition — the composable body running again",
+                      "Constantly, many times per interaction",
+                      "`remember`, and anything stored in the Composition"
+                    ],
+                    [
+                      "The composable leaving the Composition and later being composed again — a branch closing and reopening, a screen going back on a navigation stack",
+                      "Whenever the UI's shape changes",
+                      "An owner that stays in the Composition, so hoisting the state to a caller that does not leave; or a `SaveableStateHolder` around the subtree, which is what navigation libraries use to give each destination its own saved state"
+                    ],
+                    [
+                      "The whole UI being recreated, as on an Android configuration change",
+                      "Occasionally — a rotation, a theme change",
+                      "A saved-state mechanism such as `rememberSaveable`, or an owner with a longer life such as a `ViewModel`"
+                    ],
+                    [
+                      "The process being killed by the system and recreated later with the user's task intact",
+                      "Rarely, and never at a moment you control",
+                      "A saved-state mechanism such as `rememberSaveable`, within the limits below; or durable storage. Not a `ViewModel` on its own"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`remember` covers the first row and nothing beyond it. The documentation is explicit that while `remember` retains state across recompositions, the state is not retained across configuration changes — because the Composition is exactly what a configuration change discards."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second row is worth separating out precisely because `rememberSaveable` does **not** answer it on its own. Both `remember` and `rememberSaveable` are tied to a position in the Composition, and when that position goes away the value goes with it — `rememberSaveable` deregisters itself from the saved-state registry as it leaves. Nothing has been saved, because no save was happening; the screen is simply still running. Keeping a value across that means either hoisting it to a caller that does not leave, or wrapping the subtree in a `SaveableStateHolder`, which snapshots the subtree's saveable state before disposing it and restores it when the same key is composed again. That is the machinery a navigation library uses to bring a screen's scroll position back when you press Back."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The third and fourth rows are where `rememberSaveable` earns its name. It behaves like `remember` in that it retains a value across recomposition, and additionally stores that value through the saved instance state mechanism, so it is restored across activity or process recreation. Using it is a one-word change at the call site."
+                },
+                {
+                  "type": "code",
+                  "code": "// Forgotten when the screen is recreated.\nvar query by remember { mutableStateOf(\"\") }\n\n// Restored after the screen is recreated.\nvar query by rememberSaveable { mutableStateOf(\"\") }",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What `rememberSaveable` is **not** is durable storage, and that distinction is the whole point of the lesson. It covers the fourth row — system-initiated process death with the user's task intact — because the value was written into a `Bundle` and handed back on recreation, and it covers it only within the limits that `Bundle` imposes. A database or a file is a different thing for a different job. Saved state is also not a guarantee against everything the user can do: it is not retained when the user themselves dismisses the activity, for instance by swiping it away from the recents screen, because at that point the user has said they are finished."
+                },
+                {
+                  "type": "callout",
+                  "kind": "NOTE",
+                  "text": "The saved-state guarantee described here is Android's, and it is documented precisely. This app also ships on desktop, iOS and web, where Compose Multiplatform documents lifecycle states and events but no equivalent statement about what a host restores. Treat `rememberSaveable` as participation in a host-provided saved-state mechanism whose Android behaviour is specified and whose behaviour elsewhere is not something to rely on. The part that holds everywhere — and the part an interview is asking about — is the ladder itself: re-execution, leaving the Composition, UI recreation, process recreation."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "`rememberSaveable` stores UI element state in a `Bundle`, and it can put primitive types there automatically. Anything else needs to be told how to become storable, which is what a `Saver` is."
+                },
+                {
+                  "type": "code",
+                  "code": "// Primitives: nothing extra required.\nvar expanded by rememberSaveable { mutableStateOf(false) }\nvar selectedId by rememberSaveable { mutableStateOf<String?>(null) }\n\n// A type of your own: describe how to flatten and rebuild it.\ndata class DateRange(val fromEpochDay: Long, val toEpochDay: Long)\n\nprivate val DateRangeSaver = listSaver<DateRange, Long>(\n    save = { listOf(it.fromEpochDay, it.toEpochDay) },\n    restore = { DateRange(it[0], it[1]) },\n)\n\n// Saving the value itself.\nval range = rememberSaveable(saver = DateRangeSaver) { defaultRange() }\n\n// Saving a MutableState of it, so it can be written to as well.\nvar range by rememberSaveable(stateSaver = DateRangeSaver) {\n    mutableStateOf(defaultRange())\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`listSaver` and `mapSaver` cover most cases; a type can also be made storable with the `Parcelize` annotation on Android, or a `Saver` can be implemented directly. When a type needs a `Saver` that is awkward to write, that is usually information rather than an obstacle: it is a hint that the object is bigger than the thing saved state is for."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Which brings up the size limit, which is the most common way this API is misused. The `Bundle` behind `rememberSaveable` is shared with everything else that writes to saved instance state, and its size is limited; storing large objects can produce a `TransactionTooLargeException` at runtime. This is particularly unpleasant in a single-activity app, where every screen contributes to the same `Bundle`, and it fails on real devices under memory pressure rather than on the developer's machine."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The guidance that follows from that is to store the minimum: identifiers and keys rather than the objects they identify, and then use those to restore the richer state from somewhere that is built to hold it."
+                },
+                {
+                  "type": "code",
+                  "code": "// Wrong shape: the whole article, including its body text, goes into the Bundle.\nvar openArticle by rememberSaveable(stateSaver = ArticleSaver) {\n    mutableStateOf<Article?>(null)\n}\n\n// Right shape: save what identifies it, and reload the article itself.\nvar openArticleId by rememberSaveable { mutableStateOf<String?>(null) }",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The state that genuinely belongs here is small, transient, and a consequence of what the user has been doing rather than of what the app has loaded: a scroll position, whether a section is expanded, an in-progress selection, the text someone has typed but not submitted. Losing any of it is annoying rather than destructive, which is a useful test in both directions — if losing it would be destructive, saved state is the wrong mechanism."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Concluding that if `rememberSaveable` is stronger than `remember`, everything should use it. Every value that goes in competes for the same limited `Bundle`, needs to be storable, and costs work at exactly the moment the system is already under pressure. State that can be recomputed, refetched, or reasonably reset should not be saved at all."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The question that separates a memorised answer from an understood one is how `rememberSaveable`, a `ViewModel`, `SavedStateHandle` and durable storage relate to each other. They are frequently presented as competing options. They are not alternatives; they survive different things and are routinely used together."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Mechanism",
+                    "Survives recomposition",
+                    "Survives configuration change",
+                    "Survives process death",
+                    "Suited to"
+                  ],
+                  "rows": [
+                    [
+                      "`remember`",
+                      "Yes",
+                      "No",
+                      "No",
+                      "Anything that can be recreated: cached objects, transient UI details"
+                    ],
+                    [
+                      "`rememberSaveable`",
+                      "Yes",
+                      "Yes",
+                      "Yes, within the Bundle's limits",
+                      "Small UI element state owned by the composable"
+                    ],
+                    [
+                      "`ViewModel`",
+                      "Yes",
+                      "Yes",
+                      "No",
+                      "Screen state produced from business logic, and the work that produces it"
+                    ],
+                    [
+                      "`SavedStateHandle`",
+                      "Yes",
+                      "Yes",
+                      "Yes, within the Bundle's limits",
+                      "The small keys a `ViewModel` needs to rebuild itself"
+                    ],
+                    [
+                      "Durable storage",
+                      "Yes",
+                      "Yes",
+                      "Yes",
+                      "Anything whose loss the user would consider a bug"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The table deliberately leaves out the second row of the ladder, because the answer there is the same for both composable-scoped mechanisms and is not about the mechanism at all: neither `remember` nor `rememberSaveable` survives its own call site leaving the Composition. That is a question about where the state is owned, which is the next Lesson, or about wrapping the subtree in a `SaveableStateHolder`. A `ViewModel` scoped above the departing composable does survive it, which is one of the honest reasons to reach for one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The row worth dwelling on is `ViewModel`. It handles configuration changes essentially for free, because the instance is kept across the activity being destroyed and recreated — but a `ViewModel` instance does not survive system-initiated process death. `SavedStateHandle` is what closes that gap, and it uses the same `Bundle` mechanism, which means it inherits the same advice: put simple UI element state in it, not screen state produced by business rules."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A realistic screen therefore uses several at once. The article list's scroll position is saved UI state; the identifier of the article being read is a small key in `SavedStateHandle`; the article itself is reloaded from the repository, which reads it from the database. Nothing here is a fallback for anything else. How screen-level state is owned and produced is the subject of the ViewModel unit later in this path; what this lesson fixes is the habit of asking \"what does this have to survive?\" before reaching for an API."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "The reliable question is why `rememberSaveable` rather than `remember` for a text field that should survive rotation, and the reliable follow-up is whether you would save the whole object. Answer the first with the ladder — both retain across recomposition, only `rememberSaveable` participates in saved-state restoration — and the second with the `Bundle`: it is small, shared, and a `TransactionTooLargeException` is a real production failure, so save the id and reload the rest. If you can add that a `ViewModel` survives rotation but not process death, you have covered the ground most candidates miss."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_remember_composition_memory",
+            "lesson_observable_state"
+          ],
+          "sources": [
+            {
+              "title": "Save UI state in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state-saving"
+            },
+            {
+              "title": "State and Jetpack Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state"
+            },
+            {
+              "title": "Compose Multiplatform lifecycle",
+              "url": "https://kotlinlang.org/docs/multiplatform/compose-lifecycle.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_state_hoisting",
+          "title": "State Hoisting and the Lowest Sensible Owner",
+          "summary": "Moving state to a caller is mechanically trivial and the interesting part is entirely in the decision: who reads it, who writes it, and how long it must live. Including why hoisting too far is a real cost rather than a safe default.",
+          "primarySubtopicIds": [
+            "compose_state_hoisting"
+          ],
+          "supportingSubtopicIds": [
+            "compose_udf",
+            "state_ownership"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A composable that owns state with `remember` is convenient and self-contained, and it stops being either as soon as anything else needs to know about that state. The parent cannot read it, a test cannot set it, a preview cannot show the interesting case, and a second component that ought to react to it has no way to find out. State hoisting is the move that fixes all of those at once: take the state out of the composable and give it to the caller, then pass the current value down and send events back up."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The result is a pair of terms worth using precisely. A **stateful** composable holds state of its own. A **stateless** composable holds none: everything it displays arrives as a parameter and everything the user does leaves as a callback. Hoisting converts the first into the second, and the second is what is reusable, previewable and testable."
+                },
+                {
+                  "type": "code",
+                  "code": "// Stateful: owns the value, so nobody else can read, set or observe it.\n@Composable\nfun NotificationToggle() {\n    var enabled by remember { mutableStateOf(false) }\n    Switch(checked = enabled, onCheckedChange = { enabled = it })\n}\n\n// Stateless: displays what it is given and reports what happened.\n@Composable\nfun NotificationToggle(\n    enabled: Boolean,\n    onEnabledChange: (Boolean) -> Unit,\n) {\n    Switch(checked = enabled, onCheckedChange = onEnabledChange)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That value-plus-callback shape is the same direction the previous unit established — state down, events up — applied to one component. This lesson is not about the direction, which is settled; it is about the question the direction raises and does not answer, which is how far up the state should go."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The documentation gives three rules, and they are unusually useful because they give a floor rather than a preference:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "State should be hoisted to at least the lowest common parent of all composables that read it.",
+                    "State should be hoisted to at least the highest level at which it may be changed.",
+                    "If two pieces of state change in response to the same events, they should be hoisted together."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Each says \"at least\", so together they establish a minimum height, not a target. You may hoist higher than the rules require; the rules only tell you when you have not hoisted enough. Under-hoisting makes unidirectional data flow difficult or impossible to follow, because a value that has to be read above where it lives leaves you with no legal way to get at it."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Hoisting is not a quality gradient with \"higher is better\" at one end. The rules define the lowest position that works, and the useful instinct is to sit at that position rather than above it: keep state as close as possible to where it is consumed, and move it up only when something concrete requires the move."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The convention that makes hoisting cheap is the overload pair: a stateless implementation that does the work, and a stateful convenience overload that supplies default state for callers who do not care. Compose's own components are built this way, and it means hoisting later is not a breaking change."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun SearchField(\n    query: String,\n    onQueryChange: (String) -> Unit,\n    modifier: Modifier = Modifier,\n) {\n    TextField(value = query, onValueChange = onQueryChange, modifier = modifier)\n}\n\n@Composable\nfun SearchField(modifier: Modifier = Modifier) {\n    var query by rememberSaveable { mutableStateOf(\"\") }\n    SearchField(query = query, onQueryChange = { query = it }, modifier = modifier)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now consider the decision this lesson is really about. A settings screen has a switch. Where should `enabled` live? Work through the three tests. If only the switch reads it, the switch can own it. If a summary line elsewhere on the screen also shows it, the lowest common parent of the two is the screen, so it belongs there. If a save button has to submit it, the writer is higher again and it goes with whatever owns the form. And if it must survive a rotation, nothing moves at all: that is a question about the persistence mechanism, not about the owner, and the switch keeps the state with `rememberSaveable`."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The cost of getting this wrong in the upward direction is the one people underestimate, because over-hoisted code still works. Push every scrap of local UI state to the top of the screen and three things follow. The screen's state type accumulates fields that are nobody's business but one component's. Every component needs a parameter and a callback threaded down through the layers between, so adding a checkbox becomes an edit to four files. And a change to any one of those fields is now a change observed at the top of the tree, which widens the region of UI a single keystroke can affect — the reason the next unit treats read location as a design decision."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The step between a composable and a screen-level owner is a plain state holder class, and it is under-used. When several related pieces of state and the logic that coordinates them belong together, a normal Kotlin class remembered in the Composition keeps that logic testable without pulling it out of the UI layer."
+                },
+                {
+                  "type": "code",
+                  "code": "class FilterPanelState(\n    initialQuery: String = \"\",\n) {\n    var query by mutableStateOf(initialQuery)\n        private set\n    var selectedTags by mutableStateOf(emptySet<String>())\n        private set\n\n    val canApply: Boolean\n        get() = query.isNotBlank() || selectedTags.isNotEmpty()\n\n    fun onQueryChange(value: String) { query = value }\n\n    fun onTagToggled(tag: String) {\n        selectedTags = if (tag in selectedTags) selectedTags - tag else selectedTags + tag\n    }\n}\n\n@Composable\nfun rememberFilterPanelState(): FilterPanelState = remember { FilterPanelState() }",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Note the `private set` and the intent-named functions: the class is hoisted state with one write path, not a mutable bag. Because it lives in the Composition it follows the composable's lifecycle, which is what lets it hold Compose-owned types such as a `LazyListState`. What it must not hold is business logic or application data — that is where a screen-level owner takes over, and the `ViewModel` unit later in this path covers it."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Two collapses to avoid, and they are the same mistake in different clothes. Treating \"hoist it\" and \"put it in the ViewModel\" as the same instruction. They are different claims: hoisting says the state has an owner above this composable, and choosing a `ViewModel` says that owner must outlive the Composition and sits next to business logic. Whether a row is expanded is real state with a real owner, and that owner is almost never a `ViewModel`. And treating \"it has to survive something\" as a reason to hoist: where state lives and how long it persists are chosen separately, which is why a composable can own its state and still keep it across a rotation."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The framing that survives contact with a real codebase is not \"Compose state or `ViewModel` state\" but a single question asked of each piece of state: who is its lowest sensible owner? Three tests answer it, and they are worth running explicitly rather than by feel."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Who reads it? The owner must be at or above the lowest common ancestor of every reader.",
+                    "Who writes it? The owner must be at or above everything that can change it, including a save button, a retry, or a navigation event.",
+                    "How long must it live? This is the test that is most often misread, because lifetime and ownership are separate axes. Surviving the UI being recreated is a mechanism question that `rememberSaveable` answers without the state moving anywhere. Ownership only has to change when the state must outlive the composable's own place in the Composition — a branch that closes, a screen popped off a back stack — and surviving the process needs saved or durable storage whoever owns it."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The third test is what makes the lowest common ancestor sometimes lie outside the Composition entirely, which the documentation states directly: the ancestor may be a `ViewModel` when business logic is involved. That is not an exception to the rule, it is the rule producing an owner that happens not to be a composable."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A distinction from the architecture guidance sharpens this further. **UI element state** is intrinsic to how an element renders — expanded or collapsed, scrolled here, focused. **Screen UI state** is what the screen has to show, produced by applying business rules to application data. Screen UI state is hoisted to a screen-level owner essentially by definition, because that is where business rules are. UI element state stays local unless something drags it upward — and the thing that usually does is business logic needing to read or write it, at which point it stops being purely intrinsic."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two more consequences worth being able to state. First, ownership is what makes unidirectional data flow enforceable rather than aspirational: one owner per piece of state means every change has exactly one code path, which is the property that makes a wrong screen debuggable. Second, hoisting is reversible and cheap to revisit when the overload-pair convention is used, so the right instinct is to start at the lowest position the three rules allow and move up when a concrete requirement — not a hypothetical one — appears."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Expect \"what is state hoisting and why?\" and answer with the ownership decision rather than the mechanics, which take one sentence. Say that hoisting moves state to an appropriate owner — at least the lowest common ancestor of everything that reads it and at least as high as anything that writes it — and passes the value down with events coming up, which makes the child stateless, reusable and testable. Then pre-empt the follow-up: hoisting is not the same as moving state into a `ViewModel`, and hoisting further than required costs you parameter threading, a bloated screen state type, and a wider region of UI affected by every small change."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_state_down_events_up",
+            "lesson_remember_composition_memory"
+          ],
+          "sources": [
+            {
+              "title": "Where to hoist state",
+              "url": "https://developer.android.com/develop/ui/compose/state-hoisting"
+            },
+            {
+              "title": "State and Jetpack Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state"
+            },
+            {
+              "title": "UI layer",
+              "url": "https://developer.android.com/topic/architecture/ui-layer"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_observable_collections",
+          "title": "Collections and Observable Mutation",
+          "summary": "Adding to a list held in state is the most reliable way to produce a screen that silently refuses to update. Why the mutation is invisible, the three ways to fix it, and why a `List` parameter guarantees you less than it appears to.",
+          "primarySubtopicIds": [
+            "compose_state"
+          ],
+          "supportingSubtopicIds": [
+            "kotlin_collections",
+            "kotlin_data_classes",
+            "compose_stability"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Everything so far has quietly assumed that the value in a state holder is replaced when it changes. For an `Int` or a `String` that assumption is free, because there is no other way to change them. For a collection there is another way, it is the way everyone reaches for first, and it does not work."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun TodoList() {\n    val items = remember { mutableStateOf(mutableListOf<String>()) }\n\n    Button(onClick = { items.value.add(\"New task\") }) {\n        Text(\"Add\")\n    }\n    items.value.forEach { Text(it) }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The list really does grow. Log its size and it climbs with every click. The screen shows nothing new, and the reason is visible once you look at what was written: `add` mutates the object that `value` refers to. It never assigns to `value`. The state holder is the observable thing, and from its point of view nothing has happened — it is still pointing at the same list it was pointing at before."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Compose observes the state holder, not arbitrary objects. `MutableState` reports a change when its `value` is written; it has no way to learn that something inside the object it holds was modified. Mutable objects that are not themselves observable — an `ArrayList`, a `mutableListOf`, a data class with `var` properties — do not trigger recomposition when they change."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So the fix is to write to `value`, which in practice means producing a new list rather than editing the existing one. The documented recommendation is exactly this: instead of non-observable mutable objects, use an observable holder such as `State<List<T>>` together with the read-only `listOf()`."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun TodoList() {\n    var items by remember { mutableStateOf(listOf<String>()) }\n\n    Button(onClick = { items = items + \"New task\" }) {\n        Text(\"Add\")\n    }\n    items.forEach { Text(it) }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two things changed and both matter. The declared type is now `List<String>` rather than `MutableList<String>`, so the mutating methods are not even reachable through this reference, and the operation is an assignment rather than an in-place edit, so the holder sees a write. Choosing the read-only type is not cosmetic here — it removes the shape of the bug from the code."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Replacement covers most cases, and Kotlin's collection operators make it read well enough that it rarely feels like a workaround."
+                },
+                {
+                  "type": "code",
+                  "code": "// Add and remove.\nitems = items + newItem\nitems = items - oldItem\nitems = items.filterNot { it.id == removedId }\n\n// Change one element of a list of data classes.\nitems = items.map { item ->\n    if (item.id == changedId) item.copy(done = true) else item\n}\n\n// A batch of edits, kept read-only at the boundary.\nitems = items.toMutableList().apply {\n    removeAll { it.done }\n    add(newItem)\n}.toList()",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The alternative is a collection that is itself observable. `mutableStateListOf` and `mutableStateMapOf` produce snapshot-aware collections where the mutating operations are the notification, so `add` and `remove` work the way the broken example expected them to."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun TodoList() {\n    val items = remember { mutableStateListOf<String>() }\n\n    Button(onClick = { items.add(\"New task\") }) { Text(\"Add\") }\n    items.forEach { Text(it) }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Aspect",
+                    "`mutableStateOf(listOf())`",
+                    "`mutableStateListOf()`"
+                  ],
+                  "rows": [
+                    [
+                      "How a change is made",
+                      "Assign a new list to the holder",
+                      "Call `add`, `remove`, `set` on the collection"
+                    ],
+                    [
+                      "Cost of a small edit",
+                      "Copies the list",
+                      "Modifies in place and notifies precisely"
+                    ],
+                    [
+                      "Crosses layers well",
+                      "Yes — a plain `List` is what a repository or a `ViewModel` already exposes",
+                      "No — it is a Compose runtime type, so it pulls Compose into wherever it is held"
+                    ],
+                    [
+                      "Fits it best",
+                      "Screen state that arrives from elsewhere, and lists that are replaced wholesale",
+                      "A long, frequently edited list owned by the UI itself, where copying on every keystroke is genuinely wasteful"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The default should be the left-hand column. `mutableStateListOf` earns its place when a list is large, edited often and owned locally; reaching for it because in-place mutation feels more natural is how Compose runtime types end up in a data layer that should not know Compose exists."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The same invisibility appears one level down, and it is harder to spot because the outer assignment looks correct."
+                },
+                {
+                  "type": "code",
+                  "code": "data class Filters(val tags: MutableList<String> = mutableListOf())\n\nvar filters by remember { mutableStateOf(Filters()) }\n\n// Mutates the list inside; the holder is never written. Nothing updates.\nfilters.tags.add(\"kotlin\")\n\n// Assigns, but `copy()` is shallow: the new instance shares the same list, and\n// the default structural-equality policy finds the two instances equal, so this\n// still schedules nothing.\nfilters = filters.copy().also { it.tags.add(\"kotlin\") }",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second line is the instructive one, because it looks like the fix. A generated `copy()` is shallow — constructor property values are passed to a new instance — so both objects reference the same `MutableList`. Mutating it changes the old instance too, the two compare equal, and `mutableStateOf` treats an assignment of an equal value as no change. The real fix is to make the nested data immutable as well, so that changing it produces a genuinely different value."
+                },
+                {
+                  "type": "code",
+                  "code": "data class Filters(val tags: List<String> = emptyList())\n\nfilters = filters.copy(tags = filters.tags + \"kotlin\")",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Diagnosing this as a recomposition problem and going looking for what to optimise. The composable is not failing to recompose for a subtle reason; nothing asked it to. Before investigating anything else, check whether a write to a state holder actually happened — for a collection or a nested object, usually it did not."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "There is a Kotlin fact underneath all of this that is worth stating exactly, because the loose version of it causes its own bugs. `List` is a read-only interface, not an immutable type. Declaring a parameter as `List<String>` removes the mutating methods from that reference and guarantees nothing whatsoever about the underlying object, which may still be held as a `MutableList` somewhere else and changed while you are looking at it. No copy is made by the conversion."
+                },
+                {
+                  "type": "code",
+                  "code": "class Repository {\n    private val cache = mutableListOf<String>()\n    val items: List<String> get() = cache   // read-only view, same object\n\n    fun refresh() { cache.add(\"late arrival\") }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A composable given `repository.items` holds a reference that can change contents without any assignment happening anywhere it can see. Nothing is observable, nothing is scheduled, and the screen is wrong in a way that no amount of reading the composable will explain. If a caller needs a value that cannot change under it, it has to copy explicitly or the producer has to hand over a genuinely immutable collection."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is also the doorway into the next major idea in the Compose path. Because collection types carry that guarantee gap, Compose cannot assume that a `List` parameter which compares equal actually means unchanged — collections such as `List`, `Set` and `Map` are treated as unstable for precisely this reason. What stability is, what the runtime does with it, and how it decides whether work can be skipped are the subject of the identity and stability unit; the piece to carry forward from here is that read-only is a property of a reference, and immutability is a property of an object, and Compose cares about the second."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "\"I add to a list in state and the UI does not update — why?\" is a standard debugging question and the answer is one sentence: the mutation never wrote to the state holder, and Compose observes the holder rather than the object inside it. Have both fixes ready — replace the list, or use a snapshot-aware collection — and a reason to prefer replacement at layer boundaries. The stronger follow-up material is that `copy()` is shallow and that a read-only `List` is not an immutable one, which is where the same bug hides after the obvious version has been fixed."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_observable_state",
+            "lesson_remember_composition_memory"
+          ],
+          "sources": [
+            {
+              "title": "State and Jetpack Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state"
+            },
+            {
+              "title": "Collections overview",
+              "url": "https://kotlinlang.org/docs/collections-overview.html"
+            },
+            {
+              "title": "Data classes",
+              "url": "https://kotlinlang.org/docs/data-classes.html"
+            },
+            {
+              "title": "Stability in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/performance/stability"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
     }
   ]
 }

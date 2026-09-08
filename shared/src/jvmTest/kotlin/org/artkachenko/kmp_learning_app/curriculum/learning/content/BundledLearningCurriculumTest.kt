@@ -3,6 +3,7 @@ package org.artkachenko.kmp_learning_app.curriculum.learning.content
 import kotlinx.coroutines.test.runTest
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.content.BundledCurriculumSource
+import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
 import org.artkachenko.kmp_learning_app.curriculum.learning.validation.LearningCurriculumValidator
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -21,27 +22,53 @@ import kotlin.test.assertTrue
  * of it is `LearningContentEndToEndTest`'s subject.
  */
 internal class BundledLearningCurriculumTest {
-    @Test
-    fun bundledLearningCurriculumShipsTheActiveThinkingInComposeUnit() = runTest {
-        val unit = BundledLearningCurriculumSource.load().units.single()
+    private suspend fun units(): List<LearningUnit> = BundledLearningCurriculumSource.load().units
 
-        assertEquals("unit_thinking_in_compose", unit.id)
-        assertEquals("Thinking in Compose", unit.title)
-        assertEquals("android_ui", unit.topicId)
-        assertEquals(ContentStatus.ACTIVE, unit.status)
+    private suspend fun unit(id: String): LearningUnit = units().single { it.id == id }
+
+    @Test
+    fun bundledLearningCurriculumShipsTheActiveComposeUnitsInBlueprintOrder() = runTest {
+        // List position is the ordering contract for a publisher-owned document, so this is
+        // asserted unsorted: the state model is taught before the recomposition it drives.
+        assertEquals(
+            listOf(
+                "unit_thinking_in_compose",
+                "unit_state_and_state_ownership",
+            ),
+            units().map { it.id },
+        )
+
+        assertEquals(
+            listOf("Thinking in Compose", "State and State Ownership"),
+            units().map { it.title },
+        )
+
+        units().forEach { unit ->
+            assertEquals("android_ui", unit.topicId, unit.id)
+            assertEquals(ContentStatus.ACTIVE, unit.status, unit.id)
+        }
     }
 
     @Test
-    fun theUnitCarriesItsThreeLessonsInBlueprintOrder() = runTest {
-        val unit = BundledLearningCurriculumSource.load().units.single()
-
+    fun eachUnitCarriesItsLessonsInBlueprintOrder() = runTest {
         assertEquals(
             listOf(
                 "lesson_declarative_ui",
                 "lesson_composable_execution",
                 "lesson_state_down_events_up",
             ),
-            unit.lessons.map { it.id },
+            unit("unit_thinking_in_compose").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "lesson_observable_state",
+                "lesson_remember_composition_memory",
+                "lesson_remember_saveable",
+                "lesson_state_hoisting",
+                "lesson_observable_collections",
+            ),
+            unit("unit_state_and_state_ownership").lessons.map { it.id },
         )
     }
 
@@ -49,15 +76,24 @@ internal class BundledLearningCurriculumTest {
     fun everyLessonDeclaresThePrimaryConceptItTeaches() = runTest {
         // The primary mapping is the stable bridge into assessment coverage, so it is a
         // contract rather than editorial detail.
-        val unit = BundledLearningCurriculumSource.load().units.single()
-
         assertEquals(
             listOf(
                 listOf("compose_fundamentals"),
                 listOf("compose_fundamentals"),
                 listOf("compose_udf"),
             ),
-            unit.lessons.map { it.primarySubtopicIds },
+            unit("unit_thinking_in_compose").lessons.map { it.primarySubtopicIds },
+        )
+
+        assertEquals(
+            listOf(
+                listOf("compose_state"),
+                listOf("compose_state"),
+                listOf("compose_state"),
+                listOf("compose_state_hoisting"),
+                listOf("compose_state"),
+            ),
+            unit("unit_state_and_state_ownership").lessons.map { it.primarySubtopicIds },
         )
     }
 
@@ -65,24 +101,44 @@ internal class BundledLearningCurriculumTest {
     fun aLessonBridgesToAnotherTopicsSupportingConcept() = runTest {
         // `unidirectional_data_flow` is owned by the architecture Topic while the Unit is
         // browsed under `android_ui`; cross-Topic support is a product rule, not a defect.
-        val unit = BundledLearningCurriculumSource.load().units.single()
-
         assertTrue(
-            unit.lessons
+            unit("unit_thinking_in_compose").lessons
                 .single { it.id == "lesson_state_down_events_up" }
                 .supportingSubtopicIds
                 .contains("unidirectional_data_flow"),
+        )
+
+        // The same rule, exercised where the bridge spans three Topics at once: saved state
+        // and process death are `lifecycle_navigation` concepts a Compose Lesson has to lean
+        // on without reproducing that curriculum.
+        assertTrue(
+            unit("unit_state_and_state_ownership").lessons
+                .single { it.id == "lesson_remember_saveable" }
+                .supportingSubtopicIds
+                .containsAll(listOf("saved_state", "configuration_changes", "process_death")),
         )
     }
 
     @Test
     fun everyActiveLessonIsStudyableAndSourced() = runTest {
-        val unit = BundledLearningCurriculumSource.load().units.single()
-
-        unit.lessons.forEach { lesson ->
+        units().flatMap { it.lessons }.forEach { lesson ->
             assertEquals(ContentStatus.ACTIVE, lesson.status, lesson.id)
             assertTrue(lesson.sections.isNotEmpty(), lesson.id)
             assertTrue(lesson.sources.isNotEmpty(), lesson.id)
+        }
+    }
+
+    @Test
+    fun relatedLessonReferencesResolveWithinTheShippedDocument() = runTest {
+        // Forward links are invalid until their target ships, so this is what stops a Lesson
+        // pointing at a Unit that is still only planned.
+        val lessons = units().flatMap { it.lessons }
+        val lessonIds = lessons.map { it.id }.toSet()
+
+        lessons.forEach { lesson ->
+            lesson.relatedLessonIds.forEach { relatedId ->
+                assertTrue(relatedId in lessonIds, "${lesson.id} -> $relatedId")
+            }
         }
     }
 

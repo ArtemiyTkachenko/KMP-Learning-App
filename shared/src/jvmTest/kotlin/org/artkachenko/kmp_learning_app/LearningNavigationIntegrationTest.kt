@@ -46,9 +46,10 @@ internal class LearningNavigationIntegrationTest {
             val repository: LearningContentRepository = BundledLearningContentRepository()
             val navigator = navigator()
 
-            // The Topic the catalogue opens, then the Unit its study section offers.
+            // The Topic the catalogue opens, then the first Unit its study section offers —
+            // authored order, so this is the Unit a learner starting the path would open.
             navigator.push(AppRoute.Topic(AndroidUiTopicId))
-            val unitId = repository.getActiveUnitsByTopic(AndroidUiTopicId).single().id
+            val unitId = repository.getActiveUnitsByTopic(AndroidUiTopicId).first().id
             assertEquals(ComposeUnitId, unitId)
             navigator.push(AppRoute.LearningUnit(unitId))
 

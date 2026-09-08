@@ -48,10 +48,16 @@ internal class LearningContentEndToEndTest {
 
         val units = repository.getActiveUnitsByTopic("android_ui")
 
-        assertEquals(listOf("unit_thinking_in_compose"), units.map { it.id })
+        assertEquals(
+            listOf(
+                "unit_thinking_in_compose",
+                "unit_state_and_state_ownership",
+            ),
+            units.map { it.id },
+        )
         // Stable identity is authored identity: the Unit reached by browsing a Topic and the
         // Unit resolved by its id are the same content, whatever the instances are.
-        assertEquals(units.single(), repository.getUnitById("unit_thinking_in_compose"))
+        units.forEach { unit -> assertEquals(unit, repository.getUnitById(unit.id), unit.id) }
         assertNull(repository.getUnitById("unit_missing"))
     }
 
@@ -74,9 +80,9 @@ internal class LearningContentEndToEndTest {
     @Test
     fun everyAuthoredLessonResolvesGloballyByItsOwnId() = runTest {
         val repository = BundledLearningContentRepository()
-        val unit = assertNotNull(repository.getUnitById("unit_thinking_in_compose"))
+        val lessons = repository.getActiveUnitsByTopic("android_ui").flatMap { it.lessons }
 
-        unit.lessons.forEach { authored ->
+        lessons.forEach { authored ->
             // Lesson ids are unique document-wide, so a caller holding one never needs to know
             // which Unit contains it.
             assertEquals(authored, repository.getLessonById(authored.id), authored.id)

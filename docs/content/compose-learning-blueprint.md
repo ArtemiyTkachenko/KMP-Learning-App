@@ -1024,9 +1024,10 @@ sources on any material edit; guidance older than roughly two releases is suspec
 
 ## Status
 
-This blueprint is complete as a map. Unit 1 is authored and ships in
-`learning_curriculum.json` as `unit_thinking_in_compose`; Units 2–14 are still plans. When
-authoring reveals a wrong Lesson boundary, update this file in the same change.
+This blueprint is complete as a map. Units 1–2 are authored and ship in
+`learning_curriculum.json` as `unit_thinking_in_compose` and
+`unit_state_and_state_ownership`; Units 3–14 are still plans. When authoring reveals a
+wrong Lesson boundary, update this file in the same change.
 
 Units 2–6 have a confirmed authoring plan in
 [`compose-units-2-6-plan.md`](compose-units-2-6-plan.md), which records their proposed Unit
@@ -1042,3 +1043,19 @@ execute in any order or in parallel", which reads as a claim about current runti
 behaviour that the Compose documentation contradicts. The line now describes ordering,
 skipping, and discarded optimistic recomposition, and the Notes record why the parallel
 claim must not be taught.
+
+Authoring Unit 2 kept every planned Lesson boundary, identity and concept mapping
+unchanged; no blueprint correction was required. Two findings are worth recording because
+they affect later Units:
+
+- **L2.3's lifetime ladder gained a rung.** The Core line above says "three lifetimes —
+  recomposition, configuration change, process death". Authoring found that too coarse: a
+  composable leaving the Composition is a fourth, distinct event, and `rememberSaveable`
+  does not survive it on its own because it unregisters its value provider as it leaves.
+  The shipped Lesson teaches four rungs — re-execution, leaving the Composition, UI
+  recreation, process recreation. The Core line here is left as the blueprint's shorthand
+  rather than rewritten, but Unit 8 should not inherit the three-rung framing.
+- **Unit 2's saved-state platform caveat is carried as a Note, not a claim.** L2.3 states
+  the Android guarantee precisely and says plainly that Compose Multiplatform documents no
+  equivalent for desktop, iOS or web, per the plan's instruction. The unresolved question
+  recorded there is unchanged by this authoring.

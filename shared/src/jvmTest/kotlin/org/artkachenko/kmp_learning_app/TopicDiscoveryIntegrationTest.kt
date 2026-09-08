@@ -125,6 +125,9 @@ internal class TopicDiscoveryIntegrationTest {
         onNodeWithText(NetworkingTopicName).performClick()
         waitForTag(TopicPracticeButtonTag)
         onNodeWithText(HttpSubtopicName).assertIsDisplayed()
+        // This Topic has no authored study material above the fold, so the practice button is
+        // genuinely on screen here — the visibility half of the claim, kept where it holds.
+        onNodeWithTag(TopicPracticeButtonTag).assertIsDisplayed()
         assertNoPracticeQuestionOnScreen()
 
         // Topic Detail carries the same two concepts for a learner who has completed nothing:
@@ -335,9 +338,16 @@ internal class TopicDiscoveryIntegrationTest {
         waitForTag(topicVisualMarkerTag(UiTopicId))
     }
 
-    /** Topic Detail opens on its own summary; a search result must never start practice. */
+    /**
+     * Topic Detail opens on its own summary; a search result must never start practice.
+     *
+     * Presence rather than visibility is the assertion that matches the claim. Whether the
+     * practice button happens to be above the fold depends on how much authored study material
+     * sits above it, which grows as Units are authored and is not what this test is about; that
+     * the learner is on Topic Detail with no question started is.
+     */
     private fun ComposeUiTest.assertNoPracticeQuestionOnScreen() {
-        onNodeWithTag(TopicPracticeButtonTag).assertIsDisplayed()
+        onNodeWithTag(TopicPracticeButtonTag).assertExists()
         onNodeWithText(QuestionText, substring = true).assertDoesNotExist()
     }
 

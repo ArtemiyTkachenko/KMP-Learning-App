@@ -19,18 +19,27 @@ import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningC
  */
 internal class TopicDetailLearningContentTest {
     @Test
-    fun theProductionAndroidUiTopicExposesThinkingInCompose() = runTest {
+    fun theProductionAndroidUiTopicExposesItsAuthoredUnitsInOrder() = runTest {
         val repository: LearningContentRepository = BundledLearningContentRepository()
 
         val items = repository.getActiveUnitsByTopic("android_ui").toLearningUnitItems()
 
-        assertEquals(listOf("unit_thinking_in_compose"), items.map { it.unitId })
-        val unit = items.single()
-        assertEquals("Thinking in Compose", unit.title)
-        assertEquals(3, unit.activeLessonCount)
+        // Authored order is the ordering contract, so the rows arrive in it rather than sorted.
+        assertEquals(
+            listOf(
+                "unit_thinking_in_compose",
+                "unit_state_and_state_ownership",
+            ),
+            items.map { it.unitId },
+        )
+        assertEquals(
+            listOf("Thinking in Compose", "State and State Ownership"),
+            items.map { it.title },
+        )
+        assertEquals(listOf(3, 5), items.map { it.activeLessonCount })
         // A discovery row without prose would be a title and a number, so the summary has to survive
         // the mapping rather than merely being present in the document.
-        assertTrue(unit.summary.isNotBlank())
+        assertTrue(items.all { it.summary.isNotBlank() })
     }
 
     @Test

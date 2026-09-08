@@ -41,6 +41,11 @@ identity proposed here lives in documentation until the authoring issue that shi
 | E23-07 | [Assessment gaps](#assessment-gaps-for-e23-07) in full, re-checked against the finished Lessons |
 | E23-08 | [Handoff](#handoff) — sequencing, cross-Unit links, and the limitations recorded here |
 
+**Authoring status.** E23-02 shipped Unit 2; it is ACTIVE in `learning_curriculum.json`.
+What that authoring found is recorded in [Authoring outcomes](#authoring-outcomes-for-unit-2).
+Units 3–6 are still plans, so every identity below remains a proposal until its issue ships
+it.
+
 ---
 
 ## Identity conventions and proposed identities
@@ -375,6 +380,89 @@ deliberately not regenerated here, where no Question changed.
 
 ---
 
+## Authoring outcomes for Unit 2
+
+Added by E23-02 after the Lessons were written, so E23-03 through E23-08 re-check findings
+rather than re-deriving them.
+
+### What did not change
+
+Every proposed Unit id, Lesson id, title, authored order, and primary/supporting mapping for
+Unit 2 in the [identity tables](#identity-conventions-and-proposed-identities) shipped
+verbatim. No Lesson boundary moved, no Lesson split or merged, and no blueprint correction
+was needed beyond the four this review had already made.
+
+### Assessment gaps confirmed unchanged
+
+GAP-U2-A and GAP-U2-B stand exactly as recorded. Unit 2 teaches both bodies of reasoning —
+`lesson_remember_composition_memory` carries the four-combination table GAP-U2-A describes,
+and `lesson_observable_collections` carries the unobserved-mutation failure GAP-U2-B
+describes — and neither is assessed by any active Question. Teaching a concept does not
+close an assessment gap; both remain E23-07's work.
+
+### Technical assumptions the finished Lessons depend on
+
+Verified during authoring against the artifacts this repository actually resolves, not from
+memory or from upstream `androidx-main` alone.
+
+| Claim a Lesson makes | How it was verified |
+| --- | --- |
+| `mutableStateOf` defaults to `structuralEqualityPolicy()`, so assigning a structurally equal value schedules nothing | `SnapshotState.kt` and `SnapshotMutationPolicy.kt` in the sources of the resolved `androidx.compose.runtime:runtime:1.11.2` artifact |
+| Reads of `MutableState.value` during a composable's execution subscribe the currently executing recompose scope, and a write schedules recomposition of the subscribed scopes | The `MutableState` KDoc in the same resolved artifact |
+| A non-inline `@Composable` lambda argument — such as a `Button`'s `content` — forms its own restart scope, so an unremembered holder read only inside one is not reset by the write the click caused | Executed, not reasoned about: a throwaway `runComposeUiTest` probe composed both variants and clicked them. See [the unremembered-state example](#the-unremembered-state-example) |
+| `rememberSaveable` unregisters its value provider when its composable leaves the Composition, so it does not by itself restore across a branch closing and reopening; `SaveableStateHolder` is what saves a subtree before disposing it | `RememberSaveable.kt` (`onForgotten` → `entry?.unregister()`) and the `SaveableStateHolder` KDoc in the resolved `androidx.compose.runtime:runtime-saveable:1.11.2` sources |
+| `rememberSaveable` offers both a `saver` overload for a value and a `stateSaver` overload for a `MutableState`, and `listSaver` takes `save`/`restore` | `RememberSaveable.kt` and `ListSaver.kt` in the same resolved sources |
+
+### The unremembered-state example
+
+`lesson_observable_state` teaches the classic "observable but not remembered" failure. The
+first draft wrote it with the state read inside a `Button` content lambda and claimed the
+counter stays at zero. That claim is **false**. It was caught in review and then settled by
+running it rather than by argument:
+
+| Variant | Behaviour after one click |
+| --- | --- |
+| Read inside `Button`'s `content` lambda | Displays `Clicked 1 times`, then `Clicked 2 times` — it counts |
+| Read in the same body that calls `mutableStateOf` | Displays `Clicked 0 times` — stuck, which is the intended demonstration |
+
+The cause is that a non-inline composable lambda argument is its own restart scope, so the
+write invalidates only the lambda, which re-executes against the *same* captured holder. The
+enclosing body never re-runs, so `mutableStateOf(0)` is never called again.
+
+The shipped Lesson uses the second variant, and a `NOTE` states the guarantee accurately:
+the value is lost whenever the composable that called `mutableStateOf` executes again, while
+*when* the reset becomes visible depends on which scope recorded the read. **Units 3–6 should
+take the same care.** "Unremembered state resets immediately" and "extracting a function
+creates a scope" are both plausible, both wrong, and both easy to write by accident.
+
+### L2.3's lifetime ladder has four rungs, not three
+
+Review also found that the first draft merged "the composable left the Composition" into
+"the UI was recreated" and named a saved-state mechanism as the answer to both. Those are
+different events with different answers: `rememberSaveable` unregisters itself as its
+composable leaves, so it does not survive a branch closing and reopening on its own — that
+needs an owner that stays, or a `SaveableStateHolder` such as navigation provides.
+
+The shipped ladder therefore reads re-execution → leaving the Composition → UI recreation →
+process recreation, and only the last two are `rememberSaveable`'s. A second defect in the
+same draft is fixed with it: the prose had said the process-death rung "is not what
+`rememberSaveable` is for", which contradicted both the Lesson's own table and the documented
+guarantee. `rememberSaveable` *is* the composable-level answer to system-initiated process
+death with the task retained; what it is not is durable storage.
+
+The blueprint's L2.3 line still says "three lifetimes". That shorthand is what this authoring
+found too coarse, and Unit 8 should not inherit it.
+
+**Unresolved question 1 is still unresolved.** The plan asked E23-02 to re-check whether
+Compose Multiplatform 1.11.x restores `rememberSaveable` state across application restart on
+desktop, iOS or web. It was re-checked and nothing authoritative was found: the CMP lifecycle
+documentation still covers lifecycle states and events only. `lesson_remember_saveable`
+therefore states the Android guarantee precisely and says plainly that no equivalent
+guarantee is documented elsewhere, exactly as this plan instructed. It asserts nothing about
+desktop, iOS or web behaviour in either direction.
+
+---
+
 ## Assessment gaps for E23-07
 
 Substantive gaps only. There is no per-Lesson or per-level quota, and a gap here is a
@@ -547,7 +635,12 @@ None changes the Unit or Lesson count.
 - **Forward links are invalid until their target ships.** `LearningCurriculumValidator` rejects
   a `relatedLessonIds` entry that names an unknown Lesson, so each authoring issue may link
   *backwards* to published Lessons only. Pointing forward is a prose sentence naming the Unit,
-  and the issue that ships that Unit may then add the reciprocal link.
+  and the issue that ships that Unit may then add the reciprocal link. Unit 2 followed this:
+  every `relatedLessonIds` entry it ships resolves inside the bundle, and every reference to
+  Units 3–6 and to the Effects and ViewModel Units is prose naming the Unit.
+  `BundledLearningCurriculumTest.relatedLessonReferencesResolveWithinTheShippedDocument` now
+  enforces it. **E23-03 through E23-06 should add the reciprocal backward links** from their
+  own Lessons; Unit 2 does not need editing to receive them.
 - Prerequisites outside the Compose path — lifecycle, Kotlin, architecture, Flow — have no
   authored learning Unit and must be bridged in place to the depth the Lesson needs, then
   pointed at their Topic. No Lesson in Units 2–6 depends on an unpublished Lesson except in the
@@ -555,6 +648,9 @@ None changes the Unit or Lesson count.
 - Regenerate `docs/content/learning-question-coverage.md` in the same change that adds Lessons.
 
 ### For E23-07
+
+Read [Authoring outcomes](#authoring-outcomes-for-unit-2) first: it confirms GAP-U2-A and
+GAP-U2-B unchanged against the finished Unit 2 prose.
 
 The nine gap rows are the starting list. Re-read them against the finished prose before
 authoring: a gap this plan predicted may have been answered by a Lesson that turned out deeper

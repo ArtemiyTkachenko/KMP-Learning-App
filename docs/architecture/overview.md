@@ -2,7 +2,7 @@
 
 How the application is composed, which hosts run it, and how curriculum content is modelled.
 
-Sibling notes: [assessment](assessment.md) · [progress](progress.md) · [practice selection](practice-selection.md) · [recommendations](recommendations.md) · [practice builder](practice-builder.md) · [persistence](persistence.md)
+Sibling notes: [assessment](assessment.md) · [progress](progress.md) · [practice selection](practice-selection.md) · [recommendations](recommendations.md) · [practice builder](practice-builder.md) · [persistence](persistence.md) · [study progress](study-progress.md)
 
 ## Application Composition
 
@@ -339,4 +339,5 @@ That last point is the gap before learner-owned study progress. Whatever
 introduces it will need a place for learner state over publisher-owned content —
 a stable identity per Lesson to key it on, which the content model already
 provides, and a decision about what happens to recorded progress when a Lesson
-is re-authored or retired, which nothing in the current model answers.
+is re-authored or retired, which nothing in the current model answers. Those
+questions are answered by the [study progress](study-progress.md) contract.

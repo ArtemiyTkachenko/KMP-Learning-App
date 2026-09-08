@@ -1,6 +1,6 @@
 # Progress, Coverage, And Learning Context
 
-How completed assessment history becomes learner-facing statistics, and how those statistics reach the study surfaces. See [assessment](assessment.md) for where that history comes from.
+How completed assessment history becomes learner-facing statistics, and how those statistics reach the study surfaces. See [assessment](assessment.md) for where that history comes from, and [study progress](study-progress.md) for learner-owned Lesson study state, which is a separate responsibility and is not derived from assessments.
 
 ## Derived Learning Progress
 

@@ -17436,7 +17436,7 @@
       "correctAnswerIds": [
         "compose_state_collection_mutation_a"
       ],
-      "explanation": "MutableState observes writes to its own value property; it has no way to learn that the object it points at was modified. The documentation is explicit that mutable objects which are not observable, such as ArrayList or a mutable data class, do not trigger recomposition, and recommends an observable holder such as State<List<T>> together with the read-only listOf(). So declare the holder over listOf() and write it — items.value = items.value + text — where the assignment reaches value and is recorded, and the read-only type no longer offers the mutating methods that produced the bug. Hoisting changes who owns the state and not whether a mutation is seen; remember caches a value rather than making one observable; and a read of items.value inside the body is already recorded, which is exactly why the holder is the thing that must be written. mutableStateListOf is the other documented fix, and it works because its own mutating operations are the notification.",
+      "explanation": "MutableState observes writes to its own value property; it has no way to learn that the object it points at was modified. The documentation is explicit that mutable objects which are not observable, such as ArrayList or a mutable data class, do not trigger recomposition, and recommends an observable holder such as State<List<T>> together with the read-only listOf(). So declare the holder over listOf() and write it — items.value = items.value + text — where the assignment reaches value and is recorded, and the read-only type no longer offers the mutating methods that produced the bug. Hoisting changes who owns the state and not whether a mutation is seen; remember caches a value rather than making one observable; and a read of items.value inside the body is already recorded, which is exactly why the holder is the thing that must be written. The other route is a snapshot-aware collection: Compose provides mutable types such as SnapshotStateList that do uphold the contract of notifying the runtime of every change, so for those the mutating operation is itself the notification.",
       "sources": [
         {
           "title": "State and Jetpack Compose",
@@ -17457,7 +17457,7 @@
       "answers": [
         {
           "id": "compose_recomposition_count_is_not_a_finding_a",
-          "text": "Nothing on its own: frequent re-execution is the designed behaviour, and the cost is the work in the body."
+          "text": "Only that it re-executed often; that is the designed behaviour, and the cost is the work in the body."
         },
         {
           "id": "compose_recomposition_count_is_not_a_finding_b",
@@ -17477,7 +17477,7 @@
       "correctAnswerIds": [
         "compose_recomposition_count_is_not_a_finding_a"
       ],
-      "explanation": "The documentation states that a composable function might be re-executed as often as every frame, for example while an animation renders, and asks only that composable functions be fast, idempotent and side-effect free. Frequency is therefore the operating mode rather than the defect, and a count says nothing about what each execution cost or whether a frame was dropped. The other three options are real techniques applied without a diagnosis: instability, read placement and memoization each address a specific expense, and none of them is indicated by a count with no symptom and no identified work behind it. What turns an observation into a finding is expensive work on the executing path and a symptom that tracks it.",
+      "explanation": "The count establishes frequency and nothing beyond it. The documentation states that a composable function might be re-executed as often as every frame, for example while an animation renders, and asks only that composable functions be fast, idempotent and side-effect free, so frequency is the operating mode rather than the defect. What the number does not say is what each execution cost or whether a frame was dropped. The other three options are real techniques applied without a diagnosis: instability, read placement and memoization each address a specific expense, and none of them is indicated by a count with no symptom and no identified work behind it. What turns an observation into a finding is expensive work on the executing path and a symptom that tracks it.",
       "sources": [
         {
           "title": "Thinking in Compose",
@@ -17644,12 +17644,16 @@
       "explanation": "Three facts combine. copy() passes the constructor properties to a new instance, so the copy shares the very MutableList that was just mutated. A data class generates equals over those constructor properties, so the old and new instances compare the same list against itself and report equal. And mutableStateOf defaults to structuralEqualityPolicy, under which setting value to its current structurally equal value is not considered a change. The assignment is genuinely a different object, so it is not ignored as the same reference; stability decides whether a call is skipped rather than whether a write is recorded, and here nothing was recorded to skip on; and coalescing changes when invalidation is acted on, never whether a change existed. Replacing the list, so the new value genuinely differs, is the fix.",
       "sources": [
         {
-          "title": "androidx SnapshotMutationPolicy.kt",
-          "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotMutationPolicy.kt"
+          "title": "Data classes",
+          "url": "https://kotlinlang.org/docs/data-classes.html"
         },
         {
-          "title": "State and Jetpack Compose",
-          "url": "https://developer.android.com/develop/ui/compose/state"
+          "title": "androidx SnapshotState.kt",
+          "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotState.kt"
+        },
+        {
+          "title": "androidx SnapshotMutationPolicy.kt",
+          "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotMutationPolicy.kt"
         }
       ],
       "status": "ACTIVE"
@@ -17658,11 +17662,11 @@
       "id": "compose_remember_key_invalidation",
       "topicId": "android_ui",
       "subtopicId": "compose_derived_state",
-      "text": "A composable computes val visible = remember(contacts) { contacts.filter { it.name.contains(query) } } where query is a parameter the search field updates. Typing re-executes the body. What does the user see?",
+      "text": "A composable computes val visible = remember(contacts) { contacts.filter { it.name.contains(query) } } where query is a parameter the search field updates. The user types several characters while contacts is unchanged, and each keystroke re-executes the body. What do they see?",
       "answers": [
         {
           "id": "compose_remember_key_invalidation_a",
-          "text": "Results for the previous query, because the one supplied key did not change."
+          "text": "Results from the first time the calculation ran, because the one supplied key never changed."
         },
         {
           "id": "compose_remember_key_invalidation_b",
@@ -17682,7 +17686,7 @@
       "correctAnswerIds": [
         "compose_remember_key_invalidation_a"
       ],
-      "explanation": "remember stores its result in the Composition and returns it again until a key changes; the documentation states that if any key changes, the next time the function recomposes remember invalidates the cache and executes the calculation block again. Here the result genuinely depends on query and query is not a key, so the cache stays valid by its own rules while the answer it holds stops being true, and the screen serves results for a query the user has already replaced. Reaching a remember call is not running its lambda, an unchanged key never discards anything, and Compose infers nothing about captured values: the key list is the claim you make about what the result is a function of. remember(contacts, query) states it accurately.",
+      "explanation": "remember stores its result in the Composition and returns it again until a key changes; the documentation states that if any key changes, the next time the function recomposes remember invalidates the cache and executes the calculation block again. Here the result genuinely depends on query, query is not a key, and contacts never changes, so the lambda has not run since the initial composition. The results are therefore frozen at the query as it was then — they do not lag one keystroke behind, they never move at all — while the body around them re-executes on every keystroke. Reaching a remember call is not running its lambda, an unchanged key never discards anything, and Compose infers nothing about captured values: the key list is the claim you make about what the result is a function of. remember(contacts, query) states it accurately.",
       "sources": [
         {
           "title": "State and Jetpack Compose",

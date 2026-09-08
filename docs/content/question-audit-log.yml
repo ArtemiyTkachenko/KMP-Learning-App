@@ -160,6 +160,36 @@ audits:
         list, and items.value + text yields a List rather than a MutableList. The explanation
         now declares the holder over listOf() and writes items.value = items.value + text.
 
+        A second review round found three more, all of the same kind, and they were fixed
+        the same way.
+
+        compose_recomposition_count_is_not_a_finding — the keyed answer opened with "Nothing
+        on its own", which is false read literally: the count does establish that the
+        composable re-executed often. It now says what the count establishes and then what it
+        does not, which is also the distinction the question exists to teach.
+
+        compose_remember_key_invalidation — the keyed answer said the user sees results "for
+        the previous query". With contacts unchanged the lambda has not run since the initial
+        composition, so the results are frozen at the first computation rather than lagging one
+        keystroke behind; the option as written described a different bug. The stem now states
+        that contacts is unchanged, the option names the first calculation, and the explanation
+        says the results never move at all.
+
+        compose_equal_value_write_records_no_change — the keyed answer needs three contracts
+        and only one was cited. copy() being shallow and a data class generating equals over
+        its constructor properties are Kotlin contracts that neither Compose source documents,
+        and mutableStateOf's *default* policy is stated in SnapshotState.kt rather than in
+        SnapshotMutationPolicy.kt. Now cites kotlinlang.org/docs/data-classes.html — which
+        states both Kotlin contracts and illustrates the first with a MutableList property —
+        plus both runtime files. The VERIFIED disposition was unsupported for the full keyed
+        claim until this was fixed.
+
+        Checking the rest of the batch for the same gap turned up one more, unreported:
+        compose_state_collection_mutation called mutableStateListOf "the other documented
+        fix", while the cited stability page names SnapshotStateList as a type upholding the
+        notification contract and never frames it as a fix for this bug. Reworded to what the
+        page states.
+
 
     systemic:
       - >-
@@ -187,6 +217,12 @@ audits:
         That matches the playbook's Part 9 finding exactly, and both keyed-answer defects were
         the same failure: a true core claim with a second clause attached that the stem does
         not establish. Read each keyed answer as two claims and test the weaker one.
+      - >-
+        Cite every step the keyed answer needs, not only the step the question is filed under.
+        The ADVANCED stability question combined two Kotlin contracts with one Compose one and
+        cited only Compose sources, so a third of the reasoning had nothing behind it while the
+        question still looked well sourced. When an answer is built from several facts, walk
+        them one at a time and ask which listed page states each.
       - >-
         Code in an explanation is a claim like any other and has to compile against the stem
         it is explaining. The fix offered for the collection-mutation question was written

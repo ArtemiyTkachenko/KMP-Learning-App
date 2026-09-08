@@ -121,7 +121,7 @@ its current output is reproduced under **Audit baselines** below.
 | MULTIPLE | 47 |
 | — of which exactly one correct answer | 3 |
 | Answer options | 1650 (405 questions with 4 options, 6 with 5) |
-| Source references | 494 across 298 unique URLs |
+| Source references | 495 across 298 unique URLs |
 
 Subtopic depth distribution: **78** subtopics have 0 questions, **216** have 1,
 **52** have 2, **10** have 3, **5** have 4.
@@ -173,8 +173,8 @@ Current output of the `docs/content/question-authoring-playbook.md` Part 3 scrip
 the whole bank:
 
 ```
-correct-longest 156/367 (43%), mean ratio 1.03, over 10% limit: 0
-absolutes: distractors 0.22/opt, correct 0.11/opt
+correct-longest 157/367 (43%), mean ratio 1.03, over 10% limit: 0
+absolutes: distractors 0.22/opt, correct 0.12/opt
 position: {0: 28%, 1: 27%, 2: 26%, 3: 19%, 4: 1%}
 ```
 
@@ -464,8 +464,8 @@ multiplatform ViewModel, library compatibility, sharing trade-offs.
   `selectionMode` stays inferable from the answer key.
 - **Every question in the bank has 4 options except 6 with 5.** Stay at 4 unless
   there is a specific reason.
-- **Source hosts, for reference:** developer.android.com 324 · kotlinlang.org 96
-  · github.com 24 (kotlinx.serialization, OkHttp, Retrofit and SQLDelight —
+- **Source hosts, for reference:** developer.android.com 323 · kotlinlang.org 97
+  · github.com 25 (kotlinx.serialization, OkHttp, Retrofit and SQLDelight —
   `square.github.io` returns 404, so each project's own repository is the primary
   source — plus four androidx runtime files cited where a contract is stated only
   in the KDoc) · dagger.dev 12 · firebase.google.com 12 · rfc-editor.org 8 ·

@@ -21,16 +21,18 @@ import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionS
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
-import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.curriculum.learning.content.learningContentModule
 import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
+import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.data.local.assessment.assessmentDataModule
 import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDataInitializer
 import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDatabase
 import org.artkachenko.kmp_learning_app.data.local.curriculum.curriculumDataModule
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImporter
 import org.artkachenko.kmp_learning_app.data.local.lesson_study.lessonStudyDataModule
+import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressStateHolder
 import org.artkachenko.kmp_learning_app.lesson_study.repository.LessonStudyRepository
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewViewModel
@@ -42,9 +44,10 @@ import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsViewModel
 import org.artkachenko.kmp_learning_app.saved_questions.repository.SavedQuestionRepository
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
+import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonViewModel
+import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitViewModel
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderTarget
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
-import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
@@ -142,6 +145,21 @@ internal class SharedHostStartupTest {
             assertEquals(
                 koin.get<SavedQuestionStateHolder>(),
                 koin.get<SavedQuestionStateHolder>(),
+            )
+            // Study state spans both shared modules the same way: the repository comes from
+            // `lessonStudyDataModule` and the app-scoped projection from the presentation module.
+            // Exactly one holder, because the entire reason it exists is that the Lesson reader,
+            // the Unit overview, and Topic Detail are alive at once and must agree.
+            assertEquals(
+                koin.get<StudyProgressStateHolder>(),
+                koin.get<StudyProgressStateHolder>(),
+            )
+            // The chain the three Learn ViewModels resolve through, end to end.
+            assertIs<LearningUnitViewModel>(
+                koin.get<LearningUnitViewModel> { parametersOf("unit") },
+            )
+            assertIs<LearningLessonViewModel>(
+                koin.get<LearningLessonViewModel> { parametersOf("unit", "lesson") },
             )
             // AssessmentTakingViewModel is deliberately not resolved here: it starts a real
             // assessment from its initializer, which needs seeded curriculum content rather

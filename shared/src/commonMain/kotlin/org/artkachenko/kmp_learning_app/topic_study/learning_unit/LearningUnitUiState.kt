@@ -2,6 +2,8 @@ package org.artkachenko.kmp_learning_app.topic_study.learning_unit
 
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
+import org.artkachenko.kmp_learning_app.lesson_study.LearningUnitStudyProgress
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressUiState
 
 /**
  * The Unit overview's state.
@@ -24,12 +26,20 @@ internal sealed interface LearningUnitUiState {
      * Presentation fields only: the authored [LearningUnit] carries whole Lessons with their
      * sections, Sources, and Subtopic relationships, and none of that belongs on a screen whose
      * job is choosing what to read. [lessons] may be empty — see [LearningUnitViewModel].
+     *
+     * [studyProgress] is the learner's half, nested rather than promoted for the same reason as on
+     * the Lesson reader: an unreadable study record must cost the indicators and nothing else, so
+     * the rows, their order, their clickability, and Practice this unit all survive it. It carries
+     * the E22-03 [LearningUnitStudyProgress] verbatim — the per-Lesson list joined to [lessons] by
+     * stable Lesson ID, and the aggregate — rather than a second progress model of its own.
      */
     data class Content(
         val unitId: String,
         val title: String,
         val summary: String,
         val lessons: List<LearningLessonItemUiModel>,
+        val studyProgress: StudyProgressUiState<LearningUnitStudyProgress> =
+            StudyProgressUiState.Loading,
     ) : LearningUnitUiState
 
     /** The ID names no Unit, or names one that is no longer current study material. */
@@ -42,8 +52,12 @@ internal sealed interface LearningUnitUiState {
 /**
  * One Lesson as the overview needs it: enough to decide whether to read it, and nothing else.
  *
- * No status, no completion, no question coverage. Status is already spent deciding whether the row
- * exists at all, and learner progress is not modelled anywhere in EPIC-21.
+ * No status and no question coverage. Status is already spent deciding whether the row exists at
+ * all. Studied state is deliberately absent too, even though the rows now show it: it is
+ * learner-owned and can be unknown, so it arrives through
+ * [LearningUnitUiState.Content.studyProgress] and is joined to a row by [lessonId]. Copying it in
+ * here would give a publisher-shaped model a field that has no value to hold when the study record
+ * cannot be read.
  */
 internal data class LearningLessonItemUiModel(
     val lessonId: String,

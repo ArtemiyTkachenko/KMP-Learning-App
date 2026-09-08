@@ -57,6 +57,7 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.repository.LocalCu
 import org.artkachenko.kmp_learning_app.progress.ProgressContentTag
 import org.artkachenko.kmp_learning_app.progress.progressTopicCardTag
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultPracticeAgainTag
+import org.artkachenko.kmp_learning_app.data.local.lesson_study.lessonStudyDataModule
 import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderStartButtonTag
@@ -299,6 +300,7 @@ internal class FocusedLearningJourneyIntegrationTest {
                 learningContentModule,
                 assessmentDataModule,
                 savedQuestionDataModule,
+                lessonStudyDataModule,
                 topicStudyPresentationModule,
                 module {
                     single<CurriculumDatabase> { db }

@@ -42,6 +42,13 @@ import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
 import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
+import org.artkachenko.kmp_learning_app.lesson_study.FakeLessonStudyRepository
+import org.artkachenko.kmp_learning_app.lesson_study.StudiedLesson
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressStateHolder
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressSummary
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressUiState
+import org.artkachenko.kmp_learning_app.lesson_study.TopicStudyProgress
+import org.artkachenko.kmp_learning_app.lesson_study.studyProgressStateHolder
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class TopicDetailViewModelTest {
@@ -272,6 +279,7 @@ internal class TopicDetailViewModelTest {
             ),
             learningProgressService = LearningProgressService(history, curriculum),
             historyStore = store,
+            studyProgressStateHolder = studyProgressStateHolder(),
         )
         advanceUntilIdle()
         assertEquals(
@@ -653,6 +661,7 @@ internal class TopicDetailViewModelTest {
                 learningContentRepository = FakeLearningContentRepository(),
                 learningProgressService = LearningProgressService(history, curriculum),
                 historyStore = store,
+                studyProgressStateHolder = studyProgressStateHolder(),
             )
             advanceUntilIdle()
 
@@ -673,11 +682,192 @@ internal class TopicDetailViewModelTest {
             assertEquals(curriculumReads, curriculum.topicQuestionCalls)
         }
 
+
+    /**
+     * Per-Unit study progress, joined by stable Unit ID and derived from the retained domain Units.
+     * The row models carry no Lessons, so this could not be computed from them.
+     */
+    @Test
+    fun topicStudyProgressIsDerivedPerUnitFromTheCurrentActiveHierarchy() = runViewModelTest {
+        val topic = Topic("topic_a", "Topic A")
+        val units = listOf(
+            learningUnit("unit_a", topic.id).copy(
+                lessons = listOf(lesson("lesson_a1"), lesson("lesson_a2"), lesson("lesson_a3")),
+            ),
+            learningUnit("unit_b", topic.id).copy(lessons = listOf(lesson("lesson_b1"))),
+        )
+        val viewModel = viewModel(
+            topic.id,
+            FakeCurriculumRepository(topics = listOf(topic)),
+            learningContent = FakeLearningContentRepository(
+                unitsByTopicId = mapOf(topic.id to units),
+            ),
+            studyProgressStateHolder = studyProgressStateHolder(
+                FakeLessonStudyRepository(StudiedLesson("lesson_a2", 1_000)),
+            ),
+        )
+
+        advanceUntilIdle()
+
+        val progress = studyProgress(viewModel)
+        // Authored Unit order, and the Topic aggregate is Lesson-weighted across them.
+        assertEquals(listOf("unit_a", "unit_b"), progress.units.map { it.unitId })
+        assertEquals(
+            StudyProgressSummary.Progress(studiedCount = 1, totalCount = 3),
+            progress.units.first().summary,
+        )
+        assertEquals(
+            StudyProgressSummary.Progress(studiedCount = 0, totalCount = 1),
+            progress.units.last().summary,
+        )
+        assertEquals(StudyProgressSummary.Progress(studiedCount = 1, totalCount = 4), progress.summary)
+    }
+
+    /**
+     * Study availability and learning availability answer different questions, so an unreadable
+     * study record must leave the authored Units Available and every practice action untouched.
+     */
+    @Test
+    fun anUnreadableStudyRecordLeavesLearningUnitsAvailableAndPracticeIntact() = runViewModelTest {
+        val topic = Topic("topic_a", "Topic A")
+        val studyRepository = FakeLessonStudyRepository()
+        studyRepository.failReads = true
+        val viewModel = viewModel(
+            topic.id,
+            FakeCurriculumRepository(
+                topics = listOf(topic),
+                subtopics = listOf(Subtopic("subtopic_a", topic.id, "Subtopic A")),
+                questions = listOf(question("q1", topic.id, "subtopic_a")),
+            ),
+            learningContent = FakeLearningContentRepository(
+                unitsByTopicId = mapOf(topic.id to listOf(learningUnit("unit_a", topic.id))),
+            ),
+            studyProgressStateHolder = studyProgressStateHolder(studyRepository),
+        )
+
+        advanceUntilIdle()
+
+        val state = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
+        assertIs<TopicLearningUnitsUiState.Available>(state.learningUnits)
+        assertEquals(StudyProgressUiState.Unavailable, state.studyProgress)
+        // Practice is not a function of study state, in either direction.
+        assertEquals(AssessmentScope.Topic(topic.id), viewModel.topicPracticeScope())
+        assertEquals(AssessmentScope.Subtopic("subtopic_a"), viewModel.subtopicPracticeScope("subtopic_a"))
+    }
+
+    /** Practice must also survive study state simply not having arrived yet. */
+    @Test
+    fun aLoadingStudyRecordLeavesTheTopicPractiseableAndClaimsNothing() = runViewModelTest {
+        val topic = Topic("topic_a", "Topic A")
+        val studyRepository = FakeLessonStudyRepository()
+        studyRepository.readGate = CompletableDeferred()
+        val viewModel = viewModel(
+            topic.id,
+            FakeCurriculumRepository(
+                topics = listOf(topic),
+                subtopics = listOf(Subtopic("subtopic_a", topic.id, "Subtopic A")),
+                questions = listOf(question("q1", topic.id, "subtopic_a")),
+            ),
+            learningContent = FakeLearningContentRepository(
+                unitsByTopicId = mapOf(topic.id to listOf(learningUnit("unit_a", topic.id))),
+            ),
+            studyProgressStateHolder = studyProgressStateHolder(studyRepository),
+        )
+
+        advanceUntilIdle()
+
+        val state = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
+        assertIs<TopicLearningUnitsUiState.Available>(state.learningUnits)
+        assertEquals(StudyProgressUiState.Loading, state.studyProgress)
+        assertEquals(AssessmentScope.Topic(topic.id), viewModel.topicPracticeScope())
+    }
+
+    /**
+     * The cross-back-stack case: this screen is still alive underneath the Unit overview and the
+     * Lesson reader, so a mark made two destinations up re-derives here — without the curriculum or
+     * the learning document being read again.
+     */
+    @Test
+    fun aMarkMadeElsewhereRederivesThisLiveTopicWithoutReloadingContent() = runViewModelTest {
+        val topic = Topic("topic_a", "Topic A")
+        val curriculum = FakeCurriculumRepository(
+            topics = listOf(topic),
+            subtopics = listOf(Subtopic("subtopic_a", topic.id, "Subtopic A")),
+            questions = listOf(question("q1", topic.id, "subtopic_a")),
+        )
+        val learningContent = FakeLearningContentRepository(
+            unitsByTopicId = mapOf(
+                topic.id to listOf(
+                    learningUnit("unit_a", topic.id).copy(
+                        lessons = listOf(lesson("lesson_a1"), lesson("lesson_a2")),
+                    ),
+                ),
+            ),
+        )
+        val holder = studyProgressStateHolder(FakeLessonStudyRepository())
+        val viewModel = viewModel(topic.id, curriculum, learningContent = learningContent, studyProgressStateHolder = holder)
+        advanceUntilIdle()
+
+        assertEquals(
+            StudyProgressSummary.Progress(studiedCount = 0, totalCount = 2),
+            studyProgress(viewModel).summary,
+        )
+        val curriculumReads = curriculum.topicQuestionCalls
+        val learningReads = learningContent.topicReadIds.size
+
+        holder.toggleStudied("lesson_a1")
+        advanceUntilIdle()
+
+        assertEquals(
+            StudyProgressSummary.Progress(studiedCount = 1, totalCount = 2),
+            studyProgress(viewModel).summary,
+        )
+        assertEquals(curriculumReads, curriculum.topicQuestionCalls)
+        assertEquals(learningReads, learningContent.topicReadIds.size)
+    }
+
+    /** Assessment analytics and study progress stay separately sourced and separately carried. */
+    @Test
+    fun studyProgressDoesNotReachTheAssessmentDerivedLearningContext() = runViewModelTest {
+        val topic = Topic("topic_a", "Topic A")
+        val viewModel = viewModel(
+            topic.id,
+            FakeCurriculumRepository(
+                topics = listOf(topic),
+                subtopics = listOf(Subtopic("subtopic_a", topic.id, "Subtopic A")),
+                questions = listOf(question("q1", topic.id, "subtopic_a")),
+            ),
+            learningContent = FakeLearningContentRepository(
+                unitsByTopicId = mapOf(
+                    topic.id to listOf(
+                        learningUnit("unit_a", topic.id).copy(lessons = listOf(lesson("lesson_a1"))),
+                    ),
+                ),
+            ),
+            studyProgressStateHolder = studyProgressStateHolder(
+                FakeLessonStudyRepository(StudiedLesson("lesson_a1", 1_000)),
+            ),
+        )
+
+        advanceUntilIdle()
+
+        val state = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
+        // Every Lesson in the Topic is studied, and the Topic has still never been practised.
+        assertTrue(studyProgress(viewModel).summary.let { it is StudyProgressSummary.Progress && it.isComplete })
+        assertTrue(assertNotNull(state.learningContext).isUnstudied)
+    }
+
+    private fun studyProgress(viewModel: TopicDetailViewModel): TopicStudyProgress {
+        val state = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
+        return assertIs<StudyProgressUiState.Available<TopicStudyProgress>>(state.studyProgress).value
+    }
+
     private fun TestScope.viewModel(
         topicId: String,
         curriculum: CurriculumRepository,
         history: AssessmentRepository = EmptyHistoryRepository,
         learningContent: LearningContentRepository = FakeLearningContentRepository(),
+        studyProgressStateHolder: StudyProgressStateHolder = studyProgressStateHolder(),
     ): TopicDetailViewModel =
         TopicDetailViewModel(
             topicId = topicId,
@@ -685,6 +875,7 @@ internal class TopicDetailViewModelTest {
             learningContentRepository = learningContent,
             learningProgressService = LearningProgressService(history, curriculum),
             historyStore = AssessmentHistoryStore(history, CoroutineScope(currentDispatcher())),
+            studyProgressStateHolder = studyProgressStateHolder,
         )
 
     private fun TestScope.currentDispatcher() = StandardTestDispatcher(testScheduler)

@@ -5,6 +5,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -19,6 +20,11 @@ import org.artkachenko.kmp_learning_app.curriculum.learning.LearningBlock
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningDepth
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningSection
 import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
+import org.artkachenko.kmp_learning_app.lesson_study.FakeLessonStudyRepository
+import org.artkachenko.kmp_learning_app.lesson_study.StudiedLesson
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressStateHolder
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressUiState
+import org.artkachenko.kmp_learning_app.lesson_study.studyProgressStateHolder
 import org.artkachenko.kmp_learning_app.topic_study.FakeLearningContentRepository
 import org.artkachenko.kmp_learning_app.topic_study.testLearningLesson
 import org.artkachenko.kmp_learning_app.topic_study.testLearningUnit
@@ -314,15 +320,208 @@ internal class LearningLessonViewModelTest {
         return assertIs(viewModel.uiState.value)
     }
 
-    private fun viewModel(
+
+    /**
+     * The document is readable before the study record is, and stays readable if it never becomes
+     * readable at all. Study state is enrichment layered over the Lesson, so it produces no page
+     * state of its own.
+     */
+    @Test
+    fun aLessonRendersItsContentWhileStudyStateIsStillLoading() = runViewModelTest {
+        val repository = FakeLessonStudyRepository()
+        val gate = CompletableDeferred<Unit>()
+        repository.readGate = gate
+        val viewModel = viewModel(
+            unitId = "unit_a",
+            lessonId = "lesson_a",
+            repository = lessonRepository(),
+            studyProgressStateHolder = studyProgressStateHolder(repository),
+        )
+
+        advanceUntilIdle()
+
+        val state = assertIs<LearningLessonUiState.Content>(viewModel.uiState.value)
+        assertEquals("Title of lesson_a", state.title)
+        assertEquals(StudyProgressUiState.Loading, state.studyState)
+
+        gate.complete(Unit)
+        advanceUntilIdle()
+        assertEquals(false, studyModel(viewModel).isStudied)
+    }
+
+    @Test
+    fun anUnstudiedLessonReportsNotStudied() = runViewModelTest {
+        val viewModel = studyViewModel(FakeLessonStudyRepository(StudiedLesson("lesson_b", 1_000)))
+
+        assertEquals(LessonStudyUiModel(isStudied = false, isPending = false), studyModel(viewModel))
+    }
+
+    @Test
+    fun aStudiedLessonReportsStudied() = runViewModelTest {
+        val viewModel = studyViewModel(FakeLessonStudyRepository(StudiedLesson("lesson_a", 1_000)))
+
+        assertEquals(LessonStudyUiModel(isStudied = true, isPending = false), studyModel(viewModel))
+    }
+
+    /**
+     * An unreadable study record costs the indicator and nothing else: the Lesson, its neighbours,
+     * and its Sources are all still there, and the page is not an Error.
+     */
+    @Test
+    fun anUnreadableStudyRecordLeavesTheLessonReadableAndItsStudyStateUnavailable() =
+        runViewModelTest {
+            val repository = FakeLessonStudyRepository(StudiedLesson("lesson_a", 1_000))
+            repository.failReads = true
+            val viewModel = viewModel(
+                unitId = "unit_a",
+                lessonId = "lesson_a",
+                repository = lessonRepository(),
+                studyProgressStateHolder = studyProgressStateHolder(repository),
+            )
+
+            advanceUntilIdle()
+
+            val state = assertIs<LearningLessonUiState.Content>(viewModel.uiState.value)
+            assertEquals("Title of lesson_a", state.title)
+            assertEquals(2, state.sources.size)
+            assertEquals(StudyProgressUiState.Unavailable, state.studyState)
+        }
+
+    /**
+     * The boundary the whole epic rests on: arriving at a Lesson is not studying it. Asserted on the
+     * repository rather than on a screen callback, because a ViewModel that marked on load would
+     * never reach the callback layer at all.
+     */
+    @Test
+    fun openingALessonPersistsNothing() = runViewModelTest {
+        val repository = FakeLessonStudyRepository()
+        studyViewModel(repository)
+
+        assertEquals(emptyList(), repository.markCalls)
+        assertEquals(emptyList(), repository.unmarkCalls)
+        assertEquals(0, repository.isStudiedCalls)
+    }
+
+    /** Nor is moving to a sibling: a second reader over the same holder writes nothing either. */
+    @Test
+    fun openingASiblingLessonPersistsNothing() = runViewModelTest {
+        val repository = FakeLessonStudyRepository()
+        val holder = studyProgressStateHolder(repository)
+        viewModel("unit_a", "lesson_a", lessonRepository(), holder)
+        advanceUntilIdle()
+        viewModel("unit_a", "lesson_b", lessonRepository(), holder)
+        advanceUntilIdle()
+
+        assertEquals(emptyList(), repository.markCalls)
+        assertEquals(emptyList(), repository.unmarkCalls)
+    }
+
+    @Test
+    fun markingStudiedPersistsAndThenReportsWhatWasReadBack() = runViewModelTest {
+        val repository = FakeLessonStudyRepository()
+        val viewModel = studyViewModel(repository)
+
+        viewModel.toggleStudied()
+        advanceUntilIdle()
+
+        assertEquals(listOf("lesson_a"), repository.markCalls)
+        assertEquals(LessonStudyUiModel(isStudied = true, isPending = false), studyModel(viewModel))
+    }
+
+    @Test
+    fun unmarkingStudiedReversesIt() = runViewModelTest {
+        val repository = FakeLessonStudyRepository(StudiedLesson("lesson_a", 1_000))
+        val viewModel = studyViewModel(repository)
+
+        viewModel.toggleStudied()
+        advanceUntilIdle()
+
+        assertEquals(listOf("lesson_a"), repository.unmarkCalls)
+        assertEquals(false, studyModel(viewModel).isStudied)
+    }
+
+    /** A write in flight is reported as pending, and the persisted value is what stays visible. */
+    @Test
+    fun aPendingMarkKeepsThePersistedValueVisible() = runViewModelTest {
+        val repository = FakeLessonStudyRepository()
+        val viewModel = studyViewModel(repository)
+        repository.writeGate = CompletableDeferred()
+
+        viewModel.toggleStudied()
+        advanceUntilIdle()
+
+        assertEquals(LessonStudyUiModel(isStudied = false, isPending = true), studyModel(viewModel))
+    }
+
+    @Test
+    fun aFailedMarkNeverShowsTheLessonAsStudied() = runViewModelTest {
+        val repository = FakeLessonStudyRepository()
+        val viewModel = studyViewModel(repository)
+        repository.failMutations = true
+
+        viewModel.toggleStudied()
+        advanceUntilIdle()
+
+        assertEquals(LessonStudyUiModel(isStudied = false, isPending = false), studyModel(viewModel))
+    }
+
+    @Test
+    fun aFailedUnmarkLeavesTheLessonStudied() = runViewModelTest {
+        val repository = FakeLessonStudyRepository(StudiedLesson("lesson_a", 1_000))
+        val viewModel = studyViewModel(repository)
+        repository.failMutations = true
+
+        viewModel.toggleStudied()
+        advanceUntilIdle()
+
+        assertEquals(LessonStudyUiModel(isStudied = true, isPending = false), studyModel(viewModel))
+    }
+
+    private fun TestScope.studyViewModel(
+        studyRepository: FakeLessonStudyRepository,
+    ): LearningLessonViewModel =
+        viewModel(
+            unitId = "unit_a",
+            lessonId = "lesson_a",
+            repository = lessonRepository(),
+            studyProgressStateHolder = studyProgressStateHolder(studyRepository),
+        ).also { advanceUntilIdle() }
+
+    private fun studyModel(viewModel: LearningLessonViewModel): LessonStudyUiModel {
+        val state = assertIs<LearningLessonUiState.Content>(viewModel.uiState.value)
+        return assertIs<StudyProgressUiState.Available<LessonStudyUiModel>>(state.studyState).value
+    }
+
+    private fun lessonRepository(): FakeLearningContentRepository =
+        FakeLearningContentRepository(
+            units = listOf(
+                testLearningUnit(
+                    "unit_a",
+                    lessons = listOf(
+                        testLearningLesson(
+                            "lesson_a",
+                            sources = listOf(
+                                SourceReference("First source", "https://example.test/a"),
+                                SourceReference("Second source", "https://example.test/b"),
+                            ),
+                        ),
+                        testLearningLesson("lesson_b"),
+                    ),
+                ),
+            ),
+        )
+
+    private fun TestScope.viewModel(
         unitId: String,
         lessonId: String,
         repository: LearningContentRepository,
+        studyProgressStateHolder: StudyProgressStateHolder = studyProgressStateHolder(),
     ): LearningLessonViewModel =
         LearningLessonViewModel(
             unitId = unitId,
             lessonId = lessonId,
             learningContentRepository = repository,
+            studyProgressStateHolder = studyProgressStateHolder,
         )
 
     private fun runViewModelTest(block: suspend TestScope.() -> Unit) = runTest {

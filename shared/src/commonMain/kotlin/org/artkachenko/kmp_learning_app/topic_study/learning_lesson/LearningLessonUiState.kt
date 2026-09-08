@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app.topic_study.learning_lesson
 
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningSection
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressUiState
 
 /**
  * The Lesson destination's state.
@@ -25,6 +26,12 @@ internal sealed interface LearningLessonUiState {
      * [previousLesson] and [nextLesson] are presentation models rather than whole Lessons: the
      * controls need a stable ID to navigate by and a title to show, and handing the screen a
      * `LearningLesson` would give it a second Lesson's entire body to render by accident.
+     *
+     * [studyState] is nested inside Content rather than being a fourth screen state, because the
+     * learner's study record and the learning document fail independently: an unreadable record
+     * costs the studied indicator and the mark control, while the Lesson itself still reads
+     * perfectly well. Promoting it would turn a missing indicator into a page the learner cannot
+     * read at all.
      */
     data class Content(
         val unitId: String,
@@ -35,6 +42,7 @@ internal sealed interface LearningLessonUiState {
         val sources: List<SourceReference>,
         val previousLesson: AdjacentLessonUiModel?,
         val nextLesson: AdjacentLessonUiModel?,
+        val studyState: StudyProgressUiState<LessonStudyUiModel> = StudyProgressUiState.Loading,
     ) : LearningLessonUiState
 
     /**
@@ -57,4 +65,18 @@ internal sealed interface LearningLessonUiState {
 internal data class AdjacentLessonUiModel(
     val lessonId: String,
     val title: String,
+)
+
+/**
+ * The learner's persisted study record for the Lesson on screen, and whether a change to it is
+ * still being written.
+ *
+ * [isStudied] is only ever the last value read back from persistence. Nothing else on this screen
+ * may produce it: not scroll position, not the reading meter, not having pressed Next, and not
+ * assessment history. [isPending] is true only for this Lesson's own write, which is what lets the
+ * control refuse a second tap while still showing the value that is actually stored.
+ */
+internal data class LessonStudyUiModel(
+    val isStudied: Boolean,
+    val isPending: Boolean,
 )

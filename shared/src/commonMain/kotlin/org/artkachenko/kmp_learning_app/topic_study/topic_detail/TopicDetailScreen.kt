@@ -39,6 +39,8 @@ import kmp_learning_app.shared.generated.resources.practice_shortcut_unseen
 import kmp_learning_app.shared.generated.resources.practice_shortcut_weak_area
 import kmp_learning_app.shared.generated.resources.progress_weak_label
 import kmp_learning_app.shared.generated.resources.topic_browser_error
+import kmp_learning_app.shared.generated.resources.learning_study_progress_unavailable
+import kmp_learning_app.shared.generated.resources.learning_unit_lessons_studied
 import kmp_learning_app.shared.generated.resources.topic_detail_accuracy_caption
 import kmp_learning_app.shared.generated.resources.topic_detail_available_questions
 import kmp_learning_app.shared.generated.resources.topic_detail_heading
@@ -54,6 +56,10 @@ import kmp_learning_app.shared.generated.resources.topic_detail_subtopics
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
+import org.artkachenko.kmp_learning_app.lesson_study.LearningUnitStudyProgress
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressSummary
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressUiState
+import org.artkachenko.kmp_learning_app.lesson_study.TopicStudyProgress
 import org.artkachenko.kmp_learning_app.ui.AccuracyHeadline
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
@@ -90,6 +96,10 @@ internal fun subtopicUnseenPracticeTag(subtopicId: String): String =
     "subtopic_unseen_practice_$subtopicId"
 
 internal fun learningUnitCardTag(unitId: String): String = "learning_unit_$unitId"
+
+internal fun learningUnitStudyTag(unitId: String): String = "learning_unit_study_$unitId"
+
+internal const val TopicStudyUnavailableTag = "topic_study_unavailable"
 
 /**
  * How many lazy items sit above the Subtopic rows. The study section, the practice block, and both
@@ -205,6 +215,7 @@ private fun TopicContent(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 StudySection(
                     state = state.learningUnits,
+                    studyProgress = state.studyProgress,
                     onLearningUnitClick = onLearningUnitClick,
                 )
                 // The heading earns its space only when it separates something: a Topic that also
@@ -394,16 +405,36 @@ private fun TopicContent(
 @Composable
 private fun StudySection(
     state: TopicLearningUnitsUiState,
+    studyProgress: StudyProgressUiState<TopicStudyProgress>,
     onLearningUnitClick: ((String) -> Unit)?,
 ) {
     if (!state.hasStudySection) return
     SectionHeading(text = stringResource(Res.string.topic_detail_study))
     // Past the guard the state is either a non-empty list or a failure, and nothing else.
     if (state is TopicLearningUnitsUiState.Available) {
+        // Joined by stable Unit ID rather than by position: the derivation filters to this Topic's
+        // ACTIVE home Units and the row list is built from the same read, but an index would be a
+        // second, weaker identity that stops meaning the same thing the moment either list changes.
+        val unitProgress = studyProgress.unitProgressById
+        // Said once for the section rather than repeated on every card, which would turn one
+        // missing record into a wall of identical notices. Only a failed read speaks: a study
+        // record still being read says nothing, because the Units are already usable without it.
+        if (studyProgress is StudyProgressUiState.Unavailable) {
+            Text(
+                text = stringResource(Res.string.learning_study_progress_unavailable),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag(TopicStudyUnavailableTag),
+            )
+        }
         // Authored order, rendered in the order the repository returned: that sequence is
         // pedagogical and is never re-sorted by title, size, or anything the learner has done.
         state.units.forEach { unit ->
-            LearningUnitCard(unit = unit, onLearningUnitClick = onLearningUnitClick)
+            LearningUnitCard(
+                unit = unit,
+                studyProgress = unitProgress?.get(unit.unitId),
+                onLearningUnitClick = onLearningUnitClick,
+            )
         }
     } else {
         Text(
@@ -438,6 +469,7 @@ private val TopicLearningUnitsUiState.hasStudySection: Boolean
 @Composable
 private fun LearningUnitCard(
     unit: LearningUnitItemUiModel,
+    studyProgress: LearningUnitStudyProgress?,
     onLearningUnitClick: ((String) -> Unit)?,
 ) {
     val modifier = Modifier.fillMaxWidth().testTag(learningUnitCardTag(unit.unitId))
@@ -447,7 +479,7 @@ private fun LearningUnitCard(
     )
     if (onLearningUnitClick == null) {
         Card(modifier = modifier, shape = shape, colors = colors) {
-            LearningUnitCardContent(unit)
+            LearningUnitCardContent(unit, studyProgress)
         }
     } else {
         Card(
@@ -456,17 +488,45 @@ private fun LearningUnitCard(
             shape = shape,
             colors = colors,
         ) {
-            LearningUnitCardContent(unit)
+            LearningUnitCardContent(unit, studyProgress)
         }
     }
 }
 
 /**
- * Title, summary, and how much there is to read. Nothing about the learner: study progress is not
- * modelled anywhere yet, and this row must not be the first place to imply that it is.
+ * The per-Unit study results this screen may annotate its cards with, keyed by stable Unit ID, or
+ * null when study state is not something the screen knows.
+ *
+ * Null for Loading as well as Unavailable, so a card can never show "0 of 3" for a record that has
+ * not been read yet. Derived once for the whole section, so two cards cannot disagree about whether
+ * study state is known.
+ */
+private val StudyProgressUiState<TopicStudyProgress>.unitProgressById:
+    Map<String, LearningUnitStudyProgress>?
+    get() = (this as? StudyProgressUiState.Available)
+        ?.value
+        ?.units
+        ?.associateBy(LearningUnitStudyProgress::unitId)
+
+/**
+ * Title, summary, and how much there is to read — as the learner's own progress through it when
+ * that is known, and as the authored count when it is not.
+ *
+ * The last line is one line either way. "3 lessons" and "1 of 3 lessons studied" answer the same
+ * question with different amounts of information, and showing both would state the total twice. So
+ * the studied form replaces the plain count when a study record has actually been read, and the
+ * plain count stands while the record is loading, unreadable, or describes a Unit with no current
+ * Lessons at all — where `Empty` has no fraction to report and "0 of 0" would read as finished.
+ *
+ * Assessment coverage for this Topic stays where it is, in its own section: studied Lessons are a
+ * claim about reading and coverage is measured from attempts, so the two are never shown as one
+ * figure.
  */
 @Composable
-private fun LearningUnitCardContent(unit: LearningUnitItemUiModel) {
+private fun LearningUnitCardContent(
+    unit: LearningUnitItemUiModel,
+    studyProgress: LearningUnitStudyProgress?,
+) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(AppSpacing.Comfortable),
         verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
@@ -481,14 +541,29 @@ private fun LearningUnitCardContent(unit: LearningUnitItemUiModel) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        val summary = studyProgress?.summary as? StudyProgressSummary.Progress
         Text(
-            text = pluralStringResource(
-                Res.plurals.topic_detail_learning_unit_lessons,
-                unit.activeLessonCount,
-                unit.activeLessonCount,
-            ),
+            text = if (summary == null) {
+                pluralStringResource(
+                    Res.plurals.topic_detail_learning_unit_lessons,
+                    unit.activeLessonCount,
+                    unit.activeLessonCount,
+                )
+            } else {
+                pluralStringResource(
+                    Res.plurals.learning_unit_lessons_studied,
+                    summary.totalCount,
+                    summary.studiedCount,
+                    summary.totalCount,
+                )
+            },
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = if (summary == null) {
+                Modifier
+            } else {
+                Modifier.testTag(learningUnitStudyTag(unit.unitId))
+            },
         )
     }
 }

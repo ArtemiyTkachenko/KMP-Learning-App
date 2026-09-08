@@ -47,6 +47,7 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.curriculumDataModu
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImportResult
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImporter
 import org.artkachenko.kmp_learning_app.data.local.curriculum.repository.LocalCurriculumRepository
+import org.artkachenko.kmp_learning_app.data.local.lesson_study.lessonStudyDataModule
 import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicPracticeButtonTag
@@ -193,7 +194,11 @@ internal class TopicDiscoveryIntegrationTest {
             waitForText(ThinkingInComposeUnitTitle)
             onNodeWithText("Study").assertIsDisplayed()
             onNodeWithText(ThinkingInComposeUnitTitle).assertIsDisplayed()
-            onNodeWithText("3 lessons").assertIsDisplayed()
+            // The Unit's line becomes the learner's own progress once the real study table has
+            // been read, which on a fresh database is an honest "0 of 3" rather than the authored
+            // total. Waited for rather than asserted immediately: study state is read beside the
+            // Topic, not before it.
+            waitForText("0 of 3 lessons studied")
             onNodeWithText("Topic not available").assertDoesNotExist()
             assertNoPracticeQuestionOnScreen()
         }
@@ -416,6 +421,7 @@ internal class TopicDiscoveryIntegrationTest {
                                         learningContentModule,
                                         assessmentDataModule,
                                         savedQuestionDataModule,
+                                        lessonStudyDataModule,
                                         topicStudyPresentationModule,
                                         module {
                                             single<CurriculumDatabase> { db }

@@ -184,8 +184,9 @@ the only input that can produce Loading, Empty, or Error, so an unreadable
 learning document costs a row its availability badge and nothing else. The count
 is nullable on purpose — `null` is availability nobody could read, `0` is a
 successful read that found no authored material, and only a positive count
-renders a badge. It is publisher-owned availability only; there is no
-lesson-completion or studied-state model in E21.
+renders a badge. It is publisher-owned availability only, and it stays that way:
+E22-04 deliberately added no aggregate study progress to the browser, for the
+reasons recorded in [study progress](study-progress.md).
 
 Topic Detail is the second consumer, and E21-02 corrected its state model to
 make room for it. A Topic is now two independent capabilities — study and
@@ -340,5 +341,17 @@ learner marked, described in [persistence](persistence.md), and
 `StudyProgressDerivation` intersects them with the current ACTIVE hierarchy to
 derive Unit and Topic progress on demand, persisting no aggregate. What studied
 means, and what happens to a record when a Lesson is re-authored or retired, is
-the [study progress](study-progress.md) contract; the mark/unmark control and
-Continue Learning are not implemented yet.
+the [study progress](study-progress.md) contract.
+
+E22-04 surfaces that state on the Learn stack. `StudyProgressStateHolder` is a
+single app-scoped projection of the study table, registered in
+`topicStudyPresentationModule` beside `SavedQuestionStateHolder` and observed by
+all three Learn ViewModels — which is what lets a Lesson marked in the reader
+update the Unit overview and Topic Detail still alive beneath it, without either
+being rebuilt or its publisher document re-read. The Lesson reader carries the
+one explicit, reversible mark control; the Unit overview and Topic Detail carry
+read-only indicators. Every surface models study state as
+`StudyProgressUiState` — `Loading`, `Available`, `Unavailable` — nested inside
+its content state, so an unreadable study record costs an indicator rather than a
+screen and never touches practice. Nothing is drawn before it is persisted and
+read back. Continue Learning is not implemented yet.

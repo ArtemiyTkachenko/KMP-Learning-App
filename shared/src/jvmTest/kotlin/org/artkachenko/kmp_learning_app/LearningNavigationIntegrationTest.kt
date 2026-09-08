@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.artkachenko.kmp_learning_app.curriculum.learning.content.BundledLearningContentRepository
 import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
+import org.artkachenko.kmp_learning_app.lesson_study.studyProgressStateHolder
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.AdjacentLessonUiModel
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonUiState
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonViewModel
@@ -190,7 +191,7 @@ internal class LearningNavigationIntegrationTest {
         unitId: String,
         repository: LearningContentRepository,
     ): LearningUnitUiState {
-        val viewModel = LearningUnitViewModel(unitId, repository)
+        val viewModel = LearningUnitViewModel(unitId, repository, studyProgressStateHolder())
         advanceUntilIdle()
         return viewModel.uiState.value
     }
@@ -200,7 +201,8 @@ internal class LearningNavigationIntegrationTest {
         lessonId: String,
         repository: LearningContentRepository,
     ): LearningLessonUiState {
-        val viewModel = LearningLessonViewModel(unitId, lessonId, repository)
+        val viewModel =
+            LearningLessonViewModel(unitId, lessonId, repository, studyProgressStateHolder())
         advanceUntilIdle()
         return viewModel.uiState.value
     }

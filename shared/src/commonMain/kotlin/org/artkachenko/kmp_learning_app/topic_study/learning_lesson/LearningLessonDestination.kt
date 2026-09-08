@@ -21,6 +21,10 @@ import org.koin.core.parameter.parametersOf
  * does to the back stack. A Source, by contrast, never becomes navigation at all: it is an external
  * URI opened through Compose's own `LocalUriHandler`, so no Source URL is serialized into a route
  * and no platform browser API reaches this shared code.
+ *
+ * Marking studied is not navigation either: it stays inside the ViewModel and the app-scoped study
+ * projection, so no shell callback exists that could persist a study fact as a side effect of
+ * moving around the Learn stack.
  */
 @Composable
 internal fun LearningLessonDestination(
@@ -50,5 +54,9 @@ internal fun LearningLessonDestination(
             failedSourceUrl = url.takeIf { runCatching { uriHandler.openUri(it) }.isFailure }
         },
         failedSourceUrl = failedSourceUrl,
+        // The only study mutation on the Learn stack. It reaches the app-scoped projection through
+        // the ViewModel, which already knows which Lesson the route is showing, so no Lesson
+        // identity travels out of the screen to be marked.
+        onToggleStudied = viewModel::toggleStudied,
     )
 }

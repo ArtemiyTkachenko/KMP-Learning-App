@@ -1,17 +1,19 @@
 package org.artkachenko.kmp_learning_app.topic_study.topic_detail
 
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
@@ -23,6 +25,11 @@ import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
+import org.artkachenko.kmp_learning_app.lesson_study.LearningUnitStudyProgress
+import org.artkachenko.kmp_learning_app.lesson_study.LessonStudyProgress
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressSummary
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressUiState
+import org.artkachenko.kmp_learning_app.lesson_study.TopicStudyProgress
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 
 @OptIn(ExperimentalTestApi::class)
@@ -572,6 +579,180 @@ internal class TopicDetailScreenTest {
         assertTrue(first < second, "Authored order must survive rendering.")
     }
 
+
+    /**
+     * Each Unit card shows the learner's own progress through it, joined by stable Unit ID, and the
+     * Units keep their authored order while carrying different counts.
+     */
+    @Test
+    fun eachUnitCardShowsItsCurrentStudyProgress() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningUnits = TopicLearningUnitsUiState.Available(
+                            listOf(
+                                learningUnitItem("unit_a", "Thinking in Compose", lessons = 3),
+                                learningUnitItem("unit_b", "State in Compose", lessons = 1),
+                            ),
+                        ),
+                        studyProgress = topicStudyProgress(
+                            Triple("unit_a", 1, 3),
+                            Triple("unit_b", 1, 1),
+                        ),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                    onLearningUnitClick = {},
+                )
+            }
+        }
+
+        onNodeWithTag(learningUnitCardTag("unit_a")).assert(hasText("1 of 3 lessons studied"))
+        // The plural resource selects the singular form from the total, not from the numerator.
+        onNodeWithTag(learningUnitCardTag("unit_b")).assert(hasText("1 of 1 lesson studied"))
+        // The studied line replaces the authored count rather than repeating the total beside it.
+        onNodeWithText("3 lessons").assertDoesNotExist()
+    }
+
+    /**
+     * A study-record failure costs the figures and nothing else: the authored Units are still shown
+     * and still clickable, practice is untouched, and no card claims a count nobody could read.
+     */
+    @Test
+    fun anUnavailableStudyRecordKeepsUnitsAndPracticeWithoutFabricatingCounts() = runComposeUiTest {
+        val selected = mutableListOf<String>()
+        var practiceCount = 0
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        subtopics = listOf(
+                            SubtopicPracticeItem(Subtopic("subtopic_a", "topic_a", "Subtopic A"), 10),
+                        ),
+                        learningUnits = TopicLearningUnitsUiState.Available(
+                            listOf(learningUnitItem("unit_a", "Thinking in Compose", lessons = 3)),
+                        ),
+                        studyProgress = StudyProgressUiState.Unavailable,
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = { practiceCount += 1 },
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                    onLearningUnitClick = selected::add,
+                )
+            }
+        }
+
+        // Said once for the section rather than repeated inside every card.
+        onNodeWithTag(TopicStudyUnavailableTag).assertIsDisplayed()
+        onNodeWithText("Study progress unavailable").assertIsDisplayed()
+        onNodeWithText("0 of 3 lessons studied").assertDoesNotExist()
+        // The authored count is the truthful fallback, and the Unit is still an ordinary target.
+        onNodeWithTag(learningUnitCardTag("unit_a")).assert(hasText("3 lessons"))
+        onNodeWithTag(learningUnitCardTag("unit_a")).performClick()
+        assertEquals(listOf("unit_a"), selected)
+        // Learning availability is a different question and is unchanged by this.
+        onNodeWithText("Learning material could not be loaded.").assertDoesNotExist()
+        onNodeWithTag(TopicPracticeButtonTag).performClick()
+        assertEquals(1, practiceCount)
+    }
+
+    /** While the record is still being read the screen says nothing and stays fully practiceable. */
+    @Test
+    fun aLoadingStudyRecordKeepsUnitsAndPracticeVisibleWithoutAZeroCount() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningUnits = TopicLearningUnitsUiState.Available(
+                            listOf(learningUnitItem("unit_a", "Thinking in Compose", lessons = 3)),
+                        ),
+                        studyProgress = StudyProgressUiState.Loading,
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                    onLearningUnitClick = {},
+                )
+            }
+        }
+
+        onNodeWithText("Thinking in Compose").assertIsDisplayed()
+        onNodeWithTag(learningUnitCardTag("unit_a")).assert(hasText("3 lessons"))
+        onNodeWithText("0 of 3 lessons studied").assertDoesNotExist()
+        onNodeWithTag(TopicStudyUnavailableTag).assertDoesNotExist()
+        onNodeWithTag(TopicPracticeButtonTag).assertIsDisplayed()
+    }
+
+    /**
+     * A Unit whose Lessons have all been retired has no fraction to show. Its authored count stays
+     * truthful rather than becoming "0 of 0 studied" — which would read as finished.
+     */
+    @Test
+    fun aUnitWithNoActiveLessonsKeepsItsAuthoredCountRatherThanAnEmptyFraction() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningUnits = TopicLearningUnitsUiState.Available(
+                            listOf(learningUnitItem("unit_a", "Retired Unit", lessons = 0)),
+                        ),
+                        studyProgress = topicStudyProgress(Triple("unit_a", 0, 0)),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                    onLearningUnitClick = {},
+                )
+            }
+        }
+
+        onNodeWithText("0 of 0 lessons studied").assertDoesNotExist()
+        onNodeWithText("100%").assertDoesNotExist()
+        onNodeWithTag(learningUnitCardTag("unit_a")).assert(hasText("0 lessons"))
+    }
+
+    /**
+     * Study progress is not assessment coverage. Both may be on screen at once, and neither figure
+     * is derived from or replaced by the other.
+     */
+    @Test
+    fun studyProgressAndAssessmentCoverageAreShownAsSeparateMeasures() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningUnits = TopicLearningUnitsUiState.Available(
+                            listOf(learningUnitItem("unit_a", "Thinking in Compose", lessons = 3)),
+                        ),
+                        studyProgress = topicStudyProgress(Triple("unit_a", 3, 3)),
+                        learningContext = learningContext(12, 26, accuracy = 76.0),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        // Every Lesson studied, and the Topic's assessment coverage is untouched by that.
+        onNodeWithText("3 of 3 lessons studied").assertIsDisplayed()
+        onNodeWithText("12 of 26 questions explored").assertIsDisplayed()
+        onNodeWithText("76%").assertIsDisplayed()
+        onNodeWithText("Mastered").assertDoesNotExist()
+    }
+
     @Test
     fun loadingAndErrorStatesRenderActions() = runComposeUiTest {
         var retryCount = 0
@@ -949,6 +1130,7 @@ private fun topicContent(
     learningContext: LearningContextUiModel? = null,
     subtopics: List<SubtopicPracticeItem> = emptyList(),
     learningUnits: TopicLearningUnitsUiState = TopicLearningUnitsUiState.Loading,
+    studyProgress: StudyProgressUiState<TopicStudyProgress> = StudyProgressUiState.Loading,
 ): TopicDetailUiState.Content =
     TopicDetailUiState.Content(
         topic = Topic("topic_a", "Topic A"),
@@ -956,7 +1138,38 @@ private fun topicContent(
         subtopics = subtopics,
         learningUnits = learningUnits,
         learningContext = learningContext,
+        studyProgress = studyProgress,
     )
+
+/**
+ * Study progress for the named Units, each as `studied of total` Lessons.
+ *
+ * Built as the E22-03 result the ViewModel really derives, rather than as a presentation shortcut,
+ * so the join the screen performs is exercised on the real shape.
+ */
+private fun topicStudyProgress(
+    vararg units: Triple<String, Int, Int>,
+): StudyProgressUiState<TopicStudyProgress> {
+    val unitProgress = units.map { (unitId, studied, total) ->
+        LearningUnitStudyProgress(
+            unitId = unitId,
+            lessons = (0 until total).map {
+                LessonStudyProgress(lessonId = "${unitId}_lesson_$it", isStudied = it < studied)
+            },
+            summary = StudyProgressSummary.of(studied, total),
+        )
+    }
+    return StudyProgressUiState.Available(
+        TopicStudyProgress(
+            topicId = "topic_a",
+            units = unitProgress,
+            summary = StudyProgressSummary.of(
+                studiedCount = units.sumOf { it.second },
+                totalCount = units.sumOf { it.third },
+            ),
+        ),
+    )
+}
 
 private fun learningUnitItem(
     unitId: String,

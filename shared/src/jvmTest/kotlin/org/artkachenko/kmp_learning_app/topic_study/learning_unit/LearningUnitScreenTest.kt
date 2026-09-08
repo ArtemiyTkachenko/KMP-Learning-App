@@ -1,16 +1,27 @@
 package org.artkachenko.kmp_learning_app.topic_study.learning_unit
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import org.artkachenko.kmp_learning_app.lesson_study.LearningUnitStudyProgress
+import org.artkachenko.kmp_learning_app.lesson_study.LessonStudyProgress
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressSummary
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressUiState
 
 @OptIn(ExperimentalTestApi::class)
 internal class LearningUnitScreenTest {
@@ -207,6 +218,208 @@ internal class LearningUnitScreenTest {
         onNodeWithTag(LearningUnitPracticeButtonTag).assertDoesNotExist()
     }
 
+
+    /**
+     * Both values are stated in words on every row. An unstudied Lesson must not simply be blank:
+     * blank is what an unknown study record looks like, and the two must not be confusable.
+     */
+    @Test
+    fun everyLessonRowStatesWhetherItIsStudied() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                LearningUnitScreen(studyContent(available(studied = setOf("lesson_b"))), {}, {}, {}, {})
+            }
+        }
+
+        // Asserted on the merged row, which is the node a screen reader announces: the state has
+        // to reach the same tree the title and summary do.
+        onNodeWithTag(learningLessonRowTag("lesson_a")).assert(hasText("Not studied"))
+        onNodeWithTag(learningLessonRowTag("lesson_b")).assert(hasText("Studied"))
+        onNodeWithTag(learningLessonRowTag("lesson_c")).assert(hasText("Not studied"))
+    }
+
+    /** Study progress annotates the authored order; it never re-orders, hides, or locks a row. */
+    @Test
+    fun studiedLessonsStayInAuthoredOrderAndEveryRowStaysClickable() = runComposeUiTest {
+        val clicked = mutableListOf<String>()
+        setContent {
+            MaterialTheme {
+                LearningUnitScreen(
+                    state = studyContent(available(studied = setOf("lesson_c"))),
+                    onBack = {},
+                    onLessonClick = { clicked += it },
+                    onPracticeUnit = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        val positions = StudyLessonIds.map {
+            onNodeWithTag(learningLessonRowTag(it)).fetchSemanticsNode().positionInRoot.y
+        }
+        assertTrue(positions == positions.sorted(), "Authored order was not preserved: $positions")
+
+        // The studied Lesson and the unstudied ones are all ordinary navigation targets.
+        onNodeWithTag(learningLessonRowTag("lesson_c")).performClick()
+        onNodeWithTag(learningLessonRowTag("lesson_a")).performClick()
+        assertEquals(listOf("lesson_c", "lesson_a"), clicked)
+    }
+
+    @Test
+    fun partialUnitProgressRendersTheCountAndItsMeter() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                LearningUnitScreen(studyContent(available(studied = setOf("lesson_b"))), {}, {}, {}, {})
+            }
+        }
+
+        onNodeWithTag(LearningUnitStudyProgressTag).assertIsDisplayed()
+        onNodeWithText("1 of 3 lessons studied").assertIsDisplayed()
+    }
+
+    @Test
+    fun aFullyStudiedUnitSaysSoWithoutMasteryLanguage() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                LearningUnitScreen(
+                    state = studyContent(
+                        available(studied = setOf("lesson_a", "lesson_b", "lesson_c")),
+                    ),
+                    onBack = {},
+                    onLessonClick = {},
+                    onPracticeUnit = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("3 of 3 lessons studied").assertIsDisplayed()
+        onNodeWithText("Mastered").assertDoesNotExist()
+    }
+
+    /** `Empty` has no fraction: 0 / 0 reads as finished and 0% claims work that does not exist. */
+    @Test
+    fun anEmptyUnitIsNeverRenderedAsZeroOrOneHundredPercent() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                LearningUnitScreen(
+                    state = LearningUnitUiState.Content(
+                        unitId = "unit_thinking_in_compose",
+                        title = "Thinking in Compose",
+                        summary = "Why Compose changes how UI is written.",
+                        lessons = emptyList(),
+                        studyProgress = StudyProgressUiState.Available(
+                            LearningUnitStudyProgress(
+                                unitId = "unit_thinking_in_compose",
+                                lessons = emptyList(),
+                                summary = StudyProgressSummary.Empty,
+                            ),
+                        ),
+                    ),
+                    onBack = {},
+                    onLessonClick = {},
+                    onPracticeUnit = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(LearningUnitStudyProgressTag).assertDoesNotExist()
+        onNodeWithText("0%").assertDoesNotExist()
+        onNodeWithText("100%").assertDoesNotExist()
+        onNodeWithText("0 of 0 lessons studied").assertDoesNotExist()
+        // The existing explanation is the honest one and is unchanged.
+        onNodeWithText("No lessons are currently available in this unit.").assertIsDisplayed()
+    }
+
+    /** A record still being read says nothing: not an aggregate, and not a row label. */
+    @Test
+    fun aLoadingStudyRecordRendersNoFalseZeroAndNoRowLabels() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                LearningUnitScreen(studyContent(StudyProgressUiState.Loading), {}, {}, {}, {})
+            }
+        }
+
+        onNodeWithTag(LearningUnitStudyProgressTag).assertDoesNotExist()
+        onNodeWithText("0 of 3 lessons studied").assertDoesNotExist()
+        onNodeWithText("Not studied").assertDoesNotExist()
+        onNodeWithText("Studied").assertDoesNotExist()
+    }
+
+    /**
+     * A study-record failure costs the indicators and nothing else: the Unit is not an Error, the
+     * rows are all still there and still clickable, and practice is untouched.
+     */
+    @Test
+    fun anUnavailableStudyRecordLeavesEveryLessonAndPracticeUsable() = runComposeUiTest {
+        val clicked = mutableListOf<String>()
+        var practiceCount = 0
+        setContent {
+            MaterialTheme {
+                LearningUnitScreen(
+                    state = studyContent(StudyProgressUiState.Unavailable),
+                    onBack = {},
+                    onLessonClick = { clicked += it },
+                    onPracticeUnit = { practiceCount += 1 },
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(LearningUnitStudyUnavailableTag).assertIsDisplayed()
+        onNodeWithText("Study progress unavailable").assertIsDisplayed()
+        // Never every Lesson shown as unstudied.
+        onNodeWithText("Not studied").assertDoesNotExist()
+        onNodeWithTag(LearningUnitStudyProgressTag).assertDoesNotExist()
+        onNodeWithText("Retry").assertDoesNotExist()
+
+        onNodeWithTag(learningLessonRowTag("lesson_b")).performClick()
+        assertEquals(listOf("lesson_b"), clicked)
+        onNodeWithTag(LearningUnitPracticeButtonTag).performClick()
+        assertEquals(1, practiceCount)
+    }
+
+    /** The phone-shaped contract: the aggregate, the rows, and practice all fit and stay usable. */
+    @Test
+    fun theUnitStaysUsableAtANarrowWidth() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                Box(Modifier.size(NarrowWidth, NarrowHeight)) {
+                    LearningUnitScreen(
+                        state = studyContent(available(studied = setOf("lesson_b"))),
+                        onBack = {},
+                        onLessonClick = {},
+                        onPracticeUnit = {},
+                        onRetry = {},
+                    )
+                }
+            }
+        }
+
+        onNodeWithTag(LearningUnitPracticeButtonTag).assertIsDisplayed()
+        onNodeWithText("1 of 3 lessons studied").assertIsDisplayed()
+        onNodeWithTag(learningLessonRowTag("lesson_a")).performScrollTo().assertIsDisplayed()
+        onNodeWithTag(learningLessonRowTag("lesson_c"))
+            .performScrollTo()
+            .assertIsDisplayed()
+            .assert(hasText("Not studied"))
+    }
+
+    private fun available(studied: Set<String>): StudyProgressUiState<LearningUnitStudyProgress> =
+        StudyProgressUiState.Available(
+            LearningUnitStudyProgress(
+                unitId = "unit_thinking_in_compose",
+                lessons = listOf("lesson_a", "lesson_b", "lesson_c").map {
+                    LessonStudyProgress(lessonId = it, isStudied = it in studied)
+                },
+                summary = StudyProgressSummary.Progress(
+                    studiedCount = studied.size,
+                    totalCount = 3,
+                ),
+            ),
+        )
+
     private fun content(): LearningUnitUiState.Content =
         LearningUnitUiState.Content(
             unitId = "unit_thinking_in_compose",
@@ -225,4 +438,27 @@ internal class LearningUnitScreenTest {
                 ),
             ),
         )
+
+    /** Three Lessons, so a partially studied Unit has a fraction that is neither 0 nor complete. */
+    private fun studyContent(
+        studyProgress: StudyProgressUiState<LearningUnitStudyProgress>,
+    ): LearningUnitUiState.Content =
+        LearningUnitUiState.Content(
+            unitId = "unit_thinking_in_compose",
+            title = "Thinking in Compose",
+            summary = "Why Compose changes how UI is written.",
+            lessons = StudyLessonIds.map {
+                LearningLessonItemUiModel(
+                    lessonId = it,
+                    title = "Title of $it",
+                    summary = "Summary of $it",
+                )
+            },
+            studyProgress = studyProgress,
+        )
 }
+
+private val StudyLessonIds = listOf("lesson_a", "lesson_b", "lesson_c")
+
+private val NarrowWidth = 360.dp
+private val NarrowHeight = 640.dp

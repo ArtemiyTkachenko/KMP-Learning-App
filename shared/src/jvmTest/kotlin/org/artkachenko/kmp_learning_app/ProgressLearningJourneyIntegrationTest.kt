@@ -71,6 +71,7 @@ import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
 import org.artkachenko.kmp_learning_app.progress.ProgressRecentTrendChartTag
 import org.artkachenko.kmp_learning_app.progress.progressHistoryCardTag
 import org.artkachenko.kmp_learning_app.progress.progressTopicCardTag
+import org.artkachenko.kmp_learning_app.data.local.lesson_study.lessonStudyDataModule
 import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserContinueStudyingTag
@@ -313,6 +314,7 @@ internal class ProgressLearningJourneyIntegrationTest {
                 learningContentModule,
                 assessmentDataModule,
                 savedQuestionDataModule,
+                lessonStudyDataModule,
                 topicStudyPresentationModule,
                 module {
                     single<CurriculumDatabase> { database }

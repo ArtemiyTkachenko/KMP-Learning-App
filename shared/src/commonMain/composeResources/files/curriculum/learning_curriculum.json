@@ -2451,7 +2451,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The middle row is where the real advice lives. If a caller rebuilds an object on every pass — mapping a domain type into a UI type in a composable body, say — the child receives a different instance every time and no amount of stability annotation on the child's parameter type will change that, because the annotation cannot make a new object be an old one. What changes it is holding the value still: `remember` it against the inputs it derives from, or hoist the mapping out of composition entirely."
+                  "text": "The middle row is where the real advice lives, and it has two exits rather than one. If a caller rebuilds an object on every pass — mapping a domain type into a UI type in a composable body, say — the child receives a different instance every time, and under instance comparison a new object is never the old one however equal its contents are."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The first exit is to stop rebuilding it. `remember` the value against the inputs it derives from, or hoist the mapping out of composition entirely, so that the same instance is passed again and the first row applies instead. The second exit is to change which comparison is used, because that is precisely what stability decides: a parameter whose type the compiler treats as stable is compared with `equals`, and a fresh but equal value is then unchanged. That second exit is a promise about the type rather than a switch on the call, which is the next lesson's subject — the useful summary here is that the first exit is always available to you, and the second is available only when the type genuinely deserves it."
                 },
                 {
                   "type": "paragraph",
@@ -2654,7 +2658,15 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Which leaves the actual design question, and it is not \"which annotation\". It is what kind of thing this type is. Screen state is a value, and values want to be immutable data classes over read-only collections, at which point the compiler infers everything on its own and there is nothing to annotate. Something that holds live, changing state for the UI — a form, a controller, a scroll position — is not a value and should not be pretending to be one; it should expose its changes through observable state and may then honestly be `@Stable`. Almost every case where an annotation feels necessary is a case where those two kinds of type have been mixed together."
+                  "text": "Which leaves the actual design question, and it is not \"which annotation\". It is what kind of thing this type is. Screen state is a value, and values want to be data classes of `val` properties whose nested data is itself made of values. Something that holds live, changing state for the UI — a form, a controller, a scroll position — is not a value and should not be pretending to be one; it should expose its changes through observable state and may then honestly be `@Stable`. Almost every case where an annotation feels necessary is a case where those two kinds of type have been mixed together."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One caveat on the first of those, because it is exactly where domain reasoning and compiler reasoning come apart. A data class whose properties are all `val`s of primitive types is inferred stable with nothing left to annotate. A data class holding an ordinary Kotlin `List` is not the same case: the documented rule is that collections are always treated as unstable, because their immutability cannot be guaranteed, and your discipline in never mutating that list is invisible to the analysis. Building the type out of values is still the right thing to do — it is what makes `equals` meaningful and what makes the previous lesson's failures impossible — but it does not by itself settle how the compiler classifies the type."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So if a stable comparison is genuinely needed for a type like that, the honest routes are the ones already named: a persistent immutable collection, a stability configuration entry, or an annotation whose contract you have actually checked. What is not honest is assuming the classification went your way. Which one this project's compiler actually applies is the observation the previous lesson recorded and told you not to design against, and that advice is unchanged here."
                 },
                 {
                   "type": "callout",

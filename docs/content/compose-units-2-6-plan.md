@@ -544,6 +544,8 @@ each composable a `remember`ed token, so a changed token means a discarded remem
 | A stable value equal to the previous one is skipped | Parent 3, child 1 |
 | A `@Stable` type whose property is backed by `mutableStateOf` still updates its reader when only the property changes | Writing the property left the parent at 1 execution and ran the child a second time; a later unrelated parent invalidation with the same instance skipped the child |
 | A type whose `equals` ignores the mutable data the UI displays produces a stale screen | The composable displaying a track count was never re-executed while the backing list grew from one entry to three |
+| A truthful stability annotation changes which comparison is generated, so a fresh but equal instance is skipped | `data class MutableThing(var label: String)` re-ran 3 times on fresh-but-equal arguments; the identical type annotated `@Stable` ran once. `javap -c` shows `changedInstance` emitted for the first and `changed` for the second |
+| A data class holding an ordinary `List` is *not* statically inferred stable | `javap -c` shows the compiler emitting **both** comparisons for it and deferring to the call site, exactly as it does for a bare `List` parameter — the same runtime resolution described above, not an inference of stability |
 
 ### The Strong Skipping comparison rule did not reproduce for collections
 
@@ -626,6 +628,34 @@ All three Unit 4 gaps stand, and teaching a concept does not close an assessment
   `BundledLearningCurriculumTest.kotlinLanguageConceptsStaySupportingRatherThanBecomingUnitPractice`
   now pins that, in the same way Unit 3's performance mapping is pinned, so a later change
   cannot quietly promote one of them and make the gap disappear silently.
+
+### Two corrections found in review
+
+Both were claims the first draft asserted rather than measured, and both were settled by
+running them. They are recorded because the shape of the mistake is likely to recur in
+Units 5 and 6: a sentence that is a reasonable generalisation of a verified result, but that
+was never itself verified.
+
+- **"No stability annotation can help when the caller rebuilds the value" was false.** L4.4's
+  Practical section said that a fresh instance defeats skipping whatever the parameter type is
+  annotated as, which contradicted the stable-value row in the table immediately above it.
+  Stability decides *which comparison is generated*, so a genuinely stable type is compared
+  with `equals` and a fresh but equal value is skipped. The Lesson now gives the middle row two
+  exits — hold the instance still, or make the type honestly stable — and says that the second
+  is available only when the type deserves it, which is what L4.5 then covers.
+- **"An immutable data class over read-only collections needs no annotation" was unverified and
+  wrong as stated.** The documented rule is that collections are always treated as unstable
+  because their immutability cannot be guaranteed, so authoring discipline about never mutating
+  a `List` is invisible to the analysis. Measurement shows this toolchain does not conclude
+  "unstable" either — it emits both comparisons and defers to the call site — but it certainly
+  does not *infer stability*, which is what the sentence claimed. L4.5 now separates domain
+  immutability from compiler classification, names the three honest routes if a stable
+  comparison is actually needed, and points back at L4.4's instruction not to design against
+  the observed behaviour.
+
+Both corrections tightened the same seam: L4.4 tells the reader to design against the
+documented rule rather than the measured one, so no later Lesson may quietly lean on the
+measured one to make a recommendation sound simpler than it is.
 
 ### Editorial decisions worth carrying forward
 

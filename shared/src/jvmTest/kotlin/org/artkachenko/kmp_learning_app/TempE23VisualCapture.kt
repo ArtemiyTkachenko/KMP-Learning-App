@@ -100,8 +100,16 @@ internal class TempE23VisualCapture {
                         )
                     }
                     waitUntil(timeoutMillis = 20_000) { onAllNodesWithText("UI — Views & Jetpack Compose").fetchSemanticsNodes().isNotEmpty() }
-                    onNodeWithText("UI — Views & Jetpack Compose").performClick()
-                    waitUntil(timeoutMillis = 20_000) { onAllNodesWithTag(TopicStudyListTag).fetchSemanticsNodes().isNotEmpty() }
+                    // Re-tapped rather than clicked once: the browser rebuilds its rows as learning
+                    // context resolves, and a click into a row being replaced is lost.
+                    waitUntil(timeoutMillis = 20_000) {
+                        if (onAllNodesWithTag(TopicStudyListTag).fetchSemanticsNodes().isNotEmpty()) {
+                            true
+                        } else {
+                            onNodeWithText("UI — Views & Jetpack Compose").performClick()
+                            false
+                        }
+                    }
                     shoot("01-topic")
                     // Unit 4: richest blocks (wide comparisons + code). The Units are a lazy list,
                     // so the row has to be scrolled into existence before it can be clicked.

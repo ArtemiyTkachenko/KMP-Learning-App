@@ -19,12 +19,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.learning_study_progress_unavailable
 import kmp_learning_app.shared.generated.resources.learning_unit_lessons_studied
 import kmp_learning_app.shared.generated.resources.topic_detail_learning_unavailable
 import kmp_learning_app.shared.generated.resources.topic_detail_learning_unit_lessons
+import kmp_learning_app.shared.generated.resources.topic_detail_practice_this_topic
 import kmp_learning_app.shared.generated.resources.topic_detail_study_empty
 import org.artkachenko.kmp_learning_app.lesson_study.LearningUnitStudyProgress
 import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressSummary
@@ -32,9 +34,11 @@ import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressUiState
 import org.artkachenko.kmp_learning_app.lesson_study.TopicStudyProgress
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.ProgressMeter
+import org.artkachenko.kmp_learning_app.ui.ScreenAction
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
-import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
+import org.artkachenko.kmp_learning_app.ui.theme.LocalAppContentMargin
+import org.artkachenko.kmp_learning_app.ui.theme.appListContentPadding
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -55,20 +59,28 @@ internal fun TopicStudyPage(
     state: TopicLearningUnitsUiState,
     studyProgress: StudyProgressUiState<TopicStudyProgress>,
     onLearningUnitClick: ((String) -> Unit)?,
+    onBrowsePractice: () -> Unit,
     listState: LazyListState,
     modifier: Modifier = Modifier,
 ) {
     when (state) {
         TopicLearningUnitsUiState.Loading -> Unit
 
+        // A failed read gets no action. Practice is genuinely available, but offering it here would
+        // read as the answer to "the material could not be loaded", which it is not.
         TopicLearningUnitsUiState.Unavailable -> ScreenMessage(
             message = stringResource(Res.string.topic_detail_learning_unavailable),
             modifier = modifier,
         )
 
         is TopicLearningUnitsUiState.Available -> if (state.units.isEmpty()) {
-            ScreenMessage(
+            // Nothing authored yet is an ordinary state for most Topics, and the learner still came
+            // here to do something with this Topic — so the page names the capability that does
+            // exist rather than leaving them on a sentence with nowhere to go.
+            ScreenAction(
                 message = stringResource(Res.string.topic_detail_study_empty),
+                actionLabel = stringResource(Res.string.topic_detail_practice_this_topic),
+                onAction = onBrowsePractice,
                 modifier = modifier,
             )
         } else {
@@ -103,25 +115,20 @@ private fun LearningUnitList(
     // ACTIVE home Units and the row list is built from the same read, but an index would be a
     // second, weaker identity that stops meaning the same thing the moment either list changes.
     val unitProgress = studyProgress.unitProgressById
+    // Full-bleed: the rows own the horizontal margin, so their state layers reach the pane edges.
+    // See `appListContentPadding`.
+    val margin = LocalAppContentMargin.current
     LazyColumn(
         state = listState,
         modifier = modifier.fillMaxSize().testTag(TopicStudyListTag),
-        contentPadding = appScreenContentPadding(top = AppSpacing.Related),
+        contentPadding = appListContentPadding(top = AppSpacing.Related),
     ) {
-        // Said once for the section rather than repeated on every row, which would turn one missing
-        // record into a wall of identical notices. Only a failed read speaks: a study record still
-        // being read says nothing, because the Units are already usable without it.
-        if (studyProgress is StudyProgressUiState.Unavailable) {
-            item {
-                Text(
-                    text = stringResource(Res.string.learning_study_progress_unavailable),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .padding(bottom = AppSpacing.Related)
-                        .testTag(TopicStudyUnavailableTag),
-                )
-            }
+        item {
+            TopicStudyProgressHeader(studyProgress)
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = margin),
+                color = MaterialTheme.colorScheme.outlineVariant,
+            )
         }
         items(items = units, key = { it.unitId }) { unit ->
             LearningUnitRow(
@@ -129,7 +136,79 @@ private fun LearningUnitList(
                 studyProgress = unitProgress?.get(unit.unitId),
                 onLearningUnitClick = onLearningUnitClick,
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            HorizontalDivider(
+                // Inset to the row's own margin, so the rule stays aligned with the text.
+                modifier = Modifier.padding(horizontal = margin),
+                color = MaterialTheme.colorScheme.outlineVariant,
+            )
+        }
+    }
+}
+
+/**
+ * How far through this Topic's authored material the learner has read, as one figure above the list.
+ *
+ * The Study tab previously opened straight onto six paragraphs with nothing to orient against, while
+ * the aggregate it needed was already being derived and thrown away: `TopicStudyProgress.summary` is
+ * lesson-weighted across the Topic's Units, so a Unit of ten Lessons counts for more than a Unit of
+ * two, and until now nothing in the app rendered it.
+ *
+ * The shape is the Unit overview's `UnitStudyProgress`, one level up, and it stays silent in exactly
+ * the same three places. Loading says nothing, because a meter at zero drawn before the record has
+ * been read is a claim about the learner rather than a report about them. `Empty` — a Topic whose
+ * Units hold no current Lessons — says nothing either, since there is no fraction to draw and
+ * "0 of 0" renders as finished. Only a failed read speaks, and it says the progress could not be
+ * read rather than that nothing has been studied.
+ *
+ * Said once for the whole page rather than repeated on every row, which would turn one missing
+ * record into a wall of identical notices.
+ */
+@Composable
+private fun TopicStudyProgressHeader(studyProgress: StudyProgressUiState<TopicStudyProgress>) {
+    when (studyProgress) {
+        StudyProgressUiState.Loading -> Unit
+
+        StudyProgressUiState.Unavailable -> Text(
+            text = stringResource(Res.string.learning_study_progress_unavailable),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .padding(
+                    start = LocalAppContentMargin.current,
+                    end = LocalAppContentMargin.current,
+                    bottom = AppSpacing.Comfortable,
+                )
+                .testTag(TopicStudyUnavailableTag),
+        )
+
+        is StudyProgressUiState.Available -> {
+            val summary = studyProgress.value.summary as? StudyProgressSummary.Progress ?: return
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = LocalAppContentMargin.current)
+                    .padding(bottom = AppSpacing.Comfortable)
+                    .testTag(TopicStudyProgressTag),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+            ) {
+                // The figure is written out as well as drawn, so the meter is a second channel
+                // rather than the only one, and no percentage is invented: the ratio is computed
+                // here, at the moment of drawing, from the counts the derivation produced.
+                Text(
+                    text = pluralStringResource(
+                        Res.plurals.learning_unit_lessons_studied,
+                        summary.totalCount,
+                        summary.studiedCount,
+                        summary.totalCount,
+                    ),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                ProgressMeter(
+                    fraction = summary.studiedCount.toFloat() / summary.totalCount,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
     }
 }
@@ -169,7 +248,13 @@ private fun LearningUnitRow(
     } else {
         base.clickable { onLearningUnitClick(unit.unitId) }
     }
-    LearningUnitRowContent(unit, studyProgress, clickable)
+    // The margin goes inside the clickable, so the state layer spans the pane rather than being
+    // inset with the row and drawing a band that hugs the text. See `appListContentPadding`.
+    LearningUnitRowContent(
+        unit = unit,
+        studyProgress = studyProgress,
+        modifier = clickable.padding(horizontal = LocalAppContentMargin.current),
+    )
 }
 
 /**
@@ -186,6 +271,11 @@ private fun LearningUnitRow(
  * title down to the variant colour and gains a completion mark, so a learner scanning the list can
  * see where they are in the progression. A Unit with no readable record is rendered exactly as it
  * always was, because unknown progress must not look like unstarted progress.
+ *
+ * The fraction is stated in words only. A row carried a meter of its own until this page gained the
+ * Topic-level one above the list, and the two together turned a curriculum into a stack of bars —
+ * four of them on a three-Unit Topic, each redrawing the sentence printed directly above it. One
+ * meter for the Topic and a sentence per Unit says the same thing and reads as a list again.
  *
  * Assessment coverage for this Topic stays on the Practice page: studied Lessons are a claim about
  * reading and coverage is measured from attempts, so the two are never shown as one figure.
@@ -226,10 +316,18 @@ private fun LearningUnitRowContent(
                 )
             }
         }
+        // The only clipped prose in the app: everywhere else text wraps and the layout absorbs it,
+        // because no other row carries a whole authored paragraph. Six of them do here, and at full
+        // length each Unit runs to most of a phone screen — the list stops being a progression the
+        // learner can scan and becomes an essay they have to read to find the row they wanted. The
+        // Unit overview opens with this same summary in full, one tap away and a type step larger,
+        // so nothing is lost by ending the sentence here.
         Text(
             text = unit.summary,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = SummaryMaxLines,
+            overflow = TextOverflow.Ellipsis,
         )
         Text(
             text = if (summary == null) {
@@ -254,14 +352,8 @@ private fun LearningUnitRowContent(
                 Modifier.testTag(learningUnitStudyTag(unit.unitId))
             },
         )
-        // Only ever driven by a record that was actually read. A meter under a Unit whose progress
-        // is still loading or unreadable would draw an empty bar, which states "nothing studied".
-        if (summary != null) {
-            ProgressMeter(
-                fraction = summary.studiedCount.toFloat() / summary.totalCount,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = AppSpacing.Tight),
-            )
-        }
     }
 }
+
+/** Enough of the Unit's description to tell two Units apart, and no more. */
+private const val SummaryMaxLines = 2

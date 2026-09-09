@@ -82,7 +82,8 @@ internal fun TopicPracticePage(
     ) {
         if (learningContext == null) {
             // Analytics are unavailable, so the page falls back to the authored count and says
-            // nothing about the learner. Practice is unaffected.
+            // nothing about the learner. There is no summary to hang a shortcut off either, and
+            // TargetedPracticeActions renders nothing for an unknown context, so the two agree.
             Text(
                 text = stringResource(
                     Res.string.topic_detail_available_questions,
@@ -92,39 +93,35 @@ internal fun TopicPracticePage(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
-            TopicLearningSummary(learningContext)
+            TopicLearningSummary(
+                context = learningContext,
+                onPracticeWeakAreas = {
+                    onPracticePreset(
+                        PracticePreset(
+                            scope = AssessmentScope.Topic(topicId),
+                            source = PracticeQuestionSource.WEAK_AREAS,
+                        ),
+                    )
+                },
+                onPracticeUnseen = {
+                    onPracticePreset(
+                        PracticePreset(
+                            scope = AssessmentScope.Topic(topicId),
+                            source = PracticeQuestionSource.UNSEEN,
+                        ),
+                    )
+                },
+            )
         }
-        // One primary action for the Topic; the Subtopics tab is the lower-emphasis path, so this
-        // page never shows several filled buttons of equal weight.
+        // One primary action for the Topic, and the last thing on the page: the Subtopics tab is the
+        // lower-emphasis path and the accelerators now sit inside the summary above, so this page
+        // never shows several filled buttons of equal weight and never ends on a footnote.
         Button(
             onClick = onStartTopicPractice,
             modifier = Modifier.fillMaxWidth().testTag(TopicPracticeButtonTag),
         ) {
             Text(text = stringResource(Res.string.topic_detail_start_practice))
         }
-        // Accelerators beside the primary action, never instead of it: with no analytics this block
-        // is simply empty and ordinary practice is unaffected.
-        TargetedPracticeActions(
-            context = learningContext,
-            onPracticeWeakAreas = {
-                onPracticePreset(
-                    PracticePreset(
-                        scope = AssessmentScope.Topic(topicId),
-                        source = PracticeQuestionSource.WEAK_AREAS,
-                    ),
-                )
-            },
-            onPracticeUnseen = {
-                onPracticePreset(
-                    PracticePreset(
-                        scope = AssessmentScope.Topic(topicId),
-                        source = PracticeQuestionSource.UNSEEN,
-                    ),
-                )
-            },
-            weakTestTag = TopicWeakPracticeTag,
-            unseenTestTag = TopicUnseenPracticeTag,
-        )
     }
 }
 
@@ -135,9 +132,28 @@ internal fun TopicPracticePage(
  * current coverage under a divider as the second, differently-scoped question. With no accuracy to
  * lead on, the whole thing steps down to a quieter card: an unstudied Topic should not open with a
  * display-size headline, and it must never open with a fabricated 0%.
+ *
+ * The targeted shortcuts live inside the card, as the last thing in it. They are derived entirely
+ * from the two signals printed above them — the weak verdict and the coverage counts — so this is
+ * where they belong: below the primary button they read as a footnote to an action they are not
+ * part of, detached from the only evidence that explains why they are being offered. It is the same
+ * arrangement `PerformanceCard` already uses for its action slot on the progress screens.
  */
 @Composable
-private fun TopicLearningSummary(context: LearningContextUiModel) {
+private fun TopicLearningSummary(
+    context: LearningContextUiModel,
+    onPracticeWeakAreas: () -> Unit,
+    onPracticeUnseen: () -> Unit,
+) {
+    val shortcuts: @Composable () -> Unit = {
+        TargetedPracticeActions(
+            context = context,
+            onPracticeWeakAreas = onPracticeWeakAreas,
+            onPracticeUnseen = onPracticeUnseen,
+            weakTestTag = TopicWeakPracticeTag,
+            unseenTestTag = TopicUnseenPracticeTag,
+        )
+    }
     val accuracy = context.accuracyPercentage
     if (accuracy == null) {
         SecondarySummaryCard {
@@ -147,6 +163,7 @@ private fun TopicLearningSummary(context: LearningContextUiModel) {
                 color = MaterialTheme.colorScheme.onSurface,
             )
             TopicCoverage(context)
+            shortcuts()
         }
     } else {
         PrimarySummaryCard {
@@ -164,6 +181,7 @@ private fun TopicLearningSummary(context: LearningContextUiModel) {
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             TopicCoverage(context)
+            shortcuts()
         }
     }
 }

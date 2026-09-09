@@ -10,10 +10,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import kmp_learning_app.shared.generated.resources.Res
-import kmp_learning_app.shared.generated.resources.practice_shortcut_unseen
+import kmp_learning_app.shared.generated.resources.practice_shortcut_unseen_count
 import kmp_learning_app.shared.generated.resources.practice_shortcut_weak_area
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -33,17 +34,42 @@ import org.jetbrains.compose.resources.stringResource
  * spacing and its controls cannot disagree about whether it has any.
  */
 internal val LearningContextUiModel?.hasTargetedPractice: Boolean
-    get() = this != null && (isWeak || hasUnseenQuestions)
+    get() = this != null && (isWeak || hasPartialCoverage)
+
+/**
+ * Whether unseen practice would actually narrow anything for this scope.
+ *
+ * Deliberately stricter than [LearningContextUiModel.hasUnseenQuestions], which asks only whether
+ * any current Question is still unmet. That is a truthful statement about coverage, and it is the
+ * wrong question to put a *shortcut* behind: on a scope with nothing attempted it is true of the
+ * whole bank, so unseen practice and ordinary practice would draw from one identical pool. Two
+ * controls for one outcome is not an accelerator — and because it is true of every scope at once, a
+ * Topic nobody has touched used to repeat the offer on the Topic and on every Subtopic beneath it,
+ * where it distinguished nothing from nothing.
+ *
+ * Requiring something to have been attempted is what makes the offer mean "the part you have not
+ * reached yet". The model property is left alone: it describes coverage, other surfaces ask it, and
+ * this is a presentation decision about when an action is worth showing.
+ */
+private val LearningContextUiModel.hasPartialCoverage: Boolean
+    get() = attemptedQuestionCount > 0 && hasUnseenQuestions
 
 /**
  * The targeted shortcuts a scope's already-derived learning context justifies, if any.
  *
- * Both conditions are read verbatim off the model: [LearningContextUiModel.isWeak] is the domain's
- * verdict and is never re-derived from the accuracy shown beside it, and
- * [LearningContextUiModel.hasUnseenQuestions] only restates the coverage counts already displayed.
+ * Both conditions are read off the model: [LearningContextUiModel.isWeak] is the domain's verdict
+ * and is never re-derived from the accuracy shown beside it, and [hasPartialCoverage] only restates
+ * the coverage counts already displayed.
  *
- * Both can be true at once and both are then offered. Which Questions either source actually yields
- * is decided later, by the selector, from history as it stands when practice is configured.
+ * The unseen label carries how many Questions are left, from the same two counts the row is already
+ * showing. It is a description of what the learner is looking at, not a promise about the run: which
+ * stable Question IDs are actually unseen stays with the selector, which re-derives them from
+ * completed history at the moment practice is configured, and the number can legitimately have moved
+ * by then.
+ *
+ * Both can be true at once and both are then offered. Nothing here ranks one above the other: the
+ * learner chose to look at this scope, and choosing one intent for them is what Recommended Next
+ * does, on a different surface and on purpose.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -67,9 +93,16 @@ internal fun TargetedPracticeActions(
                 Text(text = stringResource(Res.string.practice_shortcut_weak_area))
             }
         }
-        if (context.hasUnseenQuestions) {
+        if (context.hasPartialCoverage) {
+            val unseenCount = context.totalQuestionCount - context.attemptedQuestionCount
             TextButton(onClick = onPracticeUnseen, modifier = Modifier.testTag(unseenTestTag)) {
-                Text(text = stringResource(Res.string.practice_shortcut_unseen))
+                Text(
+                    text = pluralStringResource(
+                        Res.plurals.practice_shortcut_unseen_count,
+                        unseenCount,
+                        unseenCount,
+                    ),
+                )
             }
         }
     }

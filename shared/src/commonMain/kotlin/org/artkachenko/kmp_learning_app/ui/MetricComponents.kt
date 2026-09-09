@@ -112,7 +112,14 @@ internal fun ProgressMeter(
     val target = fraction.coerceIn(0f, 1f)
     val animated = remember { Animatable(target) }
     LaunchedEffect(target) {
-        animated.animateTo(target, AppMotion.effectSpec(AppMotion.ProgressDurationMillis))
+        // Nothing to travel on the first composition, where the Animatable was seeded with this
+        // very value — and `animateTo` does not know that, so it would run a full invisible tween
+        // from the target to itself. Which is not free: a screen showing several meters at once
+        // spends the first frames of its life requesting frames for animations that cannot move,
+        // and a list whose rows each carry one can keep that going as new rows scroll in.
+        if (animated.value != target) {
+            animated.animateTo(target, AppMotion.effectSpec(AppMotion.ProgressDurationMillis))
+        }
     }
     LinearProgressIndicator(
         progress = { animated.value },

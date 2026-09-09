@@ -65,6 +65,8 @@ internal val LocalAppContentMargin = staticCompositionLocalOf { AppSpacing.Comfo
  * Content padding for a scrolling screen: the window's horizontal margin plus vertical breathing
  * room. This replaced `PaddingValues(horizontal = 20.dp, vertical = 16.dp)`, which was written out
  * identically in eight screen files and so could only ever be changed in eight places at once.
+ *
+ * For a list of flat rows use [appListContentPadding] instead — see the reason there.
  */
 @Composable
 @ReadOnlyComposable
@@ -75,3 +77,27 @@ internal fun appScreenContentPadding(
     val margin = LocalAppContentMargin.current
     return PaddingValues(start = margin, end = margin, top = top, bottom = bottom)
 }
+
+/**
+ * Content padding for a list whose rows are their own interactive surfaces: vertical only.
+ *
+ * A list item's container spans its pane, and the horizontal margin belongs *inside* the row —
+ * Material states this as `ListTokens.ItemLeadingSpace` / `ItemTrailingSpace`. Giving the margin to
+ * the list instead insets the row itself, which insets its state layer with it: hover, focus, and
+ * press then draw a band whose edges land exactly on the text, with no padding anywhere inside it.
+ * That is invisible on a touch screen, where a press flashes and is gone, and permanent on a
+ * pointer host, where hover is the resting state of whatever the cursor is over.
+ *
+ * So the list keeps only its vertical padding, and each row applies [LocalAppContentMargin] itself,
+ * inside its own `clickable`. The text does not move; the surface behind it grows to the pane.
+ * Dividers between such rows take the same inset, which is what keeps them aligned with the
+ * content — Material's `ListTokens.DividerLeadingSpace` is that alignment stated at the compact
+ * margin. A list of Cards needs none of this: a Card is its own container and clips its own state
+ * layer, so those lists keep [appScreenContentPadding].
+ */
+@Composable
+@ReadOnlyComposable
+internal fun appListContentPadding(
+    top: Dp = AppSpacing.Comfortable,
+    bottom: Dp = AppSpacing.Comfortable,
+): PaddingValues = PaddingValues(top = top, bottom = bottom)

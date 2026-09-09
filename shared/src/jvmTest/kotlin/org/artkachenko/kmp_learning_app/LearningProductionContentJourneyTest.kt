@@ -74,6 +74,7 @@ import org.artkachenko.kmp_learning_app.topic_study.practice_builder.practiceLev
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.practiceQuestionCountTag
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.practiceSourceTag
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
+import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserSearchFieldTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicStudyListTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.learningUnitCardTag
 import org.koin.compose.KoinApplication
@@ -547,11 +548,39 @@ private fun ComposeUiTest.scrollToLearningUnit(unitId: String) {
         .performScrollToNode(hasTestTag(learningUnitCardTag(unitId)))
 }
 
+/**
+ * Learn -> the Topic, by clicking what a learner clicks, and confirming they arrived.
+ *
+ * Two things make a single blind click unreliable here. The Topic's name is on the browser row *and*
+ * in Topic Detail's own top bar, so waiting on the name alone can match the screen being left rather
+ * than the one being opened — hence waiting for the search field, which only the browser has. And
+ * the browser rebuilds its rows as learning context and Continue Learning resolve underneath them,
+ * so a click dispatched into a row that is being replaced is simply lost. A learner who tapped a
+ * Topic and stayed put would tap again; this does the same, rather than waiting out a navigation
+ * that was never started.
+ */
+@OptIn(ExperimentalTestApi::class)
+private suspend fun ComposeUiTest.openTopicFromBrowser() {
+    waitForTag(TopicBrowserSearchFieldTag)
+    waitForText(UiTopicName)
+    repeat(NavigationAttempts) {
+        if (onAllNodesWithTag(TopicStudyListTag, useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        ) {
+            return
+        }
+        onNodeWithText(UiTopicName).performClick()
+        waitForIdle()
+    }
+    // Nothing arrived after several attempts, so let the ordinary wait produce the failure and its
+    // message rather than throwing something less informative from here.
+    waitForTag(TopicStudyListTag)
+}
+
 /** Learn -> the Topic -> a shipped Unit, by clicking what a learner clicks. */
 @OptIn(ExperimentalTestApi::class)
 private suspend fun ComposeUiTest.openShippedUnit(unit: LearningUnit = ShippedUnit) {
-    waitForText(UiTopicName)
-    onNodeWithText(UiTopicName).performClick()
+    openTopicFromBrowser()
     // A Topic opens on its Study tab, and the Units are a lazy list: a Unit further down does not
     // exist in the semantics tree until the list has been scrolled to it.
     waitForTag(TopicStudyListTag)
@@ -590,6 +619,9 @@ private class RecordingUriHandler(private val opened: MutableList<String>) : Uri
 private fun LearningLesson.blocks(): List<LearningBlock> = sections.flatMap { it.blocks }
 
 private const val JourneyTimeoutMillis = 10_000L
+
+/** How many times the journey re-taps a Topic row that did not navigate. */
+private const val NavigationAttempts = 3
 private const val TextSnippetLength = 40
 private const val WindowTag = "learning_journey_window"
 private val WindowWidth: Dp = 400.dp

@@ -127,6 +127,7 @@
     <string name="topic_detail_practice">Practice</string>
     <string name="topic_detail_study_empty">No learning material for this topic yet.</string>
     <string name="topic_detail_subtopics_empty">This topic has no subtopics.</string>
+    <string name="topic_detail_practice_this_topic">Practice this topic</string>
     <plurals name="topic_detail_learning_unit_lessons">
         <item quantity="one">%1$d lesson</item>
         <item quantity="other">%1$d lessons</item>
@@ -157,7 +158,10 @@
     <string name="practice_builder_no_practiceable_concepts">This learning unit has no practiceable concepts yet.</string>
     <string name="practice_builder_start">Start practice</string>
     <string name="practice_shortcut_weak_area">Practice weak area</string>
-    <string name="practice_shortcut_unseen">Practice unseen questions</string>
+    <plurals name="practice_shortcut_unseen_count">
+        <item quantity="one">Practice %1$d unseen question</item>
+        <item quantity="other">Practice %1$d unseen questions</item>
+    </plurals>
     <string name="practice_shortcut_subtopic_mistakes">Practice unresolved mistakes in this subtopic</string>
     <string name="assessment_taking_question_progress">Question %1$d of %2$d</string>
     <string name="assessment_taking_select_one">Select one answer</string>

@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
@@ -26,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.topic_browser_error
 import kmp_learning_app.shared.generated.resources.topic_detail_heading
@@ -65,6 +67,9 @@ internal fun learningUnitCardTag(unitId: String): String = "learning_unit_$unitI
 internal fun learningUnitStudyTag(unitId: String): String = "learning_unit_study_$unitId"
 
 internal const val TopicStudyUnavailableTag = "topic_study_unavailable"
+
+/** The Topic-level "N of M lessons studied" figure and its meter, above the Unit list. */
+internal const val TopicStudyProgressTag = "topic_study_progress"
 
 /**
  * The two lazy lists themselves, so a test can drive one to a node it wants.
@@ -114,6 +119,13 @@ private const val TabSnapPositionalThreshold = 0.25f
 private val TabIndicatorShape = RoundedCornerShape(percent = 50)
 
 /**
+ * Material's own tab height (`PrimaryNavigationTabTokens.ContainerHeight`), stated because the pill
+ * means this row no longer gets it from `Tab`'s built-in text layout. It is also exactly the
+ * minimum touch target, so the two constraints are satisfied by one number.
+ */
+private val TabHeight = 48.dp
+
+/**
  * One tab, marked as selected by a filled pill rather than by a rule beneath it.
  *
  * The pill is the same treatment the navigation bar already uses for the current area — Material's
@@ -149,6 +161,7 @@ private fun TopicDetailTab(
         selected = selected,
         onClick = onClick,
         modifier = Modifier
+            .height(TabHeight)
             // Enough of a gap that two adjacent state layers never meet.
             .padding(horizontal = AppSpacing.Tight)
             .clip(TabIndicatorShape)
@@ -159,10 +172,8 @@ private fun TopicDetailTab(
         Text(
             text = stringResource(tab.label),
             style = MaterialTheme.typography.titleSmall,
-            // The outer inset is what gives the row its height, and keeps the tab's own touch
-            // target comfortably past the 48dp minimum while the pill stays label-sized.
+            // The pill sizes itself to the label and centres in the tab's fixed height.
             modifier = Modifier
-                .padding(vertical = AppSpacing.Related)
                 .background(container, TabIndicatorShape)
                 .padding(
                     horizontal = AppSpacing.Comfortable,
@@ -302,6 +313,13 @@ private fun ColumnScope.TopicDetailTabs(
     }
 
     val scope = rememberCoroutineScope()
+    // An empty Study or Subtopics page still has somewhere to send the learner, and the only thing
+    // that can move the pager is the pager. Selecting a tab is what this function already does for a
+    // tab tap, so the empty states borrow it rather than growing any state of their own.
+    val browsePractice = {
+        scope.launch { pagerState.animateScrollToPage(TopicDetailTab.Practice.ordinal) }
+        Unit
+    }
     PrimaryTabRow(
         selectedTabIndex = pagerState.currentPage,
         // No underline. The indicator slot is measured and placed *after* the tabs, so anything
@@ -341,6 +359,7 @@ private fun ColumnScope.TopicDetailTabs(
                 state = state.learningUnits,
                 studyProgress = state.studyProgress,
                 onLearningUnitClick = onLearningUnitClick,
+                onBrowsePractice = browsePractice,
                 listState = studyListState,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -359,6 +378,7 @@ private fun ColumnScope.TopicDetailTabs(
                 subtopics = state.subtopics,
                 onStartSubtopicPractice = onStartSubtopicPractice,
                 onPracticePreset = onPracticePreset,
+                onBrowsePractice = browsePractice,
                 listState = subtopicsListState,
                 modifier = Modifier.fillMaxSize(),
             )

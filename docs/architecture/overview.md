@@ -261,10 +261,32 @@ page's scroll state is hoisted beside it, because a pager composes only the page
 in view: hoisting is what lets a learner scroll deep into the Subtopics, check
 the Practice page, and come back to where they were.
 
+Each page then carries the content that page is for. Study leads with the Topic's own
+lesson-weighted study aggregate — `TopicStudyProgress.summary`, which the derivation
+had always produced and nothing had ever rendered — as one figure and one meter above
+the Unit list, the same shape `UnitStudyProgress` gives the Unit overview one level
+down. The Units themselves state their fractions in words only: a meter per row plus the
+header's turned a curriculum into a stack of bars, each redrawing the sentence above it.
+Practice keeps its summary card and one filled action, with the targeted shortcuts moved
+*inside* the card, where the weak verdict and coverage counts that justify them are — the
+arrangement `PerformanceCard` already uses for its action slot on the progress screens.
+
+The unseen shortcut is now offered only for a partially covered scope. `hasUnseenQuestions`
+is true of an untouched scope's whole bank, so unseen practice and ordinary practice drew
+from one identical pool and the offer appeared on the Topic and on every Subtopic beneath
+it at once, distinguishing nothing; requiring something to have been attempted is what
+makes it mean "the part you have not reached yet". It carries the remaining count, and the
+model property is untouched — it describes coverage, and this is a presentation decision
+about when an action is worth showing. A Subtopic row likewise no longer prints both
+"0 of N explored" and "Not studied yet", the second being a strict subset of the first.
+
 Terminal states stay outside the pager. Loading, a Topic that does not exist, and
 a failed curriculum read are statements about the Topic and still replace the
 whole screen; a tab with nothing in it is a statement about one capability and
-shows a quiet empty message instead. That is a change from the previous rule,
+shows a quiet empty message instead — and, where the empty state is a successful read
+rather than a failure, a `ScreenAction` naming the capability the Topic does have. A
+failed learning read keeps the plain message: practice is not the answer to "the material
+could not be loaded". That is a change from the previous rule,
 where an empty section was simply absent — a blank tab reads as broken, and the
 tab row is fixed at three so the capabilities stay discoverable and the page
 indices stay constant. Nothing about practice scopes, presets, learning-context

@@ -725,13 +725,328 @@ internal class TopicDetailScreenTest {
             }
         }
 
-        onNodeWithText("3 of 3 lessons studied").assertIsDisplayed()
+        // Twice, and legitimately: this Topic has a single Unit, so the Topic aggregate and that
+        // Unit's own figure are the same sentence. The header is asserted by its tag as well, so
+        // the count below cannot be satisfied by one surface rendering it twice.
+        onNodeWithTag(TopicStudyProgressTag).assertIsDisplayed()
+        onAllNodesWithText("3 of 3 lessons studied").assertCountEquals(2)
         onNodeWithText("Mastered").assertDoesNotExist()
 
         // Every Lesson studied, and the Topic's assessment coverage is untouched by that.
         selectTab(TopicPracticeTabTag)
         onNodeWithText("12 of 26 questions explored").assertIsDisplayed()
         onNodeWithText("76%").assertIsDisplayed()
+    }
+
+
+    // ------------------------------------------------ topic study progress header
+
+    /**
+     * The Study page opens with one figure saying how far through the Topic's material the learner
+     * is. It is lesson-weighted across the Units, so it is not the first Unit's fraction repeated.
+     */
+    @Test
+    fun theStudyPageLeadsWithTheTopicsOwnLessonProgress() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningUnits = TopicLearningUnitsUiState.Available(
+                            listOf(
+                                learningUnitItem("unit_a", "Thinking in Compose", lessons = 3),
+                                learningUnitItem("unit_b", "State in Compose", lessons = 2),
+                            ),
+                        ),
+                        studyProgress = topicStudyProgress(
+                            Triple("unit_a", 1, 3),
+                            Triple("unit_b", 1, 2),
+                        ),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                    onLearningUnitClick = {},
+                )
+            }
+        }
+
+        onNodeWithTag(TopicStudyProgressTag).assertIsDisplayed()
+        onNodeWithText("2 of 5 lessons studied").assertIsDisplayed()
+        // And each Unit still carries its own, which the aggregate does not replace.
+        onNodeWithTag(learningUnitCardTag("unit_a")).assert(hasText("1 of 3 lessons studied"))
+        onNodeWithTag(learningUnitCardTag("unit_b")).assert(hasText("1 of 2 lessons studied"))
+    }
+
+    /**
+     * A record that has not been read is not a record of nothing: drawing a meter at zero would be a
+     * claim about the learner made before anything was known about them.
+     */
+    @Test
+    fun aLoadingStudyRecordShowsNoTopicProgressFigure() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningUnits = TopicLearningUnitsUiState.Available(
+                            listOf(learningUnitItem("unit_a", "Thinking in Compose", lessons = 3)),
+                        ),
+                        studyProgress = StudyProgressUiState.Loading,
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(TopicStudyProgressTag).assertDoesNotExist()
+        onNodeWithTag(TopicStudyUnavailableTag).assertDoesNotExist()
+        onNodeWithText("Thinking in Compose").assertIsDisplayed()
+    }
+
+    /**
+     * A Topic whose Units hold no current Lessons has no fraction to report. "0 of 0" renders as
+     * finished, so the header says nothing rather than claiming the Topic is complete.
+     */
+    @Test
+    fun aTopicWithNoCurrentLessonsShowsNoProgressFigure() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningUnits = TopicLearningUnitsUiState.Available(
+                            listOf(learningUnitItem("unit_a", "Retired Unit", lessons = 0)),
+                        ),
+                        studyProgress = topicStudyProgress(Triple("unit_a", 0, 0)),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                    onLearningUnitClick = {},
+                )
+            }
+        }
+
+        onNodeWithTag(TopicStudyProgressTag).assertDoesNotExist()
+        onNodeWithText("100%").assertDoesNotExist()
+        onNodeWithTag(learningUnitCardTag("unit_a")).assert(hasText("0 lessons"))
+    }
+
+    // ------------------------------------------------- unseen practice shortcut
+
+    /**
+     * With nothing attempted, unseen practice and ordinary practice draw from one identical pool, so
+     * offering both is two controls for one outcome. It is not offered at either scope.
+     */
+    @Test
+    fun anUntouchedTopicAndSubtopicOfferNoUnseenShortcut() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = TopicDetailUiState.Content(
+                        topic = Topic("topic_a", "Topic A"),
+                        topicQuestionCount = 28,
+                        subtopics = listOf(
+                            subtopicItem(
+                                id = "subtopic_a",
+                                name = "Subtopic A",
+                                count = 10,
+                                learningContext = learningContext(0, 10),
+                            ),
+                        ),
+                        learningContext = learningContext(0, 28),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        selectTab(TopicPracticeTabTag)
+        onNodeWithTag(TopicUnseenPracticeTag).assertDoesNotExist()
+        // Ordinary practice is untouched: it is the one way in, which is the point.
+        onNodeWithTag(TopicPracticeButtonTag).assertIsDisplayed()
+
+        selectTab(TopicSubtopicsTabTag)
+        onNodeWithTag(subtopicUnseenPracticeTag("subtopic_a")).assertDoesNotExist()
+        onNodeWithTag(SubtopicPracticeButtonTag).assertIsDisplayed()
+    }
+
+    /**
+     * Once some of a scope has been met the shortcut narrows to a real remainder, and says how big
+     * it is from the same two counts the surface is already displaying.
+     */
+    @Test
+    fun aPartlyCoveredScopeOffersACountedUnseenShortcut() = runComposeUiTest {
+        val presets = mutableListOf<PracticePreset>()
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = TopicDetailUiState.Content(
+                        topic = Topic("topic_a", "Topic A"),
+                        topicQuestionCount = 28,
+                        subtopics = listOf(
+                            subtopicItem(
+                                id = "subtopic_a",
+                                name = "Subtopic A",
+                                count = 10,
+                                learningContext = learningContext(9, 10, accuracy = 60.0),
+                            ),
+                        ),
+                        learningContext = learningContext(12, 28, accuracy = 70.0),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = presets::add,
+                    onRetry = {},
+                )
+            }
+        }
+
+        selectTab(TopicPracticeTabTag)
+        onNodeWithText("Practice 16 unseen questions").assertIsDisplayed()
+        onNodeWithTag(TopicUnseenPracticeTag).performClick()
+
+        selectTab(TopicSubtopicsTabTag)
+        // One left, so the plural resource has to select the singular form.
+        onNodeWithText("Practice 1 unseen question").assertIsDisplayed()
+        onNodeWithTag(subtopicUnseenPracticeTag("subtopic_a")).performClick()
+
+        // Narrowing when it is offered changed nothing about what it emits.
+        assertEquals(
+            listOf(
+                PracticePreset(AssessmentScope.Topic("topic_a"), PracticeQuestionSource.UNSEEN),
+                PracticePreset(
+                    AssessmentScope.Subtopic("subtopic_a"),
+                    PracticeQuestionSource.UNSEEN,
+                ),
+            ),
+            presets,
+        )
+    }
+
+    /**
+     * The coverage rule governs the unseen shortcut only. A weak verdict is the domain's, and it
+     * still earns its shortcut whatever the coverage counts beside it say.
+     */
+    @Test
+    fun theWeakShortcutIsUnaffectedByTheCoverageRule() = runComposeUiTest {
+        val presets = mutableListOf<PracticePreset>()
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningContext = learningContext(0, 10, isWeak = true),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = presets::add,
+                    onRetry = {},
+                )
+            }
+        }
+
+        selectTab(TopicPracticeTabTag)
+        onNodeWithTag(TopicUnseenPracticeTag).assertDoesNotExist()
+        onNodeWithTag(TopicWeakPracticeTag).assertIsDisplayed().performClick()
+
+        assertEquals(
+            listOf(
+                PracticePreset(
+                    AssessmentScope.Topic("topic_a"),
+                    PracticeQuestionSource.WEAK_AREAS,
+                ),
+            ),
+            presets,
+        )
+    }
+
+    // ----------------------------------------------------------- empty tab exits
+
+    /** An empty Study page names the capability the Topic does have, and goes there. */
+    @Test
+    fun anEmptyStudyPageLeadsToPractice() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningUnits = TopicLearningUnitsUiState.Available(emptyList()),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("No learning material for this topic yet.").assertIsDisplayed()
+        onNodeWithText("Practice this topic").performClick()
+        waitForIdle()
+
+        onNodeWithTag(TopicPracticeTabTag).assertIsSelected()
+        onNodeWithTag(TopicPracticeButtonTag).assertIsDisplayed()
+    }
+
+    @Test
+    fun anEmptySubtopicsPageLeadsToPractice() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(subtopics = emptyList()),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        selectTab(TopicSubtopicsTabTag)
+        onNodeWithText("This topic has no subtopics.").assertIsDisplayed()
+        onNodeWithText("Practice this topic").performClick()
+        waitForIdle()
+
+        onNodeWithTag(TopicPracticeTabTag).assertIsSelected()
+        onNodeWithTag(TopicPracticeButtonTag).assertIsDisplayed()
+    }
+
+    /**
+     * A failed read is not an empty one. It keeps the plain message: offering practice as the answer
+     * to "the material could not be loaded" would read as a consolation for the wrong problem.
+     */
+    @Test
+    fun anUnreadableStudyPageOffersNoWayForward() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningUnits = TopicLearningUnitsUiState.Unavailable,
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("Learning material could not be loaded.").assertIsDisplayed()
+        onNodeWithText("Practice this topic").assertDoesNotExist()
     }
 
     // ---------------------------------------------------------- practice page
@@ -887,10 +1202,47 @@ internal class TopicDetailScreenTest {
         assertEquals(1, topicStarts)
 
         selectTab(TopicSubtopicsTabTag)
-        onNodeWithText("Not studied yet").assertIsDisplayed()
+        // The row states it once. "0 of 10 explored" already says nothing has been attempted, so
+        // the separate "Not studied yet" line beneath it was the same fact in a smaller type size.
         onNodeWithText("0 of 10 explored").assertIsDisplayed()
+        onAllNodesWithText("Not studied yet").assertCountEquals(0)
         onAllNodesWithText("0%").assertCountEquals(0)
         onAllNodesWithText("Weak area").assertCountEquals(0)
+        // Nothing has been attempted, so unseen practice would draw the same pool as the row's own
+        // tap and is not offered as a second way to do one thing.
+        onNodeWithTag(subtopicUnseenPracticeTag("subtopic_a")).assertDoesNotExist()
+    }
+
+    /**
+     * A scope with no current Questions has no coverage line to carry the fact, so there the
+     * neutral note is the only thing that can say it and stays.
+     */
+    @Test
+    fun aSubtopicWithNoCurrentQuestionsStillReadsAsUnstudied() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        subtopics = listOf(
+                            subtopicItem(
+                                id = "subtopic_a",
+                                name = "Subtopic A",
+                                learningContext = learningContext(0, 0),
+                            ),
+                        ),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        selectTab(TopicSubtopicsTabTag)
+        onNodeWithText("Not studied yet").assertIsDisplayed()
+        onAllNodesWithText("0 of 0 explored").assertCountEquals(0)
     }
 
     /**

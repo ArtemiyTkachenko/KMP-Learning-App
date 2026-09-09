@@ -26,19 +26,21 @@ import kmp_learning_app.shared.generated.resources.learning_context_explored
 import kmp_learning_app.shared.generated.resources.learning_context_not_studied
 import kmp_learning_app.shared.generated.resources.progress_weak_label
 import kmp_learning_app.shared.generated.resources.topic_detail_available_questions
+import kmp_learning_app.shared.generated.resources.topic_detail_practice_this_topic
 import kmp_learning_app.shared.generated.resources.topic_detail_subtopics_empty
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
-import org.artkachenko.kmp_learning_app.ui.ScreenMessage
+import org.artkachenko.kmp_learning_app.ui.ScreenAction
 import org.artkachenko.kmp_learning_app.ui.StatusBadge
 import org.artkachenko.kmp_learning_app.ui.accuracyColor
 import org.artkachenko.kmp_learning_app.ui.formatAccuracy
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
-import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
+import org.artkachenko.kmp_learning_app.ui.theme.LocalAppContentMargin
+import org.artkachenko.kmp_learning_app.ui.theme.appListContentPadding
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -54,22 +56,29 @@ internal fun TopicSubtopicsPage(
     subtopics: List<SubtopicPracticeItem>,
     onStartSubtopicPractice: (String) -> Unit,
     onPracticePreset: (PracticePreset) -> Unit,
+    onBrowsePractice: () -> Unit,
     listState: LazyListState,
     modifier: Modifier = Modifier,
 ) {
     if (subtopics.isEmpty()) {
         // A Topic whose questions are all authored at Topic level is an ordinary Topic, not a
-        // broken one, so the tab says so rather than sitting blank.
-        ScreenMessage(
+        // broken one. Practising it is exactly what the missing rows would have led to, so the tab
+        // points at the Topic-level action rather than leaving the learner on a dead end.
+        ScreenAction(
             message = stringResource(Res.string.topic_detail_subtopics_empty),
+            actionLabel = stringResource(Res.string.topic_detail_practice_this_topic),
+            onAction = onBrowsePractice,
             modifier = modifier,
         )
         return
     }
+    // Full-bleed: the rows own the horizontal margin, so their state layers reach the pane edges.
+    // See `appListContentPadding`.
+    val margin = LocalAppContentMargin.current
     LazyColumn(
         state = listState,
         modifier = modifier.fillMaxSize().testTag(TopicSubtopicsListTag),
-        contentPadding = appScreenContentPadding(top = AppSpacing.Related),
+        contentPadding = appListContentPadding(top = AppSpacing.Related),
     ) {
         items(items = subtopics, key = { it.subtopic.id }) { item ->
             SubtopicRow(
@@ -77,7 +86,12 @@ internal fun TopicSubtopicsPage(
                 onStartSubtopicPractice = onStartSubtopicPractice,
                 onPracticePreset = onPracticePreset,
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            HorizontalDivider(
+                // Inset to the same margin as the row content, so the rule stays aligned with the
+                // text rather than running the full width of the pane behind it.
+                modifier = Modifier.padding(horizontal = margin),
+                color = MaterialTheme.colorScheme.outlineVariant,
+            )
         }
     }
 }
@@ -97,13 +111,16 @@ private fun SubtopicRow(
     onPracticePreset: (PracticePreset) -> Unit,
 ) {
     val context = item.learningContext
+    val margin = LocalAppContentMargin.current
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag(SubtopicPracticeButtonTag)
                 .clickable { onStartSubtopicPractice(item.subtopic.id) }
-                .padding(vertical = AppSpacing.Comfortable),
+                // Inside the clickable, so the state layer spans the pane and the content is inset
+                // within it rather than the whole row being inset and the band hugging the text.
+                .padding(horizontal = margin, vertical = AppSpacing.Comfortable),
             horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -177,7 +194,8 @@ private fun SubtopicRow(
             },
             weakTestTag = subtopicWeakPracticeTag(item.subtopic.id),
             unseenTestTag = subtopicUnseenPracticeTag(item.subtopic.id),
-            modifier = Modifier.padding(bottom = AppSpacing.Related),
+            // Outside the row's click target, so it carries the margin itself.
+            modifier = Modifier.padding(start = margin, end = margin, bottom = AppSpacing.Related),
         )
     }
 }
@@ -200,7 +218,11 @@ private fun SubtopicLearningContext(context: LearningContextUiModel) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
-    if (context.isUnstudied) {
+    // Only when the coverage line above is absent. `isUnstudied` is a strict subset of it — nothing
+    // attempted and no accuracy — so wherever coverage is shown it already reads "0 of N explored",
+    // and printing both made every untouched row state the same fact twice in two type sizes. A
+    // scope with no current Questions has no coverage line, and there this is the only thing to say.
+    if (!context.hasCoverageScope && context.isUnstudied) {
         Text(
             text = stringResource(Res.string.learning_context_not_studied),
             style = MaterialTheme.typography.bodySmall,

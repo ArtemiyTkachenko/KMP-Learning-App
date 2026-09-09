@@ -26,6 +26,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.runSkikoComposeUiTest
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -34,6 +35,7 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -106,6 +108,30 @@ import org.koin.dsl.module
  */
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 internal class LearningProductionContentJourneyTest {
+    @Test
+    fun studyActionsOnNewLessonsUpdateTheExistingUnitAndTopicScreens() = runProductionJourneyTest {
+        ShippedUnits.drop(1).forEach { unit ->
+            openFirstShippedLesson(unit)
+            waitForText("Mark as studied")
+            onNodeWithText("Mark as studied").performScrollTo().assertOperable("Mark as studied")
+            onNodeWithText("Mark as studied").performClick()
+            waitForText("Mark as not studied")
+            onNodeWithContentDescription("Back").performClick()
+            waitForText("1 of ${unit.lessons.size} lessons studied")
+            onNodeWithContentDescription("Back").performClick()
+            waitForText("1 of ${unit.lessons.size} lessons studied")
+            onNodeWithTag(learningUnitCardTag(unit.id)).performScrollTo().performClick()
+            onNodeWithTag(learningLessonRowTag(unit.lessons.first().id)).performScrollTo().performClick()
+            waitForText("Mark as not studied")
+            onNodeWithText("Mark as not studied").performScrollTo().assertOperable("Mark as not studied")
+            onNodeWithText("Mark as not studied").performClick()
+            waitForText("Mark as studied")
+            onNodeWithContentDescription("Back").performClick()
+            waitForText("0 of ${unit.lessons.size} lessons studied")
+            onNodeWithTag(LearnAreaTag).performClick()
+        }
+    }
+
     /**
      * Every block type the shipped Unit actually uses, seen rendered in the reader it ships in.
      *
@@ -119,6 +145,7 @@ internal class LearningProductionContentJourneyTest {
 
         val seen = mutableSetOf<String>()
         var asserted = 0
+        var overflowing = 0
         ShippedUnit.lessons.forEachIndexed { index, lesson ->
             waitForText(lesson.title)
             lesson.blocks().forEach { block ->
@@ -155,10 +182,11 @@ internal class LearningProductionContentJourneyTest {
      * curriculum grows.
      */
     @Test
-    fun everyShippedUnitsAuthoredBlocksRenderInTheReader() = runProductionJourneyTest {
+    fun everyShippedUnitsAuthoredBlocksRenderInTheReader() = runProductionJourneyTest { openedUris ->
         assertTrue(ShippedUnits.size > 1, "Expected the Compose Topic to ship more than one Unit.")
 
         var asserted = 0
+        var overflowing = 0
         ShippedUnits.forEach { unit ->
             openFirstShippedLesson(unit)
 
@@ -168,10 +196,32 @@ internal class LearningProductionContentJourneyTest {
                     assertRenders(block)
                     asserted += 1
                 }
+                // The page never widens: the reading column fits, and the two block types that
+                // carry genuinely over-wide content scroll inside themselves instead.
+                val rootWidth = onNodeWithTag(WindowTag).fetchSemanticsNode().boundsInRoot.width
+                assertWithin(LearningLessonReadingColumnTag, rootWidth)
+                if (assertOverflowScrollsInternally(LearningLessonCodeBlockTag, rootWidth)) {
+                    overflowing += 1
+                }
+                if (assertOverflowScrollsInternally(LearningLessonComparisonTag, rootWidth)) {
+                    overflowing += 1
+                }
+
+                // Every authored Source is reachable and opens the URL it declares.
+                lesson.sources.forEach { source ->
+                    onNodeWithText(source.title).performScrollTo().assert(hasClickAction())
+                    onNodeWithText(source.title).performClick()
+                    assertEquals(source.url, openedUris.last())
+                }
                 if (index < unit.lessons.lastIndex) {
                     onNodeWithTag(LearningLessonNextTag).performScrollTo().performClick()
                 }
             }
+
+            onNodeWithTag(LearningLessonPreviousTag).performScrollTo().performClick()
+            waitForText(unit.lessons[unit.lessons.lastIndex - 1].title)
+            onNodeWithContentDescription("Back").performClick()
+            waitForTag(learningLessonRowTag(unit.lessons.first().id))
 
             // Back to the Topic list so the next Unit is opened the way a learner would.
             onNodeWithTag(LearnAreaTag).performClick()
@@ -182,6 +232,8 @@ internal class LearningProductionContentJourneyTest {
             asserted,
             "Not every authored block reached an assertion.",
         )
+        // Without this the containment check above could pass on content that never overflowed.
+        assertTrue(overflowing > 0, "No shipped block was wider than the window: containment unproven.")
     }
 
     /**
@@ -317,6 +369,7 @@ private fun ComposeUiTest.assertRenders(block: LearningBlock): String = when (bl
         "bullet_list"
     }
     is LearningBlock.Code -> {
+        assertReadable(block.code)
         block.language?.let { assertReadable(it) }
         onAllNodesWithTag(LearningLessonCodeBlockTag, useUnmergedTree = true)
             .assertAll(hasScrollAction())
@@ -360,6 +413,30 @@ private fun SemanticsNodeInteraction.assertOperable(vararg labels: String) {
 private fun ComposeUiTest.assertWithin(tag: String, rootWidth: Float) {
     val width = onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot.width
     assertTrue(width <= rootWidth, "$tag was $width wide in a $rootWidth window.")
+}
+
+/**
+ * Over-wide content scrolls inside its own box rather than stretching the page.
+ *
+ * `assertRenders` already proves these blocks own a scroll action. The property this adds is
+ * containment: a block whose *content* is wider than the window still reports *bounds* that fit
+ * the window, which is exactly the difference between scrolling internally and widening the page.
+ *
+ * Returns whether any node here actually overflowed, so the caller can prove the check met
+ * genuinely wide content instead of passing vacuously on content that always fitted.
+ */
+@OptIn(ExperimentalTestApi::class)
+private fun ComposeUiTest.assertOverflowScrollsInternally(tag: String, rootWidth: Float): Boolean {
+    var overflowed = false
+    repeat(onAllNodesWithTag(tag, useUnmergedTree = true).fetchSemanticsNodes().size) { index ->
+        val node = onAllNodesWithTag(tag, useUnmergedTree = true)[index].fetchSemanticsNode()
+        val width = node.boundsInRoot.width
+        assertTrue(width <= rootWidth, "$tag was $width wide in a $rootWidth window: the page widened.")
+        val range = node.config.getOrElseNullable(SemanticsProperties.HorizontalScrollAxisRange) { null }
+        assertNotNull(range, "$tag reports no horizontal scroll range, so wide content would widen the page.")
+        if (range.maxValue() > 0f) overflowed = true
+    }
+    return overflowed
 }
 
 /**
@@ -420,6 +497,8 @@ private fun runProductionJourneyTest(
                 }
 
                 block(openedUris)
+                assertEquals(0, db.assessmentAttemptDao().countTestAttempts())
+                assertTrue(db.studiedLessonDao().getAll().isEmpty(), "Reading must not mark Lessons studied.")
             }
         } finally {
             stopKoin()

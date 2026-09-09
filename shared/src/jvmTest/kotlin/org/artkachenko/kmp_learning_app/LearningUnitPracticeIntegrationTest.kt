@@ -38,6 +38,21 @@ import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingLaunch
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingUiState
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingViewModel
 import org.artkachenko.kmp_learning_app.curriculum.content.BundledCurriculumSource
+import org.artkachenko.kmp_learning_app.curriculum.learning.content.BundledLearningContentRepository
+import org.artkachenko.kmp_learning_app.lesson_study.repository.LessonStudyRepository
+import org.artkachenko.kmp_learning_app.lesson_study.ContinueLearningTarget
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressSummary
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressUiState
+import org.artkachenko.kmp_learning_app.data.local.lesson_study.repository.LocalLessonStudyRepository
+import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonUiState
+import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonViewModel
+import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitUiState
+import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitViewModel
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailUiState
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
+import org.artkachenko.kmp_learning_app.topic_study.topics.ContinueLearningUiModel
+import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserUiState
+import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
 import org.artkachenko.kmp_learning_app.curriculum.learning.content.learningContentModule
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.data.local.assessment.assessmentDataModule
@@ -82,6 +97,123 @@ import org.koin.dsl.module
 internal class LearningUnitPracticeIntegrationTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
+
+    @Test
+    fun existingLearnerTraversesTheExpansionWithLiveParentProgressAndDurableIdentities() =
+        runUnitPracticeTest {
+            // These published identities predate the expansion. Seed before opening new content.
+            val publishedIds = setOf(
+                "lesson_declarative_ui", "lesson_composable_execution", "lesson_state_down_events_up",
+            )
+            publishedIds.forEach { studyRepository.markStudied(it) }
+            val originalRecords = studyRepository.getStudiedLessons()
+            val units = BundledLearningContentRepository().getActiveUnitsByTopic("android_ui")
+            assertEquals(publishedIds, units.first().lessons.map { it.id }.toSet())
+            assertEquals(listOf(5, 3, 5, 3, 2), units.drop(1).map { it.lessons.size })
+
+            // Keep the real parent ViewModels alive throughout every child mutation.
+            val browser = browser()
+            val topic = topic()
+            val parents = units.associate { it.id to unit(it.id) }
+            suspend fun awaitTopic(count: Int) {
+                topic.uiState.await { state ->
+                    state is TopicDetailUiState.Content &&
+                        (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
+                        StudyProgressSummary.Progress(count, 21)
+                }
+            }
+            suspend fun awaitNext(unitId: String, lessonId: String) {
+                browser.uiState.await { state ->
+                    state is TopicBrowserUiState.Content &&
+                        (state.continueLearning as? ContinueLearningUiModel.Next)?.target ==
+                        ContinueLearningTarget(unitId, lessonId)
+                }
+            }
+            awaitTopic(3)
+            var studiedCount = 3
+            units.drop(1).forEach { unit ->
+                unit.lessons.forEachIndexed { index, lesson ->
+                    awaitNext(unit.id, lesson.id)
+                    val reader = lesson(unit.id, lesson.id)
+                    reader.uiState.await { state ->
+                        state is LearningLessonUiState.Content &&
+                            (state.studyState as? StudyProgressUiState.Available)?.value?.isStudied == false
+                    }
+                    assertEquals(studiedCount, studyRepository.getStudiedLessons().size)
+                    reader.toggleStudied()
+                    reader.uiState.await { state ->
+                        state is LearningLessonUiState.Content &&
+                            (state.studyState as? StudyProgressUiState.Available)?.value?.let {
+                                it.isStudied && !it.isPending
+                            } == true
+                    }
+                    studiedCount += 1
+                    awaitTopic(studiedCount)
+                    parents.getValue(unit.id).uiState.await { state ->
+                        state is LearningUnitUiState.Content &&
+                            (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
+                            StudyProgressSummary.Progress(index + 1, unit.lessons.size)
+                    }
+                }
+            }
+            browser.uiState.await { state ->
+                state is TopicBrowserUiState.Content && state.continueLearning == ContinueLearningUiModel.Complete
+            }
+            val earlierUnit = units[1]
+            val earlierLesson = earlierUnit.lessons.last()
+            val reader = lesson(earlierUnit.id, earlierLesson.id)
+            reader.uiState.await { state ->
+                state is LearningLessonUiState.Content &&
+                    (state.studyState as? StudyProgressUiState.Available)?.value?.isStudied == true
+            }
+            reader.toggleStudied()
+            awaitNext(earlierUnit.id, earlierLesson.id)
+            awaitTopic(20)
+            parents.getValue(earlierUnit.id).uiState.await { state ->
+                state is LearningUnitUiState.Content &&
+                    (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
+                    StudyProgressSummary.Progress(4, 5)
+            }
+            val rebuilt = LocalLessonStudyRepository(database)
+            assertFalse(rebuilt.isStudied(earlierLesson.id))
+            assertEquals(20, rebuilt.getStudiedLessons().size)
+            assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
+            assertEquals(0, attemptCount())
+            assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
+        }
+
+    @Test
+    fun expandedUnitsConfigureOnlyTheirPrimaryConceptsAndDeduplicateProductionQuestions() =
+        runUnitPracticeTest {
+            val expected = linkedMapOf(
+                "unit_state_and_state_ownership" to (setOf("compose_state", "compose_state_hoisting") to 4),
+                "unit_recomposition" to (setOf("compose_recomposition") to 3),
+                "unit_identity_keys_and_stability" to (setOf("compose_identity_keys", "compose_stability") to 6),
+                "unit_derived_state_and_expensive_work" to (setOf("compose_derived_state") to 3),
+                "unit_snapshot_fundamentals" to (setOf("compose_snapshot_system") to 4),
+            )
+            val content = BundledLearningContentRepository()
+            expected.forEach { (unitId, expectation) ->
+                val (concepts, count) = expectation
+                val unit = assertNotNull(content.getUnitById(unitId))
+                val builder = builder(PracticeBuilderTarget.LearningUnit(unitId))
+                builder.settled()
+                builder.selectQuestionCount(10)
+                val state = builder.settled()
+                assertEquals(unit.title, state.scope.name)
+                assertEquals(count, assertIs<PracticeAvailability.Available>(state.availability).eligibleQuestionCount)
+                val config = builder.start()
+                assertEquals(AssessmentScope.Subtopics(concepts), config.scope, unitId)
+                val questions = selectedQuestions(config)
+                assertEquals(count, questions.size, unitId)
+                assertEquals(count, questions.map { it.id }.toSet().size, unitId)
+                assertEquals(concepts, questions.map { it.subtopicId }.toSet(), unitId)
+                val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
+                assertTrue(questions.none { it.subtopicId in supportingOnly }, unitId)
+                assertEquals(config, assertIs<AppRoute.FocusedSubtopicsPractice>(config.toPracticeRoute()).toAssessmentConfig())
+            }
+            assertEquals(0, attemptCount())
+        }
 
     /**
      * The whole runtime flow in one pass: the route's Unit ID becomes the current Unit, its ACTIVE
@@ -190,54 +322,62 @@ internal class LearningUnitPracticeIntegrationTest {
      * with the Unit that suggested it nowhere in the path.
      */
     @Test
-    fun aUnitOriginatedAttemptIsReviewedAndRetakenAsAnOrdinaryFocusedRun() = runUnitPracticeTest {
-        val config = builder(PracticeBuilderTarget.LearningUnit(ComposeUnitId)).also { it.settled() }
-            .start()
-        val attemptId = runPractice(config)
+    fun aUnitOriginatedAttemptIsReviewedAndRetakenAsAnOrdinaryFocusedRun() {
+        // One multi-concept expansion and the final single-concept Unit exercise both shapes.
+        listOf(ComposeUnitId, "unit_identity_keys_and_stability", "unit_snapshot_fundamentals").forEach { unitId ->
+            runUnitPracticeTest {
+                val config = builder(PracticeBuilderTarget.LearningUnit(unitId)).also { it.settled() }
+                    .start()
+                val concepts = assertIs<AssessmentScope.Subtopics>(config.scope).subtopicIds
+                val studiedBefore = studyRepository.getStudiedLessons()
+                val attemptId = runPractice(config)
 
-        // Review resolves from the attempt ID and the historical curriculum: no Unit, no Lesson,
-        // and no learning content is consulted to reconstruct what was asked.
-        val result = assertIs<FocusedResultUiState.Content>(result(attemptId).settledResult())
-        assertEquals(attemptId, result.attemptId)
-        assertTrue(result.totalQuestions > 0, "The reviewed attempt asked nothing.")
-        assertEquals(result.totalQuestions, result.questions.size)
-        result.questions.forEach { item ->
-            // Every Question the run asked is still resolvable for review, and each one is inside
-            // the concepts the Unit teaches rather than the wider Topic they happen to share.
-            val available = assertIs<ReviewQuestionItem.Available>(item)
-            assertContains(
-                UnitPracticeConcepts,
-                available.question.subtopicId,
-                "Reviewed ${available.question.questionId} outside the Unit's primary concepts.",
-            )
+                // Review resolves from the attempt ID and the historical curriculum: no Unit, no Lesson,
+                // and no learning content is consulted to reconstruct what was asked.
+                val result = assertIs<FocusedResultUiState.Content>(result(attemptId).settledResult())
+                assertEquals(attemptId, result.attemptId)
+                assertTrue(result.totalQuestions > 0, "The reviewed attempt asked nothing.")
+                assertEquals(result.totalQuestions, result.questions.size)
+                result.questions.forEach { item ->
+                    // Every Question the run asked is still resolvable for review, and each one is inside
+                    // the concepts the Unit teaches rather than the wider Topic they happen to share.
+                    val available = assertIs<ReviewQuestionItem.Available>(item)
+                    assertContains(
+                        concepts,
+                        available.question.subtopicId,
+                        "Reviewed ${available.question.questionId} outside the Unit's primary concepts.",
+                    )
+                }
+
+                val retakeViewModel = result(attemptId)
+                retakeViewModel.settledResult()
+                retakeViewModel.repeatPractice()
+                val retakeId = assertIs<FocusedResultEvent.RetakeCreated>(
+                    withContext(Dispatchers.Default) {
+                        withTimeout(AwaitTimeoutMillis) { retakeViewModel.events.first() }
+                    },
+                ).attemptId
+
+                // A second attempt, not a mutation of the first: a new stable ID, in progress, carrying the
+                // stored configuration — the multi-Subtopic scope survives rather than broadening to the
+                // Topic the concepts share.
+                assertNotEquals(attemptId, retakeId)
+                val retake = assertNotNull(assessmentRepository.getById(retakeId))
+                assertEquals(AssessmentStatus.IN_PROGRESS, retake.status)
+                assertEquals(config, retake.config)
+                assertEquals(
+                    AssessmentScope.Subtopics(concepts),
+                    assertIs<AssessmentConfig.Focused>(retake.config).scope,
+                )
+
+                // The source attempt is untouched history, and both attempts now stand on their own.
+                val source = assertNotNull(assessmentRepository.getById(attemptId))
+                assertEquals(AssessmentStatus.COMPLETED, source.status)
+                assertEquals(config, source.config)
+                assertEquals(2, attemptCount())
+                assertEquals(studiedBefore, studyRepository.getStudiedLessons())
+            }
         }
-
-        val retakeViewModel = result(attemptId)
-        retakeViewModel.settledResult()
-        retakeViewModel.repeatPractice()
-        val retakeId = assertIs<FocusedResultEvent.RetakeCreated>(
-            withContext(Dispatchers.Default) {
-                withTimeout(AwaitTimeoutMillis) { retakeViewModel.events.first() }
-            },
-        ).attemptId
-
-        // A second attempt, not a mutation of the first: a new stable ID, in progress, carrying the
-        // stored configuration — the multi-Subtopic scope survives rather than broadening to the
-        // Topic the concepts share.
-        assertNotEquals(attemptId, retakeId)
-        val retake = assertNotNull(assessmentRepository.getById(retakeId))
-        assertEquals(AssessmentStatus.IN_PROGRESS, retake.status)
-        assertEquals(config, retake.config)
-        assertEquals(
-            AssessmentScope.Subtopics(UnitPracticeConcepts),
-            assertIs<AssessmentConfig.Focused>(retake.config).scope,
-        )
-
-        // The source attempt is untouched history, and both attempts now stand on their own.
-        val source = assertNotNull(assessmentRepository.getById(attemptId))
-        assertEquals(AssessmentStatus.COMPLETED, source.status)
-        assertEquals(config, source.config)
-        assertEquals(2, attemptCount())
     }
 
     /** A stale route that names no current Unit fails safely rather than practising something else. */
@@ -323,11 +463,18 @@ private class UnitPracticeGraph(
     private val koin: Koin,
 ) {
     val assessmentRepository: AssessmentRepository get() = koin.get()
+    val studyRepository: LessonStudyRepository get() = koin.get()
     private val questionSelector: AssessmentQuestionSelector get() = koin.get()
     private val curriculumRepository: CurriculumRepository get() = koin.get()
 
     fun builder(target: PracticeBuilderTarget): PracticeBuilderViewModel =
         koin.get { parametersOf(target) }
+
+    fun browser(): TopicBrowserViewModel = koin.get()
+    fun topic(): TopicDetailViewModel = koin.get { parametersOf("android_ui") }
+    fun unit(id: String): LearningUnitViewModel = koin.get { parametersOf(id) }
+    fun lesson(unitId: String, lessonId: String): LearningLessonViewModel =
+        koin.get { parametersOf(unitId, lessonId) }
 
     /** The ordinary focused result, addressed the only way the shell addresses it: by attempt ID. */
     fun result(attemptId: String): FocusedResultViewModel = koin.get { parametersOf(attemptId) }

@@ -679,7 +679,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Over-specify and you get the mirror image. A key that changes more often than the value conceptually does throws the value away for no reason, which for remembered state means the user's input disappears. Keying the draft above on the whole `user` object would do it whenever any unrelated field of `User` differs, and keying it on something recreated every execution would discard it every time."
+                  "text": "Over-specify and you get the mirror image. A key that changes more often than the value conceptually does throws the value away for no reason, which for remembered state means the user's input disappears. Keying the draft above on the whole `user` object would do it whenever any unrelated field of `User` differs, and keying it on a fresh object that compares unequal every execution would discard it every time. A freshly created but equal key does not invalidate remember; the comparison is equals, not instance identity."
                 },
                 {
                   "type": "callout",
@@ -1926,7 +1926,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "A value that resets on every recomposition was never remembered at all — that is Unit 2's failure and it is a missing `remember`. A value that survives for a while and then resets when the user opens a drawer, switches a tab or collapses a panel was remembered correctly and lost its identity, and no amount of adding `remember` will fix it. Knowing which of the two you are looking at is most of the diagnosis."
+                  "text": "A value that resets on every recomposition may never have been remembered at all, or may use remember keys that change on every execution. Check both the missing-remember case and the over-specified-key case from Unit 2. A value that survives for a while and then resets when the user opens a drawer, switches a tab or collapses a panel was remembered correctly and lost its identity, and no amount of adding `remember` will fix it. Knowing which of the two you are looking at is most of the diagnosis."
                 },
                 {
                   "type": "paragraph",
@@ -2624,7 +2624,7 @@
                 {
                   "type": "bullet_list",
                   "items": [
-                    "**Make the promise true.** Hold `tracks` as a read-only `List` that is replaced rather than edited, so the type really is immutable and the annotation becomes unnecessary — which is the preferred outcome, since the guidance is explicit that if a class can be made stable without an annotation, that is how it should be done.",
+                    "**Make the promise true.** Model Playlist as a value whose equality includes the tracks, with a read-only List that is never shared mutably, and replace the whole value when tracks change. This fixes the mutation and equality contracts. An ordinary List still does not establish compiler-inferred stability; the Senior section below separates that classification from immutability by construction.",
                     "**Make the change observable instead.** If the collection must be edited in place, back it with a snapshot-aware collection and mark the type `@Stable` rather than `@Immutable`, because now the honest claim is not that it never changes but that changes are notified."
                   ]
                 },
@@ -3303,7 +3303,7 @@
                   "type": "bullet_list",
                   "items": [
                     "**An observable state object.** Only Compose's own state types take part. An `Int` field, an `ArrayList`, a `var` on a class you wrote — none of them can report anything, so none of them is inside this mechanism at all.",
-                    "**A read that happens inside an observing context.** An observing context is code that is recording reads while it runs: a composable executing during composition, a `derivedStateOf` calculation, and — as the next lesson shows — a `snapshotFlow` block. Reading the same object from a click handler or an ordinary function returns the current value perfectly well and records nothing, because nothing was recording.",
+                    "**A read that happens inside an observing context.** An observing context is code that is recording reads while it runs: a composable executing during composition, a `derivedStateOf` calculation, and — as the next lesson shows — a `snapshotFlow` block. Reading the same object from a click handler, or from an ordinary function running outside any observing context, returns the current value and records no dependency. An ordinary helper called during composition does participate in the caller's observing context, as Unit 3 explained.",
                     "**A change the state object agrees is a change.** `mutableStateOf` compares the new value against the current one with structural equality by default, so assigning a value equal to the one already held is not a change and is never reported.",
                     "**Invalidation.** What a reported change actually does is mark the contexts that recorded a read as out of date. It does not run them, and it certainly does not draw anything."
                   ]
@@ -3314,7 +3314,7 @@
                 },
                 {
                   "type": "code",
-                  "code": "@Composable\nfun Counter(count: MutableState<Int>) {\n    // A read inside an executing composable: recorded, because composition is\n    // an observing context and this composable is what is executing.\n    Text(\"Count: ${count.value}\")\n\n    Button(\n        // Two reads and a write inside a click handler: nothing is recorded.\n        // The handler runs later, when no composition is in progress.\n        onClick = { count.value = count.value + 1 },\n    ) {\n        Text(\"Add one\")\n    }\n}",
+                  "code": "@Composable\nfun Counter(count: MutableState<Int>) {\n    // A read inside an executing composable: recorded, because composition is\n    // an observing context and this composable is what is executing.\n    Text(\"Count: ${count.value}\")\n\n    Button(\n        // The handler's read creates no composition dependency; its write reports change.\n        // The handler runs later, when no composition is in progress.\n        onClick = { count.value = count.value + 1 },\n    ) {\n        Text(\"Add one\")\n    }\n}",
                   "language": "kotlin"
                 },
                 {

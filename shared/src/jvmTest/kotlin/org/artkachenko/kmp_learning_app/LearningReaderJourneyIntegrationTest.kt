@@ -46,6 +46,8 @@ import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLess
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonPreviousTag
 import org.artkachenko.kmp_learning_app.topic_study.learning_unit.learningLessonRowTag
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
+import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserSearchFieldTag
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicStudyListTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.learningUnitCardTag
 import org.koin.compose.KoinApplication
 import org.koin.core.context.stopKoin
@@ -68,10 +70,8 @@ import org.koin.dsl.module
 internal class LearningReaderJourneyIntegrationTest {
     @Test
     fun theShippedComposeUnitIsReadEndToEndAndBackLeavesTheReaderForItsUnit() = runReaderTest {
-        waitForText(UiTopicName)
-        onNodeWithText(UiTopicName).performClick()
-
         // The study half of the Topic, read from the bundled learning document.
+        openTopicFromBrowser()
         waitForTag(learningUnitCardTag(ComposeUnitId))
         onNodeWithText(ComposeUnitTitle).assertIsDisplayed()
         onNodeWithTag(learningUnitCardTag(ComposeUnitId)).performClick()
@@ -115,6 +115,29 @@ internal class LearningReaderJourneyIntegrationTest {
         onNodeWithContentDescription("Back").performClick()
         waitForText(ComposeUnitTitle)
         onNodeWithTag(learningLessonRowTag(FirstLessonId)).assertIsDisplayed()
+    }
+
+    /**
+     * Learn -> the Topic, confirming arrival rather than assuming it.
+     *
+     * The Topic's name appears on the browser row and again in Topic Detail's top bar, so the search
+     * field — which only the browser has — is what says which screen is being looked at. The browser
+     * also rebuilds its rows as learning context resolves underneath them, and a click into a row
+     * being replaced is lost; a learner who stayed put would tap again, so this does too.
+     */
+    private suspend fun ComposeUiTest.openTopicFromBrowser() {
+        waitForTag(TopicBrowserSearchFieldTag)
+        waitForText(UiTopicName)
+        repeat(NavigationAttempts) {
+            if (onAllNodesWithTag(TopicStudyListTag, useUnmergedTree = true)
+                    .fetchSemanticsNodes().isNotEmpty()
+            ) {
+                return
+            }
+            onNodeWithText(UiTopicName).performClick()
+            waitForIdle()
+        }
+        waitForTag(TopicStudyListTag)
     }
 
     private suspend fun ComposeUiTest.waitForText(text: String) {
@@ -186,6 +209,9 @@ internal class LearningReaderJourneyIntegrationTest {
 }
 
 private const val ReaderWaitTimeoutMillis = 5_000L
+
+/** How many times the journey re-taps a Topic row that did not navigate. */
+private const val NavigationAttempts = 3
 private val WindowWidth: Dp = 400.dp
 private val WindowHeight: Dp = 900.dp
 

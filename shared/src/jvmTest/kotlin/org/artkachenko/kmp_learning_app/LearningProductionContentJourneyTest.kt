@@ -19,6 +19,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -26,6 +27,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.runSkikoComposeUiTest
 import androidx.compose.ui.unit.Dp
@@ -72,6 +74,8 @@ import org.artkachenko.kmp_learning_app.topic_study.practice_builder.practiceLev
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.practiceQuestionCountTag
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.practiceSourceTag
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
+import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserSearchFieldTag
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicStudyListTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.learningUnitCardTag
 import org.koin.compose.KoinApplication
 import org.koin.core.context.stopKoin
@@ -120,7 +124,8 @@ internal class LearningProductionContentJourneyTest {
             waitForText("1 of ${unit.lessons.size} lessons studied")
             onNodeWithContentDescription("Back").performClick()
             waitForText("1 of ${unit.lessons.size} lessons studied")
-            onNodeWithTag(learningUnitCardTag(unit.id)).performScrollTo().performClick()
+            scrollToLearningUnit(unit.id)
+            onNodeWithTag(learningUnitCardTag(unit.id)).performClick()
             onNodeWithTag(learningLessonRowTag(unit.lessons.first().id)).performScrollTo().performClick()
             waitForText("Mark as not studied")
             onNodeWithText("Mark as not studied").performScrollTo().assertOperable("Mark as not studied")
@@ -536,13 +541,51 @@ private val ShippedUnits: List<LearningUnit> by lazy {
 
 private val LearnAreaTag: String = appNavigationBarItemTag(AppTopLevelDestination.TOPICS)
 
+/** Brings one Unit's row into view on the Topic's Study tab, whatever its position in the list. */
+@OptIn(ExperimentalTestApi::class)
+private fun ComposeUiTest.scrollToLearningUnit(unitId: String) {
+    onNodeWithTag(TopicStudyListTag)
+        .performScrollToNode(hasTestTag(learningUnitCardTag(unitId)))
+}
+
+/**
+ * Learn -> the Topic, by clicking what a learner clicks, and confirming they arrived.
+ *
+ * Two things make a single blind click unreliable here. The Topic's name is on the browser row *and*
+ * in Topic Detail's own top bar, so waiting on the name alone can match the screen being left rather
+ * than the one being opened — hence waiting for the search field, which only the browser has. And
+ * the browser rebuilds its rows as learning context and Continue Learning resolve underneath them,
+ * so a click dispatched into a row that is being replaced is simply lost. A learner who tapped a
+ * Topic and stayed put would tap again; this does the same, rather than waiting out a navigation
+ * that was never started.
+ */
+@OptIn(ExperimentalTestApi::class)
+private suspend fun ComposeUiTest.openTopicFromBrowser() {
+    waitForTag(TopicBrowserSearchFieldTag)
+    waitForText(UiTopicName)
+    repeat(NavigationAttempts) {
+        if (onAllNodesWithTag(TopicStudyListTag, useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        ) {
+            return
+        }
+        onNodeWithText(UiTopicName).performClick()
+        waitForIdle()
+    }
+    // Nothing arrived after several attempts, so let the ordinary wait produce the failure and its
+    // message rather than throwing something less informative from here.
+    waitForTag(TopicStudyListTag)
+}
+
 /** Learn -> the Topic -> a shipped Unit, by clicking what a learner clicks. */
 @OptIn(ExperimentalTestApi::class)
 private suspend fun ComposeUiTest.openShippedUnit(unit: LearningUnit = ShippedUnit) {
-    waitForText(UiTopicName)
-    onNodeWithText(UiTopicName).performClick()
-    waitForTag(learningUnitCardTag(unit.id))
-    onNodeWithTag(learningUnitCardTag(unit.id)).performScrollTo().performClick()
+    openTopicFromBrowser()
+    // A Topic opens on its Study tab, and the Units are a lazy list: a Unit further down does not
+    // exist in the semantics tree until the list has been scrolled to it.
+    waitForTag(TopicStudyListTag)
+    scrollToLearningUnit(unit.id)
+    onNodeWithTag(learningUnitCardTag(unit.id)).performClick()
     waitForTag(learningLessonRowTag(unit.lessons.first().id))
 }
 
@@ -576,6 +619,9 @@ private class RecordingUriHandler(private val opened: MutableList<String>) : Uri
 private fun LearningLesson.blocks(): List<LearningBlock> = sections.flatMap { it.blocks }
 
 private const val JourneyTimeoutMillis = 10_000L
+
+/** How many times the journey re-taps a Topic row that did not navigate. */
+private const val NavigationAttempts = 3
 private const val TextSnippetLength = 40
 private const val WindowTag = "learning_journey_window"
 private val WindowWidth: Dp = 400.dp

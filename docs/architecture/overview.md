@@ -226,6 +226,53 @@ Selecting a Unit emits its stable Unit ID through a callback the shell turns int
 `AppRoute.LearningUnit`; the parameter stays optional so the screen can also be
 rendered outside the shell, where the cards are informational content.
 
+### Topic Detail's three pages
+
+Topic Detail presents those capabilities as three tabs — Study, Practice,
+Subtopics — behind a Material 3 `PrimaryTabRow` and a `HorizontalPager`, directly
+under the top bar. It was previously one `LazyColumn` holding all three sections
+in order, which meant a learner had to scroll to discover that a Topic even had
+Subtopics, and which forced a fixed `SubtopicItemOffset`: everything above the
+Subtopic rows was deliberately crammed into a single lazy item so a Subtopic
+opened from search still landed at `index + 1`. The Subtopics list now holds
+Subtopics and nothing else, so the row's index in the state *is* its index in the
+list and the offset is gone.
+
+The selected tab is marked by a filled pill rather than by Material's underline
+indicator, reusing the `secondaryContainer` treatment the navigation bar already
+gives the current area so "this is what you are looking at" reads the same
+everywhere. The indicator slot is left empty because `TabRow` places it over the
+tabs, where a filled shape would cover its own label; the tab's hover, focus, and
+press layer is clipped to the same pill, which matters on the pointer hosts where
+hover is a resting state rather than a flash. The pager's fling is pinned to
+`PagerSnapDistance.atMost(1)` with a positional threshold below Compose's 0.5
+default, so a swipe commits to the neighbouring capability rather than depending
+on how hard it was thrown.
+
+Which tab is selected is presentation state and is deliberately neither route nor
+ViewModel state. `AppRoute.Topic` gained no field: it already carries an optional
+`subtopicId`, and that is the whole initial-selection policy — a Topic opened
+with one starts on Subtopics and scrolls to the row, a Topic opened without one
+starts on Study. The selection is not even a value of its own. `rememberPagerState`
+is the single source of truth, so a tapped tab and a swiped page cannot disagree,
+and it is `rememberSaveable`-backed by construction, which is what makes the
+selection survive ordinary recreation without anything being serialised. Each
+page's scroll state is hoisted beside it, because a pager composes only the pages
+in view: hoisting is what lets a learner scroll deep into the Subtopics, check
+the Practice page, and come back to where they were.
+
+Terminal states stay outside the pager. Loading, a Topic that does not exist, and
+a failed curriculum read are statements about the Topic and still replace the
+whole screen; a tab with nothing in it is a statement about one capability and
+shows a quiet empty message instead. That is a change from the previous rule,
+where an empty section was simply absent — a blank tab reads as broken, and the
+tab row is fixed at three so the capabilities stay discoverable and the page
+indices stay constant. Nothing about practice scopes, presets, learning-context
+derivation, study progress, or Learning Unit navigation changed with the split:
+the same callbacks still emit the same `AssessmentScope`s and `PracticePreset`s,
+and Continue Learning still navigates straight to its Lesson rather than through
+the new Study tab.
+
 E21-03 completes the study path as ordinary detail navigation on the Learn stack:
 
 ```text

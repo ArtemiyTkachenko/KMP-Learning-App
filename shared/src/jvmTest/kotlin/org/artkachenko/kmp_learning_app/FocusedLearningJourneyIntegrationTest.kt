@@ -65,6 +65,8 @@ import org.artkachenko.kmp_learning_app.topic_study.practice_builder.practiceLev
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserContinueStudyingTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.SubtopicPracticeButtonTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicPracticeButtonTag
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicPracticeTabTag
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicSubtopicsTabTag
 import org.koin.compose.KoinApplication
 import org.koin.core.context.stopKoin
 import org.koin.dsl.koinConfiguration
@@ -99,7 +101,11 @@ internal class FocusedLearningJourneyIntegrationTest {
                 onAllNodesWithText("Android").fetchSemanticsNodes().isNotEmpty()
             }
             onNodeWithText("Android").assertIsDisplayed().performClick()
+            // Topic-level practice lives on the Topic's Practice tab; the Subtopic it drills into
+            // lives on the Subtopics tab. Both are one tap from the top of the screen.
+            selectTopicDetailTab(TopicSubtopicsTabTag)
             onNodeWithText("Core").assertIsDisplayed()
+            selectTopicDetailTab(TopicPracticeTabTag)
             onNodeWithTag(TopicPracticeButtonTag).assertIsDisplayed().performClick()
 
             // The Practice Builder now stands between choosing a scope and taking an assessment.
@@ -244,11 +250,14 @@ internal class FocusedLearningJourneyIntegrationTest {
                 .assertIsDisplayed()
                 .performClick()
             // And Topic Detail shows the same two figures as separate, labelled concepts.
+            selectTopicDetailTab(TopicPracticeTabTag)
             waitUntil(timeoutMillis = 5_000) {
                 onAllNodesWithText("Curriculum coverage").fetchSemanticsNodes().isNotEmpty()
             }
             onNodeWithText("All-time accuracy").assertIsDisplayed()
             onNodeWithText("2 of 2 questions explored").assertIsDisplayed()
+
+            selectTopicDetailTab(TopicSubtopicsTabTag)
             onNodeWithTag(SubtopicPracticeButtonTag).performClick()
             // A Subtopic action opens the builder already scoped to that Subtopic, and its
             // untouched defaults are the run one-tap focused practice used to start.

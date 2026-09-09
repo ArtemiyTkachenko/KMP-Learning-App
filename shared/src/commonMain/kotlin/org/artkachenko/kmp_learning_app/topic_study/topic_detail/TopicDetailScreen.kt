@@ -1,84 +1,49 @@
 package org.artkachenko.kmp_learning_app.topic_study.topic_detail
 
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerDefaults
+import androidx.compose.foundation.pager.PagerSnapDistance
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
-import kmp_learning_app.shared.generated.resources.learning_context_accuracy
-import kmp_learning_app.shared.generated.resources.learning_context_coverage_count
-import kmp_learning_app.shared.generated.resources.learning_context_coverage_title
-import kmp_learning_app.shared.generated.resources.learning_context_explored
-import kmp_learning_app.shared.generated.resources.learning_context_not_studied
-import kmp_learning_app.shared.generated.resources.practice_shortcut_unseen
-import kmp_learning_app.shared.generated.resources.practice_shortcut_weak_area
-import kmp_learning_app.shared.generated.resources.progress_weak_label
 import kmp_learning_app.shared.generated.resources.topic_browser_error
-import kmp_learning_app.shared.generated.resources.learning_study_progress_unavailable
-import kmp_learning_app.shared.generated.resources.learning_unit_lessons_studied
-import kmp_learning_app.shared.generated.resources.topic_detail_accuracy_caption
-import kmp_learning_app.shared.generated.resources.topic_detail_available_questions
 import kmp_learning_app.shared.generated.resources.topic_detail_heading
 import kmp_learning_app.shared.generated.resources.topic_detail_loading
-import kmp_learning_app.shared.generated.resources.topic_detail_learning_unavailable
-import kmp_learning_app.shared.generated.resources.topic_detail_learning_unit_lessons
-import kmp_learning_app.shared.generated.resources.topic_detail_no_questions
 import kmp_learning_app.shared.generated.resources.topic_detail_not_found
 import kmp_learning_app.shared.generated.resources.topic_detail_practice
-import kmp_learning_app.shared.generated.resources.topic_detail_start_practice
 import kmp_learning_app.shared.generated.resources.topic_detail_study
 import kmp_learning_app.shared.generated.resources.topic_detail_subtopics
-import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
-import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
+import kotlinx.coroutines.launch
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
-import org.artkachenko.kmp_learning_app.lesson_study.LearningUnitStudyProgress
-import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressSummary
-import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressUiState
-import org.artkachenko.kmp_learning_app.lesson_study.TopicStudyProgress
-import org.artkachenko.kmp_learning_app.ui.AccuracyHeadline
-import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
-import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
-import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
-import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
-import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
-import org.artkachenko.kmp_learning_app.ui.PrimarySummaryCard
-import org.artkachenko.kmp_learning_app.ui.ProgressMeter
-import org.artkachenko.kmp_learning_app.ui.SecondarySummaryCard
-import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
-import org.artkachenko.kmp_learning_app.ui.StatusBadge
-import org.artkachenko.kmp_learning_app.ui.accuracyColor
-import org.artkachenko.kmp_learning_app.ui.formatAccuracy
-import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
-import org.jetbrains.compose.resources.pluralStringResource
+import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
+import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
+import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 internal const val TopicDetailLoadingTag = "topic_detail_loading"
@@ -102,21 +67,124 @@ internal fun learningUnitStudyTag(unitId: String): String = "learning_unit_study
 internal const val TopicStudyUnavailableTag = "topic_study_unavailable"
 
 /**
- * How many lazy items sit above the Subtopic rows. The study section, the practice block, and both
- * headings are deliberately one item, so arriving from search still lands on `index + this`.
+ * The two lazy lists themselves, so a test can drive one to a node it wants.
+ *
+ * A lazy list composes only what is on screen, so a Unit or Subtopic further down does not exist in
+ * the semantics tree until the list is scrolled to it; and the pager is horizontally scrollable
+ * too, so a bare scroll-action matcher cannot say which of the two it meant.
  */
-private const val SubtopicItemOffset = 1
+internal const val TopicStudyListTag = "topic_study_list"
+internal const val TopicSubtopicsListTag = "topic_subtopics_list"
 
 /**
- * The Topic's practice surface, with three kinds of practice entry point that must stay distinct.
+ * The tabs themselves, so a test can select a page without matching localised label text.
  *
- * [onStartTopicPractice] and [onStartSubtopicPractice] are ordinary practice and are unchanged: they
- * carry a scope only, so the builder applies its `ALL` default. [onPracticePreset] carries a scope
- * *and* an existing question source, and is emitted only where this screen is already displaying the
- * signal that justifies it — the domain's `isWeak` verdict, or coverage that still has current
- * questions left in it. Neither is re-derived here, and neither ranks above the other: a scope that
- * is both weak and partly covered offers both, because the learner chose to look at that scope.
- * Choosing one for them is what Recommended Next does, elsewhere and on purpose.
+ * Selected state is not tagged: `Tab` already exposes it through standard Material selection
+ * semantics, and a second, hand-maintained signal for the same thing could disagree with it.
+ */
+internal const val TopicStudyTabTag = "topic_tab_study"
+internal const val TopicPracticeTabTag = "topic_tab_practice"
+internal const val TopicSubtopicsTabTag = "topic_tab_subtopics"
+
+/**
+ * A Topic's three capabilities, in the order they are taught.
+ *
+ * Study first because reading the material precedes being asked about it, Practice second because
+ * it is what the whole Topic is assessed on, and Subtopics last because it is the drill-down. The
+ * declaration order *is* the page order and the tab order, so the two cannot fall out of step.
+ */
+private enum class TopicDetailTab(val label: StringResource, val testTag: String) {
+    Study(Res.string.topic_detail_study, TopicStudyTabTag),
+    Practice(Res.string.topic_detail_practice, TopicPracticeTabTag),
+    Subtopics(Res.string.topic_detail_subtopics, TopicSubtopicsTabTag),
+}
+
+/**
+ * How far a drag has to travel before it commits to the next page rather than springing back.
+ *
+ * See the pager's fling behaviour for why this sits below Compose's 0.5 default.
+ */
+private const val TabSnapPositionalThreshold = 0.25f
+
+/**
+ * The selected tab's pill. `Shapes` deliberately does not model one — a pill is a function of the
+ * element's own height rather than a step on the shape scale — so it is declared locally, which is
+ * the convention `AppShapes` sets out.
+ */
+private val TabIndicatorShape = RoundedCornerShape(percent = 50)
+
+/**
+ * One tab, marked as selected by a filled pill rather than by a rule beneath it.
+ *
+ * The pill is the same treatment the navigation bar already uses for the current area — Material's
+ * `secondaryContainer` over `onSecondaryContainer` — so "this is the thing you are looking at"
+ * looks the same everywhere in the app. An underline states the same fact far more quietly, and on
+ * a three-tab row where the whole point is that the learner notices all three capabilities, the
+ * selected one should be unmistakable.
+ *
+ * The pill hugs its label rather than filling the tab cell: across a wide window a cell is a third
+ * of the content measure, and a filled block that size stops reading as a selection marker.
+ *
+ * The tab's own state layer — hover, focus, press — is clipped to the same shape. A `Tab` otherwise
+ * draws it as a hard-edged rectangle across the whole cell, which frames the pill instead of
+ * agreeing with it. That is barely visible on a touch screen, where a press fades immediately, and
+ * permanent on a desktop pointer: hover is the resting state of whichever tab the mouse happens to
+ * be over. Clipping rather than insetting keeps the whole cell clickable.
+ *
+ * Colour rather than shape animates, and it animates from the same colour at zero alpha rather than
+ * from transparent black, which would drag every intermediate frame through grey.
+ */
+@Composable
+private fun TopicDetailTab(
+    tab: TopicDetailTab,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val indicatorColor = MaterialTheme.colorScheme.secondaryContainer
+    val container by animateColorAsState(
+        targetValue = if (selected) indicatorColor else indicatorColor.copy(alpha = 0f),
+        animationSpec = AppMotion.effectSpec(),
+    )
+    Tab(
+        selected = selected,
+        onClick = onClick,
+        modifier = Modifier
+            // Enough of a gap that two adjacent state layers never meet.
+            .padding(horizontal = AppSpacing.Tight)
+            .clip(TabIndicatorShape)
+            .testTag(tab.testTag),
+        selectedContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    ) {
+        Text(
+            text = stringResource(tab.label),
+            style = MaterialTheme.typography.titleSmall,
+            // The outer inset is what gives the row its height, and keeps the tab's own touch
+            // target comfortably past the 48dp minimum while the pill stays label-sized.
+            modifier = Modifier
+                .padding(vertical = AppSpacing.Related)
+                .background(container, TabIndicatorShape)
+                .padding(
+                    horizontal = AppSpacing.Comfortable,
+                    vertical = AppSpacing.Related,
+                ),
+        )
+    }
+}
+
+/**
+ * The Topic screen: a top bar, the Topic's terminal states, and — only for a loaded Topic — three
+ * tabbed pages.
+ *
+ * The terminal states deliberately stay outside the pager. Loading, a Topic that does not exist,
+ * and a failed curriculum read are statements about the Topic itself, so they replace the whole
+ * screen; a tab with nothing in it is a statement about one capability and never does.
+ *
+ * Practice intents are unchanged and still leave through two separate callbacks.
+ * [onStartTopicPractice] and [onStartSubtopicPractice] are ordinary practice: they carry a scope
+ * only, so the builder applies its `ALL` default. [onPracticePreset] carries a scope *and* an
+ * existing question source, and is emitted only where a page is already displaying the signal that
+ * justifies it. Neither is re-derived in the UI.
  */
 @Composable
 internal fun TopicDetailScreen(
@@ -148,17 +216,14 @@ internal fun TopicDetailScreen(
                 modifier = Modifier.weight(1f),
             )
 
-            is TopicDetailUiState.Content -> {
-                TopicContent(
-                    state = state,
-                    targetSubtopicId = targetSubtopicId,
-                    onStartTopicPractice = onStartTopicPractice,
-                    onStartSubtopicPractice = onStartSubtopicPractice,
-                    onPracticePreset = onPracticePreset,
-                    onLearningUnitClick = onLearningUnitClick,
-                    modifier = Modifier.weight(1f),
-                )
-            }
+            is TopicDetailUiState.Content -> TopicDetailTabs(
+                state = state,
+                targetSubtopicId = targetSubtopicId,
+                onStartTopicPractice = onStartTopicPractice,
+                onStartSubtopicPractice = onStartSubtopicPractice,
+                onPracticePreset = onPracticePreset,
+                onLearningUnitClick = onLearningUnitClick,
+            )
 
             TopicDetailUiState.NotFound -> ScreenMessage(
                 message = stringResource(Res.string.topic_detail_not_found),
@@ -174,555 +239,129 @@ internal fun TopicDetailScreen(
     }
 }
 
+/**
+ * The tab row and its pager, directly under the top bar so all three capabilities are visible
+ * without scrolling. There is no second Topic-name header: the top bar already carries it.
+ *
+ * The selected tab is presentation state and lives here, not in the route and not in the ViewModel.
+ * It is not even a separate value: [rememberPagerState] is the single source of truth, and the tab
+ * row simply renders `currentPage`, so a tapped tab and a swiped page cannot disagree. That state
+ * is `rememberSaveable`-backed by construction, which is what makes the selection survive ordinary
+ * recreation without anything being serialised into the back stack.
+ *
+ * Each page's scroll state is remembered *here* rather than inside the page lambda. A pager keeps
+ * only its neighbouring pages composed, so hoisting is what lets a learner scroll deep into the
+ * Subtopics, look at Practice, and come back to where they were.
+ */
 @Composable
-private fun TopicContent(
+private fun ColumnScope.TopicDetailTabs(
     state: TopicDetailUiState.Content,
     targetSubtopicId: String?,
     onStartTopicPractice: () -> Unit,
     onStartSubtopicPractice: (String) -> Unit,
     onPracticePreset: (PracticePreset) -> Unit,
     onLearningUnitClick: ((String) -> Unit)?,
-    modifier: Modifier,
 ) {
-    val listState = rememberLazyListState()
-    LaunchedEffect(state.subtopics, targetSubtopicId) {
-        val subtopicIndex = state.subtopics.indexOfFirst {
-            it.subtopic.id == targetSubtopicId
-        }
-        if (subtopicIndex >= 0) {
-            // The first lazy-list item is the study section and the topic summary and action
-            // block; see SubtopicItemOffset.
-            //
-            // Animated rather than instant: arriving here from search used to place the learner at
-            // an arbitrary offset with no indication that the screen had scrolled at all, so a
-            // Subtopic partway down a long Topic looked like the top of the list. Travelling there
-            // shows that there is content above.
-            listState.animateScrollToItem(subtopicIndex + SubtopicItemOffset)
-        }
-    }
-    LazyColumn(
-        state = listState,
-        modifier = modifier.fillMaxSize(),
-        contentPadding = appScreenContentPadding(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        // Deliberately one lazy item: the study section, the practice block, and both headings form
-        // the header, so a Subtopic opened from search still sits at its index plus
-        // SubtopicItemOffset. Learning Units are authored a handful per Topic, while the Subtopic
-        // list is the long one, so keeping the Units inside the header costs nothing and keeps the
-        // list prefix a fixed size regardless of how much study material a Topic has.
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                StudySection(
-                    state = state.learningUnits,
-                    studyProgress = state.studyProgress,
-                    onLearningUnitClick = onLearningUnitClick,
-                )
-                // The heading earns its space only when it separates something: a Topic that also
-                // has study material above, or one whose practice is unavailable and needs the
-                // inline message below to be labelled. On an ordinary practiceable Topic the whole
-                // screen is practice, and a label saying so would only push the Subtopics down.
-                if (state.learningUnits.hasStudySection || state.topicQuestionCount == 0) {
-                    SectionHeading(
-                        text = stringResource(Res.string.topic_detail_practice),
-                    )
-                }
-                if (state.topicQuestionCount == 0) {
-                    // Inline and local rather than the terminal screen message this used to be: the
-                    // Topic itself is fine, and anything above stays on screen.
-                    Text(
-                        text = stringResource(Res.string.topic_detail_no_questions),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    val context = state.learningContext
-                    if (context == null) {
-                        // Analytics are unavailable, so the screen falls back to the authored count
-                        // and says nothing about the learner. Practice is unaffected.
-                        Text(
-                            text = stringResource(
-                                Res.string.topic_detail_available_questions,
-                                state.topicQuestionCount,
-                            ),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    } else {
-                        TopicLearningSummary(context)
-                    }
-                    // One primary action for the topic; subtopic rows below are the lower-emphasis
-                    // path, so the screen no longer shows several filled buttons of equal weight.
-                    Button(
-                        onClick = onStartTopicPractice,
-                        modifier = Modifier.fillMaxWidth().testTag(TopicPracticeButtonTag),
-                    ) {
-                        Text(text = stringResource(Res.string.topic_detail_start_practice))
-                    }
-                    // Accelerators beside the primary action, never instead of it: with no analytics
-                    // this block is simply empty and ordinary practice is unaffected.
-                    TargetedPracticeActions(
-                        context = context,
-                        onPracticeWeakAreas = {
-                            onPracticePreset(
-                                PracticePreset(
-                                    scope = AssessmentScope.Topic(state.topic.id),
-                                    source = PracticeQuestionSource.WEAK_AREAS,
-                                ),
-                            )
-                        },
-                        onPracticeUnseen = {
-                            onPracticePreset(
-                                PracticePreset(
-                                    scope = AssessmentScope.Topic(state.topic.id),
-                                    source = PracticeQuestionSource.UNSEEN,
-                                ),
-                            )
-                        },
-                        weakTestTag = TopicWeakPracticeTag,
-                        unseenTestTag = TopicUnseenPracticeTag,
-                    )
-                }
-                if (state.subtopics.isNotEmpty()) {
-                    SectionHeading(
-                        text = stringResource(Res.string.topic_detail_subtopics),
-                    )
-                }
-            }
-        }
-        items(
-            items = state.subtopics,
-            key = { it.subtopic.id },
-        ) { item ->
-            val context = item.learningContext
-            // The row itself starts practice, so the per-row filled button is gone: it duplicated
-            // the row's own click target and competed with the topic-level primary action.
-            Card(
-                onClick = { onStartSubtopicPractice(item.subtopic.id) },
-                modifier = Modifier.fillMaxWidth().testTag(SubtopicPracticeButtonTag),
-                shape = MaterialTheme.shapes.medium,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                ),
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, top = 16.dp)
-                        // The targeted actions supply the bottom inset when there are any, so the
-                        // row does not leave a full gap above controls that belong to it.
-                        .padding(bottom = if (context.hasTargetedPractice) 4.dp else 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Text(
-                            text = item.subtopic.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        if (context == null) {
-                            // No analytics to show, so the row keeps the authored count it has
-                            // always had rather than claiming the Subtopic is unstudied.
-                            Text(
-                                text = stringResource(
-                                    Res.string.topic_detail_available_questions,
-                                    item.questionCount,
-                                ),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        } else {
-                            // Coverage already carries the Subtopic's current total, so the
-                            // authored count is not repeated beside it.
-                            SubtopicLearningContext(context)
-                        }
-                    }
-                    // Absent rather than 0% for a Subtopic with no recorded answer.
-                    context?.accuracyPercentage?.let { accuracy ->
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = formatAccuracy(accuracy),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = accuracyColor(accuracy),
-                            )
-                            Text(
-                                text = stringResource(Res.string.learning_context_accuracy),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                    Icon(
-                        imageVector = AppIcons.ChevronRight,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-                // Inside the card but outside its click target, and labelled: tapping the row is
-                // still ordinary practice for the whole Subtopic, and these say what else they do.
-                TargetedPracticeActions(
-                    context = context,
-                    onPracticeWeakAreas = {
-                        onPracticePreset(
-                            PracticePreset(
-                                scope = AssessmentScope.Subtopic(item.subtopic.id),
-                                source = PracticeQuestionSource.WEAK_AREAS,
-                            ),
-                        )
-                    },
-                    onPracticeUnseen = {
-                        onPracticePreset(
-                            PracticePreset(
-                                scope = AssessmentScope.Subtopic(item.subtopic.id),
-                                source = PracticeQuestionSource.UNSEEN,
-                            ),
-                        )
-                    },
-                    weakTestTag = subtopicWeakPracticeTag(item.subtopic.id),
-                    unseenTestTag = subtopicUnseenPracticeTag(item.subtopic.id),
-                    modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 4.dp),
-                )
-            }
-        }
-    }
-}
-
-/**
- * The Topic's authored study material, or nothing at all.
- *
- * Three states, three different silences and statements. Still loading says nothing, because the
- * Topic is already usable and the section simply appears when it resolves. A successful empty read
- * also says nothing: most Topics have no authored Units yet, and "no learning units" on every one of
- * them would be noise that makes an ordinary Topic look broken. Only a failed read speaks, and it
- * says the material could not be read rather than that there is none — in ordinary body text, since
- * an unreadable optional section is not an error the learner has to act on.
- */
-@Composable
-private fun StudySection(
-    state: TopicLearningUnitsUiState,
-    studyProgress: StudyProgressUiState<TopicStudyProgress>,
-    onLearningUnitClick: ((String) -> Unit)?,
-) {
-    if (!state.hasStudySection) return
-    SectionHeading(text = stringResource(Res.string.topic_detail_study))
-    // Past the guard the state is either a non-empty list or a failure, and nothing else.
-    if (state is TopicLearningUnitsUiState.Available) {
-        // Joined by stable Unit ID rather than by position: the derivation filters to this Topic's
-        // ACTIVE home Units and the row list is built from the same read, but an index would be a
-        // second, weaker identity that stops meaning the same thing the moment either list changes.
-        val unitProgress = studyProgress.unitProgressById
-        // Said once for the section rather than repeated on every card, which would turn one
-        // missing record into a wall of identical notices. Only a failed read speaks: a study
-        // record still being read says nothing, because the Units are already usable without it.
-        if (studyProgress is StudyProgressUiState.Unavailable) {
-            Text(
-                text = stringResource(Res.string.learning_study_progress_unavailable),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.testTag(TopicStudyUnavailableTag),
-            )
-        }
-        // Authored order, rendered in the order the repository returned: that sequence is
-        // pedagogical and is never re-sorted by title, size, or anything the learner has done.
-        state.units.forEach { unit ->
-            LearningUnitCard(
-                unit = unit,
-                studyProgress = unitProgress?.get(unit.unitId),
-                onLearningUnitClick = onLearningUnitClick,
-            )
-        }
-    } else {
-        Text(
-            text = stringResource(Res.string.topic_detail_learning_unavailable),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-/**
- * Whether the study section has anything to say. Asked in two places — by the section itself and by
- * the Practice heading that only exists to separate the two — so the layout cannot disagree with
- * itself about whether a Topic is showing study material.
- */
-private val TopicLearningUnitsUiState.hasStudySection: Boolean
-    get() = when (this) {
-        TopicLearningUnitsUiState.Loading -> false
-        TopicLearningUnitsUiState.Unavailable -> true
-        is TopicLearningUnitsUiState.Available -> units.isNotEmpty()
-    }
-
-/**
- * One Unit, clickable only when something can actually handle the click.
- *
- * The shell supplies the handler, which opens the Learning Unit overview. Without one — rendered in
- * a test or a preview — the card stays a plain informational surface, because advertising a button
- * that goes nowhere is worse than a card that reads as content. With one it becomes an ordinary
- * clickable Card, with the click semantics that come with it, and emits the stable Unit ID rather
- * than this model or the authored Unit behind it.
- */
-@Composable
-private fun LearningUnitCard(
-    unit: LearningUnitItemUiModel,
-    studyProgress: LearningUnitStudyProgress?,
-    onLearningUnitClick: ((String) -> Unit)?,
-) {
-    val modifier = Modifier.fillMaxWidth().testTag(learningUnitCardTag(unit.unitId))
-    val shape = MaterialTheme.shapes.medium
-    val colors = CardDefaults.cardColors(
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    val tabs = TopicDetailTab.entries
+    // Arriving with a Subtopic in hand opens on the page that Subtopic is on. This is read from the
+    // route data that already exists — AppRoute.Topic.subtopicId — rather than from a tab field
+    // added to the route: which page happens to be showing is not navigation state.
+    val pagerState = rememberPagerState(
+        initialPage = if (targetSubtopicId == null) {
+            TopicDetailTab.Study.ordinal
+        } else {
+            TopicDetailTab.Subtopics.ordinal
+        },
+        pageCount = { tabs.size },
     )
-    if (onLearningUnitClick == null) {
-        Card(modifier = modifier, shape = shape, colors = colors) {
-            LearningUnitCardContent(unit, studyProgress)
-        }
-    } else {
-        Card(
-            onClick = { onLearningUnitClick(unit.unitId) },
-            modifier = modifier,
-            shape = shape,
-            colors = colors,
-        ) {
-            LearningUnitCardContent(unit, studyProgress)
+    val studyListState = rememberLazyListState()
+    val practiceScrollState = rememberScrollState()
+    val subtopicsListState = rememberLazyListState()
+
+    // Resolved once per (list, target) rather than inside the effect, so the effect below can key on
+    // the position itself: a history refresh that rebuilds the rows without moving the target no
+    // longer re-runs the arrival scroll under the learner.
+    val targetIndex = remember(state.subtopics, targetSubtopicId) {
+        if (targetSubtopicId == null) {
+            -1
+        } else {
+            state.subtopics.indexOfFirst { it.subtopic.id == targetSubtopicId }
         }
     }
-}
+    LaunchedEffect(targetIndex) {
+        // The Subtopics list is now a list of Subtopics and nothing else, so the index is the
+        // index: the fixed header offset the combined column needed is gone. A target that no
+        // longer exists resolves to -1 and simply leaves the page at the top.
+        //
+        // Animated rather than instant: arriving here from search used to place the learner at an
+        // arbitrary offset with no indication that the screen had scrolled at all, so a Subtopic
+        // partway down a long Topic looked like the top of the list.
+        if (targetIndex >= 0) {
+            subtopicsListState.animateScrollToItem(targetIndex)
+        }
+    }
 
-/**
- * The per-Unit study results this screen may annotate its cards with, keyed by stable Unit ID, or
- * null when study state is not something the screen knows.
- *
- * Null for Loading as well as Unavailable, so a card can never show "0 of 3" for a record that has
- * not been read yet. Derived once for the whole section, so two cards cannot disagree about whether
- * study state is known.
- */
-private val StudyProgressUiState<TopicStudyProgress>.unitProgressById:
-    Map<String, LearningUnitStudyProgress>?
-    get() = (this as? StudyProgressUiState.Available)
-        ?.value
-        ?.units
-        ?.associateBy(LearningUnitStudyProgress::unitId)
-
-/**
- * Title, summary, and how much there is to read — as the learner's own progress through it when
- * that is known, and as the authored count when it is not.
- *
- * The last line is one line either way. "3 lessons" and "1 of 3 lessons studied" answer the same
- * question with different amounts of information, and showing both would state the total twice. So
- * the studied form replaces the plain count when a study record has actually been read, and the
- * plain count stands while the record is loading, unreadable, or describes a Unit with no current
- * Lessons at all — where `Empty` has no fraction to report and "0 of 0" would read as finished.
- *
- * Assessment coverage for this Topic stays where it is, in its own section: studied Lessons are a
- * claim about reading and coverage is measured from attempts, so the two are never shown as one
- * figure.
- */
-@Composable
-private fun LearningUnitCardContent(
-    unit: LearningUnitItemUiModel,
-    studyProgress: LearningUnitStudyProgress?,
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(AppSpacing.Comfortable),
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+    val scope = rememberCoroutineScope()
+    PrimaryTabRow(
+        selectedTabIndex = pagerState.currentPage,
+        // No underline. The indicator slot is measured and placed *after* the tabs, so anything
+        // filled drawn here would sit on top of the label it is meant to be highlighting; the
+        // selected tab carries its own pill instead, below.
+        indicator = {},
     ) {
-        Text(
-            text = unit.title,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Text(
-            text = unit.summary,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        val summary = studyProgress?.summary as? StudyProgressSummary.Progress
-        Text(
-            text = if (summary == null) {
-                pluralStringResource(
-                    Res.plurals.topic_detail_learning_unit_lessons,
-                    unit.activeLessonCount,
-                    unit.activeLessonCount,
-                )
-            } else {
-                pluralStringResource(
-                    Res.plurals.learning_unit_lessons_studied,
-                    summary.totalCount,
-                    summary.studiedCount,
-                    summary.totalCount,
-                )
-            },
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = if (summary == null) {
-                Modifier
-            } else {
-                Modifier.testTag(learningUnitStudyTag(unit.unitId))
-            },
-        )
-    }
-}
-
-/**
- * Whether a scope's already-derived context justifies any targeted shortcut at all.
- *
- * Defined on the nullable receiver so an unknown context answers `false` here rather than at every
- * call site: unknown analytics justify nothing, and that is a different statement from "not weak,
- * nothing left to see". This is also the only place the layout below asks the question, so a row's
- * spacing and its controls cannot disagree about whether it has any.
- */
-private val LearningContextUiModel?.hasTargetedPractice: Boolean
-    get() = this != null && (isWeak || hasUnseenQuestions)
-
-/**
- * The targeted shortcuts a scope's already-derived learning context justifies, if any.
- *
- * Both conditions are read verbatim off the model: [LearningContextUiModel.isWeak] is the domain's
- * verdict and is never re-derived from the accuracy shown beside it, and
- * [LearningContextUiModel.hasUnseenQuestions] only restates the coverage counts already displayed.
- *
- * Both can be true at once and both are then offered. Which Questions either source actually yields
- * is decided later, by the selector, from history as it stands when practice is configured.
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun TargetedPracticeActions(
-    context: LearningContextUiModel?,
-    onPracticeWeakAreas: () -> Unit,
-    onPracticeUnseen: () -> Unit,
-    weakTestTag: String,
-    unseenTestTag: String,
-    modifier: Modifier = Modifier,
-) {
-    if (context == null || !context.hasTargetedPractice) return
-    // Wraps rather than clips: two labelled text buttons do not share a line on a compact width or
-    // at a large font scale.
-    FlowRow(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        if (context.isWeak) {
-            TextButton(onClick = onPracticeWeakAreas, modifier = Modifier.testTag(weakTestTag)) {
-                Text(text = stringResource(Res.string.practice_shortcut_weak_area))
-            }
-        }
-        if (context.hasUnseenQuestions) {
-            TextButton(onClick = onPracticeUnseen, modifier = Modifier.testTag(unseenTestTag)) {
-                Text(text = stringResource(Res.string.practice_shortcut_unseen))
-            }
-        }
-    }
-}
-
-/**
- * The Topic's learning summary: one coherent surface rather than two competing cards.
- *
- * All-time accuracy leads when there is any, because it is the figure the learner came for, with
- * current coverage under a divider as the second, differently-scoped question. With no accuracy to
- * lead on, the whole thing steps down to a quieter card: an unstudied Topic should not open with a
- * display-size headline, and it must never open with a fabricated 0%.
- */
-@Composable
-private fun TopicLearningSummary(context: LearningContextUiModel) {
-    val accuracy = context.accuracyPercentage
-    if (accuracy == null) {
-        SecondarySummaryCard {
-            Text(
-                text = stringResource(Res.string.learning_context_not_studied),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            TopicCoverage(context)
-        }
-    } else {
-        PrimarySummaryCard {
-            AccuracyHeadline(
-                percentage = accuracy,
-                caption = stringResource(Res.string.topic_detail_accuracy_caption),
-            )
-            if (context.isWeak) {
-                StatusBadge(
-                    text = stringResource(Res.string.progress_weak_label),
-                    contentColor = AppThemeExtras.semanticColors.onPartiallyCorrectContainer,
-                    containerColor = AppThemeExtras.semanticColors.partiallyCorrectContainer,
-                    icon = AppIcons.Warning,
-                )
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            TopicCoverage(context)
-        }
-    }
-}
-
-/**
- * Current curriculum coverage, in neutral theme colours throughout.
- *
- * Coverage is not scored: low coverage means material is still ahead of the learner, not that they
- * did badly, so it never borrows the correct/incorrect palette that accuracy uses. The meter is
- * driven by the exact counts rather than by the rounded percentage above it.
- */
-@Composable
-private fun TopicCoverage(context: LearningContextUiModel) {
-    Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight)) {
-        Text(
-            text = stringResource(Res.string.learning_context_coverage_title),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Text(
-            text = stringResource(
-                Res.string.learning_context_coverage_count,
-                context.attemptedQuestionCount,
-                context.totalQuestionCount,
-            ),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (context.hasCoverageScope) {
-            ProgressMeter(
-                fraction = context.attemptedQuestionCount.toFloat() / context.totalQuestionCount,
-                color = MaterialTheme.colorScheme.primary,
+        tabs.forEach { tab ->
+            TopicDetailTab(
+                tab = tab,
+                selected = pagerState.currentPage == tab.ordinal,
+                onClick = { scope.launch { pagerState.animateScrollToPage(tab.ordinal) } },
             )
         }
     }
-}
+    HorizontalPager(
+        state = pagerState,
+        modifier = Modifier.weight(1f),
+        // Keyed by the tab rather than by page index so a page keeps its identity; the set is
+        // fixed, but this is what states that a page is a capability and not a position.
+        key = { tabs[it] },
+        flingBehavior = PagerDefaults.flingBehavior(
+            state = pagerState,
+            // A swipe settles on the neighbouring page and never travels past it, however hard it
+            // was thrown: three tabs are three capabilities, not a reel to be flung through. This
+            // is also Compose's current default, and is stated because it is behaviour this screen
+            // depends on rather than behaviour it happens to inherit.
+            pagerSnapDistance = PagerSnapDistance.atMost(1),
+            // Below the 0.5 default: a drag past a quarter of the width is already a clear request
+            // for the next tab, and making the learner haul it more than halfway before it commits
+            // is what makes a pager feel like it is being dragged rather than switched.
+            snapPositionalThreshold = TabSnapPositionalThreshold,
+        ),
+    ) { page ->
+        when (tabs[page]) {
+            TopicDetailTab.Study -> TopicStudyPage(
+                state = state.learningUnits,
+                studyProgress = state.studyProgress,
+                onLearningUnitClick = onLearningUnitClick,
+                listState = studyListState,
+                modifier = Modifier.fillMaxSize(),
+            )
 
-/**
- * A Subtopic row's supporting line. Compact by design: this list can run to a dozen rows, so a
- * Subtopic gets its coverage count, a neutral note when nothing has been studied, and a weak badge
- * only when the domain says so.
- */
-@Composable
-private fun SubtopicLearningContext(context: LearningContextUiModel) {
-    if (context.hasCoverageScope) {
-        Text(
-            text = stringResource(
-                Res.string.learning_context_explored,
-                context.attemptedQuestionCount,
-                context.totalQuestionCount,
-            ),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-    if (context.isUnstudied) {
-        Text(
-            text = stringResource(Res.string.learning_context_not_studied),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-    if (context.isWeak) {
-        StatusBadge(
-            text = stringResource(Res.string.progress_weak_label),
-            contentColor = AppThemeExtras.semanticColors.onPartiallyCorrectContainer,
-            containerColor = AppThemeExtras.semanticColors.partiallyCorrectContainer,
-            icon = AppIcons.Warning,
-        )
+            TopicDetailTab.Practice -> TopicPracticePage(
+                topicId = state.topic.id,
+                topicQuestionCount = state.topicQuestionCount,
+                learningContext = state.learningContext,
+                onStartTopicPractice = onStartTopicPractice,
+                onPracticePreset = onPracticePreset,
+                scrollState = practiceScrollState,
+                modifier = Modifier.fillMaxSize(),
+            )
+
+            TopicDetailTab.Subtopics -> TopicSubtopicsPage(
+                subtopics = state.subtopics,
+                onStartSubtopicPractice = onStartSubtopicPractice,
+                onPracticePreset = onPracticePreset,
+                listState = subtopicsListState,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
 }

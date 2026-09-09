@@ -9,6 +9,7 @@ import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -51,6 +52,10 @@ import org.artkachenko.kmp_learning_app.data.local.lesson_study.lessonStudyDataM
 import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicPracticeButtonTag
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicPracticeTabTag
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicStudyTabTag
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicSubtopicsListTag
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicSubtopicsTabTag
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserSearchFieldTag
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserHeaderTag
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewportTag
@@ -123,11 +128,9 @@ internal class TopicDiscoveryIntegrationTest {
         // The result navigates by stable Topic ID into the existing Topic Detail flow, which opens
         // on its own summary rather than starting practice.
         onNodeWithText(NetworkingTopicName).performClick()
-        waitForTag(TopicPracticeButtonTag)
-        onNodeWithText(HttpSubtopicName).assertIsDisplayed()
-        // This Topic has no authored study material above the fold, so the practice button is
-        // genuinely on screen here — the visibility half of the claim, kept where it holds.
-        onNodeWithTag(TopicPracticeButtonTag).assertIsDisplayed()
+        // An ordinary Topic opening lands on Study, and all three capabilities are on screen as
+        // tabs without the learner scrolling for them.
+        selectTopicDetailTab(TopicPracticeTabTag)
         assertNoPracticeQuestionOnScreen()
 
         // Topic Detail carries the same two concepts for a learner who has completed nothing:
@@ -135,9 +138,14 @@ internal class TopicDiscoveryIntegrationTest {
         waitForTextContaining("questions explored")
         onNodeWithText("Curriculum coverage").assertIsDisplayed()
         onNodeWithText("0 of 1 questions explored").assertIsDisplayed()
-        onNodeWithText("0 of 1 explored").assertIsDisplayed()
         onNodeWithText("0%").assertDoesNotExist()
         onNodeWithText("All-time accuracy").assertDoesNotExist()
+
+        // The Subtopic and its own coverage are one tab away, on the page that owns them.
+        selectTopicDetailTab(TopicSubtopicsTabTag)
+        onNodeWithText(HttpSubtopicName).assertIsDisplayed()
+        onNodeWithText("0 of 1 explored").assertIsDisplayed()
+        onNodeWithText("0%").assertDoesNotExist()
 
         onNodeWithContentDescription("Back").performClick()
         waitForTag(TopicBrowserSearchFieldTag)
@@ -173,6 +181,10 @@ internal class TopicDiscoveryIntegrationTest {
             onNodeWithText(StateSubtopicName).performClick()
             waitForBackControl()
             onNodeWithText(UiTopicName).assertIsDisplayed()
+            // Arriving with a Subtopic in hand opens the page that Subtopic is on, and travels to
+            // the row itself. No fixed header offset is involved: the list holds Subtopics only.
+            onNodeWithTag(TopicSubtopicsTabTag).assertIsSelected()
+            waitForText(StateSubtopicName)
             onNodeWithText(StateSubtopicName).assertIsDisplayed()
             // Positioning is not the same as starting: a Subtopic result opens the Topic, it does
             // not begin practice on it.
@@ -188,14 +200,19 @@ internal class TopicDiscoveryIntegrationTest {
             onNodeWithTag(TopicBrowserSearchFieldTag).performTextInput("flow bridging")
             waitForText(UnpopulatedSubtopicName)
             onNodeWithText(UnpopulatedSubtopicName).performClick()
-            waitForTag(TopicPracticeButtonTag)
-            // Nothing to scroll to, so the Topic simply opens at the top of its own content — and
-            // for android_ui the top of that content is now the study section, read from the real
-            // bundled learning curriculum through the app's own wiring. The first Subtopic row is
-            // consequently below the fold on a phone-shaped window, which is what a Topic that has
-            // both study material and practice is supposed to look like.
+            // A target that is not one of the Topic's practice rows resolves to nothing to scroll
+            // to. That fails gracefully rather than crashing: the Subtopics page still opens and
+            // is still usable, showing the Subtopics the Topic does have.
+            waitForBackControl()
+            onNodeWithTag(TopicSubtopicsTabTag).assertIsSelected()
+            // The list is present and populated; nothing was scrolled to, so which row happens to
+            // be above the fold is not the claim.
+            waitForTag(TopicSubtopicsListTag)
+
+            // And the Topic's study material is one tab away, read from the real bundled learning
+            // curriculum through the app's own wiring.
+            selectTopicDetailTab(TopicStudyTabTag)
             waitForText(ThinkingInComposeUnitTitle)
-            onNodeWithText("Study").assertIsDisplayed()
             onNodeWithText(ThinkingInComposeUnitTitle).assertIsDisplayed()
             // The Unit's line becomes the learner's own progress once the real study table has
             // been read, which on a fresh database is an honest "0 of 3" rather than the authored
@@ -203,6 +220,10 @@ internal class TopicDiscoveryIntegrationTest {
             // Topic, not before it.
             waitForText("0 of 3 lessons studied")
             onNodeWithText("Topic not available").assertDoesNotExist()
+
+            // Positioning is not starting: the Topic's own practice action is where it always was,
+            // untouched, with no question begun.
+            selectTopicDetailTab(TopicPracticeTabTag)
             assertNoPracticeQuestionOnScreen()
         }
 
@@ -341,13 +362,11 @@ internal class TopicDiscoveryIntegrationTest {
     /**
      * Topic Detail opens on its own summary; a search result must never start practice.
      *
-     * Presence rather than visibility is the assertion that matches the claim. Whether the
-     * practice button happens to be above the fold depends on how much authored study material
-     * sits above it, which grows as Units are authored and is not what this test is about; that
-     * the learner is on Topic Detail with no question started is.
+     * Asserted on the Practice page, where the action lives: the learner is looking at the control
+     * that would start practice and has not started any.
      */
     private fun ComposeUiTest.assertNoPracticeQuestionOnScreen() {
-        onNodeWithTag(TopicPracticeButtonTag).assertExists()
+        onNodeWithTag(TopicPracticeButtonTag).assertIsDisplayed()
         onNodeWithText(QuestionText, substring = true).assertDoesNotExist()
     }
 

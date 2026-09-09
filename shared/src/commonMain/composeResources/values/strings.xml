@@ -125,6 +125,8 @@
     <string name="topic_detail_subtopics">Subtopics</string>
     <string name="topic_detail_study">Study</string>
     <string name="topic_detail_practice">Practice</string>
+    <string name="topic_detail_study_empty">No learning material for this topic yet.</string>
+    <string name="topic_detail_subtopics_empty">This topic has no subtopics.</string>
     <plurals name="topic_detail_learning_unit_lessons">
         <item quantity="one">%1$d lesson</item>
         <item quantity="other">%1$d lessons</item>

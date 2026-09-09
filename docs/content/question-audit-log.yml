@@ -190,6 +190,14 @@ audits:
         notification contract and never frames it as a fix for this bug. Reworded to what the
         page states.
 
+        A third round returned to compose_state_collection_mutation. Fixing the explanation had
+        left the keyed option behind: "Assign a new read-only list" cannot be applied to the
+        stem as written, because items.value is a MutableList<String> and a List<String> will
+        not go into it, so the fix needs the holder's declared type to change as well. The
+        option now names both halves — re-declare over listOf(), then assign — which is the
+        playbook's rule that an option a learner will copy has to compile against the stem it
+        is answering. The explanation states the resulting declaration in full.
+
 
     systemic:
       - >-
@@ -227,7 +235,11 @@ audits:
         Code in an explanation is a claim like any other and has to compile against the stem
         it is explaining. The fix offered for the collection-mutation question was written
         from the Lesson's version of the example, which declares the state differently from
-        the question's stem, and nothing in the deterministic checks can catch that.
+        the question's stem, and nothing in the deterministic checks can catch that. The same
+        question then needed a third fix, because correcting the explanation left the option
+        it was explaining still under-specified: when a stem shows broken code, check the
+        keyed option and the explanation against that code separately, since fixing one does
+        not fix the other.
       - >-
         Twelve additions moved android_ui from 1.08 to 1.54 active questions per subtopic
         without adding a subtopic, which is the deepest any Topic outside lifecycle and

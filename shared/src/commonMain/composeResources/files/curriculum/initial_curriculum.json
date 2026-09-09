@@ -17416,7 +17416,7 @@
       "answers": [
         {
           "id": "compose_state_collection_mutation_a",
-          "text": "Assign a new read-only list, because MutableState reports a change only when value is written."
+          "text": "Re-declare the holder over listOf() and assign a new list, because only writing value counts."
         },
         {
           "id": "compose_state_collection_mutation_b",
@@ -17436,7 +17436,7 @@
       "correctAnswerIds": [
         "compose_state_collection_mutation_a"
       ],
-      "explanation": "MutableState observes writes to its own value property; it has no way to learn that the object it points at was modified. The documentation is explicit that mutable objects which are not observable, such as ArrayList or a mutable data class, do not trigger recomposition, and recommends an observable holder such as State<List<T>> together with the read-only listOf(). So declare the holder over listOf() and write it — items.value = items.value + text — where the assignment reaches value and is recorded, and the read-only type no longer offers the mutating methods that produced the bug. Hoisting changes who owns the state and not whether a mutation is seen; remember caches a value rather than making one observable; and a read of items.value inside the body is already recorded, which is exactly why the holder is the thing that must be written. The other route is a snapshot-aware collection: Compose provides mutable types such as SnapshotStateList that do uphold the contract of notifying the runtime of every change, so for those the mutating operation is itself the notification.",
+      "explanation": "MutableState observes writes to its own value property; it has no way to learn that the object it points at was modified. The documentation is explicit that mutable objects which are not observable, such as ArrayList or a mutable data class, do not trigger recomposition, and recommends an observable holder such as State<List<T>> together with the read-only listOf(). Both halves of the fix are needed: the holder becomes MutableState<List<String>>, declared as remember { mutableStateOf(listOf<String>()) }, and the append becomes an assignment, items.value = items.value + text, which reaches value and is recorded. The read-only type also removes the mutating methods that produced the bug. Hoisting changes who owns the state and not whether a mutation is seen; remember caches a value rather than making one observable; and a read of items.value inside the body is already recorded, which is exactly why the holder is the thing that must be written. The other route is a snapshot-aware collection: Compose provides mutable types such as SnapshotStateList that do uphold the contract of notifying the runtime of every change, so for those the mutating operation is itself the notification.",
       "sources": [
         {
           "title": "State and Jetpack Compose",

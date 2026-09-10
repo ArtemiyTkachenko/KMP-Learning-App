@@ -128,7 +128,13 @@ bridged where builder blocks need them.
   `suspend`, so it is off the main thread" is false; recognising a suspension point.
 - **Senior:** what suspension buys — many more coroutines than threads, because a suspended
   coroutine costs a continuation rather than a stack; and the consequence, that a coroutine
-  which never suspends is indistinguishable from ordinary blocking code.
+  which never suspends monopolises its dispatcher thread for as long as it runs and never
+  reaches a point where cancellation can be observed. **Keep "blocking" precise while making
+  that point.** A CPU-bound loop is doing work and belongs on `Dispatchers.Default`; a
+  blocking call holds a thread that is doing nothing and belongs on `Dispatchers.IO`. The two
+  share a consequence — the thread is unavailable and cancellation goes unnoticed — and they
+  are not the same thing. Collapsing them here would contradict this Lesson's own objective
+  and would remove the ground L2.2's dispatcher argument stands on.
 - **Primary:** `coroutine_fundamentals`
 - **Supporting:** `coroutine_dispatchers`, `jvm_fundamentals` (kotlin_language),
   `android_main_thread` (android_platform)
@@ -366,11 +372,18 @@ fails, and what happens to state two coroutines touch at once.
   `TimeoutCancellationException`, `withTimeoutOrNull` returns `null` instead.
 - **Practical:** a file handle or socket closed in `finally`; a suspending `close()` that
   silently does nothing because the scope is already cancelled; a timeout applied to work
-  that never checks for cancellation, and therefore does not stop; `runInterruptible` for a
-  blocking JVM call that only responds to thread interruption.
+  that never checks for cancellation, and therefore neither stops the work nor returns to the
+  caller on time; `runInterruptible` for a blocking JVM call that only responds to thread
+  interruption.
 - **Senior:** a timeout is not a separate mechanism — it is cancellation with a clock — which
-  is why everything true of cancellation is true of timeouts, including that a
-  non-cooperative block outlives its own deadline while the caller has already moved on.
+  is why everything true of cancellation is true of timeouts. The consequence worth being
+  able to state is that **`withTimeout` bounds nothing on its own.** It requests cancellation
+  at the deadline, and because its body is a child scope it cannot return until that body
+  finishes, so a non-cooperative block delays the cancellation *and* the caller equally. Two
+  measured cases make it concrete — see
+  [the timeout measurement](coroutines-flow-units-1-6-plan.md#what-withtimeout-does-to-non-cooperative-work).
+  The caller moves on early only when the awaited work was never a child in the first place,
+  which is L1.4's ownership argument arriving from a different direction.
 - **Primary:** `coroutine_cancellation`
 - **Supporting:** `kotlin_exceptions` (kotlin_language), `coroutine_context_switching`,
   `coroutine_jobs`
@@ -708,13 +721,14 @@ and end at a defensible decision among all the abstractions the subject offers.
 
 - **Objective:** classify a stream by when it produces and by what a late subscriber gets.
 - **Core:** a cold stream produces per collector, on collection, from the start; a hot stream
-  exists and produces independently of collectors, and subscribers see whatever is happening
-  while they are subscribed; "hot" is about the producer's lifetime, not about speed or
-  eagerness.
+  produces independently of any collector, so a subscriber joins a stream already in progress
+  and receives what arrives while it is subscribed, plus whatever the stream was configured to
+  retain for it. "Hot" is about **where production lives**, not about speed, eagerness,
+  retention, or whether a producer is currently running.
 - **Practical:** the same source expressed both ways and what a second, later collector
-  receives from each; values emitted while nobody is subscribed, which a cold flow cannot
-  produce and a hot flow discards; the resource consequence — a hot producer holds its
-  upstream open whether or not anyone is listening.
+  receives from each; a value emitted while nobody is subscribed, which a cold flow cannot
+  produce at all and which a hot flow delivers to nobody — though whether a *later*
+  subscriber still sees it is decided by retention, not by hotness.
 - **Senior:** the shipped Compose Lesson on `snapshotFlow` already carries the sharpest form
   of this argument: observable state is a lossy compression of the events that produced it,
   so an observer of state may arrive late and still be correct, while an observer of events
@@ -723,7 +737,17 @@ and end at a defensible decision among all the abstractions the subject offers.
 - **Supporting:** `flow_fundamentals`, `flow_collection`, `stateflow`, `sharedflow`
 - **Notes:** `StateFlow` and `SharedFlow` are named as the two implementations and taught in
   L6.2 and L6.3. Links backwards to `lesson_cold_flows` and to the shipped
-  `lesson_snapshot_flow`.
+  `lesson_snapshot_flow`. **This Lesson's main authoring risk is folding three axes into
+  one.** Hotness is where production lives; *retention* is a separate axis, and so is
+  *start/stop policy*. `StateFlow` always retains its latest value and `SharedFlow` retains
+  its configured `replay`, so "a hot flow discards what it emitted with no subscribers" holds
+  only for `replay = 0`; and a stream produced by `shareIn(scope, WhileSubscribed())` stops
+  its upstream when the last subscriber leaves, so "a hot producer keeps its upstream open
+  regardless" is false as a general claim. Name the three axes, attribute retention to L6.2
+  and L6.3 and start/stop policy to L6.4, and let this Lesson own only the production-lifetime
+  distinction. The over-general version would be walked back by the next three Lessons in a
+  row, which is exactly the inconsistent-depth failure Rule 1 of the authoring contract
+  exists to prevent.
 
 #### L6.2 — `StateFlow`: One Current Value
 

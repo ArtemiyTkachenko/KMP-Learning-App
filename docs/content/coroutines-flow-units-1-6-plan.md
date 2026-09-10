@@ -55,7 +55,7 @@ identity proposed here lives in documentation until the authoring issue that shi
 | --- | --- |
 | E24-02 | Unit 1 identities, objectives and boundaries; the Unit 1 rows of the semantic review; the suspension, structured-concurrency and scope entries in source freshness |
 | E24-03 | Unit 2 identities and boundaries; the context, dispatcher and concurrency rows; the `Dispatchers.IO`, `Dispatchers.Main` and KMP entries in source freshness |
-| E24-04 | Unit 3 identities and boundaries; the cancellation, exception and supervision rows; the `CoroutineExceptionHandler`, `NonCancellable`, `runInterruptible` and atomics entries in source freshness |
+| E24-04 | Unit 3 identities and boundaries; the cancellation, exception and supervision rows; the `CoroutineExceptionHandler`, `NonCancellable`, `runInterruptible` and atomics entries in source freshness; **and the [timeout measurement](#what-withtimeout-does-to-non-cooperative-work)**, which corrects the natural way to phrase L3.2's Senior point |
 | E24-05 | Unit 4 identities and boundaries; the Flow-fundamentals rows; the context-preservation and `callbackFlow` entries; **and [Reconciling the shipped `snapshotFlow` Lesson](#reconciling-the-shipped-snapshotflow-lesson) in full** |
 | E24-06 | Unit 5 identities and boundaries; the operator, buffering and failure rows; the flattening, experimental-annotation and `catch` entries in source freshness |
 | E24-07 | Unit 6 identities and boundaries; the hot-stream rows; the `StateFlow` conflation, `SharedFlow` buffering and `SharingStarted` entries in source freshness |
@@ -303,12 +303,17 @@ bridged in place; no learning Unit teaches Kotlin and this epic does not start o
 - **Objective:** release resources correctly on cancellation and express a deadline through
   the same model.
 - **Demonstrable reasoning:** given a suspending `close()` in a `finally` block that silently
-  does nothing, explain why and fix it; and explain why a timeout applied to non-cooperative
-  code does not stop it.
+  does nothing, explain why and fix it; and given `withTimeout` around non-cooperative code,
+  say what the deadline actually bounds — which is neither the work nor the caller's wait.
 - **Prerequisites:** L3.1.
 - **Boundary:** `runInterruptible` and thread interruption are **JVM-only** and must be
   labelled as such — this is a Kotlin Multiplatform repository. `NonCancellable` must be
   taught with its danger attached rather than as a tool for finishing cancelled work.
+- **Accuracy requirement:** do not write that `withTimeout` abandons non-cooperative work and
+  lets the caller proceed. It does not, and the measurement in
+  [What `withTimeout` does to non-cooperative work](#what-withtimeout-does-to-non-cooperative-work)
+  shows why, including the case where the block returns a **successful result** long after its
+  deadline.
 
 #### `lesson_exception_propagation` (L3.3)
 
@@ -470,6 +475,12 @@ sharing moves an upstream's lifetime onto a scope.
   in L6.2 and L6.3. Links backwards to `lesson_cold_flows` and to the shipped
   `lesson_snapshot_flow`, whose state-versus-events argument this Lesson reuses rather than
   restates.
+- **Accuracy requirement:** this Lesson owns **production lifetime only**. Retention is a
+  separate axis owned by L6.2 and L6.3, and start/stop policy is a third owned by L6.4.
+  Neither "a hot flow discards values emitted with no subscribers" nor "a hot producer keeps
+  its upstream open regardless" is true in general — the first holds only at `replay = 0`,
+  and the second is contradicted by `WhileSubscribed`. Stating either as a property of
+  hotness would be corrected by each of the next three Lessons in turn.
 
 #### `lesson_state_flow` (L6.2)
 
@@ -596,7 +607,7 @@ delivers it is a judgement E24-02…E24-07 make at authoring time and E24-08 re-
 | `structured_concurrency_001` | Foundation | `structured_concurrency` | L1.5 | That structured concurrency is about lifetime and ownership, not scheduling | Sound and precisely matched to L1.5's contract, including the distractor that children run one at a time | Retain |
 | `coroutine_cancellation_001` | Foundation | `coroutine_cancellation` | L3.1 | That cancellation is cooperative and busy code stops only at a check | Sound | Retain |
 | `cancellation_exception_rethrow` | Applied | `coroutine_cancellation` | L3.1, L3.3 | That `CancellationException` signals cooperative cancellation and swallowing it lets work continue | Sound | Retain |
-| `coroutine_run_interruptible_blocking_call` | Applied | `coroutine_cancellation` | L3.2 | That cancellation reaches neither a suspension point nor a check inside a blocking JVM call, and `runInterruptible` bridges the two models | Sound and verified. **Platform caveat:** thread interruption is a JVM concept and this is a KMP repository; L3.2 must scope the claim | Retain |
+| `coroutine_run_interruptible_blocking_call` | Applied | `coroutine_cancellation` | L3.2 | That cancellation reaches neither a suspension point nor a check inside a blocking JVM call, and `runInterruptible` bridges the two models | Key and options sound and verified. **Two caveats.** Platform: thread interruption is a JVM concept and this is a KMP repository, so L3.2 must scope the claim. Accuracy: one clause of its explanation — "withTimeout resumes the coroutine while leaving the blocked thread occupied" — is contradicted by [measurement A](#what-withtimeout-does-to-non-cooperative-work) | Retain; explanation correction is a candidate for E24-08 |
 | `coroutine_exceptions_001` | Foundation | `coroutine_exceptions` | L3.3 | That a regular `Job` parent is cancelled by a child failure, taking its siblings with it | Sound | Retain |
 | `coroutine_exception_handler_root_boundary` | Advanced | `coroutine_exceptions` | L3.3 | That the handler observes uncaught root-coroutine exceptions and that `async` exposes failure at `await` instead | Sound and verified word for word against the exception-handling page, including that `async` has no handler | Retain |
 | `coroutine_supervisor_scope_direct_children` | Advanced | `coroutine_supervision` | L3.4 | That supervision reaches only direct children, so a nested `launch`'s failure cancels its own parent | Sound and verified; the sharpest Question in the Topic | Retain |
@@ -689,6 +700,16 @@ Question identity is a lifecycle requirement.
 | `parent_cancellation_propagates_children` | `coroutine_jobs` | Cancellation propagation, `cancelAndJoin`, and `NonCancellable` | `coroutine_cancellation` | Unit 1 practice contains a Question a Unit 1 reader cannot answer, and Unit 3 loses a Question it earns. Its `FOUNDATION` level is a separate question |
 | `coroutine_async_exception_surfaces_at_await` | `coroutine_builders` | Failure propagation from a dropped `Deferred`, and how `supervisorScope` changes it | `coroutine_exceptions` | An ADVANCED Unit 3 item becomes Unit 1 practice |
 | `coroutine_run_blocking_main_thread` | `coroutine_fundamentals` | `runBlocking` as a bridge that blocks its caller | `coroutine_builders` | Minor; both Lessons are in Unit 1, so Unit practice is unaffected. Lowest priority of the three |
+
+**One explanation correction, which is a different kind of item.**
+`coroutine_run_interruptible_blocking_call`'s explanation says "withTimeout resumes the
+coroutine while leaving the blocked thread occupied". Measurement A in
+[What `withTimeout` does to non-cooperative work](#what-withtimeout-does-to-non-cooperative-work)
+is that scenario and shows the coroutine is **not** resumed until the blocking call returns.
+The Question's key and all four options stay correct, so this is a wrong rationale attached to
+a right answer — the kind of defect that teaches a misconception to whoever reads the
+explanation after answering. E24-04 should re-run the measurement while authoring L3.2, and
+E24-08 should then correct the clause rather than write a new Question about it.
 
 Two observations that are **not** gaps and must not be treated as quotas:
 
@@ -801,6 +822,43 @@ it. Every row was read on the page, not recalled.
 | Android guidance: inject dispatchers rather than hard-coding them; suspending functions should be main-safe and that is the callee's responsibility; the ViewModel should create coroutines and expose immutable state; the data layer should expose suspend functions for one-shot calls and Flows for changes; avoid `GlobalScope`; make coroutines cancellable | <https://developer.android.com/kotlin/coroutines/coroutines-best-practices> | L1.4, L2.2, L2.3, L4.1. Use it for the *guidance*, not for semantics — every semantic claim above is sourced to Kotlin's own documentation |
 
 ### Version-sensitive findings that constrain authoring
+
+#### What `withTimeout` does to non-cooperative work
+
+Measured on this project's JVM target against the resolved `kotlinx-coroutines-core:1.11.0`,
+because the natural way to phrase L3.2's Senior point turned out to be wrong and the
+correction is worth having as data rather than as reasoning. Each case used a 100 ms deadline
+and `withTimeoutOrNull`:
+
+| Case | Body | Returned | Elapsed |
+| --- | --- | --- | --- |
+| A | `withContext(Dispatchers.IO) { Thread.sleep(1500) }` | `null` | **1523 ms** |
+| B | a CPU loop running ~1500 ms with no suspension point or cancellation check | **the computed value**, not `null` | **1501 ms** |
+| C | `join()` on a job launched into a **separate, non-child** scope | `null`; the job was still active afterwards | 108 ms |
+
+What this establishes, and what L3.2 must teach:
+
+- **`withTimeout` bounds nothing by itself.** Its body is a child scope, so structured
+  concurrency prevents it from returning until that body finishes. A and B both overran the
+  deadline by roughly fifteen times, and the *caller* waited the whole time.
+- **B is the sharper case.** The block not only outlived its deadline, it **succeeded** — the
+  coroutine never reached a cancellation check, so the timeout's cancellation was never
+  observed and the value was returned as though nothing had happened. A reader who believes a
+  timeout is a hard deadline will not predict this.
+- **C is the only case where the caller moves on early**, and it does so precisely because the
+  awaited work was never a child. That is L1.4's ownership argument arriving from a different
+  direction, and it is the correct place to make the connection.
+
+**Consequence for the question bank.** The ACTIVE Question
+`coroutine_run_interruptible_blocking_call` explains its `withTimeout` distractor with the
+clause "withTimeout resumes the coroutine while leaving the blocked thread occupied."
+Measurement A is that exact scenario and contradicts it: the coroutine was not resumed until
+the blocking call returned. **The Question's key and its four options remain correct** — the
+distractor claims `withTimeout` "abandons the blocking method", which is genuinely false — so
+this is an inaccuracy in one explanatory clause, not a wrong answer. It is recorded as a
+correction candidate for E24-08 rather than a defect to fix here, and E24-04 should re-run
+the measurement before anything is changed. See
+[mapping corrections](#mapping-corrections-rather-than-gaps).
 
 #### Experimental operator status
 
@@ -961,10 +1019,16 @@ made the E24 boundary easy to draw.
 
 ### For E24-08
 
-The sixteen gap rows are the starting list, and the three mapping corrections are a separate,
-smaller decision. Re-read both against the finished prose before authoring: a gap this plan
-predicted may have been closed by a Lesson that turned out deeper than planned, and new ones
-will have appeared.
+The sixteen gap rows are the starting list. The three mapping corrections and the one
+explanation correction are separate, smaller decisions. Re-read all of them against the
+finished prose before authoring: a gap this plan predicted may have been closed by a Lesson
+that turned out deeper than planned, and new ones will have appeared.
+
+The explanation correction is the only item here that is a possible **defect** rather than a
+coverage gap: `coroutine_run_interruptible_blocking_call` attaches a rationale to its
+`withTimeout` distractor that this review measured and contradicted. Re-run the measurement
+recorded in [the timeout section](#what-withtimeout-does-to-non-cooperative-work) before
+changing anything, and correct the clause rather than adding a Question.
 
 Three things to weigh that are not in the table:
 

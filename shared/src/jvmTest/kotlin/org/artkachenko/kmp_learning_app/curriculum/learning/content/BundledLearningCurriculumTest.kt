@@ -44,6 +44,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_cancellation_failure_and_coordination",
                 "unit_flow_fundamentals",
                 "unit_flow_composition_timing_and_failure",
+                "unit_stateflow_sharedflow_and_hot_streams",
             ),
             units().map { it.id },
         )
@@ -61,6 +62,7 @@ internal class BundledLearningCurriculumTest {
                 "Cancellation, Failure and Coordination",
                 "Flow Fundamentals",
                 "Flow Composition, Timing and Failure",
+                "StateFlow, SharedFlow and Hot Streams",
             ),
             units().map { it.title },
         )
@@ -75,6 +77,7 @@ internal class BundledLearningCurriculumTest {
                 "android_ui",
                 "android_ui",
                 "android_ui",
+                "async_reactive",
                 "async_reactive",
                 "async_reactive",
                 "async_reactive",
@@ -256,6 +259,31 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_flow_composition_timing_and_failure").lessons.map { it.title },
         )
+
+        // Unit 6 keeps three axes apart in its order: where production lives, then the
+        // two retentions that answer what a late subscriber gets, then what moves a cold
+        // upstream onto a scope, then the decision the whole Flow half was building to.
+        assertEquals(
+            listOf(
+                "lesson_hot_and_cold_streams",
+                "lesson_state_flow",
+                "lesson_shared_flow",
+                "lesson_sharing_cold_flows",
+                "lesson_choosing_a_stream_abstraction",
+            ),
+            unit("unit_stateflow_sharedflow_and_hot_streams").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "Hot and Cold: When Production Happens",
+                "`StateFlow`: One Current Value",
+                "`SharedFlow`: Replay, Buffering and Subscribers",
+                "Sharing Cold Flows with `stateIn` and `shareIn`",
+                "Choosing a Stream Abstraction by Delivery Guarantees",
+            ),
+            unit("unit_stateflow_sharedflow_and_hot_streams").lessons.map { it.title },
+        )
     }
 
     @Test
@@ -392,6 +420,20 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_flow_composition_timing_and_failure").lessons.map { it.primarySubtopicIds },
         )
+
+        // `hot_vs_cold_streams` is primary in the first and last Lessons — production
+        // lifetime is what the opening Lesson establishes and what the closing decision is
+        // organised around — so five Lessons practise four concepts.
+        assertEquals(
+            listOf(
+                listOf("hot_vs_cold_streams"),
+                listOf("stateflow"),
+                listOf("sharedflow"),
+                listOf("flow_sharing"),
+                listOf("hot_vs_cold_streams"),
+            ),
+            unit("unit_stateflow_sharedflow_and_hot_streams").lessons.map { it.primarySubtopicIds },
+        )
     }
 
     @Test
@@ -515,6 +557,30 @@ internal class BundledLearningCurriculumTest {
                 ),
             ),
             unit("unit_flow_composition_timing_and_failure").lessons.map { it.supportingSubtopicIds },
+        )
+    }
+
+    @Test
+    fun hotStreamUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        // Four of the concepts these Lessons lean on are primary nowhere in the Unit:
+        // `kotlin_equality`, which carries the equality-based conflation the state Lesson is
+        // built on; `state_ownership`, the architecture bridge; `lifecycle_coroutines`,
+        // supporting-only across the whole epic by design; and `flow_buffering`, Unit 5's
+        // concept reused for a hot stream. Each is assessed, where it is assessed at all, in
+        // terms that have nothing to do with this Unit, so promoting any of them would hand
+        // Unit 6 practice it does not teach and would hide GAP-U6-A, GAP-U6-B and GAP-U6-C in
+        // `docs/content/coroutines-flow-units-1-6-plan.md`. The remaining entries are Unit 6
+        // primaries elsewhere, which is what makes the four Lessons that share them read as
+        // one argument rather than four subjects.
+        assertEquals(
+            listOf(
+                listOf("flow_fundamentals", "flow_collection", "stateflow", "sharedflow"),
+                listOf("hot_vs_cold_streams", "flow_collection", "kotlin_equality", "state_ownership"),
+                listOf("hot_vs_cold_streams", "flow_buffering", "stateflow", "flow_collection"),
+                listOf("stateflow", "sharedflow", "coroutine_scope", "lifecycle_coroutines"),
+                listOf("stateflow", "sharedflow", "flow_sharing", "state_ownership"),
+            ),
+            unit("unit_stateflow_sharedflow_and_hot_streams").lessons.map { it.supportingSubtopicIds },
         )
     }
 

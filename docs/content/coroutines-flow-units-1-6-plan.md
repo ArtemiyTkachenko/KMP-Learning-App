@@ -72,8 +72,18 @@ shipped by E24-03; see [Authoring outcomes for Unit 2](#authoring-outcomes-for-u
 Unit 3 is authored and shipped by E24-04; see
 [Authoring outcomes for Unit 3](#authoring-outcomes-for-unit-3). Unit 4 is authored and
 shipped by E24-05; see [Authoring outcomes for Unit 4](#authoring-outcomes-for-unit-4).
-Unit 5 is authored in production format by E24-06, pending review and merge; see
-[Authoring outcomes for Unit 5](#authoring-outcomes-for-unit-5). Unit 6 remains proposed.
+Unit 5 is authored and shipped by E24-06; see
+[Authoring outcomes for Unit 5](#authoring-outcomes-for-unit-5). Unit 6 is authored in
+production format by E24-07, pending review and merge; see
+[Authoring outcomes for Unit 6](#authoring-outcomes-for-unit-6). **Every Unit this epic
+plans is now authored**, so the next issue is E24-08.
+
+**Two Lesson titles changed and are recorded here rather than left to drift.** L6.4 ships as
+"Sharing Cold Flows with `stateIn` and `shareIn`" and L6.5 as "Choosing a Stream Abstraction
+by Delivery Guarantees". Both identities, both positions and every mapping are unchanged; the
+titles in the tables above and in the blueprint were updated in the same change. The reason is
+editorial: the planned titles listed APIs where the Lessons are organised by the decision they
+teach, which is the ordering Rule 5 of the authoring contract asks for.
 
 ---
 
@@ -142,8 +152,8 @@ All six Units take `async_reactive` as their home Topic.
 | L6.1 | `lesson_hot_and_cold_streams` | Hot and Cold: When Production Happens | `hot_vs_cold_streams` | `flow_fundamentals`, `flow_collection`, `stateflow`, `sharedflow` |
 | L6.2 | `lesson_state_flow` | `StateFlow`: One Current Value | `stateflow` | `hot_vs_cold_streams`, `flow_collection`, `kotlin_equality`, `state_ownership` |
 | L6.3 | `lesson_shared_flow` | `SharedFlow`: Replay, Buffering and Subscribers | `sharedflow` | `hot_vs_cold_streams`, `flow_buffering`, `stateflow`, `flow_collection` |
-| L6.4 | `lesson_sharing_cold_flows` | `stateIn`, `shareIn` and `SharingStarted` | `flow_sharing` | `stateflow`, `sharedflow`, `coroutine_scope`, `lifecycle_coroutines` |
-| L6.5 | `lesson_choosing_a_stream_abstraction` | Choosing Between a Value, a Flow, a State Holder and a Channel | `hot_vs_cold_streams` | `stateflow`, `sharedflow`, `flow_sharing`, `state_ownership` |
+| L6.4 | `lesson_sharing_cold_flows` | Sharing Cold Flows with `stateIn` and `shareIn` | `flow_sharing` | `stateflow`, `sharedflow`, `coroutine_scope`, `lifecycle_coroutines` |
+| L6.5 | `lesson_choosing_a_stream_abstraction` | Choosing a Stream Abstraction by Delivery Guarantees | `hot_vs_cold_streams` | `stateflow`, `sharedflow`, `flow_sharing`, `state_ownership` |
 
 ### Identity and mapping checks performed
 
@@ -1668,6 +1678,297 @@ contract doing its job.
 E24-07 was not started, and no Unit 6 hot-stream material, no Compose-effect material and no
 Question was authored.
 
+## Authoring outcomes for Unit 6
+
+E24-07 authors `unit_stateflow_sharedflow_and_hot_streams` immediately after Unit 5 in
+`learning_curriculum.json`, closing the authoring half of this epic. Everything below was
+executed, opened or read during that work on 2026-09-10. Every API contract quoted was read
+from the declaration in this repository's **resolved** `kotlinx-coroutines-core:1.11.0`
+sources jar, and every measured claim was produced by a throwaway JVM probe against that same
+artifact and then deleted.
+
+### What did not change
+
+The Unit id, title and `async_reactive` home Topic, all five Lesson ids, their authored order
+and their exact primary and supporting mappings shipped verbatim from the identity tables. No
+Lesson was reordered, split or merged, and no Lesson from an earlier Unit, no Compose Lesson,
+no Question and no taxonomy record was touched. Outside this Unit the diff is the two tests
+that pin Unit and Lesson counts and reach, the generated coverage snapshot, and this document
+plus the blueprint's status and two of its headings.
+
+`hot_vs_cold_streams` is deliberately primary in both L6.1 and L6.5, which the plan's
+[shared-primaries](#identity-and-mapping-checks-performed) note anticipated. Unit practice
+therefore reaches **four** concepts — `hot_vs_cold_streams`, `stateflow`, `sharedflow`,
+`flow_sharing` — and **six** ACTIVE Questions, each counted once. That is asserted in
+`LearningUnitPracticeIntegrationTest` rather than left to the generated snapshot. Each Lesson
+carries Core, Practical and Senior depth and runs 1,110–1,286 words, inside the range Units 4
+and 5 occupy.
+
+### The two title corrections, and why they are not scope changes
+
+L6.4 shipped as "Sharing Cold Flows with `stateIn` and `shareIn`" rather than "`stateIn`,
+`shareIn` and `SharingStarted`", and L6.5 as "Choosing a Stream Abstraction by Delivery
+Guarantees" rather than "Choosing Between a Value, a Flow, a State Holder and a Channel".
+Neither Lesson's content, objective, mapping or boundary moved: L6.4 still teaches all three
+`SharingStarted` policies at the depth the plan specified, and L6.5 still decides among
+exactly the five abstractions the old title listed. The planned titles were API inventories,
+and Rule 5 of the authoring contract asks for the decision to lead. The identity tables above
+and the blueprint headings were updated in the same change, so nothing drifts.
+
+### The three axes, kept apart deliberately
+
+L6.1's accuracy requirement — that hotness, retention and start/stop policy are three
+independent axes — turned out to be the right organising principle for the whole Unit rather
+than one Lesson's caveat, and it is what most of the authoring decisions below defend.
+
+- **L6.1 owns production lifetime only.** It states the definition in the KDoc's own words —
+  a flow is hot because its active instance exists independently of the presence of
+  collectors — then names the other two axes and hands them to the Lessons that own them. It
+  carries a three-row table doing exactly that.
+- **Retention is L6.2's and L6.3's.** L6.1 answers "what does a late subscriber receive?"
+  with "that is not decided by hotness", shows all three outcomes for the same timeline, and
+  refuses to generalise.
+- **Start and stop policy is L6.4's.** L6.1 states that a shared stream can stop its upstream
+  while remaining hot, and points forward in prose.
+
+The over-general sentences the plan warned about are absent, and their absence is enforced by
+prose that names them as mistakes: "a hot flow throws away anything emitted while nobody is
+listening" and "a hot flow replays what you missed" appear together in a `COMMON_MISTAKE`
+callout as two retention configurations mislabelled as definitions of hotness.
+
+### The guide page's hot-flow framing is looser than the KDoc
+
+A source finding worth recording, because it would have produced exactly the collapse the
+plan warned against. The rewritten `coroutines-flow.html` "Hot flows" section says hot flows
+"keep emitting values even when no collector is active". Taken as a definition that is false
+for `shareIn(scope, WhileSubscribed())`, whose upstream is stopped precisely when no
+subscriber is active — measured below. The Lessons therefore take the definition from the
+`StateFlow` and `SharedFlow` KDocs, which say only that the active instance exists
+independently of the presence of collectors, and cite the guide page for the cold/hot split
+and the `SharedFlow` and `StateFlow` usage material it does cover well. **Do not paraphrase
+the guide's hot-flow sentence.**
+
+### Claims that were executed rather than reasoned about
+
+Every number below was measured on this project's JVM target against the resolved
+`kotlinx-coroutines-core:1.11.0`, with probes that were deleted afterwards. Wall-clock
+figures are evidence for a semantic claim, not published guarantees.
+
+| Probe | Result | What it settles |
+| --- | --- | --- |
+| Collector attached to a `MutableStateFlow` whose value had already moved on | Received the current value immediately, matching `value` | L6.2's current-value contract |
+| `data class` state, three spaced assignments of an equal value | **One** delivery — the initial one | Equality-based conflation as behaviour |
+| Same shape with a class inheriting identity equality | **Three** deliveries | That the state type's `equals` is what decides |
+| Object mutated in place 1 → 99, then an equal instance assigned | Collector saw the value **once**, at subscription; `value.count` read 99 afterwards | The mutable-state failure mode, stated without inventing a guarantee |
+| Value assigned 1…10 at 20 ms with a 200 ms collector | Collector observed **0, 7, 10** | Slow-collector conflation, ending on the latest |
+| 8 coroutines × 2,000 increments through `value = value + 1` | **5,998** of 16,000 | Why read-modify-write is not atomic |
+| The same load through `update { }` | **16,000** exactly | `update`'s compare-and-set contract |
+| `replay = 0`: emit A with nobody subscribed, subscribe, emit B | Subscriber received **B only** | Replay-zero retention |
+| `replay = 1`: same sequence | Subscriber received **A then B** | Replay as the only thing a late subscriber can see |
+| Unbuffered `emit` × 3 with one 300 ms subscriber | Returned at ≈109, 414, 718 ms | That `emit` waits for subscribers to take the value |
+| Unbuffered `emit` × 1,000 with **no** subscribers | ≈1 ms, replay cache empty | That absent subscribers mean no backpressure and total loss |
+| `replay = 2`, ten emissions, no subscribers | Replay cache held the last two | That overflow strategy has no effect with no subscribers |
+| `tryEmit` on an unbuffered flow with no subscribers | `true`, replay cache still empty | That `true` is not evidence of delivery |
+| `tryEmit` on the same flow with one slow subscriber | `false` | The documented `false` condition |
+| `tryEmit` × 5 on `replay = 1` with a slow subscriber | `true`, then four `false` | Buffer capacity, not delivery |
+| Three subscribers to a cold upstream shared with `shareIn` | Upstream started **once** | What sharing buys |
+| Two direct collections of the same cold flow | Builder ran **twice** | The baseline sharing removes |
+| `Eagerly` + `shareIn(replay = 0)`, subscriber joins after six values | First value seen was the **seventh** | The KDoc's "immediately discarded" clause |
+| The same at `replay = 2` | Subscriber received the two most recent, then live values | Replay against eager production |
+| Upstream that emits once and completes, under `WhileSubscribed()` | Collector still active afterwards; state still read that value | "Normal completion has no effect on subscribers" |
+
+### The `SharingStarted` probe, in full
+
+One cold source counting its own starts and stops, one subscriber that arrives and later
+leaves, five configurations. This table is the evidence behind L6.4's Practical section.
+
+| Policy | Before any subscriber | While subscribed | 150 ms after the last subscriber left | 750 ms after | On re-subscribe |
+| --- | --- | --- | --- | --- | --- |
+| `Eagerly` | started, already producing | running | running, nothing stopped | running | joins the run in progress |
+| `Lazily` | not started | running | running, nothing stopped | running | joins the run in progress |
+| `WhileSubscribed()` | not started | running | **stopped**; last value retained | stopped; value retained | **restarted from the beginning** |
+| `WhileSubscribed(500)` | not started | running | still running; value advanced | **stopped** | restarted |
+| `WhileSubscribed(0, replayExpirationMillis = 200)` | not started | running | stopped; last value retained | stopped; **value reset to `initialValue`** | restarted |
+
+Three conclusions the Lesson teaches from it. `Eagerly` and `Lazily` differ only in when they
+start — neither ever stops, so "lazy" does not imply the symmetric stop its name suggests.
+`stopTimeoutMillis` moves the stop and nothing else. And `replayExpirationMillis` runs on its
+own clock *after* the stop: the last row stopped at the same moment as the third and reset its
+value 500 ms later, which is the cleanest available demonstration that the two timers are not
+one.
+
+### The defaults, read from the declaration
+
+Both are surprising and both are stated in L6.4 as defaults rather than as advice.
+
+- `WhileSubscribed(stopTimeoutMillis = 0, replayExpirationMillis = Long.MAX_VALUE)`. The
+  documented gloss for the second is "keep replay cache forever, never reset buffer", and the
+  measured behaviour matches: with a plain `WhileSubscribed()` the upstream stops immediately
+  and the retained value survives indefinitely.
+- The five-second figure is therefore **not** an API default and is taught as an application
+  choice sized from how long the collector gaps actually are. `flow_state_in_while_subscribed`
+  assesses what the parameter means; L6.4 adds why a particular number would be chosen.
+
+### `Eagerly` was examined, not corrected
+
+The repository's four `stateIn(scope, SharingStarted.Eagerly, ...)` state holders —
+`ProgressStateHolder`, `InterviewHistoryStateHolder`, `MistakeReviewStateHolder`,
+`AssessmentHistoryStore` — plus `AppShellViewModel`'s `viewModelScope` holder were read
+before L6.4 was written. The four application-scoped ones run on `AppCoroutineScope`, which
+is `SupervisorJob() + Dispatchers.Default` and lives as long as the process, and
+`ProgressStateHolder`'s own documentation states the reason: the navigation entry destroys
+the ViewModel on a tab switch, so the dashboard was rebuilt from nothing on every visit.
+`WhileSubscribed` would buy nothing against a process-lifetime scope and would reintroduce
+the spinner the holder exists to remove. L6.4 uses this as its contrast case, teaches
+`Eagerly` through its trade rather than as a mistake, and **no production code was changed**.
+
+### The `SharedFlow` no-subscriber behaviour, as taught
+
+This is the Unit's most counter-intuitive contract and the plan asked for it not to be
+inferred. What the resolved KDoc says, and what L6.3 teaches:
+
+- `emit` on an unbuffered shared flow "suspends until all subscribers receive the emitted
+  value and returns immediately if there are no subscribers".
+- `MutableSharedFlow.emit`'s own KDoc is more precise still: suspension happens only when the
+  overflow strategy is `SUSPEND` **and** there are subscribers; with no subscribers "the
+  buffer is not used" and the value is stored into the replay cache if one exists, or dropped.
+- Buffer overflow "can happen only when there is at least one subscriber that is not ready to
+  accept the new value"; with none, only the most recent `replay` values are stored and the
+  overflow strategy has no effect at all.
+- `tryEmit` returns `false` only under the same `SUSPEND`-plus-subscribers condition, so on an
+  unbuffered flow `true` is exactly the no-subscriber case — which the class KDoc states
+  outright, adding that the value is then "immediately lost".
+
+L6.3 states all four, measures the first three, and attaches a `COMMON_MISTAKE` callout to the
+`tryEmit` result specifically. It does not hide any of it behind an Android lifecycle rule.
+
+### The `StateFlow` equality contract, as taught
+
+L6.2 quotes the KDoc's own heading — strong equality-based conflation — and its statement that
+values are conflated using `Any.equals`, then makes it behavioural with the three measured
+cases in the table above. Three further clauses were read from the declaration and used:
+
+- "State flow behavior with classes that violate the contract for `Any.equals` is
+  unspecified." The Lesson cites this rather than inventing a guarantee about mutation, which
+  the plan explicitly warned against.
+- `compareAndSet`'s KDoc notes that when both the expected and the new value equal the current
+  one it returns `true` **without** storing the new reference. This is in L6.2's Senior
+  section as the identity caveat.
+- `update`'s KDoc warns that the function "may be evaluated multiple times, if `value` is
+  being concurrently updated", which is why the Lesson requires the lambda to be pure.
+
+Completion is taught as the KDoc states it: state flow never completes, cannot be closed, can
+never represent a failure, and errors must be materialised — so a failed load is a value in
+the state type. Operator fusion is one sentence listing the no-ops, not a section.
+
+### The `Channel` boundary held
+
+L6.5's channel material is three paragraphs: the `BlockingQueue`-like model with suspending
+`send`/`receive`, fan-out as "multiple coroutines may receive from the same channel,
+distributing work between themselves", and the consequence that a queued element goes to one
+receiver rather than to all subscribers. Pipelines, fan-in, `produce`, `select` and the
+capacity taxonomy are named as excluded in one sentence. That is the same bounded treatment
+the plan authorised and the contrast `flow_vs_channel_delivery_model` already assesses.
+
+### The E25 and architecture boundaries held
+
+No E24 Lesson names `collectAsState`, `collectAsStateWithLifecycle`, `LaunchedEffect`,
+`rememberCoroutineScope`, `produceState` or `repeatOnLifecycle`. L6.2 says that `StateFlow` is
+a Kotlin Multiplatform type that knows nothing about a UI, a lifecycle or a ViewModel, and
+defers how a Compose screen collects one. L6.5 says that once the delivery guarantee is
+chosen, later architecture material decides how a UI models and consumes it, and stops. The
+private-mutable/public-immutable pair appears in L6.2 as API encapsulation with an explicit
+sentence saying that where state should live is an architecture question this Unit leaves
+alone. `state_ownership` and `lifecycle_coroutines` remain supporting-only, which
+`BundledLearningCurriculumTest` now pins.
+
+### Semantic review of the Questions this Unit now reaches
+
+All six ACTIVE Questions reachable through Unit 6's four primary concepts were read in full —
+stem, options, key, explanation and Sources — against the finished prose. No Question was
+changed; E24-08 owns assessment.
+
+| Question | Verdict against the shipped Lessons |
+| --- | --- |
+| `stateflow_001` | Answerable from L6.2's Core. Its key — the UI needs the latest value and updates when it changes — is the current-value contract, and its three distractors are each addressed by name: one-time events (L6.2's countable-things argument and L6.5's honest version), delivery of every intermediate value (the measured `0, 7, 10`), and starting without an initial value (stated as a consequence of the contract). The Question is **descriptive**, though: answering it demonstrates knowing what `StateFlow` is for, not predicting what a collector sees. That is GAP-U6-A |
+| `stateflow_vs_sharedflow_current_value` | Answerable from L6.2 and L6.3 together. Both correct options are taught directly, and both distractors are contradicted explicitly — L6.2 states that a state flow does not buffer beyond one value, and L6.3 opens by defining shared flow as hot. Also descriptive on both correct options, which is the other half of GAP-U6-A |
+| `shared_flow_replay_late_subscriber` | Answerable from L6.3's Practical, which measures exactly this scenario. Its key and all three distractors map onto sentences the Lesson derives independently: that the replay cache is the only thing a later subscriber sees, that always retaining the latest is `StateFlow`'s behaviour, and that a shared flow with no collectors neither queues nor refuses emissions. The best-matched Question in the Unit |
+| `flow_share_in_vs_state_in` | Answerable from L6.4's Core, which draws the distinction as current-value against configurable replay rather than by return-type name. Its three distractors are all addressed: per-collector re-running is what sharing removes, the stop is decided by `SharingStarted`, and synchronous readability is `stateIn`'s side. The **mapping drift** E24-01 recorded is confirmed and unchanged: the Question sits on `sharedflow` while its reasoning is L6.4's `flow_sharing`. Both are Unit 6 concepts, so Unit practice is unaffected — but a `sharedflow`-scoped practice run gets a sharing question |
+| `flow_state_in_while_subscribed` | Answerable from L6.4's Practical. Its key is the grace-period reading, which the Lesson states, measures and attaches a `COMMON_MISTAKE` callout to; its "polling interval" and "delays delivery" distractors are the two misreadings the callout names. What it does not assess is the choice between policies or the second timer — GAP-U6-B |
+| `flow_vs_channel_delivery_model` | Answerable from L6.5's Practical. Its key is the one-receiver-per-element property, and its three distractors are each contradicted by a row of the Lesson's requirement table. Note that this is the **only** ACTIVE Question on `hot_vs_cold_streams`, so L6.1's own reasoning — production lifetime, late subscribers, values emitted with nobody subscribed — reaches no Question at all. That is GAP-U6-C |
+
+`live_data_vs_state_flow_ui_state` was read as supporting context only, as the issue asked.
+Its third statement remains the clearest existing description of `StateFlow` conflation in the
+bank, and L6.2 teaches that behaviour far past it. The Question sits on `livedata`, which E24
+leaves unmapped by design, so it creates no Unit 6 practice and must not be counted as
+covering GAP-U6-A. `sharedflow_001` is DEPRECATED and was re-read so that E24-08 does not
+re-ask what it already asked: it tested that `SharedFlow` is hot and that replay is
+configurable, which is L6.3's Core.
+
+### GAP-U6-A, GAP-U6-B and GAP-U6-C all still exist
+
+E24-07 authored no Question. What changed is that the reasoning each gap names is now taught,
+so E24-08 has something to assess against and measured material to build scenarios from.
+
+| Gap | Status | Where the reasoning now lives |
+| --- | --- | --- |
+| GAP-U6-A — equality-based conflation as behaviour | **Still open.** Both `stateflow` Questions remain descriptive | L6.2's Practical in full: the KDoc's own heading quoted, the three-row equality table, the measured one-against-three delivery counts for `data class` against identity equality, the mutate-then-assign-equal case where the collector never learns of either change, and the measured `0, 7, 10` slow-collector run. The strongest candidate in the epic, and the material now supports a code-tracing question rather than a definition |
+| GAP-U6-B — the sharing-policy decision | **Still open.** `flow_state_in_while_subscribed` still assesses one parameter of one policy | L6.4 in full: the five-configuration measured table, `Eagerly`'s discard clause, `Lazily`'s no-stop contract, the two separately drawn timers, both defaults read from the declaration, the five-second figure framed as an application choice, and this repository's own `Eagerly` holders as a defensible case |
+| GAP-U6-C — hot against cold posed directly | **Still open.** `hot_vs_cold_streams`' single Question is the `Channel` comparison, which belongs to L6.5 | L6.1 in full: the definition from the KDoc, the late-subscriber timeline with all three retention outcomes, the measured cold-runs-twice against shared-runs-once pair, the measured eager-with-no-replay case where the first value a subscriber sees is the seventh, and the callout naming the two false generalisations |
+
+### New candidate gaps for E24-08
+
+Three surfaced while authoring. None is a defect in an existing Question, and each is a
+decision for E24-08 to take deliberately.
+
+| Gap | Unit / Lesson | Reasoning no ACTIVE Question assesses | Why it is substantive | Recommended action |
+| --- | --- | --- | --- | --- |
+| GAP-U6-D | Unit 6 / `lesson_shared_flow` | What an unbuffered `SharedFlow`'s `emit` does with and without subscribers, and that `tryEmit() == true` is not evidence anyone received the value | `shared_flow_replay_late_subscriber` assesses the late-subscriber half of delivery. The emitter's half is unassessed, and it is where "SharedFlow is for events" actually fails: the measured 1,000 emissions into an empty subscriber set completed in about a millisecond and were all lost. A strong ADVANCED candidate, in the half of the Topic that has none | Add coverage in E24-08 |
+| GAP-U6-E | Unit 6 / `lesson_sharing_cold_flows` | That `stopTimeoutMillis` and `replayExpirationMillis` are two timers on two clocks, and that the second defaults to never | `flow_state_in_while_subscribed` teaches the first and does not mention the second. The measured pair of runs — same stop moment, reset 500 ms apart — is a ready-made tracing scenario. Overlaps GAP-U6-B and could be folded into it or split off | Add coverage in E24-08, possibly as part of GAP-U6-B |
+| GAP-U6-F | Unit 6 / `lesson_choosing_a_stream_abstraction` | That a must-not-be-lost occurrence is not satisfied by any hot Flow configuration, so the answer is durable state, a queue or acknowledgement | `flow_vs_channel_delivery_model` assesses the single-receiver contrast, which is a different property. `durable_state_vs_one_off_event` in the `architecture` Topic is the closest and is supporting-only here, so it creates no Unit 6 practice. This is the reasoning the epic exists to replace the slogan with, and nothing in `async_reactive` assesses it | Add coverage in E24-08 |
+
+### Cross-links and validation
+
+Backward-only, and every target already ships:
+
+- L6.1: `lesson_cold_flows`, `lesson_flow_collection_lifetime`, `lesson_snapshot_flow`.
+- L6.2: `lesson_hot_and_cold_streams`, `lesson_flow_buffering_and_conflation`,
+  `lesson_shared_state_and_coordination`.
+- L6.3: `lesson_hot_and_cold_streams`, `lesson_state_flow`,
+  `lesson_flow_buffering_and_conflation`.
+- L6.4: `lesson_coroutine_scope_ownership`, `lesson_cold_flows`, `lesson_state_flow`,
+  `lesson_shared_flow`.
+- L6.5: `lesson_why_flow`, `lesson_hot_and_cold_streams`, `lesson_state_flow`,
+  `lesson_shared_flow`, `lesson_sharing_cold_flows`.
+
+Every candidate link the issue proposed was taken and none was added beyond them, which is
+the discipline the issue asked for now that no future E24 id has to be avoided. The
+`lesson_snapshot_flow` link from L6.1 is the one that carries an argument rather than a
+definition: L6.1's Senior section reuses that Lesson's state-as-lossy-compression framing to
+explain why retention differs between state and occurrences, and **does not restate any
+Compose snapshot material**. `lesson_snapshot_flow` was re-read and needed no edit — the
+sentence E24-05 corrected is already gone, and nothing Unit 6 says contradicts its four-fact
+bridge. Forward references are prose: the Compose collection site and one-off UI effects to
+"later in this path", and acknowledgement and queueing to "outside this unit".
+
+Validation run, all passing: `python3 tools/learning_question_coverage.py --write` then
+`--check`; `./gradlew :shared:jvmTest --tests "*BundledLearningCurriculumTest*" --tests
+"*LearningContentEndToEndTest*" --tests "*LearningCurriculumJsonCodecTest*"`;
+`./gradlew :shared:jvmTest --tests "*LearningUnitPracticeIntegrationTest*" --tests
+"*LearningProductionContentJourneyTest*" --tests "*LearningReaderJourneyIntegrationTest*"
+--tests "*ProgressLearningJourneyIntegrationTest*"`; `./gradlew :shared:jvmTest`;
+`./gradlew :shared:allTests`; `./gradlew :shared:check`; and
+`python3 -m unittest discover -s tools -p "test_*.py"` for the coverage generator itself.
+`./gradlew :shared:iosSimulatorArm64Test` reported UP-TO-DATE against the changed bundle, so
+its results directory was removed and the task re-run: 427 tests, no failures.
+`LearningCurriculumValidator` reported no error against the shipped bundle. Unlike Unit 5, it
+caught nothing during authoring; the one defect that did surface — a `SharedFlow` snippet that
+declared the same `val` twice — was found by reading the rendered Lesson end to end, which is a
+useful reminder of where the machine-checkable half of the authoring contract stops.
+
+E24-08 was not started: no Question was added, changed, re-mapped or deprecated, and
+`initial_curriculum.json` is untouched by this change.
+
 ## Cross-linking rules
 
 `LearningCurriculumValidator` rejects a `relatedLessonIds` entry naming an unknown Lesson
@@ -1836,6 +2137,9 @@ missing, not a number.
 | GAP-U6-A | Unit 6 / `lesson_state_flow` | `StateFlow`'s equality-based conflation as behaviour: that assigning an equal value emits nothing, and that a state type's `equals` therefore decides what the UI sees | Both `stateflow` Questions are descriptive — what `StateFlow` is for, and how it compares with `SharedFlow`. The one behavioural statement in the bank is a distractor-adjacent claim in `live_data_vs_state_flow_ui_state`, which sits on `livedata` and is unmapped by E24 | Add coverage in E24-08; the strongest candidate in Unit 6 |
 | GAP-U6-B | Unit 6 / `lesson_sharing_cold_flows` | `Eagerly` against `WhileSubscribed` as a resource and correctness tradeoff, and what `replayExpirationMillis` does | `flow_state_in_while_subscribed` assesses one parameter of one policy. The choice between policies — the actual decision — is unassessed | Add coverage in E24-08 |
 | GAP-U6-C | Unit 6 / `lesson_hot_and_cold_streams` | The hot/cold distinction posed directly: what a late subscriber receives from each, and what happens to values emitted with no subscribers | `hot_vs_cold_streams`' single active Question is the `Channel` comparison, which belongs to L6.5. `flow_fundamentals_001` assesses coldness from the cold side only | Add coverage in E24-08 |
+| GAP-U6-D | Unit 6 / `lesson_shared_flow` | What an unbuffered `SharedFlow`'s `emit` does with and without subscribers, and that `tryEmit() == true` is not evidence anyone received the value | **Added by E24-07.** `shared_flow_replay_late_subscriber` assesses the late-subscriber half of delivery; the emitter's half is unassessed, and it is where the "SharedFlow is for events" heuristic actually fails | Add coverage in E24-08; the strongest ADVANCED candidate in the Flow half |
+| GAP-U6-E | Unit 6 / `lesson_sharing_cold_flows` | That `stopTimeoutMillis` and `replayExpirationMillis` are two timers on two clocks, and that the second defaults to never resetting | **Added by E24-07.** `flow_state_in_while_subscribed` teaches the first parameter and does not mention the second. Overlaps GAP-U6-B and may be folded into it | Add coverage in E24-08 |
+| GAP-U6-F | Unit 6 / `lesson_choosing_a_stream_abstraction` | That a must-not-be-lost occurrence is satisfied by no hot Flow configuration, so the answer is durable state, a queue or acknowledgement | **Added by E24-07.** `flow_vs_channel_delivery_model` assesses the single-receiver contrast, a different property; `durable_state_vs_one_off_event` sits in `architecture` and is supporting-only here. This is the reasoning the epic exists to put in place of the slogan | Add coverage in E24-08 |
 
 ### Mapping corrections rather than gaps
 
@@ -1934,6 +2238,19 @@ Three instructions follow for E24-05 and E24-06 in particular:
    `coroutines-flow.html` both return 200 and both still support the claims attached to them,
    although both now do so from rewritten pages. No Question source needs changing for this
    reason alone.
+
+**Re-checked by E24-07 on 2026-09-10, with one finding that constrains Unit 6.**
+`coroutines-flow.html` still returns 200, is still dated 13 July 2026, and its "Hot flows"
+section is a good source for the cold/hot split, for `MutableSharedFlow` with a backing
+property, for the replay parameter, and for converting a cold flow with `shareIn`. It is
+**not** a safe source for the definition of hotness: it says hot flows "keep emitting values
+even when no collector is active", which is false for `shareIn(scope, WhileSubscribed())`,
+whose upstream is stopped exactly when no subscriber is active — measured in
+[Authoring outcomes for Unit 6](#authoring-outcomes-for-unit-6). Take the definition from the
+`StateFlow` and `SharedFlow` KDocs, both of which say only that the active instance exists
+independently of the presence of collectors. The page also does not document the
+`SharingStarted` policies beyond naming `Eagerly` in one sentence, so the policy contracts,
+`stopTimeoutMillis` and `replayExpirationMillis` come from the KDoc.
 
 **Dates captured by E24-05 on 2026-09-10**, which E24-01 did not record: `coroutines-flow.html`
 is dated 13 July 2026 and `coroutines-flow-operators.html` 28 July 2026. Their top-level section
@@ -2232,11 +2549,29 @@ made the E24 boundary easy to draw.
 
 ### For E24-08
 
-The gap rows are the starting list — sixteen at review time, eighteen after E24-06 added
-GAP-U5-C and GAP-U5-D while authoring Unit 5. The three mapping corrections and the one
-explanation correction are separate, smaller decisions. Re-read all of them against the
-finished prose before authoring: a gap this plan predicted may have been closed by a Lesson
-that turned out deeper than planned, and new ones will have appeared.
+**Every Unit this epic plans is now authored**, so E24-08 begins against finished prose
+rather than against predictions. The gap rows are the starting list — sixteen at review time,
+eighteen after E24-06 added GAP-U5-C and GAP-U5-D, twenty-one after E24-07 added GAP-U6-D,
+GAP-U6-E and GAP-U6-F. The three mapping corrections and the one explanation correction are
+separate, smaller decisions.
+
+Each authoring issue recorded, in its own outcomes section, whether the gaps it inherited
+survived contact with the finished Lessons and where the reasoning for each now lives. **None
+of the sixteen original gaps was closed by authoring**, which is the expected outcome: a
+Lesson teaches reasoning, and only a Question assesses it. Read those sections rather than
+re-auditing what the Lessons teach.
+
+For Unit 6 specifically, [Authoring outcomes for Unit 6](#authoring-outcomes-for-unit-6)
+answers the questions E24-08 would otherwise have to re-derive: GAP-U6-A, GAP-U6-B and
+GAP-U6-C are all still open and each row names exactly which measured material a Question
+could be built on; no existing Question became semantically insufficient, and none is wrong;
+the one mapping drift on `flow_share_in_vs_state_in` is confirmed and unchanged; no Source or
+explanation defect was found in the six Questions the Unit reaches; and `sharedflow_001` is
+DEPRECATED on ground L6.3 now teaches, so a new Question must not re-ask it. One source
+finding constrains authoring there: the rewritten `coroutines-flow.html` "Hot flows" section
+says hot flows keep emitting when no collector is active, which is false as a general claim
+and is contradicted by this epic's own measurement of `WhileSubscribed`. Cite the `StateFlow`
+and `SharedFlow` KDocs for that definition instead.
 
 The explanation correction is the only item here that is a possible **defect** rather than a
 coverage gap: `coroutine_run_interruptible_blocking_call` attaches a rationale to its

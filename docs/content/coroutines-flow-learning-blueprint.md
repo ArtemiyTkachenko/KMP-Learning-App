@@ -796,7 +796,7 @@ and end at a defensible decision among all the abstractions the subject offers.
   `resetReplayCache` is **Reference**. The comparison against a `Channel` for one-time
   delivery is deliberately held back to L6.5, where all the options are on the table.
 
-#### L6.4 — `stateIn`, `shareIn` and `SharingStarted`
+#### L6.4 — Sharing Cold Flows with `stateIn` and `shareIn`
 
 - **Objective:** convert a cold upstream into a shared one and say what starts and stops it.
 - **Core:** `stateIn` and `shareIn` run the upstream once in a given scope and share its
@@ -822,7 +822,7 @@ and end at a defensible decision among all the abstractions the subject offers.
   `SharingStarted.Eagerly`, which is a legitimate choice for an app-lifetime holder and a
   useful contrast case. `SharingStarted` as a custom implementable interface is **Reference**.
 
-#### L6.5 — Choosing Between a Value, a Flow, a State Holder and a Channel
+#### L6.5 — Choosing a Stream Abstraction by Delivery Guarantees
 
 - **Objective:** pick the abstraction from the delivery guarantee the problem needs.
 - **Core:** a plain value when nothing observes changes; a cold `Flow` when each consumer
@@ -962,10 +962,17 @@ Teach/Bridge/Reference/Exclude decision changed. Two source findings reached its
 cancellation guide now teaches **prompt cancellation**, which L3.2's Core adopts, and common
 `kotlin.concurrent.atomics` is available but still opt-in, which is what L3.5's atomic example
 uses.
-Units 4 to 6 are not authored yet: E24-05 through E24-07 author them in order, against the
+**Unit 4 is authored and shipped** by E24-05 and **Unit 5 by E24-06**, both against the
 confirmed identities and boundaries in
-[`coroutines-flow-units-1-6-plan.md`](coroutines-flow-units-1-6-plan.md). When authoring
-reveals a wrong Lesson boundary, update this file in the same change.
+[`coroutines-flow-units-1-6-plan.md`](coroutines-flow-units-1-6-plan.md). **Unit 6 is
+authored in production format** by E24-07, pending review and merge. Its five Lesson
+identities, order and mappings shipped unchanged; the two Lesson **titles** in this file were
+corrected in that change, because L6.4's and L6.5's planned titles listed APIs where the
+Lessons are organised by the decision they teach, which is what Rule 5 of the authoring
+contract asks for. No Teach/Bridge/Reference/Exclude decision changed, and the three-axis
+warning in L6.1's notes — production lifetime, retention and start/stop policy are separate —
+became the organising structure of the whole Unit rather than one Lesson's caveat. When
+authoring reveals a wrong Lesson boundary, update this file in the same change.
 
 The subject already has one published bridge into it: `lesson_snapshot_flow` in
 `unit_snapshot_fundamentals`, which teaches four facts about cold Flow so that its own

@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `692a32cb7fb6541c9fff1048bc561005a099d1d07e5651ae703f540289c809a2` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `6808df282ab5c6272e878fb1ef01508d30fa85decf49f91c9dbd1d948b8761c9` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `5870ff2387861aad48c54681cff420572f40ce00800035f2e8747476a2ccfc32` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,12 +68,12 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 6 |
-| Active lessons in those units | 21 |
-| Distinct primary subtopics | 9 |
-| Distinct supporting subtopics | 28 |
-| Unique active questions reached through primary mappings | 22 |
-| Primary subtopics with at least one active question | 9 |
+| Active learning units | 7 |
+| Active lessons in those units | 26 |
+| Distinct primary subtopics | 14 |
+| Distinct supporting subtopics | 43 |
+| Unique active questions reached through primary mappings | 29 |
+| Primary subtopics with at least one active question | 14 |
 | Primary subtopics with no active question | 0 |
 | Active questions in the bank | 370 |
 | Deprecated questions excluded from this report | 41 |
@@ -97,6 +97,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Identity, Keys, Stability and Immutability (`unit_identity_keys_and_stability`) | 5 | 2 | 1 | 4 | 1 | 6 |
 | Derived State and Expensive Work (`unit_derived_state_and_expensive_work`) | 3 | 1 | 0 | 3 | 0 | 3 |
 | Snapshot Fundamentals (`unit_snapshot_fundamentals`) | 2 | 1 | 2 | 1 | 1 | 4 |
+| Coroutine Fundamentals and Structured Concurrency (`unit_coroutines_and_structured_concurrency`) | 5 | 5 | 3 | 3 | 1 | 7 |
 
 ## Unit and lesson detail
 
@@ -506,6 +507,102 @@ Supporting context — not primary coverage:
 | `flow_fundamentals` — Flow fundamentals | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `hot_vs_cold_streams` — Hot vs cold streams | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `compose_side_effects` — Compose side-effect APIs | 2 | `android_ui` — UI — Views & Jetpack Compose |
+
+### Coroutine Fundamentals and Structured Concurrency (`unit_coroutines_and_structured_concurrency`)
+
+Home topic: `async_reactive` — Coroutines, Flow & Reactive Programming.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 3 | `coroutine_fundamentals_001`, `parent_cancellation_propagates_children`, `structured_concurrency_001` |
+| APPLIED | 3 | `coroutine_run_blocking_main_thread`, `coroutine_scope_job_ownership`, `launch_vs_async_unawaited_result` |
+| ADVANCED | 1 | `coroutine_async_exception_surfaces_at_await` |
+
+#### Suspension Is Not Blocking (`lesson_suspension_and_blocking`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `coroutine_fundamentals` — Coroutine and suspend fundamentals | 1 | 1 | 0 | 2 | `coroutine_fundamentals_001`, `coroutine_run_blocking_main_thread` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `coroutine_dispatchers` — Dispatchers | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `jvm_fundamentals` — JVM fundamentals relevant to Android | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `android_main_thread` — Main thread, Looper, and Handler fundamentals | 3 | `android_platform` — Android Platform & Application Model |
+
+#### Starting Coroutines: `launch`, `async` and `runBlocking` (`lesson_coroutine_builders`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `coroutine_builders` — launch and async | 0 | 1 | 1 | 2 | `coroutine_async_exception_surfaces_at_await`, `launch_vs_async_unawaited_result` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `coroutine_fundamentals` — Coroutine and suspend fundamentals | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_scope` — CoroutineScope | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_parallelism` — Concurrency and async/await | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `kotlin_lambdas` — Lambdas and higher-order functions | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+
+#### `Job`: the Handle That Carries Lifetime (`lesson_job_and_parent_child`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `coroutine_jobs` — Job and parent-child relationships | 1 | 0 | 0 | 1 | `parent_cancellation_propagates_children` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `coroutine_scope` — CoroutineScope | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_context` — CoroutineContext | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `structured_concurrency` — Structured concurrency | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+
+#### `CoroutineScope` and Who Owns a Coroutine's Lifetime (`lesson_coroutine_scope_ownership`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `coroutine_scope` — CoroutineScope | 0 | 1 | 0 | 1 | `coroutine_scope_job_ownership` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `coroutine_jobs` — Job and parent-child relationships | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `lifecycle_coroutines` — Lifecycle-aware coroutine scopes | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_leaks` — Coroutine lifetime leaks | 1 | `performance` — Performance, Memory & Debugging |
+| `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+
+#### Structured Concurrency and What It Guarantees (`lesson_structured_concurrency`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `structured_concurrency` — Structured concurrency | 1 | 0 | 0 | 1 | `structured_concurrency_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `coroutine_jobs` — Job and parent-child relationships | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_scope` — CoroutineScope | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_builders` — launch and async | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_exceptions` — Exception propagation and handling | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
 ## Primary assessment gaps
 

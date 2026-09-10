@@ -156,9 +156,34 @@ internal class LearningUnitPracticeIntegrationTest {
                     }
                 }
             }
+            // Continue Learning walks the whole authored document rather than one Topic, so
+            // exhausting `android_ui` hands the learner across to the next authored Unit —
+            // which since E24-02 is browsed under a different home Topic. Studying it too is
+            // what still makes the exhausted outcome reachable.
+            val coroutinesUnit = assertNotNull(
+                BundledLearningContentRepository().getUnitById("unit_coroutines_and_structured_concurrency"),
+            )
+            assertEquals("async_reactive", coroutinesUnit.topicId)
+            coroutinesUnit.lessons.forEach { lesson ->
+                awaitNext(coroutinesUnit.id, lesson.id)
+                val crossTopicReader = lesson(coroutinesUnit.id, lesson.id)
+                crossTopicReader.uiState.await { state ->
+                    state is LearningLessonUiState.Content &&
+                        (state.studyState as? StudyProgressUiState.Available)?.value?.isStudied == false
+                }
+                crossTopicReader.toggleStudied()
+                crossTopicReader.uiState.await { state ->
+                    state is LearningLessonUiState.Content &&
+                        (state.studyState as? StudyProgressUiState.Available)?.value?.let {
+                            it.isStudied && !it.isPending
+                        } == true
+                }
+            }
             browser.uiState.await { state ->
                 state is TopicBrowserUiState.Content && state.continueLearning == ContinueLearningUiModel.Complete
             }
+            // The `android_ui` Topic's own progress is unaffected by the Unit in another Topic.
+            awaitTopic(21)
             val earlierUnit = units[1]
             val earlierLesson = earlierUnit.lessons.last()
             val reader = lesson(earlierUnit.id, earlierLesson.id)
@@ -176,7 +201,9 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             val rebuilt = LocalLessonStudyRepository(database)
             assertFalse(rebuilt.isStudied(earlierLesson.id))
-            assertEquals(20, rebuilt.getStudiedLessons().size)
+            // 21 `android_ui` Lessons plus the 5 in the coroutines Unit, less the one that
+            // was just un-studied.
+            assertEquals(25, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -191,6 +218,18 @@ internal class LearningUnitPracticeIntegrationTest {
                 "unit_identity_keys_and_stability" to (setOf("compose_identity_keys", "compose_stability") to 6),
                 "unit_derived_state_and_expensive_work" to (setOf("compose_derived_state") to 3),
                 "unit_snapshot_fundamentals" to (setOf("compose_snapshot_system") to 4),
+                // E24-02. Five Lessons, five distinct primary concepts, and the cross-Topic
+                // bridges into lifecycle, performance, Android platform and Kotlin stay out
+                // of the scope entirely — which is what `supportingOnly` below proves.
+                "unit_coroutines_and_structured_concurrency" to (
+                    setOf(
+                        "coroutine_fundamentals",
+                        "coroutine_builders",
+                        "coroutine_jobs",
+                        "coroutine_scope",
+                        "structured_concurrency",
+                    ) to 7
+                ),
             )
             val content = BundledLearningContentRepository()
             expected.forEach { (unitId, expectation) ->

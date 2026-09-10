@@ -3694,6 +3694,836 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "unit_coroutines_and_structured_concurrency",
+      "topicId": "async_reactive",
+      "title": "Coroutine Fundamentals and Structured Concurrency",
+      "summary": "Nearly every hard defect in asynchronous Android code comes from the same place: nobody can say what a piece of work's lifetime is. This unit builds the model that makes that answerable, in the order the ideas depend on one another. Suspension explains what a coroutine can do that a thread cannot; builders explain how work starts and what handle the caller gets back; `Job` gives that work an observable lifetime and a position in a hierarchy; `CoroutineScope` says who owns it; and structured concurrency turns ownership and hierarchy into guarantees a caller can rely on. Where code actually runs, how cancellation works, and what a failure does are deliberately later units — all three assume this material.",
+      "lessons": [
+        {
+          "id": "lesson_suspension_and_blocking",
+          "title": "Suspension Is Not Blocking",
+          "summary": "The most damaging misconception in this subject is that `suspend` means the work happens somewhere else. It does not. `suspend` is a statement about how a function may pause and says nothing about which thread runs it, which is why deciding whether a suspending call is safe on the main thread means opening it and reading what is inside.",
+          "primarySubtopicIds": [
+            "coroutine_fundamentals"
+          ],
+          "supportingSubtopicIds": [
+            "coroutine_dispatchers",
+            "jvm_fundamentals",
+            "android_main_thread"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Almost every interesting program spends most of its life waiting — for a response, for a file, for a timer, for the user to do something. What the machine does with that waiting time is the question this whole subject exists to answer, and there are only two broad answers to it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One sentence of background makes the contrast work. A **thread** is a unit of execution the operating system schedules: it owns a call stack, costs memory measured in megabytes, and the JVM can typically keep a few thousand of them alive at once. Threads are how a program does more than one thing, and they are a finite resource that something eventually has to hand back."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Blocking** is the first answer to waiting: the thread sits on the call until it returns. The thread is not doing work during that time, but it is also unavailable to anybody else. **Suspending** is the second: the coroutine pauses and the thread it was running on is released. Kotlin's documentation states it directly — coroutines \"can suspend their execution instead of blocking a thread\", which \"allows one coroutine to suspend while waiting for some data to arrive and another coroutine to run on the same thread\"."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`suspend` is the keyword that marks a function as allowed to pause that way. It is a compile-time contract with two consequences and no others: the function may contain suspension points, and it can only be called from another suspending function or from a coroutine builder. That is the entire promise."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Everything people commonly read into the keyword is absent from it. `suspend` does not pick a thread or a thread pool. It does not move work into the background. It does not make a slow call fast, and it cannot change what the code inside the function actually does. A suspending function is perfectly free to sit on a thread for a second and never pause at all."
+                },
+                {
+                  "type": "code",
+                  "code": "suspend fun waitBySuspending() {\n    delay(1_000)          // the coroutine pauses; the thread runs other coroutines meanwhile\n}\n\nsuspend fun waitByBlocking() {\n    Thread.sleep(1_000)   // the coroutine does not pause; the thread is held for a second\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Both functions are marked `suspend` and the compiler is equally happy with both. Only one of them suspends. `delay` is documented as delaying a coroutine for at least the given time \"without blocking a thread\"; `Thread.sleep` holds the thread for the whole second. The keyword did not make the second behave like the first, and nothing in either signature tells them apart. (`Thread.sleep` is a JVM API, so that pair is a JVM and Android example — but the point it makes, that a blocking call inside a suspending function is still a blocking call, is not platform-specific.)"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One sentence of mechanism is worth having and no more than one. A suspended coroutine is a stored **continuation** — the point to resume from, plus the local state needed to resume there — rather than a parked thread with a stack. That is why a suspended coroutine costs almost nothing, and why the thread can be handed to somebody else while it waits. How the compiler produces that continuation is not something any decision in your code depends on."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "`suspend` describes how a function is allowed to pause. It does not describe where the function runs, and it cannot change what the code inside it does. A suspending function full of blocking calls blocks exactly as much as the same code would without the keyword."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Reading asynchronous code well means keeping three questions apart, because they have three different answers and only the first one is visible in a signature."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Is this function allowed to suspend?** The `suspend` modifier answers this, and only this.",
+                    "**Does this call actually block?** Only the code inside it can tell you. A suspending function that wraps a blocking API blocks; a suspending function that awaits a genuinely asynchronous one does not.",
+                    "**Where does this run?** A separate question again, answered by the coroutine's dispatcher rather than by anything on the function."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The third question has a unit of its own and is deliberately left there. For now it is enough to know that the **dispatcher** is the part of a coroutine's configuration that decides which thread or thread pool runs it, that a coroutine inherits one rather than choosing one per call, and that nothing about the `suspend` keyword participates in that decision. Choosing dispatchers, and the damage a wrong choice does, is the next unit's subject."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That leaves the question you actually have to answer in front of real code: is this call safe from the main thread? Two functions with the same shape can have opposite answers."
+                },
+                {
+                  "type": "code",
+                  "code": "// Not main-safe, despite the keyword: the blocking read runs on whatever\n// thread the caller happens to be on.\nsuspend fun readSettings(file: File): Settings =\n    parse(file.readText())          // blocking I/O; no suspension point anywhere in here\n\n// Main-safe, for a reason that has nothing to do with `suspend`:\n// the client suspends rather than blocking while the response is in flight.\nsuspend fun fetchArticles(): List<Article> =\n    httpClient.get(\"/articles\").body()",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The difference is invisible from the call site, which is why the obligation belongs to the function being called rather than to the caller. Android's guidance says so in as many words: suspending functions \"should be **main-safe**, meaning they're safe to call from the main thread\", and a class that performs long-running blocking operations \"must move execution off the main thread\" itself. The keyword is the promise; making the promise true is work somebody has to do, and it happens inside the function."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The cost of getting this wrong is easy to make visible. Measured on this project's JVM target, on a dispatcher backed by a single thread: two coroutines each running `Thread.sleep(300)` took **607 ms** in total, while two coroutines each running `delay(300)` took **310 ms**. The blocking pair could not overlap, because there was one thread and the first coroutine never gave it up. On Android that thread is often the one drawing frames."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"I made it `suspend`, so it is off the main thread.\" Adding the keyword changes what the compiler permits and nothing about where the code runs; if the body was blocking the main thread before, it still is. The habit that replaces the belief is small: when you want to know whether a call is safe on the main thread, open it and look at what it does, and keep going until you reach either a genuinely suspending API or something that moves the work itself."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The reason suspension is worth a language feature is arithmetic. A waiting coroutine costs a continuation; a waiting thread costs a stack. Kotlin's own comparison runs 50,000 tasks that each wait five seconds: as coroutines that is roughly 500 MB, and as JVM threads it can reach 100 GB — far enough past the limit that the thread version may simply fail to start. \"Many concurrent operations\" is a design option in one model and an impossibility in the other."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Keeping the word \"blocking\" precise matters here, because two different things get called by that name and collapsing them removes the ground the next unit stands on. A **blocking call** holds a thread that is doing nothing — waiting on a socket, a lock, a sleep. A **CPU-bound loop** holds a thread that is doing work as fast as it can. They share one consequence, that the thread is unavailable and the coroutine reaches no suspension point, and they need different answers, which is exactly why the dispatchers unit separates the pools they belong on."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The shared consequence is worth seeing rather than believing. Measured the same way: on a single-thread dispatcher, a coroutine running a 250 ms busy loop finished entirely before a second coroutine launched onto the same dispatcher started at all. Nothing had gone wrong and nothing was misconfigured; there was simply no moment at which the first coroutine offered the thread back."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That points at a second consequence, which the cancellation unit later builds on. Because a coroutine only yields at a suspension point, a coroutine that never suspends never reaches a moment at which anything about it can be acted on from outside — including a request to stop. That property is why cancellation in Kotlin works the way it does, and it is the third unit's subject rather than this one's."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "\"What does `suspend` do?\" has a wrong answer that sounds right — \"it runs the function in the background\" — and interviewers ask it because the wrong answer is so common. Give the contract: the function may pause at a suspension point without holding its thread, and it can only be called from another suspending function or a builder. Then volunteer the boundary before you are pushed to it: the keyword chooses no thread and no dispatcher, and a suspending function that wraps a blocking call is not main-safe. If you can add why the model exists — a suspended coroutine costs a continuation rather than a stack — you have answered the follow-up too."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [],
+          "sources": [
+            {
+              "title": "Coroutines basics",
+              "url": "https://kotlinlang.org/docs/coroutines-basics.html"
+            },
+            {
+              "title": "delay",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/delay.html"
+            },
+            {
+              "title": "Best practices for coroutines in Android",
+              "url": "https://developer.android.com/kotlin/coroutines/coroutines-best-practices"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_coroutine_builders",
+          "title": "Starting Coroutines: `launch`, `async` and `runBlocking`",
+          "summary": "A suspending function cannot start itself, so somewhere the chain has to begin. Three builders begin it, and they differ in what the caller receives and what the caller is able to do next — a handle, a future value, or a blocked thread. Choosing between them is a statement of intent that every later reader of the code will believe.",
+          "primarySubtopicIds": [
+            "coroutine_builders"
+          ],
+          "supportingSubtopicIds": [
+            "coroutine_fundamentals",
+            "coroutine_scope",
+            "coroutine_parallelism",
+            "kotlin_lambdas"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Suspension explains what a coroutine is able to do. It does not explain how one starts, and by itself it cannot: a suspending function can only be called from another suspending function, so the chain has to begin somewhere outside it. **Coroutine builders** are where it begins."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Three of them cover almost everything you will write. The useful way to tell them apart is not what they do to the work — all three run the block as a coroutine — but what they hand back and what the caller can do the instant afterwards."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Builder",
+                    "Reach for it when",
+                    "Returns",
+                    "The caller continues"
+                  ],
+                  "rows": [
+                    [
+                      "`launch`",
+                      "the work has to happen and there is no result to return",
+                      "`Job`",
+                      "immediately, while the coroutine runs"
+                    ],
+                    [
+                      "`async`",
+                      "the work produces a value somebody is going to consume",
+                      "`Deferred<T>`",
+                      "immediately; `await()` suspends until the value is ready"
+                    ],
+                    [
+                      "`runBlocking`",
+                      "non-coroutine code has to call suspending code and there is no scope to launch into",
+                      "whatever the block returns",
+                      "only once the coroutine and everything launched in it has finished"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`CoroutineScope.launch()` \"starts a new coroutine without blocking the rest of the scope\", and the documentation's own advice on when to use it is a description of intent rather than of mechanism: \"to run a task alongside other work when the result isn't needed or you don't want to wait for it\". It returns a `Job` handle, which the next lesson is about."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`CoroutineScope.async()` \"starts a concurrent computation inside an existing coroutine scope and returns a `Deferred` handle that represents an eventual result\", and `await()` is how you get that result: it suspends \"until the result is ready\". For this lesson that is the whole of `async` — it is the builder that gives you a value back."
+                },
+                {
+                  "type": "code",
+                  "code": "// `scope` is a CoroutineScope. Where one comes from, and who owns it,\n// is the subject two lessons from here.\nfun refresh() {\n    scope.launch {\n        // Inside a coroutine you are in a CoroutineScope again,\n        // so the builders are available here too.\n        val profile = async { api.loadProfile() }   // a value this code will use\n        launch { analytics.track(\"refresh\") }       // a result nobody returns\n\n        render(profile.await())\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`runBlocking` is the odd one out, and it is odd on purpose. It \"creates a coroutine scope and blocks the current thread until the coroutines launched in that scope finish\", and Kotlin's guidance for it is unusually blunt: use it \"only when there is no other option to call suspending code from non-suspending code\". Its API documentation is specific about where that is — it is \"designed to bridge regular blocking code to libraries that are written in suspending style, to be used in `main` functions, in tests, and in non-`suspend` callbacks when `suspend` functions need to be called\"."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`launch` and `async` are extension functions on `CoroutineScope`, which is why neither can be called from nowhere: every coroutine they start belongs to something. `runBlocking` creates a scope of its own, and that is exactly what makes it a bridge rather than a fourth way of starting work inside code that already has one. As for the `{ }` after each call, that is an ordinary Kotlin trailing lambda — these are functions whose last parameter is itself a function, so the argument moves outside the parentheses, and `launch(dispatcher) { }` is the same shape with one ordinary argument in front."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Pick the builder from the intent, not from the shape of the surrounding code. `launch` says \"this has to happen and there is nothing to hand back\". `async` says \"this produces a value I am going to use\". `runBlocking` says \"I am not in coroutine code, and I am willing to stop this thread until I am\"."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The first mistake is quiet. It compiles, it works, and it misinforms everybody who reads it afterwards."
+                },
+                {
+                  "type": "code",
+                  "code": "// What this says: save() produces a value the caller cares about.\n// What actually happens to that value: nothing.\nscope.async { save(draft) }\n\n// What was meant.\nscope.launch { save(draft) }",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Both run `save`, and the second is better code for a reason that has nothing to do with speed. `async` returns a `Deferred`, and a `Deferred` is a claim that somebody is going to ask for the outcome. Dropping it means the author either did not know that or did not mean it, and the next reader has to work out which — usually while looking for a bug elsewhere. `launch` states the intent exactly, and the type system stops implying anything else."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There is a second half to this that the failure unit owns. `async` stores its outcome in the `Deferred`, and a failure is an outcome, so an unconsumed `Deferred` is also an unread failure. What that failure then does to the rest of the coroutine tree is a question about propagation and supervision, and it is deliberately not answered here. The builder choice is worth making correctly on the intent argument alone."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second mistake is loud, and the useful skill is predicting it from the definition rather than remembering a rule about it. `runBlocking` blocks the calling thread until its coroutine finishes. On Android's main thread, that thread is the one that draws frames, dispatches touches and runs lifecycle callbacks, so for the duration of the call the app renders nothing and responds to nothing; long enough and the system raises an ANR. Measured on this project's JVM target, `runBlocking { delay(300) }` returned to its caller after **306 ms**: suspending inside the block changed nothing whatsoever for the thread outside it, which is the entire point of a bridge."
+                },
+                {
+                  "type": "code",
+                  "code": "// On the main thread: the UI is frozen until loadProfile() returns.\nfun onStart() {\n    val profile = runBlocking { repository.loadProfile() }\n    render(profile)\n}\n\n// What was wanted: a scope, and a coroutine that suspends instead.\nfun onStart() {\n    viewModelScope.launch {\n        render(repository.loadProfile())\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Treating `runBlocking` as \"the way to call a suspending function\". It is not a converter from suspending to ordinary code; it is a thread being spent to wait. Inside a suspending function it is redundant by construction — the documentation's own example labels it \"redundant and blocks the thread, avoid this\", because you already had the ability to suspend and gave it away, \"potentially leading to thread starvation issues\". When `runBlocking` looks necessary in application code, the thing actually missing is a scope."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The interesting difference between `launch` and `async` is not the return type, it is the obligation the return type creates. A `Job` answers \"is it still running, and has it finished?\". A `Deferred` answers that and also \"what did it produce?\" — so choosing `async` adds a question somebody is expected to ask. Code that never asks it has an unmet obligation sitting in plain sight, which is why the unconsumed `Deferred` reads as a defect even before anything goes wrong."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two things are deliberately absent from the builder list, and naming them is what stops them creeping in. **`withContext` is not a builder.** It starts no coroutine; it is a suspending function that runs a block with a changed context and returns the block's result. Filing it alongside `launch` and `async` is precisely how people come to believe it \"starts something\", and telling it apart from the scope builders is the next unit's job. And **`async` is not a parallelism feature here** — in this lesson it is the builder that returns a value, nothing more. Deciding when work should genuinely overlap, and what overlapping is worth, is a separate decision made later."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One parameter is worth recognising without reaching for it: both builders accept a `CoroutineStart`, and `CoroutineStart.LAZY` produces a coroutine that does not begin until its handle is started or awaited. It exists, it is occasionally the right tool, and it is not part of the intent decision this lesson is about."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The deeper reading of `runBlocking` is that blocking is a property of the *caller's thread* rather than of the coroutine. Nothing inside the block behaves differently; the coroutine suspends and resumes exactly as it would anywhere else. What differs is that one thread has been assigned to stand there until the whole thing is over. That is a defensible trade at a process boundary — a `main` function, a test, a callback that cannot suspend — and indefensible on a thread that has other obligations, and the same sentence explains both cases."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "\"What is the difference between `launch` and `async`?\" invites the weak answer, \"`async` returns a value\". Say that and then say the thing behind it: the builder records the intent, `launch` for work with no result to hand back and `async` for a computation whose `Deferred` somebody is expected to consume, so `async { }` with a dropped handle is a statement the code does not mean. Expect a `runBlocking` follow-up, and answer it with the consequence rather than the word \"bad\": it blocks the calling thread until the coroutine completes, which is what you want in a `main` function or a test and what causes a frozen UI on the main thread."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_suspension_and_blocking"
+          ],
+          "sources": [
+            {
+              "title": "Coroutines basics",
+              "url": "https://kotlinlang.org/docs/coroutines-basics.html"
+            },
+            {
+              "title": "runBlocking",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/run-blocking.html"
+            },
+            {
+              "title": "Best practices for coroutines in Android",
+              "url": "https://developer.android.com/kotlin/coroutines/coroutines-best-practices"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_job_and_parent_child",
+          "title": "`Job`: the Handle That Carries Lifetime",
+          "summary": "`launch` returns a `Job` and most call sites throw it away, which makes it easy to read as a formality. It is the opposite: the `Job` is where a coroutine's lifetime becomes something anybody can ask questions about, and it is the edge that attaches a coroutine to its parent and its children.",
+          "primarySubtopicIds": [
+            "coroutine_jobs"
+          ],
+          "supportingSubtopicIds": [
+            "coroutine_scope",
+            "coroutine_context",
+            "structured_concurrency"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Every coroutine has a `Job`. `launch` returns one directly; `async` returns a `Deferred`, which its documentation defines as \"a `Job` with a result\". The `Job` documentation's own one-line definition is worth keeping: \"a job is a cancellable thing with a lifecycle that concludes in its completion\". The useful reading of that is that a `Job` **is** the coroutine's lifetime, turned into an object you can hold."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Holding it lets you do three things, and they are the reasons the builders return it at all."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Wait for it.** `join()` \"suspends the coroutine until this job is complete\", and it \"resumes normally (without exception) when the job is complete for any reason\".",
+                    "**Ask about it.** `isActive`, `isCompleted` and `isCancelled` report which part of the lifecycle the job is currently in.",
+                    "**Locate it in the tree.** A job knows its `parent` and can list its `children`, because jobs \"can be arranged into parent-child hierarchies\"."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The parent-child link is not something you configure. A coroutine started inside another coroutine becomes that coroutine's child, and a coroutine started from a scope becomes a child of that scope's job. It happens automatically, every time, and it is the mechanism underneath everything the last lesson of this unit describes."
+                },
+                {
+                  "type": "code",
+                  "code": "fun syncAll(items: List<Item>) {\n    scope.launch {\n        val jobs: List<Job> = items.map { item ->\n            launch { sync(item) }      // each one is a child of the coroutine we are in\n        }\n\n        jobs.joinAll()                 // suspends here until every child is complete\n        log(\"synced ${items.size} items\")\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Discarding the returned `Job` is normal and usually right. It is returned for the cases that need it, not as something every call has to consume: you keep it when you have to wait for exactly this piece of work, when something else has to be able to stop it, or when you want to report on whether it is still going."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One more fact belongs here in a single sentence, because the next unit builds on it. The `Job` is also an element of the coroutine's **context**, alongside things such as the dispatcher — that is how a new coroutine finds the right parent without anybody passing one around by hand. What a context is and what a child inherits from it is the next unit's first lesson."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "The builder call starts the work. The `Job` is what lets anyone afterwards say anything true about that work: whether it is still running, when it actually finished, and what it is attached to."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Here is the case worth predicting before reading the answer, because the intuitive prediction is wrong and the correct one is the whole point of the parent-child link."
+                },
+                {
+                  "type": "code",
+                  "code": "// Inside a coroutine, so `delay` is callable.\nval parent = scope.launch {\n    launch {\n        delay(300)      // a child, still running\n    }\n    // the parent's own body ends right here\n}\n\ndelay(100)\nprintln(parent.isActive)     // ?\nprintln(parent.isCompleted)  // ?",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The parent's block has run to the end. It is nevertheless not complete, because it has a child that is not finished. Measured on this project's JVM target at the 100 ms mark: `isActive` was `true`, `isCompleted` was `false`, the job reported exactly one child, and printing the job itself gave `StandaloneCoroutine{Completing}`. After `parent.join()` returned, `isCompleted` was `true`."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Completing** is a real state and it exists for exactly this situation. In the documentation's words: \"Completion of an active coroutine's body ... transitions the job to the completing state. It waits in the completing state for all its children to complete before transitioning to the completed state.\" A parent finishing its own work and a parent finishing are two different events, and only the second one is what anybody waiting actually cares about."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Reading \"the `launch` block returned\" as \"the coroutine finished\". They are different moments whenever the block started anything, and the gap between them is where \"the function returned but the work was still running\" bugs live. The end of the block is not observable from outside; completion is, and the `Job` is the thing that tells them apart."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`Deferred<T>` is the same object with a value attached — the documentation calls it \"a non-blocking cancellable future\" with \"the same state machine as `Job`\". Everything above applies to it: it has a parent, it can have children, it can be joined. `await()` is the version of `join()` that also hands back what the computation produced, suspending without blocking the thread while it waits, and rethrowing if the computation failed instead of completing — where such a failure travels next is the failure unit's subject. A `Deferred` you have joined but not awaited has finished; you have simply not asked what it made."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One further thing a `Job` carries deserves naming here and nothing more than naming. Cancellation travels along these same parent-child edges, and the `Job` is the handle through which it is requested. How cancellation actually behaves — that it is cooperative rather than forced, what code has to do to honour it, what happens to cleanup — is the third unit's entire subject, and nothing in this unit depends on the answer. Until then, treat cancellation as a relationship the structure carries rather than a mechanism you have met."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The full state list is worth knowing because it explains the two transient states, which is where all of the interesting behaviour is. `New` is an optional initial state and `Active` is the default one."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "State",
+                    "`isActive`",
+                    "`isCompleted`",
+                    "`isCancelled`"
+                  ],
+                  "rows": [
+                    [
+                      "New (optional initial state)",
+                      "false",
+                      "false",
+                      "false"
+                    ],
+                    [
+                      "Active (default initial state)",
+                      "true",
+                      "false",
+                      "false"
+                    ],
+                    [
+                      "Completing (transient)",
+                      "true",
+                      "false",
+                      "false"
+                    ],
+                    [
+                      "Cancelling (transient)",
+                      "false",
+                      "false",
+                      "true"
+                    ],
+                    [
+                      "Cancelled (final)",
+                      "false",
+                      "true",
+                      "true"
+                    ],
+                    [
+                      "Completed (final)",
+                      "false",
+                      "true",
+                      "false"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two readings of that table matter. **Completing is indistinguishable from Active from outside**, and that is correct rather than an omission: to anybody waiting, a job that is waiting for its children is still running, and there is nothing useful to tell apart. And **`isCompleted` is true for both final states**, which is why \"did it finish?\" and \"did it succeed?\" are separate questions — `isCancelled` is the property that separates them."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`isActive` is used here strictly as a question about state. The same property appears in the cancellation unit for a different purpose — deciding whether a loop should keep going — and that use carries rules this unit does not cover. Keeping the two apart avoids importing an answer before the question has been posed."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There is also a reason to prefer `join()` over any of the predicates when you actually need to coordinate. Each property is a statement about a moment that has already passed by the time your next line runs, so polling a job to decide what to do is a race by construction. Waiting for a transition and sampling a state are different operations, and only one of them gives an answer that is still true when you act on it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Taken together, this is what makes the `Job` more than a receipt. The builder call tells you work started; the job tells you where that work sits in a hierarchy, whether the hierarchy is finished, and — because a parent waits — lets a single handle stand for an entire sub-tree of work you never named."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "\"What does `launch` return, and why would you keep it?\" The complete answer has two halves. The handle half: a `Job` lets you wait with `join()`, ask whether the work is still running, and stop it. The structural half, which is the one that distinguishes a strong answer: a `Job` is also that coroutine's position in a tree, so waiting on a parent waits for everything it started. If you can describe the completing state — the body has finished, a child has not, so the parent is not complete — you have stated the guarantee the structure actually makes."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_coroutine_builders",
+            "lesson_suspension_and_blocking"
+          ],
+          "sources": [
+            {
+              "title": "Job",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-job/"
+            },
+            {
+              "title": "Deferred",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-deferred/"
+            },
+            {
+              "title": "Coroutines basics",
+              "url": "https://kotlinlang.org/docs/coroutines-basics.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_coroutine_scope_ownership",
+          "title": "`CoroutineScope` and Who Owns a Coroutine's Lifetime",
+          "summary": "Every coroutine's lifetime belongs to something, and a scope is that something. The question worth practising on any piece of asynchronous code is which object owns the work and what event ends that ownership — including, concretely rather than stylistically, what goes wrong when the honest answer is \"nothing in particular\".",
+          "primarySubtopicIds": [
+            "coroutine_scope"
+          ],
+          "supportingSubtopicIds": [
+            "coroutine_jobs",
+            "lifecycle_coroutines",
+            "coroutine_leaks",
+            "viewmodel_lifecycle"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A `CoroutineScope` is described by its own documentation as \"a scope in which coroutines run\" that \"allows managing the lifecycles of several coroutines simultaneously\". The word carrying the weight in that sentence is *lifecycles*. A scope is not a convenience object that happens to provide `launch`; it is the thing a coroutine's lifetime is attached to."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Mechanically, a scope is a `CoroutineContext`, and the element of that context which matters here is the `Job` from the previous lesson. Launching from a scope makes the scope's job the parent of the new coroutine, and the identity is checkable rather than metaphorical:"
+                },
+                {
+                  "type": "code",
+                  "code": "val scope = CoroutineScope(SupervisorJob())\nval childJob = scope.launch { }\n\ncheck(scope.coroutineContext[Job] === childJob.parent)   // true",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two consequences follow, and between them they are the whole lesson. Cancelling a scope cancels everything launched in it, recursively — \"if a scope is cancelled, all coroutines in it are cancelled too\". And a scope \"cannot be completed until all its children are completed\". So the lifetime of every coroutine in an application is the lifetime of the scope it was launched from, and the **owner** of a scope is whoever calls `cancel()` on it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That collapses a large amount of asynchronous-code review into a single question, and it is worth asking out loud rather than by feel."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "**Who owns this coroutine, and what event ends its lifetime?** If the answer names something with a lifecycle — this screen, this view model, this session, this download — the work has an owner. If the answer is \"it stops when it stops\", it does not, and every failure in the rest of this lesson follows from that one fact."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Here is the shape with no owner. It is common, it compiles, it passes review regularly, and nothing about it looks wrong."
+                },
+                {
+                  "type": "code",
+                  "code": "class SearchController(private val repository: SearchRepository) {\n\n    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)\n\n    fun search(query: String) {\n        scope.launch {\n            val results = repository.search(query)\n            onResults(results)\n        }\n    }\n\n    // nothing, anywhere, ever calls scope.cancel()\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One element of that constructor call is a distraction and is worth setting aside explicitly. `SupervisorJob()` changes what a child's failure does to its siblings; it changes nothing about ownership, and the failure unit teaches it properly. The defect below is present with or without it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The scope was created and is never cancelled, so its job stays active for as long as anything holds it — and the running coroutines hold it. What goes wrong is not one thing, which is why \"it leaks\" is an unhelpful summary:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Work carries on after whatever asked for it has gone. The search still hits the network, still parses, still writes to the database, for a screen the user closed two navigations ago.",
+                    "Results land on state that no longer matters, so a stale response can overwrite a newer one or call back into an object that has already been torn down.",
+                    "Everything the coroutine captured stays reachable for as long as the coroutine does — the controller, the repository, whatever the lambda closed over, and transitively whatever those hold.",
+                    "A failure inside the coroutine has no lifecycle owner to report to, so it surfaces as a crash or a log line attributable to nothing in particular.",
+                    "No caller can find out whether the work has finished, because nothing was returned and there is nothing to join."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The last of those is measurable. Measured on this project's JVM target: a suspending function whose body launched into a separately constructed scope returned to its caller after **5 ms** for work that took **300 ms**, and that work then completed normally long after the caller had moved on. Written as a structured child of the caller instead, the same body returned after **306 ms**. Both versions \"work\"; only one of them told the caller anything true."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The fix is ownership, not the removal of the constructor. `CoroutineScope(...)` is a legitimate way to build a scope — the documentation's own order of preference puts lexical scopes first and this constructor second, \"for entity lifecycles\", with the parenthetical that does all the work: *with required `cancel()` call*. Give the class a teardown point, cancel there, and the same code becomes correct."
+                },
+                {
+                  "type": "code",
+                  "code": "class SearchController(private val repository: SearchRepository) {\n\n    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)\n\n    fun search(query: String) {\n        scope.launch { /* ... */ }\n    }\n\n    fun close() {\n        scope.cancel()      // the owner names the moment the lifetime ends\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Android supplies scopes whose owner is already defined, and `viewModelScope` is the one worth recognising as the shape to imitate: \"a `ViewModelScope` is defined for each `ViewModel` in your app. Any coroutine launched in this scope is automatically canceled if the `ViewModel` is cleared.\" The lifetime is a real event in a real object's lifecycle and the class launching work does not have to remember anything. Note what that is an example *of* — ownership done well — rather than an instruction about where coroutines belong; what a view model should contain is the architecture curriculum's subject, not this one's."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Some work genuinely has to outlive the screen that started it: a bookmark write, an upload that should not be abandoned because the user navigated away. That is not a reason to have no owner, it is a reason to have a longer-lived one. Android's guidance is to inject a scope whose lifetime is deliberately longer rather than reaching for a global one, so that the longer lifetime is a decision recorded in a constructor parameter and can be replaced in a test. Work that must survive the process being killed is not a coroutine problem at all — that is what a durable scheduler such as WorkManager exists for, and no scope of any lifetime will do it."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"Never create your own `CoroutineScope`\" is the rule people take away, and it is the wrong lesson drawn from the right examples. The defect is never the constructor call. It is a scope with no cancellation point — a lifetime with no end, so work with no owner. A scope created in a class and cancelled in that class's teardown is correct, and a scope handed to you by a framework and then never cancelled by anybody would be broken in exactly the same way."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The reframing that survives contact with a real codebase is that a scope is a **lifetime declaration**, so the design question is which lifetime is the shortest one that is still long enough. Most work started from a screen wants the screen's. A cache several screens share wants something longer. Very little wants the process's."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`GlobalScope` is the process's, and the documentation says precisely what makes it a trap without banning it: it is \"a `CoroutineScope` with the lifetime of the whole application\", and \"it is easy to misuse it and create memory or resource leaks when a coroutine actually should be tied to the lifecycle of some entity\". Read the shape of that warning — the objection is to the *mismatch* between the work's natural lifetime and the scope's, not to the existence of a long-lived scope."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That leaves process-lifetime scopes a narrow but real use: state that genuinely is application-wide and has to survive every screen. What keeps such a scope honest is making it an injected dependency with a name and a documented reason, rather than a global reached from anywhere. That is also why Android's guidance frames its objection to `GlobalScope` in terms of testing and control: a hard-coded global scope cannot be substituted in a test, so the code cannot be told to stop — and \"cannot be told to stop\" is the same defect wearing different clothes."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Ownership also decides where a failure lands, which is why the fourth symptom above is not a separate bug. An exception has to be reported to somebody, and a coroutine's ancestry is the only \"somebody\" the runtime knows about. The rules governing that trip belong to the failure unit; the part this lesson claims is narrower and sufficient — a coroutine with no meaningful owner has no meaningful place for its failure to go."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One last consequence is worth stating because it is the reason the discipline pays for itself. When every coroutine has an owner, \"stop everything this screen started\" is one call rather than a search through the codebase for things to cancel. Ownership is not bookkeeping imposed on top of the work; it is the property that makes the work controllable at all."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Expect a short code sample and \"what is wrong with this?\". Answer with ownership rather than with a rule: name the scope, say what cancels it, and when nothing does, say what that means concretely — work continuing past the screen, stale results landing on dead state, captured objects retained, failures with nowhere to go, and no way for a caller to know it finished. If the follow-up is about work that must outlive the screen, do not retreat to `GlobalScope`: say the lifetime should be longer *and owned*, injected rather than reached for, and that surviving the process is a scheduler's job rather than a scope's."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_job_and_parent_child",
+            "lesson_coroutine_builders"
+          ],
+          "sources": [
+            {
+              "title": "CoroutineScope",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-scope/"
+            },
+            {
+              "title": "Best practices for coroutines in Android",
+              "url": "https://developer.android.com/kotlin/coroutines/coroutines-best-practices"
+            },
+            {
+              "title": "Use Kotlin coroutines with lifecycle-aware components",
+              "url": "https://developer.android.com/topic/libraries/architecture/coroutines"
+            },
+            {
+              "title": "Coroutines basics",
+              "url": "https://kotlinlang.org/docs/coroutines-basics.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_structured_concurrency",
+          "title": "Structured Concurrency and What It Guarantees",
+          "summary": "The four ideas before this one combine into a single model: coroutines form a tree, and the tree is what makes \"has this finished?\" a question with an answer. Including the guarantees structured concurrency is routinely credited with and does not make, starting with everything to do with scheduling.",
+          "primarySubtopicIds": [
+            "structured_concurrency"
+          ],
+          "supportingSubtopicIds": [
+            "coroutine_jobs",
+            "coroutine_scope",
+            "coroutine_builders",
+            "coroutine_exceptions"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Each earlier lesson contributed a piece. A coroutine can pause without holding a thread. A builder starts one and hands back a handle. That handle is a `Job` with a place in a hierarchy. A scope owns the top of that hierarchy and decides when it ends. **Structured concurrency** is the name for what those pieces guarantee once they are put together."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Kotlin's statement of the principle is compact enough to memorise. Coroutines \"form a tree hierarchy of parent and child tasks with linked lifecycles. A parent coroutine waits for its children to complete before it finishes. If the parent coroutine fails or gets canceled, all its child coroutines are recursively canceled too.\""
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Every coroutine has a parent.** There is no way to start one from nowhere, because the builders are extensions on a scope and the scope carries a job.",
+                    "**A parent does not complete until its children do**, even when the parent's own body finished long beforehand — the completing state from the previous lesson is this guarantee made observable.",
+                    "**Cancellation travels down.** Cancelling a parent cancels its children recursively, so a lifetime that ends, ends completely.",
+                    "**Failure travels up through the same structure.** A child's failure is not a private event, and where it goes is decided by the hierarchy rather than by luck."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The builder that puts a suspending function inside this model is `coroutineScope`. It \"creates a root coroutine of the coroutine subtree\", it is \"the direct parent of coroutines launched inside the block\", and it \"executes the suspending block and waits until the block and any coroutines launched in it complete\". Its API documentation states the consequence exactly: the new job \"completes when both the block and all the coroutines launched in the scope complete. Only then can the `coroutineScope` call return a value.\""
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Structured concurrency is a statement about lifetime, and what it buys you is that \"has this finished?\" becomes a question with an answer. When a structured suspending function returns, everything it started is over."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The clearest way to see what the model gives you is to look at a function that quietly opts out of it."
+                },
+                {
+                  "type": "code",
+                  "code": "// Detached: the work becomes a child of someUnownedScope, not of the caller.\nsuspend fun loadSomething() {\n    someUnownedScope.launch {\n        val data = api.load()\n        cache.put(data)\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This compiles, it does the work, and it is a suspending function that never once suspends for the thing it started. Ask what the caller is holding after it returns."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Not the knowledge that the work is done. The function returns as soon as the coroutine has been launched — measured on this project's JVM target, this shape returned in 5 ms for work that ran for 300 ms.",
+                    "Not the failure. If `api.load()` throws, it throws inside a coroutine attached to a different tree, and nothing reaches the caller's `try`/`catch`.",
+                    "Not the ability to stop it. Cancelling the caller cancels the caller's children, and this coroutine is not one of them.",
+                    "Not a lifetime it can reason about at all. The work outlives the call by an amount nothing in the signature discloses."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The structured form differs by one line and changes every one of those answers."
+                },
+                {
+                  "type": "code",
+                  "code": "suspend fun loadSomething() = coroutineScope {\n    launch {\n        val data = api.load()\n        cache.put(data)\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The launched coroutine is now a child of the scope this function created, so the function cannot return until it finishes; a failure inside it fails the scope and is rethrown to the caller; and cancelling the caller cancels it. Measured the same way, this version returned after **306 ms** for the same 300 ms of work. That extra 300 ms is not a cost that was introduced — it is the caller finally being told the truth."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`coroutineScope` is also what lets a suspending function do several things at once without saying so in its signature. A function that launches three children inside its own scope is concurrent on the inside and an ordinary suspending call on the outside, because the scope re-imposes a single completion point at the boundary. Whether the work *should* overlap, and what overlapping actually buys, is a separate decision the next unit makes."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Treating a suspending function that starts detached work as equivalent to one that does the work. They have the same signature and completely different contracts, and the signature is what every caller reads. If a function genuinely must start work it does not wait for, that belongs in the name and in the type — a function returning a `Job` is telling the truth, and a plain `suspend fun` that quietly leaves work running behind it is not."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Structured concurrency is credited with more than it promises, and the misattributions are worth rejecting individually, because each one implies a different wrong prediction about code that is actually running."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "It does guarantee",
+                    "It does not guarantee"
+                  ],
+                  "rows": [
+                    [
+                      "Every coroutine has a parent and a bounded lifetime",
+                      "That anything runs in the background. Where code executes is the dispatcher's business, and a child inherits one rather than being given a new one"
+                    ],
+                    [
+                      "A parent completes only after its children have completed",
+                      "That children run one at a time. Children launched together run concurrently and may finish in any order"
+                    ],
+                    [
+                      "Cancelling a parent cancels its children, recursively",
+                      "That anything runs in parallel. Concurrency is about overlapping lifetimes; parallelism additionally depends on the dispatcher and the hardware"
+                    ],
+                    [
+                      "A failure is routed through the hierarchy rather than lost",
+                      "That a failure is handled, retried or recovered. The structure decides where it goes, never what to do about it"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The scheduling confusion is the most common and the most consequential, because it is the difference between a lifetime property and a performance property. Children of one scope run concurrently, may run on different threads and may finish in any order; the structure says nothing about which of them goes first. What it says is that none of them outlives the scope. That is why wrapping three `launch` calls in a `coroutineScope` makes nothing faster and nothing slower — it changes when the enclosing function is allowed to return."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There is one deliberate exception to the failure guarantee, and naming it is enough here: a **supervising** parent changes what a child's failure does to its siblings, which is the one place the tree does not propagate upward in the ordinary way. It is the failure unit's subject and nothing in this unit depends on it. In the same way, `coroutineScope` has a close relative that switches execution context rather than creating a concurrent sub-tree, and telling those two apart is the next unit's job."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The reason all of this is worth the discipline is a property that is easy to state and very hard to obtain any other way: in a structured program the call structure and the lifetime of the work agree. If a function returned, its work is over. If a scope was cancelled, nothing it started is still running. Systems without that property turn \"is anything still going?\" into an empirical question, and answering empirical questions about concurrency is where the days go."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "\"What is structured concurrency?\" invites a definition and rewards a consequence. Give the tree in one sentence — parents, children, linked lifetimes — then say what it buys: a parent cannot finish before its children, cancellation reaches everything below it, and a failure has a defined route rather than disappearing. Then pre-empt the usual follow-up by saying what it is not: not a scheduler, not a promise of parallelism, not a reason children run in order, and not error handling. If you can name the detached-`launch` shape and say precisely which guarantee it discards, that is the answer that lands."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_job_and_parent_child",
+            "lesson_coroutine_scope_ownership",
+            "lesson_coroutine_builders"
+          ],
+          "sources": [
+            {
+              "title": "Coroutines basics",
+              "url": "https://kotlinlang.org/docs/coroutines-basics.html"
+            },
+            {
+              "title": "coroutineScope",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/coroutine-scope.html"
+            },
+            {
+              "title": "CoroutineScope",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-scope/"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
     }
   ]
 }

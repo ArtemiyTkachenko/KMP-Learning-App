@@ -950,8 +950,10 @@ any material edit.
 
 ## Status
 
-This blueprint is complete as a map. No Unit is authored yet: E24-02 through E24-07 author
-Units 1 to 6 in order, against the confirmed identities and boundaries in
+This blueprint is complete as a map. **Unit 1 is authored and shipped** by E24-02 exactly as
+mapped above — no Lesson boundary moved, no objective changed, and no Teach/Bridge/Reference/
+Exclude decision was revised. Units 2 to 6 are not authored yet: E24-03 through E24-07 author
+them in order, against the confirmed identities and boundaries in
 [`coroutines-flow-units-1-6-plan.md`](coroutines-flow-units-1-6-plan.md). When authoring
 reveals a wrong Lesson boundary, update this file in the same change.
 

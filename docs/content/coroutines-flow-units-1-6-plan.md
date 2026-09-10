@@ -62,8 +62,13 @@ identity proposed here lives in documentation until the authoring issue that shi
 | E24-08 | [Assessment gaps](#assessment-gaps-for-e24-08) in full, re-checked against the finished Lessons, plus the [mapping corrections](#mapping-corrections-rather-than-gaps) |
 | E24-09 | [Handoff](#handoff) — sequencing, cross-Unit links, and the limitations recorded here |
 
-**Authoring status.** None of the six Units is authored. Every identity below is proposed,
-not shipped.
+Each authoring issue also reads the outcomes the previous ones recorded, so a finding is
+re-checked rather than re-derived: [Authoring outcomes for Unit 1](#authoring-outcomes-for-unit-1)
+is the first of those and is required reading for E24-03 and E24-08.
+
+**Authoring status.** Unit 1 is authored and shipped by E24-02; see
+[Authoring outcomes for Unit 1](#authoring-outcomes-for-unit-1). Units 2 to 6 are not
+authored, and every identity below for them is proposed rather than shipped.
 
 ---
 
@@ -523,6 +528,120 @@ sharing moves an upstream's lifetime onto a scope.
 - **Boundary:** this is the epic's bounded `Channel` treatment. A full Channel curriculum
   stays excluded. One-off UI events in a Compose screen are E25's and the architecture
   curriculum's decision; this Lesson supplies the stream semantics and stops.
+
+---
+
+## Authoring outcomes for Unit 1
+
+Added by E24-02 after the five Lessons were written. Everything below was checked against the
+artifacts this repository resolves or executed against them; nothing here is recalled.
+
+### What did not change
+
+Every proposed Unit id, Lesson id, title, authored order and primary/supporting mapping for
+Unit 1 in the [identity tables](#identity-conventions-and-proposed-identities) shipped
+verbatim. No Lesson boundary moved, no Lesson split or merged, and no blueprint correction was
+required. All five Lessons carry Core, Practical and Senior depth, and each runs 1,188–1,426
+words, inside the range the 21 shipped Compose Lessons occupy.
+
+The Unit is appended after `unit_snapshot_fundamentals`, so the authored order of the whole
+document is the six Compose Units followed by this one. List position is the ordering contract
+for a publisher-owned document, and it is also what `ContinueLearningPolicy` walks, so the
+coroutines path now follows the Compose path for a learner who studies straight through.
+
+### Forward references
+
+No Lesson links forward. `relatedLessonIds` are backward-only and stay inside the Unit —
+`lesson_suspension_and_blocking` has none, and each later Lesson names only Lessons above it.
+Nothing links into the shipped Compose Units: the plan's useful backward links
+(`lesson_snapshot_flow`, `lesson_work_outside_composition`) belong to Units 2 and 4, and
+inventing one here would have been a link the material does not earn.
+
+Everything the Unit defers is prose naming the Unit that owns it, never an id: dispatchers and
+`withContext` to Unit 2, cancellation and supervision and `async` failure semantics to Unit 3.
+`supervisorScope` is never named. `SupervisorJob()` appears once, inside the scope-construction
+idiom in `lesson_coroutine_scope_ownership`, and is explicitly set aside there as failure
+propagation the failure Unit teaches.
+
+### Claims that were executed rather than reasoned about
+
+A throwaway JVM test probed each of these against the resolved `kotlinx-coroutines-core:1.11.0`
+and was then deleted. The numbers are quoted in the Lessons as measurements, not as guarantees.
+
+| Claim a Lesson makes | Measured result |
+| --- | --- |
+| A parent whose body has finished is not complete while a child runs (L1.3) | At the 100 ms mark: `isActive` true, `isCompleted` false, one child, and the job printed as `StandaloneCoroutine{Completing}`; after `join()`, `isCompleted` true |
+| `Deferred` is a `Job` (L1.3) | `d is Job` returned true for an `async` result |
+| A blocking call inside a coroutine holds its thread (L1.1) | On a single-thread dispatcher, two coroutines running `Thread.sleep(300)` took 607 ms; two running `delay(300)` took 310 ms |
+| A coroutine that never suspends monopolises its dispatcher thread (L1.1) | On a single-thread dispatcher, a 250 ms busy loop ran to completion before a second coroutine launched onto the same dispatcher started at all |
+| A detached `launch` returns to the caller before the work finishes (L1.4, L1.5) | The suspending function returned after 5 ms for 300 ms of work, and the work completed normally afterwards; the `coroutineScope` version of the same body returned after 306 ms |
+| `runBlocking` blocks its caller (L1.2) | `runBlocking { delay(300) }` returned to its caller after 306 ms |
+| A scope's `Job` is the parent of what it launches (L1.4) | `scope.coroutineContext[Job] === childJob.parent` held for a scope built with the `CoroutineScope(...)` constructor |
+
+### Source decisions
+
+The [restructured guide](#the-coroutines-documentation-has-been-restructured) warning was
+honoured: `coroutines-basics.html` was re-read rather than recalled, and it is still dated
+07 September 2026. Every claim the Unit makes about suspension, builders, `runBlocking`, the
+parent-child hierarchy and `coroutineScope` is quoted from it or from the API reference, and
+no secondary source is cited anywhere in the Unit.
+
+Two pages were added to the plan's verified list because Unit 1 depends on detail the guide
+does not carry:
+
+| Claim | Source |
+| --- | --- |
+| A `Job` is "a cancellable thing with a lifecycle that concludes in its completion"; the six-state table; `join()` "suspends the coroutine until this job is complete" and "resumes normally ... for any reason"; the completing state "waits ... for all its children to complete" | <https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-job/> |
+| `Deferred` is "a non-blocking cancellable future" with "the same state machine as `Job`" | <https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-deferred/> |
+| `delay` delays "without blocking a thread" | <https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/delay.html> |
+| A scope "allows managing the lifecycles of several coroutines simultaneously"; the `coroutineContext[Job] === childJob.parent` convention; "if a scope is cancelled, all coroutines in it are cancelled too"; the constructor is "for entity lifecycles" *with required `cancel()` call*; `GlobalScope` has "the lifetime of the whole application" and "it is easy to misuse it" | <https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-scope/> |
+| `coroutineScope`'s job "completes when both the block and all the coroutines launched in the scope complete. Only then can the `coroutineScope` call return a value" | <https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/coroutine-scope.html> |
+| `runBlocking` is "designed to bridge regular blocking code ... in `main` functions, in tests, and in non-`suspend` callbacks"; calling it from a suspending function is "redundant and blocks the thread, avoid this" | <https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/run-blocking.html> |
+
+`viewModelScope`'s cancellation contract is quoted from
+<https://developer.android.com/topic/libraries/architecture/coroutines>, which is the page that
+states it; the best-practices page is used for guidance — main-safety as the callee's
+obligation, and injecting a longer-lived scope rather than using `GlobalScope` — and for
+nothing semantic.
+
+**KMP honesty.** `Thread.sleep` and the thread-memory comparison are the only JVM-specific
+material in the Unit and both are labelled as such where they appear. No example names a
+dispatcher constant, so nothing in the Unit assumes a platform that supplies one.
+
+### Semantic review of the Questions this Unit now reaches
+
+All seven ACTIVE Questions reachable through Unit 1's five primary concepts were re-read in
+full against the finished prose, not against the mappings.
+
+| Question | Verdict against the shipped Lessons |
+| --- | --- |
+| `coroutine_fundamentals_001` | Answerable from L1.1's Core. Its key — suspend without blocking the thread and resume later — and its three distractors (a dedicated pool, resuming on the same thread, callable from ordinary code) are each addressed explicitly |
+| `coroutine_run_blocking_main_thread` | Answerable from L1.2's Practical, which predicts the frozen main thread from the definition rather than asserting a rule. The mapping drift the plan recorded is unchanged: the Subtopic reaches L1.1 while the reasoning lives in L1.2, and both are in this Unit, so Unit practice is unaffected |
+| `launch_vs_async_unawaited_result` | Answerable from L1.2's Practical, which is built on the same `async { save() }` case. The Lesson argues from intent rather than restating the option wording |
+| `coroutine_scope_job_ownership` | Answerable from L1.4's Core, which establishes the scope's `Job` as the parent of what it launches and the owner as whoever cancels it |
+| `structured_concurrency_001` | Answerable from L1.5. Its three distractors — shared dispatcher, serialised children, restarted child — are each rejected in the Senior comparison, argued from the lifetime/scheduling distinction rather than echoed |
+| `parent_cancellation_propagates_children` | **Still not answerable from this Unit, by design.** Its distractors need `cancelAndJoin` and `NonCancellable`, which are Unit 3 material and stay out of L1.3. The Lesson names cancellation as something the structure carries and stops there. This is the mismatch the plan recorded, unchanged and untouched — see [mapping corrections](#mapping-corrections-rather-than-gaps) |
+| `coroutine_async_exception_surfaces_at_await` | **Still not answerable from this Unit, by design.** It needs failure propagation from a dropped `Deferred` and how supervision changes it. L1.2 says one sentence — `async` stores its outcome, including a failure, in the `Deferred` — and defers the rest. Recorded, not fixed |
+
+Neither mismatch was fixed here and no Lesson was bent to make either answerable. E24-08 owns
+both re-maps.
+
+### The known gaps were not filled
+
+GAP-U1-A, GAP-U1-B and GAP-U1-C are unchanged: E24-02 authored no Question. What did change is
+that the reasoning each gap describes is now taught, so E24-08 has something to assess against.
+
+| Gap | Where the reasoning now lives |
+| --- | --- |
+| GAP-U1-A — applying suspension-versus-blocking to real code | L1.1's Practical: the paired `readSettings`/`fetchArticles` example, the three-questions list, and the single-thread measurement |
+| GAP-U1-B — the concrete failure of an un-owned scope | L1.4's Practical: the `SearchController` that never cancels, the five named consequences, and the 5 ms-versus-306 ms measurement |
+| GAP-U1-C — `Job` as a handle | L1.3: `join`/`joinAll`, the measured completing state, the state table, and `Deferred` as a `Job` with a result |
+
+### Unresolved questions, unchanged
+
+None of the plan's four [unresolved questions](#unresolved-questions) is about Unit 1, and none
+was answered here. The one page Unit 1 depends on that could be rewritten during the epic's
+authoring window is `coroutines-basics.html`; it was current on 2026-09-10.
 
 ---
 

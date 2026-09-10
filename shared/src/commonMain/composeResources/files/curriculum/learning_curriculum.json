@@ -5426,7 +5426,25 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "There is a subtlety before that, and the documentation gives it a name: prompt cancellation. When a suspended coroutine is cancelled, it resumes with a CancellationException instead of returning a value, even if that value is already available. This is deliberate, because it stops a cancelled screen from being updated with data that arrived a moment too late. It also means a resource can be produced by a call whose result never reaches the caller, so the variable that would have closed it is never assigned. Keeping the reference somewhere the finally block can see is what makes cleanup reliable."
+                  "text": "There is a subtlety before that, and the documentation gives it a name: prompt cancellation. When a suspended coroutine is cancelled, it resumes with a CancellationException instead of returning a value, even if that value is already available. This is deliberate, because it stops a cancelled screen from being updated with data that arrived a moment too late. It also means a call can produce a resource whose value never reaches the caller, so an assignment written at the call site never happens and nothing is left to close."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The remedy is more specific than declaring the variable earlier: the capture has to happen inside the block, into a variable the finally block can already see. Then the reference exists whether or not the block's result is delivered."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "// Android/JVM example. The assignment is inside the block, so finally sees\n// the reader even when prompt cancellation discards the block's result.\nvar reader: BufferedReader? = null\ntry {\n    withContext(Dispatchers.IO) {\n        reader = openReader(path)\n    }\n    render(reader!!)\n} finally {\n    reader?.close()\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That covers the caller. It does not cover the case where you are writing the suspending function that hands the resource back, because a caller cannot close something it never received. There the release belongs at the point of resumption: the cancellable-continuation form of resume takes a handler that runs precisely when the value was not successfully used to resume the coroutine, which is what it exists for."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "// Inside a suspendCancellableCoroutine producer: close the resource if the\n// value never reaches the caller.\ncontinuation.resume(openedSocket) { _, socket, _ ->\n    socket.close()\n}"
                 },
                 {
                   "type": "paragraph",
@@ -5533,7 +5551,7 @@
                   "type": "bullet_list",
                   "items": [
                     "Ordinary cleanup in finally runs as the cancelled coroutine unwinds.",
-                    "Prompt cancellation means an already-available value can be lost, so hold resources where finally can still see them.",
+                    "Prompt cancellation can discard an already-available value: capture resources inside the block, and release them at the resume site when you write the producer.",
                     "Suspending cleanup after cancellation needs withContext(NonCancellable), kept small and cleanup-shaped.",
                     "A timeout is cancellation with a clock, and withTimeout's block is a lexically scoped child.",
                     "Non-cooperative work can outlive its deadline and even return a successful result.",
@@ -5572,6 +5590,10 @@
             {
               "title": "runInterruptible",
               "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/run-interruptible.html"
+            },
+            {
+              "title": "CancellableContinuation.resume with a cancellation handler",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-cancellable-continuation/resume.html"
             }
           ],
           "status": "ACTIVE"
@@ -5648,7 +5670,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "One detail matters when several children fail. The rule is that the first exception wins: it is the one that gets handled, and later exceptions are attached to it as suppressed exceptions. A log that reports only the message of the first failure is therefore telling a partial story, and the suppressed array is where the rest is."
+                  "text": "One detail matters when several children fail. The rule is that the first exception wins: it is the one that gets handled, and the ones that follow are attached to it as suppressed exceptions. Scope that second half to the platform before relying on it. The guide notes that the suppression mechanism currently works on Java 1.7 and above, and that the JS and Native restrictions are temporary — so on the JVM a log reporting only the first failure's message is telling a partial story and the suppressed list holds the rest, while on the other targets this curriculum builds for there is no guarantee the rest will be found there."
                 },
                 {
                   "type": "callout",
@@ -5705,7 +5727,7 @@
                     "A non-cancellation failure cancels the parent, which cancels the siblings, and completes with that exception.",
                     "launch propagates automatically; async represents the failure in its Deferred, where await() observes it.",
                     "A dropped Deferred still fails its parent under ordinary Job rules.",
-                    "The first exception wins; later ones arrive as suppressed exceptions.",
+                    "The first exception wins; on the JVM the later ones arrive as suppressed exceptions, which JS and Native do not currently guarantee.",
                     "CoroutineExceptionHandler applies only to a failure with no propagation path, never to async, and never to an ordinary child."
                   ]
                 },
@@ -5977,11 +5999,15 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Confinement inverts the question. Instead of coordinating everyone who touches the state, give the state one execution owner and let only that owner mutate it. In coroutine terms that is a single-threaded context, or in an application more usually a single component that owns the data and exposes suspending operations. The Kotlin guide is explicit about the granularity trap: confining each individual increment, so that every tiny mutation switches context, works very slowly, while confining a whole chunk of work to the owner is fast and still correct. The cost being paid is the context switch, so it should be paid once per body of work, not once per field write."
+                  "text": "Confinement inverts the question. Instead of coordinating everyone who touches the state, run every mutation on one execution owner so that they cannot overlap in the first place. What makes it confinement is serialised execution, not encapsulation: a single-threaded context, or a dispatcher view whose parallelism is limited to one. Wrapping the fields in a class that exposes suspending functions achieves nothing by itself — two callers still enter those functions at the same time, on two threads, and race exactly as if they had touched the fields directly. The Kotlin guide is explicit about the granularity trap: confining each individual increment, so that every tiny mutation switches context, works very slowly, while confining a whole chunk of work to the owner is fast and still correct. The cost being paid is the context switch, so it should be paid once per body of work, not once per field write."
                 },
                 {
                   "type": "paragraph",
-                  "text": "A Mutex fits the case an atomic cannot express: a critical section that must stay consistent across several steps, including suspending ones. Its defining property is that Mutex.lock() is a suspending function and does not block a thread, which is what makes it usable inside a coroutine at all. withLock is the structured form of lock, try, finally, unlock, so the lock is released even if the block throws or the coroutine is cancelled."
+                  "text": "Confinement has a limit of its own, and it is the one that leads to the third mechanism. A serialised owner serialises execution, not a logical operation. The limitedParallelism KDoc makes the point itself: the limit is on how many coroutines execute at the same time, not on how many are inside the block, and it recommends a Mutex or Semaphore when what is wanted is mutual exclusion. If the owner suspends midway through an update, another coroutine can run on that context before it resumes."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A Mutex fits exactly that case: a critical section that must stay consistent across several steps, including suspending ones. Its defining property is that Mutex.lock() is a suspending function and does not block a thread, which is what makes it usable inside a coroutine at all. withLock is the structured form of lock, try, finally, unlock, so the lock is released even if the block throws or the coroutine is cancelled."
                 },
                 {
                   "type": "code",
@@ -6018,7 +6044,7 @@
                     [
                       "Several related fields that must agree across a few steps",
                       "A Mutex around the critical section",
-                      "Atomics protect each field and not the relationship; confinement works but may be heavier than needed."
+                      "Atomics protect each field and not the relationship; a serialised context does not hold across a suspension point inside the section."
                     ],
                     [
                       "A body of related state with a natural owner",
@@ -6042,7 +6068,7 @@
                     "Read-modify-write is not atomic, and volatile fixes visibility rather than atomicity.",
                     "Common atomics exist in kotlin.concurrent.atomics behind an experimental opt-in, and are trivial on single-threaded targets.",
                     "An atomic protects one value; a Mutex protects an invariant across several steps.",
-                    "Confinement is coarse-grained or it is slow.",
+                    "Confinement means serialised execution rather than encapsulation, and it is coarse-grained or it is slow.",
                     "Mutex.lock() suspends rather than blocking, and withLock releases through failure and cancellation."
                   ]
                 },
@@ -6078,6 +6104,10 @@
             {
               "title": "Channels",
               "url": "https://kotlinlang.org/docs/channels.html"
+            },
+            {
+              "title": "CoroutineDispatcher.limitedParallelism",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-dispatcher/limited-parallelism.html"
             }
           ],
           "status": "ACTIVE"

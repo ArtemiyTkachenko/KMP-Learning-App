@@ -823,6 +823,28 @@ somewhere in the finished prose rather than merely avoided:
 | "A scope and every child have the same lifetime" | L3.1 says cancelling a parent asks every descendant to stop rather than asserting they have |
 | "`launch(SupervisorJob())` inserts supervision into the existing hierarchy" | L3.4's Senior completes the trap and calls the pattern an anti-pattern rather than a recipe |
 
+### Corrections made during review
+
+Three claims in the first draft were wrong or under-scoped and were corrected before the Unit
+shipped. Each is recorded because each is a claim a later Unit could easily reintroduce, and
+because two of the three were teaching a remedy that did not cover the case it was attached to.
+
+| Draft claim | Why it was wrong | What ships |
+| --- | --- | --- |
+| L3.2: after prompt cancellation discards a value, "keeping the reference somewhere the `finally` block can see is what makes cleanup reliable" | It prescribes the fix for one situation while describing another. If the call site is written `val r = withContext(IO) { open() }`, the assignment never happens, so widening the variable's scope changes nothing. And when *you* write the suspending producer, the caller cannot close a resource it never received at all | The paragraph now says the capture must happen **inside** the block, into a variable `finally` already sees, with the guide's `BufferedReader` shape as the example. A second paragraph adds the producer side: the release belongs at the point of resumption, using the `CancellableContinuation.resume` overload whose handler runs "if and only if the value was not successfully used to resume the continuation". That KDoc is now one of L3.2's Sources |
+| L3.5: confinement is "a single-threaded context, or in an application more usually a single component that owns the data and exposes suspending operations" | The second half is not confinement. A class that holds the fields and exposes `suspend` functions serialises nothing: two callers enter those functions concurrently, on two threads, and race exactly as if they had touched the fields directly. The draft was teaching encapsulation as though it were a coordination mechanism | Confinement is now defined as **serialised execution, not encapsulation** — a single-threaded context or a dispatcher view limited to one — and the encapsulation-is-not-enough case is stated explicitly as the thing that does not work |
+| L3.3: "later exceptions are attached to it as suppressed exceptions", with the reader directed to the suppressed list | True on the JVM only. The exception-handling guide's own note says the mechanism "currently only works on Java version 1.7+" and that "The JS and Native restrictions are temporary". Stated unconditionally in a multiplatform curriculum it teaches a portability guarantee three of the five target families do not provide | The rule is split: first exception wins everywhere, and the suppression half is scoped to the JVM, with the other targets named as not guaranteeing it. The takeaway bullet carries the same scoping |
+
+The confinement correction exposed a second, related accuracy point in L3.5 that the draft had missed:
+a serialised owner serialises *execution*, not a logical operation. The `limitedParallelism`
+KDoc says so directly — the limit is on coroutines executing at the same time, not on how many
+are inside the block, and it recommends a `Mutex` or `Semaphore` when what is wanted is mutual
+exclusion. That is now the bridge from confinement to `Mutex`, and it replaces a comparison-table
+cell that had claimed confinement "works but may be heavier than needed" for a multi-step
+invariant, which is wrong once any step suspends. The KDoc is now one of L3.5's Sources.
+
+None of the three changed an identity, a mapping, an order, or a Lesson boundary.
+
 ### The timeout measurement, re-run
 
 The E24-01 measurement was recreated on this project's JVM target against the resolved

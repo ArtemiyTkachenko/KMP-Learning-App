@@ -5212,6 +5212,908 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "unit_cancellation_failure_and_coordination",
+      "topicId": "async_reactive",
+      "title": "Cancellation, Failure and Coordination",
+      "summary": "Units 1 and 2 built structured work and decided where it runs. This unit asks what happens when that work is stopped or goes wrong. Cancellation is a request that the code inside has to notice; cleanup and deadlines are expressed through the same request; a failure travels through the same hierarchy that carries lifetime; supervision changes exactly one relationship in that hierarchy; and concurrent work that all succeeds can still corrupt the state it shares. The order is one argument rather than five API pages.",
+      "lessons": [
+        {
+          "id": "lesson_cooperative_cancellation",
+          "title": "Cancellation Is Cooperative",
+          "summary": "Decide whether a particular coroutine will actually stop when it is cancelled. Cancelling records a request on the Job; the coroutine observes that request only where it suspends cooperatively or checks explicitly, so a busy loop keeps running and a broad catch can consume the request altogether.",
+          "primarySubtopicIds": [
+            "coroutine_cancellation"
+          ],
+          "supportingSubtopicIds": [
+            "coroutine_jobs",
+            "structured_concurrency",
+            "kotlin_exceptions"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Unit 1 introduced cancellation as something the hierarchy carries and stopped there. This Lesson answers the question that was left open: after cancel() returns, has the work stopped? The honest answer is that cancelling is a request, and whether it takes effect depends on what the coroutine does next."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The sequence is worth holding as a picture. Cancellation is requested on a Job. The Job moves into its cancelling state. The coroutine keeps running until it reaches a point where cancellation can be observed. At that point a CancellationException is thrown, and the coroutine unwinds. Nothing in that chain forcibly stops arbitrary code."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The Kotlin documentation states the rule directly: coroutine cancellation is cooperative, and coroutines react to cancellation only when they cooperate by suspending or checking for cancellation explicitly. Cooperation is a property of the code inside the coroutine, not of the coroutine machinery around it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Which suspending calls cooperate is more precise than it first looks. Every suspending function in the kotlinx.coroutines library cooperates, because they are built on suspendCancellableCoroutine, which checks for cancellation when the coroutine suspends. A custom suspending function written on top of the plain suspendCoroutine does not react to cancellation at all. Marking a function suspend is a signature, not a behaviour: it does not insert a cancellation check anywhere."
+                },
+                {
+                  "type": "code",
+                  "code": "// This loop never stops when the coroutine is cancelled.\nval job = scope.launch {\n    while (true) {\n        performCpuWork()\n    }\n}\n\njob.cancel()\n// The request is recorded. The loop is still running.",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The loop above ignores cancellation completely, and wrapping performCpuWork in a suspend function would change nothing unless that function itself suspends or checks. It is also worth noticing what cancel() does for the caller: it requests cancellation and returns immediately. The moment nothing is running is the moment the Job completes, which is a separate event."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Cancelling records a request on the Job. The coroutine stops where it observes that request, so the interesting question is never whether cancel() was called but whether the code reaches a cooperative point."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Long-running code that does not suspend has three ways to cooperate, and they are not interchangeable. isActive is a property that becomes false once cancellation is requested, so it fits a loop condition. ensureActive() throws a CancellationException if cancellation was requested, so it fits a statement inside a loop body where continuing would be wrong. yield() releases the thread to other coroutines as well as checking, so it fits code that would otherwise monopolise its dispatcher thread."
+                },
+                {
+                  "type": "code",
+                  "code": "// A loop condition: finish the current item, then stop.\nwhile (isActive && queue.isNotEmpty()) {\n    process(queue.removeFirst())\n}\n\n// A statement: stop here rather than starting the next expensive step.\nfor (page in pages) {\n    ensureActive()\n    render(page)\n}\n\n// Releases the thread as well as checking, for long CPU work.\nfor (chunk in chunks) {\n    yield()\n    compress(chunk)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Check",
+                    "What it does",
+                    "Reach for it when"
+                  ],
+                  "rows": [
+                    [
+                      "isActive",
+                      "Reads false once cancellation has been requested; throws nothing.",
+                      "The loop should end normally and the surrounding code should carry on."
+                    ],
+                    [
+                      "ensureActive()",
+                      "Throws CancellationException when cancellation has been requested.",
+                      "Continuing past this point would be wrong, so unwinding is the correct outcome."
+                    ],
+                    [
+                      "yield()",
+                      "Releases the thread to other coroutines and throws CancellationException if cancelled.",
+                      "The work is long and CPU-bound, and holding the thread would starve other coroutines."
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There is one more trap in the same area, and it is easy to miss because the code looks cooperative. A call to a suspending function is a suspension point, but it does not always suspend: awaiting a Deferred that has already completed, or a repository call that returns a cached value without waiting for anything, resumes without ever suspending. A loop whose only suspending call is served from a cache therefore has no cancellation check in practice, even though every line of it is suspend. When a loop must be interruptible, the check has to be something that always checks."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The structure carries the request downward. Cancelling a coroutine requests cancellation of its descendants, and each of them faces the same question about its own code. Cancelling a parent therefore does not mean its descendants have stopped; it means every one of them has been asked to. Waiting is a separate operation: join() suspends until a Job is complete, and cancelAndJoin() exists precisely because requesting and waiting are two steps."
+                },
+                {
+                  "type": "code",
+                  "code": "// A request, and then a wait. They are not the same call.\njob.cancel()\n// Descendants have been asked to stop; some may still be unwinding.\njob.join()\n// Now the job is complete and nothing under it is running.",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Reading a cancelled scope as a stopped scope. After scope.cancel() returns, children may still be finishing their current step and running their cleanup. If a test or a shutdown path depends on the work being over, it has to wait for completion rather than for the request."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "It is reasonable to ask why cancellation is not simply preemptive, given how much reasoning cooperation costs. The answer is that a preempted coroutine could be stopped in the middle of a mutation, halfway through updating two fields that are supposed to agree, or between acquiring a resource and recording that it must be released. Cooperative cancellation is what makes finally blocks and invariants meaningful at all. The price is exactly the gap this Lesson is about: cancelled means asked to stop, and the interval between the request and the stop is real time in which the coroutine is still running."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second consequence is that CancellationException is not an application error. It belongs to coroutine control flow: it is how a cancelled coroutine unwinds, and the machinery treats it differently from a failure. That makes a broad handler dangerous in a specific way."
+                },
+                {
+                  "type": "code",
+                  "code": "try {\n    doWork()\n} catch (e: Exception) {\n    log(e)\n    // Execution continues here even when the coroutine was cancelled.\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The problem is not the word Exception. The problem is that the handler consumed a cancellation and then continued as though the operation were healthy, so the loop runs another iteration, the retry fires, or a result is reported for work nobody wants any more. The rule worth carrying is narrower than never catch Exception: do not consume cancellation and proceed. The documentation's own advice is to rethrow it so cancellation propagates correctly, and the CoroutineExceptionHandler reference shows the same idea as a check inside the handler."
+                },
+                {
+                  "type": "code",
+                  "code": "try {\n    doWork()\n} catch (e: Throwable) {\n    // Re-checks the coroutine's own state and rethrows if it was cancelled.\n    if (e is CancellationException) ensureActive()\n    log(e)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Cancellation is also distinct from failure in the other direction. A coroutine that ends with a CancellationException does not fail its parent, while a coroutine that ends with any other exception does. That asymmetry is the subject of the third Lesson in this Unit; here it is enough to know that the two are different categories rather than two names for the same event."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Cancelling requests cancellation on a Job and returns; completion is a separate event.",
+                    "A coroutine observes the request at a cancellable suspension point or at an explicit check.",
+                    "Library suspending functions cooperate because they are built on suspendCancellableCoroutine; the suspend keyword alone guarantees nothing.",
+                    "isActive, ensureActive() and yield() are the three checks, and they suit different shapes of loop.",
+                    "A handler that swallows CancellationException lets cancelled work carry on."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Given a coroutine that runs a CPU-bound loop, say what cancel() does to it and name the three ways to make it cooperative. Then explain what a broad catch (e: Exception) does to cancellation, without retreating to the slogan that Exception must never be caught."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_job_and_parent_child",
+            "lesson_structured_concurrency"
+          ],
+          "sources": [
+            {
+              "title": "Cancellation and timeouts",
+              "url": "https://kotlinlang.org/docs/coroutines-cancellation.html"
+            },
+            {
+              "title": "Job",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-job/"
+            },
+            {
+              "title": "ensureActive",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/ensure-active.html"
+            },
+            {
+              "title": "yield",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/yield.html"
+            },
+            {
+              "title": "suspendCancellableCoroutine",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/suspend-cancellable-coroutine.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_cancellation_cleanup_and_timeouts",
+          "title": "Cleanup, `NonCancellable` and Timeouts",
+          "summary": "Release resources correctly while a cancelled coroutine unwinds, and read a deadline as cancellation with a clock. Ordinary cleanup belongs in finally, suspending cleanup needs NonCancellable, and a timeout bounds only what is prepared to observe cancellation.",
+          "primarySubtopicIds": [
+            "coroutine_cancellation"
+          ],
+          "supportingSubtopicIds": [
+            "kotlin_exceptions",
+            "coroutine_context_switching",
+            "coroutine_jobs"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A cancelled coroutine does not vanish. It unwinds, which means the CancellationException travels out through the call stack and every finally block on the way runs. That is where cleanup belongs, and for ordinary non-suspending work it is enough: closing a handle, releasing a lock, restoring a flag, removing an entry from a map."
+                },
+                {
+                  "type": "code",
+                  "code": "val reader = openReader(path)\ntry {\n    stream(reader)\n} finally {\n    // Runs whether the block returned, threw, or was cancelled.\n    reader.close()\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There is a subtlety before that, and the documentation gives it a name: prompt cancellation. When a suspended coroutine is cancelled, it resumes with a CancellationException instead of returning a value, even if that value is already available. This is deliberate, because it stops a cancelled screen from being updated with data that arrived a moment too late. It also means a call can produce a resource whose value never reaches the caller, so an assignment written at the call site never happens and nothing is left to close."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The remedy is more specific than declaring the variable earlier: the capture has to happen inside the block, into a variable the finally block can already see. Then the reference exists whether or not the block's result is delivered."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "// Android/JVM example. The assignment is inside the block, so finally sees\n// the reader even when prompt cancellation discards the block's result.\nvar reader: BufferedReader? = null\ntry {\n    withContext(Dispatchers.IO) {\n        reader = openReader(path)\n    }\n    render(reader!!)\n} finally {\n    reader?.close()\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That covers the caller. It does not cover the case where you are writing the suspending function that hands the resource back, because a caller cannot close something it never received. There the release belongs at the point of resumption: the cancellable-continuation form of resume takes a handler that runs precisely when the value was not successfully used to resume the coroutine, which is what it exists for."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "// Inside a suspendCancellableCoroutine producer: close the resource if the\n// value never reaches the caller.\ncontinuation.resume(openedSocket) { _, socket, _ ->\n    socket.close()\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second surprise is what happens when cleanup itself suspends. The coroutine is already cancelled, so a cancellable suspending call inside the finally block observes that cancellation immediately and throws instead of doing its work. A suspending close() written that way silently does nothing at all."
+                },
+                {
+                  "type": "code",
+                  "code": "finally {\n    // Already cancelled: this observes cancellation and never closes anything.\n    suspendingClose()\n}\n\nfinally {\n    withContext(NonCancellable) {\n        // Runs to completion despite the cancellation.\n        suspendingClose()\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Ordinary cleanup belongs in finally and needs nothing special. Suspending cleanup in an already-cancelled coroutine needs withContext(NonCancellable), because otherwise it observes the cancellation and does nothing."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "NonCancellable is easy to describe in a way that invites abuse. It is not a way to finish important work despite cancellation. It is an escape hatch for the narrow case where cleanup has to suspend, and its whole effect is to make that block deaf to cancellation. Anything long or arbitrary inside it is time during which the coroutine cannot be stopped, which is exactly the responsiveness the cancellation model exists to provide."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Three boundaries keep it honest. Keep the block small and cleanup-shaped: releasing a lease, flushing a buffer, sending a close frame. Do not put transactions, network calls or user-visible work in it. And use it only with withContext: the API reference warns that launch(NonCancellable) severs the parent-child relation entirely, so the parent neither waits for that child nor is cancelled when it crashes. It is also worth remembering that the code after the block is still running in a cancelled coroutine, so an ensureActive() afterwards is often what the author actually meant."
+                },
+                {
+                  "type": "code",
+                  "code": "// Android/JVM example: an upload that must tell the server it stopped.\nsuspend fun upload(session: Session, chunks: Flow<Chunk>) {\n    try {\n        chunks.collect { session.send(it) }\n    } finally {\n        withContext(NonCancellable) {\n            // Small, bounded, and about releasing the session — not about\n            // finishing the upload that was just cancelled.\n            session.abort()\n        }\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Timeouts are the same model with a clock attached. withTimeout runs its block and, at the deadline, cancels it with a TimeoutCancellationException; withTimeoutOrNull does the same and returns null instead of throwing. Nothing new happens at the deadline: cancellation is requested, and the block observes it wherever it is prepared to. The API reference is explicit that withTimeout behaves like coroutineScope, creating a new lexically scoped child coroutine, and that cancellation on timeout runs concurrently with the code in the block and may happen at any time, even after the block has finished but before the caller is resumed with the result."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Treating withTimeout as a hard deadline for the caller. It is a request to cancel the block at a moment in time. If the block cannot observe cancellation, the deadline passes and the work continues, and because the block is a structured child the caller waits for it."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "That last claim is worth measuring rather than asserting, so it was. The cases below were run on this project's JVM target against the resolved kotlinx-coroutines-core 1.11.0, each with a 100 ms deadline and withTimeoutOrNull. They are measurements on one machine, not API guarantees. For calibration, a cooperative delay(1500) under the same deadline returned in 171-212 ms on the same run, so roughly 100 ms of every figure below is harness overhead rather than coroutine behaviour."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Body inside the 100 ms deadline",
+                    "Returned",
+                    "Elapsed"
+                  ],
+                  "rows": [
+                    [
+                      "withContext(Dispatchers.IO) { Thread.sleep(1500) }",
+                      "null",
+                      "about 1.7 s"
+                    ],
+                    [
+                      "A 1500 ms CPU loop with no suspension point and no check",
+                      "the computed value, not null",
+                      "about 1.5 s"
+                    ],
+                    [
+                      "join() on a Job belonging to a separate, non-child scope",
+                      "null, and that job was still active afterwards",
+                      "about 0.2 s"
+                    ],
+                    [
+                      "The same blocking call wrapped in runInterruptible",
+                      "null",
+                      "about 0.2 s"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second row is the sharp one. The block outlived its deadline by roughly fifteen times and then succeeded: it never reached a cancellation check, so the timeout's cancellation was never observed and the computed value was returned as though nothing had happened. A reader who believes a timeout is a hard stop will not predict that. The first row is the same story with blocking work, and in both the caller waited the whole time, because the block is a lexically scoped child and structured completion does not let withTimeout return before it finishes."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The third row is the only case where the caller moves on at the deadline, and it does so precisely because the awaited work was never a child of the timeout. The unrelated job kept running afterwards. That is Unit 1's ownership argument arriving from a different direction: a deadline bounds the structure it owns, and work outside that structure is not bounded by it at all."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The fourth row is the JVM-specific escape hatch. Thread interruption is a JVM mechanism, and this is a Kotlin Multiplatform curriculum, so runInterruptible is not part of the coroutine cancellation model everywhere. On the JVM it bridges the two models: it runs a blocking block and interrupts its thread when the coroutine is cancelled, turning cancellation into the InterruptedException that blocking JVM APIs already understand, and converting that back into a CancellationException for the coroutine. Blocking calls on other targets have no equivalent, and no dispatcher interrupts threads on its own."
+                },
+                {
+                  "type": "code",
+                  "code": "// JVM only. Thread interruption is not part of the model on other targets.\nwithTimeoutOrNull(100.milliseconds) {\n    withContext(Dispatchers.IO) {\n        runInterruptible { legacyBlockingCall() }\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The general statement is therefore narrower than the API name suggests. A timeout only becomes effective where cancellation can be observed, and structured ownership decides who waits. Reaching for withTimeout around code that cannot cooperate produces a deadline that is documentation rather than behaviour; the fix is to make the work cancellable, to bridge it on the platform that allows bridging, or to accept that the operation is not interruptible and design around it."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Ordinary cleanup in finally runs as the cancelled coroutine unwinds.",
+                    "Prompt cancellation can discard an already-available value: capture resources inside the block, and release them at the resume site when you write the producer.",
+                    "Suspending cleanup after cancellation needs withContext(NonCancellable), kept small and cleanup-shaped.",
+                    "A timeout is cancellation with a clock, and withTimeout's block is a lexically scoped child.",
+                    "Non-cooperative work can outlive its deadline and even return a successful result.",
+                    "runInterruptible is a JVM bridge to thread interruption, not universal coroutine behaviour."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Does withTimeout(100) guarantee that the call returns in about 100 ms? Answer with the mechanism: what the deadline requests, why the caller waits for a structured child, and what happens when the block never checks for cancellation."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_cooperative_cancellation",
+            "lesson_with_context_and_main_safety"
+          ],
+          "sources": [
+            {
+              "title": "Cancellation and timeouts",
+              "url": "https://kotlinlang.org/docs/coroutines-cancellation.html"
+            },
+            {
+              "title": "withTimeout",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/with-timeout.html"
+            },
+            {
+              "title": "withTimeoutOrNull",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/with-timeout-or-null.html"
+            },
+            {
+              "title": "NonCancellable",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-non-cancellable/"
+            },
+            {
+              "title": "runInterruptible",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/run-interruptible.html"
+            },
+            {
+              "title": "CancellableContinuation.resume with a cancellation handler",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-cancellable-continuation/resume.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_exception_propagation",
+          "title": "How a Coroutine Failure Travels",
+          "summary": "Look at a coroutine tree, pick the child that throws, and name everything else that changes. Cancellation and failure are different categories, launch and async differ in how a failure is reported rather than in whether it propagates, and a CoroutineExceptionHandler applies only where an exception has no propagation path.",
+          "primarySubtopicIds": [
+            "coroutine_exceptions"
+          ],
+          "supportingSubtopicIds": [
+            "coroutine_builders",
+            "coroutine_jobs",
+            "coroutine_cancellation",
+            "error_modeling"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Two things can end a coroutine early, and the model treats them differently. A CancellationException means this work was asked to stop; a coroutine that ends with it does not cancel its parent. Any other exception means this work failed; a coroutine that ends with one cancels its parent with that exception. The documentation states it in one sentence: when a coroutine is cancelled it terminates but does not cancel its parent, and if it encounters an exception other than CancellationException it cancels its parent with that exception."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "From there the ordinary rules follow from Unit 1's hierarchy. Take a parent with three regular children, where B throws."
+                },
+                {
+                  "type": "code",
+                  "code": "Parent\n |- Child A\n |- Child B   <-- throws IllegalStateException\n |- Child C",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "B fails, so it cancels Parent with that exception. Parent, now cancelling, requests cancellation of its remaining children, so A and C are cancelled — as cancellation, not as failure, which is why they do not each report an error of their own. Parent is not complete at the moment B throws: it completes once every child has finished unwinding, and the exception is what it completes with. Where that exception then goes depends on Parent's own situation, which is the subject of the deeper section below."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Builders differ in one respect, and it is not whether failure propagates. The guide puts them in two flavours: propagating exceptions automatically, which is launch, or exposing them to the caller, which is async. A failing launch has nowhere to put its exception, so the structure carries it. A failing async stores its outcome in the Deferred, and await() rethrows it there."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Cancellation travels downward and does not fail a parent. A non-cancellation failure travels upward, cancels the parent, and takes the siblings with it. The builder decides where the failure can be observed, not whether it propagates."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The distinction between propagation and observation is where the common misconception lives. It is often summarised as async exceptions only mattering when await() is called, and that is false for a regular structured child."
+                },
+                {
+                  "type": "code",
+                  "code": "coroutineScope {\n    val deferred = async { throw IllegalStateException(\"boom\") }\n    // The Deferred is never awaited.\n    delay(50)\n}\n// coroutineScope still fails with IllegalStateException: the async child is\n// an ordinary child, so its failure cancelled the scope.",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The async coroutine is a child of the scope under ordinary Job rules, so its failure cancels that scope whether or not anyone holds the Deferred. What await() adds is observation: it is where the failure the Deferred represents reaches the awaiter as a thrown exception, so ordinary try/catch can deal with it. Dropping the Deferred hides the failure from the call site without preventing it from tearing the scope down, which is a harder bug than a crash."
+                },
+                {
+                  "type": "code",
+                  "code": "// Observation: the ordinary way to handle a failing async.\nval user = try {\n    deferredUser.await()\n} catch (e: IOException) {\n    User.Guest\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Inside a launch, the normal answer is even simpler: catch the specific exception where it happens. A failure that is handled inside the coroutine never becomes a propagation question at all, because the machinery never learns about it. That is the first and most ordinary way an exception is dealt with, and reaching past it for a handler is usually a sign that the failure was expected rather than exceptional."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One detail matters when several children fail. The rule is that the first exception wins: it is the one that gets handled, and the ones that follow are attached to it as suppressed exceptions. Scope that second half to the platform before relying on it. The guide notes that the suppression mechanism currently works on Java 1.7 and above, and that the JS and Native restrictions are temporary — so on the JVM a log reporting only the first failure's message is telling a partial story and the suppressed list holds the rest, while on the other targets this curriculum builds for there is no guarantee the rest will be found there."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Believing an unawaited Deferred makes a failure irrelevant. It removes the place where the failure would have been observed, not the structural relationship that propagates it."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "CoroutineExceptionHandler is the part of this Lesson worth stating precisely, because the natural summary — put one in your scope to catch coroutine errors — is exactly wrong. The API reference frames it as an element for handling coroutine exceptions without a clear propagation path, and it enumerates the paths it recognises."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "The exception is caught by a try/catch inside the coroutine, so the machinery never learns about it.",
+                    "The coroutine is lexically scoped, like coroutineScope or withContext, so the exception is rethrown to the caller.",
+                    "The exception is transferred to a parent that processes child failures, through structured concurrency.",
+                    "The builder returns a handle that allows querying the result, which is async and its Deferred."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "When none of those applies, the exception has no propagation path, and only then is the handler in that coroutine's context invoked. The common cases with no path are a launch on a scope that has no Job, and a child launched directly in a supervisorScope or under a SupervisorJob — which is the subject of the next Lesson. If no handler is present the runtime falls back to a platform-specific last-resort behaviour, which differs per target and is not something a multiplatform application should depend on."
+                },
+                {
+                  "type": "code",
+                  "code": "coroutineScope {\n    launch(CoroutineExceptionHandler { _, _ ->\n        // Never runs.\n    }) {\n        error(\"This failure cancels coroutineScope instead.\")\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The handler above is never invoked because the failure does have a path: it cancels coroutineScope, which rethrows to the caller. Installing a handler on an ordinary child does not turn that child into an independent boundary; it only names a handler that the situation never consults. The reference makes the same point about nesting: a handler on an outer root coroutine runs and a handler on its ordinary inner child does not, because the failure was propagated normally and it was the outer coroutine that had nowhere left to send it."
+                },
+                {
+                  "type": "code",
+                  "code": "// Redundant: async represents its failure in the Deferred, so the caller\n// of await() is responsible for it and the handler is never invoked.\nscope.async(CoroutineExceptionHandler { _, _ -> }) {\n    error(\"boom\")\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two limits are worth stating alongside. The handler cannot recover: it is called after the coroutine has completed with that exception, so it is for logging, reporting, or restarting, not for retrying. And CancellationException is ignored by all handlers, which is the same asymmetry as the first Lesson in this Unit, seen from the reporting side."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Finally, a boundary rather than a topic. Failures a system expects — a request that can legitimately return not-found, a parse that can legitimately fail — are often better modelled as values in the return type than as exceptions, and the architecture curriculum owns that argument. The point that belongs here is that the two are not interchangeable: modelling expected failures as results does not make unexpected coroutine exceptions go away, and a coroutine that throws still obeys everything above."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "A non-cancellation failure cancels the parent, which cancels the siblings, and completes with that exception.",
+                    "launch propagates automatically; async represents the failure in its Deferred, where await() observes it.",
+                    "A dropped Deferred still fails its parent under ordinary Job rules.",
+                    "The first exception wins; on the JVM the later ones arrive as suppressed exceptions, which JS and Native do not currently guarantee.",
+                    "CoroutineExceptionHandler applies only to a failure with no propagation path, never to async, and never to an ordinary child."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Draw a small tree, fail one child, and narrate the consequences: parent state, sibling cancellation, where the exception ends up, and when the parent is considered complete. Then say why a handler attached to that child would never run."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_coroutine_builders",
+            "lesson_structured_concurrency",
+            "lesson_cooperative_cancellation"
+          ],
+          "sources": [
+            {
+              "title": "Coroutine exceptions handling",
+              "url": "https://kotlinlang.org/docs/exception-handling.html"
+            },
+            {
+              "title": "CoroutineExceptionHandler",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-exception-handler/"
+            },
+            {
+              "title": "async",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/async.html"
+            },
+            {
+              "title": "Job",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-job/"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_supervision_and_failure_isolation",
+          "title": "`SupervisorJob`, `supervisorScope` and the Limits of Isolation",
+          "summary": "Isolate independent failures without pretending they did not happen. Supervision reverses exactly one relationship at exactly one parent-child boundary, leaves downward cancellation intact, and hands each supervised child the responsibility for its own failure.",
+          "primarySubtopicIds": [
+            "coroutine_supervision"
+          ],
+          "supportingSubtopicIds": [
+            "coroutine_exceptions",
+            "coroutine_context",
+            "structured_concurrency",
+            "coroutine_jobs"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The previous Lesson established the ordinary rule: a child's failure cancels its parent, which cancels its remaining children. Supervision is the one exception to that rule, and it is narrower than it is usually remembered. The API reference for SupervisorJob puts it plainly: children of a supervisor job can fail independently of each other, and a failure or cancellation of a child does not cause the supervisor job to fail and does not affect its other children."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read that as one arrow being reversed and nothing else changing. Cancellation still travels downward: cancelling the supervisor cancels its children, and if a SupervisorJob is given a parent of its own, it is an ordinary child of that parent and is cancelled when the parent fails or is cancelled, taking its own children with it. Supervision changes what a child's failure does to the parent, not what the parent's cancellation does to the children."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "supervisorScope is the lexically scoped form: it runs a block in a new scope containing a SupervisorJob, based on the caller's context. A child launched in it that fails does not affect the other children. The scope still waits — its lifecycle completes when both the block and all the coroutines launched in it complete — and if the block itself finishes with an exception, that does cancel the scope and all its children."
+                },
+                {
+                  "type": "code",
+                  "code": "supervisorScope\n |- Child A\n |- Child B\n     |- Grandchild C   <-- fails",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The picture above is the one to be able to read. Supervision applies to the boundary between supervisorScope and its direct children, A and B. C is an ordinary child of B, so their relationship is unchanged: C's failure cancels B in the ordinary way. Supervision then stops the failure at the supervised boundary, so A keeps running. Nothing recursively converted B's Job into a supervisor."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Supervision is a property of one parent-child boundary. It stops a child's failure from reaching that parent and its siblings; it does not make children unfailable, does not reach nested children, and does not stop cancellation travelling down."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The problem supervision is for is genuinely independent work presented together. Three panels on a dashboard refresh from three sources; one source is down. Under a regular Job the failure cancels the parent and the other two panels lose their in-flight work for no reason. Under a supervised parent each refresh stands or falls alone."
+                },
+                {
+                  "type": "code",
+                  "code": "// Each refresh succeeds or fails on its own.\nsupervisorScope {\n    launch { refreshProfile() }\n    launch { refreshFeed() }\n    launch { refreshNotifications() }\n}\n// Returns once all three have finished or failed.",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The half that gets forgotten is what happens to the failure afterwards. Isolating siblings answers one question — should this child's failure cancel the others — and says nothing about what the application does with the failure. A supervised child's exception no longer has a parent that will process it, so, in the vocabulary of the previous Lesson, it has no propagation path. Somebody must give it one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The reference lists the two ways, and they line up with the builders. A failure of a supervised child created with launch can be handled by a CoroutineExceptionHandler in the context — this is one of the few places where installing a handler genuinely takes effect, because the child really is a boundary. A failure of a supervised child created with async is handled by awaiting its Deferred. Local try/catch inside the child remains the most direct option and the one that allows a fallback rather than only a report."
+                },
+                {
+                  "type": "code",
+                  "code": "supervisorScope {\n    launch {\n        // Handled here, so the panel can show its own error state.\n        try {\n            refreshFeed()\n        } catch (e: IOException) {\n            showFeedUnavailable()\n        }\n    }\n    launch { refreshProfile() }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Adding SupervisorJob to stop a crash. Supervision changes who is cancelled, not whether the failure happened. Used to silence an error, it converts a loud failure into a screen that quietly shows stale or half-correct data."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Unit 2 taught the context half of the launch(SupervisorJob()) trap: a Job passed as an argument is not merged into the hierarchy, it replaces the parent for that one coroutine. This is where the argument finishes."
+                },
+                {
+                  "type": "code",
+                  "code": "scope.launch(SupervisorJob()) {\n    launch { /* A */ }\n    launch { /* B */ }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Trace the Jobs. The fresh SupervisorJob becomes the parent of the coroutine that launch creates, replacing the scope's Job, so that coroutine is no longer a child of the scope: the scope will not wait for it and cancelling the scope will not cancel it. The coroutine itself still receives its own ordinary Job, and A and B are children of that ordinary Job. Their relationship to it is completely unsupervised, so if A fails it cancels their parent and B goes with it. The SupervisorJob supervises a boundary that has exactly one child — the launched coroutine — which is not the boundary anyone wanted."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "It is worth saying plainly that this is an anti-pattern rather than a recipe with a caveat. If the goal is isolated siblings, supervise the boundary those siblings actually sit on: wrap them in a supervisorScope, or build the owning scope with a SupervisorJob so that everything launched from the scope is supervised. The library says the same thing from the other direction: the launch reference states that it is incorrect to pass a Job element in the context because doing so breaks structured concurrency, and the overload that accepts one is deprecated."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Construct",
+                    "Which boundary is supervised",
+                    "What it does not do"
+                  ],
+                  "rows": [
+                    [
+                      "supervisorScope { }",
+                      "The scope and the coroutines launched directly in it.",
+                      "Does not reach nested children, and does not survive the block itself throwing."
+                    ],
+                    [
+                      "CoroutineScope(SupervisorJob() + ...)",
+                      "The scope's Job and everything launched from that scope.",
+                      "Does not supervise coroutines those children launch in turn."
+                    ],
+                    [
+                      "launch(SupervisorJob())",
+                      "A boundary with one child: the coroutine launch created.",
+                      "Does not supervise that coroutine's own children, and detaches it from the scope."
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The judgement underneath all of this is a design question rather than an API question. Supervision is a statement that these children are independent of one another. If they genuinely are — three panels, three uploads, three cached sources — isolating them is correct and the alternative is worse. If they are not, isolating them turns a clean, complete failure into a partially applied change or a screen showing data that no longer agrees with itself. The question to ask before reaching for it is not how to stop this failure cancelling everything, but whether this work is actually independent."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "A supervised child's failure does not cancel the supervisor or its siblings.",
+                    "Cancellation still travels down: cancelling a supervisor cancels its children.",
+                    "supervisorScope supervises its direct children only, and still waits for all of them.",
+                    "A supervised failure has no propagation path, so each child needs its own handling.",
+                    "launch(SupervisorJob()) re-parents one coroutine and supervises nothing useful."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Given a nested launch inside a supervisorScope whose inner child fails, name every coroutine that is cancelled and say why. Then explain why launch(SupervisorJob()) does not isolate the siblings inside it, in terms of which Job became whose parent."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_coroutine_context",
+            "lesson_exception_propagation"
+          ],
+          "sources": [
+            {
+              "title": "Coroutine exceptions handling",
+              "url": "https://kotlinlang.org/docs/exception-handling.html"
+            },
+            {
+              "title": "SupervisorJob",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-supervisor-job.html"
+            },
+            {
+              "title": "supervisorScope",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/supervisor-scope.html"
+            },
+            {
+              "title": "CoroutineExceptionHandler",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-exception-handler/"
+            },
+            {
+              "title": "launch",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/launch.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_shared_state_and_coordination",
+          "title": "Shared Mutable State and Choosing a Coordination Mechanism",
+          "summary": "Recognise state that two coroutines can touch at once and choose a mechanism for it on purpose. An atomic fits one independent value, confinement fits related state with one owner, and a Mutex fits a critical section that must stay consistent across several suspending steps.",
+          "primarySubtopicIds": [
+            "coroutine_parallelism"
+          ],
+          "supportingSubtopicIds": [
+            "hot_vs_cold_streams",
+            "jvm_fundamentals",
+            "android_memory_model",
+            "coroutine_dispatchers"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Everything so far has been about one coroutine's lifetime. This Lesson is about what happens when several of them succeed at the same time and touch the same state on the way. Nothing about coroutines makes shared mutable state safe; a coroutine is a unit of work, not a unit of isolation."
+                },
+                {
+                  "type": "code",
+                  "code": "var counter = 0\n\nwithContext(Dispatchers.Default) {\n    repeat(100) {\n        launch {\n            repeat(1_000) { counter++ }\n        }\n    }\n}\n// Very unlikely to print 100000.\nprintln(counter)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The reason is that counter++ is not one indivisible operation. It reads the current value, adds one, and writes the result back. Two coroutines running on different threads can read the same value before either writes, and one increment is lost. The Kotlin guide's version of this example makes the same point and notes that it is highly unlikely ever to print the expected total."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What makes it possible is genuine multi-threaded execution, which is a platform property rather than a coroutine property. On the JVM, Android and Native, Dispatchers.Default really does run coroutines on several threads at once, so the race above is real. On JS and Wasm the runtime is single-threaded, so the same code cannot interleave that way — which is a reason to be careful about where an example is claimed to apply, not a reason to write shared mutable state and hope."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A common first attempt does not work either. Marking the variable volatile on the JVM makes reads and writes individually atomic and visible to other threads, but it does not make a read-modify-write sequence atomic, so the lost update survives. Visibility and atomicity are different problems. The three answers that do work are a thread-safe or atomic operation, confining the state to a single execution owner, and mutual exclusion with a Mutex."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Concurrency plus shared mutable state is a race, whatever the concurrency is made of. The choice is between making the operation atomic, giving the state one owner, or guarding the critical section — and the right answer depends on the shape of the state, not on taste."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "An atomic fits when the state is one value and the update can be expressed as a single atomic operation. Kotlin's common atomics live in kotlin.concurrent.atomics and are available from commonMain on Kotlin 2.4.10, behind an opt-in: the API is still marked @ExperimentalAtomicApi, so a usage needs @OptIn or the matching compiler argument. Note also what the API documentation says about targets — on JS and Wasm the implementation is trivial and not thread-safe, because those platforms do not support multi-threading."
+                },
+                {
+                  "type": "code",
+                  "code": "import kotlin.concurrent.atomics.AtomicInt\nimport kotlin.concurrent.atomics.ExperimentalAtomicApi\nimport kotlin.concurrent.atomics.incrementAndFetch\n\n@OptIn(ExperimentalAtomicApi::class)\nclass RequestCounter {\n    private val served = AtomicInt(0)\n\n    fun record() {\n        served.incrementAndFetch()\n    }\n\n    fun snapshot(): Int = served.load()\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The limit of an atomic is the word one. An atomic counter is a correct counter; two atomics are not a correct pair. If the invariant is that a list and its size agree, or that a balance and a transaction log are updated together, making each field atomic protects each field and protects nothing about the relationship between them. That is the point at which an atomic is the wrong tool rather than an incomplete one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Confinement inverts the question. Instead of coordinating everyone who touches the state, run every mutation on one execution owner so that they cannot overlap in the first place. What makes it confinement is serialised execution, not encapsulation: a single-threaded context, or a dispatcher view whose parallelism is limited to one. Wrapping the fields in a class that exposes suspending functions achieves nothing by itself — two callers still enter those functions at the same time, on two threads, and race exactly as if they had touched the fields directly. The Kotlin guide is explicit about the granularity trap: confining each individual increment, so that every tiny mutation switches context, works very slowly, while confining a whole chunk of work to the owner is fast and still correct. The cost being paid is the context switch, so it should be paid once per body of work, not once per field write."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Confinement has a limit of its own, and it is the one that leads to the third mechanism. A serialised owner serialises execution, not a logical operation. The limitedParallelism KDoc makes the point itself: the limit is on how many coroutines execute at the same time, not on how many are inside the block, and it recommends a Mutex or Semaphore when what is wanted is mutual exclusion. If the owner suspends midway through an update, another coroutine can run on that context before it resumes."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A Mutex fits exactly that case: a critical section that must stay consistent across several steps, including suspending ones. Its defining property is that Mutex.lock() is a suspending function and does not block a thread, which is what makes it usable inside a coroutine at all. withLock is the structured form of lock, try, finally, unlock, so the lock is released even if the block throws or the coroutine is cancelled."
+                },
+                {
+                  "type": "code",
+                  "code": "private val mutex = Mutex()\nprivate var balance = 0\nprivate val ledger = mutableListOf<Entry>()\n\nsuspend fun apply(entry: Entry) {\n    mutex.withLock {\n        // The invariant is that these two agree, so both belong inside.\n        balance += entry.amount\n        ledger += entry\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Protecting a line instead of an invariant. A lock taken around one statement, or an atomic per field, makes each individual write safe and still allows another coroutine to observe the state halfway through a change that was supposed to be one step."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Choosing between the three is a design decision before it is a performance one, and the shape of the state usually decides it."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Shape of the state",
+                    "Mechanism that fits",
+                    "Why the others are worse"
+                  ],
+                  "rows": [
+                    [
+                      "One independent value with a single-operation update",
+                      "An atomic",
+                      "A Mutex serialises a hot path for no benefit; confinement adds a context switch for one write."
+                    ],
+                    [
+                      "Several related fields that must agree across a few steps",
+                      "A Mutex around the critical section",
+                      "Atomics protect each field and not the relationship; a serialised context does not hold across a suspension point inside the section."
+                    ],
+                    [
+                      "A body of related state with a natural owner",
+                      "Confinement to that owner",
+                      "Locks spread the invariant across every call site that has to remember to take them."
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The failure mode worth naming is reaching for a lock because code looked racy. A Mutex around a frequently taken path serialises it, and if the contention was imaginary the cost is not. The honest sequence is to establish that the state really is shared and really is mutable, choose the narrowest mechanism that protects the actual invariant, and then measure if the path matters. It is also worth asking whether the state needs to be shared at all: a value computed independently and returned is not a coordination problem, and a great deal of accidental sharing is really an ownership question that was never asked."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There is a fourth option that changes the question rather than answering it. Instead of making shared mutable state safe for everyone who touches it, coroutines can communicate: one coroutine owns the state and others send it values or commands, which is what a Channel is for. That is often the cleaner design when the alternative is several coroutines negotiating over one structure. The full comparison between passing values through a Channel and observing them through a stream belongs to the hot and cold streams material later in this curriculum; here it is enough to know the option exists and that share safely and communicate instead are different answers to the same problem."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "A race needs concurrency and shared mutable state; removing either removes the race.",
+                    "Read-modify-write is not atomic, and volatile fixes visibility rather than atomicity.",
+                    "Common atomics exist in kotlin.concurrent.atomics behind an experimental opt-in, and are trivial on single-threaded targets.",
+                    "An atomic protects one value; a Mutex protects an invariant across several steps.",
+                    "Confinement means serialised execution rather than encapsulation, and it is coarse-grained or it is slow.",
+                    "Mutex.lock() suspends rather than blocking, and withLock releases through failure and cancellation."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Given a counter incremented from many coroutines on a multi-threaded dispatcher, explain the wrong total in terms of read-modify-write. Then justify a choice among an atomic, a single owner and a Mutex for a given shape of state, and say when communication would be a better design than sharing."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_dispatchers",
+            "lesson_sequential_and_concurrent_work"
+          ],
+          "sources": [
+            {
+              "title": "Shared mutable state and concurrency",
+              "url": "https://kotlinlang.org/docs/shared-mutable-state-and-concurrency.html"
+            },
+            {
+              "title": "Mutex",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.sync/-mutex/"
+            },
+            {
+              "title": "kotlin.concurrent.atomics",
+              "url": "https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.concurrent.atomics/"
+            },
+            {
+              "title": "Dispatchers.Default",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-dispatchers/-default.html"
+            },
+            {
+              "title": "Channels",
+              "url": "https://kotlinlang.org/docs/channels.html"
+            },
+            {
+              "title": "CoroutineDispatcher.limitedParallelism",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-dispatcher/limited-parallelism.html"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
     }
   ]
 }

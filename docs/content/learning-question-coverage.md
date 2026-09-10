@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `057707a304c7a1504fb4c63a8242eef0096a4e67cc45e8fa4ca8ccc47f27af12` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `c027231fa86893132c0ec02d32743b9ffff32003d0f42abb0dea4aa641be19e4` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `5870ff2387861aad48c54681cff420572f40ce00800035f2e8747476a2ccfc32` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,12 +68,12 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 8 |
-| Active lessons in those units | 30 |
-| Distinct primary subtopics | 18 |
-| Distinct supporting subtopics | 45 |
-| Unique active questions reached through primary mappings | 34 |
-| Primary subtopics with at least one active question | 18 |
+| Active learning units | 9 |
+| Active lessons in those units | 35 |
+| Distinct primary subtopics | 21 |
+| Distinct supporting subtopics | 50 |
+| Unique active questions reached through primary mappings | 40 |
+| Primary subtopics with at least one active question | 21 |
 | Primary subtopics with no active question | 0 |
 | Active questions in the bank | 370 |
 | Deprecated questions excluded from this report | 41 |
@@ -99,6 +99,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Snapshot Fundamentals (`unit_snapshot_fundamentals`) | 2 | 1 | 2 | 1 | 1 | 4 |
 | Coroutine Fundamentals and Structured Concurrency (`unit_coroutines_and_structured_concurrency`) | 5 | 5 | 3 | 3 | 1 | 7 |
 | Coroutine Context, Dispatchers and Concurrent Work (`unit_context_dispatchers_and_concurrency`) | 4 | 4 | 1 | 3 | 1 | 5 |
+| Cancellation, Failure and Coordination (`unit_cancellation_failure_and_coordination`) | 5 | 4 | 2 | 3 | 2 | 7 |
 
 ## Unit and lesson detail
 
@@ -682,6 +683,102 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `coroutine_builders` — launch and async | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `structured_concurrency` — Structured concurrency | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_dispatchers` — Dispatchers | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+
+### Cancellation, Failure and Coordination (`unit_cancellation_failure_and_coordination`)
+
+Home topic: `async_reactive` — Coroutines, Flow & Reactive Programming.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 2 | `coroutine_cancellation_001`, `coroutine_exceptions_001` |
+| APPLIED | 3 | `cancellation_exception_rethrow`, `coroutine_async_await_sequential`, `coroutine_run_interruptible_blocking_call` |
+| ADVANCED | 2 | `coroutine_exception_handler_root_boundary`, `coroutine_supervisor_scope_direct_children` |
+
+#### Cancellation Is Cooperative (`lesson_cooperative_cancellation`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `coroutine_cancellation` — Cancellation | 1 | 2 | 0 | 3 | `cancellation_exception_rethrow`, `coroutine_cancellation_001`, `coroutine_run_interruptible_blocking_call` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `coroutine_jobs` — Job and parent-child relationships | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `structured_concurrency` — Structured concurrency | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `kotlin_exceptions` — Exception handling | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+
+#### Cleanup, `NonCancellable` and Timeouts (`lesson_cancellation_cleanup_and_timeouts`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `coroutine_cancellation` — Cancellation | 1 | 2 | 0 | 3 | `cancellation_exception_rethrow`, `coroutine_cancellation_001`, `coroutine_run_interruptible_blocking_call` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `kotlin_exceptions` — Exception handling | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `coroutine_context_switching` — withContext | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_jobs` — Job and parent-child relationships | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+
+#### How a Coroutine Failure Travels (`lesson_exception_propagation`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `coroutine_exceptions` — Exception propagation and handling | 1 | 0 | 1 | 2 | `coroutine_exception_handler_root_boundary`, `coroutine_exceptions_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `coroutine_builders` — launch and async | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_jobs` — Job and parent-child relationships | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_cancellation` — Cancellation | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `error_modeling` — Error representation/modeling | 2 | `architecture` — Application Architecture & Design Principles |
+
+#### `SupervisorJob`, `supervisorScope` and the Limits of Isolation (`lesson_supervision_and_failure_isolation`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `coroutine_supervision` — SupervisorJob and supervisorScope | 0 | 0 | 1 | 1 | `coroutine_supervisor_scope_direct_children` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `coroutine_exceptions` — Exception propagation and handling | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_context` — CoroutineContext | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `structured_concurrency` — Structured concurrency | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_jobs` — Job and parent-child relationships | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+
+#### Shared Mutable State and Choosing a Coordination Mechanism (`lesson_shared_state_and_coordination`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `coroutine_parallelism` — Concurrency and async/await | 0 | 1 | 0 | 1 | `coroutine_async_await_sequential` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `hot_vs_cold_streams` — Hot vs cold streams | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `jvm_fundamentals` — JVM fundamentals relevant to Android | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `android_memory_model` — Android/JVM memory fundamentals | 1 | `performance` — Performance, Memory & Debugging |
 | `coroutine_dispatchers` — Dispatchers | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
 ## Primary assessment gaps

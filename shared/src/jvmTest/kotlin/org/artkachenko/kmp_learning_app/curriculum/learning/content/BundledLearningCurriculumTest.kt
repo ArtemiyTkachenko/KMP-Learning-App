@@ -41,6 +41,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_snapshot_fundamentals",
                 "unit_coroutines_and_structured_concurrency",
                 "unit_context_dispatchers_and_concurrency",
+                "unit_cancellation_failure_and_coordination",
             ),
             units().map { it.id },
         )
@@ -55,6 +56,7 @@ internal class BundledLearningCurriculumTest {
                 "Snapshot Fundamentals",
                 "Coroutine Fundamentals and Structured Concurrency",
                 "Coroutine Context, Dispatchers and Concurrent Work",
+                "Cancellation, Failure and Coordination",
             ),
             units().map { it.title },
         )
@@ -69,6 +71,7 @@ internal class BundledLearningCurriculumTest {
                 "android_ui",
                 "android_ui",
                 "android_ui",
+                "async_reactive",
                 "async_reactive",
                 "async_reactive",
             ),
@@ -161,6 +164,31 @@ internal class BundledLearningCurriculumTest {
                 "lesson_sequential_and_concurrent_work",
             ),
             unit("unit_context_dispatchers_and_concurrency").lessons.map { it.id },
+        )
+
+        // Unit 3 escalates one argument: whether the work stops, what happens while it
+        // stops, what happens if it fails instead, how supervision changes that, and what
+        // concurrent work does to state it shares.
+        assertEquals(
+            listOf(
+                "lesson_cooperative_cancellation",
+                "lesson_cancellation_cleanup_and_timeouts",
+                "lesson_exception_propagation",
+                "lesson_supervision_and_failure_isolation",
+                "lesson_shared_state_and_coordination",
+            ),
+            unit("unit_cancellation_failure_and_coordination").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "Cancellation Is Cooperative",
+                "Cleanup, `NonCancellable` and Timeouts",
+                "How a Coroutine Failure Travels",
+                "`SupervisorJob`, `supervisorScope` and the Limits of Isolation",
+                "Shared Mutable State and Choosing a Coordination Mechanism",
+            ),
+            unit("unit_cancellation_failure_and_coordination").lessons.map { it.title },
         )
 
         assertEquals(
@@ -267,6 +295,19 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_context_dispatchers_and_concurrency").lessons.map { it.primarySubtopicIds },
         )
+
+        // `coroutine_cancellation` is primary in two Lessons at different depths, which the
+        // authoring contract allows: the request and the unwind are separate mental models.
+        assertEquals(
+            listOf(
+                listOf("coroutine_cancellation"),
+                listOf("coroutine_cancellation"),
+                listOf("coroutine_exceptions"),
+                listOf("coroutine_supervision"),
+                listOf("coroutine_parallelism"),
+            ),
+            unit("unit_cancellation_failure_and_coordination").lessons.map { it.primarySubtopicIds },
+        )
     }
 
     @Test
@@ -284,6 +325,40 @@ internal class BundledLearningCurriculumTest {
                 listOf("coroutine_builders", "structured_concurrency", "coroutine_dispatchers"),
             ),
             unit("unit_context_dispatchers_and_concurrency").lessons.map { it.supportingSubtopicIds },
+        )
+    }
+
+    @Test
+    fun cancellationUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        // The Kotlin, JVM, performance and hot-stream concepts this Unit leans on are
+        // assessed in their own Topics. Promoting any of them would hand Unit practice
+        // questions the Unit does not teach — GAP-U3-B in
+        // `docs/content/coroutines-flow-units-1-6-plan.md` depends on that staying true,
+        // because nothing in any Topic yet assesses coroutine races over shared state.
+        assertEquals(
+            listOf(
+                listOf("coroutine_jobs", "structured_concurrency", "kotlin_exceptions"),
+                listOf("kotlin_exceptions", "coroutine_context_switching", "coroutine_jobs"),
+                listOf(
+                    "coroutine_builders",
+                    "coroutine_jobs",
+                    "coroutine_cancellation",
+                    "error_modeling",
+                ),
+                listOf(
+                    "coroutine_exceptions",
+                    "coroutine_context",
+                    "structured_concurrency",
+                    "coroutine_jobs",
+                ),
+                listOf(
+                    "hot_vs_cold_streams",
+                    "jvm_fundamentals",
+                    "android_memory_model",
+                    "coroutine_dispatchers",
+                ),
+            ),
+            unit("unit_cancellation_failure_and_coordination").lessons.map { it.supportingSubtopicIds },
         )
     }
 

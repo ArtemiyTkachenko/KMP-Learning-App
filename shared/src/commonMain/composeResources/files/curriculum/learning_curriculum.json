@@ -3787,7 +3787,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The difference is invisible from the call site, which is why the obligation belongs to the function being called rather than to the caller. Android's guidance says so in as many words: suspending functions \"should be **main-safe**, meaning they're safe to call from the main thread\", and a class that performs long-running blocking operations \"must move execution off the main thread\" itself. The keyword is the promise; making the promise true is work somebody has to do, and it happens inside the function."
+                  "text": "The difference is invisible from the call site, which is why main-safety is treated as the obligation of the function being called rather than of the caller. Android's guidance states it in as many words: suspending functions \"should be **main-safe**, meaning they're safe to call from the main thread\", and a class that performs long-running blocking operations \"must move execution off the main thread\" itself. Read that for what it is — a **convention** about whose job main-safety is. Nothing enforces it: `readSettings` above breaks the convention and compiles perfectly, and no warning anywhere will mention it. So a `suspend` signature tells you what its author was supposed to have done, never what they did, and on a function you have not read the only way to find out is to open it."
                 },
                 {
                   "type": "paragraph",
@@ -4268,7 +4268,7 @@
                     "Work carries on after whatever asked for it has gone. The search still hits the network, still parses, still writes to the database, for a screen the user closed two navigations ago.",
                     "Results land on state that no longer matters, so a stale response can overwrite a newer one or call back into an object that has already been torn down.",
                     "Everything the coroutine captured stays reachable for as long as the coroutine does — the controller, the repository, whatever the lambda closed over, and transitively whatever those hold.",
-                    "A failure inside the coroutine has no lifecycle owner to report to, so it surfaces as a crash or a log line attributable to nothing in particular.",
+                    "A failure inside the coroutine surfaces detached from any lifecycle — a crash or a log line attributable to no screen, request or object in particular.",
                     "No caller can find out whether the work has finished, because nothing was returned and there is nothing to join."
                   ]
                 },
@@ -4317,7 +4317,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Ownership also decides where a failure lands, which is why the fourth symptom above is not a separate bug. An exception has to be reported to somebody, and a coroutine's ancestry is the only \"somebody\" the runtime knows about. The rules governing that trip belong to the failure unit; the part this lesson claims is narrower and sufficient — a coroutine with no meaningful owner has no meaningful place for its failure to go."
+                  "text": "One of the failures listed earlier — a failure surfacing with no lifecycle attached to it — is worth bounding, because it is easy to over-read. An un-owned coroutine's failure does not disappear — it surfaces somewhere, as a crash or as a log line — but it arrives detached from any lifecycle, so nothing identifies which screen, request or object it belonged to. That is a claim about diagnosability and nothing more. Where a coroutine failure actually travels, what can intercept it on the way, and how supervision changes that are the failure unit's subject; ownership does not settle them, and neither does this lesson."
                 },
                 {
                   "type": "paragraph",
@@ -4326,7 +4326,7 @@
                 {
                   "type": "callout",
                   "kind": "INTERVIEW_FOCUS",
-                  "text": "Expect a short code sample and \"what is wrong with this?\". Answer with ownership rather than with a rule: name the scope, say what cancels it, and when nothing does, say what that means concretely — work continuing past the screen, stale results landing on dead state, captured objects retained, failures with nowhere to go, and no way for a caller to know it finished. If the follow-up is about work that must outlive the screen, do not retreat to `GlobalScope`: say the lifetime should be longer *and owned*, injected rather than reached for, and that surviving the process is a scheduler's job rather than a scope's."
+                  "text": "Expect a short code sample and \"what is wrong with this?\". Answer with ownership rather than with a rule: name the scope, say what cancels it, and when nothing does, say what that means concretely — work continuing past the screen, stale results landing on dead state, captured objects retained, failures surfacing with no lifecycle attached to them, and no way for a caller to know it finished. If the follow-up is about work that must outlive the screen, do not retreat to `GlobalScope`: say the lifetime should be longer *and owned*, injected rather than reached for, and that surviving the process is a scheduler's job rather than a scope's."
                 }
               ]
             }

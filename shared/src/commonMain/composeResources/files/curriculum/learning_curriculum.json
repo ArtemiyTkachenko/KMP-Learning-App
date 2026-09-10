@@ -3817,7 +3817,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "That points at a second consequence, which the cancellation unit later builds on. Because a coroutine only yields at a suspension point, a coroutine that never suspends never reaches a moment at which anything about it can be acted on from outside — including a request to stop. That property is why cancellation in Kotlin works the way it does, and it is the third unit's subject rather than this one's."
+                  "text": "That points at a second consequence, which the cancellation unit later builds on. Cancellation in Kotlin is **cooperative**: a coroutine finds out it has been cancelled where it suspends at a cancellable point, or where its own code deliberately looks. A coroutine that does neither runs to the end regardless of what anybody else has asked for — the request is recorded and simply never observed. Where those checks belong, what they cost, and what a cancelled coroutine may still do are the third unit's subject rather than this one's."
                 },
                 {
                   "type": "callout",
@@ -4220,7 +4220,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Mechanically, a scope is a `CoroutineContext`, and the element of that context which matters here is the `Job` from the previous lesson. Launching from a scope makes the scope's job the parent of the new coroutine, and the identity is checkable rather than metaphorical:"
+                  "text": "Mechanically a scope is a very thin thing. The `CoroutineScope` interface declares exactly one property, `coroutineContext`, and no functions at all — `launch` and `async` are extensions on it. So a scope **holds** a `CoroutineContext` rather than being one, and the element of that context which matters here is the `Job` from the previous lesson. Launching from a scope makes the scope's job the parent of the new coroutine, and the identity is checkable rather than metaphorical:"
                 },
                 {
                   "type": "code",
@@ -4229,7 +4229,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Two consequences follow, and between them they are the whole lesson. Cancelling a scope cancels everything launched in it, recursively — \"if a scope is cancelled, all coroutines in it are cancelled too\". And a scope \"cannot be completed until all its children are completed\". So the lifetime of every coroutine in an application is the lifetime of the scope it was launched from, and the **owner** of a scope is whoever calls `cancel()` on it."
+                  "text": "Two consequences follow, and between them they are the whole lesson. Cancelling a scope cancels everything launched in it, recursively — \"if a scope is cancelled, all coroutines in it are cancelled too\". And a scope \"cannot be completed until all its children are completed\". So a coroutine's lifetime is the lifetime of the scope it was launched from, and the **owner** of a scope is whoever calls `cancel()` on it — which also means a scope nobody can cancel is a lifetime nobody can end."
                 },
                 {
                   "type": "paragraph",
@@ -4383,11 +4383,15 @@
                 {
                   "type": "bullet_list",
                   "items": [
-                    "**Every coroutine has a parent.** There is no way to start one from nowhere, because the builders are extensions on a scope and the scope carries a job.",
+                    "**A coroutine launched in a scope becomes a child of that scope's job.** The builders are extensions on `CoroutineScope`, so structured work is attached by construction rather than by somebody remembering to attach it.",
                     "**A parent does not complete until its children do**, even when the parent's own body finished long beforehand — the completing state from the previous lesson is this guarantee made observable.",
-                    "**Cancellation travels down.** Cancelling a parent cancels its children recursively, so a lifetime that ends, ends completely.",
+                    "**Cancellation travels down.** Cancelling a parent cancels its children recursively, so the request reaches every descendant rather than only the coroutine you named.",
                     "**Failure travels up through the same structure.** A child's failure is not a private event, and where it goes is decided by the hierarchy rather than by luck."
                   ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One qualification keeps that first point honest, and it is the reason the previous lesson spent so long on ownership. The attachment comes from the scope, so a scope carrying no job of its own starts **root** coroutines — coroutines with no parent, and therefore with none of the four guarantees just listed. `GlobalScope` is the one you will meet: its documentation describes it as a `CoroutineScope` without any `Job`, used \"to launch top-level coroutines whose lifecycles are not limited by structured concurrency\", which is why nothing can cancel them together or wait for them. A coroutine can also be re-parented deliberately by what is passed to the builder, and that is the context unit's subject. Structured concurrency is not something the runtime imposes on every coroutine; it is a property of coroutines started inside a structure — which is exactly why opting out is possible, and worth being able to spot."
                 },
                 {
                   "type": "paragraph",
@@ -4464,7 +4468,7 @@
                   ],
                   "rows": [
                     [
-                      "Every coroutine has a parent and a bounded lifetime",
+                      "A coroutine started in a scope is a child of that scope, with a lifetime bounded by it",
                       "That anything runs in the background. Where code executes is the dispatcher's business, and a child inherits one rather than being given a new one"
                     ],
                     [
@@ -4491,7 +4495,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The reason all of this is worth the discipline is a property that is easy to state and very hard to obtain any other way: in a structured program the call structure and the lifetime of the work agree. If a function returned, its work is over. If a scope was cancelled, nothing it started is still running. Systems without that property turn \"is anything still going?\" into an empirical question, and answering empirical questions about concurrency is where the days go."
+                  "text": "The reason all of this is worth the discipline is a property that is easy to state and very hard to obtain any other way: in a structured program the call structure and the lifetime of the work agree. If a function returned, its work is over. If a scope was cancelled, the request reached every descendant rather than the one coroutine somebody remembered, and that scope's job completing is the moment at which none of it is running any more. Systems without those properties turn \"is anything still going?\" into an empirical question, and answering empirical questions about concurrency is where the days go."
                 },
                 {
                   "type": "callout",
@@ -4518,6 +4522,10 @@
             {
               "title": "CoroutineScope",
               "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-scope/"
+            },
+            {
+              "title": "GlobalScope",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-global-scope/"
             }
           ],
           "status": "ACTIVE"

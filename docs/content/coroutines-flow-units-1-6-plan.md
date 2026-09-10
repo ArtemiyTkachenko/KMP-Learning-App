@@ -563,6 +563,24 @@ Everything the Unit defers is prose naming the Unit that owns it, never an id: d
 idiom in `lesson_coroutine_scope_ownership`, and is explicitly set aside there as failure
 propagation the failure Unit teaches.
 
+### Corrections made during review
+
+Three claims in the first draft were over-strong and were corrected before the Unit shipped. They
+are recorded because each is a claim a later Unit could easily reintroduce.
+
+| Draft claim | Why it was wrong | What ships |
+| --- | --- | --- |
+| L1.5: "Every coroutine has a parent" | A scope carrying no `Job` starts **root** coroutines, and a builder's context can re-parent one, so universal parenthood is not a structured-concurrency guarantee. It also contradicted L1.4's own `GlobalScope` material | The guarantee is stated as "a coroutine launched in a scope becomes a child of that scope's job", followed by a paragraph naming the root-coroutine exception, quoting the `GlobalScope` KDoc, and pointing re-parenting at Unit 2 |
+| L1.1: a coroutine that never suspends "never reaches a moment at which anything about it can be acted on from outside" | Cancellation is observed at a cancellable suspension point **or** at an explicit check, so suspension is not the only route. The cancellation page says exactly that | The paragraph now names cancellation as cooperative and says a coroutine that neither suspends nor looks runs to the end. The check APIs are still not named — that boundary is unchanged |
+| L1.5: "If a scope was cancelled, nothing it started is still running" | `cancel()` requests cancellation and returns; children may still be finishing. The stopped-work guarantee belongs to completion, not to the request | The sentence separates the two: the request reaches every descendant, and the scope's job completing is the moment nothing is running |
+
+One smaller correction in the same pass: L1.4 said "a scope is a `CoroutineContext`". `CoroutineScope`
+is an interface declaring one property, `coroutineContext`, and no functions, so the Lesson now says a
+scope *holds* a context rather than being one. `GlobalScope`'s KDoc was added to L1.5's Sources for the
+quotation it now carries.
+
+None of these changed an identity, a mapping, an order, or a Lesson boundary.
+
 ### Claims that were executed rather than reasoned about
 
 A throwaway JVM test probed each of these against the resolved `kotlinx-coroutines-core:1.11.0`

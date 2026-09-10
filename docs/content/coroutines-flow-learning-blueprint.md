@@ -952,12 +952,17 @@ any material edit.
 
 ## Status
 
-This blueprint is complete as a map. **Unit 1 is authored and shipped** by E24-02.
-**Unit 2 is authored in production format** by E24-03, pending review and merge. All Unit 2
-identities, order, mappings and boundaries are preserved. Its authoring outcomes record
-precision corrections to context inheritance, `Main` availability, dispatch overhead and
-`async` scheduling; no Teach/Bridge/Reference/Exclude decision changed.
-Units 3 to 6 are not authored yet: E24-04 through E24-07 author them in order, against the
+This blueprint is complete as a map. **Unit 1 is authored and shipped** by E24-02, and
+**Unit 2 by E24-03**. All Unit 2 identities, order, mappings and boundaries are preserved;
+its authoring outcomes record precision corrections to context inheritance, `Main`
+availability, dispatch overhead and `async` scheduling, and no Teach/Bridge/Reference/Exclude
+decision changed. **Unit 3 is authored in production format** by E24-04, pending review and
+merge, with every identity, order, mapping and boundary above preserved and no
+Teach/Bridge/Reference/Exclude decision changed. Two source findings reached its Lessons: the
+cancellation guide now teaches **prompt cancellation**, which L3.2's Core adopts, and common
+`kotlin.concurrent.atomics` is available but still opt-in, which is what L3.5's atomic example
+uses.
+Units 4 to 6 are not authored yet: E24-05 through E24-07 author them in order, against the
 confirmed identities and boundaries in
 [`coroutines-flow-units-1-6-plan.md`](coroutines-flow-units-1-6-plan.md). When authoring
 reveals a wrong Lesson boundary, update this file in the same change.

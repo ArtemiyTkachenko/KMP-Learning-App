@@ -67,9 +67,11 @@ re-checked rather than re-derived: [Authoring outcomes for Unit 1](#authoring-ou
 is the first of those and is required reading for E24-03 and E24-08.
 
 **Authoring status.** Unit 1 is authored and shipped by E24-02; see
-[Authoring outcomes for Unit 1](#authoring-outcomes-for-unit-1). Unit 2 is authored in
-production format by E24-03, pending review and merge; see
-[Authoring outcomes for Unit 2](#authoring-outcomes-for-unit-2). Units 3 to 6 remain proposed.
+[Authoring outcomes for Unit 1](#authoring-outcomes-for-unit-1). Unit 2 is authored and
+shipped by E24-03; see [Authoring outcomes for Unit 2](#authoring-outcomes-for-unit-2).
+Unit 3 is authored in production format by E24-04, pending review and merge; see
+[Authoring outcomes for Unit 3](#authoring-outcomes-for-unit-3). Units 4 to 6 remain
+proposed.
 
 ---
 
@@ -787,6 +789,252 @@ supporting mappings. The existing validator covers schema coherence, stable ID u
 taxonomy references, primary/supporting overlap and related IDs. Learning/question coverage
 was regenerated; the unchanged question-bank snapshot needs no regeneration.
 
+## Authoring outcomes for Unit 3
+
+E24-04 authors `unit_cancellation_failure_and_coordination` immediately after Unit 2 in
+`learning_curriculum.json`. Everything below was executed, opened or read during that work;
+nothing here is recalled from the E24-01 review.
+
+### What did not change
+
+All five proposed Lesson ids, titles, authored order and exact primary/supporting mappings
+shipped verbatim, as did the Unit id, title and `async_reactive` home Topic. No Lesson was
+renamed, reordered, split or merged, and no boundary in the E24-01 plan was found to be
+wrong, so no canonical planning correction was required. Each Lesson carries Core, Practical
+and Senior depth and runs 1,062–1,152 words, at the lower end of the range the shipped
+Compose and E24 Lessons occupy. No Question, taxonomy record or earlier Unit changed.
+
+`coroutine_cancellation` is deliberately primary in both L3.1 and L3.2, and
+`coroutine_parallelism` is primary in both L2.4 and L3.5. Both were confirmed as the
+contract's expected shape rather than duplication: the request and the unwind are separate
+mental models, and Unit practice counts a shared Subtopic's Questions exactly once.
+
+### Corrections inherited and not reintroduced
+
+The six incorrect simplifications Units 1 and 2 corrected are each contradicted explicitly
+somewhere in the finished prose rather than merely avoided:
+
+| Simplification | Where Unit 3 contradicts it |
+| --- | --- |
+| "`cancel()` means the coroutine has already stopped" | L3.1's Core separates the request from completion, and its Practical shows `cancel()` then `join()` as two steps with a `COMMON_MISTAKE` callout on reading a cancelled scope as a stopped one |
+| "Every coroutine always has its launching coroutine as parent" | L3.4's Senior traces `launch(SupervisorJob())` and states that the supplied Job replaced the scope's Job as the parent |
+| "`async` only matters when `await()` is called" | L3.3's Practical runs the dropped-`Deferred` case and separates propagation from observation |
+| "A suspending function is automatically main-safe" | Not restated anywhere; L3.1 makes the parallel point that `suspend` alone inserts no cancellation check either |
+| "A scope and every child have the same lifetime" | L3.1 says cancelling a parent asks every descendant to stop rather than asserting they have |
+| "`launch(SupervisorJob())` inserts supervision into the existing hierarchy" | L3.4's Senior completes the trap and calls the pattern an anti-pattern rather than a recipe |
+
+### The timeout measurement, re-run
+
+The E24-01 measurement was recreated on this project's JVM target against the resolved
+`kotlinx-coroutines-core-jvm:1.11.0` — the artifact path was printed from the running
+classpath rather than assumed — and the throwaway test was then deleted. Each case used a
+100 ms deadline and `withTimeoutOrNull`. Two runs; the ranges below are across both.
+
+| Case | Body | Returned | Elapsed |
+| --- | --- | --- | --- |
+| A | `withContext(Dispatchers.IO) { Thread.sleep(1500) }` | `null` | 1682–1730 ms |
+| B | a CPU loop running ~1500 ms with no suspension point or cancellation check | **the computed value**, not `null` | 1504–1507 ms |
+| C | `join()` on a job launched into a separate, non-child scope | `null`; the job was still active afterwards | 203–229 ms |
+| D | the same blocking call as A wrapped in `runInterruptible` | `null` | 199–208 ms |
+
+**One correction to how E24-01's numbers should be read.** This run added two calibration
+cases E24-01 did not have: a cooperative `delay(1500)` under the same 100 ms deadline
+returned in 171–212 ms, and under a 250 ms deadline in 343–355 ms. There is therefore a
+roughly 100 ms fixed overhead in this harness on this machine, so case C's 203 ms and case
+D's 199 ms are "at the deadline", not "at twice the deadline". E24-01's 108 ms for case C is
+consistent with the same behaviour measured with less overhead. **The conceptual findings are
+unchanged and were reproduced exactly:** A and B both overran the deadline by roughly fifteen
+times with the caller waiting the whole time, B returned a successful computed value, and C
+is the only case where the caller moved on early — because the awaited work was never a
+child. L3.2 presents the table with the calibration stated and labels the figures
+measurements rather than API guarantees.
+
+Case D is new to E24-04 and was added because the `runInterruptible` claim deserved data
+rather than only prose: the same blocking call that overran by 1.6 s in case A stopped at the
+deadline when wrapped. The `InterruptedException` was not observed outside the
+`runInterruptible` block, which matches the guide's example — the interruption is raised
+inside the block and reaches the coroutine as a `CancellationException`.
+
+### The existing Question explanation defect, confirmed and not fixed here
+
+`coroutine_run_interruptible_blocking_call`'s explanation ends with the clause "withTimeout
+resumes the coroutine while leaving the blocked thread occupied". Case A is that exact
+scenario and contradicts it: the coroutine was not resumed until the blocking call returned
+1.7 s later. The Question's key and all four options remain correct — its `withTimeout`
+distractor claims the call "abandons the blocking method", which is genuinely false — so this
+is a wrong rationale attached to a right answer.
+
+**It was not corrected in E24-04.** The repository's correctness rules require that a shipped
+Question's answer key be right, and it is; nothing about the defect makes the Question
+unanswerable or teaches a wrong key. Correcting it would also touch a Question record in an
+issue whose scope is Lesson authoring, and E24-08 already owns both this clause and the
+Question's Subtopic review, so splitting them across two issues would make the audit trail
+worse. L3.2 teaches the correct model, which is what E24-04 owes the learner.
+
+### Atomics in common code, resolved
+
+E24-01's first [unresolved question](#unresolved-questions) is answered. Read from the
+resolved `kotlin-stdlib:2.4.10` sources artifact and confirmed by compiling against this
+repository's own common source set:
+
+- **Available from common code.** `kotlin.concurrent.atomics.AtomicInt`, `AtomicLong`,
+  `AtomicBoolean` and `AtomicReference` are `expect class` declarations in the stdlib's
+  `commonMain`, `@SinceKotlin("2.1")`. A probe file using `AtomicInt` and `incrementAndFetch`
+  in `shared/src/commonMain` compiled successfully under
+  `./gradlew :shared:compileCommonMainKotlinMetadata`, so the API is genuinely available for
+  every target this repository declares.
+- **Still experimental, at error level.** Every declaration carries `@ExperimentalAtomicApi`,
+  which is `@RequiresOptIn(level = RequiresOptIn.Level.ERROR)`. Removing `@OptIn` from the
+  same probe failed the metadata compilation with four opt-in errors, so the annotation is a
+  real requirement rather than a warning.
+- **Not thread-safe everywhere.** The KDoc states that "For JS and Wasm [AtomicInt] is
+  implemented trivially and is not thread-safe since these platforms do not support
+  multi-threading", and that the `update` family invokes its transform exactly once there.
+
+**Decision.** The opt-in is one annotation, so it does not make the example distracting, and
+the common API is the accurate answer for a multiplatform curriculum. L3.5 therefore shows
+`kotlin.concurrent.atomics` in common code with the `@OptIn(ExperimentalAtomicApi::class)`
+line visible, states the experimental status in prose, and states the JS/Wasm caveat next to
+it. `java.util.concurrent.atomic` appears nowhere in the Unit. Note that the Kotlin guide's
+own shared-state page still uses `AtomicInteger`, which is JVM-only — that is one of the
+places where following the guide literally would have produced an inaccurate multiplatform
+Lesson.
+
+### JVM and multiplatform decisions
+
+- `runInterruptible` and thread interruption are labelled JVM-only in L3.2's Senior section,
+  in the prose and in a comment inside the example. The Lesson states that no dispatcher
+  interrupts threads by itself and that other targets have no equivalent.
+- `Thread.sleep` appears only inside the measurement table, as the body of a labelled JVM
+  case.
+- `Dispatchers.IO` appears twice, both times inside an example explicitly marked Android/JVM.
+- L3.5 states that genuine multi-threaded execution is a platform property: the race is real
+  on JVM, Android and Native, and the same code cannot interleave that way on JS or Wasm.
+- The platform-specific last-resort handling of an unpropagated exception is named in one
+  clause in L3.3 as differing per target and is not enumerated. The blueprint marks that
+  material **Exclude**, and enumerating four platform behaviours would have turned a boundary
+  note into a section.
+
+### Source decisions and freshness
+
+Every page was opened on 2026-09-10 rather than recalled, and two of the four legacy pages
+E24-01 listed have moved.
+
+| Page | State on 2026-09-10 | Consequence |
+| --- | --- | --- |
+| `coroutines-cancellation.html` | "Cancellation and timeouts", dated **27 July 2026**. Sections: cancel, cancellation propagation, reacting to cancellation, suspension points, `yield()`, explicit checks, interrupting blocking code, **handling values safely when canceling**, non-cancelable blocks, timeout | Structure matches what E24-01 recorded, plus a **new section on prompt cancellation** that E24-01 did not have. L3.2's Core teaches it |
+| `exception-handling.html` | "Coroutine exceptions handling", dated **20 July 2026**. Legacy section structure unchanged: propagation, `CoroutineExceptionHandler`, cancellation and exceptions, aggregation, supervision | Still the guide-level authority for L3.3 and L3.4, as E24-01 expected |
+| `shared-mutable-state-and-concurrency.html` | Legacy structure, dated **27 September 2024** | Still current and still the best guide source for L3.5's three-option structure, but its atomic example is JVM-only |
+| `channels.html` | Legacy structure, unchanged | Cited once by L3.5 for the bounded contrast |
+
+Three findings that changed how a Lesson is written:
+
+1. **Prompt cancellation.** The cancellation page now states that a cancelled suspended
+   coroutine "resumes with a `CancellationException` instead of returning any values, even if
+   those values are already available", and gives the `BufferedReader` example where a
+   resource is acquired but the value never reaches the caller. This is a real cleanup hazard
+   E24-01's plan did not name, and L3.2's Core now teaches it before `finally`.
+2. **`withTimeout` is no longer on the guide page.** The rewritten Timeout section documents
+   only `withTimeoutOrNull` with a `Duration`. `withTimeout`'s semantics and
+   `TimeoutCancellationException` come from the API reference, which is what L3.2 cites. That
+   KDoc is also where the two sentences the Lesson leans on live: `withTimeout` "behaves like
+   `coroutineScope`, as it, too, creates a new lexically scoped child coroutine", and
+   "Cancellation on timeout runs concurrently the code running in the block and may happen at
+   any time, even after the block finishes executing but before the caller gets resumed with
+   the result."
+3. **`CoroutineExceptionHandler`'s KDoc has a better model than the guide.** The 1.11.0
+   reference frames the handler as an element "to handle coroutine exceptions without a clear
+   propagation path" and enumerates the four recognised paths, where the guide still says
+   "root". The two agree — a `launch` on a scope with no `Job`, or a direct child of a
+   supervisor, is exactly a case with no path — but the path model is the one a reader can
+   apply to an arbitrary tree, so L3.3 teaches it and the guide's wording is the supporting
+   citation.
+
+`NonCancellable`'s KDoc supplied one framing E24-01 did not have: `launch(NonCancellable)`
+"severs" the parent-child relation entirely, and code after a `withContext(NonCancellable)`
+block still runs in a cancelled coroutine. Both are in L3.2's Practical. `Mutex`'s KDoc
+supplied non-reentrancy, which L3.5 does not teach but which was checked before writing that
+`withLock` is the structured form.
+
+### The exception-handler boundary as taught
+
+E24-04's acceptance criteria require this to be precise, so it is recorded exactly. L3.3's
+Senior section lists the four propagation paths the library recognises — a `try`/`catch`
+inside the coroutine, a lexically scoped builder rethrowing to its caller, structured transfer
+to a parent that processes child failures, and a builder whose return value allows querying
+the result — and then states that the handler is invoked only when none of them applies. Two
+worked negatives follow: a handler on an ordinary child inside `coroutineScope`, which never
+runs because the failure does have a path, and a handler on `async`, which is redundant
+because the caller of `await()` owns that failure. The Lesson also states that the handler
+cannot recover, because it runs after the coroutine has already completed with the exception.
+No sentence in the Unit says "catches errors in the scope", "global try/catch", or "handles
+all uncaught child exceptions".
+
+### Semantic review of the Questions this Unit now reaches
+
+All seven ACTIVE Questions reachable through Unit 3's four primary concepts were read in full
+— stem, options, key, explanation and Sources — against the finished prose.
+
+| Question | Verdict against the shipped Lessons |
+| --- | --- |
+| `coroutine_cancellation_001` | Answerable from L3.1's Core and Practical. Its three distractors — thread interruption, finishing the current block, taking effect at a dispatcher switch — are each contradicted directly, the first by L3.2's JVM-only framing of interruption |
+| `cancellation_exception_rethrow` | Answerable from L3.1's Senior, which argues from what the handler consumes rather than restating a rule, and shows the `ensureActive()` form the API reference recommends |
+| `coroutine_run_interruptible_blocking_call` | Answerable from L3.2's Senior. The key's mechanism, the `Dispatchers.IO` distractor and the pre-call `ensureActive()` distractor are each addressed. Its explanation defect is recorded above and left to E24-08 |
+| `coroutine_exceptions_001` | Answerable from L3.3's Core, which walks the three-child tree the Question describes |
+| `coroutine_exception_handler_root_boundary` | Answerable from L3.3's Senior. Its key is phrased as "uncaught root-coroutine exceptions"; the Lesson teaches the propagation-path model, which subsumes that phrasing rather than contradicting it, and teaches the `async`/`await` half explicitly |
+| `coroutine_supervisor_scope_direct_children` | Answerable from L3.4's Core, which uses the same nested shape and asks the reader to predict it before giving the answer |
+| `coroutine_async_await_sequential` | Owned by L2.4 and unchanged. It reaches Unit 3 because `coroutine_parallelism` is L3.5's primary concept; L3.5 does not teach `await` sequencing and does not need to, since both Lessons ship and the reasoning is taught in Unit 2 |
+
+Two Questions outside this Unit's mappings were re-read because the issue requires it:
+
+- `parent_cancellation_propagates_children` is **now answerable**, but from Unit 3, not from
+  the Unit its Subtopic reaches. Its three distractors need cooperative resumption, that
+  `cancel()` returns at once, and that a suspending call in `finally` needs `NonCancellable` —
+  L3.1 and L3.2 teach all three. This strengthens rather than changes the recorded re-map
+  candidate: the reasoning now demonstrably lives in Unit 3 while `coroutine_jobs` keeps it in
+  Unit 1 practice. Neither Unit was bent to accommodate the mapping.
+- `coroutine_async_exception_surfaces_at_await` is **now answerable** from L3.3's Practical,
+  which runs the dropped-`Deferred` case, and L3.4, which supplies the `supervisorScope`
+  clause its explanation depends on. Its Subtopic still reaches Unit 1. Recorded, not fixed.
+
+`coroutine_supervisor_job_child_context_noop` was also re-read as required Unit 2 context. Its
+reasoning is now complete across L2.1 and L3.4 as this plan intended, which was the split
+E24-03 recorded as deliberate.
+
+### The known gaps were not filled
+
+E24-04 authored no Question. GAP-U3-A and GAP-U3-B are unchanged; what changed is that the
+reasoning each describes is now taught, so E24-08 has something to assess against.
+
+| Gap | Where the reasoning now lives |
+| --- | --- |
+| GAP-U3-A — cleanup and timeouts | L3.2 in full: prompt cancellation, the broken and fixed suspending `close()`, `NonCancellable`'s three boundaries, timeout as cancellation with a clock, and the measured cases where a deadline bounds nothing |
+| GAP-U3-B — races and coordination | L3.5 in full: the lost-update example, the volatile dead end, the three mechanisms, the shape-of-state comparison table, and the one-paragraph `Channel` bridge |
+
+The Unit's supporting concepts are asserted in a new bundle test so that a later change cannot
+quietly promote `jvm_fundamentals`, `android_memory_model` or `hot_vs_cold_streams` to primary
+and claim Unit practice that no `async_reactive` Question provides — which would hide GAP-U3-B
+rather than close it.
+
+### Cross-links and validation
+
+Backward-only, and every target already ships:
+
+- L3.1: `lesson_job_and_parent_child`, `lesson_structured_concurrency`.
+- L3.2: `lesson_cooperative_cancellation`, `lesson_with_context_and_main_safety`.
+- L3.3: `lesson_coroutine_builders`, `lesson_structured_concurrency`,
+  `lesson_cooperative_cancellation`.
+- L3.4: `lesson_coroutine_context`, `lesson_exception_propagation`.
+- L3.5: `lesson_dispatchers`, `lesson_sequential_and_concurrent_work`.
+
+Nothing links into an unshipped Flow Unit. The forward references the Unit does make are prose:
+L3.5 points the full Channel-versus-stream comparison at "the hot and cold streams material
+later in this curriculum" without naming an id, and L3.1 defers the cancellation-versus-failure
+asymmetry to L3.3 by describing it rather than linking.
+
+E24-05 was not started, and no Flow, testing, Compose-effect or architecture material was
+authored.
+
 ## Cross-linking rules
 
 `LearningCurriculumValidator` rejects a `relatedLessonIds` entry naming an unknown Lesson
@@ -1025,12 +1273,12 @@ Checked 2026-09-10:
 | Page | State on 2026-09-10 |
 | --- | --- |
 | `coroutines-basics.html` | **Rewritten** ("Coroutines basics", dated 07 September 2026). Now frames builders as `CoroutineScope.launch()` extensions and covers suspension, scope, structured concurrency and `Job` |
-| `coroutines-cancellation.html` | **Rewritten** and now titled **"Cancellation and timeouts"**, with sections for cooperative cancellation, `yield()`, explicit checks, interrupting blocking code, `NonCancellable` and timeout |
+| `coroutines-cancellation.html` | **Rewritten** and now titled **"Cancellation and timeouts"**, with sections for cooperative cancellation, `yield()`, explicit checks, interrupting blocking code, `NonCancellable` and timeout. Dated 27 July 2026; E24-04 also found a **prompt-cancellation section** and that the page no longer documents `withTimeout` itself |
 | `coroutines-flow.html` | **Rewritten** and now titled **"Flows"**, with only two top-level sections — Cold flows and Hot flows |
 | `coroutines-flow-operators.html` | **New page**, "Flow operators": intermediate/terminal, transforming, filtering, concurrent processing, combining, lifecycle, terminal |
-| `exception-handling.html` | **Legacy guide structure**, still the authority for propagation, `CoroutineExceptionHandler` and supervision |
+| `exception-handling.html` | **Legacy guide structure**, still the authority for propagation, `CoroutineExceptionHandler` and supervision. Dated 20 July 2026 when E24-04 re-read it; the 1.11.0 `CoroutineExceptionHandler` KDoc carries a more precise "propagation path" model than the page's "root" wording |
 | `coroutine-context-and-dispatchers.html` | **Legacy guide structure**; covers context, `Job` in the context, children, combining elements. **Does not cover `Dispatchers.IO` or `Dispatchers.Main`** |
-| `shared-mutable-state-and-concurrency.html`, `channels.html`, `composing-suspending-functions.html` | **Legacy guide structure**, still current and still the best guide-level sources for their subjects |
+| `shared-mutable-state-and-concurrency.html`, `channels.html`, `composing-suspending-functions.html` | **Legacy guide structure**, still current and still the best guide-level sources for their subjects. The shared-state page is dated 27 September 2024 and its atomic example is `AtomicInteger`, which is JVM-only |
 
 Three instructions follow for E24-05 and E24-06 in particular:
 
@@ -1110,6 +1358,12 @@ What this establishes, and what L3.2 must teach:
   awaited work was never a child. That is L1.4's ownership argument arriving from a different
   direction, and it is the correct place to make the connection.
 
+**Re-run by E24-04 on 2026-09-10.** All three cases reproduced against the same resolved
+artifact, with one correction to how the numbers should be read: this harness carries roughly
+100 ms of fixed overhead, established with calibration cases E24-01 did not have. The
+conceptual findings are unchanged. See
+[the timeout measurement, re-run](#the-timeout-measurement-re-run).
+
 **Consequence for the question bank.** The ACTIVE Question
 `coroutine_run_interruptible_blocking_call` explains its `withTimeout` distractor with the
 clause "withTimeout resumes the coroutine while leaving the blocked thread occupied."
@@ -1157,6 +1411,14 @@ time. If it is still opt-in, L3.5 should teach the *decision* (an atomic fits on
 variable) and show the platform-specific code as a JVM example rather than presenting an
 unavailable common API.
 
+**Resolved by E24-04 on 2026-09-10.** The API *is* available from `commonMain` for every
+target this repository declares, and it *is* still `@ExperimentalAtomicApi` at
+`RequiresOptIn.Level.ERROR`; on JS and Wasm the implementation is trivial and not
+thread-safe. Both halves were checked against the resolved stdlib artifact and by compiling
+a probe in this repository's own common source set. L3.5 ships the common API with the
+`@OptIn` line visible and the caveats stated — see
+[Atomics in common code, resolved](#atomics-in-common-code-resolved).
+
 #### `runInterruptible` is JVM-only
 
 Thread interruption is a JVM mechanism. The existing Question
@@ -1164,10 +1426,17 @@ Thread interruption is a JVM mechanism. The existing Question
 must scope the claim to the JVM rather than presenting interruption as part of the coroutine
 model everywhere.
 
+**E24-04 measured what it changes.** The same blocking call that overran a 100 ms deadline by
+1.6 s unwrapped stopped at the deadline once wrapped in `runInterruptible`, and the
+`InterruptedException` was not visible outside the block — it reaches the coroutine as a
+`CancellationException`. Case D in
+[the timeout measurement](#the-timeout-measurement-re-run).
+
 ### Unresolved questions
 
-1. Whether `kotlin.concurrent.atomics` is still experimental on Kotlin 2.4.10. Deliberately
-   left as an assumption rather than a claim; re-check at E24-04.
+1. ~~Whether `kotlin.concurrent.atomics` is still experimental on Kotlin 2.4.10.~~
+   **Answered by E24-04:** available from common code, and still experimental at opt-in
+   error level. See [Atomics in common code](#atomics-in-common-code).
 2. Whether `flatMapLatest`, `flatMapMerge`, `debounce` and `sample` still carry
    `@ExperimentalCoroutinesApi` when E24-06 authors Unit 5. Verified experimental for the
    first two on 2026-09-10; the others were not individually checked.
@@ -1175,8 +1444,9 @@ model everywhere.
    either read it or describe it by name rather than asserting a number.
 4. Whether the remaining legacy guide pages — exception handling, context and dispatchers,
    shared mutable state, channels — will be rewritten during E24's authoring window. They
-   were current on 2026-09-10. Any authoring issue that finds a rewritten page should record
-   it here rather than silently citing the new one.
+   were current on 2026-09-10, and E24-04 re-checked exception handling, shared mutable state
+   and channels on the same date and found them unchanged in structure. Any authoring issue
+   that finds a rewritten page should record it here rather than silently citing the new one.
 
 ---
 

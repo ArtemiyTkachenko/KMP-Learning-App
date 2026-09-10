@@ -162,10 +162,14 @@ internal class LearningUnitPracticeIntegrationTest {
             // before expecting the exhausted outcome.
             val coroutinesUnits = BundledLearningContentRepository().getActiveUnitsByTopic("async_reactive")
             assertEquals(
-                listOf("unit_coroutines_and_structured_concurrency", "unit_context_dispatchers_and_concurrency"),
+                listOf(
+                    "unit_coroutines_and_structured_concurrency",
+                    "unit_context_dispatchers_and_concurrency",
+                    "unit_cancellation_failure_and_coordination",
+                ),
                 coroutinesUnits.map { it.id },
             )
-            assertEquals(listOf(5, 4), coroutinesUnits.map { it.lessons.size })
+            assertEquals(listOf(5, 4, 5), coroutinesUnits.map { it.lessons.size })
             coroutinesUnits.forEach { coroutinesUnit ->
                 coroutinesUnit.lessons.forEach { lesson ->
                     awaitNext(coroutinesUnit.id, lesson.id)
@@ -205,9 +209,9 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             val rebuilt = LocalLessonStudyRepository(database)
             assertFalse(rebuilt.isStudied(earlierLesson.id))
-            // 21 `android_ui` Lessons plus 9 in the coroutines Units, less the one that
+            // 21 `android_ui` Lessons plus 14 in the coroutines Units, less the one that
             // was just un-studied.
-            assertEquals(29, rebuilt.getStudiedLessons().size)
+            assertEquals(34, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -241,6 +245,17 @@ internal class LearningUnitPracticeIntegrationTest {
                         "coroutine_context_switching",
                         "coroutine_parallelism",
                     ) to 5
+                ),
+                // E24-04. `coroutine_cancellation` is primary in two of the five Lessons,
+                // and `coroutine_parallelism` is shared with Unit 2 — a Subtopic taught at
+                // more than one depth still contributes its questions exactly once.
+                "unit_cancellation_failure_and_coordination" to (
+                    setOf(
+                        "coroutine_cancellation",
+                        "coroutine_exceptions",
+                        "coroutine_supervision",
+                        "coroutine_parallelism",
+                    ) to 7
                 ),
             )
             val content = BundledLearningContentRepository()

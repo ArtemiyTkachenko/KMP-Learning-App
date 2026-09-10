@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `c027231fa86893132c0ec02d32743b9ffff32003d0f42abb0dea4aa641be19e4` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `23d10ee9c83649c591199078c751fe08bc423973b0927ffa09d1809dfa7d9e5e` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `5870ff2387861aad48c54681cff420572f40ce00800035f2e8747476a2ccfc32` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,12 +68,12 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 9 |
-| Active lessons in those units | 35 |
-| Distinct primary subtopics | 21 |
-| Distinct supporting subtopics | 50 |
-| Unique active questions reached through primary mappings | 40 |
-| Primary subtopics with at least one active question | 21 |
+| Active learning units | 10 |
+| Active lessons in those units | 40 |
+| Distinct primary subtopics | 24 |
+| Distinct supporting subtopics | 58 |
+| Unique active questions reached through primary mappings | 45 |
+| Primary subtopics with at least one active question | 24 |
 | Primary subtopics with no active question | 0 |
 | Active questions in the bank | 370 |
 | Deprecated questions excluded from this report | 41 |
@@ -100,6 +100,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Coroutine Fundamentals and Structured Concurrency (`unit_coroutines_and_structured_concurrency`) | 5 | 5 | 3 | 3 | 1 | 7 |
 | Coroutine Context, Dispatchers and Concurrent Work (`unit_context_dispatchers_and_concurrency`) | 4 | 4 | 1 | 3 | 1 | 5 |
 | Cancellation, Failure and Coordination (`unit_cancellation_failure_and_coordination`) | 5 | 4 | 2 | 3 | 2 | 7 |
+| Flow Fundamentals (`unit_flow_fundamentals`) | 5 | 3 | 5 | 0 | 0 | 5 |
 
 ## Unit and lesson detail
 
@@ -780,6 +781,103 @@ Supporting context — not primary coverage:
 | `jvm_fundamentals` — JVM fundamentals relevant to Android | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 | `android_memory_model` — Android/JVM memory fundamentals | 1 | `performance` — Performance, Memory & Debugging |
 | `coroutine_dispatchers` — Dispatchers | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+
+### Flow Fundamentals (`unit_flow_fundamentals`)
+
+Home topic: `async_reactive` — Coroutines, Flow & Reactive Programming.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 5 | `callback_flow_await_close_registration`, `flow_collection_cancels_cold_producer`, `flow_context_001`, `flow_fundamentals_001`, `flow_launch_in_on_each_scope` |
+| APPLIED | 0 | — |
+| ADVANCED | 0 | — |
+
+#### One Value or Many: Why `Flow` Exists (`lesson_why_flow`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `flow_fundamentals` — Flow fundamentals | 2 | 0 | 0 | 2 | `callback_flow_await_close_registration`, `flow_fundamentals_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `coroutine_fundamentals` — Coroutine and suspend fundamentals | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `hot_vs_cold_streams` — Hot vs cold streams | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `repository_pattern` — Repository pattern | 1 | `architecture` — Application Architecture & Design Principles |
+| `single_source_of_truth` — Single source of truth | 1 | `architecture` — Application Architecture & Design Principles |
+
+#### Cold Flows: Producer, Collector and Operators (`lesson_cold_flows`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `flow_fundamentals` — Flow fundamentals | 2 | 0 | 0 | 2 | `callback_flow_await_close_registration`, `flow_fundamentals_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `flow_collection` — Flow collection | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_operators` — Flow operators | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `kotlin_sequences` — Sequences and lazy collection processing | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+
+#### Collection Lifetime and Flow Cancellation (`lesson_flow_collection_lifetime`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `flow_collection` — Flow collection | 2 | 0 | 0 | 2 | `flow_collection_cancels_cold_producer`, `flow_launch_in_on_each_scope` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `coroutine_cancellation` — Cancellation | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_scope` — CoroutineScope | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `lifecycle_coroutines` — Lifecycle-aware coroutine scopes | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_jobs` — Job and parent-child relationships | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+
+#### Context Preservation and `flowOn` (`lesson_flow_context_and_flow_on`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `flow_context` — flowOn and execution context | 1 | 0 | 0 | 1 | `flow_context_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `coroutine_context` — CoroutineContext | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_dispatchers` — Dispatchers | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_context_switching` — withContext | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_errors` — Flow exception handling | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+
+#### Flow Builders and Adapting Callback APIs (`lesson_flow_builders_and_callback_adapters`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `flow_fundamentals` — Flow fundamentals | 2 | 0 | 0 | 2 | `callback_flow_await_close_registration`, `flow_fundamentals_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `flow_context` — flowOn and execution context | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_cancellation` — Cancellation | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_buffering` — Buffering and conflation | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `memory_leaks` — Memory leaks | 1 | `performance` — Performance, Memory & Debugging |
 
 ## Primary assessment gaps
 

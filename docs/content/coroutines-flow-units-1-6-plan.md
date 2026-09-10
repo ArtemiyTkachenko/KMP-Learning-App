@@ -69,8 +69,10 @@ is the first of those and is required reading for E24-03 and E24-08.
 **Authoring status.** Unit 1 is authored and shipped by E24-02; see
 [Authoring outcomes for Unit 1](#authoring-outcomes-for-unit-1). Unit 2 is authored and
 shipped by E24-03; see [Authoring outcomes for Unit 2](#authoring-outcomes-for-unit-2).
-Unit 3 is authored in production format by E24-04, pending review and merge; see
-[Authoring outcomes for Unit 3](#authoring-outcomes-for-unit-3). Units 4 to 6 remain
+Unit 3 is authored and shipped by E24-04; see
+[Authoring outcomes for Unit 3](#authoring-outcomes-for-unit-3). Unit 4 is authored in
+production format by E24-05, pending review and merge; see
+[Authoring outcomes for Unit 4](#authoring-outcomes-for-unit-4). Units 5 and 6 remain
 proposed.
 
 ---
@@ -1057,6 +1059,277 @@ asymmetry to L3.3 by describing it rather than linking.
 E24-05 was not started, and no Flow, testing, Compose-effect or architecture material was
 authored.
 
+## Authoring outcomes for Unit 4
+
+E24-05 authors `unit_flow_fundamentals` immediately after Unit 3 in
+`learning_curriculum.json`, and performs the `snapshotFlow` reconciliation this plan
+assigned to it. Everything below was executed, opened or read during that work on
+2026-09-10; nothing here is recalled from the E24-01 review.
+
+### What did not change
+
+All five proposed Lesson ids, titles, authored order and exact primary/supporting mappings
+shipped verbatim, as did the Unit id, title and `async_reactive` home Topic. No Lesson was
+renamed, reordered, split or merged, and no boundary in the E24-01 plan was found to be
+wrong, so no canonical planning correction was required beyond the status and outcomes
+recorded here. Each Lesson carries Core, Practical and Senior depth and runs 1,063–1,194
+words, inside the range the shipped Compose and E24 Lessons occupy. No Question, taxonomy
+record or earlier E24 Unit changed.
+
+`flow_fundamentals` is deliberately primary in L4.1, L4.2 and L4.5, which the plan's
+[shared-primaries](#identity-and-mapping-checks-performed) note anticipated. Unit practice
+therefore reaches **three** concepts — `flow_fundamentals`, `flow_collection`,
+`flow_context` — and **five** ACTIVE Questions, each counted once. That is asserted in the
+integration test rather than left to the generated snapshot.
+
+### Boundaries held, and how
+
+Every boundary the epic draws around this Unit was tested against the finished prose rather
+than assumed from the outline.
+
+| Boundary | What ships |
+| --- | --- |
+| Unit 5 owns operators | L4.2 introduces intermediate against terminal only, using the operators page's own definitions, and states outright that which operator to reach for is the composition unit's subject. `map` and `filter` appear as syntax in one illustrative chain. No operator's decision model is taught anywhere |
+| Unit 5 owns failure | `catch`, `retry`, `retryWhen` and `onCompletion` are never named. L4.4's Senior section spends one paragraph saying that context preservation is one instance of a transparency rule whose failure half exists, and defers it by prose |
+| Unit 6 owns hot streams | `StateFlow` and `SharedFlow` are never named in the Unit. Hot streams are described twice — in L4.1 as a third API shape that exists, and in L4.2 as the limit of the word *cold* — both times without an id and both times pointing at "the hot streams unit later in this curriculum" |
+| E25 owns Compose and lifecycle integration | `LaunchedEffect`, `collectAsState`, `collectAsStateWithLifecycle`, `repeatOnLifecycle` and `flowWithLifecycle` are never named. L4.3 gives lifecycle-bound collection one sentence and defers the mechanisms |
+| Channels stay Reference | `channelFlow`'s channel is explained as far as "emission from more than one coroutine needs a thread-safe, context-preserving channel", and L4.5's Senior section states explicitly that channels as a coordination primitive — capacities, fan-out, pipelines — are a subject this unit leaves alone. `produceIn` is absent |
+| Architecture stays supporting | L4.1 uses a repository-shaped example because it makes the decision concrete, and holds the single-source-of-truth argument to one sentence that names the architecture curriculum as its owner. No MVVM, MVI, ViewModel or state-ownership material appears |
+
+### How Unit 3's cancellation model was carried forward
+
+This was the largest accuracy risk in the Unit, because the shortest true sentence —
+"cancelling the collector cancels the upstream flow" — is also the one that reintroduces the
+misconception Unit 3 removed. L4.3's Senior section is built around not doing that.
+
+- The rule is stated as a request observed cooperatively, in the same words Unit 3 used, and
+  the Lesson says explicitly that Flow introduces no second cancellation mechanism.
+- The over-strong reading is contradicted with data rather than with a caveat. Measurement B
+  below is a producer that was cancelled and finished anyway, and the Lesson quotes it.
+- The well-behaved case is given equal weight, because leaving a reader believing
+  cancellation usually does not work would be its own error: `emit` is a cooperative
+  suspension point, so an ordinary producer stops promptly, and measurement C is that case.
+- The closing paragraph names what is *absent* from the model — no Flow-specific kill
+  switch, no separate collection lifecycle, no Job the flow owns — because the wrong mental
+  model is what produces the wrong predictions, not a missing fact.
+
+`runInterruptible`, `NonCancellable` and timeouts are not re-taught. L4.5 links back to
+`lesson_cancellation_cleanup_and_timeouts` for the cleanup shape `awaitClose` reproduces,
+which is the backward link the plan's cross-linking rules anticipated.
+
+### Claims that were executed rather than reasoned about
+
+A throwaway JVM test probed each of these against the resolved
+`kotlinx-coroutines-core:1.11.0` and was then deleted. The numbers are quoted in the Lessons
+as measurements, not as guarantees.
+
+| Claim a Lesson makes | Measured result |
+| --- | --- |
+| Constructing a cold flow runs nothing (L4.2) | After constructing a `flow { }` with a side-effecting first statement, the producer had run **0** times |
+| Each collector starts a new execution (L4.2) | The same two-emission flow collected twice ran its producer **2** times and delivered `[1, 2, 1, 2]` |
+| Building an intermediate chain still starts nothing (L4.2) | A `flow { }.map { }` chain with no terminal operator had run its producer **0** times; after one `collect`, **1** |
+| A. `withContext` around `emit` inside `flow { }` fails, and how (L4.4) | `IllegalStateException`, message quoted verbatim in the Lesson: `Flow invariant is violated: / Flow was collected in [… BlockingEventLoop…], / but emission happened in [… Dispatchers.IO]. / Please refer to 'flow' documentation or use 'flowOn' instead` |
+| B. Cancellation does not interrupt non-cooperative producer work (L4.3) | A producer whose first statement was a 600 ms `Thread.sleep`, cancelled after 100 ms: the blocking call **completed**, and `join()` on the cancelled coroutine returned **694 ms** after the start |
+| C. A cooperative producer stops promptly and runs its cleanup (L4.3) | An emitting loop with `delay` between values, cancelled mid-flight: the producer's `finally` ran once and the collecting Job completed |
+| C2. `emit` alone is enough to observe cancellation (L4.3) | A producer whose **only** cooperative point was `emit` — a tight loop with no `delay`, no `yield` and no other suspending call — stopped when its collector was cancelled: the loop never exited normally and the coroutine completed. This is the `flow` builder being "cancellable by default", checked rather than assumed |
+| D. `flowOn` moves the upstream into another coroutine, and asking for `IO` does not produce a thread from a separate pool (L4.4) | Upstream moved with `.flowOn(Dispatchers.IO)`, collected from `Dispatchers.Default`: producer and upstream `map` on `DefaultDispatcher-worker-3 @coroutine#4`; downstream `map` and collector on `DefaultDispatcher-worker-1 @coroutine#1`. Different coroutine, and both threads from the **Default pool**, which is what the `Dispatchers.IO` KDoc's shared-threads clause predicts |
+| E. `launchIn` returns a `Job` and the scope owns the collection (L4.3) | `launchIn` returned a `StandaloneCoroutine`, `is Job` true; cancelling the scope ended both collections |
+| F. `callbackFlow` without `awaitClose` fails, and how (L4.5) | `IllegalStateException`, message quoted verbatim in the Lesson: `'awaitClose { yourCallbackOrListener.cancel() }' should be used in the end of callbackFlow block. Otherwise, a callback/listener may leak in case of external cancellation. See callbackFlow API documentation for the details.` |
+| G. A cold adapter registers once per collection, and `awaitClose` unregisters each (L4.5) | One `callbackFlow` collected by two coroutines: **2** registrations, **0** unregistrations while both ran; after cancelling the scope, **2** unregistrations |
+| H. `channelFlow` children produce concurrently and out of order (L4.5) | Two child coroutines, one delayed: values arrived `[2, 1]` |
+
+Measurement D is the one worth keeping. It is simultaneously the evidence that `flowOn` runs
+the upstream in a *different coroutine* — which is what makes the invariant satisfiable — and
+the evidence that Unit 2's "context is not thread" precision survives into Flow. Note what it
+does and does not show: the two coroutines ran on two different worker threads, so this is not
+a demonstration that a context switch never moves threads. What it demonstrates is that both
+threads came from the `Default` pool even though the upstream asked for `IO`, which is the
+shared-threads clause of the `Dispatchers.IO` KDoc observed rather than quoted. L4.4 is worded
+to claim exactly that and no more.
+
+### Source freshness, re-checked on 2026-09-10
+
+Every page was opened rather than recalled. Two dates are new information relative to what
+E24-01 recorded, and neither changes a claim.
+
+| Page | State on 2026-09-10 | Consequence |
+| --- | --- | --- |
+| `coroutines-flow.html` | "Flows", dated **13 July 2026**. Two top-level sections, Cold flows and Hot flows, exactly the structure E24-01 recorded but with a date E24-01 did not capture — and, as finding 1 below records, a good deal more underneath them than that structure implies | Still the guide-level authority for coldness, per-collector execution, collection lifetime and the context default. Every one of those four claims was re-read on the page, as were the intermediate-operator and sequences clauses L4.2 now quotes |
+| `coroutines-flow-operators.html` | "Flow operators", dated **28 July 2026** | Supplies the intermediate/terminal definitions L4.2 quotes and the list of terminal operators it names |
+| `flow` KDoc | Current | Carries the context-preservation requirement *and the `withContext(Dispatcher.IO) { emit(2) }` example* as its own illustration of the `IllegalStateException`. This is the single best source for L4.4 and is cited there |
+| `flowOn`, `launchIn`, `channelFlow`, `callbackFlow`, `awaitClose` KDocs | Current | The five API pages the Unit leans on. Each supports the specific clause attached to it |
+| `sequences.html` | Current | Used only for the laziness bridge in L4.2's Senior section. Confirmed that the page does not discuss coroutines, which is the boundary the Lesson states |
+| Android coroutines best practices | Current | Quoted once, in L4.1, for the suspend-for-one-shot / Flow-for-changes division. Used for guidance only; every semantic claim in the Unit is sourced to Kotlin's own documentation |
+
+Three findings that changed how a Lesson is written:
+
+1. **The rewritten *Flows* page carries more than its two top-level headings suggest, and
+   reading only the headings is a trap.** Its table of contents shows just "Cold flows" and
+   "Hot flows", which is what E24-01 recorded — but under them the page has anchored
+   subsections including `#intermediate-flow-operators`, `#call-suspending-functions-inside-a-flow-builder`,
+   `#change-the-coroutine-context-of-a-cold-flow-with-flowon` and `#flow-cancellation`. Two of
+   those changed how L4.2 is sourced. The page states that intermediate operators "are cold, so
+   the returned flow doesn't start processing values until it's collected", which is the exact
+   claim the Lesson makes and which a first draft argued from the operators page's definitions
+   plus measurement instead; and it states "Unlike in sequences, you can call suspending
+   functions inside a `flow()` builder function", which is the sequence analogy's limit in the
+   documentation's own words. Both are now quoted rather than inferred. **E24-06 and E24-07
+   should read the page body rather than its heading list**, because the operator, exception and
+   hot-stream subsections are there too.
+2. **`callbackFlow`'s KDoc does not print its own exception message.** It states that the
+   builder "throws `IllegalStateException` if block returns, but the channel is not closed
+   yet" without quoting the text. L4.5 quotes the runtime's actual message because measuring
+   it was the only way to have it, and the message is more instructive than the sentence.
+3. **The `flow` builder's cancellability is documented on `cancellable`, not on `flow`.** The
+   first draft of L4.3 asserted that `emit` is a cooperative suspension point, which is a
+   reasonable inference but was not sourced. The `cancellable` KDoc is where the statement
+   actually lives — the `flow` builder and all `SharedFlow` implementations are cancellable by
+   default, and `cancellable()` "checks cancellation status on each emission" — so the Lesson
+   now says what the documentation says and backs it with measurement C2 rather than with an
+   inference. That KDoc was added to L4.3's Sources.
+4. **`flowOn` is not purely a context operator.** Its KDoc states that a dispatcher change
+   puts emission and collection in two coroutines with "a channel with a default buffer size
+   … used internally between the two". L4.4's Senior section teaches that, because it is both
+   the mechanism that makes context preservation possible and a buffering side effect a
+   reader will otherwise meet as a surprise in Unit 5.
+
+### The context invariant as taught
+
+GAP-U4-B is the reason to record this precisely. L4.4 does not present the invariant as a
+rule with an exception list. The order is: the default (a cold flow runs in the collector's
+context), then why that default is worth having (a `collect` call is locally readable — the
+context you are looking at is the context the chain runs in), then the wrong code, then the
+runtime's own message, then the reason the rule exists stated as a consequence — if a
+producer could switch its own emission context, no reader could know their collection's
+context without tracing every operator to the source. `flowOn` arrives last, as the answer
+the runtime message itself names. A reader who follows that order can reconstruct why the
+invariant exists rather than remembering that it does.
+
+The Lesson also refuses the two shortest wrong summaries explicitly: that a flow runs in the
+background because it is a flow (the `suspend` misconception in new clothing, and named as
+such), and that `flowOn(ioDispatcher)` means "this flow runs on IO" (a `COMMON_MISTAKE`
+callout, because a reader with the direction backwards also places the operator wrongly).
+
+### The builder decision as taught
+
+GAP-U4-C asks for the choice among `flow`, `channelFlow` and `callbackFlow` to be teachable.
+L4.5 teaches it from the producer's shape rather than as a lookup table: the `flow` builder's
+limit is stated first — emission must happen in the builder's own context, from its own
+coroutine — and the other two builders are then introduced as the two ordinary producers that
+do not fit inside it. The comparison table in the Senior section carries a "why that one"
+column rather than a feature list, and one paragraph states why `channelFlow` and
+`callbackFlow` are not interchangeable despite sharing channel-backed mechanics:
+`channelFlow` answers who may produce, `callbackFlow` answers what tears a subscription down.
+
+`awaitClose` is taught as a lifetime rather than as a required incantation. The block is read
+top to bottom as register / bridge values in / hold the collection open / unregister; the
+runtime's message is quoted; the leak is named concretely — listener still registered, source
+retaining it and what it captured, values delivered to a consumer that is gone; and the
+`awaitClose` KDoc's "executed unconditionally before this function returns" is connected back
+to Unit 3's `finally` shape. Measurement G supplies the ownership point the plan asked for:
+each cold collection registers its own subscription.
+
+### Semantic review of the Questions this Unit now reaches
+
+All five ACTIVE Questions reachable through Unit 4's three primary concepts were read in full
+— stem, options, key, explanation and Sources — against the finished prose.
+
+| Question | Verdict against the shipped Lessons |
+| --- | --- |
+| `flow_fundamentals_001` | Answerable from L4.2's Core and Practical. Its key is the builder running only on collection, and its three distractors — replaying the most recent value, sharing one producer among collectors, emitting after the last collector stops — are each properties of hot streams, which L4.2's Senior section names as the limit of the word *cold* without teaching them. The Lesson argues from the recipe model rather than echoing the option wording |
+| `callback_flow_await_close_registration` | Answerable from L4.5's Practical, which is built on the same registration-and-return shape. All three distractors are addressed: buffering is named as the builder's separate channel capacity, coldness and re-collectability are established in the Core section and measured in the Senior one, and the key's two halves — keeping the flow open and giving unregistration one place — are the paragraph the Lesson is organised around. The plan's note that its `FOUNDATION` level looks low is unchanged and untouched |
+| `flow_launch_in_on_each_scope` | Answerable from L4.3's Practical, which quotes the KDoc's `scope.launch { flow.collect() }` equivalence, states that the returned value is a `Job`, and rejects the hot-flow distractor explicitly with measurement E behind it |
+| `flow_collection_cancels_cold_producer` | Answerable from L4.3. Its key requires both halves the Lesson teaches — the producer runs inside the collecting coroutine, and it stops at a cancellable suspension point — and the "cancellation interrupts the running thread" distractor is contradicted directly by measurement B. This is the Question the Unit is best matched to |
+| `flow_context_001` | Answerable from L4.4's Practical. Its key is upstream-only, its three distractors each move the collector, and the Lesson's `COMMON_MISTAKE` callout is precisely that error. Note that the Question's own explanation uses the phrase "context-transparent" where the current documentation says "context-preserving"; the Lesson uses the documentation's term. This is a wording difference, not a defect, and no Question was changed |
+
+One Source detail is worth flagging to E24-08 without acting on it here.
+`flow_fundamentals_001`, `flow_context_001` and `flow_collection_cancels_cold_producer` all
+cite `coroutines-flow.html` under its **old title**, "Asynchronous Flow", which the page has
+not carried since the rewrite. The third also cites the `#flow-cancellation` anchor, and that
+anchor was checked against the live page and **still exists**. So all three URLs resolve, the
+anchor resolves, and the page still supports every claim attached to it: this is a stale
+citation *label*, not a broken Source. It is recorded rather than fixed, because E24-05 changes
+no Question.
+
+The three Compose `snapshotFlow` Questions (`compose_snapshot_flow_state`,
+`compose_snapshot_flow_read_inside_block`, `compose_snapshot_flow_conflated_state`) were
+re-read to confirm the new material neither duplicates nor contradicts them. It does not: no
+E24 Lesson mentions `snapshotFlow`, the snapshot system, or Compose state observation, and
+`compose_snapshot_system` remains reachable only through the Compose Unit. They create no
+Unit 4 practice and are not counted as any.
+
+### The known gaps were not filled
+
+E24-05 authored no Question. GAP-U4-A, GAP-U4-B and GAP-U4-C are unchanged as gaps; what
+changed is that the reasoning each describes is now taught, so E24-08 has something to assess
+against.
+
+| Gap | Where the reasoning now lives |
+| --- | --- |
+| GAP-U4-A — one suspending result against an observable Flow | L4.1 in full: the paired signatures, the concrete inability of a one-shot call to report a later change, the repository carrying both shapes, the five-item list of what a Flow-returning API costs the caller, and the `COMMON_MISTAKE` callout against "if it can change, return a Flow" |
+| GAP-U4-B — the reason for the context invariant | L4.4's Practical and Senior: the KDoc's own wrong example, the runtime's verbatim message, the local-readability argument for why the rule exists, and measurement D on what `flowOn` actually arranges |
+| GAP-U4-C — choosing among the three builders | L4.5 in full: the `flow` builder's limit stated first, the two producers that do not fit it, the comparison table with a reason column, and the paragraph on why the last two are not interchangeable |
+
+The Unit's supporting concepts are asserted in a new bundle test so that a later change cannot
+quietly promote `repository_pattern`, `single_source_of_truth`, `kotlin_sequences`,
+`lifecycle_coroutines` or `memory_leaks` to primary and claim Unit practice that no
+`async_reactive` Question provides — which would hide GAP-U4-A in particular, whose whole
+point is that the closest existing assessment sits in the `architecture` Topic.
+
+### The `snapshotFlow` reconciliation, exactly as performed
+
+Two edits to `lesson_snapshot_flow`, and nothing else in that Lesson or its Unit.
+
+1. **One paragraph replaced.** The sentence "The full subject — operators, hot streams and
+   sharing, back pressure, structured cancellation — belongs to the coroutines and Flow
+   curriculum, **which this app does not teach yet**; Kotlin's own documentation is where to
+   go for it in the meantime" became a pointer to the shipped Unit: the full subject is taught
+   by the Flow Fundamentals unit, the first two of the Lesson's four facts are its treatment
+   of cold flows and the last two its treatment of collection lifetime and cancellation, both
+   linked below, with operators, hot streams and sharing, and back pressure in the units after
+   it. The four facts themselves are **unchanged**, because E24-01 verified them and Unit 4
+   agrees with all four.
+2. **Two `relatedLessonIds` appended:** `lesson_cold_flows` and
+   `lesson_flow_collection_lifetime`, in that order, after the three existing Compose links.
+   Both targets now ship, so neither is a forward reference.
+
+Nothing else moved. No snapshot-system semantics, no snapshot read observation, no
+`snapshotFlow` behaviour and no Compose guidance was copied, rewritten or relocated, and no
+E24 Lesson takes a Compose Subtopic as primary or mentions `snapshotFlow` at all. `Flow` and
+`snapshotFlow` are related in one direction only: the Compose Lesson points at the Flow Unit
+for the general model, and the Flow Unit's two backward links let a reader who follows them
+recognise the same cold mechanics in a Compose setting without meeting duplicate material.
+
+The second, weaker pointer the plan identified — `lesson_work_outside_composition`'s
+"belong to the effects and coroutine material later in this path" — was re-read and **not**
+edited. It remains half-true in the same way it was before Unit 4: the coroutine half now
+ships and the Compose-effects half does not. It stays E24-09's candidate, as the plan
+assigned.
+
+### Cross-links and validation
+
+Backward-only, and every target already ships:
+
+- L4.1: `lesson_suspension_and_blocking`.
+- L4.2: `lesson_why_flow`, `lesson_snapshot_flow`.
+- L4.3: `lesson_cold_flows`, `lesson_coroutine_scope_ownership`,
+  `lesson_cooperative_cancellation`, `lesson_snapshot_flow`.
+- L4.4: `lesson_cold_flows`, `lesson_coroutine_context`,
+  `lesson_with_context_and_main_safety`.
+- L4.5: `lesson_cold_flows`, `lesson_flow_collection_lifetime`,
+  `lesson_flow_context_and_flow_on`, `lesson_cancellation_cleanup_and_timeouts`.
+
+Both Compose links the plan recommended were taken (`lesson_snapshot_flow` from
+`lesson_cold_flows` and from `lesson_flow_collection_lifetime`); the third,
+from `lesson_hot_and_cold_streams`, belongs to E24-07. Nothing links into an unshipped Unit.
+Every forward reference the Unit makes is prose naming a unit rather than an id: operators,
+buffering and failure to "the flow composition unit later in this curriculum", hot streams and
+sharing to "the hot streams unit later in this curriculum", lifecycle and Compose collection
+to "the effects and lifecycle integration material later in this curriculum".
+
+E24-06 was not started, and no Unit 5 operator, timing or failure material, no Unit 6
+hot-stream material, no Compose-effect material and no Question was authored.
+
 ## Cross-linking rules
 
 `LearningCurriculumValidator` rejects a `relatedLessonIds` entry naming an unknown Lesson
@@ -1109,6 +1382,11 @@ A second, weaker pointer exists: `lesson_work_outside_composition` says dispatch
 builder choice "belong to the effects and coroutine material later in this path". That
 becomes half-true once Units 1–3 ship. E24-09 should re-read it; it is a candidate for a
 one-sentence edit, not a defect.
+
+**Performed by E24-05 on 2026-09-10.** Both required changes shipped and nothing else in the
+Lesson or its Unit moved; `lesson_work_outside_composition` was re-read and deliberately left
+alone. The exact edits are recorded in
+[the `snapshotFlow` reconciliation, exactly as performed](#the-snapshotflow-reconciliation-exactly-as-performed).
 
 ---
 
@@ -1316,6 +1594,15 @@ Three instructions follow for E24-05 and E24-06 in particular:
    `coroutines-flow.html` both return 200 and both still support the claims attached to them,
    although both now do so from rewritten pages. No Question source needs changing for this
    reason alone.
+
+**Dates captured by E24-05 on 2026-09-10**, which E24-01 did not record: `coroutines-flow.html`
+is dated 13 July 2026 and `coroutines-flow-operators.html` 28 July 2026, both with the section
+structure above unchanged. E24-05 also confirmed that the intermediate-against-terminal
+distinction lives **only** on the operators page, and that three ACTIVE Question Sources cite
+`coroutines-flow.html` under its old title "Asynchronous Flow" — one of them with a
+`#flow-cancellation` anchor the rewritten page no longer has. All three resolve and all three
+still support their claims; see
+[Authoring outcomes for Unit 4](#authoring-outcomes-for-unit-4).
 
 ### Verified claims
 

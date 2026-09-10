@@ -42,6 +42,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_coroutines_and_structured_concurrency",
                 "unit_context_dispatchers_and_concurrency",
                 "unit_cancellation_failure_and_coordination",
+                "unit_flow_fundamentals",
             ),
             units().map { it.id },
         )
@@ -57,6 +58,7 @@ internal class BundledLearningCurriculumTest {
                 "Coroutine Fundamentals and Structured Concurrency",
                 "Coroutine Context, Dispatchers and Concurrent Work",
                 "Cancellation, Failure and Coordination",
+                "Flow Fundamentals",
             ),
             units().map { it.title },
         )
@@ -71,6 +73,7 @@ internal class BundledLearningCurriculumTest {
                 "android_ui",
                 "android_ui",
                 "android_ui",
+                "async_reactive",
                 "async_reactive",
                 "async_reactive",
                 "async_reactive",
@@ -200,6 +203,31 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_context_dispatchers_and_concurrency").lessons.map { it.title },
         )
+
+        // Unit 4 is a single progression rather than five Flow topics: why the shape
+        // exists, what cold means, who owns the collection, where it executes, and how an
+        // existing producer becomes a flow.
+        assertEquals(
+            listOf(
+                "lesson_why_flow",
+                "lesson_cold_flows",
+                "lesson_flow_collection_lifetime",
+                "lesson_flow_context_and_flow_on",
+                "lesson_flow_builders_and_callback_adapters",
+            ),
+            unit("unit_flow_fundamentals").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "One Value or Many: Why `Flow` Exists",
+                "Cold Flows: Producer, Collector and Operators",
+                "Collection Lifetime and Flow Cancellation",
+                "Context Preservation and `flowOn`",
+                "Flow Builders and Adapting Callback APIs",
+            ),
+            unit("unit_flow_fundamentals").lessons.map { it.title },
+        )
     }
 
     @Test
@@ -308,6 +336,20 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_cancellation_failure_and_coordination").lessons.map { it.primarySubtopicIds },
         )
+
+        // `flow_fundamentals` is primary in three of the five Lessons — why the shape
+        // exists, what cold means, and how a producer becomes one — so Unit practice here
+        // is exactly three concepts rather than five.
+        assertEquals(
+            listOf(
+                listOf("flow_fundamentals"),
+                listOf("flow_fundamentals"),
+                listOf("flow_collection"),
+                listOf("flow_context"),
+                listOf("flow_fundamentals"),
+            ),
+            unit("unit_flow_fundamentals").lessons.map { it.primarySubtopicIds },
+        )
     }
 
     @Test
@@ -359,6 +401,47 @@ internal class BundledLearningCurriculumTest {
                 ),
             ),
             unit("unit_cancellation_failure_and_coordination").lessons.map { it.supportingSubtopicIds },
+        )
+    }
+
+    @Test
+    fun flowUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        // The architecture, Kotlin, lifecycle and performance concepts Unit 4 bridges are
+        // assessed in their own Topics, and none of them is reachable through an E24
+        // primary mapping. GAP-U4-A depends on that staying true: the closest existing
+        // assessment of the one-shot-versus-stream decision is
+        // `repository_observable_api_shape`, which sits in `architecture`, so promoting
+        // `repository_pattern` here would claim Unit practice no `async_reactive`
+        // Question provides and would hide the gap E24-08 still has to close.
+        assertEquals(
+            listOf(
+                listOf(
+                    "coroutine_fundamentals",
+                    "hot_vs_cold_streams",
+                    "repository_pattern",
+                    "single_source_of_truth",
+                ),
+                listOf("flow_collection", "flow_operators", "kotlin_sequences"),
+                listOf(
+                    "coroutine_cancellation",
+                    "coroutine_scope",
+                    "lifecycle_coroutines",
+                    "coroutine_jobs",
+                ),
+                listOf(
+                    "coroutine_context",
+                    "coroutine_dispatchers",
+                    "coroutine_context_switching",
+                    "flow_errors",
+                ),
+                listOf(
+                    "flow_context",
+                    "coroutine_cancellation",
+                    "flow_buffering",
+                    "memory_leaks",
+                ),
+            ),
+            unit("unit_flow_fundamentals").lessons.map { it.supportingSubtopicIds },
         )
     }
 

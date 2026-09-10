@@ -6840,6 +6840,923 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "unit_flow_composition_timing_and_failure",
+      "topicId": "async_reactive",
+      "title": "Flow Composition, Timing and Failure",
+      "summary": "The previous unit settled what a Flow is: a description of production that runs inside the collecting coroutine, starts when a terminal operator asks for it, and ends when that coroutine does. This unit is about the decisions taken on top of that pipeline, and every one of them is a question about semantics rather than about which API exists. Filter by value or by time. Combine the current state of several sources, or pair their emissions. Let inner work overlap, run it in order, or cancel it when newer input arrives. Decide what may be lost when the producer outpaces the collector. And place failure handling where it can actually observe the failure. The order is one argument: transform a stream, then join streams, then map values into streams of their own, then deal with a speed mismatch, then deal with the ways collection ends.",
+      "lessons": [
+        {
+          "id": "lesson_transforming_and_filtering_flows",
+          "title": "Transforming and Filtering: by Value and by Time",
+          "summary": "Two different questions an operator can answer about a value: what is it, and when did it arrive. map, filter and transform decide from the value alone; distinctUntilChanged compares it with the one before it; debounce and sample decide from the clock.",
+          "primarySubtopicIds": [
+            "flow_operators"
+          ],
+          "supportingSubtopicIds": [
+            "flow_fundamentals",
+            "kotlin_lambdas",
+            "kotlin_equality"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The previous unit established what an operator is: an intermediate operator returns another Flow and has started nothing, and collection only begins when a terminal operation asks for it. This unit is about choosing between them, and the choice is easier than the operator lists suggest, because almost every operator answers one of two questions about a value. What is this value? Or, when did it arrive?"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Everything on the first side can be decided by looking at the value alone. Everything on the second side needs a clock, and needs to know what else arrived nearby. Keeping the two apart is most of the skill, because an operator picked from the wrong side of that line produces a pipeline that looks reasonable and behaves wrongly under exactly the conditions that matter."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Three operators carry the value side, and they differ only in how many outputs one input may produce."
+                },
+                {
+                  "type": "code",
+                  "code": "queries.map { it.trim() }             // exactly one output per input\nqueries.filter { it.length >= 3 }     // one output, or none\nqueries.transform { query ->          // zero, one or many outputs\n    if (query.isNotBlank()) {\n        emit(Loading)\n        emit(Results(search(query)))\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "map replaces each value with another; filter lets a value through unchanged or drops it; transform is the general form the other two are special cases of, and it is the one to reach for when one input should produce a placeholder and then a result, or nothing at all. All three take a suspending lambda, so calling a suspending function inside them is ordinary rather than exceptional — a mapping step that has to hit storage or the network does not need an escape hatch."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "distinctUntilChanged is still on the value side, but it needs two values to decide, and precisely which two is the fact worth memorising: the new value is compared with the one immediately before it, using equals. It is not a deduplicator and it keeps no history."
+                },
+                {
+                  "type": "code",
+                  "code": "flowOf(\"A\", \"A\", \"B\", \"A\").distinctUntilChanged()\n// Measured on this project's JVM target: A, B, A\n// The final A is not suppressed. An earlier A is irrelevant;\n// only the immediately preceding value is compared.",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Ask what the operator needs in order to decide. map, filter and transform need only the value. distinctUntilChanged needs the value and the one before it. debounce and sample need the clock. An operator can only be correct for a problem whose decision uses the same inputs."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The time side is where the two most confusable operators live, and the clearest way to separate them is to put them on one identical timeline. Take a search field where the user types kotlin one character at a time, pausing after kot and again at the end."
+                },
+                {
+                  "type": "code",
+                  "code": "val typing = flow {\n    emit(\"k\");      delay(80)\n    emit(\"ko\");     delay(80)\n    emit(\"kot\");    delay(520)   // the user pauses\n    emit(\"kotl\");   delay(100)\n    emit(\"kotli\");  delay(200)   // a hesitation, but not a pause\n    emit(\"kotlin\"); delay(520)   // and stops\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "debounce asks a question about quiet: emit a value only once nothing newer has arrived for the configured interval. Every new value restarts that interval, so a burst of keystrokes produces nothing at all until the burst ends. Measured on this project's JVM target, typing.debounce(300) produced kot and kotlin — one value per real pause. The two-hundred-millisecond hesitation before the last keystroke produced nothing, because it was shorter than the timeout."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "sample asks a different question, about cadence: on a fixed tick, emit whatever the most recent value is, and emit nothing if there has been no new value since the last tick. It is indifferent to whether the user is still typing. Measured on this project's JVM target over the same timeline, typing.sample(300) produced kot, kotl and kotlin — three values, and the middle one is a string the user never paused at. It is simply what happened to be current when a tick arrived, which is also why the exact middle value is a property of where the emissions fall relative to the ticks rather than a guarantee of the operator."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That third value is the whole distinction. debounce is the operator for \"act when the input has settled\"; sample is the operator for \"act at a steady rate regardless of what the input is doing\". A telemetry feed reporting a position several hundred times a second is a natural fit for sample, because there is no such thing as the user finishing. A search field is a natural fit for debounce, because there is."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The two search-field operators solve different problems and are commonly wanted together, in this order:"
+                },
+                {
+                  "type": "code",
+                  "code": "queries\n    .debounce(300)            // first: collapse the timing noise of typing\n    .distinctUntilChanged()   // then: drop a query equal to the one already run",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The reason the order reads well is that each one removes something the other cannot see. debounce removes intermediate values that only existed because typing is incremental; it cannot tell that the settled query is the same one that was searched a moment ago. distinctUntilChanged removes that repeat; it has no notion of time, so it would happily pass every keystroke through. Measured on this project's JVM target with a user who typed kot, paused, added and deleted a character, and paused again, debounce alone emitted kot twice and the pair emitted it once."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Describing debounce as \"slowing events down\" or \"throttling\". It does not slow anything and it does not emit on a schedule — during a fast enough stream of values it emits nothing at all, indefinitely. Reaching for it when the requirement is a steady rate produces a pipeline that goes silent under exactly the load it was added to handle. Rate is sample's contract, not debounce's."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Two details separate a careful answer from a recognising one. First, the opt-in status. Checked against this project's resolved kotlinx-coroutines-core 1.11.0 artifact, debounce and sample are annotated @FlowPreview, not @ExperimentalCoroutinesApi. The distinction matters if you quote it: FlowPreview states that the declaration has no backward compatibility guarantees and its semantics can change between releases, and it is the stronger of the two opt-ins. Both are warning-level, so using them costs an @OptIn and nothing else, and both are the standard answers to the problems they solve. The annotation is a stability contract, not a warning about correctness."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Second, what each operator does at the end of the stream, which is where their designs differ most and where a plausible-looking pipeline quietly loses its last value. debounce always emits the latest value when the upstream completes, because a completed upstream is the ultimate quiet period. sample does not: its documentation states that the latest element is not emitted if it does not fit into the sampling window, so a value that arrives between the final tick and completion is dropped. For a finite stream ending in the value the collector actually cares about, that is a real difference."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The remaining operators on the value side are worth knowing and are not worth a section each, because their behaviour is predictable from their names and none of them carries a decision. take(n) ends collection after n values and completes the flow, which makes it a way to bound an otherwise endless stream. drop(n) skips the first n. onStart and onEach run an action before the first value and on each value, and both are intermediate — so onEach alone starts nothing. scan emits the running accumulation, which is the operator to reach for when the downstream wants each intermediate total rather than only the final one."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "The question is usually debounce against distinctUntilChanged and the good answer names the decision inputs rather than the definitions: one decides from the clock, the other from the previous value, so they cannot substitute for one another. Add that distinctUntilChanged compares only with the immediately preceding value, so a repeated value that returns later still passes; and that debounce emits nothing while values keep arriving faster than the timeout, which is the property that makes it right for a settling input and wrong for a rate limit."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_cold_flows"
+          ],
+          "sources": [
+            {
+              "title": "Flow operators",
+              "url": "https://kotlinlang.org/docs/coroutines-flow-operators.html"
+            },
+            {
+              "title": "kotlinx.coroutines: debounce",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/debounce.html"
+            },
+            {
+              "title": "kotlinx.coroutines: sample",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/sample.html"
+            },
+            {
+              "title": "kotlinx.coroutines: distinctUntilChanged",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/distinct-until-changed.html"
+            },
+            {
+              "title": "kotlinx.coroutines: transform",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/transform.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_combining_flows",
+          "title": "`combine` and `zip`: Current Values or Paired Emissions",
+          "summary": "Two sources, two entirely different questions. combine asks what the current state of both is; zip asks which emission of one corresponds to which emission of the other. Choosing wrongly produces a screen that stops updating, or a pipeline throttled by its slowest input.",
+          "primarySubtopicIds": [
+            "flow_operators"
+          ],
+          "supportingSubtopicIds": [
+            "flow_fundamentals",
+            "stateflow",
+            "flow_collection"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "When two flows feed one result, there is a question to answer before any operator is chosen: are these sources describing the same thing at the same moment, or are they producing values that correspond to each other one for one?"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A signed-in user and a settings snapshot are the first kind. They change independently, neither one is a response to the other, and what the screen wants is always the current combination — the latest user with the latest settings. A request stream and a response stream are the second kind. There, the third response belongs with the third request, and pairing them by recency would be wrong."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "combine answers the first question. Its rule has two halves, and the first half is the one that produces production incidents."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Nothing is emitted until every source has emitted at least once. combine has no value to substitute for a source that has not produced one, and it does not invent one.",
+                    "After that, an emission from any source produces a result built from that new value and the most recently seen value of every other source."
+                  ]
+                },
+                {
+                  "type": "code",
+                  "code": "val user = flow { emit(\"U1\"); delay(600); emit(\"U2\") }\nval settings = flow { delay(200); emit(\"S1\"); delay(200); emit(\"S2\") }\n\nuser.combine(settings) { u, s -> \"($u,$s)\" }\n\n// Measured on this project's JVM target:\n// t=0    U1 arrives           -> nothing; settings has never emitted\n// t=200  S1 arrives           -> (U1,S1)\n// t=400  S2 arrives           -> (U1,S2)   the user did not change\n// t=600  U2 arrives           -> (U2,S2)   the settings did not change",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read the first line again, because it is the diagnosis for one of the more baffling failures in this area: a screen that renders nothing at all, with no error, no crash, and every individual source working correctly when inspected on its own. If one of the combined sources has not yet produced its first value, the combined flow is silent. A source that queries an empty table and emits nothing, or a source waiting on a permission that was never granted, holds the entire screen. Measured on this project's JVM target, combining a working source with one that completes without ever emitting produced an empty result — not a partial one."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "combine means \"the current combination of these inputs\". Its startup rule follows from that: there is no current combination until each input has a current value, so combine emits nothing until every source has emitted once."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "zip answers the other question. It takes one unused value from each source and pairs them, so a value that has no partner yet waits, and a source that emits twice as fast as the other spends half its time waiting."
+                },
+                {
+                  "type": "code",
+                  "code": "val fast = flowOf(\"A1\", \"A2\", \"A3\").onEach { delay(50) }\nval slow = flowOf(\"B1\", \"B2\").onEach { delay(120) }\n\nfast.zip(slow) { a, b -> \"($a,$b)\" }\n// Measured on this project's JVM target: (A1,B1), (A2,B2)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A3 never appears, and that is zip's documented completion contract rather than an accident: the resulting flow completes as soon as one of the flows completes, and cancel is called on the remaining flow. The pair ends when either side can no longer supply a partner. Measured on this project's JVM target with a four-value source zipped against a two-value one, the faster upstream produced three values and two pairs were emitted — one value was produced, found no partner, and was discarded when the zip completed."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Both halves of that are why zip is usually the wrong operator for screen state. Independent UI state sources emit at rates that have nothing to do with each other, so pairing them means the settings flow can only update the screen as often as the user flow does, and whichever source completes first silently ends the screen's updates. Neither behaviour is a defect in zip. They are the correct consequences of a contract the problem did not need."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The contract zip does need is correspondence. Pairing each element of a request stream with the response it produced, walking two ordered sequences together, or matching a stream of items against a stream of computed keys are all problems where recency would give the wrong answer and pairing gives the right one. Reach for zip when the sentence \"this value goes with that value\" is true about the data, not merely about the timing."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There is a third shape, and knowing it stops the other two being forced into problems that fit neither. merge takes several flows of the same type and interleaves their values into one flow without combining anything."
+                },
+                {
+                  "type": "code",
+                  "code": "merge(userEvents, systemEvents)\n// Measured on this project's JVM target with the two sources above:\n// U1, S1, S2, U2 — every value, in arrival order, uncombined",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "merge is the answer when the sources are alternative origins of the same kind of value rather than components of one result — several event sources feeding one handler, for example. It is a stable API in the configured version, unlike the flattening operators the next Lesson covers."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The question the problem asks",
+                    "Operator",
+                    "What arrives downstream"
+                  ],
+                  "rows": [
+                    [
+                      "What is the current state of all of these?",
+                      "combine",
+                      "One value per source emission, carrying the latest of every source, once all of them have emitted"
+                    ],
+                    [
+                      "Which value of this corresponds to which value of that?",
+                      "zip",
+                      "Pairs of unused values; completes when either source can no longer supply one"
+                    ],
+                    [
+                      "Where did this value come from? — irrelevant",
+                      "merge",
+                      "Every value from every source, interleaved in arrival order, unchanged"
+                    ]
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Reaching for zip because two flows must both be ready before the screen can render. That is combine's startup rule, which already waits for every source's first value — and then keeps updating from either side, which zip will not do. Wanting both sources present is not the same as wanting their emissions paired."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "There is one precision about combine worth carrying into an interview, because a plausible over-reading of it produces wrong predictions. combine's contract is that it produces values from the most recently emitted value of each source. It is not a promise of exactly one output per upstream emission."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The implementation reads pending updates in batches and bails out of a batch as soon as it sees a second value from the same source, which means that when updates from different sources are already waiting, they can be folded into a single combined result. Measured on this project's JVM target, the same two-source timeline emitted three values when its emissions were two hundred milliseconds apart, and sometimes only two when they were compressed to a hundred — the intermediate combination was skipped rather than delayed. The documentation's own worked example, whose sources are ten and fifteen milliseconds apart, printed one fewer value here than the text beside it lists."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The right conclusion is not that the operator is unreliable. It is that combine is specified in terms of state rather than in terms of events, and that this is exactly the property that makes it correct for screen state and unsuitable for anything that must observe every change. If losing an intermediate combination would be a bug, the problem needed a different shape — a single source of ordered events, or the pairing zip provides."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is also the point at which the current-value idea becomes interesting on its own. A source that always has a value, that a new collector can read immediately, and that therefore never causes combine's startup silence, is a different kind of stream from anything this unit has used. That is the subject of the hot streams and state unit later in this curriculum; everything here works with ordinary cold flows, and the reasoning transfers unchanged."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Name the two contracts before the two APIs: latest-of-each against matched pairs. Then be exact about the three behaviours that get asked. combine emits nothing until every source has emitted once. zip completes as soon as either source completes, cancelling the other. And zip throttles a fast source to the pace of a slow one, which is why it is usually wrong for independent UI state and right for genuine correspondence."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_cold_flows",
+            "lesson_transforming_and_filtering_flows"
+          ],
+          "sources": [
+            {
+              "title": "Flow operators",
+              "url": "https://kotlinlang.org/docs/coroutines-flow-operators.html"
+            },
+            {
+              "title": "kotlinx.coroutines: combine",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/combine.html"
+            },
+            {
+              "title": "kotlinx.coroutines: zip",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/zip.html"
+            },
+            {
+              "title": "kotlinx.coroutines: merge",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/merge.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_flattening_flows",
+          "title": "Flattening: Should New Input Cancel Old Work?",
+          "summary": "When each value opens its own stream of results, the flattening operator decides what happens to the streams already running: finish them in order, run them together, or cancel the previous one. Ordering, overlap and cancellation of in-flight work are the three axes, and the third one has consequences the other two do not.",
+          "primarySubtopicIds": [
+            "flow_operators"
+          ],
+          "supportingSubtopicIds": [
+            "coroutine_cancellation",
+            "coroutine_parallelism",
+            "flow_collection"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Some values are not transformed into other values; they are transformed into more work. A query becomes a stream of search results, a selected identifier becomes a stream of updates for that record, an upload request becomes a stream of progress reports. The mapping function returns a Flow, and so mapping produces a flow of flows."
+                },
+                {
+                  "type": "code",
+                  "code": "val queries: Flow<String> = searchField()\n\nval nested: Flow<Flow<Result>> = queries.map { query ->\n    repository.search(query)   // returns Flow<Result>\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Nothing is wrong with that type; it is simply not what a collector wants. Flattening turns Flow<Flow<Result>> back into Flow<Result>, and the only interesting question is what happens to an inner flow that is still producing when the next upstream value arrives. Three answers exist, and they differ on exactly three axes: whether output order follows upstream order, whether inner flows may run at the same time, and whether starting the next one cancels the previous one."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Operator",
+                    "Order preserved",
+                    "Inner flows overlap",
+                    "Previous inner flow cancelled"
+                  ],
+                  "rows": [
+                    [
+                      "flatMapConcat",
+                      "Yes — upstream order, exactly",
+                      "No — one at a time",
+                      "No — it runs to completion first"
+                    ],
+                    [
+                      "flatMapMerge",
+                      "No — emissions interleave",
+                      "Yes — up to a concurrency limit",
+                      "No — every inner flow finishes"
+                    ],
+                    [
+                      "flatMapLatest",
+                      "Only the surviving one",
+                      "No",
+                      "Yes — immediately"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The decision is a question about the domain rather than about performance. Must every value's work complete? Then the answer is one of the first two. May the results of two values arrive interleaved? That separates the first from the second. And is work started for a superseded value still worth finishing? That is the third."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Flattening is not a way to make a chain faster. It is a statement about the lifetime relationship between the inner flows: sequential and ordered, concurrent and unordered, or superseding. Pick the one whose statement is true about the problem."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "One timeline makes the three concrete. Two queries arrive fifty milliseconds apart; the first opens a slow inner flow and the second a fast one."
+                },
+                {
+                  "type": "code",
+                  "code": "val queries = flow { emit(\"A\"); delay(50); emit(\"B\") }\n\nfun inner(q: String) = flow {\n    delay(if (q == \"A\") 200 else 40); emit(\"$q-1\")\n    delay(if (q == \"A\") 200 else 40); emit(\"$q-2\")\n}\n\n// Measured on this project's JVM target:\n// queries.flatMapConcat { inner(it) }  ->  A-1, A-2, B-1, B-2\n// queries.flatMapMerge  { inner(it) }  ->  B-1, A-1, B-2, A-2\n// queries.flatMapLatest { inner(it) }  ->  B-1, B-2",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "flatMapConcat collects one inner flow at a time and does not begin the next until the previous one has completed, so its output is upstream order exactly, and the fast second query waits behind the slow first one. That is frequently the correct contract rather than a cost: a sequence of edits applied to a document, or a set of requests that must reach a server in the order the user made them, needs precisely this and would be wrong with anything else. Sequential is not a synonym for inferior."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "flatMapMerge collects several inner flows at once, so B's first result arrived before A's even though A started first. Two details are worth stating precisely. Its documentation notes that the transform function itself is still called sequentially — it is the resulting flows that are collected concurrently. And the number of inner flows collected at once is bounded by a concurrency parameter which defaults to DEFAULT_CONCURRENCY; read from this project's resolved kotlinx-coroutines-core 1.11.0 artifact, that value is 16, and on the JVM it is overridable through a system property. The bound is the point: an unbounded fan-out over a long upstream is a way to open more work than the process can carry."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Reach for flatMapMerge when the inner operations are genuinely independent and interleaved completion is acceptable — fanning out a list of identifiers into per-item requests, for instance. Note that concurrency here is the coroutine kind the second unit established, not a promise of parallel execution on separate cores; whether those inner flows ever run at the same instant is the dispatcher's business."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Both of the library's own documents for these two operators carry an unusual note: their usage is discouraged in regular application-specific flows, on the grounds that a suspending operation inside map is usually sufficient and linear transformations are easier to reason about. That is worth taking seriously as a design signal. If each value needs one asynchronous result rather than a stream of them, map with a suspending body is the simpler answer, and no flattening is required at all."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "flatMapLatest cancels the inner flow started for the previous value and switches to the new one, which is why only B's results survived above. Search-as-you-type is its canonical use, and the reason is that a result set for a query the user has already replaced has no value to anyone."
+                },
+                {
+                  "type": "code",
+                  "code": "queries\n    .debounce(300)\n    .distinctUntilChanged()\n    .flatMapLatest { query -> repository.search(query) }",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Treating flatMapMerge as \"the fast one\" and flatMapConcat as \"the slow one\". They answer different questions. Merge is correct when interleaved results are acceptable; concat is correct when they are not. Choosing merge for ordered work produces results that arrive in an order the code below is not written to handle, and the failure is intermittent because it depends on which inner flow happens to finish first."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Everything flatMapLatest does to a superseded inner flow is ordinary coroutine cancellation, with no new mechanism and no additional guarantee. That has one consequence that decides whether the operator is safe for a given problem, and it is the consequence most often skipped."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Cancellation stops work from continuing. It does not undo work already performed. Measured on this project's JVM target, two queries flattened with flatMapLatest started two inner flows and completed one — but both inner flows had already executed their first statement before either was cancelled. If that first statement had sent a request, charged a card, or written a row, the cancellation would have arrived afterwards and changed nothing about it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So the question to ask before choosing a latest-shaped operator is not whether newer input supersedes older input. It is whether the work started for the older input is safe to abandon halfway through."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Safe to abandon: computing suggestions, loading results for a query nobody is looking at any more, rendering a preview, transforming transient input. Nothing outside the process observed the partial work, so discarding it costs only the effort already spent.",
+                    "Not safe without further design: submitting a payment, performing a durable write, incrementing a counter, or any request whose effect persists on a server. A cancelled attempt may have completed its externally visible half, and the caller will never learn that it did."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The honest framing is that latest semantics are appropriate when stale work is genuinely disposable, and that making an operation disposable — idempotency, cancellation tokens, transactional boundaries — is a design problem the operator does not solve. This is the same cooperative-cancellation model the cancellation Lesson established, applied to a flow: the inner flow stops at a suspension point it can observe, and whatever it did before that point stands."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One version-sensitive fact belongs in a complete answer. Checked against this project's resolved kotlinx-coroutines-core 1.11.0 artifact, flatMapConcat, flatMapMerge, flatMapLatest and their relatives transformLatest and mapLatest are all annotated @ExperimentalCoroutinesApi, at warning level. merge, by contrast, carries no opt-in annotation at all. The annotation is a statement about API stability — the semantics may change in some way in a future release — and not a statement about safety or fitness. These operators are the standard answers to the problems they solve, and using them means adding an @OptIn, not avoiding them."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Compare the three on the three axes rather than describing them one at a time: order, overlap, and what happens to work in flight. Then take the follow-up that separates a strong answer — what does flatMapLatest do to a request that has already been sent? It cancels the coroutine collecting it; it does not recall the request. That is why it fits search and does not, on its own, fit a submission."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_cooperative_cancellation",
+            "lesson_sequential_and_concurrent_work",
+            "lesson_flow_collection_lifetime",
+            "lesson_transforming_and_filtering_flows"
+          ],
+          "sources": [
+            {
+              "title": "kotlinx.coroutines: flatMapConcat",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/flat-map-concat.html"
+            },
+            {
+              "title": "kotlinx.coroutines: flatMapMerge",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/flat-map-merge.html"
+            },
+            {
+              "title": "kotlinx.coroutines: flatMapLatest",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/flat-map-latest.html"
+            },
+            {
+              "title": "kotlinx.coroutines: DEFAULT_CONCURRENCY",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-d-e-f-a-u-l-t_-c-o-n-c-u-r-r-e-n-c-y.html"
+            },
+            {
+              "title": "Cancellation and timeouts",
+              "url": "https://kotlinlang.org/docs/coroutines-cancellation.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_flow_buffering_and_conflation",
+          "title": "When the Collector Cannot Keep Up",
+          "summary": "A producer faster than its collector is a delivery-semantics problem before it is a performance problem. The default is that the producer waits. buffer, conflate and collectLatest each change that default in a different way, and each one decides what is allowed to be lost.",
+          "primarySubtopicIds": [
+            "flow_buffering"
+          ],
+          "supportingSubtopicIds": [
+            "flow_collection",
+            "flow_context",
+            "coroutine_cancellation",
+            "flow_operators"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A producer that emits faster than its collector can process invites an immediate reach for buffer, and that is the wrong order. Establish what happens without any operator first, because the default is a deliberate design decision rather than an oversight, and it is frequently the behaviour the problem wants."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One example runs through the whole Lesson. The producer emits five values with a short pause between them; the collector takes three times as long on each one."
+                },
+                {
+                  "type": "code",
+                  "code": "val producer = flow {\n    for (value in 1..5) {\n        emit(value)\n        delay(100)      // the producer's pace\n    }\n}\n\nproducer.collect { value ->\n    process(value)\n    delay(300)          // the collector's pace\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "With no operator at all, the collector receives all five values, in order, and the whole thing takes as long as the slower of the two. Measured on this project's JVM target: values 1 through 5, in 2,676 milliseconds — the collector's five times three hundred milliseconds, not the producer's five times one hundred. The producer did not run ahead. It was suspended inside emit until the collector was ready for the next value."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is backpressure, and the documentation states it as the default: the collector applies backpressure to the upstream flow, and the upstream suspends when the buffer is full. For a simple cold pipeline the producer's pace is therefore governed by the collector's. Nothing is lost, nothing is queued, and if the producer is reading a database or a network stream, it stops reading."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One qualification matters, and the previous unit already supplied it. It is not true that a Flow has no buffer. flowOn introduces one when it moves the upstream to a different dispatcher, channelFlow has one by construction, and the operators below add one on purpose. What is true is that an unbuffered pipeline coordinates the two paces, and that any statement about backpressure has to say which pipeline it is about."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "The default is not \"slow\". The default is \"nothing is lost and the producer runs at the collector's pace\". Every operator in this Lesson buys speed or decoupling by giving something up, so the first question is what this pipeline is allowed to lose."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "buffer gives the two ends room to run independently. It puts a channel between them, so the producer emits into the buffer and carries on rather than waiting for the collector to finish."
+                },
+                {
+                  "type": "code",
+                  "code": "producer.buffer().collect { value -> process(value); delay(300) }\n// Measured on this project's JVM target: 1, 2, 3, 4, 5 in 1,870 ms",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Every value still arrives, in order, and the total time falls because the producer's five hundred milliseconds now overlap the collector's fifteen hundred instead of adding to them. What has been bought with memory is decoupling; what has been given up is the guarantee that the producer is throttled. If the mismatch is permanent rather than a temporary burst, a buffer does not fix it — it fills, and once full its default overflow behaviour is to suspend the emitter again. An unbounded buffer removes the suspension and converts a rate mismatch into unbounded memory growth, which is a worse failure than a slow pipeline because it appears later and elsewhere."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "conflate makes the opposite trade. Instead of retaining a backlog, it keeps only the most recent unconsumed value and discards the ones the collector never reached."
+                },
+                {
+                  "type": "code",
+                  "code": "producer.conflate().collect { value -> process(value); delay(300) }\n// Measured on this project's JVM target: 1, 3, 5 in 1,101 ms",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Values 2 and 4 were produced and never seen. The value being processed was not disturbed: the collector finished with 1 while 2 and 3 arrived, and when it was free it took 3, the latest, and 2 was gone. That is conflate's exact contract, and the documentation is explicit that it does not cancel processing that has already started. It is a shorthand for buffer with a drop-oldest overflow strategy and the smallest buffer that strategy needs, which is a precise way of saying: never suspend the emitter, and let a newer value replace a pending older one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "collectLatest changes something else entirely. It does not drop queued values; it cancels the processing of the current one."
+                },
+                {
+                  "type": "code",
+                  "code": "producer.collectLatest { value -> process(value); delay(300) }\n// Measured on this project's JVM target:\n//   started:  1, 2, 3, 4, 5     every value began processing\n//   finished: 5                 only the last one completed\n//   total:    1,124 ms",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Every value reached the collector block and every block but the last was cancelled part-way through by the arrival of the next value. Nothing was dropped upstream; what was abandoned is the downstream work. And because that abandonment is ordinary coroutine cancellation, the block must be cooperative for it to take effect at all — a collector block doing non-suspending work will finish it, exactly as the cancellation unit described."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Operator",
+                    "What the collector receives",
+                    "What is given up",
+                    "Total, measured"
+                  ],
+                  "rows": [
+                    [
+                      "none",
+                      "Every value, processed to completion",
+                      "The producer runs at the collector's pace",
+                      "2,676 ms"
+                    ],
+                    [
+                      "buffer()",
+                      "Every value, processed to completion",
+                      "Memory for the backlog, and latency behind it",
+                      "1,870 ms"
+                    ],
+                    [
+                      "conflate()",
+                      "1, 3, 5 — processed to completion",
+                      "Values the collector never reached",
+                      "1,101 ms"
+                    ],
+                    [
+                      "collectLatest",
+                      "All five started, only 5 finished",
+                      "The partial work of every superseded value",
+                      "1,124 ms"
+                    ]
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Adding buffer() to a pipeline whose producer is permanently faster than its collector, and reading the improved timings as a fix. A buffer absorbs a burst; it cannot absorb a rate. The queue grows until it is full and the producer suspends again, only now with a backlog of stale values in front of the collector — so latency has been made worse in exchange for the throughput."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The comparison worth carrying out of this Lesson is conflate against collectLatest, because their timings are nearly identical and their semantics are opposites. One sentence separates them: should the work already in progress be allowed to finish?"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "If yes — the current value's processing is worth completing, but values queued behind it may be skipped — that is conflate. If no — a value becomes stale the moment a newer one exists, and continuing to process it is wasted or actively wrong — that is collectLatest. Whether unread values may be discarded is the second question, not the first, and answering it first is what makes the two operators look interchangeable."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The consequence is a safety one. collectLatest can cancel a collector block between any two suspension points, so its block must be written knowing that it may not reach its end. Rendering a preview, recomputing a layout or formatting a value for display are all fine: nothing outside the process observed the half-finished work. Performing a durable write is not, because the half that already happened stays happened — cancellation stops the next step and reverses nothing. If every value must be processed to completion, the operator is buffer or nothing at all, and if the rate genuinely cannot be sustained, the answer is upstream of Flow entirely."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two smaller precisions round out a complete answer. Applying flowOn with a dispatcher change introduces a coroutine boundary between upstream and downstream, and the documentation notes that a channel with a default buffer size is used internally between them — so a chain that already contains flowOn is not unbuffered, and an explicit buffer call adjacent to it configures that same channel rather than adding a second one. And conflate applied to a stream that already conflates by construction does nothing; the state-holder types the hot streams unit introduces behave that way, which is why the operator has no effect on them."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Establish the default first — the collector backpressures the producer, and nothing is lost — because an answer that starts at buffer has skipped the design decision. Then give conflate and collectLatest as the two ways of losing something on purpose: conflate discards unread values and protects work in progress; collectLatest cancels work in progress and discards nothing upstream. Close on the consequence: a collector block under collectLatest may be cancelled part-way, so it must be safe to abandon."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_flow_collection_lifetime",
+            "lesson_flow_context_and_flow_on",
+            "lesson_cooperative_cancellation",
+            "lesson_flattening_flows"
+          ],
+          "sources": [
+            {
+              "title": "Flow operators",
+              "url": "https://kotlinlang.org/docs/coroutines-flow-operators.html"
+            },
+            {
+              "title": "kotlinx.coroutines: buffer",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/buffer.html"
+            },
+            {
+              "title": "kotlinx.coroutines: conflate",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/conflate.html"
+            },
+            {
+              "title": "kotlinx.coroutines: collectLatest",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/collect-latest.html"
+            },
+            {
+              "title": "kotlinx.coroutines: flowOn",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/flow-on.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_flow_failure_and_completion",
+          "title": "`catch`, `retry` and `onCompletion`",
+          "summary": "Flow failure handling is decided by position in the chain. catch sees what is declared above it and nothing below it; retry re-collects the upstream rather than re-running a line; and onCompletion observes success, failure and cancellation alike, which is why it is the wrong place for a success side effect.",
+          "primarySubtopicIds": [
+            "flow_errors"
+          ],
+          "supportingSubtopicIds": [
+            "kotlin_exceptions",
+            "coroutine_cancellation",
+            "flow_operators",
+            "error_modeling"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Failure handling in a flow is not a question of which operator catches exceptions. It is a question of where in the chain the failing code sits relative to the operator that is supposed to see it. Get the position right and the API is obvious; get it wrong and a correct-looking catch never fires."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The rule is one line: catch observes failures produced by the part of the chain declared above it. Everything below it is out of scope, deliberately."
+                },
+                {
+                  "type": "code",
+                  "code": "source                       // \\\n    .map { transform(it) }   //  |  catch sees failures from here\n    .catch { cause -> ... }  // <-'  the boundary\n    .map { render(it) }      //     and not from here\n    .collect { display(it) } //     nor here",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So the arrangement that surprises people is this one, and it behaves exactly as the rule predicts."
+                },
+                {
+                  "type": "code",
+                  "code": "flow { emit(1) }\n    .map { it }\n    .catch { cause -> handle(cause) }   // never runs\n    .collect { error(\"thrown by collect\") }\n\n// Measured on this project's JVM target: catch received nothing,\n// and the exception propagated out to the caller of collect.",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The property behind that is called exception transparency, and the documentation states it directly: catch is transparent to exceptions that occur in downstream flow. Conceptually the operator wraps the upstream portion in a try/catch, and the collector is not part of the upstream portion. The restriction is a feature rather than a limitation — without it, an operator declared early in a chain could silently swallow a failure from code declared later, and no part of the chain could be reasoned about locally."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Read a flow chain top to bottom and put the failure handler below the code it is responsible for. \"Does catch fire here?\" is answered by looking at line order, not by looking at the exception type."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "There are two fixes for a failure the collector produces, and choosing between them is a question about ownership rather than a matter of taste."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Handle it where it happens. If the failing operation belongs to the collector — writing to the screen, updating a widget, running an effect — wrap it in an ordinary try/catch inside the collect block. The stream is not involved in that failure and should not be made to carry it.",
+                    "Move it upstream. If the failing operation is really a transformation of the value and only happens to be written inside collect, move it into an operator and put catch after it. Now it is part of the pipeline and the pipeline's failure handling applies."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What should not be done is relocating arbitrary collector work upstream merely so that catch can see it. That changes what the stream is responsible for in order to reach an operator, and it puts side effects in a chain that may later be retried."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "catch's block can also emit, which turns a failure into data — the documentation shows exactly this, replacing a caught exception with a wrapper value."
+                },
+                {
+                  "type": "code",
+                  "code": "productFlow\n    .catch { cause ->\n        log(cause)\n        emit(Products.Unavailable)   // the failure becomes a value\n    }",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Worth doing when the downstream genuinely has something to display for that case; worth being careful about, because it changes the contract. A collector that could previously distinguish \"no products\" from \"could not load products\" can no longer do so if both arrive as an empty list. Whether an expected failure is better modelled as a value in the stream than as an exception is a real design question, and the architecture curriculum owns it; the mechanism here is only that the operator permits it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "retry is a different operation from catch and the name invites the wrong mental model. It does not re-run the line that threw. It re-collects the upstream from the beginning, which for a cold flow means running the producer again."
+                },
+                {
+                  "type": "code",
+                  "code": "var producerRuns = 0\nflow {\n    producerRuns++\n    emit(producerRuns)\n    if (producerRuns < 3) error(\"transient\")\n}.retry(2) { it is IllegalStateException }\n\n// Measured on this project's JVM target: the producer ran 3 times,\n// and the collector received 1, 2, 3 — including the values emitted\n// by the two attempts that then failed.",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two things in that measurement are the whole lesson. The producer side effect happened three times, so retry is only appropriate where repeating the upstream operation is safe. And the values from the failed attempts were already delivered downstream — retrying does not un-emit them, so a collector that accumulates rather than replaces will see duplicates."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "retryWhen is the conditional form, and its predicate receives both the cause and a zero-based attempt index. Measured on this project's JVM target, a flow that failed every time and stopped retrying at attempt 2 saw the indexes 0, 1 and 2. Because the predicate is a suspending function, a delay between attempts belongs inside it."
+                },
+                {
+                  "type": "code",
+                  "code": "networkFlow.retryWhen { cause, attempt ->\n    if (cause is IOException && attempt < 3) {\n        delay(1_000L * (1L shl attempt.toInt()))   // 1s, 2s, 4s\n        true\n    } else {\n        false                                       // give up; the cause is rethrown\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "retry() with no argument. Its default retry count is Long.MAX_VALUE, which is an unbounded retry loop against a failure that may be permanent — a bad credential or a malformed request will never succeed, and the flow will keep asking. Bound the attempts and decide which causes are worth repeating at all."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "onCompletion is the operator most often described wrongly, and the wrong description is \"a finally block for a flow\". Its own documentation is more careful: unlike catch, it reports exceptions that occur both upstream and downstream, and it observes exceptions thrown to cancel the flow. Its cause parameter is null if and only if the flow completed successfully."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Measured on this project's JVM target, across four endings of the same shape of pipeline:"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "How collection ended",
+                    "The cause passed to onCompletion"
+                  ],
+                  "rows": [
+                    [
+                      "The flow completed normally",
+                      "null"
+                    ],
+                    [
+                      "The producer threw",
+                      "IllegalStateException — the upstream failure"
+                    ],
+                    [
+                      "The collect block threw",
+                      "IllegalStateException — a downstream failure, which catch would not have seen"
+                    ],
+                    [
+                      "The collecting coroutine was cancelled",
+                      "JobCancellationException"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Which is why this is a defect rather than an idiom:"
+                },
+                {
+                  "type": "code",
+                  "code": "syncFlow\n    .onCompletion { analytics.track(\"Successfully synced\") }\n    .collect { apply(it) }",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Three of the four endings above are not a successful sync, and all four run that line. The event fires when the server rejected the request and when the user navigated away mid-sync, and it will be believed by whoever reads the dashboard. The fix is the distinction the API is built around, and the documentation shows it: check the cause."
+                },
+                {
+                  "type": "code",
+                  "code": "syncFlow\n    .onCompletion { cause ->\n        if (cause == null) analytics.track(\"Successfully synced\")\n    }\n    .collect { apply(it) }",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Cancellation deserves its own line here, because the third row invites a bad idea. Neither catch nor retry treats cancellation as a recoverable failure — both are documented as not catching or retrying on exceptions thrown to cancel the flow — and that is the coroutine model the cancellation Lesson established, unchanged. Cancellation is control flow, not an error to be absorbed, and an operator that swallowed it would break the structured guarantee that a cancelled scope actually stops. onCompletion may observe it; nothing here may consume it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Finally, the argument the previous unit left half-finished. Context preservation and exception transparency are the same idea applied to two different things a flow carries."
+                },
+                {
+                  "type": "code",
+                  "code": "context transparency:\n    an upstream operator cannot change the context the downstream runs in\n\nexception transparency:\n    an upstream operator cannot consume a failure the downstream produced",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "In both cases the property being protected is local readability: a reader of a chain can reason about a given line from the lines above it, without having to check whether something further up quietly redefined the rules. Treat that as a mental bridge between the two rather than a formal equivalence — the contracts are stated separately and neither implies the other — but it is the reason both restrictions look inconvenient in a small example and turn out to be what makes a long chain analysable."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Three answers worth having ready. Where does catch apply? To everything declared above it, so a throw inside collect escapes to the caller — and the two fixes are try/catch in the collector or moving the work into an operator above catch. What does retry do? Re-collects the upstream, re-running a cold producer's side effects, so it is only safe where repetition is. And what does onCompletion observe? Success, failure and cancellation alike, so completion is not success and a success side effect must test the cause for null."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_exception_propagation",
+            "lesson_cooperative_cancellation",
+            "lesson_flow_context_and_flow_on",
+            "lesson_flow_buffering_and_conflation"
+          ],
+          "sources": [
+            {
+              "title": "kotlinx.coroutines: catch",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/catch.html"
+            },
+            {
+              "title": "kotlinx.coroutines: retry",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/retry.html"
+            },
+            {
+              "title": "kotlinx.coroutines: retryWhen",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/retry-when.html"
+            },
+            {
+              "title": "kotlinx.coroutines: onCompletion",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/on-completion.html"
+            },
+            {
+              "title": "Coroutine exceptions handling",
+              "url": "https://kotlinlang.org/docs/exception-handling.html"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
     }
   ]
 }

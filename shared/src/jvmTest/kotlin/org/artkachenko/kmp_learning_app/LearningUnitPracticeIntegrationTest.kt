@@ -167,10 +167,11 @@ internal class LearningUnitPracticeIntegrationTest {
                     "unit_context_dispatchers_and_concurrency",
                     "unit_cancellation_failure_and_coordination",
                     "unit_flow_fundamentals",
+                    "unit_flow_composition_timing_and_failure",
                 ),
                 coroutinesUnits.map { it.id },
             )
-            assertEquals(listOf(5, 4, 5, 5), coroutinesUnits.map { it.lessons.size })
+            assertEquals(listOf(5, 4, 5, 5, 5), coroutinesUnits.map { it.lessons.size })
             coroutinesUnits.forEach { coroutinesUnit ->
                 coroutinesUnit.lessons.forEach { lesson ->
                     awaitNext(coroutinesUnit.id, lesson.id)
@@ -210,9 +211,9 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             val rebuilt = LocalLessonStudyRepository(database)
             assertFalse(rebuilt.isStudied(earlierLesson.id))
-            // 21 `android_ui` Lessons plus 19 in the coroutines and Flow Units, less the
+            // 21 `android_ui` Lessons plus 24 in the coroutines and Flow Units, less the
             // one that was just un-studied.
-            assertEquals(39, rebuilt.getStudiedLessons().size)
+            assertEquals(44, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -268,6 +269,20 @@ internal class LearningUnitPracticeIntegrationTest {
                         "flow_collection",
                         "flow_context",
                     ) to 5
+                ),
+                // E24-06. `flow_operators` is primary in three of the five Lessons —
+                // filtering, combining and flattening are three depths of one concept —
+                // so five Lessons practise three concepts. `stateflow`, the Kotlin
+                // bridges and the architecture bridge stay out of the scope, which is
+                // what `supportingOnly` below proves; GAP-U5-A and GAP-U5-B in
+                // `docs/content/coroutines-flow-units-1-6-plan.md` depend on that,
+                // because neither reasoning is assessed by any of these seven Questions.
+                "unit_flow_composition_timing_and_failure" to (
+                    setOf(
+                        "flow_operators",
+                        "flow_buffering",
+                        "flow_errors",
+                    ) to 7
                 ),
             )
             val content = BundledLearningContentRepository()

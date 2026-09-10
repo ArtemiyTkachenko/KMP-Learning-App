@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `13fd5d2e56eea57cb8eab691233b5213a13990a15deee2ec3584b77ead950040` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `ce24d8f9f9718a59e9d84f2db6537c95f5da75fe0245a0ade6ae5e7090e787c1` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `5870ff2387861aad48c54681cff420572f40ce00800035f2e8747476a2ccfc32` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,12 +68,12 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 10 |
-| Active lessons in those units | 40 |
-| Distinct primary subtopics | 24 |
-| Distinct supporting subtopics | 58 |
-| Unique active questions reached through primary mappings | 45 |
-| Primary subtopics with at least one active question | 24 |
+| Active learning units | 11 |
+| Active lessons in those units | 45 |
+| Distinct primary subtopics | 27 |
+| Distinct supporting subtopics | 59 |
+| Unique active questions reached through primary mappings | 52 |
+| Primary subtopics with at least one active question | 27 |
 | Primary subtopics with no active question | 0 |
 | Active questions in the bank | 370 |
 | Deprecated questions excluded from this report | 41 |
@@ -101,6 +101,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Coroutine Context, Dispatchers and Concurrent Work (`unit_context_dispatchers_and_concurrency`) | 4 | 4 | 1 | 3 | 1 | 5 |
 | Cancellation, Failure and Coordination (`unit_cancellation_failure_and_coordination`) | 5 | 4 | 2 | 3 | 2 | 7 |
 | Flow Fundamentals (`unit_flow_fundamentals`) | 5 | 3 | 5 | 0 | 0 | 5 |
+| Flow Composition, Timing and Failure (`unit_flow_composition_timing_and_failure`) | 5 | 3 | 4 | 3 | 0 | 7 |
 
 ## Unit and lesson detail
 
@@ -878,6 +879,101 @@ Supporting context — not primary coverage:
 | `coroutine_cancellation` — Cancellation | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `flow_buffering` — Buffering and conflation | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `memory_leaks` — Memory leaks | 1 | `performance` — Performance, Memory & Debugging |
+
+### Flow Composition, Timing and Failure (`unit_flow_composition_timing_and_failure`)
+
+Home topic: `async_reactive` — Coroutines, Flow & Reactive Programming.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 4 | `flow_catch_upstream_only`, `flow_combine_vs_zip_emission_rule`, `flow_conflate_vs_collect_latest`, `flow_debounce_vs_distinct_until_changed` |
+| APPLIED | 3 | `flow_buffer_producer_consumer_concurrency`, `flow_flat_map_latest_search_cancellation`, `flow_retry_when_conditional_attempts` |
+| ADVANCED | 0 | — |
+
+#### Transforming and Filtering: by Value and by Time (`lesson_transforming_and_filtering_flows`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `flow_operators` — Flow operators | 2 | 1 | 0 | 3 | `flow_combine_vs_zip_emission_rule`, `flow_debounce_vs_distinct_until_changed`, `flow_flat_map_latest_search_cancellation` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `flow_fundamentals` — Flow fundamentals | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `kotlin_lambdas` — Lambdas and higher-order functions | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_equality` — Structural vs referential equality | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+
+#### `combine` and `zip`: Current Values or Paired Emissions (`lesson_combining_flows`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `flow_operators` — Flow operators | 2 | 1 | 0 | 3 | `flow_combine_vs_zip_emission_rule`, `flow_debounce_vs_distinct_until_changed`, `flow_flat_map_latest_search_cancellation` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `flow_fundamentals` — Flow fundamentals | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `stateflow` — StateFlow | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_collection` — Flow collection | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+
+#### Flattening: Should New Input Cancel Old Work? (`lesson_flattening_flows`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `flow_operators` — Flow operators | 2 | 1 | 0 | 3 | `flow_combine_vs_zip_emission_rule`, `flow_debounce_vs_distinct_until_changed`, `flow_flat_map_latest_search_cancellation` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `coroutine_cancellation` — Cancellation | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_parallelism` — Concurrency and async/await | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_collection` — Flow collection | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+
+#### When the Collector Cannot Keep Up (`lesson_flow_buffering_and_conflation`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `flow_buffering` — Buffering and conflation | 1 | 1 | 0 | 2 | `flow_buffer_producer_consumer_concurrency`, `flow_conflate_vs_collect_latest` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `flow_collection` — Flow collection | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_context` — flowOn and execution context | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_cancellation` — Cancellation | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_operators` — Flow operators | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+
+#### `catch`, `retry` and `onCompletion` (`lesson_flow_failure_and_completion`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `flow_errors` — Flow exception handling | 1 | 1 | 0 | 2 | `flow_catch_upstream_only`, `flow_retry_when_conditional_attempts` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `kotlin_exceptions` — Exception handling | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `coroutine_cancellation` — Cancellation | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_operators` — Flow operators | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `error_modeling` — Error representation/modeling | 2 | `architecture` — Application Architecture & Design Principles |
 
 ## Primary assessment gaps
 

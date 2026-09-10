@@ -59,7 +59,7 @@ identity proposed here lives in documentation until the authoring issue that shi
 | E24-05 | Unit 4 identities and boundaries; the Flow-fundamentals rows; the context-preservation and `callbackFlow` entries; **and [Reconciling the shipped `snapshotFlow` Lesson](#reconciling-the-shipped-snapshotflow-lesson) in full** |
 | E24-06 | Unit 5 identities and boundaries; the operator, buffering and failure rows; the flattening, experimental-annotation and `catch` entries in source freshness |
 | E24-07 | Unit 6 identities and boundaries; the hot-stream rows; the `StateFlow` conflation, `SharedFlow` buffering and `SharingStarted` entries in source freshness |
-| E24-08 | [Assessment gaps](#assessment-gaps-for-e24-08) in full, re-checked against the finished Lessons, plus the [mapping corrections](#mapping-corrections-rather-than-gaps) |
+| E24-08 | [Assessment gaps](#assessment-gaps-for-e24-08) in full, re-checked against the finished Lessons, plus the [mapping corrections](#mapping-corrections-rather-than-gaps) and the semantic reviews each authoring issue recorded in its own outcomes section |
 | E24-09 | [Handoff](#handoff) — sequencing, cross-Unit links, and the limitations recorded here |
 
 Each authoring issue also reads the outcomes the previous ones recorded, so a finding is
@@ -70,10 +70,10 @@ is the first of those and is required reading for E24-03 and E24-08.
 [Authoring outcomes for Unit 1](#authoring-outcomes-for-unit-1). Unit 2 is authored and
 shipped by E24-03; see [Authoring outcomes for Unit 2](#authoring-outcomes-for-unit-2).
 Unit 3 is authored and shipped by E24-04; see
-[Authoring outcomes for Unit 3](#authoring-outcomes-for-unit-3). Unit 4 is authored in
-production format by E24-05, pending review and merge; see
-[Authoring outcomes for Unit 4](#authoring-outcomes-for-unit-4). Units 5 and 6 remain
-proposed.
+[Authoring outcomes for Unit 3](#authoring-outcomes-for-unit-3). Unit 4 is authored and
+shipped by E24-05; see [Authoring outcomes for Unit 4](#authoring-outcomes-for-unit-4).
+Unit 5 is authored in production format by E24-06, pending review and merge; see
+[Authoring outcomes for Unit 5](#authoring-outcomes-for-unit-5). Unit 6 remains proposed.
 
 ---
 
@@ -1351,6 +1351,323 @@ to "the effects and lifecycle integration material later in this curriculum".
 E24-06 was not started, and no Unit 5 operator, timing or failure material, no Unit 6
 hot-stream material, no Compose-effect material and no Question was authored.
 
+## Authoring outcomes for Unit 5
+
+E24-06 authors `unit_flow_composition_timing_and_failure` immediately after Unit 4 in
+`learning_curriculum.json`. Everything below was executed, opened or read during that work
+on 2026-09-10; nothing here is recalled from the E24-01 review, and every annotation and
+default was read from this repository's **resolved** `kotlinx-coroutines-core:1.11.0`
+sources jar rather than from a published API page.
+
+### What did not change
+
+All five proposed Lesson ids, titles, authored order and exact primary/supporting mappings
+shipped verbatim, as did the Unit id, title and `async_reactive` home Topic. No Lesson was
+renamed, reordered, split or merged. No operator was added to or dropped from the set the
+plan named, so the acceptance criterion requiring a documented justification for such a
+change does not apply. No Question, taxonomy record, earlier E24 Unit or Compose Unit
+changed — the diff outside this Unit is the two tests that pin Unit and Lesson counts and
+the generated coverage snapshot.
+
+`flow_operators` is deliberately primary in L5.1, L5.2 and L5.3, which the plan's
+[shared-primaries](#identity-and-mapping-checks-performed) note anticipated. Unit practice
+therefore reaches **three** concepts — `flow_operators`, `flow_buffering`, `flow_errors` —
+and **seven** ACTIVE Questions, each counted once. That is asserted in the integration test
+rather than left to the generated snapshot. Each Lesson carries Core, Practical and Senior
+depth and runs 1,155–1,235 words, just above the 1,063–1,194 range Unit 4 occupies and
+inside the range the shipped Compose Units span.
+
+### The two E24-05 corrections, carried forward
+
+Both were live risks in this Unit rather than theoretical ones, because Unit 5 is where the
+internal coroutines actually appear.
+
+- **Coldness is about when production starts, not about how many coroutines an
+  implementation uses.** L5.4 states outright that it is not true that a Flow has no
+  buffer, and names the three places in the curriculum where one exists: `flowOn` across a
+  dispatcher change, `channelFlow` by construction, and the buffering operators themselves.
+  L5.3 describes `flatMapMerge` collecting several inner flows at once without ever
+  suggesting that this is a second lifetime — the inner flows are cancelled through the
+  ordinary hierarchy, which is what makes `flatMapLatest`'s cancellation ordinary
+  cancellation. Neither Lesson repeats the over-broad claim Unit 4's review removed.
+- **Intermediate against terminal is semantic, not a memorised list.** No Lesson here
+  enumerates terminal operators. L5.1 relies on the distinction only to say that `onEach`
+  alone starts nothing, and L5.4 uses `collectLatest` as a terminal operation without
+  needing a list to justify it.
+
+### Boundaries held, and how
+
+Every boundary was tested against the finished prose rather than assumed from the outline.
+
+| Boundary | What ships |
+| --- | --- |
+| Unit 6 owns hot streams and state | `StateFlow`, `MutableStateFlow`, `SharedFlow`, `replay`, `stateIn`, `shareIn` and `SharingStarted` are never named. `stateflow` is supporting in L5.2 only, and the Lesson's one forward gesture is a prose paragraph saying that a stream which always has a current value is a different kind of stream, owned by "the hot streams and state unit later in this curriculum". L5.4 makes one bounded factual reference — `conflate` has no effect on a stream that already conflates by construction — without naming or teaching the type |
+| E25 owns Compose collection | `collectAsState`, `collectAsStateWithLifecycle`, `LaunchedEffect`, `rememberCoroutineScope`, `produceState`, `repeatOnLifecycle` and `flowWithLifecycle` are never named. Search-as-you-type is used as a domain example in L5.1 and L5.3 and no Compose mechanics appear around it |
+| Architecture stays supporting | `error_modeling` earns exactly one bounded bridge in L5.5: `catch` may emit a fallback, that changes the downstream contract, and whether an expected failure is better modelled as a value than an exception is named as the architecture curriculum's question. No `Result` type, sealed UI state, MVI, MVVM or repository error policy appears |
+| E31 owns testing | Turbine, `runTest`, virtual time and `TestDispatcher` are never named, even though every timing operator in L5.1 and L5.4 invites a test example. The deterministic probes used to verify the published outputs were throwaway authoring validation and were deleted |
+| Kotlin stays supporting | `kotlin_lambdas` is present only as the fact that `map`, `filter` and `transform` take suspending lambdas; `kotlin_equality` only as the fact that `distinctUntilChanged` compares with `equals`. Neither becomes a lesson on lambdas or on equality — the full equality argument belongs to Unit 6's `StateFlow` conflation |
+| KMP accuracy | Every code example is common Kotlin. No JVM-only API, no Android lifecycle assumption and no thread claim appears. L5.3 states explicitly that the concurrency `flatMapMerge` provides is the coroutine kind Unit 2 established and not a promise of parallel execution, which is the one place the Unit 2 distinction was at risk |
+
+### The transform-and-filter decision model as taught
+
+L5.1 is organised around one question — what does this operator need in order to decide? —
+rather than around the six operators. `map`, `filter` and `transform` need only the value
+and differ only in how many outputs one input may produce. `distinctUntilChanged` needs the
+value and the one immediately before it. `debounce` and `sample` need the clock. The Lesson
+states that an operator can only be correct for a problem whose decision uses the same
+inputs, which is what makes the search-field pairing — `debounce` first for timing noise,
+`distinctUntilChanged` second for the repeated query — a semantic argument rather than a
+recipe. `take`, `drop`, `onStart`, `onEach` and `scan` are one Reference paragraph in the
+Senior section, as the plan's boundary required, and no operator has a section merely
+because it exists.
+
+### The `DEFAULT_CONCURRENCY` decision
+
+E24-01 deliberately left the numeric value unestablished and told L5.3 either to read it or
+to name it symbolically. It was read. In the resolved artifact:
+
+```kotlin
+public const val DEFAULT_CONCURRENCY_PROPERTY_NAME: String = "kotlinx.coroutines.flow.defaultConcurrency"
+
+@FlowPreview
+public val DEFAULT_CONCURRENCY: Int = systemProp(DEFAULT_CONCURRENCY_PROPERTY_NAME, 16, 1, Int.MAX_VALUE)
+```
+
+The value is **16**, and the declaration's own KDoc adds the qualification that makes it
+safe to teach: it can be changed on the JVM through that system property. L5.3 states the
+number with the qualification attached, because the number is not the point — the
+*existence of a bound* is, and a reader who knows only that the parameter defaults to
+`DEFAULT_CONCURRENCY` cannot reason about what an unbounded fan-out would cost. It was
+verified against the declaration and by reading it back at runtime, not remembered. Note
+that the constant carries `@FlowPreview`, so it is one of the three declarations in this
+Unit with the stronger opt-in.
+
+### Claims that were executed rather than reasoned about
+
+Throwaway JVM probes ran each of these against the resolved `kotlinx-coroutines-core:1.11.0`
+and were then deleted. Every number a Lesson quotes is from this table and is presented in
+the prose as a measurement rather than as an API guarantee.
+
+| Claim a Lesson makes | Measured result |
+| --- | --- |
+| `distinctUntilChanged` compares only with the immediately previous value (L5.1) | `flowOf("A","A","B","A").distinctUntilChanged()` produced **A, B, A** — the final A survived |
+| `debounce` and `sample` are different contracts, on one identical timeline (L5.1) | The typing timeline in the Lesson, run six times with identical results: `debounce(300)` produced **kot, kotlin**; `sample(300)` produced **kot, kotl, kotlin**. The extra value is a string the user never paused at, which is the whole distinction. An earlier timeline put the last keystroke roughly sixty milliseconds before a sampling tick and was rejected for that reason — the published one leaves margins of over a hundred milliseconds on both sides, and the Lesson states that the exact middle value is a property of where emissions fall relative to the ticks rather than a guarantee |
+| `debounce` cannot see a repeated query, `distinctUntilChanged` cannot see time (L5.1) | A user who typed `kot`, paused, added and deleted a character, and paused again: `debounce(300)` alone emitted **kot twice**; `debounce(300).distinctUntilChanged()` emitted it **once** |
+| `transform` may emit zero, one or many outputs per input (L5.1) | `flowOf(1,2,3).transform { if (it % 2 == 0) { emit(…); emit(…) } }` produced **two** values from **three** inputs |
+| A suspending lambda inside `map` is ordinary (L5.1) | `flowOf(1,2).map { delay(10); it * 10 }` produced **10, 20** |
+| `combine`'s startup rule and steady-state rule (L5.2) | The spaced timeline in the Lesson produced **(U1,S1) at ~200 ms, (U1,S2) at ~400 ms, (U2,S2) at ~600 ms** across three runs — nothing before the second source's first value, then one result per emission |
+| `combine` emits nothing if a source never emits (L5.2) | A working source combined with one that completed without emitting produced an **empty** list, not a partial one |
+| `zip` pairs and completes when either side runs out (L5.2) | Three values zipped against two produced **(A1,B1), (A2,B2)**; a four-value source zipped against a two-value one emitted **two pairs** while the faster upstream had produced **three** values — one was produced, found no partner and was discarded |
+| `merge` interleaves without combining (L5.2) | The two sources above merged produced **U1, S1, S2, U2** |
+| The three flattening strategies on one timeline (L5.3) | `flatMapConcat` → **A-1, A-2, B-1, B-2**; `flatMapMerge` → **B-1, A-1, B-2, A-2**; `flatMapLatest` → **B-1, B-2**. Same source, same inner flows, three orders |
+| `flatMapLatest` cancels an inner flow that has already done work (L5.3) | Counting inner flows on the same timeline: `concat` started **2** and completed **2**; `merge` started **2** and completed **2**; `latest` started **2** and completed **1** — the cancelled inner flow had already executed its first statement |
+| `DEFAULT_CONCURRENCY` (L5.3) | **16**, read back at runtime, matching the declaration |
+| The default is backpressure, not loss (L5.4) | The Lesson's producer and collector, with no operator: **1, 2, 3, 4, 5** in **2,676 ms** — the collector's pace, not the producer's |
+| `buffer` decouples the two ends and keeps every value (L5.4) | Same pair with `.buffer()`: **1, 2, 3, 4, 5** in **1,870 ms** |
+| `conflate` drops unread values and protects work in progress (L5.4) | Same pair with `.conflate()`: **1, 3, 5** in **1,101 ms** — 2 and 4 were produced and never seen; the block processing 1 was not disturbed |
+| `collectLatest` cancels the block rather than dropping values (L5.4) | Same pair with `collectLatest`: **all five started**, **only 5 finished**, in **1,124 ms** |
+| `catch` does not see a failure thrown by `collect` (L5.5) | The `catch` block received **nothing** and the exception propagated out to the caller of `collect` |
+| `retry` re-collects the upstream and re-runs a cold producer (L5.5) | A producer failing its first two attempts under `retry(2)`: the producer ran **3** times and the collector received **1, 2, 3** — including the values emitted by the two attempts that then failed |
+| `retryWhen`'s attempt index is zero-based (L5.5) | A flow that failed every time, giving up at attempt 2, saw the indexes **0, 1, 2** |
+| `onCompletion`'s cause across four endings (L5.5) | Normal completion → **null**; producer threw → **IllegalStateException**; `collect` block threw → **IllegalStateException** (a downstream failure, which `catch` would not have seen); collecting coroutine cancelled → **JobCancellationException** |
+
+### How `combine` was verified, and the one honest caveat
+
+The `combine` timeline in L5.2 was not written from the mental model and then checked. It
+was run first, and the first version of it was wrong.
+
+With the sources' emissions two hundred milliseconds apart, three runs produced all three
+combined values in the order the model predicts, and that is the timeline the Lesson
+publishes. With the same emissions compressed to a hundred milliseconds, two of three runs
+produced only **two** values — the intermediate combination was skipped rather than delayed.
+The documentation's own worked example on the `combine` KDoc, whose sources are ten and
+fifteen milliseconds apart, is annotated as printing `1a 2a 2b 2c`; it printed `1a 2b 2c`
+here, consistently, across three runs.
+
+Reading `combineInternal` in the resolved artifact explains it exactly. Updates are received
+in batches, and a batch bails out only "as soon as we encountered two values from the same
+source" — so updates from *different* sources that are already pending are folded into a
+single combined result carrying the latest of each. A follow-up probe confirmed the
+complement: three values bursting from **one** source against a stable other source produced
+**three** results in all three runs, because the per-source collector yields after each send.
+
+The Lesson teaches the reliable timeline in Core and puts the qualification in Senior, framed
+as the operator's actual contract rather than as a defect: `combine` is specified in terms of
+the latest value of each source, not as one output per upstream emission, and that is the
+property that makes it right for screen state and wrong for anything that must observe every
+change. This is deliberately **not** written up as a documentation error — the KDoc example's
+ten- and fifteen-millisecond delays are inside JVM timer granularity, so the difference is
+explained by scheduling rather than by the page being wrong — but the L5.2 prose does not
+repeat the guide page's "emits a new value when any upstream flow emits a value" as an
+unqualified guarantee.
+
+### The conflation capacity discrepancy, recorded rather than resolved
+
+The `conflate()` contract was checked in three places and two of them disagree on one number.
+
+| Source | What it says |
+| --- | --- |
+| `conflate()` in the resolved artifact | `buffer(CONFLATED)`, and `buffer` desugars `CONFLATED` to `capacity = 0, onBufferOverflow = DROP_OLDEST` |
+| The `buffer` KDoc in the same artifact | `CONFLATED` "is a shortcut to `buffer(capacity = 0, onBufferOverflow = BufferOverflow.DROP_OLDEST)`", and a non-`SUSPEND` overflow strategy "implicitly creates a channel with at least one buffered element" |
+| `coroutines-flow-operators.html`, live on 2026-09-10 | "the `.conflate()` operator, which is a shorthand for `buffer(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)`" |
+
+The two are reconcilable — a capacity of zero with a drop-oldest strategy implicitly gets one
+buffered element — but they are not the same sentence, and quoting either number invites a
+reader to contradict it with the other. **L5.4 therefore states the semantics and not the
+number**: `conflate` is `buffer` with a drop-oldest overflow strategy and the smallest buffer
+that strategy needs. Everything the Lesson actually teaches about `conflate` — never suspend
+the emitter, replace a pending older value with a newer one, do not cancel processing already
+started — is stated identically by all three sources and was measured besides. E24-07 and
+E24-08 should not "fix" this into a number without re-reading both.
+
+### Source freshness, re-checked on 2026-09-10
+
+Every page below was opened rather than recalled, and every source URL cited by a Unit 5
+Lesson — twenty-two distinct URLs — was requested and returned 200.
+
+| Page | State on 2026-09-10 | Consequence |
+| --- | --- | --- |
+| `coroutines-flow-operators.html` | Title still "Flow operators". Structure unchanged from what E24-01 and E24-05 recorded | Supplies the default-backpressure claim L5.4 opens with, the "doesn't cancel processing that has already started" clause that separates `conflate` from `collectLatest`, and the `zip` completion clause. All three re-read on the page. Its `conflate` capacity figure is the one discrepancy above |
+| `coroutines-flow.html` | Title still "Flows" | Not cited by Unit 5; the operator-level material this Unit needs is all on the operators page or in KDoc |
+| `exception-handling.html` | Title still "Coroutine exceptions handling" | Cited by L5.5 for the cancellation-is-not-failure model Unit 3 established, which L5.5 preserves rather than restates |
+| `coroutines-cancellation.html` | Title still "Cancellation and timeouts" | Cited by L5.3 for the cooperative-cancellation model the side-effect warning depends on |
+| `debounce`, `sample`, `distinctUntilChanged`, `transform`, `combine`, `zip`, `merge`, `flatMapConcat`, `flatMapMerge`, `flatMapLatest`, `DEFAULT_CONCURRENCY`, `buffer`, `conflate`, `collectLatest`, `flowOn`, `catch`, `retry`, `retryWhen`, `onCompletion` KDoc | All current, all 200 | E24-01's instruction that the API reference is the authority for the operators the rewritten guide pages no longer cover held throughout. `debounce`, `sample`, the flattening operators, `retry`, `retryWhen` and `onCompletion` are cited to KDoc for exactly that reason |
+
+No page was found rewritten since E24-05 recorded its state, so open question 4 in
+[Unresolved questions](#unresolved-questions) is unchanged.
+
+### The library's own discouragement, taught rather than suppressed
+
+Both `flatMapConcat` and `flatMapMerge` carry an unusual KDoc note: their usage is
+"discouraged in a regular application-specific flows", because "most likely, suspending
+operation in `map` operator will be sufficient and linear transformations are much easier to
+reason about". Repeating a Lesson's operators while suppressing their own documentation's
+reservation would be dishonest, so L5.3 states it and draws the design consequence: if each
+value needs one asynchronous result rather than a stream of them, a suspending `map` is the
+simpler answer and no flattening is required at all. The note does not apply to
+`flatMapLatest`, which has no equivalent clause, and the Lesson does not extend it there.
+
+### The latest-value side-effect warning, exactly as taught
+
+This is the acceptance-critical part of L5.3 and it is built on a measurement rather than on
+a caution. Two inner flows started, one was cancelled, and both had already executed their
+first statement before the cancellation arrived. The Lesson's rule follows from that:
+
+> Cancellation stops work from continuing. It does not undo work already performed.
+
+So the question the learner is taught to ask is not whether newer input supersedes older
+input, but whether the work started for the older input is safe to abandon halfway through —
+with the two lists the issue named, and the closing statement that making an operation
+disposable is a design problem the operator does not solve. L5.4 makes the same argument for
+`collectLatest` from the other direction: the collector block may be cancelled between any
+two suspension points, so rendering a preview is safe and a durable write is not.
+
+Neither Lesson implies that cancellation rolls anything back, and neither presents
+`flatMapLatest` as the default UI operator.
+
+### The `catch` boundary and `onCompletion`, as taught
+
+L5.5 is organised around position in the chain rather than around three APIs. The
+`catch`-does-not-see-`collect` case is shown as an annotated chain with the boundary drawn
+between the lines, then measured, then explained by exception transparency in the KDoc's own
+words. Both fixes the plan required are given, and the Lesson explicitly warns against the
+third, wrong one — relocating arbitrary collector work upstream merely so `catch` can see it,
+which changes what the stream is responsible for and puts side effects into a chain that may
+later be retried.
+
+`retry` is taught as re-collection of the upstream rather than as re-running a line, and the
+measurement carries two consequences the plan asked for: the producer's side effect ran three
+times, and the values emitted by the failed attempts had already been delivered downstream,
+so retrying does not un-emit them. `retry()` with no argument is called out as an unbounded
+loop, since its default is `Long.MAX_VALUE`. Backoff appears as one worked `retryWhen`
+example and does not become a resilience section.
+
+`onCompletion` gets the four-ending table above and the analytics anti-example the issue
+named, with the fix stated as the KDoc's own idiom — test the cause for `null`. Cancellation
+gets its own paragraph saying that neither `catch` nor `retry` may consume it, which preserves
+Unit 3's model unchanged. The Unit closes on the exception-transparency-as-context-transparency
+bridge Unit 4 left half-finished, explicitly labelled as a mental bridge rather than a formal
+equivalence, with local readability named as the property both restrictions protect.
+
+### Semantic review of the Questions this Unit now reaches
+
+All seven ACTIVE Questions reachable through Unit 5's three primary concepts were read in
+full — stem, options, key, explanation and Sources — against the finished prose. No Question
+was changed; E24-08 owns assessment.
+
+| Question | Verdict against the shipped Lessons |
+| --- | --- |
+| `flow_debounce_vs_distinct_until_changed` | Answerable from L5.1's Core and Practical. Its key is exactly the Lesson's decision-inputs framing, and each distractor is addressed by name: the swapped definition, comparison by identity against `equals`, and the fixed-window behaviour the Lesson attributes to `sample`. The Lesson argues from the measured timeline rather than echoing the option wording. Note that the question's own explanation uses `sample` only as a distractor gloss, which is what GAP-U5-C below records |
+| `flow_combine_vs_zip_emission_rule` | Answerable from L5.2 in full. Its key carries both halves of `combine`'s rule — after both flows emit once, latest values when either emits — and both are the Lesson's Core. Its user-and-settings framing is the same domain the Lesson uses, which was checked for wording overlap rather than assumed: the Lesson derives the choice from the state-against-correspondence question and never restates an option. One option is worth flagging: distractor D's second clause, that `zip` cancels the remaining flow when one completes, is **true** — it is the `zip` KDoc's own wording — but its first clause is false for both operators, so the option is correctly wrong and the key is unaffected |
+| `flow_flat_map_latest_search_cancellation` | Answerable from L5.3's Practical. Its key and its three distractors are exactly the four behaviours the Lesson's axis table distinguishes, including the `conflate` distractor, which L5.4 then separates from cancellation properly. This is the Question the Unit is best matched to, and it is also the one that establishes GAP-U5-A: `flatMapConcat` and `flatMapMerge` appear only as distractors, so answering it correctly does not demonstrate a choice between them |
+| `flow_conflate_vs_collect_latest` | Answerable from L5.4's Practical and Senior. Its key is the pair the Lesson's strongest comparison is built on, and its explanation's closing sentence — whether a partially processed value can safely be abandoned — is the Senior section's organising question, reached independently. The measured `1, 3, 5` and `started all five, finished one` outputs make both halves concrete in a way the Question's prose does not |
+| `flow_buffer_producer_consumer_concurrency` | Answerable from L5.4's Practical. Its key names the trade the Lesson states — concurrent progress up to capacity, memory for decoupling — and its three distractors are the other three operators in the Lesson, each taught separately. Note that answering it requires knowing what the *default* is, which the Lesson establishes before any operator; that ordering was a plan boundary and it is what makes this Question answerable rather than guessable |
+| `flow_catch_upstream_only` | Answerable from L5.5's Core. Its key is the Lesson's boundary rule and its explanation names both fixes, which the Lesson gives independently and then extends with the ownership caveat. Its single Source cites `coroutines-flow.html` under the old title "Asynchronous Flow"; the URL still resolves and the page still supports the claim, so this is the stale citation *label* E24-05 already recorded, not a new defect |
+| `flow_retry_when_conditional_attempts` | Answerable from L5.5's Practical. Its key is the cause-and-attempt predicate, which the Lesson teaches with the measured zero-based indexes, and its `catch` distractor is the distinction the Lesson draws between terminating an error and resubscribing. What the Question does **not** assess is what resubscription costs — that a cold producer runs again — which is GAP-U5-D below |
+
+### The known gaps were not filled
+
+E24-06 authored no Question. GAP-U5-A and GAP-U5-B are unchanged as gaps; what changed is
+that the reasoning each describes is now taught, so E24-08 has something to assess against.
+
+| Gap | Where the reasoning now lives |
+| --- | --- |
+| GAP-U5-A — `flatMapConcat` against `flatMapMerge` on ordering and overlap | L5.3 in full: the three-axis table in Core, the single measured timeline that gives all three operators a different output, the two scenarios that make sequential right and interleaved right, the explicit refusal to call merge "the fast one", and the bounded-concurrency paragraph that gives the overlap axis a cost |
+| GAP-U5-B — what `onCompletion` observes, and why completion is not success | L5.5's Senior section in full: the four-ending measured table, the analytics anti-example identified as a defect rather than an idiom, the KDoc's null-cause idiom as the fix, and the cancellation paragraph that explains why the third and fourth endings exist at all |
+
+### New candidate gaps for E24-08
+
+Two further gaps surfaced while authoring. Both are candidates for E24-08 to decide on
+deliberately, and neither is a defect in an existing Question.
+
+| Gap | Unit / Lesson | Reasoning no ACTIVE Question assesses | Why it is substantive | Recommended action |
+| --- | --- | --- | --- | --- |
+| GAP-U5-C | Unit 5 / `lesson_transforming_and_filtering_flows` | Choosing between `debounce` and `sample` — quiet period against fixed cadence — and predicting what each produces from one timeline | `flow_debounce_vs_distinct_until_changed` uses `sample` only as a one-clause distractor gloss. The two timing operators are the Lesson's central decision and the pair a reader is most likely to conflate, and nothing in the bank makes anyone choose between them. The measured timeline in L5.1, where `sample` emits a value the user never paused at, is the kind of case a question could be built on | Add coverage in E24-08 |
+| GAP-U5-D | Unit 5 / `lesson_flow_failure_and_completion` | That `retry` re-collects the upstream, so a cold producer's side effects run again and values already emitted by a failed attempt have already been delivered downstream | `flow_retry_when_conditional_attempts` assesses which operator expresses a bounded conditional retry, which is the API choice. What retrying *costs* — the reason retry is only appropriate where repeating the upstream operation is safe — is unassessed, and it is the half that decides whether the operator may be used at all | Add coverage in E24-08 |
+
+One observation that is **not** a gap. `async_reactive`'s Flow half still holds no ACTIVE
+`ADVANCED` Question, and Unit 5's seven are four Foundation and three Applied. E24-01 recorded
+that as an observation rather than a quota and this issue treated it as one: no Lesson's scope
+was widened or narrowed to justify a level, and E24-08 should decide from the reasoning
+complexity of whatever it writes. What is now true that was not before is that the material an
+Advanced Unit 5 Question would need exists — `combine`'s state-not-events contract, the
+cancellation-does-not-undo argument, the `conflate`-against-`collectLatest` decision, and the
+four endings of `onCompletion` are all taught at Senior depth.
+
+### Cross-links and validation
+
+Backward-only, and every target already ships:
+
+- L5.1: `lesson_cold_flows`.
+- L5.2: `lesson_cold_flows`, `lesson_transforming_and_filtering_flows`.
+- L5.3: `lesson_cooperative_cancellation`, `lesson_sequential_and_concurrent_work`,
+  `lesson_flow_collection_lifetime`, `lesson_transforming_and_filtering_flows`.
+- L5.4: `lesson_flow_collection_lifetime`, `lesson_flow_context_and_flow_on`,
+  `lesson_cooperative_cancellation`, `lesson_flattening_flows`.
+- L5.5: `lesson_exception_propagation`, `lesson_cooperative_cancellation`,
+  `lesson_flow_context_and_flow_on`, `lesson_flow_buffering_and_conflation`.
+
+Every candidate link the issue proposed was taken. The four within-Unit links are the
+progression itself — filtering into combining, filtering into flattening, flattening into
+buffering, buffering into failure — and each one is where a reader who followed it would find
+the concept the prose just leaned on. No link points into an unshipped Unit, and no shipped
+Lesson was edited to receive one. Every forward reference is prose naming a unit: hot streams
+and current-value state to "the hot streams and state unit later in this curriculum", and
+error modelling to "the architecture curriculum".
+
+Validation run, all passing: `python3 tools/learning_question_coverage.py --check`;
+`./gradlew :shared:jvmTest --tests "*BundledLearningCurriculumTest*" --tests
+"*LearningContentEndToEndTest*" --tests "*LearningCurriculumJsonCodecTest*"`;
+`./gradlew :shared:jvmTest --tests "*LearningUnitPracticeIntegrationTest*" --tests
+"*LearningProductionContentJourneyTest*" --tests "*LearningReaderJourneyIntegrationTest*"
+--tests "*ProgressLearningJourneyIntegrationTest*"`; and `./gradlew :shared:allTests`.
+`LearningCurriculumValidator` caught one real defect during authoring — a comparison block
+in L5.3 with a blank first header — which is the machine-checkable half of the authoring
+contract doing its job.
+
+E24-07 was not started, and no Unit 6 hot-stream material, no Compose-effect material and no
+Question was authored.
+
 ## Cross-linking rules
 
 `LearningCurriculumValidator` rejects a `relatedLessonIds` entry naming an unknown Lesson
@@ -1514,6 +1831,8 @@ missing, not a number.
 | GAP-U4-C | Unit 4 / `lesson_flow_builders_and_callback_adapters` | Choosing among `flow`, `channelFlow` and `callbackFlow` for a given producer | `callback_flow_await_close_registration` assesses one builder's contract well; the choice between the three is not assessed. Lower priority than the gaps above | Add coverage in E24-08 if capacity allows |
 | GAP-U5-A | Unit 5 / `lesson_flattening_flows` | `flatMapConcat` against `flatMapMerge` on ordering and overlap | `flow_flat_map_latest_search_cancellation` assesses the cancelling strategy and uses the other two only as distractors, which does not establish that a reader can choose between them | Add coverage in E24-08 |
 | GAP-U5-B | Unit 5 / `lesson_flow_failure_and_completion` | What `onCompletion` observes — success, failure and cancellation alike — and why that makes it a poor place for a success side effect | Both `flow_errors` Questions are about `catch` and `retryWhen`. Completion is unassessed | Add coverage in E24-08 |
+| GAP-U5-C | Unit 5 / `lesson_transforming_and_filtering_flows` | Choosing between `debounce` and `sample` — quiet period against fixed cadence — and predicting what each produces from one timeline | **Added by E24-06.** `flow_debounce_vs_distinct_until_changed` uses `sample` only as a one-clause distractor gloss, so nothing makes a reader choose between the two timing operators they are most likely to conflate | Add coverage in E24-08 |
+| GAP-U5-D | Unit 5 / `lesson_flow_failure_and_completion` | That `retry` re-collects the upstream, so a cold producer's side effects run again and a failed attempt's values have already reached the collector | **Added by E24-06.** `flow_retry_when_conditional_attempts` assesses the API choice; what retrying costs — the half that decides whether the operator may be used at all — is unassessed | Add coverage in E24-08 |
 | GAP-U6-A | Unit 6 / `lesson_state_flow` | `StateFlow`'s equality-based conflation as behaviour: that assigning an equal value emits nothing, and that a state type's `equals` therefore decides what the UI sees | Both `stateflow` Questions are descriptive — what `StateFlow` is for, and how it compares with `SharedFlow`. The one behavioural statement in the bank is a distractor-adjacent claim in `live_data_vs_state_flow_ui_state`, which sits on `livedata` and is unmapped by E24 | Add coverage in E24-08; the strongest candidate in Unit 6 |
 | GAP-U6-B | Unit 6 / `lesson_sharing_cold_flows` | `Eagerly` against `WhileSubscribed` as a resource and correctness tradeoff, and what `replayExpirationMillis` does | `flow_state_in_while_subscribed` assesses one parameter of one policy. The choice between policies — the actual decision — is unassessed | Add coverage in E24-08 |
 | GAP-U6-C | Unit 6 / `lesson_hot_and_cold_streams` | The hot/cold distinction posed directly: what a late subscriber receives from each, and what happens to values emitted with no subscribers | `hot_vs_cold_streams`' single active Question is the `Channel` comparison, which belongs to L6.5. `flow_fundamentals_001` assesses coldness from the cold side only | Add coverage in E24-08 |
@@ -1716,6 +2035,32 @@ standard answers to the problems they solve, and the annotation is a stability c
 a warning. Re-check the annotation at authoring time; `debounce` and `sample` should be
 re-checked at the same moment, as their status has moved historically.
 
+**Re-checked by E24-06 on 2026-09-10, and one half of the note above was wrong.** Every
+annotation below was read from the declaration in this repository's *resolved*
+`kotlinx-coroutines-core:1.11.0` sources jar rather than from the published API reference,
+so it is the status of the artifact this project actually compiles against.
+
+| Operator | Annotation in the resolved 1.11.0 artifact |
+| --- | --- |
+| `map`, `filter`, `transform`, `distinctUntilChanged` | none — stable |
+| `onStart`, `onEach`, `scan`, `take`, `drop` | none — stable |
+| `combine`, `combineTransform`, `zip` | none — stable |
+| `merge` (`Iterable<Flow<T>>.merge`, `merge(vararg)`) | none — stable |
+| `buffer`, `conflate`, `flowOn`, `collectLatest` | none — stable |
+| `catch`, `retry`, `retryWhen`, `onCompletion` | none — stable |
+| `flatMapConcat`, `flatMapMerge`, `flatMapLatest`, `transformLatest`, `mapLatest`, `flattenConcat`, `flattenMerge` | `@ExperimentalCoroutinesApi` |
+| **`debounce`, `sample`, `DEFAULT_CONCURRENCY`** | **`@FlowPreview`** |
+
+E24-01 implied that `debounce` and `sample` might carry the same annotation as the
+flattening operators. They do not: they carry `@FlowPreview`, which is a **different and
+stronger** opt-in. `@ExperimentalCoroutinesApi` says the semantics may change in a way that
+breaks some code; `@FlowPreview`'s own KDoc says the declaration has *no* backward
+compatibility guarantees, binary or source, and that its API and semantics "can and will be
+changed in next releases". Both are declared `@RequiresOptIn(level = WARNING)`, so both cost
+an `@OptIn` and nothing else. L5.1 states the `@FlowPreview` status and the distinction;
+L5.3 states the `@ExperimentalCoroutinesApi` status and that `merge` carries no annotation
+at all. Neither Lesson presents an annotation as a reason to avoid an operator.
+
 #### Dispatchers and Kotlin Multiplatform
 
 `coroutine-context-and-dispatchers.html` documents `Dispatchers.Default` and
@@ -1769,11 +2114,16 @@ model everywhere.
 1. ~~Whether `kotlin.concurrent.atomics` is still experimental on Kotlin 2.4.10.~~
    **Answered by E24-04:** available from common code, and still experimental at opt-in
    error level. See [Atomics in common code](#atomics-in-common-code).
-2. Whether `flatMapLatest`, `flatMapMerge`, `debounce` and `sample` still carry
-   `@ExperimentalCoroutinesApi` when E24-06 authors Unit 5. Verified experimental for the
-   first two on 2026-09-10; the others were not individually checked.
-3. `DEFAULT_CONCURRENCY`'s numeric value was not read from the resolved artifact. L5.3 should
-   either read it or describe it by name rather than asserting a number.
+2. ~~Whether `flatMapLatest`, `flatMapMerge`, `debounce` and `sample` still carry
+   `@ExperimentalCoroutinesApi` when E24-06 authors Unit 5.~~ **Answered by E24-06:** the
+   flattening operators do; `debounce` and `sample` carry `@FlowPreview` instead, which is
+   the stronger opt-in. Every operator Unit 5 teaches was read from the resolved artifact.
+   See [Experimental operator status](#experimental-operator-status).
+3. ~~`DEFAULT_CONCURRENCY`'s numeric value was not read from the resolved artifact.~~
+   **Answered by E24-06:** it is **16**, read from the declaration, and on the JVM it is
+   overridable through the `kotlinx.coroutines.flow.defaultConcurrency` system property.
+   L5.3 teaches the number with that qualification. See
+   [the `DEFAULT_CONCURRENCY` decision](#the-default_concurrency-decision).
 4. Whether the remaining legacy guide pages — exception handling, context and dispatchers,
    shared mutable state, channels — will be rewritten during E24's authoring window. They
    were current on 2026-09-10, and E24-04 re-checked exception handling, shared mutable state
@@ -1882,7 +2232,8 @@ made the E24 boundary easy to draw.
 
 ### For E24-08
 
-The sixteen gap rows are the starting list. The three mapping corrections and the one
+The gap rows are the starting list — sixteen at review time, eighteen after E24-06 added
+GAP-U5-C and GAP-U5-D while authoring Unit 5. The three mapping corrections and the one
 explanation correction are separate, smaller decisions. Re-read all of them against the
 finished prose before authoring: a gap this plan predicted may have been closed by a Lesson
 that turned out deeper than planned, and new ones will have appeared.

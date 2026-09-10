@@ -43,6 +43,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_context_dispatchers_and_concurrency",
                 "unit_cancellation_failure_and_coordination",
                 "unit_flow_fundamentals",
+                "unit_flow_composition_timing_and_failure",
             ),
             units().map { it.id },
         )
@@ -59,6 +60,7 @@ internal class BundledLearningCurriculumTest {
                 "Coroutine Context, Dispatchers and Concurrent Work",
                 "Cancellation, Failure and Coordination",
                 "Flow Fundamentals",
+                "Flow Composition, Timing and Failure",
             ),
             units().map { it.title },
         )
@@ -73,6 +75,7 @@ internal class BundledLearningCurriculumTest {
                 "android_ui",
                 "android_ui",
                 "android_ui",
+                "async_reactive",
                 "async_reactive",
                 "async_reactive",
                 "async_reactive",
@@ -228,6 +231,31 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_flow_fundamentals").lessons.map { it.title },
         )
+
+        // Unit 5 is a sequence of decisions taken on the pipeline Unit 4 established:
+        // transform one stream, join streams, map values into streams of their own,
+        // handle a producer faster than its collector, then handle how collection ends.
+        assertEquals(
+            listOf(
+                "lesson_transforming_and_filtering_flows",
+                "lesson_combining_flows",
+                "lesson_flattening_flows",
+                "lesson_flow_buffering_and_conflation",
+                "lesson_flow_failure_and_completion",
+            ),
+            unit("unit_flow_composition_timing_and_failure").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "Transforming and Filtering: by Value and by Time",
+                "`combine` and `zip`: Current Values or Paired Emissions",
+                "Flattening: Should New Input Cancel Old Work?",
+                "When the Collector Cannot Keep Up",
+                "`catch`, `retry` and `onCompletion`",
+            ),
+            unit("unit_flow_composition_timing_and_failure").lessons.map { it.title },
+        )
     }
 
     @Test
@@ -350,6 +378,20 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_flow_fundamentals").lessons.map { it.primarySubtopicIds },
         )
+
+        // `flow_operators` is primary in the first three Lessons — filtering, combining
+        // and flattening are three depths of one concept — so Unit practice here is three
+        // concepts rather than five.
+        assertEquals(
+            listOf(
+                listOf("flow_operators"),
+                listOf("flow_operators"),
+                listOf("flow_operators"),
+                listOf("flow_buffering"),
+                listOf("flow_errors"),
+            ),
+            unit("unit_flow_composition_timing_and_failure").lessons.map { it.primarySubtopicIds },
+        )
     }
 
     @Test
@@ -442,6 +484,37 @@ internal class BundledLearningCurriculumTest {
                 ),
             ),
             unit("unit_flow_fundamentals").lessons.map { it.supportingSubtopicIds },
+        )
+    }
+
+    @Test
+    fun compositionUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        // `stateflow` is supporting in the combining Lesson because current-value
+        // reasoning is relevant there, and `kotlin_equality`, `kotlin_lambdas`,
+        // `kotlin_exceptions`, `error_modeling`, `coroutine_cancellation` and
+        // `coroutine_parallelism` are all bridges into Topics that assess them
+        // themselves. Promoting any of them would hand Unit 5 practice Questions this
+        // Unit does not teach — and promoting `stateflow` in particular would claim
+        // coverage of material Unit 6 has not shipped yet.
+        assertEquals(
+            listOf(
+                listOf("flow_fundamentals", "kotlin_lambdas", "kotlin_equality"),
+                listOf("flow_fundamentals", "stateflow", "flow_collection"),
+                listOf("coroutine_cancellation", "coroutine_parallelism", "flow_collection"),
+                listOf(
+                    "flow_collection",
+                    "flow_context",
+                    "coroutine_cancellation",
+                    "flow_operators",
+                ),
+                listOf(
+                    "kotlin_exceptions",
+                    "coroutine_cancellation",
+                    "flow_operators",
+                    "error_modeling",
+                ),
+            ),
+            unit("unit_flow_composition_timing_and_failure").lessons.map { it.supportingSubtopicIds },
         )
     }
 

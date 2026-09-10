@@ -471,7 +471,13 @@ inputs did not change".
   then a pointer. Collection inside `LaunchedEffect` is taught in Unit 7; this lesson
   precedes it deliberately so the effect lesson has a concrete use. While Unit 7 and the
   Flow curriculum are unauthored, both pointers name the subject in prose and cite external
-  documentation: `relatedLessonIds` cannot reference a Lesson that does not exist. Authoring added one
+  documentation: `relatedLessonIds` cannot reference a Lesson that does not exist. The Flow
+  curriculum now has a map — `docs/content/coroutines-flow-learning-blueprint.md`, delivered
+  by E24-01 — and its `lesson_cold_flows` and `lesson_flow_collection_lifetime` are the
+  canonical treatment of the four facts this Lesson bridges. The shipped Lesson's sentence
+  saying the app "does not teach yet" must be corrected, and the reciprocal
+  `relatedLessonIds` added, by the issue that ships that Unit; see
+  `docs/content/coroutines-flow-units-1-6-plan.md`. Authoring added one
   concrete failure the blueprint did not plan: a block returning a `SnapshotStateList`
   itself records no element read *and* produces a value equal to the previous one, so it
   emits once and never again. The runtime's own `SnapshotStateList.toList()` documentation
@@ -600,7 +606,10 @@ legitimate cross-Topic learning coverage.
 - **Supporting:** `stateflow`, `flow_collection`, `flow_sharing`, `lifecycle_coroutines`
   (async_reactive), `kmp_lifecycle_viewmodel`, `compose_multiplatform` (kmp)
 - **Notes:** **Bridge** to the Flow curriculum for sharing strategies, operators, buffering
-  and cancellation. Explain `stateIn` only as much as the lifecycle argument requires.
+  and cancellation. Explain `stateIn` only as much as the lifecycle argument requires. Those
+  subjects are now mapped in `docs/content/coroutines-flow-learning-blueprint.md`, whose
+  Units 4–6 own them; this Lesson's bridge depth is unchanged, and the pointer becomes a
+  `relatedLessonIds` link once both Lessons ship.
 
 #### L8.3 — Modelling `UiState`
 

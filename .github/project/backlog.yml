@@ -4240,3 +4240,403 @@ epics:
         priority: "P1"
         size: "M"
         initial_status: "Backlog"
+
+  - key: E24
+    github_title: "EPIC-24 Coroutines and Flow"
+
+    goal: >
+      Expand the curriculum with a coherent Coroutines and Flow learning
+      sequence that gives learners a practical mental model of suspension,
+      structured concurrency, execution context, cancellation, failure
+      propagation, concurrent work, cold Flow, Flow composition, and hot state
+      and event streams. Deliver six new Learning Units through the existing
+      production learning-content system, with reviewed assessment coverage and
+      verified integration into the existing learning experience.
+      Compose-specific effect APIs, application state architecture,
+      comprehensive coroutine and Flow testing, RxJava migration, new learning
+      UI, database changes, and unrelated product changes remain outside this
+      epic.
+
+    issues:
+      - key: E24-01
+        title: "Confirm the Coroutines and Flow curriculum scope and assessment coverage"
+
+        issue: >
+          The async and reactive subject has no blueprint, so the Units this
+          epic delivers need a confirmed map, identities, prerequisites, source
+          expectations, and assessment gaps before production authoring begins.
+
+        approach: >
+          Inspect what already exists rather than assuming: the shipped Compose
+          Units, the `snapshotFlow` Lesson and every other place existing
+          content already bridges into coroutines or Flow, the current
+          `async_reactive` and `kotlin_language` Subtopics, and the ACTIVE
+          Questions mapped to them, searching conceptually rather than only for
+          literal terms. Then produce the map the learning-content authoring
+          contract requires for a major subject together with the confirmed
+          authoring plan: the Unit and Lesson blueprint for this epic, stable
+          Unit and Lesson identities following existing conventions, primary and
+          supporting mappings using real IDs, prerequisites that are already
+          taught or need bounded bridging, Teach/Bridge/Reference/Exclude
+          decisions, source-sensitive and version-sensitive claims with the
+          authoritative sources that must settle them, and a semantic review of
+          existing Questions. Record it in canonical documentation under
+          `docs/content/` following the precedent of the Compose planning
+          documents, and register it in the documentation map. The backlog
+          assumes six instructional Units; adjust that only with a documented
+          pedagogical reason. Keep this issue planning-only: do not add
+          production Lessons or Questions.
+
+        acceptance_criteria:
+          - "Existing learning content and ACTIVE Questions covering coroutines and Flow are inventoried, including existing bridges into the subject."
+          - "The plan defines each Unit's Lessons, objectives, and boundaries, and justifies any departure from six Units."
+          - "Unit and Lesson identities are defined using existing conventions."
+          - "Primary and supporting mappings use valid IDs, and concepts with no exact Subtopic are documented, not given invented IDs."
+          - "Prerequisites are already taught, included earlier in the sequence, or explicitly bridged."
+          - "Existing Questions receive a semantic review with gaps and mismatches recorded."
+          - "Version-sensitive claims are identified with the authoritative sources that must settle them, against the configured coroutines version."
+          - "Boundaries with later Compose effects, application-architecture, and coroutine testing curriculum are stated concept by concept."
+          - "RxJava migration is out of scope, and any Channel treatment beyond bounded supporting context is justified in the plan."
+          - "This issue introduces no production Lessons or Questions."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Ready"
+
+      - key: E24-02
+        title: "Author Coroutine Fundamentals and Structured Concurrency"
+
+        issue: >
+          Learners need an accurate foundation for what suspension is, where a
+          coroutine's lifetime comes from, and how parents and children relate,
+          before any of the later execution, cancellation, or stream material
+          can be reasoned about correctly.
+
+        approach: >
+          After E24-01, author the planned fundamentals Unit in the production
+          learning-content format, covering the planned territory: suspension
+          against blocking and threads, what `suspend` does and does not mean,
+          coroutine builders such as `launch`, `Job`, scopes and lifetime,
+          structured concurrency, parent and child relationships, and why ad-hoc
+          scopes create ownership problems. Follow the learning-content
+          authoring contract, preserve the plan's pedagogical order and stable
+          identities, and use clear objectives, substantive Core explanations,
+          practical examples, and Senior-depth reasoning where useful. Explain
+          supporting concepts only as far as this Unit needs them. Use valid
+          taxonomy IDs, distinguish primary from supporting mappings, verify
+          technical claims about structured concurrency semantics against
+          specific authoritative sources with extra care for version-sensitive
+          behavior, and semantically review associated Questions against what
+          the Lessons actually teach. Keep the planning and generated
+          learning-to-question coverage documents current, then run and honestly
+          report the relevant existing content validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "Suspension is distinguished from thread blocking, and a suspending function is not presented as automatically background work."
+          - "Coroutine lifetime is explained as belonging to a scope, with concrete consequences when it does not."
+          - "`Job` is taught as the handle that carries lifetime and parent-child relationships."
+          - "Examples show what structured concurrency guarantees about waiting, and what it does not."
+          - "Ad-hoc and process-lifetime scopes are explained through the failures they cause rather than as a style preference."
+          - "Dispatcher selection, cancellation mechanics, and Flow remain bounded supporting context owned by later Units."
+          - "Unit practice mappings contain only primary concepts."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E24-03
+        title: "Author Coroutine Context, Dispatchers and Concurrent Work"
+
+        issue: >
+          Learners need to reason about where coroutine code actually runs and
+          when work should overlap, instead of relying on folklore that
+          `suspend` means IO or that `async` is automatically faster.
+
+        approach: >
+          After E24-02, author the planned context and concurrency Unit in the
+          production learning-content format, covering the planned territory:
+          `CoroutineContext` and context inheritance, `Dispatchers.Main`,
+          `Dispatchers.Default` and `Dispatchers.IO`, `withContext`, sequential
+          and concurrent decomposition, `async` and `await`, concurrency against
+          parallelism, and avoiding unnecessary dispatcher switching. Follow the
+          learning-content authoring contract, preserve the plan's pedagogical
+          order and stable identities, and use clear objectives, substantive
+          Core explanations, practical examples, and Senior-depth reasoning
+          where useful. Explain supporting concepts only as far as this Unit
+          needs them. Use valid taxonomy IDs, distinguish primary from
+          supporting mappings, verify dispatcher and context claims against
+          specific authoritative sources with extra care for version-sensitive
+          behavior, and semantically review associated Questions against what
+          the Lessons actually teach. Keep the planning and generated
+          learning-to-question coverage documents current, then run and honestly
+          report the relevant existing content validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "Context is explained as inherited and composable, with the elements that decide execution named."
+          - "Each taught dispatcher's intended workload is explained, including the documented behavior of `Dispatchers.IO`."
+          - "Examples show where a dispatcher switch belongs and where it is redundant."
+          - "Sequential and concurrent decomposition are compared on the same problem, with the cost of each made visible."
+          - "Concurrency is distinguished from parallelism, and `async` is not presented as automatically better."
+          - "The misconception that coroutines or `suspend` move work off the calling thread is addressed directly."
+          - "Android dispatcher guidance stays accurate and bounded, without becoming an Android lifecycle course."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E24-04
+        title: "Author Cancellation, Failure and Coordination"
+
+        issue: >
+          Learners need to answer who owns a coroutine, what cancels it, what
+          happens when a child fails, and what state is being accessed
+          concurrently, which is where most production coroutine defects and
+          senior interview questions live.
+
+        approach: >
+          After E24-03, author the planned cancellation and failure Unit in the
+          production learning-content format, covering the planned territory:
+          cooperative cancellation and its propagation, cancellable suspension
+          and cancellation checks, cleanup and `finally`, timeouts, exception
+          propagation, the boundaries where a `CoroutineExceptionHandler`
+          applies, `SupervisorJob` and `supervisorScope`, failure isolation, and
+          shared mutable state, races, and the coordination mechanisms that
+          address them. Treat `Mutex`, state ownership, and Channel concepts
+          only as deeply as choosing safely requires; do not build an
+          exhaustive concurrency-primitives catalogue. Follow the
+          learning-content authoring contract, preserve the plan's pedagogical
+          order and stable identities, and use clear objectives, substantive
+          Core explanations, practical examples, and Senior-depth reasoning
+          where useful. Explain supporting concepts only as far as this Unit
+          needs them. Use valid taxonomy IDs, distinguish primary from
+          supporting mappings, verify cancellation, exception-propagation, and
+          supervision claims against specific authoritative sources with extra
+          care for version-sensitive behavior, and semantically review
+          associated Questions against what the Lessons actually teach. Keep the
+          planning and generated learning-to-question coverage documents
+          current, then run and honestly report the relevant existing content
+          validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "Cancellation is taught as cooperative, with examples of code that ignores it and what makes code cancellable."
+          - "Cleanup behavior under cancellation is explained, including what may and may not be done in a cancelled coroutine."
+          - "Timeout behavior is explained in terms of the cancellation model rather than as a separate mechanism."
+          - "Exception propagation is explained per builder, and cancellation is distinguished from failure."
+          - "Where a `CoroutineExceptionHandler` takes effect is stated precisely and verified against authoritative sources."
+          - "Supervision is taught as failure isolation with its limits, not as a way to suppress errors."
+          - "Shared mutable state and races are demonstrated, and coordination mechanisms are compared as a choice rather than catalogued."
+          - "Channel material stays bounded supporting context for distinguishing communication abstractions."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E24-05
+        title: "Author Flow Fundamentals"
+
+        issue: >
+          Learners need a coherent mental model of cold asynchronous streams —
+          who produces, who collects, and when anything runs — before meeting
+          operators or hot state holders.
+
+        approach: >
+          After E24-04, author the planned Flow fundamentals Unit in the
+          production learning-content format, covering the planned territory:
+          why Flow exists, cold streams, producer and collector, `flow { }`,
+          `emit` and `collect`, intermediate against terminal operators,
+          sequential Flow execution, collection lifetime and cancellation,
+          execution context and `flowOn`, and context preservation where it
+          affects correct usage. Distinguish a suspending function that returns
+          one value from a Flow that produces values over time, and establish
+          cold Flow fully before any hot abstraction appears. Follow the
+          learning-content authoring contract, preserve the plan's pedagogical
+          order and stable identities, and use clear objectives, substantive
+          Core explanations, practical examples, and Senior-depth reasoning
+          where useful. Explain supporting concepts only as far as this Unit
+          needs them. Use valid taxonomy IDs, distinguish primary from
+          supporting mappings, verify Flow context and cancellation claims
+          against specific authoritative sources with extra care for
+          version-sensitive behavior, and semantically review associated
+          Questions against what the Lessons actually teach. Keep the planning
+          and generated learning-to-question coverage documents current, then
+          run and honestly report the relevant existing content validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "Coldness is demonstrated by what does and does not happen before collection, and by what repeated collection does."
+          - "Producer and collector responsibilities are separated, and intermediate operators are distinguished from terminal ones."
+          - "Collection lifetime is tied to the collecting coroutine, including how collection ends and how it is cancelled."
+          - "`flowOn` is explained as affecting upstream execution context, with an example that shows the boundary."
+          - "Context preservation is explained through the usage errors it prevents rather than as a rule to memorize."
+          - "A single-value suspending function and a multi-value Flow are compared on the same problem."
+          - "`StateFlow` and `SharedFlow` are not introduced as the default way to use Flow in this Unit."
+          - "The existing `snapshotFlow` Lesson stays consistent with this Unit and is cross-linked rather than duplicated."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E24-06
+        title: "Author Flow Composition, Timing and Failure"
+
+        issue: >
+          Learners need to choose operators from stream semantics — every value
+          or the latest, overlapping or cancelling, current state or paired
+          emissions — rather than memorizing an operator catalogue.
+
+        approach: >
+          After E24-05, author the planned composition Unit in the production
+          learning-content format, covering the planned territory:
+          transformation and filtering, combining streams with `combine` and
+          `zip`, flattening with `flatMapConcat`, `flatMapMerge` and
+          `flatMapLatest`, buffering and conflation, latest-value cancellation
+          semantics, rate mismatch at a practical level, and Flow failure
+          handling with `catch`, retries, and completion. Organize the Lessons
+          around the decisions — do I need every value, the latest value, may
+          work overlap, should new input cancel old work, am I combining current
+          state or pairing emissions, and where should an error be handled —
+          rather than around the API list. Adjust operator selection where
+          E24-01 found an API that does not justify standalone coverage. Follow
+          the learning-content authoring contract, preserve the plan's
+          pedagogical order and stable identities, and use clear objectives,
+          substantive Core explanations, practical examples, and Senior-depth
+          reasoning where useful. Explain supporting concepts only as far as
+          this Unit needs them. Use valid taxonomy IDs, distinguish primary from
+          supporting mappings, verify buffering, flattening, and failure-handling
+          claims against specific authoritative sources with extra care for
+          version-sensitive behavior, and semantically review associated
+          Questions against what the Lessons actually teach. Keep the planning
+          and generated learning-to-question coverage documents current, then
+          run and honestly report the relevant existing content validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "Lessons are organized around stream semantics and decisions rather than as an operator reference."
+          - "`combine` and `zip` are contrasted on emission timing, with the results each produces made explicit."
+          - "The taught flattening strategies are compared on ordering, overlap, and cancellation of in-flight work."
+          - "Buffering and conflation are explained through a collector slower than its producer, including which values are lost."
+          - "Latest-value operators are explained as cancelling previous work, with the consequences for side effects."
+          - "Failure handling explains where `catch` applies relative to the operator chain, and what it cannot catch."
+          - "Retry and completion behavior is explained with the conditions under which each is appropriate."
+          - "Any operator dropped or added relative to the plan is justified in the planning document."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E24-07
+        title: "Author StateFlow, SharedFlow and Hot Streams"
+
+        issue: >
+          Learners need a defensible decision model across plain values, cold
+          Flow, `StateFlow` and `SharedFlow` instead of the slogan that
+          `StateFlow` is for state and `SharedFlow` is for events.
+
+        approach: >
+          After E24-06, author the planned hot-streams Unit in the production
+          learning-content format, covering the planned territory: cold against
+          hot streams, state against events and broadcasts, `StateFlow` and its
+          current-value and conflation behavior, `SharedFlow` with replay,
+          buffering and subscribers, `stateIn` and `shareIn`, `SharingStarted`,
+          converting cold streams into shared ones, and the lifecycle and
+          resource implications of sharing. Where event-delivery semantics are
+          subtle, explain the tradeoffs accurately rather than presenting a rule
+          of thumb as a guarantee, and include a Channel comparison only where a
+          bounded contrast is justified. Follow the learning-content authoring
+          contract, preserve the plan's pedagogical order and stable identities,
+          and use clear objectives, substantive Core explanations, practical
+          examples, and Senior-depth reasoning where useful. Explain supporting
+          concepts only as far as this Unit needs them. Use valid taxonomy IDs,
+          distinguish primary from supporting mappings, verify `StateFlow`
+          equality and conflation, `SharedFlow` replay and buffering, and
+          sharing-policy claims against specific authoritative sources with
+          extra care for version-sensitive behavior, and semantically review
+          associated Questions against what the Lessons actually teach. Keep the
+          planning and generated learning-to-question coverage documents
+          current, then run and honestly report the relevant existing content
+          validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "Hot and cold streams are distinguished by when production happens and what subscribers receive."
+          - "`StateFlow` current-value, equality, and conflation behavior is verified against authoritative sources."
+          - "`SharedFlow` replay, buffering, and subscriber behavior is explained with the delivery consequences of each."
+          - "`stateIn` and `shareIn` are explained as converting a cold upstream, including what starts and stops it."
+          - "Each taught `SharingStarted` policy is explained through the resource and correctness tradeoff it makes."
+          - "The decision model compares plain values, cold Flow, `StateFlow` and `SharedFlow` on concrete scenarios."
+          - "Subtle event-delivery cases are explained as tradeoffs rather than reduced to a slogan."
+          - "Compose collection APIs and application state architecture stay bounded supporting context owned by later epics."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E24-08
+        title: "Address assessment gaps for the Coroutines and Flow Units"
+
+        issue: >
+          Structural mappings between Lessons and Questions do not establish
+          meaningful practice coverage for the new Coroutines and Flow Units.
+
+        approach: >
+          After E24-02 through E24-07, revisit E24-01's semantic coverage
+          analysis against the finished Lessons. Add or correct Questions for
+          substantive conceptual gaps using the existing question-authoring and
+          validation workflows, giving particular attention to common coroutine
+          and Flow misconceptions and to code-tracing scenarios. Preserve
+          Question identities and lifecycle conventions, independently solve
+          every changed or added Question, verify its Sources, and keep the
+          generated coverage reports current.
+
+        acceptance_criteria:
+          - "Each Unit's primary concepts receive a documented semantic coverage review."
+          - "Material gaps are addressed or explicitly justified as deferred."
+          - "Questions assess reasoning rather than copied Lesson wording."
+          - "Misconception and code-tracing scenarios are represented where the Lessons teach the reasoning they require."
+          - "Difficulty matches required reasoning without per-Lesson or per-level quotas."
+          - "Every changed or added Question is independently solved and its Sources verified."
+          - "Supporting-only mappings do not broaden practice eligibility."
+          - "Question identity and lifecycle conventions are preserved."
+          - "Affected coverage reports are regenerated."
+          - "Every new Unit has meaningful practice or a reviewed explanation for its absence."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E24-09
+        title: "Verify the Coroutines and Flow learning experience and close E24"
+
+        issue: >
+          The new Units must work as one coherent learning sequence and
+          integrate with study progress, Continue Learning, and Unit practice
+          without changing unrelated product behavior.
+
+        approach: >
+          After E24-08, review the Units as one learning sequence and verify
+          their integration using existing tooling and focused production-content
+          checks, including how the sequence sits alongside the shipped Compose
+          Units and the `snapshotFlow` Lesson. Add tests only for concrete gaps
+          and accurately report content, build, and platform verification
+          results.
+
+        acceptance_criteria:
+          - "Every authored Unit and Lesson appears in the intended authored order."
+          - "Cross-Unit review checks prerequisites, contradictions, duplication, and terminology consistency."
+          - "Terminology for suspension, scope, context, cancellation, and streams is consistent across Units and with existing content."
+          - "Structured content, code examples, and Sources render correctly."
+          - "Mark and unmark update Unit and Topic study progress correctly."
+          - "Continue Learning traverses the expanded content and handles completion correctly."
+          - "Unit practice uses intended primary concepts through the existing assessment flow."
+          - "Content and coverage validation passes with current reports."
+          - "New tests address concrete gaps rather than duplicating existing checks."
+          - "Required build and platform checks are reported accurately."
+          - "Remaining limitations are recorded."
+          - "No unrelated product behavior changes."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"

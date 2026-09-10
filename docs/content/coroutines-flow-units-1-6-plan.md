@@ -1127,8 +1127,16 @@ recorded because both are claims a later Flow Unit could easily reintroduce.
 | L4.3: a cold flow "has no coroutine of its own. It does not schedule anything, it does not own a `Job`" | True of a `flow { }` builder collected directly, and false as a general rule — which **this Unit's own later Lessons contradict**. L4.4 states that `flowOn` runs the upstream in a separate coroutine, and L4.5 shows `channelFlow` launching children. Coldness governs *when* production starts and *per whom*, not whether the implementation creates coroutines | The paragraph now scopes the strong form to the simplest pipeline, names the two operators in this Unit that do introduce a coroutine, and moves the invariant to the place it actually holds: any coroutine a flow creates is a **child of the collecting coroutine**, so nothing is scheduled behind the collector's back or outlives it. L4.3's summary and its Senior "what is absent" paragraph were reworded to match — the Senior line now says no Job the flow owns *independently of its collector* |
 | L4.2: naming eight terminal operators and then "everything else in an ordinary chain is intermediate and therefore inert" | The list was read off the operators page, which offers those names as examples and nowhere claims to be exhaustive. `count`, `single` and `last` are terminal too, so the closing clause told a learner that calls which collect immediately are inert intermediate operators | The list is presented as examples — grouped as `collect`/`collectLatest`, the reducing operators, and `launchIn` — and the exhaustive clause is replaced by the test that actually decides it: an operator returning another `Flow` is intermediate and has started nothing; one that suspends to produce a result, or launches a coroutine to produce it, has collected |
 
-Neither correction changed an identity, a mapping, an order, or a Lesson boundary, and neither
-changed a measurement.
+A second review pass found three more, of which two were accuracy defects in the prose:
+
+| Draft claim | Why it was wrong | What ships |
+| --- | --- | --- |
+| L4.1: the Flow signature means "the caller is told the first value and every later one", and a cost bullet reading "The value arrives more than once" | `Flow<T>` describes **zero or more** values; a flow may emit nothing, or emit once and complete. Stated as written, the Lesson taught a reader to infer cardinality and freshness from the return type, when those are the API's documented contract. `observeTheme()` emits repeatedly because of what it is for, not because `Flow` compels it | The code comment now reads "This API's contract: the current theme, and every later one". A new Core paragraph states that the type settles only that values arrive over time, and that cardinality and freshness are the author's to document. The cost bullet reads "Values **may** arrive more than once — how many and for how long is this API's contract rather than a guarantee of `Flow<T>`". The interview callout carries the same qualification |
+| L4.5: the `callbackFlow` adapter called bare `trySend(value)` | `trySend` cannot suspend, so it cannot apply back pressure; it returns a `ChannelResult` that fails when the buffer is full or collection has ended. The example therefore dropped values silently, and the Senior section acknowledged that failure is possible without the Practical example giving the reader any policy — so a learner copying the adapter got neither delivery nor an explicit drop | The example inspects the result — `trySend(value).onFailure { cause -> onLocationDropped(value, cause) }` — with a comment saying dropping is a decision rather than a default, mirroring the shape the `callbackFlow` KDoc's own example uses. A new Practical paragraph explains why `trySend` cannot suspend, when it fails, that dropping is sometimes the right policy for a superseded position, and that it should be stated rather than fallen into. Buffering policy itself stays deferred to Unit 5 |
+| This document: the source-freshness note said the rewritten *Flows* page "no longer has" the `#flow-cancellation` anchor | Contradicted two other passages in the same change, both of which record that the anchor was checked live and still resolves. As the source-verification handoff for E24-08, an unreconciled status leaves it unclear whether a Question Source needs repair | The note now states that the anchor and all three URLs resolve, that the pages still support every claim attached to them, and that the stale item is the citation *title* rather than a broken link — so nothing obliges E24-08 to repair a Source |
+
+None of the five corrections changed an identity, a mapping, an order, or a Lesson boundary,
+and none changed a measurement.
 
 ### Claims that were executed rather than reasoned about
 
@@ -1609,13 +1617,15 @@ Three instructions follow for E24-05 and E24-06 in particular:
    reason alone.
 
 **Dates captured by E24-05 on 2026-09-10**, which E24-01 did not record: `coroutines-flow.html`
-is dated 13 July 2026 and `coroutines-flow-operators.html` 28 July 2026, both with the section
-structure above unchanged. E24-05 also confirmed that the intermediate-against-terminal
-distinction lives **only** on the operators page, and that three ACTIVE Question Sources cite
-`coroutines-flow.html` under its old title "Asynchronous Flow" — one of them with a
-`#flow-cancellation` anchor the rewritten page no longer has. All three resolve and all three
-still support their claims; see
-[Authoring outcomes for Unit 4](#authoring-outcomes-for-unit-4).
+is dated 13 July 2026 and `coroutines-flow-operators.html` 28 July 2026. Their top-level section
+structure is unchanged, but the *Flows* page carries anchored subsections beneath it that its
+heading list does not show — see finding 1 in
+[Authoring outcomes for Unit 4](#authoring-outcomes-for-unit-4). Three ACTIVE Question Sources
+cite `coroutines-flow.html` under its old title "Asynchronous Flow", and one of those also cites
+the `#flow-cancellation` anchor. **That anchor was checked against the live page and still
+resolves**, as does every one of the three URLs, and the page still supports every claim
+attached to them. The stale item is the citation *title*, not a broken link, so nothing here
+obliges E24-08 to repair a Source.
 
 ### Verified claims
 

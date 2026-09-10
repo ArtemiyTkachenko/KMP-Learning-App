@@ -6150,12 +6150,16 @@
                 },
                 {
                   "type": "code",
-                  "code": "// One result. Correct at the moment it returns, and silent afterwards.\nsuspend fun readTheme(): Theme\n\n// Values over time. The caller is told the first value and every later one.\nfun observeTheme(): Flow<Theme>",
+                  "code": "// One result. Correct at the moment it returns, and silent afterwards.\nsuspend fun readTheme(): Theme\n\n// Values over time. This API's contract: the current theme, and every later one.\nfun observeTheme(): Flow<Theme>",
                   "language": "kotlin"
                 },
                 {
                   "type": "paragraph",
                   "text": "Flow<T> is Kotlin's type for the second shape: a stream of values produced asynchronously, which a consumer receives one at a time. Notice what the two signatures promise. The suspending one promises an answer. The Flow-returning one is not a suspending function at all — it returns immediately, because it hands back a description of how values will be produced rather than any value. What that description does and when it runs is the next Lesson's subject; what matters here is that the two signatures are two different contracts with the caller."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One thing the type does not settle is how many values there will be. Flow<T> describes zero or more values produced asynchronously, so a flow is free to emit nothing, to emit once and complete, or to run until it is cancelled. observeTheme() keeps emitting because that is what the function is for, not because its return type compels it. Cardinality and freshness are the API's contract and the author owes the caller that contract in words; the type only says that values arrive over time rather than in a single return."
                 },
                 {
                   "type": "paragraph",
@@ -6190,7 +6194,7 @@
                     "It has to collect the flow. Nothing is produced until it does, so a Flow that is returned and never collected is a function that was never called.",
                     "Collection is a suspending operation, so it needs a coroutine, and the caller has to decide which one.",
                     "That coroutine's lifetime becomes the collection's lifetime, so the caller has acquired a lifetime it now owns.",
-                    "The value arrives more than once, so any code downstream that assumed a single delivery has to be re-read.",
+                    "Values may arrive more than once — how many and for how long is this API's contract rather than a guarantee of Flow<T> — so any code downstream that assumed a single delivery has to be re-read.",
                     "For an ordinary cold flow, every collector runs the producer again, so two collectors can mean two database reads."
                   ]
                 },
@@ -6223,7 +6227,7 @@
                 {
                   "type": "callout",
                   "kind": "INTERVIEW_FOCUS",
-                  "text": "Expect “when would you return a Flow instead of a suspend function?” Answer from the consumer's need rather than the data's volatility. Name the concrete inability: a suspending function communicates once, at the moment it returns, so it cannot report a later change without being asked again, and asking again requires already knowing. Then give the cost unprompted — collection, a coroutine to collect in, a lifetime to own, repeated emissions, and for a cold flow repeated execution of the producer. “Flow if the data can change” is the fashionable answer; naming the trade is the engineering one."
+                  "text": "Expect “when would you return a Flow instead of a suspend function?” Answer from the consumer's need rather than the data's volatility. Name the concrete inability: a suspending function communicates once, at the moment it returns, so it cannot report a later change without being asked again, and asking again requires already knowing. Then give the cost unprompted — collection, a coroutine to collect in, a lifetime to own, possibly repeated emissions, and for a cold flow repeated execution of the producer. “Flow if the data can change” is the fashionable answer; naming the trade is the engineering one. If pressed further, add that Flow<T> itself promises only zero or more values over time, so how many and how fresh is something the API has to document."
                 }
               ]
             }
@@ -6721,12 +6725,16 @@
                 },
                 {
                   "type": "code",
-                  "code": "// A deliberately plain listener API: register, get called back, unregister.\ninterface LocationListener {\n    fun onLocation(value: Location)\n}\n\ninterface LocationSource {\n    fun register(listener: LocationListener)\n    fun unregister(listener: LocationListener)\n}\n\nfun LocationSource.locations(): Flow<Location> = callbackFlow {\n    val listener = object : LocationListener {\n        override fun onLocation(value: Location) {\n            trySend(value)\n        }\n    }\n\n    register(listener)\n\n    awaitClose { unregister(listener) }\n}",
+                  "code": "// A deliberately plain listener API: register, get called back, unregister.\ninterface LocationListener {\n    fun onLocation(value: Location)\n}\n\ninterface LocationSource {\n    fun register(listener: LocationListener)\n    fun unregister(listener: LocationListener)\n}\n\nfun LocationSource.locations(): Flow<Location> = callbackFlow {\n    val listener = object : LocationListener {\n        override fun onLocation(value: Location) {\n            // trySend cannot suspend, so it can fail: the buffer may be full, or\n            // collection may already have ended. Dropping is a decision, not a default.\n            trySend(value).onFailure { cause -> onLocationDropped(value, cause) }\n        }\n    }\n\n    register(listener)\n\n    awaitClose { unregister(listener) }\n}",
                   "language": "kotlin"
                 },
                 {
                   "type": "paragraph",
                   "text": "Read that block as a lifetime rather than as a snippet. Registration happens when a collection starts. trySend moves each value from whatever thread the callback arrived on into the flow's channel, which is why a plain flow { } cannot be used here at all: the callback is not running in the builder's coroutine, and emitting from it would violate the context invariant the previous Lesson described. And then the block reaches awaitClose, which is where the interesting part is."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The one thing worth adding to that line is what happens when trySend does not succeed. A callback is not a coroutine, so trySend cannot suspend and cannot apply back pressure the way emit does; it attempts the send and hands back a result. That result is a failure when the channel's buffer is full or when collection has already ended, and ignoring it means the adapter silently loses values. Which is sometimes exactly right — for a position that will be superseded a moment later, dropping is the correct policy — but it should be a decision the adapter states rather than a consequence of not looking. Inspect the result and do something honest with it: record the drop, count it, or surface it. Choosing a buffering policy instead is the subject named at the end of this Lesson."
                 },
                 {
                   "type": "paragraph",

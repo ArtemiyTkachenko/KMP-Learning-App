@@ -573,11 +573,21 @@ are recorded because each is a claim a later Unit could easily reintroduce.
 | L1.5: "Every coroutine has a parent" | A scope carrying no `Job` starts **root** coroutines, and a builder's context can re-parent one, so universal parenthood is not a structured-concurrency guarantee. It also contradicted L1.4's own `GlobalScope` material | The guarantee is stated as "a coroutine launched in a scope becomes a child of that scope's job", followed by a paragraph naming the root-coroutine exception, quoting the `GlobalScope` KDoc, and pointing re-parenting at Unit 2 |
 | L1.1: a coroutine that never suspends "never reaches a moment at which anything about it can be acted on from outside" | Cancellation is observed at a cancellable suspension point **or** at an explicit check, so suspension is not the only route. The cancellation page says exactly that | The paragraph now names cancellation as cooperative and says a coroutine that neither suspends nor looks runs to the end. The check APIs are still not named — that boundary is unchanged |
 | L1.5: "If a scope was cancelled, nothing it started is still running" | `cancel()` requests cancellation and returns; children may still be finishing. The stopped-work guarantee belongs to completion, not to the request | The sentence separates the two: the request reaches every descendant, and the scope's job completing is the moment nothing is running |
+| L1.3: the parent-child link "is not something you configure ... it happens automatically, every time" | A builder given an explicit `Job` re-parents that coroutine out of the launching scope — the behaviour the ACTIVE `coroutine_supervisor_job_child_context_noop` documents. Parentage is context inheritance by default, not a law | The rule is stated as inheritance from the starting context, with one clause naming the override and deferring it to Unit 2. The trap itself stays split across L2.1 and L3.4 as this plan assigns it |
+| L1.5 (introduced by the first correction above): root coroutines have "none of the four guarantees" | An overcorrection. A root has no parent, but it is still the top of a structure: it waits for its own children, cancelling it cancels them, and their failures reach it. Only attachment to an owner and upward propagation are absent | The paragraph now separates the two halves explicitly — the last three guarantees hold inside a root's subtree, the first one and everything downstream of it does not |
+| L1.4: a coroutine's lifetime "is the lifetime of the scope it was launched from", and the owner is "whoever calls `cancel()`" | A child normally completes long before its scope does, so the scope **bounds** the lifetime rather than equalling it; and a lexical scope ends by completing, with nobody calling `cancel()` | The sentence says bounded, notes that most work finishes sooner, and gives the owner two forms: whoever cancels a constructed scope, or the end of the block for a lexical one |
 
 One smaller correction in the same pass: L1.4 said "a scope is a `CoroutineContext`". `CoroutineScope`
 is an interface declaring one property, `coroutineContext`, and no functions, so the Lesson now says a
 scope *holds* a context rather than being one. `GlobalScope`'s KDoc was added to L1.5's Sources for the
 quotation it now carries.
+
+The root-coroutine claims were executed rather than reasoned about, in the same style as the table
+below. Against a jobless scope standing in for `GlobalScope`: the launched job's `parent` was `null`;
+while its child ran it reported `StandaloneCoroutine{Completing}` with one child and `join()` waited
+198 ms for that child; and cancelling the root left the child's completion flag `false`. Separately,
+`coroutineScope`'s job **is** a child of the calling coroutine's job — which is why the Lesson now
+disambiguates the two senses of "root" the documentation uses.
 
 None of these changed an identity, a mapping, an order, or a Lesson boundary.
 

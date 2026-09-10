@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `9f2287a7bbd92cbeab63ec117c4c34ef07b3cf638c3f1ef5b61eccd12529a00e` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `057707a304c7a1504fb4c63a8242eef0096a4e67cc45e8fa4ca8ccc47f27af12` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `5870ff2387861aad48c54681cff420572f40ce00800035f2e8747476a2ccfc32` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,12 +68,12 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 7 |
-| Active lessons in those units | 26 |
-| Distinct primary subtopics | 14 |
-| Distinct supporting subtopics | 43 |
-| Unique active questions reached through primary mappings | 29 |
-| Primary subtopics with at least one active question | 14 |
+| Active learning units | 8 |
+| Active lessons in those units | 30 |
+| Distinct primary subtopics | 18 |
+| Distinct supporting subtopics | 45 |
+| Unique active questions reached through primary mappings | 34 |
+| Primary subtopics with at least one active question | 18 |
 | Primary subtopics with no active question | 0 |
 | Active questions in the bank | 370 |
 | Deprecated questions excluded from this report | 41 |
@@ -98,6 +98,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Derived State and Expensive Work (`unit_derived_state_and_expensive_work`) | 3 | 1 | 0 | 3 | 0 | 3 |
 | Snapshot Fundamentals (`unit_snapshot_fundamentals`) | 2 | 1 | 2 | 1 | 1 | 4 |
 | Coroutine Fundamentals and Structured Concurrency (`unit_coroutines_and_structured_concurrency`) | 5 | 5 | 3 | 3 | 1 | 7 |
+| Coroutine Context, Dispatchers and Concurrent Work (`unit_context_dispatchers_and_concurrency`) | 4 | 4 | 1 | 3 | 1 | 5 |
 
 ## Unit and lesson detail
 
@@ -603,6 +604,85 @@ Supporting context — not primary coverage:
 | `coroutine_scope` — CoroutineScope | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `coroutine_builders` — launch and async | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `coroutine_exceptions` — Exception propagation and handling | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+
+### Coroutine Context, Dispatchers and Concurrent Work (`unit_context_dispatchers_and_concurrency`)
+
+Home topic: `async_reactive` — Coroutines, Flow & Reactive Programming.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 1 | `coroutine_context_switching_001` |
+| APPLIED | 3 | `coroutine_async_await_sequential`, `coroutine_io_dispatcher_blocking_calls`, `suspending_api_dispatcher_assumption` |
+| ADVANCED | 1 | `coroutine_supervisor_job_child_context_noop` |
+
+#### `CoroutineContext` and What Children Inherit (`lesson_coroutine_context`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `coroutine_context` — CoroutineContext | 0 | 0 | 1 | 1 | `coroutine_supervisor_job_child_context_noop` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `coroutine_jobs` — Job and parent-child relationships | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_dispatchers` — Dispatchers | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `structured_concurrency` — Structured concurrency | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+
+#### Dispatchers and Where Code Actually Runs (`lesson_dispatchers`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `coroutine_dispatchers` — Dispatchers | 0 | 2 | 0 | 2 | `coroutine_io_dispatcher_blocking_calls`, `suspending_api_dispatcher_assumption` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `coroutine_context` — CoroutineContext | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `android_main_thread` — Main thread, Looper, and Handler fundamentals | 3 | `android_platform` — Android Platform & Application Model |
+| `main_thread_performance` — Main-thread performance | 1 | `performance` — Performance, Memory & Debugging |
+| `anr` — ANRs | 1 | `performance` — Performance, Memory & Debugging |
+
+#### `withContext` and Main-Safety (`lesson_with_context_and_main_safety`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `coroutine_context_switching` — withContext | 1 | 0 | 0 | 1 | `coroutine_context_switching_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `coroutine_dispatchers` — Dispatchers | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_fundamentals` — Coroutine and suspend fundamentals | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `structured_concurrency` — Structured concurrency | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `repository_pattern` — Repository pattern | 1 | `architecture` — Application Architecture & Design Principles |
+
+#### Sequential by Default, Concurrent on Purpose (`lesson_sequential_and_concurrent_work`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `coroutine_parallelism` — Concurrency and async/await | 0 | 1 | 0 | 1 | `coroutine_async_await_sequential` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `coroutine_builders` — launch and async | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `structured_concurrency` — Structured concurrency | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_dispatchers` — Dispatchers | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
 ## Primary assessment gaps
 

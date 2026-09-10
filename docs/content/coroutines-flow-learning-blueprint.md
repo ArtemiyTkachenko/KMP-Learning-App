@@ -246,8 +246,8 @@ replace the folklore that `suspend` means IO and `async` means faster.
 - **Core:** the context is an indexed set of elements, keyed by type; the elements that
   matter are the `Job`, the dispatcher, and — later — the exception handler and the name;
   elements combine with `+`, and a later element of the same key replaces an earlier one;
-  a child inherits its parent's context and gets a **new** `Job` whose parent is the
-  parent's `Job`.
+  an ordinary child inherits its starting scope's context and gets a **new** `Job` whose
+  parent is the scope's `Job`, unless the builder's context overrides that parent.
 - **Practical:** `launch(Dispatchers.IO)` inside a `Dispatchers.Main` scope, and what each
   element of the resulting context came from; reading `coroutineContext[Job]`; naming a
   coroutine for a readable stack trace.
@@ -284,25 +284,26 @@ replace the folklore that `suspend` means IO and `async` means faster.
 - **Notes:** `Dispatchers.Unconfined` is **Reference** — one line saying it exists, is an
   advanced tool, and is not a performance optimisation. Custom executors and
   `asCoroutineDispatcher` are **Reference**. The exact thread-pool implementation is
-  **Exclude**. KMP caveat is mandatory: `Dispatchers.Main` requires a platform main
-  dispatcher and is not available on every target, so shared code should take a dispatcher
-  rather than name `Main` — see the plan's source-freshness section.
+  **Exclude**. KMP caveat is mandatory: `Dispatchers.Main` is declared in common code but
+  needs a usable platform/runtime implementation. JVM IO pool and thread-sharing claims
+  are not portable guarantees; shared code can accept a dispatcher appropriate to its
+  target — see the plan's source-freshness section and Unit 2 authoring outcomes.
 
 #### L2.3 — `withContext` and Main-Safety
 
 - **Objective:** decide where a context switch belongs and recognise one that does nothing.
 - **Core:** `withContext` runs a block in a modified context and suspends until it returns a
-  value; it starts no concurrent work; its effect ends with the block. Main-safety is the
-  contract that a suspending function is safe to call from the main thread, and it is the
-  responsibility of the function doing the work, not of its caller.
+  value; it creates a lexical child scope without making the caller proceed concurrently;
+  its effect ends with the block. Main-safety is a design responsibility of the function
+  doing the work, not a language guarantee supplied by a suspending signature.
 - **Practical:** a repository function that wraps its own blocking call in
-  `withContext(ioDispatcher)`; the caller that then wraps it again, achieving nothing but a
-  dispatch; an already-asynchronous client — Retrofit, Ktor, Room — that needs no wrapper at
-  all; `withContext` compared with `coroutineScope`, which changes no context but creates a
-  child sub-tree.
-- **Senior:** a redundant `withContext` is not free — it costs a dispatch and a resumption
-  each way — but the reason to remove it is that it documents a false belief about where the
-  work happens.
+  `withContext(ioDispatcher)`; the caller that then wraps it again, obscuring responsibility;
+  an already-asynchronous, main-safe client call that needs no blocking-work wrapper;
+  `withContext` compared with `coroutineScope`, which creates a child sub-tree without
+  requesting a context change.
+- **Senior:** a redundant `withContext` adds conceptual complexity and may add dispatch
+  overhead. An unchanged dispatcher can avoid dispatches; a changed dispatcher need not
+  produce a physical thread switch. Remove wrappers based on the work and its owner.
 - **Primary:** `coroutine_context_switching`
 - **Supporting:** `coroutine_dispatchers`, `coroutine_fundamentals`, `structured_concurrency`,
   `repository_pattern` (architecture)
@@ -315,7 +316,8 @@ replace the folklore that `suspend` means IO and `async` means faster.
 - **Objective:** decide whether two operations should overlap, and write the version that
   actually does.
 - **Core:** suspending calls in a coroutine body run one after another; overlap is something
-  you ask for; `async` starts work immediately and `await` waits for its result; starting
+  you ask for; default `async` schedules work without waiting for `await`, but immediate
+  execution is not guaranteed; `await` waits for its result; starting
   both `Deferred`s and awaiting afterwards is what overlaps them.
 - **Practical:** `async { a() }.await()` followed by `async { b() }.await()`, which looks
   parallel and is not; the corrected version and the drop from the sum of both durations to
@@ -950,10 +952,13 @@ any material edit.
 
 ## Status
 
-This blueprint is complete as a map. **Unit 1 is authored and shipped** by E24-02 exactly as
-mapped above — no Lesson boundary moved, no objective changed, and no Teach/Bridge/Reference/
-Exclude decision was revised. Units 2 to 6 are not authored yet: E24-03 through E24-07 author
-them in order, against the confirmed identities and boundaries in
+This blueprint is complete as a map. **Unit 1 is authored and shipped** by E24-02.
+**Unit 2 is authored in production format** by E24-03, pending review and merge. All Unit 2
+identities, order, mappings and boundaries are preserved. Its authoring outcomes record
+precision corrections to context inheritance, `Main` availability, dispatch overhead and
+`async` scheduling; no Teach/Bridge/Reference/Exclude decision changed.
+Units 3 to 6 are not authored yet: E24-04 through E24-07 author them in order, against the
+confirmed identities and boundaries in
 [`coroutines-flow-units-1-6-plan.md`](coroutines-flow-units-1-6-plan.md). When authoring
 reveals a wrong Lesson boundary, update this file in the same change.
 

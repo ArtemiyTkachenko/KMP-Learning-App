@@ -158,31 +158,35 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             // Continue Learning walks the whole authored document rather than one Topic, so
             // exhausting `android_ui` hands the learner across to the next authored Unit —
-            // which since E24-02 is browsed under a different home Topic. Studying it too is
-            // what still makes the exhausted outcome reachable.
-            val coroutinesUnit = assertNotNull(
-                BundledLearningContentRepository().getUnitById("unit_coroutines_and_structured_concurrency"),
+            // browsed under a different home Topic. Study both authored coroutines Units
+            // before expecting the exhausted outcome.
+            val coroutinesUnits = BundledLearningContentRepository().getActiveUnitsByTopic("async_reactive")
+            assertEquals(
+                listOf("unit_coroutines_and_structured_concurrency", "unit_context_dispatchers_and_concurrency"),
+                coroutinesUnits.map { it.id },
             )
-            assertEquals("async_reactive", coroutinesUnit.topicId)
-            coroutinesUnit.lessons.forEach { lesson ->
-                awaitNext(coroutinesUnit.id, lesson.id)
-                val crossTopicReader = lesson(coroutinesUnit.id, lesson.id)
-                crossTopicReader.uiState.await { state ->
-                    state is LearningLessonUiState.Content &&
-                        (state.studyState as? StudyProgressUiState.Available)?.value?.isStudied == false
-                }
-                crossTopicReader.toggleStudied()
-                crossTopicReader.uiState.await { state ->
-                    state is LearningLessonUiState.Content &&
-                        (state.studyState as? StudyProgressUiState.Available)?.value?.let {
-                            it.isStudied && !it.isPending
-                        } == true
+            assertEquals(listOf(5, 4), coroutinesUnits.map { it.lessons.size })
+            coroutinesUnits.forEach { coroutinesUnit ->
+                coroutinesUnit.lessons.forEach { lesson ->
+                    awaitNext(coroutinesUnit.id, lesson.id)
+                    val crossTopicReader = lesson(coroutinesUnit.id, lesson.id)
+                    crossTopicReader.uiState.await { state ->
+                        state is LearningLessonUiState.Content &&
+                            (state.studyState as? StudyProgressUiState.Available)?.value?.isStudied == false
+                    }
+                    crossTopicReader.toggleStudied()
+                    crossTopicReader.uiState.await { state ->
+                        state is LearningLessonUiState.Content &&
+                            (state.studyState as? StudyProgressUiState.Available)?.value?.let {
+                                it.isStudied && !it.isPending
+                            } == true
+                    }
                 }
             }
             browser.uiState.await { state ->
                 state is TopicBrowserUiState.Content && state.continueLearning == ContinueLearningUiModel.Complete
             }
-            // The `android_ui` Topic's own progress is unaffected by the Unit in another Topic.
+            // The `android_ui` Topic's own progress is unaffected by Units in another Topic.
             awaitTopic(21)
             val earlierUnit = units[1]
             val earlierLesson = earlierUnit.lessons.last()
@@ -201,9 +205,9 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             val rebuilt = LocalLessonStudyRepository(database)
             assertFalse(rebuilt.isStudied(earlierLesson.id))
-            // 21 `android_ui` Lessons plus the 5 in the coroutines Unit, less the one that
+            // 21 `android_ui` Lessons plus 9 in the coroutines Units, less the one that
             // was just un-studied.
-            assertEquals(25, rebuilt.getStudiedLessons().size)
+            assertEquals(29, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -229,6 +233,14 @@ internal class LearningUnitPracticeIntegrationTest {
                         "coroutine_scope",
                         "structured_concurrency",
                     ) to 7
+                ),
+                "unit_context_dispatchers_and_concurrency" to (
+                    setOf(
+                        "coroutine_context",
+                        "coroutine_dispatchers",
+                        "coroutine_context_switching",
+                        "coroutine_parallelism",
+                    ) to 5
                 ),
             )
             val content = BundledLearningContentRepository()

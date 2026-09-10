@@ -40,6 +40,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_derived_state_and_expensive_work",
                 "unit_snapshot_fundamentals",
                 "unit_coroutines_and_structured_concurrency",
+                "unit_context_dispatchers_and_concurrency",
             ),
             units().map { it.id },
         )
@@ -53,6 +54,7 @@ internal class BundledLearningCurriculumTest {
                 "Derived State and Expensive Work",
                 "Snapshot Fundamentals",
                 "Coroutine Fundamentals and Structured Concurrency",
+                "Coroutine Context, Dispatchers and Concurrent Work",
             ),
             units().map { it.title },
         )
@@ -67,6 +69,7 @@ internal class BundledLearningCurriculumTest {
                 "android_ui",
                 "android_ui",
                 "android_ui",
+                "async_reactive",
                 "async_reactive",
             ),
             units().map { it.topicId },
@@ -148,6 +151,26 @@ internal class BundledLearningCurriculumTest {
                 "lesson_structured_concurrency",
             ),
             unit("unit_coroutines_and_structured_concurrency").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "lesson_coroutine_context",
+                "lesson_dispatchers",
+                "lesson_with_context_and_main_safety",
+                "lesson_sequential_and_concurrent_work",
+            ),
+            unit("unit_context_dispatchers_and_concurrency").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "`CoroutineContext` and What Children Inherit",
+                "Dispatchers and Where Code Actually Runs",
+                "`withContext` and Main-Safety",
+                "Sequential by Default, Concurrent on Purpose",
+            ),
+            unit("unit_context_dispatchers_and_concurrency").lessons.map { it.title },
         )
     }
 
@@ -233,6 +256,34 @@ internal class BundledLearningCurriculumTest {
                 listOf("structured_concurrency"),
             ),
             unit("unit_coroutines_and_structured_concurrency").lessons.map { it.primarySubtopicIds },
+        )
+
+        assertEquals(
+            listOf(
+                listOf("coroutine_context"),
+                listOf("coroutine_dispatchers"),
+                listOf("coroutine_context_switching"),
+                listOf("coroutine_parallelism"),
+            ),
+            unit("unit_context_dispatchers_and_concurrency").lessons.map { it.primarySubtopicIds },
+        )
+    }
+
+    @Test
+    fun contextUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        assertEquals(
+            listOf(
+                listOf("coroutine_jobs", "coroutine_dispatchers", "structured_concurrency"),
+                listOf("coroutine_context", "android_main_thread", "main_thread_performance", "anr"),
+                listOf(
+                    "coroutine_dispatchers",
+                    "coroutine_fundamentals",
+                    "structured_concurrency",
+                    "repository_pattern",
+                ),
+                listOf("coroutine_builders", "structured_concurrency", "coroutine_dispatchers"),
+            ),
+            unit("unit_context_dispatchers_and_concurrency").lessons.map { it.supportingSubtopicIds },
         )
     }
 

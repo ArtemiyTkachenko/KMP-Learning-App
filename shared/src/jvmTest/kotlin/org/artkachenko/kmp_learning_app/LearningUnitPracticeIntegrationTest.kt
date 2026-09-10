@@ -166,10 +166,11 @@ internal class LearningUnitPracticeIntegrationTest {
                     "unit_coroutines_and_structured_concurrency",
                     "unit_context_dispatchers_and_concurrency",
                     "unit_cancellation_failure_and_coordination",
+                    "unit_flow_fundamentals",
                 ),
                 coroutinesUnits.map { it.id },
             )
-            assertEquals(listOf(5, 4, 5), coroutinesUnits.map { it.lessons.size })
+            assertEquals(listOf(5, 4, 5, 5), coroutinesUnits.map { it.lessons.size })
             coroutinesUnits.forEach { coroutinesUnit ->
                 coroutinesUnit.lessons.forEach { lesson ->
                     awaitNext(coroutinesUnit.id, lesson.id)
@@ -209,9 +210,9 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             val rebuilt = LocalLessonStudyRepository(database)
             assertFalse(rebuilt.isStudied(earlierLesson.id))
-            // 21 `android_ui` Lessons plus 14 in the coroutines Units, less the one that
-            // was just un-studied.
-            assertEquals(34, rebuilt.getStudiedLessons().size)
+            // 21 `android_ui` Lessons plus 19 in the coroutines and Flow Units, less the
+            // one that was just un-studied.
+            assertEquals(39, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -256,6 +257,17 @@ internal class LearningUnitPracticeIntegrationTest {
                         "coroutine_supervision",
                         "coroutine_parallelism",
                     ) to 7
+                ),
+                // E24-05. `flow_fundamentals` is primary in three of the five Lessons, so
+                // five Lessons practise three concepts. The architecture, Kotlin, lifecycle
+                // and performance bridges the Unit leans on stay out of the scope, which is
+                // what `supportingOnly` below proves.
+                "unit_flow_fundamentals" to (
+                    setOf(
+                        "flow_fundamentals",
+                        "flow_collection",
+                        "flow_context",
+                    ) to 5
                 ),
             )
             val content = BundledLearningContentRepository()

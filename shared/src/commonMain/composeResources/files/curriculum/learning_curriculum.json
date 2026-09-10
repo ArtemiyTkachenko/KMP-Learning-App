@@ -3500,7 +3500,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Four facts about `Flow` are enough for this lesson to stand on its own. The full subject — operators, hot streams and sharing, back pressure, structured cancellation — belongs to the coroutines and Flow curriculum, which this app does not teach yet; Kotlin's own documentation is where to go for it in the meantime."
+                  "text": "Four facts about `Flow` are enough for this lesson to stand on its own. The full subject is taught by the Flow Fundamentals unit of this curriculum: the first two facts are its treatment of cold flows, and the last two its treatment of collection lifetime and cancellation, both linked below. Operators, hot streams and sharing, and back pressure follow in the units after it."
                 },
                 {
                   "type": "bullet_list",
@@ -3670,7 +3670,9 @@
           "relatedLessonIds": [
             "lesson_snapshot_observation",
             "lesson_derived_state",
-            "lesson_observable_collections"
+            "lesson_observable_collections",
+            "lesson_cold_flows",
+            "lesson_flow_collection_lifetime"
           ],
           "sources": [
             {
@@ -6108,6 +6110,730 @@
             {
               "title": "CoroutineDispatcher.limitedParallelism",
               "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-dispatcher/limited-parallelism.html"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "unit_flow_fundamentals",
+      "topicId": "async_reactive",
+      "title": "Flow Fundamentals",
+      "summary": "The first three units built a coroutine, gave it an owner, decided where it runs and worked out what happens when it stops or fails — and every one of those operations produced a single result. This unit asks the other question: what if the caller has to keep hearing about a value as it changes? Flow is the answer, and it is not a separate reactive world. A cold flow is a description of asynchronous production that runs inside an ordinary coroutine, ends when that coroutine ends, and is cancelled by the model the cancellation unit already taught. The order is one argument: why the shape exists, what cold means, who owns the collection, where it executes, and how an existing producer becomes a flow without leaking.",
+      "lessons": [
+        {
+          "id": "lesson_why_flow",
+          "title": "One Value or Many: Why `Flow` Exists",
+          "summary": "Decide whether an operation should return one result or produce values over time. A suspending function answers a question once and then goes silent; a Flow-returning API keeps the caller in step with a changing value, and charges the caller collection, a coroutine, a lifetime and repeated delivery for it.",
+          "primarySubtopicIds": [
+            "flow_fundamentals"
+          ],
+          "supportingSubtopicIds": [
+            "coroutine_fundamentals",
+            "hot_vs_cold_streams",
+            "repository_pattern",
+            "single_source_of_truth"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Everything the first three units built had the same shape at its edges. A caller asks for something, a coroutine suspends while the work happens, and an answer comes back: loadUser(id) returns a User, saveDraft(text) returns when the draft is saved. That shape is right for a great many operations. It is wrong for one specific situation, and the situation is common enough to have its own type."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Take a value that lives in local storage and can be written by more than one part of the app — the selected theme, say. A suspending read answers correctly at the moment it is called. Then something else writes a new theme: another screen, a sync job, a restore from backup. The suspending call has already returned. It has no way to say anything further, so the caller is now holding a value that used to be true."
+                },
+                {
+                  "type": "code",
+                  "code": "// One result. Correct at the moment it returns, and silent afterwards.\nsuspend fun readTheme(): Theme\n\n// Values over time. This API's contract: the current theme, and every later one.\nfun observeTheme(): Flow<Theme>",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Flow<T> is Kotlin's type for the second shape: a stream of values produced asynchronously, which a consumer receives one at a time. Notice what the two signatures promise. The suspending one promises an answer. The Flow-returning one is not a suspending function at all — it returns immediately, because it hands back a description of how values will be produced rather than any value. What that description does and when it runs is the next Lesson's subject; what matters here is that the two signatures are two different contracts with the caller."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One thing the type does not settle is how many values there will be. Flow<T> describes zero or more values produced asynchronously, so a flow is free to emit nothing, to emit once and complete, or to run until it is cancelled. observeTheme() keeps emitting because that is what the function is for, not because its return type compels it. Cardinality and freshness are the API's contract and the author owes the caller that contract in words; the type only says that values arrive over time rather than in a single return."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The reason a suspending function cannot do the observing job is not a missing feature that could be added. A suspending function has exactly one moment at which it communicates with its caller, and that is the moment it returns. After it returns there is no channel left open in either direction. The only way to learn about a later change is to call it again, which requires already knowing that something changed — which is the problem."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "The question that chooses the shape is not “can this data change?”, because nearly all data can. It is “does this consumer need to be told when it changes?” A consumer that needs one answer now gets a suspending function. A consumer that must stay in step with a changing value gets a Flow."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Android's guidance for the data and business layers states the division as a rule: classes in those layers should expose suspend functions for one-shot calls and Flow to notify about data changes. It is worth reading as two halves rather than one recommendation, because the suspending half is a recommendation too. A repository that observes storage and a repository that performs an action are not in tension; most repositories do both."
+                },
+                {
+                  "type": "code",
+                  "code": "class ThemeRepository(private val store: ThemeStore) {\n\n    // One-shot: the caller wants the value now and will act on it once.\n    suspend fun currentTheme(): Theme = store.read()\n\n    // Observable: the caller stays in step with whatever is written next.\n    fun themeChanges(): Flow<Theme> = store.themeChanges()\n\n    // Also one-shot, and it should stay that way. A write is an action, not a stream.\n    suspend fun setTheme(theme: Theme) = store.write(theme)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The observable member is the interesting one because it moves work onto the caller. Reaching for it should be a decision, so it is worth being explicit about what the caller now has to reason about that it did not before."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "It has to collect the flow. Nothing is produced until it does, so a Flow that is returned and never collected is a function that was never called.",
+                    "Collection is a suspending operation, so it needs a coroutine, and the caller has to decide which one.",
+                    "That coroutine's lifetime becomes the collection's lifetime, so the caller has acquired a lifetime it now owns.",
+                    "Values may arrive more than once — how many and for how long is this API's contract rather than a guarantee of Flow<T> — so any code downstream that assumed a single delivery has to be re-read.",
+                    "For an ordinary cold flow, every collector runs the producer again, so two collectors can mean two database reads."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So the honest comparison is not that Flow is the more powerful shape. It is that a Flow-returning API buys currency — the consumer is never holding a stale value — and pays for it in caller-side complexity. Where the consumer genuinely needs to be current, that is a good trade and the suspending version would be a bug. Where it does not — a one-time upload, a validation call, a payment — the suspending signature is the accurate one, and wrapping a single result in a Flow is a worse API rather than a more modern one, because it advertises a contract the operation does not have."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Turning “this data can change” into “this API returns a Flow”. Almost all persisted data can change. The test is the consumer: a screen that must repaint when another part of the app writes needs a stream, while a use case that computes a total once and hands it to a report does not, and giving it one makes every caller reason about collection, cancellation and repeated delivery for a value that arrives exactly once."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "There is a third possibility worth naming so that it is not silently assumed. Some stream abstractions exist independently of any consumer: they are producing whether or not anyone is listening, a second consumer joins the one that is already running rather than starting another, and a value can be held for whoever arrives next. Kotlin has those, and choosing between them and an ordinary flow is a real decision — but nothing in this unit needs them, and they are the subject of the hot streams unit later in this curriculum. This unit is about the ordinary cold flow, which is what a repository-shaped API almost always returns."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "It is worth knowing why cold is the right default there. themeChanges() is a description of how to observe storage, and a description costs nothing to hand out. The decisions about who runs it, when, and for how long belong to the caller, who is the only one who knows the lifetime it should be attached to. A repository that started producing on its own behalf would be starting work in a lifetime it does not own — which is the ownership argument the scope Lesson made about ad-hoc scopes, arriving from a different direction."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One architectural consequence is worth a sentence and no more, because the architecture curriculum owns it. This shape is what makes a single source of truth workable in practice: if one component owns a value and hands out an observable view of it, every consumer converges on the same value without anybody having to broadcast, and without two consumers being able to disagree. Observability is the property that makes that possible; how to structure the layers around it is somebody else's Lesson."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Expect “when would you return a Flow instead of a suspend function?” Answer from the consumer's need rather than the data's volatility. Name the concrete inability: a suspending function communicates once, at the moment it returns, so it cannot report a later change without being asked again, and asking again requires already knowing. Then give the cost unprompted — collection, a coroutine to collect in, a lifetime to own, possibly repeated emissions, and for a cold flow repeated execution of the producer. “Flow if the data can change” is the fashionable answer; naming the trade is the engineering one. If pressed further, add that Flow<T> itself promises only zero or more values over time, so how many and how fresh is something the API has to document."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_suspension_and_blocking"
+          ],
+          "sources": [
+            {
+              "title": "Flows",
+              "url": "https://kotlinlang.org/docs/coroutines-flow.html"
+            },
+            {
+              "title": "kotlinx.coroutines: Flow",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-flow/"
+            },
+            {
+              "title": "Best practices for coroutines in Android",
+              "url": "https://developer.android.com/kotlin/coroutines/coroutines-best-practices"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_cold_flows",
+          "title": "Cold Flows: Producer, Collector and Operators",
+          "summary": "Say exactly what runs, and when, for a given chain. A cold flow is a description: constructing it executes nothing, adding operators to it executes nothing, a terminal operator starts collection inside the collecting coroutine, and each new collector runs the producer again from the beginning.",
+          "primarySubtopicIds": [
+            "flow_fundamentals"
+          ],
+          "supportingSubtopicIds": [
+            "flow_collection",
+            "flow_operators",
+            "kotlin_sequences"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The previous Lesson called a Flow a description of how values will be produced. This Lesson makes that precise, because it is the fact everything else in the unit depends on."
+                },
+                {
+                  "type": "code",
+                  "code": "val updates = flow {\n    println(\"producer starting\")\n    emit(loadFirst())\n    emit(loadSecond())\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Ask what has happened by the time that line finishes. The answer is nothing. Nothing was printed, loadFirst was not called, and no value exists anywhere. Measured on this project's JVM target: after constructing exactly this shape, the producer block had run zero times. What the variable holds is the block itself, wrapped in an object that knows how to run it later."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The Kotlin documentation states the rule in two sentences that are worth memorising as a pair: the code block of a cold flow builder does not run until a collector collects it, and each new collector starts a new execution of the flow. The same page offers the image that makes it stick — a cold flow is like a recipe. Having the recipe is not having dinner, and two people cooking from it cook twice."
+                },
+                {
+                  "type": "code",
+                  "code": "updates.collect { value ->\n    println(value)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is the line that starts something. collect is a suspending call, so it can only be written inside a coroutine, and it runs the producer block inside that coroutine — not somewhere else, not on a thread the flow arranged for itself. “producer starting” prints now, the two loads happen now, and collect does not return until the producer is finished."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Four words are worth fixing here because the rest of the curriculum uses them precisely. The producer is the code that generates values, and everything closer to it is upstream. The collector is the code that receives them, and everything closer to it is downstream. An emission is one value leaving the producer. Collection is the whole act of running the chain for one consumer."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Constructing a flow runs nothing. Adding operators to it runs nothing. A terminal operator such as collect is what starts the producer, and it starts it inside the collecting coroutine."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The second half of the rule — each new collector starts a new execution — is the half that shows up in production behaviour."
+                },
+                {
+                  "type": "code",
+                  "code": "val articles = flow {\n    executions++\n    emit(loadFeatured())\n    emit(loadRecent())\n}\n\narticles.collect { }   // executions is now 1, two values delivered\narticles.collect { }   // executions is now 2, the same two values again",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Measured on this project's JVM target, a two-emission flow collected twice ran its producer twice and delivered its values twice over: 1, 2, 1, 2. Take that literally when the producer does real work. If it opens a database cursor, two collectors are two cursors; if it issues a request, two collectors are two requests. And because the producer only runs during a collection, the flow object itself stores nothing — there is no current value to read off it, and holding a reference to a Flow is not holding data."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Operators are what turn one flow into a chain, and they come in two kinds. The documentation's definitions are exact: intermediate operators return a new downstream flow that consumes values from upstream flows and applies an operation to them, while terminal operators trigger the execution of the flow pipeline by collecting an upstream flow."
+                },
+                {
+                  "type": "code",
+                  "code": "flow { /* producer */ }\n    .map { /* intermediate: returns another Flow */ }\n    .filter { /* intermediate: returns another Flow */ }\n    .collect { /* terminal: this is what runs the chain */ }",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The consequence is the one worth carrying, and the documentation states it outright: intermediate operators are themselves cold, so the returned flow does not start processing values until it is collected. Measured on this project's JVM target, a flow with a map applied to it and no terminal operator had run its producer zero times; the same chain after a single collect had run it once. Terminal operators are the ones that collect, and there are more of them than the ones a guide happens to name: collect and collectLatest; the operators that reduce a flow to a value, such as first, last, single, count, toList, toSet, fold and reduce; and launchIn, which collects in a scope you hand it. The list is not the thing to memorise — the signature is. An operator that returns another Flow is intermediate and has started nothing; one that suspends to give you a result, or launches a coroutine to produce it, has collected."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What each intermediate operator is actually for — which to reach for, how they interact with timing, how a chain combines two sources, what happens when the collector cannot keep up — is the flow composition unit later in this curriculum. Here they matter only as the thing that does not start a flow."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Reading a Flow-typed property as a value. val theme: Flow<Theme> holds no theme. It holds instructions for producing themes, and until something collects it nothing has been produced and nothing has been stored. Code that logs it, compares two of them, or expects reading the property to yield a current value is reasoning about the wrong object."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Kotlin's Sequence is the closest thing in the standard library, and the documentation makes the comparison itself: like sequences, cold flows are lazy. The shared idea is real and useful. A sequence performs all the processing steps one-by-one for every single element rather than completing each step for the whole collection and materialising an intermediate collection at each stage, and a flow chain behaves the same way — a value goes all the way down before the next one is produced."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Then stop, because the analogy has a hard edge, and the Flow documentation draws it in one clause: unlike in sequences, you can call suspending functions inside a flow builder. The sequences documentation, for its part, does not discuss coroutines at all. A Sequence produces its next value by returning from an ordinary function call, so the thread waits for it. A Flow produces its next value from a producer that can suspend, which is what lets an emission wait on a database, a socket or a timer without holding a thread. Flow is the asynchronous member of the pair, and everything in this unit that is interesting — collection lifetime, cancellation, execution context — follows from that one difference rather than from laziness."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The other limit worth stating is on the word cold itself. Cold is a property of this flow, not of the Flow type. Kotlin also has stream types whose production exists independently of collectors, where a second collector joins one running producer instead of starting a second, and where a value is held for whoever arrives next. Everything in this Lesson describes the cold case. Taking “each collector re-runs the producer” as a fact about Flow in general is exactly the mistake the hot streams unit later in this curriculum exists to correct, and the Compose bridge into flows linked below is another place the same cold model already shows up."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Three questions come out of this Lesson and they are asked about code rather than about definitions. Does constructing this flow execute anything? No, and neither does adding operators to it. What does a second collector cause? A second, independent execution of the producer from the beginning, with its own database read or its own request. What starts it? A terminal operator, which runs the producer inside the collecting coroutine. Being able to answer all three about a snippet you have not seen before is the model; the operator names can be looked up, this cannot."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_why_flow",
+            "lesson_snapshot_flow"
+          ],
+          "sources": [
+            {
+              "title": "Flows",
+              "url": "https://kotlinlang.org/docs/coroutines-flow.html"
+            },
+            {
+              "title": "Flow operators",
+              "url": "https://kotlinlang.org/docs/coroutines-flow-operators.html"
+            },
+            {
+              "title": "kotlinx.coroutines: flow",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/flow.html"
+            },
+            {
+              "title": "Sequences",
+              "url": "https://kotlinlang.org/docs/sequences.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_flow_collection_lifetime",
+          "title": "Collection Lifetime and Flow Cancellation",
+          "summary": "Name the coroutine a collection runs in, and what will end it. A cold flow has no lifetime of its own: collect runs the producer under the collecting coroutine, so that coroutine's Job bounds the collection and cancelling it is the ordinary cooperative cancellation Unit 3 already taught, not a Flow-specific mechanism.",
+          "primarySubtopicIds": [
+            "flow_collection"
+          ],
+          "supportingSubtopicIds": [
+            "coroutine_cancellation",
+            "coroutine_scope",
+            "lifecycle_coroutines",
+            "coroutine_jobs"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Two questions are worth asking of any flow collection you read: which coroutine is this running in, and what will end it. The reason this Lesson comes fourth in the curriculum rather than first is that both answers are already known — they are the coroutine model of the first three units applied to a new shape, not new rules to learn."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A cold flow has no lifetime of its own. In the simplest pipeline — a flow { } builder collected directly — there is no second coroutine anywhere: the producer body runs inside the collecting coroutine. Some operators do introduce one, and this unit meets two of them later, where flowOn runs the upstream in its own coroutine and channelFlow launches children. What does not change is the ownership. Any coroutine a flow creates is a child of the collecting coroutine, created when collection starts and finished when it ends, so nothing a flow does is scheduled behind the collector's back or outlives it. The documentation puts that in two sentences: flow collection is tied to the coroutine that calls the collect() function, and when that coroutine is cancelled, the collection stops and the upstream flow is cancelled too."
+                },
+                {
+                  "type": "code",
+                  "code": "scope.launch {                       // this coroutine, and this Job\n    themeChanges().collect { theme ->  // the producer runs here, in this coroutine\n        applyTheme(theme)\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Everything follows from the second line running inside the first. The producer executes in this coroutine, in its context, under its Job, which is a child of the scope's Job. collect suspends and does not return until the flow completes or the coroutine is cancelled — and a flow that observes storage never completes on its own, so in practice cancellation is how collection ends."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That turns a scheduling question into an ownership question. Choosing where to collect is choosing who owns the collection's lifetime, because the scope you launch it in is the thing that will eventually end it. A collection launched in a screen's scope lasts as long as the screen; a collection launched in an application-lifetime scope lasts as long as the process, whether or not anything is still interested."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "There is no such thing as “the flow's lifetime”. There is the collecting coroutine's lifetime, and the collection is part of it. Deciding which scope collects is therefore the whole of the lifetime decision."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Collection is often written the other way round, and the shorthand is worth reading carefully because it is frequently misdescribed. The KDoc says exactly what it is: launchIn is a terminal flow operator that launches the collection of the given flow in a scope, and it is a shorthand for scope.launch { flow.collect() }."
+                },
+                {
+                  "type": "code",
+                  "code": "val job = themeChanges()\n    .onEach { theme -> applyTheme(theme) }   // intermediate: does the work\n    .launchIn(scope)                          // terminal: scope.launch { collect() }",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two things about it are precise. It is a terminal operator, so it is the thing that starts the flow — onEach is an ordinary intermediate operator and would do nothing on its own. And it returns a Job, the same handle the Job Lesson introduced, which means the collection is an ordinary child coroutine of that scope with an ordinary lifetime. Measured on this project's JVM target, launchIn returned a StandaloneCoroutine which is a Job, and cancelling the scope ended the collection it had started."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What launchIn does not do is change the flow's contract. It does not make a cold flow hot: the source still produces per collection, and two launchIn calls on the same cold flow are two collections. Measured on this project's JVM target, the same cold adapter collected through two launchIn calls executed its producer twice, exactly as two plain collect calls would. The KDoc's own note points the same way — the provided scope takes care of cancellation, and the returned Job does not need to be used for cancellation purposes, because the scope is the owner."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Where that scope comes from is an application question rather than a Flow question. UI applications generally collect in a scope bound to the lifetime of whatever is displaying the values, so that navigating away ends the collection. The lifecycle-aware ways of arranging that, and the Compose-side ways of collecting a flow into state, are the subject of the effects and lifecycle integration material later in this curriculum; the mechanism underneath every one of them is the one this Lesson describes."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Collecting in a scope that outlives the consumer. The collection is not aware of who wanted the values: if the coroutine is still alive, the producer keeps running, the database keeps being read and the results go nowhere. Nothing about this fails loudly, which is what makes choosing the scope a correctness decision rather than a tidiness one."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "“Cancelling the collector cancels the upstream flow” is true and is also the sentence most likely to be over-read. Unit 3's model is unchanged here, and Flow does not introduce a second one: cancellation is a request recorded on a Job, and the code inside stops where it can observe that request. A producer does not become forcibly interruptible by virtue of sitting inside a flow."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Measured on this project's JVM target, with a producer whose first statement was a six-hundred-millisecond blocking sleep — a JVM-specific case, used here because it is the clearest one — the collecting coroutine was cancelled after a hundred milliseconds. The blocking call ran to completion anyway, and joining the cancelled coroutine returned six hundred and ninety-four milliseconds after the start. The producer was inside a flow, it had been cancelled, and it was still not interruptible."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The ordinary case is much better behaved, and for a documented reason: the flow builder is cancellable by default, which means cancellation is checked on each emission, and on top of that almost everything a realistic producer does between emissions is itself a suspending call. Measured on this project's JVM target with a producer whose only cooperative point was emit — a tight loop with no delay, no yield and no other suspending call anywhere in it — cancelling the collector stopped it: the loop never exited normally and the coroutine completed. So the accurate formulation is the one Unit 3 already gave. Cancelling the collector requests cancellation of production, and production stops where it observes the request; in a flow built the ordinary way, that is almost immediately, and the only producers that overrun are the ones doing work that cooperates with nothing."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Notice what is absent from that formulation. There is no Flow-specific kill switch, no separate collection lifecycle, and no Job the flow owns independently of its collector — the child coroutines some operators create are exactly that, children, and they are cancelled through the ordinary hierarchy. This is worth stating explicitly because the alternative mental model, that a flow is a live thing with its own lifecycle that cancellation reaches into, leads to exactly the wrong predictions about non-cooperative producers and about who is responsible for stopping what."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Be ready for the pair. Which coroutine owns this collection, and what ends it? The one that called collect, and cancelling it — usually by cancelling the scope it belongs to. Does launchIn make the flow hot? No; it is scope.launch { collect() } and returns a Job, and the source's cold contract is untouched. Then add the precision that separates a careful answer from a slogan: cancelling a collector cancels production cooperatively, so a producer doing non-cooperative work will finish it, and the caller waits."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_cold_flows",
+            "lesson_coroutine_scope_ownership",
+            "lesson_cooperative_cancellation",
+            "lesson_snapshot_flow"
+          ],
+          "sources": [
+            {
+              "title": "Flows",
+              "url": "https://kotlinlang.org/docs/coroutines-flow.html"
+            },
+            {
+              "title": "kotlinx.coroutines: launchIn",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/launch-in.html"
+            },
+            {
+              "title": "Cancellation and timeouts",
+              "url": "https://kotlinlang.org/docs/coroutines-cancellation.html"
+            },
+            {
+              "title": "Flow operators",
+              "url": "https://kotlinlang.org/docs/coroutines-flow-operators.html"
+            },
+            {
+              "title": "kotlinx.coroutines: cancellable",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/cancellable.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_flow_context_and_flow_on",
+          "title": "Context Preservation and `flowOn`",
+          "summary": "Say which part of a chain runs in which context. A cold flow runs in the collector's context by default, an ordinary flow { } producer may not switch its own emission context, and flowOn exists precisely because of that rule — it moves the upstream and leaves the collector where it was.",
+          "primarySubtopicIds": [
+            "flow_context"
+          ],
+          "supportingSubtopicIds": [
+            "coroutine_context",
+            "coroutine_dispatchers",
+            "coroutine_context_switching",
+            "flow_errors"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The previous Lesson settled who owns a collection. This one settles where it runs, and the answer is again borrowed rather than new: Unit 2's context model applies unchanged, because a cold flow executes inside the collecting coroutine and therefore in the collecting coroutine's context."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The documentation states the default in one sentence: by default, a cold flow runs in the same coroutine context as the collector. Nothing about writing flow { } selects a dispatcher, and nothing about a value being asynchronous moves it off the caller's thread."
+                },
+                {
+                  "type": "code",
+                  "code": "// The producer runs wherever the collector is. Nothing here moves it.\nwithContext(uiDispatcher) {\n    fileLines().collect { line -> render(line) }\n    // Reading the file happens in uiDispatcher too.\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is the same misconception Unit 1 removed about the suspend keyword, arriving in new clothing. A suspending function does not run in the background because it is suspending, and a flow does not run in the background because it is a flow. If the collection is on a UI dispatcher, so is the file read, and the screen will show it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The property has a name — a flow is context-preserving — and the reason it is worth having is that it makes a chain locally readable. When you look at a collect call, the context that the whole chain executes in is the context you are looking at, unless an operator in front of you says otherwise. No operator halfway up the chain can quietly change the answer."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A cold flow has no context of its own. It runs in the collector's context, so “where does this flow run?” is always answered by reading the collector and then reading the operators between the collector and the producer."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Which raises the obvious question: if the file read should not happen on the UI dispatcher, why not move it inside the producer, where the work actually is? Because that is exactly what a flow may not do."
+                },
+                {
+                  "type": "code",
+                  "code": "// Wrong. This compiles, and fails at runtime.\nfun fileLines(): Flow<String> = flow {\n    withContext(ioDispatcher) {\n        emit(readNextLine())\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The flow builder's KDoc states the requirement — emit should happen strictly in the dispatchers of the block in order to preserve the flow context — and carries this exact case as its own illustration of an IllegalStateException. Run it against the coroutines version this repository resolves and the runtime explains itself:"
+                },
+                {
+                  "type": "code",
+                  "code": "IllegalStateException: Flow invariant is violated:\n\tFlow was collected in [CoroutineId(1), \"coroutine#1\":BlockingCoroutine{Active}@..., BlockingEventLoop@...],\n\tbut emission happened in [CoroutineId(1), \"coroutine#1\":DispatchedCoroutine{Active}@..., Dispatchers.IO].\n\tPlease refer to 'flow' documentation or use 'flowOn' instead",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The message names the two contexts it compared and then names the remedy, which is the useful part. The rule is not bureaucratic: if a producer could switch its own emission context, a reader of a collect call could no longer know which context their collection runs in without tracing every operator back to the source, and the local readability the previous section described would be gone. Preserving the context is what keeps the local reading correct — and flowOn is the sanctioned way to change it."
+                },
+                {
+                  "type": "code",
+                  "code": "fileLines()                    // runs in ioDispatcher\n    .map { parse(it) }         // runs in ioDispatcher\n    .flowOn(ioDispatcher)\n    .collect { render(it) }    // runs in the collector's context, untouched",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The direction is the entire operator, and the KDoc says it plainly: flowOn is context preserving, context does not leak into the downstream flow, and it affects only preceding operators that do not have their own context. Upstream moves; downstream, including the terminal collector, stays exactly where it was."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That makes placement a decision rather than a ritual. Moving flowOn changes which operators are above it and therefore which ones move, and a chain may carry more than one — the KDoc's own worked example uses two, each governing the operators between itself and the one before it. The question to ask is never “where does flowOn go” but “which upstream work needs a different execution context”. If the answer is none, the operator does not belong in the chain at all."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Reading flowOn(ioDispatcher) as “this flow runs on IO”. It says that the operators above it do. The collector and everything below it stay where they were, which is usually precisely what is wanted: parse off the UI dispatcher, render on it. A reader who has the direction backwards will also put the operator in the wrong place."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "It is worth knowing what changing the context actually costs, because flowOn does more than relabel the upstream. When the dispatcher changes, the KDoc says, the flow's emissions are performed in a coroutine running with the specified context and the values are collected in another coroutine using the original collector's context, with a channel of default buffer size used internally between the two. Two coroutines and a channel — which is how the invariant can be honoured at all, since the producer really is emitting in its own context and something else really is receiving in the collector's."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The side effect of that arrangement is that flowOn introduces concurrency and buffering as well as a context change: the upstream can run ahead of the collector up to the buffer's capacity. What to do when a producer outpaces its collector is the buffering material in the flow composition unit later in this curriculum. Here it is enough to know that the operator is not free and is not purely declarative."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Unit 2's precision about context and threads carries forward unchanged, and this operator is a good place to see why it mattered. Measured on this project's JVM target: a chain whose upstream was moved with flowOn(Dispatchers.IO), collected from a coroutine already running on Dispatchers.Default. The upstream did run in a separate coroutine, as the KDoc describes — but the thread it landed on was named DefaultDispatcher-worker-3, and the collector's was DefaultDispatcher-worker-1. Asking for IO did not produce a thread from some separate IO pool, because there is no separate pool: the Dispatchers.IO reference states that it shares threads with Default, and that switching to it when already on Default typically does not lead to an actual switch to another thread. What flowOn guarantees is about the context. Which physical thread that turns into is a scheduling detail, and reasoning that depends on a particular one is folklore."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One last connection, named rather than taught. Context preservation is one instance of a more general transparency rule rather than a quirk of flowOn: just as a producer may not change the context its emissions happen in, an operator may not silently swallow a failure that belongs to code downstream of it. The operators that let a chain observe and transform failures are built to keep that boundary intact, and they are the subject of the failure material in the flow composition unit later in this curriculum."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Two questions, and the second is the better one. Which operators does flowOn affect? Everything upstream of it and nothing downstream, the collector included. And why is withContext around emit inside flow { } wrong? Because a flow is context-preserving, so that a collector can know its own execution context by reading its own code, and the runtime enforces it with an IllegalStateException whose message names flowOn as the remedy. The first question asks what the operator does; the second asks why it exists, which is what the invariant is actually for."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_cold_flows",
+            "lesson_coroutine_context",
+            "lesson_with_context_and_main_safety"
+          ],
+          "sources": [
+            {
+              "title": "Flows",
+              "url": "https://kotlinlang.org/docs/coroutines-flow.html"
+            },
+            {
+              "title": "kotlinx.coroutines: flowOn",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/flow-on.html"
+            },
+            {
+              "title": "kotlinx.coroutines: flow",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/flow.html"
+            },
+            {
+              "title": "kotlinx.coroutines: Dispatchers.IO",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-dispatchers/-i-o.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_flow_builders_and_callback_adapters",
+          "title": "Flow Builders and Adapting Callback APIs",
+          "summary": "Turn an existing producer into a flow without leaking it. The producer's shape picks the builder: sequential suspending work is flow, several coroutines producing at once is channelFlow, and a callback or listener API is callbackFlow — where awaitClose is what keeps the registration alive and gives unregistration one place that always runs.",
+          "primarySubtopicIds": [
+            "flow_fundamentals"
+          ],
+          "supportingSubtopicIds": [
+            "flow_context",
+            "coroutine_cancellation",
+            "flow_buffering",
+            "memory_leaks"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Every flow so far has come from flow { }, which fits producers of one particular shape: sequential work, done by suspending calls, emitting from the builder's own coroutine."
+                },
+                {
+                  "type": "code",
+                  "code": "fun articles(): Flow<Article> = flow {\n    emit(loadFeatured())\n    loadRecent().forEach { emit(it) }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Nothing about that builder limits how many values are produced or how long production takes. What it does limit is where emission may happen, which is the rule the previous Lesson established: emission has to occur in the builder's own context, from the builder's own coroutine. Two perfectly ordinary producers do not fit inside that rule, and Kotlin supplies a builder for each of them."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The first is work done concurrently by several coroutines. channelFlow allows elements to be produced by code that is running in a different context or concurrently, and it ensures thread-safety and context preservation, so its ProducerScope can be used concurrently from different contexts. Inside it, send replaces emit."
+                },
+                {
+                  "type": "code",
+                  "code": "fun mirrors(sources: List<Source>): Flow<Chunk> = channelFlow {\n    sources.forEach { source ->\n        launch { source.chunks().forEach { send(it) } }  // several coroutines, one flow\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "It is still a cold flow — the KDoc is explicit that the block is called every time a terminal operator is applied to the resulting flow — and what it buys is concurrency, at the price of ordering. Measured on this project's JVM target, a channelFlow with two child coroutines, one of them delayed, delivered its values in the order they were actually produced rather than the order the children were launched. That is the builder working as intended, and it is the reason to reach for it deliberately rather than by default."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "The builder follows from the producer's shape rather than from preference. Sequential suspending production is flow. Production by several coroutines at once is channelFlow. A callback or listener belonging to something outside the coroutine world is callbackFlow."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The second producer that does not fit flow { } is the important one in practice, because the world outside coroutines is full of register-and-be-called-back APIs: sensors, location, connectivity, players, sockets, platform observers. Adapting one into a flow is the most common flow-authoring job there is, and it is the one with a leak built into the obvious version."
+                },
+                {
+                  "type": "code",
+                  "code": "// A deliberately plain listener API: register, get called back, unregister.\ninterface LocationListener {\n    fun onLocation(value: Location)\n}\n\ninterface LocationSource {\n    fun register(listener: LocationListener)\n    fun unregister(listener: LocationListener)\n}\n\nfun LocationSource.locations(): Flow<Location> = callbackFlow {\n    val listener = object : LocationListener {\n        override fun onLocation(value: Location) {\n            // trySend cannot suspend, so it can fail: the buffer may be full, or\n            // collection may already have ended. Dropping is a decision, not a default.\n            trySend(value).onFailure { cause -> onLocationDropped(value, cause) }\n        }\n    }\n\n    register(listener)\n\n    awaitClose { unregister(listener) }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read that block as a lifetime rather than as a snippet. Registration happens when a collection starts. trySend moves each value from whatever thread the callback arrived on into the flow's channel, which is why a plain flow { } cannot be used here at all: the callback is not running in the builder's coroutine, and emitting from it would violate the context invariant the previous Lesson described. And then the block reaches awaitClose, which is where the interesting part is."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The one thing worth adding to that line is what happens when trySend does not succeed. A callback is not a coroutine, so trySend cannot suspend and cannot apply back pressure the way emit does; it attempts the send and hands back a result. That result is a failure when the channel's buffer is full or when collection has already ended, and ignoring it means the adapter silently loses values. Which is sometimes exactly right — for a position that will be superseded a moment later, dropping is the correct policy — but it should be a decision the adapter states rather than a consequence of not looking. Inspect the result and do something honest with it: record the drop, count it, or surface it. Choosing a buffering policy instead is the subject named at the end of this Lesson."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Without awaitClose the block would return the instant the listener was registered, the channel would close, and the collection would end — with the listener still attached to the source. The library refuses to let that happen silently. Its KDoc says awaitClose should be used to keep the flow running, that otherwise the channel will be closed immediately when the block completes, and that using it is mandatory in order to prevent memory leaks. Measured on this project's JVM target, a callbackFlow whose block sent one value and returned failed with:"
+                },
+                {
+                  "type": "code",
+                  "code": "IllegalStateException: 'awaitClose { yourCallbackOrListener.cancel() }' should be used in the end\nof callbackFlow block. Otherwise, a callback/listener may leak in case of external cancellation.\nSee callbackFlow API documentation for the details.",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The failure it is protecting against is concrete rather than theoretical. The listener stays registered; the source keeps a reference to it and to everything the listener captured, which in a UI application is frequently a screen that has already gone; and it keeps being invoked to deliver values to a consumer that no longer exists. awaitClose closes that hole by construction: it suspends until the channel is closed or cancelled, and its block is executed unconditionally before the function returns — the same guarantee a finally block gives, which is exactly the shape the cleanup Lesson taught."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Registering in the callbackFlow block and unregistering somewhere else — a lifecycle callback, a close() method, a disposal hook. The registration belongs to this collection, and awaitClose is the one place that runs when this collection ends, however it ends. Splitting the pair across two files is how a listener survives the thing that created it."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Because a callbackFlow is cold, each collection registers its own listener. Measured on this project's JVM target, one adapter collected by two coroutines registered twice while both were running, and when the scope was cancelled it unregistered twice. That is usually the behaviour you want — each consumer owns its own subscription and its own cleanup, and no consumer can end another's — but it is a genuine cost when registration is expensive, or when the underlying source only tolerates one listener. The remedy is not a different builder; it is sharing one collection among several consumers, which is the subject of the hot streams unit later in this curriculum."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "With that, the choice among the three builders can be stated as reasoning rather than as a lookup table."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Producer shape",
+                    "Builder",
+                    "Why that one"
+                  ],
+                  "rows": [
+                    [
+                      "A sequence of suspending calls made by one coroutine",
+                      "flow",
+                      "The simplest contract that works, and the one that keeps context preservation checkable. Nothing more is needed, so nothing more should be paid for."
+                    ],
+                    [
+                      "Several coroutines producing values at the same time",
+                      "channelFlow",
+                      "Emission from more than one coroutine needs the thread-safe, context-preserving channel this builder supplies. Ordering is given up in exchange."
+                    ],
+                    [
+                      "A callback or listener registered against an external source",
+                      "callbackFlow",
+                      "Values arrive outside any coroutine, and the registration needs a lifetime boundary that runs on cancellation — which is what awaitClose is."
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The last two are not interchangeable, even though both are built on the same channel-backed producer scope. channelFlow answers a question about who is allowed to produce; callbackFlow answers a question about a subscription that has to be torn down. Reaching for channelFlow around a listener leaves you writing awaitClose anyway, without the builder's insistence that you did; reaching for callbackFlow around ordinary concurrent work names a callback that does not exist. And note what neither is: the channel is an implementation detail of the builder, and channels as a coordination primitive in their own right — capacities, fan-out, pipelines — are a separate subject this unit deliberately leaves alone."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One consequence of that implementation detail is worth naming before leaving it. Both builders use a channel with the default buffer size, so a producer that runs ahead of its collector is buffered rather than immediately suspended, and trySend returns a result that can report failure when the buffer is full or the channel is already closed. Deciding what should happen when a producer outpaces its collector — buffer more, drop values, cancel work in flight — is the buffering material in the flow composition unit later in this curriculum."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "This Lesson's interview version is short and unusually specific. Which builder adapts a listener API? callbackFlow. Why must the block end in awaitClose? Because the block returns as soon as the listener is registered, so awaitClose is what keeps the collection alive while callbacks may still arrive and gives unregistration one place that runs however the collection ends — and the builder throws IllegalStateException if it is missing. Who unregisters, and when? The awaitClose block, when the collecting coroutine is cancelled or the channel closes. Then the question that separates having used it from having read about it: does a cold adapter create one subscription or one per collection? One per collection."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_cold_flows",
+            "lesson_flow_collection_lifetime",
+            "lesson_flow_context_and_flow_on",
+            "lesson_cancellation_cleanup_and_timeouts"
+          ],
+          "sources": [
+            {
+              "title": "kotlinx.coroutines: flow",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/flow.html"
+            },
+            {
+              "title": "kotlinx.coroutines: channelFlow",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/channel-flow.html"
+            },
+            {
+              "title": "kotlinx.coroutines: callbackFlow",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/callback-flow.html"
+            },
+            {
+              "title": "kotlinx.coroutines: awaitClose",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.channels/await-close.html"
+            },
+            {
+              "title": "Flows",
+              "url": "https://kotlinlang.org/docs/coroutines-flow.html"
             }
           ],
           "status": "ACTIVE"

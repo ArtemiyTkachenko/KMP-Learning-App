@@ -67,8 +67,9 @@ re-checked rather than re-derived: [Authoring outcomes for Unit 1](#authoring-ou
 is the first of those and is required reading for E24-03 and E24-08.
 
 **Authoring status.** Unit 1 is authored and shipped by E24-02; see
-[Authoring outcomes for Unit 1](#authoring-outcomes-for-unit-1). Units 2 to 6 are not
-authored, and every identity below for them is proposed rather than shipped.
+[Authoring outcomes for Unit 1](#authoring-outcomes-for-unit-1). Unit 2 is authored in
+production format by E24-03, pending review and merge; see
+[Authoring outcomes for Unit 2](#authoring-outcomes-for-unit-2). Units 3 to 6 remain proposed.
 
 ---
 
@@ -276,8 +277,9 @@ bridged in place; no learning Unit teaches Kotlin and this epic does not start o
   `withContext(Dispatchers.IO)` by its caller, decide whether the wrapper does anything, and
   say who is responsible for main-safety.
 - **Prerequisites:** L2.2; L1.5, because `withContext` is contrasted with `coroutineScope`.
-- **Boundary:** `withContext` is not a builder and starts nothing concurrent — that contrast
-  with L1.2 is the Lesson's job. Layered architecture is bridged, not taught.
+- **Boundary:** `withContext` creates a lexical child scope but does not make the caller
+  proceed concurrently, unlike `launch`/`async` — that contrast with L1.2 is the Lesson's
+  job. Layered architecture is bridged, not taught.
 
 #### `lesson_sequential_and_concurrent_work` (L2.4)
 
@@ -675,6 +677,116 @@ authoring window is `coroutines-basics.html`; it was current on 2026-09-10.
 
 ---
 
+## Authoring outcomes for Unit 2
+
+E24-03 authors `unit_context_dispatchers_and_concurrency` immediately after Unit 1 in
+`learning_curriculum.json`. The four Lessons retain their confirmed IDs, titles, order
+and exact primary/supporting mappings: context, dispatchers, withContext/main-safety,
+then sequential/concurrent work. Each has an objective in its summary, Core, Practical
+and Senior sections, examples, takeaways and opened authoritative Sources. Existing
+Units and Lessons are unchanged. No Question or taxonomy record changed.
+
+### Corrections and boundaries carried forward
+
+L2.1 builds on E24-02's corrected model: a scope holds a context; builders combine the
+receiver scope's context with arguments; the new coroutine has its own Job attached to
+the selected parent. It distinguishes `scope.launch` from an unqualified nested `launch`,
+and explains root coroutines without denying that roots can own children. A scope bounds
+ordinary child lifetimes; it need not have the same lifetime as a child.
+
+The diagnostic `launch(SupervisorJob())` example traces P, S and C explicitly: fresh S
+replaces P as C's parent, rather than being inserted under P. It is labelled an
+anti-pattern, not a supervision recipe. The 1.11.0 `launch` API now explicitly documents
+Job override as unsupported and provides a deprecated Job overload. Supervision behavior
+and cancellation/failure details remain Unit 3 prose pointers. There is no claim that a
+cancellation request means work has already stopped.
+
+The blueprint received precision corrections, not a curriculum redesign:
+
+- `Main` is declared in common code; usable implementation depends on platform/runtime.
+- `withContext` creates a lexical child scope. It does not return a handle and let the
+  caller proceed concurrently in the way `launch` and `async` do.
+- Redundant wrappers may add dispatch overhead, not necessarily a dispatch for every
+  nested block. An unchanged dispatcher can avoid dispatching.
+- Default `async` schedules work eagerly; it does not guarantee immediate body execution.
+- Inheritance language now preserves the explicit-parent caveat from Unit 1.
+
+No identity, mapping, objective, Lesson boundary or Teach/Bridge/Reference/Exclude
+decision changed. E24-04 was not started.
+
+### Dispatcher and source freshness decisions
+
+Rechecked on 2026-09-10 against Kotlin 2.4 API documentation and kotlinx.coroutines 1.11.0
+API documentation. The guide's context and composition pages still have their legacy
+structure. API references, not remembered guide sections, establish the precise contracts:
+
+| Claim | Opened authority |
+| --- | --- |
+| Context keys, composition, child Job and explicit parent override | [CoroutineContext](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.coroutines/-coroutine-context/), [plus](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.coroutines/-coroutine-context/plus.html), [launch](https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/launch.html) |
+| CPU policy, default fallback and JVM/Native core-based sizing | [Default](https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-dispatchers/-default.html) |
+| JVM IO/Default resource sharing, default parallelism, elasticity | [IO](https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-dispatchers/-i-o.html) |
+| Per-view execution limit is not a count of suspended operations | [limitedParallelism](https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-dispatcher/limited-parallelism.html) |
+| Common declaration and platform implementations | [Main](https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-dispatchers/-main.html), [JS/Wasm source at 1.11.0](https://raw.githubusercontent.com/Kotlin/kotlinx.coroutines/1.11.0/kotlinx-coroutines-core/jsAndWasmShared/src/Dispatchers.kt), [Native source at 1.11.0](https://raw.githubusercontent.com/Kotlin/kotlinx.coroutines/1.11.0/kotlinx-coroutines-core/native/src/Dispatchers.kt) |
+| Lexical scope, changed/unchanged dispatcher behavior | [withContext](https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/with-context.html), [coroutineScope](https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/coroutine-scope.html) |
+| Scheduling, sequential composition, concurrency and parallelism | [async](https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/async.html), [composition guide](https://kotlinlang.org/docs/composing-suspending-functions.html), [basics](https://kotlinlang.org/docs/coroutines-basics.html) |
+| Main-safety as implementation guidance | [Android best practices](https://developer.android.com/kotlin/coroutines/coroutines-best-practices), [Android performance guidance](https://developer.android.com/kotlin/coroutines/coroutines-adv) |
+
+L2.2 explicitly confines IO/Default sharing and the configurable larger-of-64-or-core-count
+IO limit to JVM. It separates executing blocking tasks from exact pool size and explains
+elastic views without promising unlimited useful capacity. IO-to-Default and Default-to-IO
+do not guarantee a physical thread switch; Default-to-IO typically retains the worker.
+Native IO's implementation differs. JS/Wasm Main delegates to Default with immediate support;
+Default does not create browser CPU workers. The desktop shell's Swing dependency was read,
+not inferred from its presence in the catalog. Examples naming IO are labelled Android/JVM;
+shared examples accept a dispatcher or use common APIs.
+
+L2.3 distinguishes blocking work owned by a repository from an explicitly main-safe,
+asynchronous client. The latter needs no ritual IO wrapper. A suspend signature does not
+prove main-safety, and expensive processing after a network wait needs its own decision.
+The examples do not claim that all methods in any named client library share one contract.
+
+L2.4 compares one account-overview problem in three forms: direct sequential calls,
+structured children created before awaiting, and immediate-await serialization. The
+400/250/650 ms values are illustrative arithmetic, not benchmarks. Single-thread concurrent
+waiting is distinct from parallel CPU execution; independence, conditional need,
+coordination, resource pressure and failure complexity all affect whether overlap helps.
+
+### Semantic assessment review against finished prose
+
+All five ACTIVE Questions reached through Unit 2's primary mappings were read in full,
+including their answers and explanations, then checked against the completed Lessons.
+
+| Question | Outcome |
+| --- | --- |
+| `coroutine_supervisor_job_child_context_noop` | L2.1 teaches the parent replacement needed by the key, but the full supervision comparison and distractor reasoning intentionally remain L3.4. Not fully answerable from Unit 2 alone; retain the planned split. |
+| `coroutine_io_dispatcher_blocking_calls` | L2.2 establishes occupied computation workers versus blocking-work capacity. IO mitigates that starvation mechanism; it is not a promise of unlimited resources. |
+| `suspending_api_dispatcher_assumption` | L2.3's explicitly asynchronous client and blocking-store contrast establish the reasoning. Its dispatcher mapping reaches L2.2 structurally, but Unit practice includes both Lessons. |
+| `coroutine_context_switching_001` | L2.3 explains scoped execution, caller waiting and restoration of the caller context, including why the scope's other coroutines are not modified. |
+| `coroutine_async_await_sequential` | L2.4 traces task creation and the first await, including the case where await returns immediately. It teaches the reasoning without promising a measured speedup. |
+
+`coroutine_async_exception_surfaces_at_await` was also re-read as required Unit 1 context.
+Its dropped-Deferred and supervision reasoning still belongs to Unit 3; the known mapping
+review remains E24-08 work. No Lesson was expanded to make it answerable early.
+
+GAP-U2-A/B/C remain **E24-08 assessment work**. Their reasoning is now taught in L2.1's
+composition/Job predictions, L2.2's thread-sharing diagnosis, and L2.4's concurrency
+judgment. Generated structural coverage does not mean these semantic gaps are closed.
+
+### Backward relationships and validation
+
+- L2.1: `lesson_job_and_parent_child`, `lesson_coroutine_scope_ownership`,
+  `lesson_structured_concurrency`.
+- L2.2: `lesson_suspension_and_blocking`.
+- L2.3: `lesson_structured_concurrency`, `lesson_coroutine_builders`,
+  `lesson_work_outside_composition`.
+- L2.4: `lesson_coroutine_builders`, `lesson_structured_concurrency`.
+
+All relationships point to previously shipped Lessons. Unit 3 is named only in prose.
+The bundle tests now assert the new Unit and Lesson order, titles and exact primary and
+supporting mappings. The existing validator covers schema coherence, stable ID uniqueness,
+taxonomy references, primary/supporting overlap and related IDs. Learning/question coverage
+was regenerated; the unchanged question-bank snapshot needs no regeneration.
+
 ## Cross-linking rules
 
 `LearningCurriculumValidator` rejects a `relatedLessonIds` entry naming an unknown Lesson
@@ -1024,10 +1136,10 @@ re-checked at the same moment, as their status has moved historically.
 `Dispatchers.Unconfined` and does **not** document `Dispatchers.IO` or `Dispatchers.Main` —
 those live in the API reference. Two consequences for L2.2:
 
-- `Dispatchers.Main` requires a platform main dispatcher and is not present on every target
-  this repository builds for. The Lesson must not present `Main` as universally available in
-  `commonMain`; the honest framing is that shared code takes a dispatcher rather than naming
-  one, which is also the Android guidance's advice for a different reason.
+- E24-03 precision correction: `Dispatchers.Main` is declared in `commonMain`, but a usable
+  implementation depends on platform/runtime. JVM requires an integration artifact; Darwin
+  uses its main queue; JS/Wasm delegates to Default with immediate support in 1.11.0.
+  Shared code can accept a dispatcher without assuming Android's realization everywhere.
 - `Dispatchers.IO` is a JVM/Android and Native concept. Examples that name it should be
   framed as Android or JVM examples, not as `commonMain` code.
 

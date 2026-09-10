@@ -4532,6 +4532,686 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "unit_context_dispatchers_and_concurrency",
+      "topicId": "async_reactive",
+      "title": "Coroutine Context, Dispatchers and Concurrent Work",
+      "summary": "Suspension did not tell us where code runs. This unit follows the execution policy from the scope's context into a child coroutine, chooses dispatchers from the shape of the work, places context changes beside the implementation that needs them, and finally decides when independent operations should overlap. Unit 1 supplies the lifetime model; context and scheduling explain how to vary execution while keeping that model intact.",
+      "lessons": [
+        {
+          "id": "lesson_coroutine_context",
+          "title": "`CoroutineContext` and What Children Inherit",
+          "summary": "Read a coroutine's effective context from its launch site: which execution policy it inherits, which elements an argument replaces, and why its own Job is distinct from the Job selected as its parent. That distinction explains both ordinary child creation and the explicit-Job trap.",
+          "primarySubtopicIds": [
+            "coroutine_context"
+          ],
+          "supportingSubtopicIds": [
+            "coroutine_jobs",
+            "coroutine_dispatchers",
+            "structured_concurrency"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Unit 1 left two facts side by side: suspension does not choose a thread, and a Job connects work to a lifetime. A coroutine needs both an execution policy and lifetime information. CoroutineContext carries these together without making them the same thing. A scope holds a context; the scope is not itself a context, and a context is not itself a running coroutine."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Think of the context as a small collection of named slots. Each slot has a key, and at most one element occupies that key. The formal name is an indexed set. A Job occupies the Job key; a dispatcher occupies the ContinuationInterceptor key; CoroutineName supplies a diagnostic label. CoroutineExceptionHandler is another context element, but what it handles is a Unit 3 question. There is no need to memorize every possible element to read an ordinary launch."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Context composition uses `+`. For different keys, both elements remain. For the same key, the element on the right wins. The operation produces a context; it does not mutate the original context or start work. A name and a dispatcher therefore coexist, while two dispatcher choices compete for the same slot. You cannot add IO to Main and obtain a coroutine that executes on both at once."
+                },
+                {
+                  "type": "code",
+                  "code": "val base = Dispatchers.Default + CoroutineName(\"refresh\")\nval renamed = base + CoroutineName(\"profile\")\n\ncheck(base[CoroutineName]?.name == \"refresh\")\ncheck(renamed[CoroutineName]?.name == \"profile\")\ncheck(renamed[ContinuationInterceptor] === Dispatchers.Default)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is common Kotlin code with kotlinx.coroutines imports and `kotlin.coroutines.ContinuationInterceptor`. The name changed, the execution policy did not, and the original value still says refresh. CoroutineName can make diagnostic output easier to connect to a task; it neither allocates a thread nor changes scheduling priority. Similarly, looking up `coroutineContext[Job]` inside a coroutine tells you about that coroutine's Job, not which worker happens to execute it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A builder starts with its receiver scope's context and combines the supplied context with it. There is then an essential extra step: the new coroutine receives its own Job. The Job selected from the combined starting context becomes its parent, if there is one. The child does not reuse the parent's Job as its own. Otherwise two siblings would have the same completion handle and there would be no separate lifetimes to observe."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Read child creation in two steps: combine the starting context, then attach the new coroutine's own Job to the selected parent Job. Dispatcher inheritance and Job parentage answer different questions."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Suppose an Android UI owner already provides a scope whose context contains a parent Job P, Dispatchers.Main and the name screen. The following fragment requests a different dispatcher for one operation. The blocking call is a placeholder for an existing Android/JVM API; Main and IO here are explicitly platform choices."
+                },
+                {
+                  "type": "code",
+                  "code": "// Android/JVM fragment; scope is already owned by the UI lifetime.\nval refresh = scope.launch(Dispatchers.IO) {\n    val ownJob = coroutineContext[Job]\n    val label = coroutineContext[CoroutineName]?.name\n    val bytes = blockingCache.readBytes()\n    processSmallResult(bytes)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Predict the elements before thinking about thread names. IO replaces Main under the dispatcher key. The screen name remains because the argument contains no CoroutineName. A fresh Job C represents refresh, and C's parent is P because the argument contains no Job. Inside the block, ownJob is C, not P. The returned refresh handle refers to that same coroutine. The scope still holds Main and P; neither has been edited."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A sibling started later with `scope.launch { ... }` therefore uses the scope's original dispatcher. By contrast, an unqualified `launch { ... }` inside the refresh block uses that block's receiver scope, so its default dispatcher is IO and its parent is C. An explicit `scope.launch` inside that same block still uses scope. Lexical indentation is helpful, but the receiver and context arguments are the evidence for parentage."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The lifecycle consequence follows Unit 1: C can finish long before P, while P bounds the ordinary child's lifetime. The dispatcher choice did not detach the operation. It also did not make processSmallResult cheap; if that transformation becomes substantial CPU work, choosing IO for the file read does not settle where the transformation belongs. The next two lessons make that execution decision."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Reading `scope.launch(Dispatchers.IO)` as replacing the whole scope, or reading an inherited dispatcher as an inherited Job instance. Only the matching dispatcher element is replaced; the new coroutine still has a distinct completion handle."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Now consider a diagnostic counterexample, not a construction pattern to copy. In older code you may encounter a builder passed a fresh SupervisorJob. Ignore its supervision behavior for this lesson and trace only the Job key."
+                },
+                {
+                  "type": "code",
+                  "code": "// Diagnostic anti-pattern; the Job overload is deprecated in 1.11.0.\nscope.launch(SupervisorJob()) {\n    refreshCache()\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The supplied object S occupies the same key as the scope's P, so it replaces P as the selected parent. The launch still creates its own Job C: the relationship is S -> C, not P -> S -> C, and C is not S. With no parent argument, this newly constructed S has no parent connecting it back to P. Other scope elements, such as the dispatcher and name, can still be inherited. An inherited scheduler is therefore not evidence of an inherited lifetime."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is the deeper explanation of Unit 1's caveat. Explicit Job arguments can re-parent work; they are not modifiers automatically inserted beneath the old parent. The current launch API documents this as an unsupported pattern retained for compatibility, and its Job overload is deprecated. Diagnose existing code with the rule, then preserve ownership when designing new code. This example is not a recommendation for supervision. Unit 3 explains what supervision actually changes and why the parent's position matters."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The scope's original Job no longer bounds C through that original edge. That does not mean C has no Job or no parent: its parent is S. Conversely, a builder whose effective starting context contains no Job can create a root coroutine. Root coroutines can have children of their own. 'Every coroutine has the launching coroutine as its parent' would erase all of these distinctions."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For the ordinary elements taught here, a useful review method is to write three short lines beside unfamiliar code: receiver context, explicit overrides, resulting child's Job parent. If two coroutines have identical names and dispatchers, those lines can still reveal entirely different owners. If they have different dispatchers, those lines can show they belong to one structure. Context composition is what lets execution policy vary without normally abandoning that structure."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Find the builder's actual CoroutineScope receiver.",
+                    "Resolve competing elements by key; the right-hand value wins.",
+                    "Distinguish the selected parent Job from the newly created coroutine Job.",
+                    "Treat an explicit Job argument as an ownership warning, not a dispatcher option.",
+                    "Use Unit 3 for cancellation, failure handling and supervision rules."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Which element wins, and whose child is this? Explain the ordinary Main-to-IO launch first, then the fresh-Job counterexample. Neither a thread name nor the position of the braces proves parentage."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_job_and_parent_child",
+            "lesson_coroutine_scope_ownership",
+            "lesson_structured_concurrency"
+          ],
+          "sources": [
+            {
+              "title": "CoroutineContext",
+              "url": "https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.coroutines/-coroutine-context/"
+            },
+            {
+              "title": "CoroutineContext.plus",
+              "url": "https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.coroutines/-coroutine-context/plus.html"
+            },
+            {
+              "title": "launch: context composition and overriding the parent Job",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/launch.html"
+            },
+            {
+              "title": "Coroutine context and dispatchers",
+              "url": "https://kotlinlang.org/docs/coroutine-context-and-dispatchers.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_dispatchers",
+          "title": "Dispatchers and Where Code Actually Runs",
+          "summary": "Choose execution policy from the work: CPU computation, a blocking call, or UI access. Separate that portable decision from each target's implementation, and explain why switching between IO and Default need not change the physical thread.",
+          "primarySubtopicIds": [
+            "coroutine_dispatchers"
+          ],
+          "supportingSubtopicIds": [
+            "coroutine_context",
+            "android_main_thread",
+            "main_thread_performance",
+            "anr"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A screen starts a coroutine and still freezes while it reads a file. Nothing about that contradicts coroutines. The work has a lifetime, but the thread running the file read is occupied until the call returns. The missing question is which execution policy was selected. The dispatcher is the context element that schedules coroutine execution, including resumption after suspension. Calling a suspend function does not select IO, and starting a coroutine does not by itself move its body into the background."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Start with the work rather than the constant. Is the operation spending time calculating, holding a thread while another system responds, or accessing a UI that requires its main execution context? Those are different constraints. A dispatcher cannot turn a blocking library into a suspending one; it can arrange for the occupied thread to be one intended for that workload. It cannot make an expensive algorithm cheap either."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Work shape",
+                    "Usual policy",
+                    "Reason"
+                  ],
+                  "rows": [
+                    [
+                      "Substantial parsing, image computation, large transformations",
+                      "Dispatchers.Default",
+                      "CPU work needs execution capacity; multiplying runnable workers beyond useful CPU capacity is not the goal."
+                    ],
+                    [
+                      "Blocking filesystem, JDBC-style database or legacy network calls",
+                      "Dispatchers.IO on Android/JVM; check the target elsewhere",
+                      "The call holds a thread while waiting. The blocking-work policy can accommodate more occupied workers."
+                    ],
+                    [
+                      "Android UI access and short UI coordination",
+                      "Dispatchers.Main with the Android implementation",
+                      "UI access is confined to the main thread. Keep that thread available for input and rendering."
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Default is the general choice for CPU-intensive work. On JVM and Native its documented default thread maximum follows the CPU core count, with a minimum of two. A standard launch or async supplies Default when its combined context has no dispatcher or other ContinuationInterceptor. That fallback does not override a dispatcher already inherited from a scope. A child of a Main scope therefore does not silently receive Default."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "On Android, Main serves UI-thread work. A long uninterrupted computation delays rendering and input; sufficiently prolonged unresponsiveness can lead to an ANR. The point is not that all code on Main is wrong: small UI work belongs there. The problem is occupying its execution resource for a long time. The performance and Android-platform curricula own the detailed diagnosis and platform deadlines."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A dispatcher expresses an execution policy. Choose it from what the implementation does, not from the presence of `suspend` or from the broad label 'networking'."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Consider an Android/JVM import operation with two phases: an old filesystem API reads bytes synchronously, and an algorithm builds a substantial index from them. In this fragment, the input API and indexing function stand for application code. withContext runs each scoped phase under the requested policy and waits for it; the next lesson explains placement in detail."
+                },
+                {
+                  "type": "code",
+                  "code": "// Android/JVM fragment: readBytes() is blocking; buildIndex() is CPU-heavy.\nval bytes = withContext(Dispatchers.IO) {\n    archiveFile.readBytes()\n}\nval index = withContext(Dispatchers.Default) {\n    buildIndex(bytes)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Putting both phases on Default can occupy computation workers while the disk is being read. Under enough blocking imports, unrelated CPU work waits for workers that are doing little computation. Putting both on IO misclassifies the expensive algorithm as blocking work. The split makes the workload distinction visible. It is justified by substantial work in each phase, not by a rule to surround every function with another context block."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The kotlinx.coroutines 1.11.0 JVM IO documentation makes a subtle point: IO and Default share threads and resources. Neither Default-to-IO nor IO-to-Default guarantees a different physical thread. In particular, entering IO from Default typically keeps the current thread on a best-effort basis. The policy still changes. The documented JVM IO parallelism default is the larger of 64 and the number of cores, configurable with `kotlinx.coroutines.io.parallelism`. This limits threads doing IO work in parallel, not an exactly sized, separately owned pool. Workers are created and shut down on demand, and additional workers can exist during startup or shutdown."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "If a log shows the same worker name before and inside the IO block, it has not disproved the context change. Inspect the effective context to answer which dispatcher is selected; use a trace to answer which thread executed a particular segment. Those observations are related but different. Conversely, a changed worker name says nothing about whether a redundant wrapper was useful."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For a concrete blocking resource, a reused `Dispatchers.IO.limitedParallelism(4)` view can restrict simultaneous blocking calls sent through that view. The view limits execution parallelism, not the number of suspended requests in flight; once a coroutine suspends, another may execute. It does not automatically limit calls made through some other dispatcher or another separately created view. Resource-wide admission and shared-state coordination need their own reasoning outside this lesson."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Explaining IO as 'a separate pool of exactly 64 threads'. That predicts both isolation and a thread-count guarantee the documented JVM behavior does not provide."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "IO's JVM views are elastic: their parallelism limits are not constrained by IO's own limit, although they share underlying resources. A collection of generously sized views can therefore permit substantially more simultaneous blocking work than the base IO limit suggests. This is capacity for blocking workloads, not evidence that the application, disk or remote service can profitably handle that much work."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Imagine several screens each creating a view for the same small connection pool. Each local limit may look cautious while the combined demand is excessive. The review question is which consumers share the resource and whether they share the execution limit. Choosing IO prevents one kind of worker starvation; it does not promise unlimited database connections, memory or bandwidth. Pool tuning without understanding the downstream bottleneck merely relocates the queue."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The portable abstraction is a CoroutineDispatcher. Its platform realization is not portable. This repository builds Android, Desktop/JVM, iOS, JS and Wasm/JS, so the JVM pool description above must not be generalized to all five. Main is declared in common code, but that declaration alone does not guarantee a usable platform implementation."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Target",
+                    "Relevant realization"
+                  ],
+                  "rows": [
+                    [
+                      "Android",
+                      "Main uses the Android main-thread dispatcher supplied by kotlinx-coroutines-android. IO/Default follow the JVM behavior described above."
+                    ],
+                    [
+                      "Desktop/JVM",
+                      "Main needs a UI integration at runtime. This project's desktop shell includes kotlinx-coroutines-swing for the Swing event dispatch thread."
+                    ],
+                    [
+                      "iOS / Darwin Native",
+                      "Main uses Darwin's main queue. Default and IO exist, but Native IO has a different implementation; JVM thread-sharing and system-property claims are not Native guarantees."
+                    ],
+                    [
+                      "JS and Wasm/JS browser",
+                      "In 1.11.0 the shared implementation delegates Main to Default, with immediate support. These dispatchers schedule through the browser execution environment; choosing Default does not create parallel CPU workers. IO is not an API available across these targets."
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A shared function can accept a dispatcher appropriate to its work, leaving the platform assembly to supply the actual implementation. That keeps a JVM file-reading example from becoming a false commonMain recipe. Injection also makes execution choices controllable in tests; the testing curriculum owns how to do that. It does not follow that a supplied dispatcher can manufacture background CPU execution on a single browser thread."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For reference, Dispatchers.Unconfined is an advanced execution option, not a general performance optimization. JVM custom executors and their asCoroutineDispatcher adapters also exist, but none is required to answer this lesson's workload decision. Use the ordinary policies until an actual integration constraint requires something else."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Choose Default for substantial CPU computation.",
+                    "Use IO for blocking IO on targets that provide it.",
+                    "Reserve the UI dispatcher for UI access and short coordination.",
+                    "Separate effective dispatcher, actual thread and useful parallelism.",
+                    "Check target availability and resource limits before copying a pool explanation."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Does this call actually block, and is a physical thread switch guaranteed? Answer those separately. Then explain why a dispatcher that tolerates blocking still cannot make unlimited overlapping work a good idea."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_suspension_and_blocking"
+          ],
+          "sources": [
+            {
+              "title": "Dispatchers.Default (1.11.0)",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-dispatchers/-default.html"
+            },
+            {
+              "title": "Dispatchers.IO: JVM sharing and elasticity (1.11.0)",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-dispatchers/-i-o.html"
+            },
+            {
+              "title": "Dispatchers.Main: platform implementations (1.11.0)",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-dispatchers/-main.html"
+            },
+            {
+              "title": "CoroutineDispatcher.limitedParallelism",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-dispatcher/limited-parallelism.html"
+            },
+            {
+              "title": "JS and Wasm shared dispatchers, version 1.11.0",
+              "url": "https://raw.githubusercontent.com/Kotlin/kotlinx.coroutines/1.11.0/kotlinx-coroutines-core/jsAndWasmShared/src/Dispatchers.kt"
+            },
+            {
+              "title": "Native dispatchers, version 1.11.0",
+              "url": "https://raw.githubusercontent.com/Kotlin/kotlinx.coroutines/1.11.0/kotlinx-coroutines-core/native/src/Dispatchers.kt"
+            },
+            {
+              "title": "Coroutines on Android: main-safety",
+              "url": "https://developer.android.com/kotlin/coroutines/coroutines-adv"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_with_context_and_main_safety",
+          "title": "`withContext` and Main-Safety",
+          "summary": "Decide who should choose the execution context for expensive work. Use withContext to keep that decision scoped and the result caller-visible, and diagnose why an IO wrapper around an already asynchronous call may add complexity without solving a blocking problem.",
+          "primarySubtopicIds": [
+            "coroutine_context_switching"
+          ],
+          "supportingSubtopicIds": [
+            "coroutine_dispatchers",
+            "coroutine_fundamentals",
+            "structured_concurrency",
+            "repository_pattern"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A caller wants a result, but producing it includes a blocking read. Starting detached work would make the caller's completion question harder. Running the read in place could occupy the UI thread. The useful operation is to keep the ordinary call relationship while changing the context for the part that needs it. That is the problem withContext solves."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "withContext combines the current context with additional elements, runs a scoped suspending block, and returns its result after completion. It creates a lexical child scope, like coroutineScope, while allowing a different execution context. The caller waits suspendingly; the next statement does not proceed concurrently with the block. It is therefore not a builder in the launch/async sense of returning a Job or Deferred for independently progressing work."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Changing the dispatcher applies to the block, not to every coroutine in the surrounding scope. Afterwards the caller continues in its original context. Returning to that context is not necessarily returning to the same physical thread when its dispatcher uses a pool. The structured block also waits for its ordinary children; moving its own execution policy does not turn those children into fire-and-forget tasks."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Unit 1 introduced coroutineScope to give a function's internal work a structured completion boundary. Use that when you need a child scope without requesting a context change. Use withContext when the block needs a modified context. Both preserve structured lifetime in ordinary use. These examples supply dispatchers, not replacement Jobs; passing another Job to withContext is not a supported way to preserve the caller's ownership."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Main-safety is the design responsibility to make an API safe to call from the UI thread without making that thread perform long blocking or CPU-heavy work. A suspend signature does not enforce it. A suspend function can call a blocking API directly and still compile. Android guidance places the execution decision with the code that knows about the expensive implementation, so every caller does not have to rediscover it."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "withContext changes how a scoped block executes while the caller waits for its result. Main-safety comes from the implementation's execution choices, not from the `suspend` keyword."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Here is a common Kotlin shape for a repository wrapping a legacy blocking dependency. The dependency is an application interface; platform code supplies an implementation and an appropriate blocking dispatcher. Nothing in the shared declaration assumes Dispatchers.IO exists on every target."
+                },
+                {
+                  "type": "code",
+                  "code": "interface BlockingSettingsStore {\n    fun readText(): String\n}\n\nclass SettingsRepository(\n    private val store: BlockingSettingsStore,\n    private val ioDispatcher: CoroutineDispatcher,\n) {\n    suspend fun readText(): String = withContext(ioDispatcher) {\n        store.readText()\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "On Android/JVM, an assembly can supply IO and an adapter over a blocking file API. The read still occupies a worker until it returns. The caller, however, can wait without occupying its UI thread. The function completes only after it has a String to return, and the dispatcher choice stays beside the implementation detail that justified it. There is no new lifetime owner for callers to manage."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Contrast that with a repository that merely adds suspend to `store.readText()` and expects each caller to remember an IO wrapper. One missed wrapper can freeze a screen. If the repository later replaces the store with an asynchronous integration, the wrappers distributed across callers also become obsolete. Keeping the decision with the implementation gives a single place to review the change. This is a bounded repository responsibility, not a prescription for a particular application architecture."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The same rule has a second half: do not add an execution policy when the implementation does not need it. In the next Android/JVM fragment, assume the client's call contract explicitly says it enqueues the request, suspends while waiting, and does not do substantial blocking or CPU work on the caller. That assumption must come from its documentation or implementation, not from its method name."
+                },
+                {
+                  "type": "code",
+                  "code": "// Android/JVM comparison; call() is already asynchronous and main-safe.\nval response = withContext(Dispatchers.IO) {\n    suspendingHttpClient.call()\n}\n\n// The same operation needs no blocking-work wrapper under that contract.\nval directResponse = suspendingHttpClient.call()",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The wrapper does not make the remote server respond sooner, and it does not free a thread that the client was already releasing while waiting. It changes the caller-side context around the call, which can affect surrounding code, but 'this uses the network' is not evidence that this change is useful. If the client instead invokes a blocking legacy call internally, the assumption fails and an execution decision is needed. Inspect the actual integration."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Also inspect work after the call. A main-safe network wait followed by a large synchronous decode can still occupy Main. The function that owns that CPU-heavy decode should generally use an appropriate computation dispatcher around it. Labelling an entire repository 'IO' misses the distinction between waiting for bytes and computing over them. Cheap field access and small transformations need no ceremonial switch."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Wrapping every suspend call in IO, or assuming no suspend call ever needs an execution decision. Both skip the same necessary step: finding out what the implementation does to the thread."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The cost of a redundant wrapper is conditional. With a different dispatcher, withContext schedules the block and the continuation back to the original dispatcher. With the same dispatcher, it can avoid those dispatches; simply changing a CoroutineName does not request a different execution resource. And, as the previous lesson established, JVM IO/Default scheduling can still use the same physical thread. A dispatch and a thread switch are not synonyms."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This matters when reviewing nested wrappers. Suppose a main-safe repository already switches its blocking region to the supplied IO dispatcher, while its caller adds the same wrapper around the whole repository call. It is wrong to count every nested block as another mandatory thread hop. The inner block may keep the existing dispatcher. The stronger objection is ownership: the caller now appears responsible for an implementation detail the repository already handles, and future readers cannot tell which wrapper is necessary."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A useful diagnosis starts with the contract at each boundary. What work happens before suspension? What happens after resumption? Which part may block, and which part computes? A name like fetch or parse is a clue, not proof of cost. Then trace the effective dispatcher through those regions. Finally ask which function has enough knowledge to own the switch. That order avoids both blind removal and accumulating wrappers as a response to uncertainty."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This completes a connection from the Compose lesson Keeping Work Out of Composition: moving code into a state holder or repository changes responsibility but does not itself change execution. withContext is one way the responsible suspending function makes that second decision. It is not a way to call a suspend API from an ordinary composable body, and it does not decide which Compose effect or lifecycle owns the call. Those are separate lessons."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Accepting a dispatcher makes the policy explicit and replaceable, including for testing, but setting up dependency injection or a coroutine test scheduler is beyond this lesson. The design question here is smaller: can the implementation make its main-safety contract true on the target where it runs? On a browser target, supplying Default does not magically offload a large CPU calculation to another thread; that platform constraint needs a platform-appropriate solution."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Use withContext for a result-producing block that needs a modified context.",
+                    "Use coroutineScope when only a structured child scope is needed.",
+                    "Let the function that knows the expensive work generally own its execution decision.",
+                    "Read a suspending API's contract before adding an IO wrapper.",
+                    "Treat dispatch overhead as conditional and physical thread switching as a separate fact."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Who should own this dispatcher switch? Point to the blocking or substantial CPU work, then to the function that knows it exists. Explain how the caller still waits for a result and why an already asynchronous client may need no wrapper."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_structured_concurrency",
+            "lesson_coroutine_builders",
+            "lesson_work_outside_composition"
+          ],
+          "sources": [
+            {
+              "title": "withContext: structured scope and dispatching behavior",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/with-context.html"
+            },
+            {
+              "title": "coroutineScope",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/coroutine-scope.html"
+            },
+            {
+              "title": "Best practices for coroutines in Android",
+              "url": "https://developer.android.com/kotlin/coroutines/coroutines-best-practices"
+            },
+            {
+              "title": "Coroutines on Android: main-safety",
+              "url": "https://developer.android.com/kotlin/coroutines/coroutines-adv"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_sequential_and_concurrent_work",
+          "title": "Sequential by Default, Concurrent on Purpose",
+          "summary": "Compare sequential and concurrent versions of one account-loading operation. Start independent work before awaiting it, distinguish overlap from parallel execution, and decide whether the latency benefit is worth the extra coordination and resource demand.",
+          "primarySubtopicIds": [
+            "coroutine_parallelism"
+          ],
+          "supportingSubtopicIds": [
+            "coroutine_builders",
+            "structured_concurrency",
+            "coroutine_dispatchers"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "An account screen needs a profile and the user's display settings. Both requests use an account ID that is already known. Neither request needs the other's result, and the screen needs both before it can build its complete model. This is a reason to consider overlap. It is not yet proof that overlap will help: the client, service and execution environment must also permit useful progress."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Start with the direct version. These examples are common Kotlin fragments with application types and main-safe suspending load functions supplied by the surrounding application. The final AccountOverview constructor only combines two values; it is not a Flow operation."
+                },
+                {
+                  "type": "code",
+                  "code": "suspend fun loadOverview(accountId: String): AccountOverview {\n    val profile = loadProfile(accountId)\n    val settings = loadSettings(accountId)\n    return AccountOverview(profile, settings)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The first call must return before the second is invoked. Suspension inside loadProfile lets other coroutines run, but this coroutine resumes at the same point in its sequence. It does not skip ahead and start loadSettings while its first expression is unfinished. This version is straightforward, uses only one request at a time, and is often a perfectly good implementation."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Concurrency means tasks have overlapping lifetimes in which multiple tasks are in progress. Parallelism means work executes at the same instant on different execution resources. Concurrent requests can make progress while a single thread alternates between short pieces of code and the requests wait elsewhere. Parallel CPU execution additionally needs an execution environment with available parallel resources."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Unit 1 introduced async as the builder for a future result. Here its purpose is to let the function start one independent operation and reach the code that starts another before needing the first result. With the default start mode, async schedules work without waiting for await. Scheduling does not guarantee the body has already begun by the next line; the dispatcher decides when it executes."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Suspending code is sequential within a coroutine unless you introduce overlap. Use async when having a result-producing child progress independently serves the problem, not merely because the function returns a value."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Keep the same inputs, result and loading functions, but give the function a structured scope and create both children before waiting for either result."
+                },
+                {
+                  "type": "code",
+                  "code": "suspend fun loadOverview(accountId: String): AccountOverview = coroutineScope {\n    val profile = async { loadProfile(accountId) }\n    val settings = async { loadSettings(accountId) }\n\n    AccountOverview(\n        profile.await(),\n        settings.await(),\n    )\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There are two Deferred handles before the first await. Waiting for profile does not prevent the settings child from progressing. If settings finishes first, its result can already be available when its await is reached. The written order of awaits is not a requirement that the underlying requests finish in that order. The scope keeps both children inside the function's completion boundary, so the caller still receives one completed AccountOverview through an ordinary suspending call."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For an illustrative model, suppose profile waits 400 ms and settings waits 250 ms, with negligible computation and enough service capacity. Sequential loading needs about 650 ms; useful overlap can approach 400 ms plus coordination overhead. These are arithmetic predictions under stated assumptions, not measurements or latency guarantees. A client that serializes requests, server throttling or expensive local processing can erase that gain."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now predict this superficially similar form before reading on. The method names and the use of async have not changed; the placement of waiting has."
+                },
+                {
+                  "type": "code",
+                  "code": "suspend fun loadOverview(accountId: String): AccountOverview = coroutineScope {\n    val profile = async { loadProfile(accountId) }.await()\n    val settings = async { loadSettings(accountId) }.await()\n    AccountOverview(profile, settings)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The settings child does not exist while the profile result is being awaited. If the first await suspends, the surrounding coroutine cannot reach the second async. If it returns immediately, profile has already completed anyway. Either way these two loads are sequential. Two Deferred allocations and child lifetimes were introduced without overlapping the operations the screen is waiting for. The direct sequential version expresses this intent more clearly."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For a small collection of independent results of the same type, creating the Deferreds with `map { async { ... } }` and then calling `awaitAll()` is a concise alternative. It is the creation of the children before waiting that makes overlap possible; awaitAll does not turn a list of ordinary values or already completed sequential calls into concurrent work. An unbounded list of requests requires a capacity decision before using this shape."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "No example selects another dispatcher. Children inherit the effective dispatcher and rely on the load functions' main-safety contracts. Two asynchronous waits can overlap on one thread. Two blocking calls on that same thread cannot make it run a second block while the first occupies it. And two substantial CPU loops need actual parallel execution resources to run simultaneously. async does not replace the execution decisions from the previous lessons."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Awaiting each async immediately and inferring concurrency from the builder name. Trace when the second task is created; that is the point at which overlap becomes possible."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Independence is a data and product property. If settings requires a region returned by the profile, starting loadSettings before that value exists is impossible without changing the problem. If settings should be requested only for an enabled account, eagerly loading it can waste a request even when the inputs are technically available. A result dependency and a decision dependency are both reasons to preserve sequencing."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The account example deliberately removed both dependencies. Now consider capacity. Two requests from one screen may be inexpensive, while hundreds of screens refreshing together can increase connection demand, server load and memory retained for unfinished results. Overlap improves one caller's latency only if resources can support it. It can reduce total throughput or worsen tail latency when it creates contention at the bottleneck."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Coordination also costs local work: creating children and Deferreds, scheduling them, retaining their state and collecting the results. For two tiny in-memory lookups, that machinery may cost more than the original operations. Concurrent code also gives up the easy fact that the second side effect has not started when the first fails. These async children participate in their parent's failure structure; Unit 3 owns the exact propagation and supervision rules. Do not infer that failures matter only when a result is awaited."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Classify a run using what it actually does. Two independent suspended network requests on a single browser execution thread can be concurrent without parallel Kotlin CPU execution. Two substantial transformations running simultaneously on different Default workers can be both concurrent and parallel. The sequential overview function is neither concurrent nor parallel with respect to its two loads, even though unrelated work elsewhere in the application may overlap it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The practical optimization question is therefore narrower than 'can this use async?' Ask whether these operations are independent, whether their waiting can overlap, whether their CPU work has resources to execute in parallel, and whether the caller benefits from receiving both sooner. Then measure the relevant user-visible latency and resource pressure. Adding concurrency to a dependency chain cannot remove the dependency; it only gives the waiting more objects."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Begin with the simplest correct sequential form.",
+                    "Check both data dependencies and whether later work is conditionally needed.",
+                    "Create independent children before awaiting when overlap has value.",
+                    "Distinguish concurrent waiting from parallel CPU execution.",
+                    "Include coordination, downstream demand and failure reasoning in the cost.",
+                    "Keep work structured so a function's completion still means its children are finished."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "What does async buy in this example? Identify the interval of useful overlap, explain why the immediate-await version loses it, and name a condition under which the direct sequential version is the better choice."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_coroutine_builders",
+            "lesson_structured_concurrency"
+          ],
+          "sources": [
+            {
+              "title": "Composing suspending functions",
+              "url": "https://kotlinlang.org/docs/composing-suspending-functions.html"
+            },
+            {
+              "title": "async: scheduling and result handles",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/async.html"
+            },
+            {
+              "title": "coroutineScope: structured completion",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/coroutine-scope.html"
+            },
+            {
+              "title": "awaitAll",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/await-all.html"
+            },
+            {
+              "title": "Coroutines basics: concurrency and parallel execution",
+              "url": "https://kotlinlang.org/docs/coroutines-basics.html"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
     }
   ]
 }

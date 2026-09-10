@@ -27,9 +27,10 @@ internal class BundledLearningCurriculumTest {
     private suspend fun unit(id: String): LearningUnit = units().single { it.id == id }
 
     @Test
-    fun bundledLearningCurriculumShipsTheActiveComposeUnitsInBlueprintOrder() = runTest {
+    fun bundledLearningCurriculumShipsTheActiveUnitsInBlueprintOrder() = runTest {
         // List position is the ordering contract for a publisher-owned document, so this is
-        // asserted unsorted: the state model is taught before the recomposition it drives.
+        // asserted unsorted: the state model is taught before the recomposition it drives,
+        // and the coroutines path follows the Compose path it was authored after.
         assertEquals(
             listOf(
                 "unit_thinking_in_compose",
@@ -38,6 +39,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_identity_keys_and_stability",
                 "unit_derived_state_and_expensive_work",
                 "unit_snapshot_fundamentals",
+                "unit_coroutines_and_structured_concurrency",
             ),
             units().map { it.id },
         )
@@ -50,12 +52,27 @@ internal class BundledLearningCurriculumTest {
                 "Identity, Keys, Stability and Immutability",
                 "Derived State and Expensive Work",
                 "Snapshot Fundamentals",
+                "Coroutine Fundamentals and Structured Concurrency",
             ),
             units().map { it.title },
         )
 
+        // A Unit's home Topic decides where it is browsed, so it is asserted per Unit
+        // rather than as one value: the document now spans two home Topics.
+        assertEquals(
+            listOf(
+                "android_ui",
+                "android_ui",
+                "android_ui",
+                "android_ui",
+                "android_ui",
+                "android_ui",
+                "async_reactive",
+            ),
+            units().map { it.topicId },
+        )
+
         units().forEach { unit ->
-            assertEquals("android_ui", unit.topicId, unit.id)
             assertEquals(ContentStatus.ACTIVE, unit.status, unit.id)
         }
     }
@@ -117,6 +134,20 @@ internal class BundledLearningCurriculumTest {
                 "lesson_snapshot_flow",
             ),
             unit("unit_snapshot_fundamentals").lessons.map { it.id },
+        )
+
+        // The coroutines Unit reads as one argument, so its order is the argument:
+        // suspension, then how work starts, then its lifetime, then its owner, then the
+        // guarantees ownership and hierarchy make together.
+        assertEquals(
+            listOf(
+                "lesson_suspension_and_blocking",
+                "lesson_coroutine_builders",
+                "lesson_job_and_parent_child",
+                "lesson_coroutine_scope_ownership",
+                "lesson_structured_concurrency",
+            ),
+            unit("unit_coroutines_and_structured_concurrency").lessons.map { it.id },
         )
     }
 
@@ -189,6 +220,20 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_snapshot_fundamentals").lessons.map { it.primarySubtopicIds },
         )
+
+        // Unlike the Compose Units, every Lesson here owns a different concept, and each of
+        // the five is a distinct `async_reactive` Subtopic. Unit practice is exactly these
+        // five: the cross-Topic bridges the Lessons lean on stay supporting.
+        assertEquals(
+            listOf(
+                listOf("coroutine_fundamentals"),
+                listOf("coroutine_builders"),
+                listOf("coroutine_jobs"),
+                listOf("coroutine_scope"),
+                listOf("structured_concurrency"),
+            ),
+            unit("unit_coroutines_and_structured_concurrency").lessons.map { it.primarySubtopicIds },
+        )
     }
 
     @Test
@@ -254,6 +299,42 @@ internal class BundledLearningCurriculumTest {
         assertTrue(
             lesson.supportingSubtopicIds.containsAll(
                 listOf("flow_fundamentals", "hot_vs_cold_streams", "compose_side_effects"),
+            ),
+        )
+    }
+
+    @Test
+    fun lifecycleAndPerformanceConceptsStaySupportingInTheCoroutinesUnit() = runTest {
+        // `docs/content/coroutines-flow-units-1-6-plan.md`: no E24 Lesson takes a
+        // non-`async_reactive` Subtopic as primary, which is what keeps the lifecycle,
+        // performance and Android-platform bridges out of this Unit's practice. GAP-U1-B
+        // in particular depends on it — `performance_coroutine_scope_leak` assesses the
+        // ownership failure from the leak side, and promoting `coroutine_leaks` would
+        // claim Unit practice that no `async_reactive` Question provides and would hide
+        // the gap E24-08 still has to close.
+        val lesson = unit("unit_coroutines_and_structured_concurrency").lessons
+            .single { it.id == "lesson_coroutine_scope_ownership" }
+
+        assertEquals(listOf("coroutine_scope"), lesson.primarySubtopicIds)
+        assertTrue(
+            lesson.supportingSubtopicIds.containsAll(
+                listOf("coroutine_jobs", "lifecycle_coroutines", "coroutine_leaks", "viewmodel_lifecycle"),
+            ),
+        )
+    }
+
+    @Test
+    fun kotlinAndPlatformConceptsStaySupportingInTheSuspensionLesson() = runTest {
+        // The same rule at the entry point of the coroutines path: the thread, JVM and
+        // main-thread facts this Lesson bridges are assessed in their own Topics, and
+        // dispatchers are named here only to be deferred to the Unit that owns them.
+        val lesson = unit("unit_coroutines_and_structured_concurrency").lessons
+            .single { it.id == "lesson_suspension_and_blocking" }
+
+        assertEquals(listOf("coroutine_fundamentals"), lesson.primarySubtopicIds)
+        assertTrue(
+            lesson.supportingSubtopicIds.containsAll(
+                listOf("coroutine_dispatchers", "jvm_fundamentals", "android_main_thread"),
             ),
         )
     }

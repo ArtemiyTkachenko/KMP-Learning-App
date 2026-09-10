@@ -6327,7 +6327,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The consequence is the one worth carrying, and the documentation states it outright: intermediate operators are themselves cold, so the returned flow does not start processing values until it is collected. Measured on this project's JVM target, a flow with a map applied to it and no terminal operator had run its producer zero times; the same chain after a single collect had run it once. collect, collectLatest, first, toList, toSet, reduce, fold and launchIn are the terminal operators the documentation names; everything else in an ordinary chain is intermediate and therefore inert until one of them appears."
+                  "text": "The consequence is the one worth carrying, and the documentation states it outright: intermediate operators are themselves cold, so the returned flow does not start processing values until it is collected. Measured on this project's JVM target, a flow with a map applied to it and no terminal operator had run its producer zero times; the same chain after a single collect had run it once. Terminal operators are the ones that collect, and there are more of them than the ones a guide happens to name: collect and collectLatest; the operators that reduce a flow to a value, such as first, last, single, count, toList, toSet, fold and reduce; and launchIn, which collects in a scope you hand it. The list is not the thing to memorise — the signature is. An operator that returns another Flow is intermediate and has started nothing; one that suspends to give you a result, or launches a coroutine to produce it, has collected."
                 },
                 {
                   "type": "paragraph",
@@ -6390,7 +6390,7 @@
         {
           "id": "lesson_flow_collection_lifetime",
           "title": "Collection Lifetime and Flow Cancellation",
-          "summary": "Name the coroutine a collection runs in, and what will end it. A cold flow has no coroutine of its own: collect runs the producer inside the collecting coroutine, so that coroutine's Job is the collection's lifetime and cancelling it is the ordinary cooperative cancellation Unit 3 already taught, not a Flow-specific mechanism.",
+          "summary": "Name the coroutine a collection runs in, and what will end it. A cold flow has no lifetime of its own: collect runs the producer under the collecting coroutine, so that coroutine's Job bounds the collection and cancelling it is the ordinary cooperative cancellation Unit 3 already taught, not a Flow-specific mechanism.",
           "primarySubtopicIds": [
             "flow_collection"
           ],
@@ -6410,7 +6410,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "A cold flow has no coroutine of its own. It does not schedule anything, it does not own a Job, and nothing about it runs in the background on its own behalf. The documentation puts the whole model in two sentences: flow collection is tied to the coroutine that calls the collect() function, and when that coroutine is cancelled, the collection stops and the upstream flow is cancelled too."
+                  "text": "A cold flow has no lifetime of its own. In the simplest pipeline — a flow { } builder collected directly — there is no second coroutine anywhere: the producer body runs inside the collecting coroutine. Some operators do introduce one, and this unit meets two of them later, where flowOn runs the upstream in its own coroutine and channelFlow launches children. What does not change is the ownership. Any coroutine a flow creates is a child of the collecting coroutine, created when collection starts and finished when it ends, so nothing a flow does is scheduled behind the collector's back or outlives it. The documentation puts that in two sentences: flow collection is tied to the coroutine that calls the collect() function, and when that coroutine is cancelled, the collection stops and the upstream flow is cancelled too."
                 },
                 {
                   "type": "code",
@@ -6480,7 +6480,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Notice what is absent from that formulation. There is no Flow-specific kill switch, no separate collection lifecycle, and no Job that the flow owns. This is worth stating explicitly because the alternative mental model — that a flow is a live thing with its own lifecycle that cancellation reaches into — leads to exactly the wrong predictions about non-cooperative producers and about who is responsible for stopping what."
+                  "text": "Notice what is absent from that formulation. There is no Flow-specific kill switch, no separate collection lifecycle, and no Job the flow owns independently of its collector — the child coroutines some operators create are exactly that, children, and they are cancelled through the ordinary hierarchy. This is worth stating explicitly because the alternative mental model, that a flow is a live thing with its own lifecycle that cancellation reaches into, leads to exactly the wrong predictions about non-cooperative producers and about who is responsible for stopping what."
                 },
                 {
                   "type": "callout",

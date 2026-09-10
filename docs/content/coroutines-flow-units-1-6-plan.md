@@ -1117,6 +1117,19 @@ misconception Unit 3 removed. L4.3's Senior section is built around not doing th
 `lesson_cancellation_cleanup_and_timeouts` for the cleanup shape `awaitClose` reproduces,
 which is the backward link the plan's cross-linking rules anticipated.
 
+### Corrections made during review
+
+Two claims in the shipped draft were over-strong and were corrected during review. Both are
+recorded because both are claims a later Flow Unit could easily reintroduce.
+
+| Draft claim | Why it was wrong | What ships |
+| --- | --- | --- |
+| L4.3: a cold flow "has no coroutine of its own. It does not schedule anything, it does not own a `Job`" | True of a `flow { }` builder collected directly, and false as a general rule — which **this Unit's own later Lessons contradict**. L4.4 states that `flowOn` runs the upstream in a separate coroutine, and L4.5 shows `channelFlow` launching children. Coldness governs *when* production starts and *per whom*, not whether the implementation creates coroutines | The paragraph now scopes the strong form to the simplest pipeline, names the two operators in this Unit that do introduce a coroutine, and moves the invariant to the place it actually holds: any coroutine a flow creates is a **child of the collecting coroutine**, so nothing is scheduled behind the collector's back or outlives it. L4.3's summary and its Senior "what is absent" paragraph were reworded to match — the Senior line now says no Job the flow owns *independently of its collector* |
+| L4.2: naming eight terminal operators and then "everything else in an ordinary chain is intermediate and therefore inert" | The list was read off the operators page, which offers those names as examples and nowhere claims to be exhaustive. `count`, `single` and `last` are terminal too, so the closing clause told a learner that calls which collect immediately are inert intermediate operators | The list is presented as examples — grouped as `collect`/`collectLatest`, the reducing operators, and `launchIn` — and the exhaustive clause is replaced by the test that actually decides it: an operator returning another `Flow` is intermediate and has started nothing; one that suspends to produce a result, or launches a coroutine to produce it, has collected |
+
+Neither correction changed an identity, a mapping, an order, or a Lesson boundary, and neither
+changed a measurement.
+
 ### Claims that were executed rather than reasoned about
 
 A throwaway JVM test probed each of these against the resolved
@@ -1155,7 +1168,7 @@ E24-01 recorded, and neither changes a claim.
 | Page | State on 2026-09-10 | Consequence |
 | --- | --- | --- |
 | `coroutines-flow.html` | "Flows", dated **13 July 2026**. Two top-level sections, Cold flows and Hot flows, exactly the structure E24-01 recorded but with a date E24-01 did not capture — and, as finding 1 below records, a good deal more underneath them than that structure implies | Still the guide-level authority for coldness, per-collector execution, collection lifetime and the context default. Every one of those four claims was re-read on the page, as were the intermediate-operator and sequences clauses L4.2 now quotes |
-| `coroutines-flow-operators.html` | "Flow operators", dated **28 July 2026** | Supplies the intermediate/terminal definitions L4.2 quotes and the list of terminal operators it names |
+| `coroutines-flow-operators.html` | "Flow operators", dated **28 July 2026** | Supplies the intermediate/terminal definitions L4.2 quotes. **Its terminal-operator names are examples, not an inventory** — `count`, `single` and `last` are terminal and are not among them — so a Lesson must not treat the page's list as exhaustive; see [corrections made during review](#corrections-made-during-review) |
 | `flow` KDoc | Current | Carries the context-preservation requirement *and the `withContext(Dispatcher.IO) { emit(2) }` example* as its own illustration of the `IllegalStateException`. This is the single best source for L4.4 and is cited there |
 | `flowOn`, `launchIn`, `channelFlow`, `callbackFlow`, `awaitClose` KDocs | Current | The five API pages the Unit leans on. Each supports the specific clause attached to it |
 | `sequences.html` | Current | Used only for the laziness bridge in L4.2's Senior section. Confirmed that the page does not discuss coroutines, which is the boundary the Lesson states |

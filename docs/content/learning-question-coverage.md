@@ -53,7 +53,7 @@ invalidate the snapshot, but changing what it says does.
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
 | Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `33c5addeb9c1fc21a8eda7193143439c3979606c72a17931df6837838f1500e8` |
-| Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `5870ff2387861aad48c54681cff420572f40ce00800035f2e8747476a2ccfc32` |
+| Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `aad029c3952caa9d58a005f525af9138798cf44a374a38b4c62b33d46e13cd50` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
 because editing lesson content can change whether the material still teaches an
@@ -72,10 +72,10 @@ Deprecated units, lessons and questions are excluded throughout.
 | Active lessons in those units | 50 |
 | Distinct primary subtopics | 31 |
 | Distinct supporting subtopics | 61 |
-| Unique active questions reached through primary mappings | 58 |
+| Unique active questions reached through primary mappings | 77 |
 | Primary subtopics with at least one active question | 31 |
 | Primary subtopics with no active question | 0 |
-| Active questions in the bank | 370 |
+| Active questions in the bank | 389 |
 | Deprecated questions excluded from this report | 41 |
 
 The two bank-size rows are context, not a target. The learning curriculum is
@@ -97,12 +97,12 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Identity, Keys, Stability and Immutability (`unit_identity_keys_and_stability`) | 5 | 2 | 1 | 4 | 1 | 6 |
 | Derived State and Expensive Work (`unit_derived_state_and_expensive_work`) | 3 | 1 | 0 | 3 | 0 | 3 |
 | Snapshot Fundamentals (`unit_snapshot_fundamentals`) | 2 | 1 | 2 | 1 | 1 | 4 |
-| Coroutine Fundamentals and Structured Concurrency (`unit_coroutines_and_structured_concurrency`) | 5 | 5 | 3 | 3 | 1 | 7 |
-| Coroutine Context, Dispatchers and Concurrent Work (`unit_context_dispatchers_and_concurrency`) | 4 | 4 | 1 | 3 | 1 | 5 |
-| Cancellation, Failure and Coordination (`unit_cancellation_failure_and_coordination`) | 5 | 4 | 2 | 3 | 2 | 7 |
-| Flow Fundamentals (`unit_flow_fundamentals`) | 5 | 3 | 5 | 0 | 0 | 5 |
-| Flow Composition, Timing and Failure (`unit_flow_composition_timing_and_failure`) | 5 | 3 | 4 | 3 | 0 | 7 |
-| StateFlow, SharedFlow and Hot Streams (`unit_stateflow_sharedflow_and_hot_streams`) | 5 | 4 | 4 | 2 | 0 | 6 |
+| Coroutine Fundamentals and Structured Concurrency (`unit_coroutines_and_structured_concurrency`) | 5 | 5 | 2 | 6 | 0 | 8 |
+| Coroutine Context, Dispatchers and Concurrent Work (`unit_context_dispatchers_and_concurrency`) | 4 | 4 | 1 | 6 | 2 | 9 |
+| Cancellation, Failure and Coordination (`unit_cancellation_failure_and_coordination`) | 5 | 4 | 2 | 6 | 4 | 12 |
+| Flow Fundamentals (`unit_flow_fundamentals`) | 5 | 3 | 5 | 2 | 0 | 7 |
+| Flow Composition, Timing and Failure (`unit_flow_composition_timing_and_failure`) | 5 | 3 | 4 | 7 | 0 | 11 |
+| StateFlow, SharedFlow and Hot Streams (`unit_stateflow_sharedflow_and_hot_streams`) | 5 | 4 | 4 | 3 | 4 | 11 |
 
 ## Unit and lesson detail
 
@@ -509,8 +509,8 @@ Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `flow_fundamentals` — Flow fundamentals | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `hot_vs_cold_streams` — Hot vs cold streams | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_fundamentals` — Flow fundamentals | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `hot_vs_cold_streams` — Hot vs cold streams | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `compose_side_effects` — Compose side-effect APIs | 2 | `android_ui` — UI — Views & Jetpack Compose |
 
 ### Coroutine Fundamentals and Structured Concurrency (`unit_coroutines_and_structured_concurrency`)
@@ -522,9 +522,9 @@ once each however many lessons share the concept.
 
 | Level | Count | Question IDs |
 |---|---:|---|
-| FOUNDATION | 3 | `coroutine_fundamentals_001`, `parent_cancellation_propagates_children`, `structured_concurrency_001` |
-| APPLIED | 3 | `coroutine_run_blocking_main_thread`, `coroutine_scope_job_ownership`, `launch_vs_async_unawaited_result` |
-| ADVANCED | 1 | `coroutine_async_exception_surfaces_at_await` |
+| FOUNDATION | 2 | `coroutine_fundamentals_001`, `structured_concurrency_001` |
+| APPLIED | 6 | `coroutine_parent_job_waits_for_children`, `coroutine_run_blocking_main_thread`, `coroutine_scope_job_ownership`, `coroutine_scope_outlives_its_consumer`, `coroutine_suspend_does_not_move_blocking_work`, `launch_vs_async_unawaited_result` |
+| ADVANCED | 0 | — |
 
 #### Suspension Is Not Blocking (`lesson_suspension_and_blocking`)
 
@@ -532,13 +532,13 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `coroutine_fundamentals` — Coroutine and suspend fundamentals | 1 | 1 | 0 | 2 | `coroutine_fundamentals_001`, `coroutine_run_blocking_main_thread` |
+| `coroutine_fundamentals` — Coroutine and suspend fundamentals | 1 | 1 | 0 | 2 | `coroutine_fundamentals_001`, `coroutine_suspend_does_not_move_blocking_work` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `coroutine_dispatchers` — Dispatchers | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_dispatchers` — Dispatchers | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `jvm_fundamentals` — JVM fundamentals relevant to Android | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 | `android_main_thread` — Main thread, Looper, and Handler fundamentals | 3 | `android_platform` — Android Platform & Application Model |
 
@@ -548,15 +548,15 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `coroutine_builders` — launch and async | 0 | 1 | 1 | 2 | `coroutine_async_exception_surfaces_at_await`, `launch_vs_async_unawaited_result` |
+| `coroutine_builders` — launch and async | 0 | 2 | 0 | 2 | `coroutine_run_blocking_main_thread`, `launch_vs_async_unawaited_result` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `coroutine_fundamentals` — Coroutine and suspend fundamentals | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `coroutine_scope` — CoroutineScope | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `coroutine_parallelism` — Concurrency and async/await | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_scope` — CoroutineScope | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_parallelism` — Concurrency and async/await | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `kotlin_lambdas` — Lambdas and higher-order functions | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 
 #### `Job`: the Handle That Carries Lifetime (`lesson_job_and_parent_child`)
@@ -565,14 +565,14 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `coroutine_jobs` — Job and parent-child relationships | 1 | 0 | 0 | 1 | `parent_cancellation_propagates_children` |
+| `coroutine_jobs` — Job and parent-child relationships | 0 | 1 | 0 | 1 | `coroutine_parent_job_waits_for_children` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `coroutine_scope` — CoroutineScope | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `coroutine_context` — CoroutineContext | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_scope` — CoroutineScope | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_context` — CoroutineContext | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `structured_concurrency` — Structured concurrency | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
 #### `CoroutineScope` and Who Owns a Coroutine's Lifetime (`lesson_coroutine_scope_ownership`)
@@ -581,7 +581,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `coroutine_scope` — CoroutineScope | 0 | 1 | 0 | 1 | `coroutine_scope_job_ownership` |
+| `coroutine_scope` — CoroutineScope | 0 | 2 | 0 | 2 | `coroutine_scope_job_ownership`, `coroutine_scope_outlives_its_consumer` |
 
 Supporting context — not primary coverage:
 
@@ -605,9 +605,9 @@ Supporting context — not primary coverage:
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `coroutine_jobs` — Job and parent-child relationships | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `coroutine_scope` — CoroutineScope | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_scope` — CoroutineScope | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `coroutine_builders` — launch and async | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `coroutine_exceptions` — Exception propagation and handling | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_exceptions` — Exception propagation and handling | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
 ### Coroutine Context, Dispatchers and Concurrent Work (`unit_context_dispatchers_and_concurrency`)
 
@@ -619,8 +619,8 @@ once each however many lessons share the concept.
 | Level | Count | Question IDs |
 |---|---:|---|
 | FOUNDATION | 1 | `coroutine_context_switching_001` |
-| APPLIED | 3 | `coroutine_async_await_sequential`, `coroutine_io_dispatcher_blocking_calls`, `suspending_api_dispatcher_assumption` |
-| ADVANCED | 1 | `coroutine_supervisor_job_child_context_noop` |
+| APPLIED | 6 | `coroutine_async_await_sequential`, `coroutine_child_context_inherits_and_overrides`, `coroutine_concurrency_needs_independence`, `coroutine_io_dispatcher_blocking_calls`, `coroutine_shared_counter_lost_update`, `suspending_api_dispatcher_assumption` |
+| ADVANCED | 2 | `coroutine_io_and_default_share_threads`, `coroutine_supervisor_job_child_context_noop` |
 
 #### `CoroutineContext` and What Children Inherit (`lesson_coroutine_context`)
 
@@ -628,14 +628,14 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `coroutine_context` — CoroutineContext | 0 | 0 | 1 | 1 | `coroutine_supervisor_job_child_context_noop` |
+| `coroutine_context` — CoroutineContext | 0 | 1 | 1 | 2 | `coroutine_child_context_inherits_and_overrides`, `coroutine_supervisor_job_child_context_noop` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `coroutine_jobs` — Job and parent-child relationships | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `coroutine_dispatchers` — Dispatchers | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_dispatchers` — Dispatchers | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `structured_concurrency` — Structured concurrency | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
 #### Dispatchers and Where Code Actually Runs (`lesson_dispatchers`)
@@ -644,13 +644,13 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `coroutine_dispatchers` — Dispatchers | 0 | 2 | 0 | 2 | `coroutine_io_dispatcher_blocking_calls`, `suspending_api_dispatcher_assumption` |
+| `coroutine_dispatchers` — Dispatchers | 0 | 2 | 1 | 3 | `coroutine_io_and_default_share_threads`, `coroutine_io_dispatcher_blocking_calls`, `suspending_api_dispatcher_assumption` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `coroutine_context` — CoroutineContext | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_context` — CoroutineContext | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `android_main_thread` — Main thread, Looper, and Handler fundamentals | 3 | `android_platform` — Android Platform & Application Model |
 | `main_thread_performance` — Main-thread performance | 1 | `performance` — Performance, Memory & Debugging |
 | `anr` — ANRs | 1 | `performance` — Performance, Memory & Debugging |
@@ -667,7 +667,7 @@ Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `coroutine_dispatchers` — Dispatchers | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_dispatchers` — Dispatchers | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `coroutine_fundamentals` — Coroutine and suspend fundamentals | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `structured_concurrency` — Structured concurrency | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `repository_pattern` — Repository pattern | 1 | `architecture` — Application Architecture & Design Principles |
@@ -678,7 +678,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `coroutine_parallelism` — Concurrency and async/await | 0 | 1 | 0 | 1 | `coroutine_async_await_sequential` |
+| `coroutine_parallelism` — Concurrency and async/await | 0 | 3 | 0 | 3 | `coroutine_async_await_sequential`, `coroutine_concurrency_needs_independence`, `coroutine_shared_counter_lost_update` |
 
 Supporting context — not primary coverage:
 
@@ -686,7 +686,7 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `coroutine_builders` — launch and async | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `structured_concurrency` — Structured concurrency | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `coroutine_dispatchers` — Dispatchers | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_dispatchers` — Dispatchers | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
 ### Cancellation, Failure and Coordination (`unit_cancellation_failure_and_coordination`)
 
@@ -698,8 +698,8 @@ once each however many lessons share the concept.
 | Level | Count | Question IDs |
 |---|---:|---|
 | FOUNDATION | 2 | `coroutine_cancellation_001`, `coroutine_exceptions_001` |
-| APPLIED | 3 | `cancellation_exception_rethrow`, `coroutine_async_await_sequential`, `coroutine_run_interruptible_blocking_call` |
-| ADVANCED | 2 | `coroutine_exception_handler_root_boundary`, `coroutine_supervisor_scope_direct_children` |
+| APPLIED | 6 | `cancellation_exception_rethrow`, `coroutine_async_await_sequential`, `coroutine_concurrency_needs_independence`, `coroutine_run_interruptible_blocking_call`, `coroutine_shared_counter_lost_update`, `parent_cancellation_propagates_children` |
+| ADVANCED | 4 | `coroutine_async_exception_surfaces_at_await`, `coroutine_exception_handler_root_boundary`, `coroutine_supervisor_scope_direct_children`, `coroutine_timeout_cleanup_needs_non_cancellable` |
 
 #### Cancellation Is Cooperative (`lesson_cooperative_cancellation`)
 
@@ -707,7 +707,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `coroutine_cancellation` — Cancellation | 1 | 2 | 0 | 3 | `cancellation_exception_rethrow`, `coroutine_cancellation_001`, `coroutine_run_interruptible_blocking_call` |
+| `coroutine_cancellation` — Cancellation | 1 | 3 | 1 | 5 | `cancellation_exception_rethrow`, `coroutine_cancellation_001`, `coroutine_run_interruptible_blocking_call`, `coroutine_timeout_cleanup_needs_non_cancellable`, `parent_cancellation_propagates_children` |
 
 Supporting context — not primary coverage:
 
@@ -723,7 +723,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `coroutine_cancellation` — Cancellation | 1 | 2 | 0 | 3 | `cancellation_exception_rethrow`, `coroutine_cancellation_001`, `coroutine_run_interruptible_blocking_call` |
+| `coroutine_cancellation` — Cancellation | 1 | 3 | 1 | 5 | `cancellation_exception_rethrow`, `coroutine_cancellation_001`, `coroutine_run_interruptible_blocking_call`, `coroutine_timeout_cleanup_needs_non_cancellable`, `parent_cancellation_propagates_children` |
 
 Supporting context — not primary coverage:
 
@@ -739,7 +739,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `coroutine_exceptions` — Exception propagation and handling | 1 | 0 | 1 | 2 | `coroutine_exception_handler_root_boundary`, `coroutine_exceptions_001` |
+| `coroutine_exceptions` — Exception propagation and handling | 1 | 0 | 2 | 3 | `coroutine_async_exception_surfaces_at_await`, `coroutine_exception_handler_root_boundary`, `coroutine_exceptions_001` |
 
 Supporting context — not primary coverage:
 
@@ -747,7 +747,7 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `coroutine_builders` — launch and async | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `coroutine_jobs` — Job and parent-child relationships | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `coroutine_cancellation` — Cancellation | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_cancellation` — Cancellation | 5 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `error_modeling` — Error representation/modeling | 2 | `architecture` — Application Architecture & Design Principles |
 
 #### `SupervisorJob`, `supervisorScope` and the Limits of Isolation (`lesson_supervision_and_failure_isolation`)
@@ -762,8 +762,8 @@ Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `coroutine_exceptions` — Exception propagation and handling | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `coroutine_context` — CoroutineContext | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_exceptions` — Exception propagation and handling | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_context` — CoroutineContext | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `structured_concurrency` — Structured concurrency | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `coroutine_jobs` — Job and parent-child relationships | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
@@ -773,16 +773,16 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `coroutine_parallelism` — Concurrency and async/await | 0 | 1 | 0 | 1 | `coroutine_async_await_sequential` |
+| `coroutine_parallelism` — Concurrency and async/await | 0 | 3 | 0 | 3 | `coroutine_async_await_sequential`, `coroutine_concurrency_needs_independence`, `coroutine_shared_counter_lost_update` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `hot_vs_cold_streams` — Hot vs cold streams | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `hot_vs_cold_streams` — Hot vs cold streams | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `jvm_fundamentals` — JVM fundamentals relevant to Android | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 | `android_memory_model` — Android/JVM memory fundamentals | 1 | `performance` — Performance, Memory & Debugging |
-| `coroutine_dispatchers` — Dispatchers | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_dispatchers` — Dispatchers | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
 ### Flow Fundamentals (`unit_flow_fundamentals`)
 
@@ -794,7 +794,7 @@ once each however many lessons share the concept.
 | Level | Count | Question IDs |
 |---|---:|---|
 | FOUNDATION | 5 | `callback_flow_await_close_registration`, `flow_collection_cancels_cold_producer`, `flow_context_001`, `flow_fundamentals_001`, `flow_launch_in_on_each_scope` |
-| APPLIED | 0 | — |
+| APPLIED | 2 | `flow_emit_must_keep_the_collector_context`, `flow_one_shot_result_vs_observable_stream` |
 | ADVANCED | 0 | — |
 
 #### One Value or Many: Why `Flow` Exists (`lesson_why_flow`)
@@ -803,14 +803,14 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `flow_fundamentals` — Flow fundamentals | 2 | 0 | 0 | 2 | `callback_flow_await_close_registration`, `flow_fundamentals_001` |
+| `flow_fundamentals` — Flow fundamentals | 2 | 1 | 0 | 3 | `callback_flow_await_close_registration`, `flow_fundamentals_001`, `flow_one_shot_result_vs_observable_stream` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `coroutine_fundamentals` — Coroutine and suspend fundamentals | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `hot_vs_cold_streams` — Hot vs cold streams | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `hot_vs_cold_streams` — Hot vs cold streams | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `repository_pattern` — Repository pattern | 1 | `architecture` — Application Architecture & Design Principles |
 | `single_source_of_truth` — Single source of truth | 1 | `architecture` — Application Architecture & Design Principles |
 
@@ -820,14 +820,14 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `flow_fundamentals` — Flow fundamentals | 2 | 0 | 0 | 2 | `callback_flow_await_close_registration`, `flow_fundamentals_001` |
+| `flow_fundamentals` — Flow fundamentals | 2 | 1 | 0 | 3 | `callback_flow_await_close_registration`, `flow_fundamentals_001`, `flow_one_shot_result_vs_observable_stream` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `flow_collection` — Flow collection | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `flow_operators` — Flow operators | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_operators` — Flow operators | 5 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `kotlin_sequences` — Sequences and lazy collection processing | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 
 #### Collection Lifetime and Flow Cancellation (`lesson_flow_collection_lifetime`)
@@ -842,8 +842,8 @@ Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `coroutine_cancellation` — Cancellation | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `coroutine_scope` — CoroutineScope | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_cancellation` — Cancellation | 5 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_scope` — CoroutineScope | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `lifecycle_coroutines` — Lifecycle-aware coroutine scopes | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `coroutine_jobs` — Job and parent-child relationships | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
@@ -853,16 +853,16 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `flow_context` — flowOn and execution context | 1 | 0 | 0 | 1 | `flow_context_001` |
+| `flow_context` — flowOn and execution context | 1 | 1 | 0 | 2 | `flow_context_001`, `flow_emit_must_keep_the_collector_context` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `coroutine_context` — CoroutineContext | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `coroutine_dispatchers` — Dispatchers | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_context` — CoroutineContext | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_dispatchers` — Dispatchers | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `coroutine_context_switching` — withContext | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `flow_errors` — Flow exception handling | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_errors` — Flow exception handling | 4 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
 #### Flow Builders and Adapting Callback APIs (`lesson_flow_builders_and_callback_adapters`)
 
@@ -870,14 +870,14 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `flow_fundamentals` — Flow fundamentals | 2 | 0 | 0 | 2 | `callback_flow_await_close_registration`, `flow_fundamentals_001` |
+| `flow_fundamentals` — Flow fundamentals | 2 | 1 | 0 | 3 | `callback_flow_await_close_registration`, `flow_fundamentals_001`, `flow_one_shot_result_vs_observable_stream` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `flow_context` — flowOn and execution context | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `coroutine_cancellation` — Cancellation | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_context` — flowOn and execution context | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_cancellation` — Cancellation | 5 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `flow_buffering` — Buffering and conflation | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `memory_leaks` — Memory leaks | 1 | `performance` — Performance, Memory & Debugging |
 
@@ -891,7 +891,7 @@ once each however many lessons share the concept.
 | Level | Count | Question IDs |
 |---|---:|---|
 | FOUNDATION | 4 | `flow_catch_upstream_only`, `flow_combine_vs_zip_emission_rule`, `flow_conflate_vs_collect_latest`, `flow_debounce_vs_distinct_until_changed` |
-| APPLIED | 3 | `flow_buffer_producer_consumer_concurrency`, `flow_flat_map_latest_search_cancellation`, `flow_retry_when_conditional_attempts` |
+| APPLIED | 7 | `flow_buffer_producer_consumer_concurrency`, `flow_flat_map_concat_preserves_grouping`, `flow_flat_map_latest_search_cancellation`, `flow_on_completion_observes_every_ending`, `flow_retry_re_collects_the_upstream`, `flow_retry_when_conditional_attempts`, `flow_sample_cadence_vs_debounce_quiet_period` |
 | ADVANCED | 0 | — |
 
 #### Transforming and Filtering: by Value and by Time (`lesson_transforming_and_filtering_flows`)
@@ -900,13 +900,13 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `flow_operators` — Flow operators | 2 | 1 | 0 | 3 | `flow_combine_vs_zip_emission_rule`, `flow_debounce_vs_distinct_until_changed`, `flow_flat_map_latest_search_cancellation` |
+| `flow_operators` — Flow operators | 2 | 3 | 0 | 5 | `flow_combine_vs_zip_emission_rule`, `flow_debounce_vs_distinct_until_changed`, `flow_flat_map_concat_preserves_grouping`, `flow_flat_map_latest_search_cancellation`, `flow_sample_cadence_vs_debounce_quiet_period` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `flow_fundamentals` — Flow fundamentals | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_fundamentals` — Flow fundamentals | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `kotlin_lambdas` — Lambdas and higher-order functions | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 | `kotlin_equality` — Structural vs referential equality | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 
@@ -916,14 +916,14 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `flow_operators` — Flow operators | 2 | 1 | 0 | 3 | `flow_combine_vs_zip_emission_rule`, `flow_debounce_vs_distinct_until_changed`, `flow_flat_map_latest_search_cancellation` |
+| `flow_operators` — Flow operators | 2 | 3 | 0 | 5 | `flow_combine_vs_zip_emission_rule`, `flow_debounce_vs_distinct_until_changed`, `flow_flat_map_concat_preserves_grouping`, `flow_flat_map_latest_search_cancellation`, `flow_sample_cadence_vs_debounce_quiet_period` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `flow_fundamentals` — Flow fundamentals | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `stateflow` — StateFlow | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_fundamentals` — Flow fundamentals | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `stateflow` — StateFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `flow_collection` — Flow collection | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
 #### Flattening: Should New Input Cancel Old Work? (`lesson_flattening_flows`)
@@ -932,14 +932,14 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `flow_operators` — Flow operators | 2 | 1 | 0 | 3 | `flow_combine_vs_zip_emission_rule`, `flow_debounce_vs_distinct_until_changed`, `flow_flat_map_latest_search_cancellation` |
+| `flow_operators` — Flow operators | 2 | 3 | 0 | 5 | `flow_combine_vs_zip_emission_rule`, `flow_debounce_vs_distinct_until_changed`, `flow_flat_map_concat_preserves_grouping`, `flow_flat_map_latest_search_cancellation`, `flow_sample_cadence_vs_debounce_quiet_period` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `coroutine_cancellation` — Cancellation | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `coroutine_parallelism` — Concurrency and async/await | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_cancellation` — Cancellation | 5 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_parallelism` — Concurrency and async/await | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `flow_collection` — Flow collection | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
 #### When the Collector Cannot Keep Up (`lesson_flow_buffering_and_conflation`)
@@ -955,9 +955,9 @@ Supporting context — not primary coverage:
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `flow_collection` — Flow collection | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `flow_context` — flowOn and execution context | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `coroutine_cancellation` — Cancellation | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `flow_operators` — Flow operators | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_context` — flowOn and execution context | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_cancellation` — Cancellation | 5 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_operators` — Flow operators | 5 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
 #### `catch`, `retry` and `onCompletion` (`lesson_flow_failure_and_completion`)
 
@@ -965,15 +965,15 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `flow_errors` — Flow exception handling | 1 | 1 | 0 | 2 | `flow_catch_upstream_only`, `flow_retry_when_conditional_attempts` |
+| `flow_errors` — Flow exception handling | 1 | 3 | 0 | 4 | `flow_catch_upstream_only`, `flow_on_completion_observes_every_ending`, `flow_retry_re_collects_the_upstream`, `flow_retry_when_conditional_attempts` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `kotlin_exceptions` — Exception handling | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
-| `coroutine_cancellation` — Cancellation | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `flow_operators` — Flow operators | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_cancellation` — Cancellation | 5 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_operators` — Flow operators | 5 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `error_modeling` — Error representation/modeling | 2 | `architecture` — Application Architecture & Design Principles |
 
 ### StateFlow, SharedFlow and Hot Streams (`unit_stateflow_sharedflow_and_hot_streams`)
@@ -986,8 +986,8 @@ once each however many lessons share the concept.
 | Level | Count | Question IDs |
 |---|---:|---|
 | FOUNDATION | 4 | `flow_state_in_while_subscribed`, `shared_flow_replay_late_subscriber`, `stateflow_001`, `stateflow_vs_sharedflow_current_value` |
-| APPLIED | 2 | `flow_share_in_vs_state_in`, `flow_vs_channel_delivery_model` |
-| ADVANCED | 0 | — |
+| APPLIED | 3 | `flow_share_in_vs_state_in`, `flow_vs_channel_delivery_model`, `hot_sharing_changes_production_not_retention` |
+| ADVANCED | 4 | `flow_sharing_policy_and_replay_expiration`, `shared_flow_try_emit_true_is_not_delivery`, `state_flow_equal_value_is_not_a_new_state`, `stream_choice_cannot_supply_a_delivery_guarantee` |
 
 #### Hot and Cold: When Production Happens (`lesson_hot_and_cold_streams`)
 
@@ -995,16 +995,16 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `hot_vs_cold_streams` — Hot vs cold streams | 0 | 1 | 0 | 1 | `flow_vs_channel_delivery_model` |
+| `hot_vs_cold_streams` — Hot vs cold streams | 0 | 2 | 1 | 3 | `flow_vs_channel_delivery_model`, `hot_sharing_changes_production_not_retention`, `stream_choice_cannot_supply_a_delivery_guarantee` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `flow_fundamentals` — Flow fundamentals | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_fundamentals` — Flow fundamentals | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `flow_collection` — Flow collection | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `stateflow` — StateFlow | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `sharedflow` — SharedFlow | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `stateflow` — StateFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `sharedflow` — SharedFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
 #### `StateFlow`: One Current Value (`lesson_state_flow`)
 
@@ -1012,13 +1012,13 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `stateflow` — StateFlow | 2 | 0 | 0 | 2 | `stateflow_001`, `stateflow_vs_sharedflow_current_value` |
+| `stateflow` — StateFlow | 2 | 0 | 1 | 3 | `state_flow_equal_value_is_not_a_new_state`, `stateflow_001`, `stateflow_vs_sharedflow_current_value` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `hot_vs_cold_streams` — Hot vs cold streams | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `hot_vs_cold_streams` — Hot vs cold streams | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `flow_collection` — Flow collection | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `kotlin_equality` — Structural vs referential equality | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 | `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
@@ -1029,15 +1029,15 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `sharedflow` — SharedFlow | 1 | 1 | 0 | 2 | `flow_share_in_vs_state_in`, `shared_flow_replay_late_subscriber` |
+| `sharedflow` — SharedFlow | 1 | 1 | 1 | 3 | `flow_share_in_vs_state_in`, `shared_flow_replay_late_subscriber`, `shared_flow_try_emit_true_is_not_delivery` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `hot_vs_cold_streams` — Hot vs cold streams | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `hot_vs_cold_streams` — Hot vs cold streams | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `flow_buffering` — Buffering and conflation | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `stateflow` — StateFlow | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `stateflow` — StateFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `flow_collection` — Flow collection | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
 #### Sharing Cold Flows with `stateIn` and `shareIn` (`lesson_sharing_cold_flows`)
@@ -1046,15 +1046,15 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `flow_sharing` — stateIn, shareIn, and sharing policies | 1 | 0 | 0 | 1 | `flow_state_in_while_subscribed` |
+| `flow_sharing` — stateIn, shareIn, and sharing policies | 1 | 0 | 1 | 2 | `flow_sharing_policy_and_replay_expiration`, `flow_state_in_while_subscribed` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `stateflow` — StateFlow | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `sharedflow` — SharedFlow | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `coroutine_scope` — CoroutineScope | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `stateflow` — StateFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `sharedflow` — SharedFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_scope` — CoroutineScope | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `lifecycle_coroutines` — Lifecycle-aware coroutine scopes | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
 #### Choosing a Stream Abstraction by Delivery Guarantees (`lesson_choosing_a_stream_abstraction`)
@@ -1063,15 +1063,15 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `hot_vs_cold_streams` — Hot vs cold streams | 0 | 1 | 0 | 1 | `flow_vs_channel_delivery_model` |
+| `hot_vs_cold_streams` — Hot vs cold streams | 0 | 2 | 1 | 3 | `flow_vs_channel_delivery_model`, `hot_sharing_changes_production_not_retention`, `stream_choice_cannot_supply_a_delivery_guarantee` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `stateflow` — StateFlow | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `sharedflow` — SharedFlow | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `flow_sharing` — stateIn, shareIn, and sharing policies | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `stateflow` — StateFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `sharedflow` — SharedFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_sharing` — stateIn, shareIn, and sharing policies | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
 
 ## Primary assessment gaps

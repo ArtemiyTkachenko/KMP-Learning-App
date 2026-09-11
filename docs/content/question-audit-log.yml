@@ -23,6 +23,218 @@
 # records are reserved for questions that were changed or flagged.
 
 audits:
+  - review: Coroutines and Flow Units 1-6 assessment gaps (E24-08)
+    date: 2026-09-11
+    scope: >-
+      A semantic assessment review of the 21 primary Subtopics of learning Units 1-6 of the
+      Coroutines and Flow curriculum and the ACTIVE Questions reached through them, plus the
+      five DEPRECATED Questions on those Subtopics and the supporting-only Questions in
+      performance, architecture, android_ui, networking, testing, kmp, lifecycle_coroutines
+      and livedata that were read for duplication review only. NOT a bank-wide audit.
+      Nineteen Questions were authored, three were re-mapped, one had its level raised and
+      one had an explanation clause corrected; the other 407 questions in
+      shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json were
+      not re-reviewed and their prior verdicts stand.
+    reviewed: 23
+    active: 23
+    retired: 0
+    deterministic_checks: PASS
+    method: |
+      The 21 assessment gap candidates recorded in
+      docs/content/coroutines-flow-units-1-6-plan.md were re-read against the finished Lesson
+      prose and against every ACTIVE Question already on the relevant primary concept before
+      anything was written, together with the nearby Questions that might overlap, the five
+      DEPRECATED Questions the plan named, and the Questions in other Topics that assess
+      similar reasoning. Each new Question was then solved from its stem and options alone
+      before correctAnswerIds was consulted, every option was tested for defensibility under
+      the stem as written, and each of the 32 cited pages was opened and the supporting
+      sentence located rather than trusted to a 200.
+
+      Behavioural claims were executed rather than argued. One throwaway JVM probe, deleted
+      afterwards, measured against the resolved kotlinx-coroutines-core:1.11.0: that
+      withTimeoutOrNull does not resume a caller around a blocking call (null after 1,542 and
+      1,505 ms for a 100 ms deadline, against a 103 ms cooperative calibration); that a
+      suspending cleanup in finally under a timeout does not complete without NonCancellable
+      and does with it; that assigning an equal but newly built data class value to a
+      MutableStateFlow delivers one value where identity equality delivers four; that tryEmit
+      on an unbuffered SharedFlow with no subscriber returns true with an empty replay cache,
+      and that extraBufferCapacity retains nothing for an absent subscriber; that
+      flow { withContext(IO) { emit(v) } } throws IllegalStateException reporting a violated
+      flow invariant; that retry re-collects a cold upstream three times and delivers the
+      failed attempts' values; that 16,000 concurrent increments of a plain var produced
+      14,729 while an atomic produced 16,000; that debounce emits nothing against a source
+      faster than its timeout while sample emits on its cadence; that flatMapMerge does not
+      preserve the order inner flows were started in; that a parent whose body has returned is
+      completing rather than complete; that a builder argument overrides the dispatcher and
+      never the Job; and that replayExpirationMillis runs on its own clock after the stop.
+
+      The playbook's Part 3 anti-cue audit was run over the whole bank, and the batch's answer
+      options were reordered afterwards so that nineteen new Questions did not all key their
+      first option. All three Part 7 source scripts were run over the whole bank: 317 unique
+      URLs returned HTTP 200, 285 distinct pages rendered a non-empty body, and 48 fragment
+      citations resolved to a real anchor.
+
+    summary:
+      status:
+        PASS: 19
+        PASS_WITH_MINOR_CHANGES: 0
+        FIXED: 4
+        REVIEW_REQUIRED: 0
+        REPLACE: 0
+      severity:
+        BLOCKER: 0
+        MAJOR: 1
+        MINOR: 3
+      source_verification:
+        VERIFIED: 23
+        PARTIALLY_VERIFIED: 0
+        UNVERIFIED: 0
+        INVALID: 0
+
+    findings:
+      - id: coroutine_run_interruptible_blocking_call
+        n: 246
+        status: FIXED
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q15_EXPLANATION_CORRECT]
+        issues:
+          - >-
+            The explanation ended with "withTimeout resumes the coroutine while leaving the
+            blocked thread occupied". Re-measured for this issue, withTimeoutOrNull(100)
+            around withContext(Dispatchers.IO) { Thread.sleep(1500) } returned null after
+            1,542 and 1,505 ms, against a 103 ms calibration for a cooperative delay under the
+            same deadline. The caller is not resumed at the deadline; it waits for the
+            blocking call to return. This was a wrong rationale attached to a right answer.
+        changes:
+          - >-
+            Replaced the clause with what the measurement shows: a timeout does not abandon
+            the call either, because the deadline cancels the block but the coroutine is not
+            resumed until the blocking method returns, so the deadline bounds nothing here.
+          - >-
+            Preserved Question.id, all four AnswerOption ids, the key, the level and the
+            Subtopic. The assessed claim is unchanged, so this is an editorial correction to
+            the same assessment responsibility and no replacement Question was created.
+      - id: parent_cancellation_propagates_children
+        n: 240
+        status: FIXED
+        severity: MINOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: []
+        issues:
+          - >-
+            Mapped to coroutine_jobs while its key is cooperative resumption of cancellation
+            and its three distractors require cancelAndJoin, NonCancellable and the difference
+            between requesting and observing cancellation. E24-04 confirmed the Question
+            became answerable only once Unit 3 shipped, while the Subtopic kept it in Unit 1's
+            practice, where the reasoning is deliberately not taught.
+          - >-
+            Its FOUNDATION level did not match the four separate cancellation contracts needed
+            to eliminate the distractors.
+        changes:
+          - >-
+            Re-mapped to coroutine_cancellation, and raised to APPLIED. Mapping and level were
+            decided separately: the level would have been wrong on either Subtopic. Not
+            ADVANCED, because each of the four contracts is directly documented and none
+            interacts subtly with another.
+          - >-
+            Preserved Question.id and all four AnswerOption ids. A Subtopic is where a
+            Question is filed, not what it asserts.
+      - id: coroutine_async_exception_surfaces_at_await
+        n: 53
+        status: FIXED
+        severity: MINOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: []
+        issues:
+          - >-
+            Mapped to coroutine_builders while it assesses failure propagation from a dropped
+            Deferred and how supervisorScope changes it, which Unit 3 teaches. An ADVANCED
+            Unit 3 item was appearing in Unit 1 practice.
+        changes:
+          - >-
+            Re-mapped to coroutine_exceptions. Question.id, all four AnswerOption ids, the
+            key, the level and the explanation are unchanged.
+      - id: coroutine_run_blocking_main_thread
+        n: 238
+        status: FIXED
+        severity: MINOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: []
+        issues:
+          - >-
+            Mapped to coroutine_fundamentals while the reasoning is that runBlocking is a
+            builder bridging blocking code, which lesson_coroutine_builders owns. Both Lessons
+            are in Unit 1, so Unit practice was unaffected and only Subtopic-scoped practice
+            was misdirected.
+        changes:
+          - >-
+            Re-mapped to coroutine_builders. Question.id, all four AnswerOption ids, the key,
+            the level and the explanation are unchanged.
+
+    new_questions:
+      note: >-
+        Nineteen Questions authored against the 21 gap candidates in
+        docs/content/coroutines-flow-units-1-6-plan.md. GAP-U6-B and GAP-U6-E are one Question
+        because one scenario requires both; GAP-U4-C is deferred, and so is the
+        coordination-mechanism half of GAP-U3-B. No gap was split. Each Question was solved
+        independently before its key was read, and four stem defects found by that pass were
+        fixed before the batch landed. Final dispositions are recorded in that document under
+        "Assessment outcomes for E24-08".
+      items:
+        - { n: 412, id: coroutine_suspend_does_not_move_blocking_work, gap: GAP-U1-A, level: APPLIED }
+        - { n: 413, id: coroutine_scope_outlives_its_consumer, gap: GAP-U1-B, level: APPLIED }
+        - { n: 414, id: coroutine_parent_job_waits_for_children, gap: GAP-U1-C, level: APPLIED }
+        - { n: 415, id: coroutine_child_context_inherits_and_overrides, gap: GAP-U2-A, level: APPLIED }
+        - { n: 416, id: coroutine_io_and_default_share_threads, gap: GAP-U2-B, level: ADVANCED }
+        - { n: 417, id: coroutine_concurrency_needs_independence, gap: GAP-U2-C, level: APPLIED }
+        - { n: 418, id: coroutine_timeout_cleanup_needs_non_cancellable, gap: GAP-U3-A, level: ADVANCED }
+        - { n: 419, id: coroutine_shared_counter_lost_update, gap: GAP-U3-B, level: APPLIED }
+        - { n: 420, id: flow_one_shot_result_vs_observable_stream, gap: GAP-U4-A, level: APPLIED }
+        - { n: 421, id: flow_emit_must_keep_the_collector_context, gap: GAP-U4-B, level: APPLIED }
+        - { n: 422, id: flow_flat_map_concat_preserves_grouping, gap: GAP-U5-A, level: APPLIED }
+        - { n: 423, id: flow_on_completion_observes_every_ending, gap: GAP-U5-B, level: APPLIED }
+        - { n: 424, id: flow_sample_cadence_vs_debounce_quiet_period, gap: GAP-U5-C, level: APPLIED }
+        - { n: 425, id: flow_retry_re_collects_the_upstream, gap: GAP-U5-D, level: APPLIED }
+        - { n: 426, id: state_flow_equal_value_is_not_a_new_state, gap: GAP-U6-A, level: ADVANCED }
+        - { n: 427, id: flow_sharing_policy_and_replay_expiration, gap: GAP-U6-B + GAP-U6-E, level: ADVANCED }
+        - { n: 428, id: hot_sharing_changes_production_not_retention, gap: GAP-U6-C, level: APPLIED }
+        - { n: 429, id: shared_flow_try_emit_true_is_not_delivery, gap: GAP-U6-D, level: ADVANCED }
+        - { n: 430, id: stream_choice_cannot_supply_a_delivery_guarantee, gap: GAP-U6-F, level: ADVANCED }
+      pre_merge_fixes: |
+        Four defects were found by solving each finished Question independently, and all four
+        were in the stem rather than the key.
+
+        coroutine_concurrency_needs_independence — the first draft made the second call needed
+        only for premium accounts, which leaves starting it speculatively genuinely faster on
+        the premium path, so the keyed "overlapping cannot shorten the wait" was defensibly
+        wrong. The stem now gives the second call an id carried by the first call's response,
+        which is a data dependency rather than a conditional one.
+
+        flow_flat_map_concat_preserves_grouping — the flatMapLatest distractor satisfied the
+        stated requirement as written: one at a time, in queue order, never interleaved are
+        all true of it. What it breaks is completeness, so the stem now requires every file's
+        updates from first to last.
+
+        flow_one_shot_result_vs_observable_stream — two distractors argued from style rather
+        than fact and a reader could defend either. Both were replaced with claims that are
+        checkable and false: that a value the server can change must be exposed as a stream,
+        and that a cold Flow delivers one value per collection and then completes.
+
+        flow_sharing_policy_and_replay_expiration — "must stop within a few seconds" did not
+        definitively rule out the thirty-second stopTimeoutMillis distractor. The stem now
+        says five seconds.
+
+        A fifth was caught before authoring rather than after. A draft of
+        state_flow_equal_value_is_not_a_new_state used a data class holding a MutableList
+        mutated in place, which lands on the StateFlow KDoc's clause that behaviour with
+        classes violating the Any.equals contract is unspecified. The shipped stem assigns a
+        newly built, equal instance of a well-behaved type instead.
+
   - review: Compose Units 2-6 assessment gaps (E23-07)
     date: 2026-09-08
     scope: >-

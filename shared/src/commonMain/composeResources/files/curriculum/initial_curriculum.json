@@ -4231,7 +4231,7 @@
     {
       "id": "coroutine_async_exception_surfaces_at_await",
       "topicId": "async_reactive",
-      "subtopicId": "coroutine_builders",
+      "subtopicId": "coroutine_exceptions",
       "text": "Inside a coroutineScope, a child started with async fails, but the code never calls await(). When does the failure surface?",
       "answers": [
         {
@@ -11256,7 +11256,7 @@
     {
       "id": "coroutine_run_blocking_main_thread",
       "topicId": "async_reactive",
-      "subtopicId": "coroutine_fundamentals",
+      "subtopicId": "coroutine_builders",
       "text": "A developer calls runBlocking on the main thread to read a value from a suspend function synchronously. What is the consequence?",
       "answers": [
         {
@@ -11334,7 +11334,7 @@
     {
       "id": "parent_cancellation_propagates_children",
       "topicId": "async_reactive",
-      "subtopicId": "coroutine_jobs",
+      "subtopicId": "coroutine_cancellation",
       "text": "A parent Job is cancelled while several child coroutines are suspended. What is the normal structured-concurrency result?",
       "answers": [
         {
@@ -11355,7 +11355,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "parent_cancellation_propagates_children_d"
       ],
@@ -11585,7 +11585,7 @@
       "correctAnswerIds": [
         "coroutine_run_interruptible_blocking_call_a"
       ],
-      "explanation": "Cancellation is cooperative: it marks the Job and waits for the coroutine to reach a suspension point or an explicit check. A blocking JVM call reaches neither, so nothing stops it. runInterruptible runs the block and interrupts its thread on cancellation, turning cancellation into the InterruptedException the blocking API already understands. No dispatcher interrupts threads by itself, a check before the call helps only before it starts, and withTimeout resumes the coroutine while leaving the blocked thread occupied.",
+      "explanation": "Cancellation is cooperative: it marks the Job and waits for the coroutine to reach a suspension point or an explicit check. A blocking JVM call reaches neither, so nothing stops it. runInterruptible runs the block and interrupts its thread on cancellation, turning cancellation into the InterruptedException the blocking API already understands. No dispatcher interrupts threads by itself, a check before the call helps only before it starts, and a timeout does not abandon the call either: the deadline cancels the block, but the coroutine is not resumed until the blocking method returns, so the deadline bounds nothing here.",
       "sources": [
         {
           "title": "runInterruptible",
@@ -17868,6 +17868,781 @@
         {
           "title": "Side-Effects in Compose",
           "url": "https://developer.android.com/develop/ui/compose/side-effects"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_suspend_does_not_move_blocking_work",
+      "topicId": "async_reactive",
+      "subtopicId": "coroutine_fundamentals",
+      "text": "A repository declares suspend fun loadProfile(): Profile and its body calls File(path).readText(), a blocking read, before parsing. A ViewModel calls it from viewModelScope.launch { } on the main dispatcher. What happens while the file is read?",
+      "answers": [
+        {
+          "id": "coroutine_suspend_does_not_move_blocking_work_a",
+          "text": "The main thread is blocked for the whole read, because suspend changes neither where the body runs nor what its calls do."
+        },
+        {
+          "id": "coroutine_suspend_does_not_move_blocking_work_b",
+          "text": "The coroutine suspends when the read starts, so the main thread is free until the file has been read."
+        },
+        {
+          "id": "coroutine_suspend_does_not_move_blocking_work_c",
+          "text": "The read runs on a background thread, because viewModelScope dispatches the bodies of suspending functions off the main thread."
+        },
+        {
+          "id": "coroutine_suspend_does_not_move_blocking_work_d",
+          "text": "The call fails at runtime, because the coroutine machinery rejects a blocking call made inside a suspending function."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "coroutine_suspend_does_not_move_blocking_work_a"
+      ],
+      "explanation": "suspend is a compile-time capability: it lets a function pause at a suspension point and be resumed later without blocking a thread. It selects no dispatcher, starts no thread, and does nothing about calls that block. readText() blocks whichever thread it runs on, and here that is the main thread, so rendering and input stall exactly as they would from an ordinary function call. Nothing in the compiler or the runtime refuses it. Making the function safe to call from the main thread is the callee's own job - the class doing long-running blocking work is in charge of moving execution off the main thread with withContext - which is a convention the documentation asks authors to follow, not a property the keyword confers. Read a suspend signature as a statement about what the author was supposed to do, never as proof of what the body does.",
+      "sources": [
+        {
+          "title": "Coroutines Basics",
+          "url": "https://kotlinlang.org/docs/coroutines-basics.html"
+        },
+        {
+          "title": "Best Practices for Coroutines in Android",
+          "url": "https://developer.android.com/kotlin/coroutines/coroutines-best-practices"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_scope_outlives_its_consumer",
+      "topicId": "async_reactive",
+      "subtopicId": "coroutine_scope",
+      "text": "A SearchController is created for one screen, but it launches every search into an application-lifetime CoroutineScope passed to its constructor, and writes each result into a cache the screen reads. The user leaves the screen while a search is still in flight. What does that ownership mismatch produce?",
+      "answers": [
+        {
+          "id": "coroutine_scope_outlives_its_consumer_b",
+          "text": "The search is cancelled once the screen is destroyed, because the controller that launched it is unreachable."
+        },
+        {
+          "id": "coroutine_scope_outlives_its_consumer_a",
+          "text": "The search runs to the end and still writes its result, because nothing ties its lifetime to the screen's."
+        },
+        {
+          "id": "coroutine_scope_outlives_its_consumer_c",
+          "text": "The search finishes but its write is discarded, because a coroutine cannot publish a result after its owner is gone."
+        },
+        {
+          "id": "coroutine_scope_outlives_its_consumer_d",
+          "text": "The search resumes with a CancellationException at its next suspension point, because the screen owned that work."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "coroutine_scope_outlives_its_consumer_a"
+      ],
+      "explanation": "Ownership here is structural, not conventional. The scope's Job is the parent of everything launched in it, so the lifetime of the search is bounded by the scope that was injected - the process - and not by the screen that asked for it. Nothing else can end it: garbage collection does not cancel coroutines, an unreachable controller keeps running and keeps everything it captured reachable, and there is no owner left who could call cancel(). So the concrete failure is obsolete work that still completes and still writes, leaving the cache holding a result nobody asked for and no lifecycle that the failure of that search would belong to. A scope cancelled with the screen ends the work at its next cancellable point. An application-lifetime scope is the right owner only for work that genuinely must outlive the screen, and then it is a decision rather than a default.",
+      "sources": [
+        {
+          "title": "CoroutineScope",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-scope/"
+        },
+        {
+          "title": "Best Practices for Coroutines in Android",
+          "url": "https://developer.android.com/kotlin/coroutines/coroutines-best-practices"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_parent_job_waits_for_children",
+      "topicId": "async_reactive",
+      "subtopicId": "coroutine_jobs",
+      "text": "A coroutine is started as val parent = scope.launch { launch { delay(500) }; log(\"body done\") }. Immediately after \"body done\" is logged, what does parent report, and what does parent.join() do?",
+      "answers": [
+        {
+          "id": "coroutine_parent_job_waits_for_children_b",
+          "text": "It is already complete, because a Job completes when its own block returns, so join() resumes immediately."
+        },
+        {
+          "id": "coroutine_parent_job_waits_for_children_c",
+          "text": "It is neither active nor complete, because the parent's own code has finished while its structure has not."
+        },
+        {
+          "id": "coroutine_parent_job_waits_for_children_a",
+          "text": "It is still active and not complete: it waits for its child, so join() resumes after the child finishes."
+        },
+        {
+          "id": "coroutine_parent_job_waits_for_children_d",
+          "text": "It is still active, but join() resumes at once, because join() waits only for the coroutine's own block."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "coroutine_parent_job_waits_for_children_a"
+      ],
+      "explanation": "Finishing the body does not finish the Job. It moves the Job into the completing state, where it waits for all of its children before becoming complete, and to an outside observer a completing job is still active: isActive is true and isCompleted is false. Measured on this repository's toolchain, the parent reported StandaloneCoroutine{Completing} with one child while its body had already returned, and join() resumed only when the child's delay ended. That is what makes a Job a handle rather than a status flag - join() suspends until the job is complete for any reason, and it resumes normally even when the job failed, so it is a way to wait rather than a way to collect a result. Deferred is a Job that also carries a value, and await() is the call that rethrows.",
+      "sources": [
+        {
+          "title": "Job",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-job/"
+        },
+        {
+          "title": "Deferred",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-deferred/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_child_context_inherits_and_overrides",
+      "topicId": "async_reactive",
+      "subtopicId": "coroutine_context",
+      "text": "A scope is built as CoroutineScope(Dispatchers.Default + CoroutineName(\"repo\")) and then calls scope.launch(Dispatchers.IO) { }. Which context does the new coroutine run with?",
+      "answers": [
+        {
+          "id": "coroutine_child_context_inherits_and_overrides_b",
+          "text": "Dispatchers.IO alone, because the builder argument replaces the scope's context rather than combining with it."
+        },
+        {
+          "id": "coroutine_child_context_inherits_and_overrides_c",
+          "text": "Dispatchers.IO, the name \"repo\", and the scope's own Job, which the new coroutine shares with the scope."
+        },
+        {
+          "id": "coroutine_child_context_inherits_and_overrides_d",
+          "text": "Dispatchers.Default, the name \"repo\", and a new child Job, because a scope's dispatcher cannot be overridden."
+        },
+        {
+          "id": "coroutine_child_context_inherits_and_overrides_a",
+          "text": "Dispatchers.IO, the name \"repo\", and a new Job whose parent is the scope's Job."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "coroutine_child_context_inherits_and_overrides_a"
+      ],
+      "explanation": "A CoroutineContext is an indexed set of elements, and a builder combines the scope's context with the argument it is given: elements in the argument override elements with the same key, and everything else is inherited untouched. The dispatcher therefore becomes IO while the name survives. The Job is the one element that is neither inherited nor overridden this way - the scope's Job becomes the parent, and the new coroutine's own Job is added to the context - which is exactly what lets the child complete or fail without ending the scope while cancelling the scope still reaches the child. Measured here, the child's Job was not the scope's Job and its parent was. Passing a Job in the argument is a different operation altogether: it re-parents the coroutine out of the scope, which is documented as breaking structured concurrency.",
+      "sources": [
+        {
+          "title": "launch",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/launch.html"
+        },
+        {
+          "title": "CoroutineContext",
+          "url": "https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.coroutines/-coroutine-context/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_io_and_default_share_threads",
+      "topicId": "async_reactive",
+      "subtopicId": "coroutine_dispatchers",
+      "text": "On the JVM, code already running on Dispatchers.Default wraps a blocking call in withContext(Dispatchers.IO) { }. What does that switch actually change?",
+      "answers": [
+        {
+          "id": "coroutine_io_and_default_share_threads_a",
+          "text": "It puts the block under IO's own parallelism limit; the thread often does not change, because the two share threads."
+        },
+        {
+          "id": "coroutine_io_and_default_share_threads_b",
+          "text": "It moves the block onto a thread from a pool that is separate from Default's, leaving every Default worker free."
+        },
+        {
+          "id": "coroutine_io_and_default_share_threads_c",
+          "text": "It changes nothing at all, because IO is another name for Default and withContext observes no context change."
+        },
+        {
+          "id": "coroutine_io_and_default_share_threads_d",
+          "text": "It only renames the dispatcher, so the blocking call goes on occupying a Default worker exactly as before."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "ADVANCED",
+      "correctAnswerIds": [
+        "coroutine_io_and_default_share_threads_a"
+      ],
+      "explanation": "Dispatchers.IO and its views share threads with Dispatchers.Default, and the documentation states plainly that calling withContext(Dispatchers.IO) { } while already running on Default typically does not lead to an actual switch to another thread. What changes is the accounting rather than the thread. Default's parallelism is sized around the core count; the number of threads doing IO work in parallel defaults to the larger of 64 and the core count, additional threads in that pool are created on demand, and views of IO are not restricted by IO's own parallelism. So the blocking call stops consuming one of Default's scarce computation slots even when it keeps the thread it was already on. Neither dispatcher owns a private pool - conceptually both are views of one unlimited pool - and they are not the same dispatcher, so the switch is real even when no thread moves.",
+      "sources": [
+        {
+          "title": "Dispatchers.IO",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-dispatchers/-i-o.html"
+        },
+        {
+          "title": "Dispatchers.Default",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-dispatchers/-default.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_concurrency_needs_independence",
+      "topicId": "async_reactive",
+      "subtopicId": "coroutine_parallelism",
+      "text": "A screen loads the user's profile and then loads the subscription named by the subscriptionId field of that profile response. A developer proposes starting both calls with async so that they overlap. How should that proposal be assessed?",
+      "answers": [
+        {
+          "id": "coroutine_concurrency_needs_independence_b",
+          "text": "Accept it: async runs the calls in parallel, and parallel work never finishes later than the same work run in sequence."
+        },
+        {
+          "id": "coroutine_concurrency_needs_independence_a",
+          "text": "Reject it: the second call needs the first call's result, so there is nothing to overlap and async adds only ceremony."
+        },
+        {
+          "id": "coroutine_concurrency_needs_independence_c",
+          "text": "Reject it: two network waits cannot overlap on a single-core device, because concurrency needs more than one core."
+        },
+        {
+          "id": "coroutine_concurrency_needs_independence_d",
+          "text": "Accept it: both calls already suspend, so the runtime interleaves them whether or not async is used."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "coroutine_concurrency_needs_independence_a"
+      ],
+      "explanation": "Overlapping pays only when the operations are independent, which is the precondition the documentation states when it introduces async: there are no dependencies between the two invocations and we want the answer faster. Here the second call cannot even be formed until the first has returned, so wrapping both in async produces one coroutine that immediately waits for another and buys nothing - and unnecessary concurrency is not free, since it adds a second lifetime to reason about and a second way for the screen to fail. The other two answers fail on the distinction the Unit is built around. Concurrency is not parallelism: two suspended network waits interleave perfectly well on one thread, so core count does not decide whether they can overlap. And suspension by itself creates nothing concurrent - concurrency with coroutines is always explicit, so two suspending calls written one after the other run one after the other.",
+      "sources": [
+        {
+          "title": "Composing Suspending Functions",
+          "url": "https://kotlinlang.org/docs/composing-suspending-functions.html"
+        },
+        {
+          "title": "async",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/async.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_timeout_cleanup_needs_non_cancellable",
+      "topicId": "async_reactive",
+      "subtopicId": "coroutine_cancellation",
+      "text": "An upload runs inside withTimeout(2_000) { }, and a finally block calls a suspending connection.close() that flushes before closing. The deadline passes while the upload is still in flight. What happens to close()?",
+      "answers": [
+        {
+          "id": "coroutine_timeout_cleanup_needs_non_cancellable_b",
+          "text": "The finally block does not run at all, because withTimeout stops the block outright once its deadline passes."
+        },
+        {
+          "id": "coroutine_timeout_cleanup_needs_non_cancellable_c",
+          "text": "The finally block runs to the end, because a finally block is not affected by the cancellation unwinding through it."
+        },
+        {
+          "id": "coroutine_timeout_cleanup_needs_non_cancellable_a",
+          "text": "The finally block runs, but close() resumes at once with a CancellationException, so the flush never happens."
+        },
+        {
+          "id": "coroutine_timeout_cleanup_needs_non_cancellable_d",
+          "text": "The finally block runs to the end, because a timeout is not cancellation and NonCancellable is for a cancelled scope."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "ADVANCED",
+      "correctAnswerIds": [
+        "coroutine_timeout_cleanup_needs_non_cancellable_a"
+      ],
+      "explanation": "A timeout is cancellation with a clock. withTimeout cancels its block with a TimeoutCancellationException rather than stopping it: the documentation says it will not automatically stop the code inside from being executed and that it is up to the block to notice. Cancellation unwinds through finally in the ordinary way, so the cleanup is entered - but the coroutine is cancelled by then, and the first suspension point inside the cleanup resumes with the cancellation exception instead of doing the work. Measured on this repository's toolchain, a suspending cleanup in exactly this shape never completed, and the same cleanup wrapped in withContext(NonCancellable) did. That is what NonCancellable is for and the whole of what it is for: a bounded suspending cleanup that has to finish. It is not a way to mark work as important, and using it around anything unbounded leaves a cancelled coroutine that cannot be stopped.",
+      "sources": [
+        {
+          "title": "withTimeout",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/with-timeout.html"
+        },
+        {
+          "title": "Cancellation and Timeouts",
+          "url": "https://kotlinlang.org/docs/coroutines-cancellation.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "coroutine_shared_counter_lost_update",
+      "topicId": "async_reactive",
+      "subtopicId": "coroutine_parallelism",
+      "text": "Inside coroutineScope, eight coroutines launched on Dispatchers.Default each run total += 1 two thousand times against one shared var total property. The final value is repeatedly below 16,000. Why, and what is the smallest change that fixes it?",
+      "answers": [
+        {
+          "id": "coroutine_shared_counter_lost_update_b",
+          "text": "The updates are not published between threads; annotating total with @Volatile makes every write visible and fixes it."
+        },
+        {
+          "id": "coroutine_shared_counter_lost_update_c",
+          "text": "coroutineScope returns before some children finish; keeping their Jobs and calling joinAll() before reading fixes it."
+        },
+        {
+          "id": "coroutine_shared_counter_lost_update_d",
+          "text": "Each child coroutine captures its own copy of total; hoisting all the updates into one withContext block fixes it."
+        },
+        {
+          "id": "coroutine_shared_counter_lost_update_a",
+          "text": "total += 1 is a read-modify-write two coroutines can interleave; an atomic integer updated in one operation fixes it."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "coroutine_shared_counter_lost_update_a"
+      ],
+      "explanation": "Reading, adding and storing are three steps, so two coroutines running on two threads can read the same value before either stores, and one increment silently overwrites the other. Measured on this repository's toolchain, sixteen thousand increments produced 14,729, and the same load through an atomic produced exactly 16,000. Volatile is the classic wrong fix: it makes reads and writes of that variable linearizable but gives no atomicity to a larger action such as an increment, so the count stays wrong and the code runs slower. The children are already awaited, because coroutineScope does not return until every coroutine started in it has completed, and a captured var is shared rather than copied, so neither joining nor one withContext block changes anything. An atomic makes the whole update indivisible; in common code that is kotlin.concurrent.atomics.AtomicInt. An invariant that spans more than one variable is a different problem and needs a Mutex or confinement instead.",
+      "sources": [
+        {
+          "title": "Shared Mutable State and Concurrency",
+          "url": "https://kotlinlang.org/docs/shared-mutable-state-and-concurrency.html"
+        },
+        {
+          "title": "AtomicInt",
+          "url": "https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.concurrent.atomics/-atomic-int/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_one_shot_result_vs_observable_stream",
+      "topicId": "async_reactive",
+      "subtopicId": "flow_fundamentals",
+      "text": "A checkout repository must return the shipping quote for one address at the moment the user taps Continue. Quotes can change on the server afterwards, and the order already placed must not react to that. Which API shape fits the requirement, and why?",
+      "answers": [
+        {
+          "id": "flow_one_shot_result_vs_observable_stream_a",
+          "text": "suspend fun quote(address: Address): Quote, because the consumer needs one result and the call ends once it has it."
+        },
+        {
+          "id": "flow_one_shot_result_vs_observable_stream_b",
+          "text": "fun quote(address: Address): Flow<Quote>, because a value the server can change later has to be exposed as a stream."
+        },
+        {
+          "id": "flow_one_shot_result_vs_observable_stream_c",
+          "text": "fun quote(address: Address): Flow<Quote>, because a cold Flow delivers one value per collection and then completes."
+        },
+        {
+          "id": "flow_one_shot_result_vs_observable_stream_d",
+          "text": "suspend fun quote(address: Address): Quote, because a Flow can only be built over a callback or listener API."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "flow_one_shot_result_vs_observable_stream_a"
+      ],
+      "explanation": "The division the guidance draws is by what the consumer needs: expose suspending functions for one-shot calls and a Flow to notify about data changes. This consumer needs one quote at one moment, and the requirement says outright that later changes must not reach the placed order - so a Flow would commit every caller to a collection lifetime and to a policy for values it is obliged to discard. Nothing about Flow makes it single-valued either: a cold flow emits whatever its producer emits, one value or a thousand, so delivering one per collection is a property of a particular producer rather than of the type. The rule of thumb that anything the server can change must be returned as a stream is the one the Unit rejects, because it decides from the data rather than from the consumer and pushes the cost of ignoring changes onto every caller. And Flow is not limited to callback sources - the flow builder and callbackFlow are two builders among several.",
+      "sources": [
+        {
+          "title": "Best Practices for Coroutines in Android",
+          "url": "https://developer.android.com/kotlin/coroutines/coroutines-best-practices"
+        },
+        {
+          "title": "Flow",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-flow/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_emit_must_keep_the_collector_context",
+      "topicId": "async_reactive",
+      "subtopicId": "flow_context",
+      "text": "A repository returns flow { withContext(Dispatchers.IO) { emit(query()) } } and a ViewModel collects it on the main dispatcher. What happens when that flow is collected?",
+      "answers": [
+        {
+          "id": "flow_emit_must_keep_the_collector_context_b",
+          "text": "It works, because withContext only decides where query() runs and emit is unaffected by the context around it."
+        },
+        {
+          "id": "flow_emit_must_keep_the_collector_context_a",
+          "text": "It fails with an IllegalStateException, because the builder requires every emission to happen in the collector's context."
+        },
+        {
+          "id": "flow_emit_must_keep_the_collector_context_c",
+          "text": "It works, and the collector's block runs on Dispatchers.IO too, because the emission context becomes the collection context."
+        },
+        {
+          "id": "flow_emit_must_keep_the_collector_context_d",
+          "text": "It does not compile, because emit may not be called from a suspending lambda other than the builder's own block."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "flow_emit_must_keep_the_collector_context_a"
+      ],
+      "explanation": "A cold flow is context-preserving: it runs in the context of the coroutine that collects it, and the flow builder enforces that by checking at emission time that the emitting coroutine's context is the collection context. An emit inside withContext is an emission from a different context, so the builder throws - measured on this repository's toolchain, an IllegalStateException reporting that the flow invariant is violated and naming both contexts. The documentation gives the same shape as its own example of the failure. The rule is what makes a collect call locally readable: without it nobody could know which context their collection runs in without tracing every operator back to the producer. It is also the reason flowOn exists - flowOn does not let an emitter change its own context, it runs the upstream in a separate coroutine and hands values across, so emitter and collector still agree. Nothing here is a compile error, and an upstream context never leaks downstream.",
+      "sources": [
+        {
+          "title": "flow",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/flow.html"
+        },
+        {
+          "title": "flowOn",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/flow-on.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_flat_map_concat_preserves_grouping",
+      "topicId": "async_reactive",
+      "subtopicId": "flow_operators",
+      "text": "An upload queue maps each queued file to a Flow of that file's progress updates. The screen must show every file's updates from first to last, one file at a time, in the order the files were queued, and must never interleave two files' updates. Which flattening choice expresses that?",
+      "answers": [
+        {
+          "id": "flow_flat_map_concat_preserves_grouping_b",
+          "text": "flatMapMerge, which starts the inner flows in queue order and therefore delivers their values in that order."
+        },
+        {
+          "id": "flow_flat_map_concat_preserves_grouping_c",
+          "text": "flatMapLatest, which starts the next file's flow as it is queued and cancels whichever one was running."
+        },
+        {
+          "id": "flow_flat_map_concat_preserves_grouping_a",
+          "text": "flatMapConcat, which collects each inner flow to completion before it starts the next one."
+        },
+        {
+          "id": "flow_flat_map_concat_preserves_grouping_d",
+          "text": "flatMapConcat, which runs the inner flows concurrently and reorders their values before emitting them."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "flow_flat_map_concat_preserves_grouping_a"
+      ],
+      "explanation": "Concatenation is the ordering guarantee: inner flows are collected sequentially, without interleaving nested flows, so each file's updates arrive as one uninterrupted run and the runs follow the queue. Merging is specified the other way - flows are merged concurrently without preserving an order of elements - and measured on one timeline, the inner flow that was started first delivered both of its values last because the other was faster. flatMapLatest answers a different requirement altogether: it cancels the previous inner flow, which is what a search box wants and what an upload queue must not do. Concatenation is also not a reordering buffer; it achieves the order by not overlapping the work at all, and that lost overlap is the price the requirement is paying. The library's own note on both operators is worth keeping: where each value needs one result rather than a stream of them, a suspending map is simpler than any flattening.",
+      "sources": [
+        {
+          "title": "flattenConcat",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/flatten-concat.html"
+        },
+        {
+          "title": "merge",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/merge.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_on_completion_observes_every_ending",
+      "topicId": "async_reactive",
+      "subtopicId": "flow_errors",
+      "text": "A ViewModel writes repository.sync().onEach { render(it) }.onCompletion { analytics.log(\"sync_succeeded\") }.launchIn(viewModelScope). What is wrong with it?",
+      "answers": [
+        {
+          "id": "flow_on_completion_observes_every_ending_b",
+          "text": "Nothing is wrong, because onCompletion is invoked only when the flow completes without an exception."
+        },
+        {
+          "id": "flow_on_completion_observes_every_ending_c",
+          "text": "It records the event before the last value reaches onEach, because onCompletion runs when the producer stops."
+        },
+        {
+          "id": "flow_on_completion_observes_every_ending_d",
+          "text": "It records the event once per emitted value, because onCompletion is invoked for each element delivered."
+        },
+        {
+          "id": "flow_on_completion_observes_every_ending_a",
+          "text": "It records a success after a failure and after cancellation too, because onCompletion observes every ending."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "flow_on_completion_observes_every_ending_a"
+      ],
+      "explanation": "onCompletion is the flow's finally block: it is invoked after the flow completes or is cancelled, and its cause is null only when completion was normal. A failing sync reaches it with the failure as the cause, and so does a collection cancelled because the learner left the screen - which is the common case here, since leaving cancels viewModelScope. Measured across four endings, the cause was null for normal completion, the thrown exception for an upstream failure, the same exception for a failure thrown by the collector, and a cancellation exception when the collecting coroutine was cancelled. The documented idiom is therefore to test it: onCompletion { if (it == null) ... }. The operator is not a per-element hook, which is what onEach is, and it does not run before the flow ends. It also reports exceptions from downstream as well as upstream, which is the other reason its invocation proves nothing about success.",
+      "sources": [
+        {
+          "title": "onCompletion",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/on-completion.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_sample_cadence_vs_debounce_quiet_period",
+      "topicId": "async_reactive",
+      "subtopicId": "flow_operators",
+      "text": "A sensor flow emits a reading every 50 ms for as long as the screen is open. The screen must be updated at most once a second while readings keep arriving. Which operator expresses that, and why?",
+      "answers": [
+        {
+          "id": "flow_sample_cadence_vs_debounce_quiet_period_a",
+          "text": "sample(1.seconds), because it emits the latest value of each sampling period while values keep arriving."
+        },
+        {
+          "id": "flow_sample_cadence_vs_debounce_quiet_period_b",
+          "text": "debounce(1.seconds), because it emits the latest value once a second for as long as values keep arriving."
+        },
+        {
+          "id": "flow_sample_cadence_vs_debounce_quiet_period_c",
+          "text": "distinctUntilChanged(), because dropping a reading equal to the previous one bounds how often the screen updates."
+        },
+        {
+          "id": "flow_sample_cadence_vs_debounce_quiet_period_d",
+          "text": "conflate(), because dropping values the collector has not read limits the screen to one update a second."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "flow_sample_cadence_vs_debounce_quiet_period_a"
+      ],
+      "explanation": "The two timing operators answer different questions. sample emits only the latest value emitted during the given sampling period, so a source that never pauses still yields one value per tick - a fixed cadence. debounce filters out values that are followed by newer values within its timeout, which makes it a quiet period, and the documentation states that the resulting flow does not emit anything as long as the original flow emits items faster than the timeout. Measured on this repository's toolchain, a 50 ms source under debounce(1000) produced nothing at all in 1.2 seconds, while sample(300) produced three values over the same run. distinctUntilChanged compares a value with the immediately previous one and knows nothing about time, so a steadily changing reading passes straight through it. conflate applies no clock either: it drops values the collector has not taken, so what it bounds is the collector's backlog rather than the update rate.",
+      "sources": [
+        {
+          "title": "sample",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/sample.html"
+        },
+        {
+          "title": "debounce",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/debounce.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_retry_re_collects_the_upstream",
+      "topicId": "async_reactive",
+      "subtopicId": "flow_errors",
+      "text": "A cold flow emits Sending, then calls api.createOrder(order), then emits Sent. The call fails on the first two attempts, and the flow is collected as submit(order).retry(2). What does the collector receive, and how often does createOrder run?",
+      "answers": [
+        {
+          "id": "flow_retry_re_collects_the_upstream_b",
+          "text": "Sending once and then Sent, because retry resumes the failed attempt at the call that threw the exception."
+        },
+        {
+          "id": "flow_retry_re_collects_the_upstream_a",
+          "text": "Sending three times and then Sent, because every attempt re-collects the flow, so createOrder runs three times."
+        },
+        {
+          "id": "flow_retry_re_collects_the_upstream_c",
+          "text": "Sending once and then Sent, because retry discards whatever an attempt had emitted before it failed."
+        },
+        {
+          "id": "flow_retry_re_collects_the_upstream_d",
+          "text": "Sending three times and then Sent, but createOrder runs once, because a cold flow caches the values it produced."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "flow_retry_re_collects_the_upstream_a"
+      ],
+      "explanation": "retry retries collection of the flow: it resubscribes rather than resuming, so the producer runs again from its first statement. Measured on this repository's toolchain, the producer ran three times and the collector received Sending, Sending, Sending, Sent. Two consequences decide whether the operator may be used at all. The upstream's side effects repeat, so an order can be created more than once unless the call is idempotent or carries a key the server deduplicates - and a retry count is not protection against that. And values already delivered are not withdrawn: retry is transparent to the downstream, so the Sending values from both failed attempts have already been rendered by the time the third succeeds. A cold flow holds nothing between collections, so there is no cache to serve the second attempt. Retrying is appropriate exactly when repeating the upstream work is.",
+      "sources": [
+        {
+          "title": "retry",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/retry.html"
+        },
+        {
+          "title": "Flow",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-flow/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "state_flow_equal_value_is_not_a_new_state",
+      "topicId": "async_reactive",
+      "subtopicId": "stateflow",
+      "text": "A ViewModel holds MutableStateFlow(Filters(listOf(\"new\"))), where Filters is a data class. A refresh assigns Filters(listOf(\"new\")) - a newly built instance with the same contents - three times while one collector is subscribed throughout. How many values does that collector receive?",
+      "answers": [
+        {
+          "id": "state_flow_equal_value_is_not_a_new_state_b",
+          "text": "Four: the value on subscribing and one per assignment, because each assignment stores a different instance."
+        },
+        {
+          "id": "state_flow_equal_value_is_not_a_new_state_c",
+          "text": "Four, because writing to value always notifies and conflation only affects collectors that fall behind."
+        },
+        {
+          "id": "state_flow_equal_value_is_not_a_new_state_a",
+          "text": "One: the value it received on subscribing, because each assignment equals the current value and emits nothing."
+        },
+        {
+          "id": "state_flow_equal_value_is_not_a_new_state_d",
+          "text": "None until something changes, because a collector receives its first value only from the first update."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "ADVANCED",
+      "correctAnswerIds": [
+        "state_flow_equal_value_is_not_a_new_state_a"
+      ],
+      "explanation": "A state flow conflates values using Any.equals, in the same way as distinctUntilChanged, and a data class generates equals over its properties - so a freshly built Filters holding an equal list is equal to the one already held and the assignment emits nothing. Measured on this repository's toolchain, three such assignments produced one delivery, while the identical code with a class that keeps identity equality produced four. Two consequences follow that a description of StateFlow does not give you. The state type's equals is part of the observable behaviour, so a change to the type alone can start or stop UI updates. And conflation is not only a slow-collector effect: a slow collector does skip fast updates and always collects the most recent value, but here nothing is emitted for a collector at any speed. The answer is one rather than none because a state flow always has a current value and replays it to every new subscriber.",
+      "sources": [
+        {
+          "title": "StateFlow",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-state-flow/"
+        },
+        {
+          "title": "Data Classes",
+          "url": "https://kotlinlang.org/docs/data-classes.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "flow_sharing_policy_and_replay_expiration",
+      "topicId": "async_reactive",
+      "subtopicId": "flow_sharing",
+      "text": "A ViewModel exposes an expensive database query with stateIn(viewModelScope, policy, Loading). The query must stop within about five seconds of the last collector leaving; a rotation, which drops the only collector for about 300 ms, must not restart it; and reopening the screen more than a minute later must not briefly show the previous session's value. Which policy meets all three?",
+      "answers": [
+        {
+          "id": "flow_sharing_policy_and_replay_expiration_b",
+          "text": "WhileSubscribed(5_000): one argument is enough, because that timeout governs the stop and how long the value is kept."
+        },
+        {
+          "id": "flow_sharing_policy_and_replay_expiration_c",
+          "text": "WhileSubscribed(stopTimeoutMillis = 30_000, replayExpirationMillis = 5_000): the longer timer belongs to the stop."
+        },
+        {
+          "id": "flow_sharing_policy_and_replay_expiration_d",
+          "text": "SharingStarted.Lazily: it starts at the first collector and stops when the last one leaves, keeping nothing after that."
+        },
+        {
+          "id": "flow_sharing_policy_and_replay_expiration_a",
+          "text": "WhileSubscribed(stopTimeoutMillis = 5_000, replayExpirationMillis = 30_000): the stop outlasts a rotation, the value does not."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "ADVANCED",
+      "correctAnswerIds": [
+        "flow_sharing_policy_and_replay_expiration_a"
+      ],
+      "explanation": "WhileSubscribed carries two timers on two clocks, and they control different things. stopTimeoutMillis is the delay between the last subscriber disappearing and the sharing coroutine stopping; it defaults to zero, which is why a plain WhileSubscribed() restarts the query on every rotation. replayExpirationMillis is the delay between that stop and the replay cache being reset, which for stateIn means the state returns to the initial value, and it defaults to Long.MAX_VALUE - keep the replay cache forever, never reset. One argument therefore cannot satisfy both requirements: a five-second stop survives the rotation and then holds the old value indefinitely. Swapping the numbers keeps the query running for half a minute with nobody collecting, which is what the first requirement exists to prevent. Lazily starts at the first subscriber and never stops; the symmetry its name suggests is not in the contract, and it was measured still producing long after its only collector had left. Eagerly is not a mistake in general - it is the right answer where a derivation should be ready before the first screen opens - but it cannot stop, which this requirement asks for. Measured here, an expiration of 200 ms reset the state to its initial value after the stop while the default kept it.",
+      "sources": [
+        {
+          "title": "SharingStarted.WhileSubscribed",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-sharing-started/-companion/-while-subscribed.html"
+        },
+        {
+          "title": "stateIn",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/state-in.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "hot_sharing_changes_production_not_retention",
+      "topicId": "async_reactive",
+      "subtopicId": "hot_vs_cold_streams",
+      "text": "A repository's cold fun prices(): Flow<Price> opens a websocket inside its flow builder. It is replaced by val prices: SharedFlow<Price> = pricesFlow.shareIn(appScope, SharingStarted.WhileSubscribed(), replay = 0). Three screens collect prices, one of them joining a minute after the others. What changed?",
+      "answers": [
+        {
+          "id": "hot_sharing_changes_production_not_retention_a",
+          "text": "One upstream now serves all three, and the late screen still receives nothing that was emitted before it subscribed."
+        },
+        {
+          "id": "hot_sharing_changes_production_not_retention_b",
+          "text": "One upstream now serves all three, and the late screen is brought up to date, because a hot flow retains what it emitted."
+        },
+        {
+          "id": "hot_sharing_changes_production_not_retention_c",
+          "text": "The upstream now runs whether or not anything is collecting, because a hot flow keeps producing with no collectors."
+        },
+        {
+          "id": "hot_sharing_changes_production_not_retention_d",
+          "text": "Each screen still opens its own socket, because shareIn caches values without changing how often the producer runs."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "hot_sharing_changes_production_not_retention_a"
+      ],
+      "explanation": "Sharing and retention are separate axes, and hotness settles neither by itself. shareIn converts a cold flow into a hot SharedFlow that shares emissions from a single running instance of the upstream with multiple downstream subscribers, so three collections become one socket - that is the change. What a late subscriber receives is decided by replay alone, and replay is zero here, so it sees only what arrives after it subscribes. Production lifetime is decided by the SharingStarted policy: WhileSubscribed starts the upstream when the first subscriber appears and stops it when the last one disappears, so this hot flow is precisely one that does not keep producing with nobody collecting. The only claim hotness itself makes is that the active instance exists independently of the presence of collectors, which is why two configurations of the same hot type can retain everything or nothing.",
+      "sources": [
+        {
+          "title": "shareIn",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/share-in.html"
+        },
+        {
+          "title": "SharedFlow",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-shared-flow/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "shared_flow_try_emit_true_is_not_delivery",
+      "topicId": "async_reactive",
+      "subtopicId": "sharedflow",
+      "text": "An unbuffered MutableSharedFlow<Event>() carries one-off events. A background job calls tryEmit(event) while no screen is collecting, and writes a \"delivered\" log line whenever tryEmit returns true. What is true of that run?",
+      "answers": [
+        {
+          "id": "shared_flow_try_emit_true_is_not_delivery_b",
+          "text": "tryEmit returns false, because an unbuffered shared flow cannot accept a value with no subscriber to take it."
+        },
+        {
+          "id": "shared_flow_try_emit_true_is_not_delivery_a",
+          "text": "tryEmit returns true and the event is lost at once, because true records that the flow accepted the call."
+        },
+        {
+          "id": "shared_flow_try_emit_true_is_not_delivery_c",
+          "text": "tryEmit returns true and the event waits until a screen subscribes, because a shared flow holds what nobody took."
+        },
+        {
+          "id": "shared_flow_try_emit_true_is_not_delivery_d",
+          "text": "tryEmit returns true and the event is kept in the replay cache, because an unbuffered flow still keeps its latest value."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "ADVANCED",
+      "correctAnswerIds": [
+        "shared_flow_try_emit_true_is_not_delivery_a"
+      ],
+      "explanation": "On an unbuffered shared flow, emit suspends until all subscribers receive the value and returns immediately when there are none, and tryEmit can return false only when the overflow strategy is SUSPEND and there are subscribers collecting. With no subscriber the buffer is not used at all: the value is stored in the replay cache if one was configured and dropped otherwise, and tryEmit returns true either way. This flow was created with no replay, so there is no cache and the event is immediately lost - measured on this repository's toolchain, tryEmit returned true and replayCache was empty. Extra buffer capacity would not help, because in the absence of subscribers only the most recent replay values are stored; six emissions into a flow with sixty-four spare slots and no subscriber left a later subscriber with nothing. So a true result is the opposite of the guarantee the log claims, and it is exactly the point at which treating a shared flow as an event bus stops being safe.",
+      "sources": [
+        {
+          "title": "MutableSharedFlow.tryEmit",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-mutable-shared-flow/try-emit.html"
+        },
+        {
+          "title": "SharedFlow",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-shared-flow/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "stream_choice_cannot_supply_a_delivery_guarantee",
+      "topicId": "async_reactive",
+      "subtopicId": "hot_vs_cold_streams",
+      "text": "A background upload must record that it finished so that the screen shows it the next time the user opens it - including when nothing was collecting at the time, and after the app's process has been restarted in between. Which of these satisfies that requirement?",
+      "answers": [
+        {
+          "id": "stream_choice_cannot_supply_a_delivery_guarantee_b",
+          "text": "MutableSharedFlow(replay = 1), because the replay cache hands the occurrence to whichever subscriber arrives next."
+        },
+        {
+          "id": "stream_choice_cannot_supply_a_delivery_guarantee_c",
+          "text": "MutableStateFlow(Idle), because a state flow always holds a current value that a later collector reads at once."
+        },
+        {
+          "id": "stream_choice_cannot_supply_a_delivery_guarantee_a",
+          "text": "Write the completion where it outlives the process, and have the screen read that stored state when it opens."
+        },
+        {
+          "id": "stream_choice_cannot_supply_a_delivery_guarantee_d",
+          "text": "MutableSharedFlow(extraBufferCapacity = 64), because spare buffer capacity holds emissions until a subscriber takes them."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "ADVANCED",
+      "correctAnswerIds": [
+        "stream_choice_cannot_supply_a_delivery_guarantee_a"
+      ],
+      "explanation": "The requirement names a delivery guarantee, and none of these transient configurations is one. A replay cache does hand its most recent value to the next subscriber, which is why replay = 1 looks right - but the cache lives in the flow instance, and the instance dies with the process, so there is nothing left to replay afterwards. A state flow has the same limit plus a trap: after a restart its current value is whatever it was constructed with, so the screen reads Idle and treats that as fact. Extra buffer capacity does nothing here at all, because in the absence of subscribers only the most recent replay values are stored and the buffer overflow behaviour is never triggered; measured on this repository's toolchain, six emissions into a flow with sixty-four spare slots and no subscriber left a later subscriber with nothing. An occurrence that must not be lost has to be written somewhere that outlives the emitter and read when the consumer arrives. A hot flow is then a good way to notify a screen that is already open, which is a different job from guaranteeing that the fact survives.",
+      "sources": [
+        {
+          "title": "SharedFlow",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-shared-flow/"
+        },
+        {
+          "title": "MutableSharedFlow",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-mutable-shared-flow.html"
         }
       ],
       "status": "ACTIVE"

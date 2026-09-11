@@ -3,7 +3,7 @@
 ## Purpose
 
 This document records **what the interview question bank currently covers**, so
-that planning the next expansion does not require re-reading all 411 questions.
+that planning the next expansion does not require re-reading all 430 questions.
 A full coverage review is expensive; this is the checkpoint that replaces it.
 
 `docs/content/content-authoring.md` is the editorial contract and
@@ -110,25 +110,28 @@ its current output is reproduced under **Audit baselines** below.
 
 | Metric | Value |
 |---|---:|
-| Total questions | 411 |
-| ACTIVE | 370 |
+| Total questions | 430 |
+| ACTIVE | 389 |
 | DEPRECATED | 41 |
 | Topics | 17 |
 | Subtopics | 361 |
 | Subtopics with ≥1 active question | 283 (78%) |
 | Subtopics with 0 active questions | 78 |
-| SINGLE | 364 |
+| SINGLE | 383 |
 | MULTIPLE | 47 |
 | — of which exactly one correct answer | 3 |
-| Answer options | 1650 (405 questions with 4 options, 6 with 5) |
-| Source references | 495 across 298 unique URLs |
+| Answer options | 1726 (424 questions with 4 options, 6 with 5) |
+| Source references | 532 across 317 unique URLs |
 
-Subtopic depth distribution: **78** subtopics have 0 questions, **216** have 1,
-**52** have 2, **10** have 3, **5** have 4.
+Subtopic depth distribution: **78** subtopics have 0 questions, **210** have 1,
+**50** have 2, **15** have 3, **6** have 4, **2** have 5.
 
-The bank averages one question per subtopic. That is the number to keep in mind:
-the taxonomy is deliberately wider than the content, so most subtopics being at
-1 is the designed steady state, not a deficiency.
+The bank still averages roughly one question per subtopic, and the taxonomy is
+deliberately wider than the content, so most subtopics sitting at 1 is the
+designed steady state rather than a deficiency. The one deliberate exception is
+`async_reactive` at 2.19 per subtopic: E24-08 authored nineteen questions there
+so that the six shipped Coroutines and Flow learning Units practise the
+reasoning they teach.
 
 ## Topic coverage
 
@@ -137,10 +140,10 @@ where the next expansion should look first.
 
 | Topic | `topicId` | Active | Subtopics | Covered | Empty | Density |
 |---|---|---:|---:|---:|---:|---:|
+| Coroutines, Flow & Reactive Programming | `async_reactive` | 57 | 26 | 24 | 2 | 2.19 |
 | Lifecycle, State & Navigation | `lifecycle_navigation` | 23 | 11 | 11 | 0 | 2.09 |
 | Android Platform & Application Model | `android_platform` | 16 | 8 | 8 | 0 | 2.00 |
 | UI — Views & Jetpack Compose | `android_ui` | 37 | 24 | 20 | 4 | 1.54 |
-| Coroutines, Flow & Reactive Programming | `async_reactive` | 38 | 26 | 24 | 2 | 1.46 |
 | Application Architecture & Design Principles | `architecture` | 22 | 18 | 16 | 2 | 1.22 |
 | Local Persistence & Offline Data | `local_data` | 21 | 19 | 17 | 2 | 1.11 |
 | Kotlin Language & JVM Fundamentals | `kotlin_language` | 25 | 23 | 19 | 4 | 1.09 |
@@ -154,7 +157,7 @@ where the next expansion should look first.
 | Build System, Modularization & Delivery | `build_delivery` | 17 | 25 | 15 | 10 | 0.68 |
 | Notifications & Push Messaging | `notifications` | 12 | 18 | 11 | 7 | 0.67 |
 | Kotlin Multiplatform & Compose Multiplatform | `kmp` | 16 | 27 | 15 | 12 | 0.59 |
-| **Total** | | **370** | **361** | **283** | **78** | **1.02** |
+| **Total** | | **389** | **361** | **283** | **78** | **1.08** |
 
 Two caveats before acting on this table:
 
@@ -173,19 +176,23 @@ Current output of the `docs/content/question-authoring-playbook.md` Part 3 scrip
 the whole bank:
 
 ```
-correct-longest 157/367 (43%), mean ratio 1.03, over 10% limit: 0
+correct-longest 160/386 (41%), mean ratio 1.03, over 10% limit: 0
 absolutes: distractors 0.22/opt, correct 0.12/opt
 position: {0: 28%, 1: 27%, 2: 26%, 3: 19%, 4: 1%}
 ```
 
-All 298 unique source URLs returned HTTP 200 at the time of this snapshot, every one
-rendered a non-empty body, and every `#fragment` among them resolved to a real anchor.
+All 317 unique source URLs returned HTTP 200 when E24-08 re-ran the sweep, all 285
+distinct pages behind them rendered a non-empty body, and all 48 `#fragment` citations
+resolved to a real anchor.
 
 These are the numbers a new batch must not degrade. In particular: **zero
 questions exceed the 10% correct-answer length limit**, and correct answers do
 use absolute words (0.12/opt against 0.22/opt in distractors), so "the option
 with 'only' in it is wrong" is not a working strategy. Both properties are easy
-to break by accident and are the reason the audit exists.
+to break by accident and are the reason the audit exists. The position row is
+also why E24-08's nineteen new questions do not all key their first option:
+answer identity is by ID, so the batch was reordered after authoring and the
+distribution is unchanged.
 
 The length and absolutes audits are now also enforced by
 `InitialCurriculumContentQualityTest`, so a batch that degrades either fails the build
@@ -331,29 +338,46 @@ actually get asked in interviews, at the grain the questions are written.
 
 ### Coroutines and Flow
 
-**Covered with a dedicated question:** suspension vs blocking · `runBlocking` on
-the main thread · `CoroutineScope` ownership · Job parent/child cancellation ·
-structured concurrency · cooperative cancellation · `CancellationException`
-rethrow · `runInterruptible` · `supervisorScope` nesting · `SupervisorJob` in a
-child context · `launch` vs `async` · unawaited `Deferred` · exception surfacing
-at `await` · `CoroutineExceptionHandler` · `withContext` · `Dispatchers.IO` vs
-`Default` · dispatcher assumptions in suspending libraries · sequential
-`async().await()` · Flow coldness · `flowOn` · `catch` upstream-only ·
-`retryWhen` · `buffer` · `conflate` vs `collectLatest` · `callbackFlow` /
-`awaitClose` · `flatMapLatest` · `debounce` vs `distinctUntilChanged` · `combine`
+**Covered with a dedicated question:** suspension vs blocking · a blocking call
+inside a `suspend` body · `runBlocking` on the main thread · `CoroutineScope`
+ownership · a scope that outlives its consumer · the completing parent and
+`join` · Job parent/child cancellation · structured concurrency · cooperative
+cancellation · `CancellationException` rethrow · suspending cleanup under a
+timeout and `NonCancellable` · `runInterruptible` · `supervisorScope` nesting ·
+`SupervisorJob` in a child context · child context inheritance and override ·
+`launch` vs `async` · unawaited `Deferred` · exception surfacing at `await` ·
+`CoroutineExceptionHandler` · `withContext` · `Dispatchers.IO` vs `Default` ·
+`IO` and `Default` sharing threads · dispatcher assumptions in suspending
+libraries · sequential `async().await()` · when overlapping work does not pay ·
+the lost update between coroutines · Flow coldness · one-shot `suspend` against
+an observable Flow · `flowOn` · the emission-context invariant · `catch`
+upstream-only · `retryWhen` · what retrying an upstream costs · `onCompletion`
+across every ending · `buffer` · `conflate` vs `collectLatest` · `callbackFlow` /
+`awaitClose` · `flatMapLatest` · `flatMapConcat` ordering · `debounce` vs
+`distinctUntilChanged` · `sample` cadence vs `debounce` quiet period · `combine`
 vs `zip` · `launchIn` · producer runs in the collector's coroutine · `StateFlow`
-· `SharedFlow` replay · `stateIn` vs `shareIn` · `SharingStarted.WhileSubscribed`
-· Channel vs Flow · `repeatOnLifecycle` · `viewModelScope` cancellation ·
-LiveData vs StateFlow.
+· equality-based conflation as behaviour · `SharedFlow` replay · unbuffered
+`tryEmit` semantics · `stateIn` vs `shareIn` · `SharingStarted.WhileSubscribed` ·
+choosing a sharing policy and its two timers · sharing against retention ·
+delivery guarantees no hot flow provides · Channel vs Flow · `repeatOnLifecycle`
+· `viewModelScope` cancellation · LiveData vs StateFlow.
 
-**Thin:** `CoroutineContext` (one question, and it is really about
-`SupervisorJob`) — context element inheritance and `+` composition are untested.
-Coroutine-vs-thread cost was deprecated and never replaced.
+**Thin:** `structured_concurrency`, `coroutine_supervision` and
+`coroutine_context_switching` hold one question each. Coroutine-vs-thread cost
+was deprecated and never replaced.
+
+**Deliberately still open after E24-08:** choosing among an atomic, confinement
+and a `Mutex` when an invariant spans more than one variable (the lost-update
+question assesses the race and the atomic only), and choosing among `flow`,
+`channelFlow` and `callbackFlow` by producer shape. Both are recorded with their
+reasons in `docs/content/coroutines-flow-units-1-6-plan.md` under **Assessment
+outcomes for E24-08**.
 
 **Absent by choice:** RxJava, Flow vs RxJava.
 
-This family is now the best-covered in the bank. Treat it as saturated unless a
-specific concept above is listed as thin.
+This family is the best-covered in the bank by a wide margin, because six
+learning Units practise it. Treat it as saturated unless a concept above is
+listed as thin or open.
 
 ### Lifecycle and state
 
@@ -457,14 +481,15 @@ multiplatform ViewModel, library compatibility, sharing trade-offs.
 - **Check the deprecated table before authoring.** Three subtopics are
   deprecated-only and several others have a retired predecessor whose concept is
   still taken.
-- **Author 15–25% of a new batch as MULTIPLE.** The bank sits at 11.5%
-  (47/411) because the earliest content used fewer; the last batch ran at 15.6%,
-  which is the band to aim for. Only three questions in the whole bank are
+- **Author 15–25% of a new batch as MULTIPLE.** The bank sits at 10.9%
+  (47/430) because the earliest content used fewer, and E24-08 authored none —
+  every one of its nineteen questions asks for a single prediction or decision,
+  which `SINGLE` expresses honestly. The band to aim for is still 15–25%. Only three questions in the whole bank are
   MULTIPLE with a single correct answer — keep authoring some that way, or
   `selectionMode` stays inferable from the answer key.
 - **Every question in the bank has 4 options except 6 with 5.** Stay at 4 unless
   there is a specific reason.
-- **Source hosts, for reference:** developer.android.com 323 · kotlinlang.org 97
+- **Source hosts, for reference:** developer.android.com 326 · kotlinlang.org 131
   · github.com 25 (kotlinx.serialization, OkHttp, Retrofit and SQLDelight —
   `square.github.io` returns 404, so each project's own repository is the primary
   source — plus four androidx runtime files cited where a contract is stated only
@@ -581,33 +606,33 @@ target subtopic here before authoring to avoid a near-duplicate.
 
 ### Coroutines, Flow & Reactive Programming
 
-`async_reactive` — **38 active** across 26 subtopics (24 covered, 2 empty)
+`async_reactive` — **57 active** across 26 subtopics (24 covered, 2 empty)
 
 | Subtopic | n | Question IDs |
 |---|---:|---|
-| `coroutine_fundamentals` — Coroutine and suspend fundamentals | 2 | `coroutine_fundamentals_001`, `coroutine_run_blocking_main_thread` _(deprecated: `coroutine_vs_thread_suspension`)_ |
-| `coroutine_builders` — launch and async | 2 | `coroutine_async_exception_surfaces_at_await`, `launch_vs_async_unawaited_result` _(deprecated: `coroutine_builders_001`)_ |
-| `coroutine_scope` — CoroutineScope | 1 | `coroutine_scope_job_ownership` |
-| `coroutine_context` — CoroutineContext | 1 | `coroutine_supervisor_job_child_context_noop` |
-| `coroutine_dispatchers` — Dispatchers | 2 | `coroutine_io_dispatcher_blocking_calls`, `suspending_api_dispatcher_assumption` |
-| `coroutine_jobs` — Job and parent-child relationships | 1 | `parent_cancellation_propagates_children` |
+| `coroutine_fundamentals` — Coroutine and suspend fundamentals | 2 | `coroutine_fundamentals_001`, `coroutine_suspend_does_not_move_blocking_work` _(deprecated: `coroutine_vs_thread_suspension`)_ |
+| `coroutine_builders` — launch and async | 2 | `coroutine_run_blocking_main_thread`, `launch_vs_async_unawaited_result` _(deprecated: `coroutine_builders_001`)_ |
+| `coroutine_scope` — CoroutineScope | 2 | `coroutine_scope_job_ownership`, `coroutine_scope_outlives_its_consumer` |
+| `coroutine_context` — CoroutineContext | 2 | `coroutine_supervisor_job_child_context_noop`, `coroutine_child_context_inherits_and_overrides` |
+| `coroutine_dispatchers` — Dispatchers | 3 | `coroutine_io_dispatcher_blocking_calls`, `suspending_api_dispatcher_assumption`, `coroutine_io_and_default_share_threads` |
+| `coroutine_jobs` — Job and parent-child relationships | 1 | `coroutine_parent_job_waits_for_children` |
 | `structured_concurrency` — Structured concurrency | 1 | `structured_concurrency_001` |
-| `coroutine_cancellation` — Cancellation | 3 | `coroutine_cancellation_001`, `cancellation_exception_rethrow`, `coroutine_run_interruptible_blocking_call` _(deprecated: `cpu_loop_cooperative_cancellation`)_ |
-| `coroutine_exceptions` — Exception propagation and handling | 2 | `coroutine_exceptions_001`, `coroutine_exception_handler_root_boundary` |
+| `coroutine_cancellation` — Cancellation | 5 | `coroutine_cancellation_001`, `parent_cancellation_propagates_children`, `cancellation_exception_rethrow`, `coroutine_run_interruptible_blocking_call`, `coroutine_timeout_cleanup_needs_non_cancellable` _(deprecated: `cpu_loop_cooperative_cancellation`)_ |
+| `coroutine_exceptions` — Exception propagation and handling | 3 | `coroutine_async_exception_surfaces_at_await`, `coroutine_exceptions_001`, `coroutine_exception_handler_root_boundary` |
 | `coroutine_supervision` — SupervisorJob and supervisorScope | 1 | `coroutine_supervisor_scope_direct_children` _(deprecated: `coroutine_scope_vs_supervisor_scope_failure`)_ |
 | `coroutine_context_switching` — withContext | 1 | `coroutine_context_switching_001` |
-| `coroutine_parallelism` — Concurrency and async/await | 1 | `coroutine_async_await_sequential` |
+| `coroutine_parallelism` — Concurrency and async/await | 3 | `coroutine_async_await_sequential`, `coroutine_concurrency_needs_independence`, `coroutine_shared_counter_lost_update` |
 | `lifecycle_coroutines` — Lifecycle-aware coroutine scopes | 1 | `viewmodel_scope_cleared_cancellation` |
-| `flow_fundamentals` — Flow fundamentals | 2 | `flow_fundamentals_001`, `callback_flow_await_close_registration` |
-| `flow_operators` — Flow operators | 3 | `flow_flat_map_latest_search_cancellation`, `flow_debounce_vs_distinct_until_changed`, `flow_combine_vs_zip_emission_rule` |
+| `flow_fundamentals` — Flow fundamentals | 3 | `flow_fundamentals_001`, `callback_flow_await_close_registration`, `flow_one_shot_result_vs_observable_stream` |
+| `flow_operators` — Flow operators | 5 | `flow_flat_map_latest_search_cancellation`, `flow_debounce_vs_distinct_until_changed`, `flow_combine_vs_zip_emission_rule`, `flow_flat_map_concat_preserves_grouping`, `flow_sample_cadence_vs_debounce_quiet_period` |
 | `flow_collection` — Flow collection | 2 | `flow_launch_in_on_each_scope`, `flow_collection_cancels_cold_producer` |
-| `flow_errors` — Flow exception handling | 2 | `flow_catch_upstream_only`, `flow_retry_when_conditional_attempts` |
-| `flow_context` — flowOn and execution context | 1 | `flow_context_001` |
+| `flow_errors` — Flow exception handling | 4 | `flow_catch_upstream_only`, `flow_retry_when_conditional_attempts`, `flow_on_completion_observes_every_ending`, `flow_retry_re_collects_the_upstream` |
+| `flow_context` — flowOn and execution context | 2 | `flow_context_001`, `flow_emit_must_keep_the_collector_context` |
 | `flow_buffering` — Buffering and conflation | 2 | `flow_conflate_vs_collect_latest`, `flow_buffer_producer_consumer_concurrency` |
-| `stateflow` — StateFlow | 2 | `stateflow_001`, `stateflow_vs_sharedflow_current_value` |
-| `sharedflow` — SharedFlow | 2 | `flow_share_in_vs_state_in`, `shared_flow_replay_late_subscriber` _(deprecated: `sharedflow_001`)_ |
-| `hot_vs_cold_streams` — Hot vs cold streams | 1 | `flow_vs_channel_delivery_model` |
-| `flow_sharing` — stateIn, shareIn, and sharing policies | 1 | `flow_state_in_while_subscribed` |
+| `stateflow` — StateFlow | 3 | `stateflow_001`, `stateflow_vs_sharedflow_current_value`, `state_flow_equal_value_is_not_a_new_state` |
+| `sharedflow` — SharedFlow | 3 | `flow_share_in_vs_state_in`, `shared_flow_replay_late_subscriber`, `shared_flow_try_emit_true_is_not_delivery` _(deprecated: `sharedflow_001`)_ |
+| `hot_vs_cold_streams` — Hot vs cold streams | 3 | `flow_vs_channel_delivery_model`, `hot_sharing_changes_production_not_retention`, `stream_choice_cannot_supply_a_delivery_guarantee` |
+| `flow_sharing` — stateIn, shareIn, and sharing policies | 2 | `flow_state_in_while_subscribed`, `flow_sharing_policy_and_replay_expiration` |
 | `livedata` — LiveData | 1 | `live_data_vs_state_flow_ui_state` |
 | `rxjava_fundamentals` — RxJava/RxKotlin fundamentals | 0 | — |
 | `flow_vs_rxjava` — Flow vs RxJava | 0 | — |

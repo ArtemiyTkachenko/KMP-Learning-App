@@ -163,7 +163,7 @@ internal class ProgressStateHolder(
                     totalQuestions = score.totalQuestions,
                     correctAnswers = score.correctAnswers,
                     percentage = score.percentage,
-                    completedAtText = completedAt.toString(),
+                    completedAt = completedAt,
                 )
                 is AssessmentConfig.Focused -> CompletedAttemptUiModel(
                     attemptId = attempt.id,
@@ -198,7 +198,7 @@ internal class ProgressStateHolder(
                     totalQuestions = score.totalQuestions,
                     correctAnswers = score.correctAnswers,
                     percentage = score.percentage,
-                    completedAtText = completedAt.toString(),
+                    completedAt = completedAt,
                 )
             }
         }

@@ -26,8 +26,15 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
  * so each feature keeps its own wording and string resources.
  *
  * The accuracy figure is the point of the row, so it is the largest thing in it and is coloured
- * against the domain's weakness threshold. Weak rows also tint their container and carry a badge,
- * so they are identifiable without reading the number.
+ * against the domain's weakness threshold.
+ *
+ * A weak row is marked by an accent border and the coloured figure, over the same neutral container
+ * every other row uses. It previously filled the whole card with `partiallyCorrectContainer`, which
+ * is a saturated amber: on a single row that reads as emphasis, and down a list of six weak areas it
+ * reads as an alarm wall in which nothing stands out because everything is shouting. The border is
+ * the quieter statement of the same fact, and it never travels alone — the figure is tinted, the
+ * ordering puts weak rows first, and [weakLabel] is available wherever the surrounding context does
+ * not already say what these rows are.
  *
  * [action] is an optional low-emphasis control on its own line under the figures. It is absent by
  * default, so a card stays a reading surface unless a caller deliberately gives it something to do,
@@ -54,15 +61,13 @@ internal fun PerformanceCard(
         modifier = modifier.fillMaxWidth(),
         shape = if (isSummary) MaterialTheme.shapes.large else MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
-            containerColor = if (isWeak) {
-                semantic.partiallyCorrectContainer
-            } else if (isSummary) {
+            containerColor = if (isSummary) {
                 MaterialTheme.colorScheme.surfaceContainer
             } else {
                 MaterialTheme.colorScheme.surfaceContainerLow
             },
         ),
-        border = if (isWeak) BorderStroke(1.dp, semantic.partiallyCorrect) else null,
+        border = if (isWeak) BorderStroke(WeakBorderWidth, semantic.partiallyCorrect) else null,
     ) {
         Row(
             modifier = Modifier
@@ -102,11 +107,14 @@ internal fun PerformanceCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                // Only where the badge adds something the container does not already say. A list
+                // whose heading is "Weak areas" passes null: repeating the heading on every card in
+                // it is noise, not a second signal.
                 if (isWeak && weakLabel != null) {
                     StatusBadge(
                         text = weakLabel,
                         contentColor = semantic.onPartiallyCorrectContainer,
-                        containerColor = MaterialTheme.colorScheme.surface,
+                        containerColor = semantic.partiallyCorrectContainer,
                         icon = AppIcons.Warning,
                     )
                 }
@@ -136,3 +144,6 @@ internal fun PerformanceCard(
         }
     }
 }
+
+/** Thick enough to read as a deliberate accent at a glance, thin enough not to become a frame. */
+private val WeakBorderWidth = 1.dp

@@ -1,6 +1,7 @@
 package org.artkachenko.kmp_learning_app.mixed_interview
 
 import androidx.lifecycle.ViewModel
+import kotlin.time.Instant
 import kotlinx.coroutines.flow.StateFlow
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 
@@ -11,11 +12,17 @@ internal data class InterviewHistoryUiModel(
     val best: InterviewAttemptUiModel,
 )
 
+/**
+ * [completedAt] is the domain instant, never pre-formatted text: when a result reads as "Today" is a
+ * question about the reader's zone and the reader's clock, so it is answered in the composable. See
+ * `ui/time/TimestampText.kt`.
+ */
 internal data class InterviewAttemptUiModel(
     val attemptId: String,
     val correctAnswers: Int,
     val totalQuestions: Int,
     val percentage: Double,
+    val completedAt: Instant,
 )
 
 /**
@@ -35,13 +42,19 @@ internal class InterviewStartViewModel(
     val history: StateFlow<InterviewHistoryUiState> = stateHolder.state
 }
 
-/** Null when the attempt carries no score, which a completed attempt always does. */
+/**
+ * Null when the attempt carries no score or no completion time, both of which a completed attempt
+ * always does — the invariants live on `TestAttempt`. Returning null rather than asserting keeps one
+ * malformed persisted row from taking the whole record away.
+ */
 internal fun toInterviewAttemptUiModel(attempt: TestAttempt): InterviewAttemptUiModel? {
     val score = attempt.score ?: return null
+    val completedAt = attempt.completedAt ?: return null
     return InterviewAttemptUiModel(
         attemptId = attempt.id,
         correctAnswers = score.correctAnswers,
         totalQuestions = score.totalQuestions,
         percentage = score.percentage,
+        completedAt = completedAt,
     )
 }

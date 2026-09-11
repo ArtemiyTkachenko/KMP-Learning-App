@@ -47,6 +47,17 @@ internal sealed interface TopicDetailUiState {
          * is therefore legal, and a study-state failure leaves [learningUnits] Available.
          */
         val studyProgress: StudyProgressUiState<TopicStudyProgress> = StudyProgressUiState.Loading,
+        /**
+         * How many of this Topic's ACTIVE Questions are currently unresolved mistakes, or `null`
+         * when completed history is unknown.
+         *
+         * Derived from the same history cache [learningContext] comes from, intersected with the
+         * Question IDs the curriculum read above already produced — so it costs no extra repository
+         * read and cannot count a mistake against a Question this Topic no longer holds. It is
+         * nullable for the same reason [learningContext] is: unknown history is not an empty
+         * queue, and a recommendation must never be made or withheld on a signal nobody read.
+         */
+        val unresolvedMistakeCount: Int? = null,
     ) : TopicDetailUiState
 
     data object NotFound : TopicDetailUiState

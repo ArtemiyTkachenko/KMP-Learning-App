@@ -52,9 +52,14 @@ internal const val TopicDetailLoadingTag = "topic_detail_loading"
 internal const val TopicPracticeButtonTag = "topic_practice_button"
 internal const val SubtopicPracticeButtonTag = "subtopic_practice_button"
 
-/** The Topic's own targeted shortcuts, whose labels repeat on every Subtopic row below them. */
-internal const val TopicWeakPracticeTag = "topic_weak_practice"
-internal const val TopicUnseenPracticeTag = "topic_unseen_practice"
+/**
+ * The Topic's secondary way into the Practice Builder, beside the promoted recommendation.
+ *
+ * The Topic-level weak and unseen shortcuts this replaces are gone: their two intents are now ranked
+ * into one promoted action, and everything they could reach stays reachable through the builder this
+ * opens. The Subtopic rows keep their own shortcuts, which are not ranked against anything.
+ */
+internal const val TopicCustomPracticeTag = "topic_custom_practice"
 
 internal fun subtopicWeakPracticeTag(subtopicId: String): String =
     "subtopic_weak_practice_$subtopicId"
@@ -368,6 +373,7 @@ private fun ColumnScope.TopicDetailTabs(
                 topicId = state.topic.id,
                 topicQuestionCount = state.topicQuestionCount,
                 learningContext = state.learningContext,
+                unresolvedMistakeCount = state.unresolvedMistakeCount,
                 onStartTopicPractice = onStartTopicPractice,
                 onPracticePreset = onPracticePreset,
                 scrollState = practiceScrollState,

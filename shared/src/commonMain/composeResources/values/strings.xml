@@ -49,6 +49,10 @@
     <string name="learning_context_coverage_title">Curriculum coverage</string>
     <string name="learning_context_coverage_count">%1$d of %2$d questions explored</string>
     <string name="learning_context_not_studied">Not studied yet</string>
+    <plurals name="learning_context_not_started">
+        <item quantity="one">Not started · %1$d question</item>
+        <item quantity="other">Not started · %1$d questions</item>
+    </plurals>
     <string name="learning_context_accuracy">accuracy</string>
     <string name="progress_title">Progress</string>
     <string name="progress_loading">Loading progress</string>
@@ -91,7 +95,9 @@
     </plurals>
     <string name="interview_history_title">Your interview record</string>
     <string name="interview_history_attempts">%1$d completed</string>
-    <string name="interview_history_latest">Latest</string>
+    <string name="interview_history_latest">Last interview</string>
+    <string name="interview_history_empty_title">No interviews yet</string>
+    <string name="interview_history_empty_detail">Your most recent result will appear here once you finish one, so you can see how your interviews are going over time.</string>
     <string name="interview_history_best">Best</string>
     <string name="interview_history_score">%1$d of %2$d correct</string>
     <string name="mistake_review_none">No unresolved mistakes — nice work.</string>
@@ -106,6 +112,7 @@
     <string name="mixed_interview_title">Mixed Android Interview</string>
     <string name="mixed_interview_description">Test your knowledge across Android topics.</string>
     <string name="mixed_interview_question_count">%1$d-question interview</string>
+    <string name="mixed_interview_review_note">Answers are reviewed when the interview is complete, not question by question.</string>
     <string name="mixed_interview_start">Start Mixed Interview</string>
     <string name="mixed_result_title">Interview results</string>
     <string name="mixed_result_loading">Loading interview results</string>
@@ -128,6 +135,10 @@
     <string name="topic_detail_not_found">Topic not available</string>
     <string name="topic_detail_loading">Loading topic</string>
     <string name="topic_detail_start_practice">Start Practice</string>
+    <string name="topic_detail_custom_practice">Custom practice…</string>
+    <string name="topic_detail_recommended_weak_reason">Recommended: this is currently one of your weak areas.</string>
+    <string name="topic_detail_recommended_mistakes_reason">Recommended: questions you got wrong and have not answered correctly since.</string>
+    <string name="topic_detail_recommended_unseen_reason">Recommended: questions in this topic you have not met yet.</string>
     <string name="topic_detail_accuracy_caption">All-time accuracy</string>
     <string name="topic_detail_subtopics">Subtopics</string>
     <string name="topic_detail_study">Study</string>
@@ -178,6 +189,10 @@
     <plurals name="practice_shortcut_unseen_count">
         <item quantity="one">Practice %1$d unseen question</item>
         <item quantity="other">Practice %1$d unseen questions</item>
+    </plurals>
+    <plurals name="practice_shortcut_mistake_count">
+        <item quantity="one">Practice %1$d unresolved mistake</item>
+        <item quantity="other">Practice %1$d unresolved mistakes</item>
     </plurals>
     <string name="practice_shortcut_subtopic_mistakes">Practice unresolved mistakes in this subtopic</string>
     <string name="assessment_taking_question_progress">Question %1$d of %2$d</string>
@@ -232,7 +247,9 @@
     </plurals>
     <string name="assessment_review_source_open_failed">This source could not be opened.</string>
     <string name="assessment_review_save_question">Save</string>
-    <string name="assessment_review_unsave_question">Unsave</string>
+    <string name="assessment_review_unsave_question">Saved</string>
+    <string name="assessment_review_saved_state">Saved</string>
+    <string name="assessment_review_unsaved_state">Not saved</string>
     <string name="focused_result_practice_again">Practice again</string>
     <string name="focused_result_practice_starting">Starting practice</string>
     <string name="focused_result_repeat_source_missing">The original attempt is no longer available.</string>
@@ -268,12 +285,16 @@
     <string name="learning_lesson_sources">Sources</string>
     <string name="learning_lesson_source_open_failed">This source could not be opened.</string>
     <string name="learning_lesson_previous">Previous</string>
-    <string name="learning_lesson_next">Next</string>
+    <string name="learning_lesson_next">Next lesson</string>
     <string name="learning_lesson_studied">Studied</string>
     <string name="learning_lesson_not_studied">Not studied</string>
-    <string name="learning_lesson_mark_studied">Mark as studied</string>
     <string name="learning_lesson_unmark_studied">Mark as not studied</string>
     <string name="learning_study_progress_unavailable">Study progress unavailable</string>
+    <string name="learning_lesson_in_progress">In progress</string>
+    <string name="learning_lesson_position">Lesson %1$d of %2$d</string>
+    <string name="learning_lesson_context">%1$s · %2$s</string>
+    <string name="learning_lesson_end_title">You&apos;ve reached the end of this lesson</string>
+    <string name="learning_lesson_complete">Complete lesson</string>
     <string name="continue_learning_title">Next lesson</string>
     <string name="continue_learning_complete_title">All lessons studied</string>
     <string name="continue_learning_complete_message">You have studied every lesson available.</string>
@@ -284,4 +305,21 @@
     <string name="app_startup_loading">Preparing local curriculum</string>
     <string name="app_startup_error">Local curriculum could not be initialized</string>
     <string name="selection_copied_snackbar">Copied to clipboard</string>
+    <string name="progress_review_mistakes_action">Review mistakes</string>
+    <string name="timestamp_today">Today</string>
+    <string name="timestamp_yesterday">Yesterday</string>
+    <string name="timestamp_date">%1$s %2$s %3$s</string>
+    <string name="timestamp_day_and_time">%1$s · %2$s</string>
+    <string name="month_short_january">Jan</string>
+    <string name="month_short_february">Feb</string>
+    <string name="month_short_march">Mar</string>
+    <string name="month_short_april">Apr</string>
+    <string name="month_short_may">May</string>
+    <string name="month_short_june">Jun</string>
+    <string name="month_short_july">Jul</string>
+    <string name="month_short_august">Aug</string>
+    <string name="month_short_september">Sep</string>
+    <string name="month_short_october">Oct</string>
+    <string name="month_short_november">Nov</string>
+    <string name="month_short_december">Dec</string>
 </resources>

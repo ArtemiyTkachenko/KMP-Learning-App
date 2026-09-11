@@ -1,7 +1,12 @@
 package org.artkachenko.kmp_learning_app.assessment_review
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -162,15 +167,19 @@ internal class AssessmentReviewComponentsTest {
             }
         }
 
-        onNodeWithTag(reviewQuestionSaveTag("q")).assertIsDisplayed()
-        onNodeWithText("Save").assertIsDisplayed()
-        onNodeWithText("Unsave").assertDoesNotExist()
+        onNodeWithTag(reviewQuestionSaveTag("q"))
+            .assertIsDisplayed()
+            // The label is the action, the state description is the current value, and the two are
+            // different strings on purpose: a screen reader must hear both.
+            .assert(hasText("Save"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.Off))
+        onNodeWithText("Saved").assertDoesNotExist()
         onNodeWithTag(reviewQuestionSaveTag("q")).performClick()
         assertEquals(1, toggles)
     }
 
     @Test
-    fun aSavedQuestionOffersUnsaveAndReportsTheTap() = runComposeUiTest {
+    fun aSavedQuestionReadsAsSavedAndReportsTheTap() = runComposeUiTest {
         var toggles = 0
         setContent {
             AppTheme {
@@ -186,8 +195,10 @@ internal class AssessmentReviewComponentsTest {
             }
         }
 
-        onNodeWithText("Unsave").assertIsDisplayed()
-        onNodeWithText("Save").assertDoesNotExist()
+        onNodeWithTag(reviewQuestionSaveTag("q"))
+            .assertIsDisplayed()
+            .assert(hasText("Saved"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.On))
         onNodeWithTag(reviewQuestionSaveTag("q")).performClick()
         assertEquals(1, toggles)
     }
@@ -229,7 +240,7 @@ internal class AssessmentReviewComponentsTest {
 
         onNodeWithTag(reviewQuestionSaveTag("q")).assertDoesNotExist()
         onNodeWithText("Save").assertDoesNotExist()
-        onNodeWithText("Unsave").assertDoesNotExist()
+        onNodeWithText("Saved").assertDoesNotExist()
     }
 
     /** The save action and each source link stay separate controls with separate callbacks. */

@@ -126,8 +126,16 @@ internal class AppNavigatorTest {
         assertNull(AppTopLevelDestinationSaver.restore("RETIRED_AREA"))
     }
 
+    /**
+     * Normal application mode everywhere except while a question is actually being answered.
+     *
+     * Both result routes are on the normal-mode side. The attempt is persisted and scored before
+     * either is reached, so there is nothing left to interrupt, and leaving a learner in focus mode
+     * after an assessment ended is what made the navigation bar appear and disappear for reasons
+     * they could not predict.
+     */
     @Test
-    fun browsingScreensKeepAreaNavigationAndAssessmentScreensHideIt() {
+    fun onlyActiveAssessmentsEnterFocusMode() {
         listOf(
             AppRoute.Topics,
             AppRoute.Interview,
@@ -135,19 +143,26 @@ internal class AppNavigatorTest {
             AppRoute.MistakeReview,
             AppRoute.Topic("t"),
             AppRoute.ProgressTopic("t"),
+            AppRoute.SavedQuestions,
             // Configuring practice has started nothing, so leaving it costs the learner nothing.
             AppRoute.PracticeBuilderTopic("t"),
             AppRoute.PracticeBuilderSubtopic("s"),
+            AppRoute.PracticeBuilderLearningUnit("u"),
+            // Reading is browsing.
+            AppRoute.LearningUnit("u"),
+            AppRoute.LearningLesson("u", "l"),
+            // Reviewing a finished assessment is reading, not answering.
+            AppRoute.MixedInterviewResult("a"),
+            AppRoute.FocusedPracticeResult("a"),
         ).forEach { assertTrue(it.showsAreaNavigation(), "$it should keep area navigation") }
 
         listOf(
             AppRoute.MixedInterview(20),
             AppRoute.MixedInterviewAttempt("a"),
-            AppRoute.MixedInterviewResult("a"),
             AppRoute.FocusedTopicPractice("t", 10, AllQuestionLevels.toList(), PracticeQuestionSource.ALL),
             AppRoute.FocusedSubtopicPractice("s", 10, AllQuestionLevels.toList(), PracticeQuestionSource.ALL),
+            AppRoute.FocusedSubtopicsPractice(listOf("s"), 10, AllQuestionLevels.toList(), PracticeQuestionSource.ALL),
             AppRoute.FocusedPracticeAttempt("a"),
-            AppRoute.FocusedPracticeResult("a"),
         ).forEach { assertFalse(it.showsAreaNavigation(), "$it should hide area navigation") }
     }
 }

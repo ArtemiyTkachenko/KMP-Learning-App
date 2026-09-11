@@ -654,23 +654,52 @@ practice action anywhere reads `StudyProgressState`.
 `studyState: StudyProgressUiState<LessonStudyUiModel>`, where `LessonStudyUiModel` is
 `isStudied` plus `isPending` for this Lesson alone.
 
-The control sits directly under the Lesson's title and summary, before the body — the
-learner can see whether they already studied it without reading to the end, and can reverse
-the claim from the same place — and is a quiet status badge beside an `OutlinedButton`
-rather than anything with the weight of "Practice this unit".
+**State at the top, action at the end.** The reader reports whether the Lesson is studied
+directly under the title — so the learner can see it without reading to the end — and the
+control that *changes* it lives after the Sources, behind an explicit end-of-lesson prompt.
+The two used to sit together under the summary as a badge beside an equally sized
+`OutlinedButton`, which meant the third thing a learner met on an unread Lesson was an
+invitation to declare they had read it. Completion is now something that happens when the
+material is genuinely behind them.
 
-| Study state | Rendering |
-| --- | --- |
-| `Loading` | Nothing. A badge before the record is read would be a guess |
-| `Available(isStudied = false)` | Badge "Not studied", button "Mark as studied" |
-| `Available(isStudied = true)` | Badge "Studied", button "Mark as not studied" |
-| `Available(isPending = true)` | The persisted badge unchanged, button disabled |
-| `Unavailable` | "Study progress unavailable" — never "Not studied", and no control |
+The two states are also deliberately asymmetrical. An unstudied Lesson ends on "You've
+reached the end of this lesson" and one filled `Button`; a studied one ends on a statement
+with a `TextButton` under it, because "Studied" and "Mark as not studied" drawn as two pill
+controls of equal weight made undoing look like half of what the feature was for.
+
+| Study state | Top of page | End of page |
+| --- | --- | --- |
+| `Loading` | Nothing. A badge before the record is read would be a guess | Nothing |
+| `Available(isStudied = false)` | Badge "In progress" | Prompt, and a filled "Complete lesson" |
+| `Available(isStudied = true)` | Badge "Studied" with a tick | "Studied", and a text "Mark as not studied" |
+| `Available(isPending = true)` | The persisted badge unchanged | The control disabled |
+| `Unavailable` | "Study progress unavailable" — never "Not studied", and no control | Nothing |
+
+"In progress" rather than "Not studied": the reader is by definition in the middle of it,
+and the negative phrasing described the record rather than the learner.
 
 Accessibility is carried by words in two channels: the button's visible label is the action
 it performs, which is what Material's own semantics announce, and the current value is
 published as the button's `stateDescription`. No tick, colour, or icon is load-bearing, and
 no redundant content description is added on top of what Material already exposes.
+
+**Where the Lesson sits.** `Content` also carries `placement: LessonPlacementUiModel?` — the
+Unit's title and the Lesson's 1-based position among that Unit's ACTIVE Lessons — rendered as
+one quiet line above the title ("Thinking in Compose · Lesson 3 of 7"). The Topic → Unit →
+Lesson hierarchy the learner navigated down was otherwise invisible once they arrived. It is
+orientation, not chrome: no breadcrumb chain, no reading-time estimate, no section outline,
+and no header previous/next, each of which would be a second navigation system competing with
+the one at the end of the page. The counts come from the same ACTIVE list previous/next steps
+through, so a retired Lesson is neither a waypoint nor a denominator; a Unit with a single
+readable Lesson prints its name and drops the position, because a position within a sequence
+of one states nothing.
+
+**One primary continuation.** The end of the page ranks its two ways onward rather than
+offering both at equal weight. With a successor, the next-Lesson card takes the primary
+container and "Practice this unit" steps down to an `OutlinedButton`; on the last Lesson of a
+Unit there is nothing left to read, so practising takes the filled button instead. Previous
+keeps the quiet container it always had. Both controls emit exactly what they emitted before
+the ranking existed.
 
 `onToggleStudied` is the only thing on the page that changes study state. Opening the
 Lesson, scrolling it, reaching the bottom, pressing Previous or Next, opening a Source, and

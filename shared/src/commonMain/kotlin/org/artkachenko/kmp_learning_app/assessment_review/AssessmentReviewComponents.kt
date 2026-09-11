@@ -5,9 +5,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -20,6 +22,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.assessment_review_accuracy_caption
@@ -38,11 +44,14 @@ import kmp_learning_app.shared.generated.resources.assessment_review_missed
 import kmp_learning_app.shared.generated.resources.assessment_review_practice_mistakes
 import kmp_learning_app.shared.generated.resources.assessment_review_partially_correct
 import kmp_learning_app.shared.generated.resources.assessment_review_save_question
+import kmp_learning_app.shared.generated.resources.assessment_review_saved_state
+import kmp_learning_app.shared.generated.resources.assessment_review_unsaved_state
 import kmp_learning_app.shared.generated.resources.assessment_review_score
 import kmp_learning_app.shared.generated.resources.assessment_review_selected
 import kmp_learning_app.shared.generated.resources.assessment_review_unresolved_questions
 import kmp_learning_app.shared.generated.resources.assessment_review_unsave_question
 import org.artkachenko.kmp_learning_app.ui.AccuracyHeadline
+import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
@@ -209,6 +218,15 @@ private fun ReviewAnswerUiModel.outcome(): AnswerOutcome = when {
  * surface has no saving to offer at all. Everything else about the card is unchanged by it: the
  * action sits beside the heading and leaves the outcome, answers, explanation, and source links
  * exactly as they were.
+ *
+ * [statesOutcome] says whether the surface around this card has already told the learner what these
+ * questions are. A result screen lists correct, partially correct, and incorrect questions together,
+ * so every card has to declare which it is. The Mistakes queue does not: it is titled by its count
+ * of unresolved mistakes, every entry in it is one by definition, and stamping a saturated
+ * `Incorrect` badge on each card repeats that fact once per card while making a list the learner
+ * opened deliberately look like a wall of failures. The distinction that *is* still worth drawing
+ * there — partially correct, where they picked only correct options but missed one — is a different
+ * state from the one the screen declares, so it is kept; see [QuestionOutcomeLabel].
  */
 @Composable
 internal fun ReviewQuestionCard(
@@ -216,6 +234,7 @@ internal fun ReviewQuestionCard(
     onSourceClick: (String) -> Unit,
     failedSourceUrl: String? = null,
     saveAction: ReviewSaveAction? = null,
+    statesOutcome: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     var expanded by rememberSaveable(question.questionId) { mutableStateOf(!question.isCorrect) }
@@ -241,7 +260,7 @@ internal fun ReviewQuestionCard(
                     SaveQuestionAction(questionId = question.questionId, action = saveAction)
                 }
             }
-            QuestionOutcomeLabel(question.outcome())
+            QuestionOutcomeLabel(outcome = question.outcome(), statesOutcome = statesOutcome)
             TextButton(onClick = { expanded = !expanded }) {
                 Text(
                     stringResource(
@@ -269,34 +288,77 @@ internal fun ReviewQuestionCard(
 }
 
 /**
- * States the current saved state as the label of the action that changes it, in words rather than
- * by colour or icon shape alone, so it reads the same to assistive technology as it does on screen.
- * Disabled only while this Question's own mutation is being persisted.
+ * The bookmark control: one affordance whose two states are distinguishable three ways over.
+ *
+ * It was a bare "Save"/"Unsave" text button, which is unambiguous but looks like a command rather
+ * than a state and reads as a different control each time it is pressed. It is now the conventional
+ * bookmark — a filled ribbon when the Question is saved, an outlined one when it is not — with the
+ * word kept beside it, because an icon alone would leave the state readable only to someone who
+ * knows which ribbon means which. Shape, fill, and the word all change together, so the state is
+ * never carried by colour alone or by shape alone.
+ *
+ * The accessible reading is deliberately split across two properties. The visible label is the
+ * *action* ("Save" / "Saved"), which is what Material's button semantics announce, and the current
+ * value is published separately as `stateDescription` and as `toggleableState` — so a screen reader
+ * says what is true now as well as what pressing it will do, which a label alone cannot express.
+ *
+ * Disabled only while this Question's own mutation is being persisted; the icon and label keep
+ * showing the stored value throughout, so a pending save never draws as though it had been written.
  */
 @Composable
 private fun SaveQuestionAction(
     questionId: String,
     action: ReviewSaveAction,
 ) {
+    val stateLabel = stringResource(
+        if (action.isSaved) {
+            Res.string.assessment_review_saved_state
+        } else {
+            Res.string.assessment_review_unsaved_state
+        },
+    )
     TextButton(
         onClick = action.onToggle,
         enabled = !action.isPending,
-        modifier = Modifier.testTag(reviewQuestionSaveTag(questionId)),
+        modifier = Modifier
+            .testTag(reviewQuestionSaveTag(questionId))
+            .semantics {
+                stateDescription = stateLabel
+                toggleableState = ToggleableState(action.isSaved)
+            },
     ) {
+        Icon(
+            imageVector = if (action.isSaved) AppIcons.Bookmark else AppIcons.BookmarkBorder,
+            contentDescription = null,
+            modifier = Modifier.size(SaveIconSize),
+        )
         Text(
-            stringResource(
+            text = stringResource(
                 if (action.isSaved) {
                     Res.string.assessment_review_unsave_question
                 } else {
                     Res.string.assessment_review_save_question
                 },
             ),
+            modifier = Modifier.padding(start = AppSpacing.Tight),
         )
     }
 }
 
+/** Matches the leading-icon size Material gives a text button. */
+private val SaveIconSize = 18.dp
+
+/**
+ * The badge, unless the surface has already said it.
+ *
+ * When [statesOutcome] is false the plain incorrect verdict is dropped, because the screen declared
+ * it: what is left is the one case that still distinguishes something — partially correct. Correct
+ * cannot occur on such a surface today and is kept rather than special-cased, so a future caller
+ * that mixes outcomes under a heading of its own still reads correctly.
+ */
 @Composable
-private fun QuestionOutcomeLabel(outcome: QuestionOutcome) {
+private fun QuestionOutcomeLabel(outcome: QuestionOutcome, statesOutcome: Boolean) {
+    if (!statesOutcome && outcome == QuestionOutcome.INCORRECT) return
     val semantic = AppThemeExtras.semanticColors
     val (text, content, container) = when (outcome) {
         QuestionOutcome.CORRECT -> Triple(

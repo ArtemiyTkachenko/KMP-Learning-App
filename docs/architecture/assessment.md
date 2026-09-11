@@ -53,10 +53,31 @@ taking screen pins a linear meter under its top bar, driven by the same
 `questionNumber`/`totalQuestions` as the counter, so how far through the assessment
 the learner is stays answerable while they read a long question.
 
-The Mixed Android Interview product has its own top-level area. `InterviewStartScreen`
-leads with the start action and, once the learner has finished an interview, shows their
-latest and best results through `InterviewStartViewModel`; each opens the result it came
-from. Starting an interview navigates with `MixedInterview(questionCount)` primitive
+The Mixed Android Interview product has its own top-level area, and the asymmetry with
+Practice is intentional rather than an omission: **Practice is the learner choosing what to
+work on, Interview is the app testing them.** There is no interview builder and no
+configurable length, so the landing screen's job is to state what the session is before the
+learner commits to twenty questions — its size, its scope, and the one rule that actually
+differs from Practice: answers are reviewed when the interview is complete, not question by
+question. That rule is the same one `AssessmentTakingViewModel` enforces by withholding
+`PracticeFeedback` for a `Mixed` config, so the copy describes behaviour rather than
+promising it.
+
+Once the learner has finished an interview, `InterviewStartScreen` shows their record
+through `InterviewStartViewModel`; each row opens the result it came from. The most recent
+interview leads and carries its date, because "how did I do last time, and how long ago was
+that?" is the question a returning learner has. A personal best is kept and kept *second*:
+it is genuine information the data model already supports, but promoting it above the latest
+result would turn a preparation tool into a high-score table, and the app has no streak,
+points, or leaderboard anywhere else. The best row is omitted entirely when it is the same
+attempt as the latest.
+
+A first visit is a state rather than a gap. `InterviewHistoryUiState` keeps `Loading` and
+`Empty` distinct so the record area shows a spinner while the read is in flight and a short
+"No interviews yet" note afterwards, explaining what will appear there. No empty table and no
+zeroed score: a `0 of 20` would be a result the learner never got.
+
+Starting an interview navigates with `MixedInterview(questionCount)` primitive
 route data.
 The route reconstructs `AssessmentConfig.Mixed` at its destination and delegates
 to `AssessmentTakingLaunch.New`, so balanced selection, initial persistence,

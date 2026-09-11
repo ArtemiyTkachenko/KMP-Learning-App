@@ -40,10 +40,16 @@ internal enum class AppTopLevelDestination(
 /**
  * Whether navigation between areas stays available on [route].
  *
- * Browsing screens keep it: hiding the bar on every detail trapped a learner inside an area until
- * they pressed back, so a topic could not be left for Progress in one move. Screens that own the
- * learner's full attention hide it instead — an assessment in progress should not offer a one-tap
- * exit, and a result reads as a conclusion to dismiss rather than a place to switch away from.
+ * The rule is one sentence: normal application mode everywhere, focus mode only while a question is
+ * actually being answered. Browsing, reading, configuring, and reviewing are all normal mode —
+ * hiding the bar on every detail trapped a learner inside an area until they pressed back, so a
+ * topic could not be left for Progress in one move. Focus mode is reserved for the two screens where
+ * an assessment is in flight and a one-tap exit would abandon it.
+ *
+ * A result screen is deliberately normal mode. The assessment is over by the time it is reached, and
+ * a learner reading their answers back is browsing; keeping them in focus mode meant finishing a
+ * practice run left the app without navigation until they pressed back, which is the arbitrary
+ * appear/disappear behaviour the rule exists to remove.
  */
 internal fun AppRoute.showsAreaNavigation(): Boolean =
     when (this) {
@@ -66,15 +72,20 @@ internal fun AppRoute.showsAreaNavigation(): Boolean =
         // Topic detail is, so leaving for Progress stays one move away.
         is AppRoute.LearningUnit,
         is AppRoute.LearningLesson,
+        // Reviewing a finished assessment is reading, not answering. The attempt is persisted and
+        // scored before either result route is reached, so there is nothing left to interrupt and
+        // the learner returns to normal application chrome the moment the assessment ends.
+        is AppRoute.MixedInterviewResult,
+        is AppRoute.FocusedPracticeResult,
         -> true
 
+        // Focus mode: a question is on screen and unanswered work would be abandoned by a one-tap
+        // move to another area.
         is AppRoute.MixedInterview,
         is AppRoute.MixedInterviewAttempt,
-        is AppRoute.MixedInterviewResult,
         is AppRoute.FocusedTopicPractice,
         is AppRoute.FocusedSubtopicPractice,
         is AppRoute.FocusedSubtopicsPractice,
         is AppRoute.FocusedPracticeAttempt,
-        is AppRoute.FocusedPracticeResult,
         -> false
     }

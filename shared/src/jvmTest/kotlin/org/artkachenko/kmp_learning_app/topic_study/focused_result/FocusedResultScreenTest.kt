@@ -147,7 +147,7 @@ internal class FocusedResultScreenTest {
     }
 
     @Test
-    fun aSavedQuestionOffersUnsaveAndLeavesTheResultUnchanged() = runComposeUiTest {
+    fun aSavedQuestionReadsAsSavedAndLeavesTheResultUnchanged() = runComposeUiTest {
         setContent {
             MaterialTheme {
                 FocusedResultScreen(
@@ -162,7 +162,7 @@ internal class FocusedResultScreenTest {
             }
         }
 
-        onNodeWithText("Unsave").assertIsDisplayed()
+        onNodeWithText("Saved").assertIsDisplayed()
         onNodeWithText("Score: 1 / 1").assertIsDisplayed()
         onNodeWithTag(FocusedResultPracticeAgainTag).performScrollTo().assertIsDisplayed()
     }

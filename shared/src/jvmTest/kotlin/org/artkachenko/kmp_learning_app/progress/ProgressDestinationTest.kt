@@ -68,6 +68,7 @@ internal class ProgressDestinationTest {
                         onOpenFocusedResult = {},
                         onOpenMixedResult = {},
                         onConfigurePractice = {},
+                        onReviewMistakes = {},
                         viewModel = harness.viewModel,
                     )
                 }
@@ -121,6 +122,7 @@ internal class ProgressDestinationTest {
                         onOpenFocusedResult = focusedTargets::add,
                         onOpenMixedResult = mixedTargets::add,
                         onConfigurePractice = {},
+                        onReviewMistakes = {},
                         viewModel = viewModel(repository),
                     )
                 }

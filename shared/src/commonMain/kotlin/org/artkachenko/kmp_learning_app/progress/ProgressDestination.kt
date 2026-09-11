@@ -14,6 +14,7 @@ internal fun ProgressDestination(
     onOpenFocusedResult: (String) -> Unit,
     onOpenMixedResult: (String) -> Unit,
     onConfigurePractice: (PracticePreset) -> Unit,
+    onReviewMistakes: () -> Unit,
     viewModel: ProgressViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -25,6 +26,7 @@ internal fun ProgressDestination(
         onBrowseTopics = onBrowseTopics,
         onTopicClick = onOpenTopic,
         onPracticePreset = onConfigurePractice,
+        onReviewMistakes = onReviewMistakes,
         onHistoryClick = { assessmentType, attemptId ->
             when (assessmentType) {
                 CompletedAssessmentType.FOCUSED -> onOpenFocusedResult(attemptId)

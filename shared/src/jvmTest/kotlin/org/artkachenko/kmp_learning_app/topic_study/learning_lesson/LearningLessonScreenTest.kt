@@ -15,6 +15,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotDisplayed
@@ -22,6 +23,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -419,7 +421,7 @@ internal class LearningLessonScreenTest {
         onNodeWithTag(LearningLessonNextTag).performScrollTo().assertIsDisplayed()
         // The title is part of the control, so the action says where it leads rather than only
         // that it moves.
-        onNodeWithText("Next").performScrollTo().assertIsDisplayed()
+        onNodeWithText("Next lesson").performScrollTo().assertIsDisplayed()
         onNodeWithText("State Down, Events Up").performScrollTo().assertIsDisplayed()
 
         onNodeWithTag(LearningLessonNextTag).performClick()
@@ -454,6 +456,96 @@ internal class LearningLessonScreenTest {
 
         onNodeWithTag(LearningLessonPreviousTag).assertDoesNotExist()
         onNodeWithTag(LearningLessonNextTag).assertDoesNotExist()
+    }
+
+    /**
+     * The end of a Lesson has exactly one primary next step. With a successor, reading on is the
+     * ordinary continuation and practice steps down to an outlined control; on the last Lesson of a
+     * Unit there is nothing left to read, so practising the Unit takes the filled button instead.
+     *
+     * Asserted through the click semantics rather than through pixels: what matters is that both
+     * controls stay available and keep emitting exactly what they emitted before the ranking was
+     * introduced, and that the Lesson with a successor offers the next-Lesson card at all.
+     */
+    @Test
+    fun aLessonWithASuccessorLeadsWithReadingOnAndKeepsPracticeAvailable() = runComposeUiTest {
+        val chosen = mutableListOf<String>()
+        var practised = 0
+        setContentWith(
+            next = AdjacentLessonUiModel("lesson_b", "State Down, Events Up"),
+            onNavigateLesson = { chosen += it },
+            onPracticeUnit = { practised += 1 },
+        )
+
+        onNodeWithTag(LearningLessonNextTag).performScrollTo().assertIsDisplayed().performClick()
+        onNodeWithTag(LearningLessonPracticeButtonTag)
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
+
+        assertEquals(listOf("lesson_b"), chosen)
+        assertEquals(1, practised)
+    }
+
+    @Test
+    fun theLastLessonInAUnitPromotesPractisingTheUnit() = runComposeUiTest {
+        var practised = 0
+        setContentWith(
+            previous = AdjacentLessonUiModel("lesson_a", "Declarative UI"),
+            onPracticeUnit = { practised += 1 },
+        )
+
+        onNodeWithTag(LearningLessonNextTag).assertDoesNotExist()
+        onNodeWithTag(LearningLessonPracticeButtonTag)
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
+
+        assertEquals(1, practised)
+    }
+
+    /**
+     * Orientation without chrome: which Unit, and how far into it. One line, and no breadcrumb
+     * chain, reading estimate, outline, or header navigation beside it.
+     */
+    @Test
+    fun theLessonNamesItsUnitAndItsPositionWithinIt() = runComposeUiTest {
+        setContentWith(
+            placement = LessonPlacementUiModel(
+                unitTitle = "State and recomposition",
+                position = 3,
+                lessonCount = 7,
+            ),
+        )
+
+        onNodeWithTag(LearningLessonPlacementTag)
+            .assertIsDisplayed()
+            .assert(hasText("State and recomposition · Lesson 3 of 7"))
+    }
+
+    /** A Unit with one readable Lesson has no sequence, so only its name is worth printing. */
+    @Test
+    fun aUnitWithASingleLessonNamesItselfWithoutAPosition() = runComposeUiTest {
+        setContentWith(
+            placement = LessonPlacementUiModel(
+                unitTitle = "State and recomposition",
+                position = 1,
+                lessonCount = 1,
+            ),
+        )
+
+        onNodeWithTag(LearningLessonPlacementTag)
+            .assertIsDisplayed()
+            .assert(hasText("State and recomposition"))
+        onNodeWithText("Lesson 1 of 1").assertDoesNotExist()
+    }
+
+    /** A Lesson whose parent sequence could not be resolved loses the line rather than faking it. */
+    @Test
+    fun anUnresolvedPlacementIsSimplyAbsent() = runComposeUiTest {
+        setContentWith(placement = null)
+
+        onNodeWithTag(LearningLessonPlacementTag).assertDoesNotExist()
     }
 
     /**
@@ -565,6 +657,7 @@ internal class LearningLessonScreenTest {
         height: Dp = TestHeight,
         studyState: StudyProgressUiState<LessonStudyUiModel> = StudyProgressUiState.Loading,
         onToggleStudied: () -> Unit = {},
+        placement: LessonPlacementUiModel? = LessonPlacementUiModel("Unit A", 2, 5),
     ) {
         setContent {
             MaterialTheme {
@@ -576,6 +669,7 @@ internal class LearningLessonScreenTest {
                             previous = previous,
                             next = next,
                             studyState = studyState,
+                            placement = placement,
                         ),
                         onBack = {},
                         onRetry = {},
@@ -592,12 +686,12 @@ internal class LearningLessonScreenTest {
 
 
     /**
-     * Unstudied: the state is stated in words, and the control names the action that changes it.
-     * The two together are what a screen reader announces — no tick, no colour, and no reliance on
-     * either.
+     * Unstudied: the top of the page only *states* the state, and the action that changes it lives
+     * at the end of the reading behind an explicit end-of-lesson prompt. The two together are what a
+     * screen reader announces — no tick, no colour, and no reliance on either.
      */
     @Test
-    fun anUnstudiedLessonShowsItsStateAndOffersTheMarkAction() = runComposeUiTest {
+    fun anUnstudiedLessonReportsItsStateAtTheTopAndCompletesAtTheEnd() = runComposeUiTest {
         var toggles = 0
         setContentWith(
             studyState = available(isStudied = false),
@@ -605,26 +699,42 @@ internal class LearningLessonScreenTest {
         )
 
         onNodeWithTag(LearningLessonStudyStatusTag).assertIsDisplayed()
-        onNodeWithText("Not studied").assertIsDisplayed()
+        // "In progress" rather than "Not studied": the reader is in the middle of the Lesson, and
+        // the negative phrasing read as a reproach on a page they had just opened.
+        onNodeWithText("In progress").assertIsDisplayed()
+        onNodeWithText("Not studied").assertDoesNotExist()
+
+        onNodeWithText("You've reached the end of this lesson").performScrollTo().assertIsDisplayed()
         onNodeWithTag(LearningLessonStudyActionTag)
+            .performScrollTo()
             .assertIsDisplayed()
             .assertIsEnabled()
             .assertHasClickAction()
             // The action's own label, so the control says what it will do and not only what is true.
-            .assert(hasText("Mark as studied"))
+            .assert(hasText("Complete lesson"))
             // ... and the current value, so what is true is available from the control as well.
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Not studied"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "In progress"))
 
         onNodeWithTag(LearningLessonStudyActionTag).performClick()
         assertEquals(1, toggles)
     }
 
+    /**
+     * Studied: the status leads the page and the reversal is subordinate to it, rather than the two
+     * being equally weighted pill controls side by side.
+     */
     @Test
-    fun aStudiedLessonShowsItsStateAndOffersTheUnmarkAction() = runComposeUiTest {
+    fun aStudiedLessonShowsItsStateAndOffersASubordinateUndo() = runComposeUiTest {
         setContentWith(studyState = available(isStudied = true))
 
-        onNodeWithText("Studied").assertIsDisplayed()
+        onNodeWithTag(LearningLessonStudyStatusTag).assertIsDisplayed()
+        // Twice, and deliberately: the badge at the top reports the state on arrival, and the end
+        // of the reading confirms it beside the reversal rather than offering a completion prompt.
+        onAllNodesWithText("Studied").assertCountEquals(2)
+        // No end-of-lesson prompt: there is nothing left to complete.
+        onNodeWithText("You've reached the end of this lesson").assertDoesNotExist()
         onNodeWithTag(LearningLessonStudyActionTag)
+            .performScrollTo()
             .assertIsEnabled()
             .assert(hasText("Mark as not studied"))
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Studied"))
@@ -642,11 +752,12 @@ internal class LearningLessonScreenTest {
             onToggleStudied = { toggles += 1 },
         )
 
-        onNodeWithText("Not studied").assertIsDisplayed()
+        onNodeWithText("In progress").assertIsDisplayed()
         onNodeWithText("Studied").assertDoesNotExist()
         onNodeWithTag(LearningLessonStudyActionTag)
+            .performScrollTo()
             .assertIsNotEnabled()
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Not studied"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "In progress"))
 
         onNodeWithTag(LearningLessonStudyActionTag).performClick()
         assertEquals(0, toggles)
@@ -754,9 +865,9 @@ internal class LearningLessonScreenTest {
 
         val rootWidth = onNodeWithTag(TestRootTag).fetchSemanticsNode().boundsInRoot.width
         assertWithinRootWidth(LearningLessonStudyStatusTag, rootWidth)
-        assertWithinRootWidth(LearningLessonStudyActionTag, rootWidth)
-        onNodeWithTag(LearningLessonStudyActionTag).assertIsDisplayed()
         onNodeWithText("Title of lesson_a").assertIsDisplayed()
+        onNodeWithTag(LearningLessonStudyActionTag).performScrollTo().assertIsDisplayed()
+        assertWithinRootWidth(LearningLessonStudyActionTag, rootWidth)
         onNodeWithTag(LearningLessonNextTag).performScrollTo().assertIsDisplayed()
         onNodeWithTag(LearningLessonPracticeButtonTag).performScrollTo().assertIsDisplayed()
     }
@@ -777,10 +888,10 @@ internal class LearningLessonScreenTest {
         onNodeWithTag(LearningLessonPracticeButtonTag).performScrollTo()
         waitForIdle()
 
-        // The control is above the fold now, so it is asserted on existence rather than on being
-        // visible; what matters is that reaching the end of the document did not change it.
-        onNodeWithText("Not studied").assertExists()
-        onNodeWithTag(LearningLessonStudyActionTag).assert(hasText("Mark as studied"))
+        // Reaching the end of the document is not a claim about having studied it: the status is
+        // unchanged, and the completion control still asks to be pressed.
+        onNodeWithText("In progress").assertExists()
+        onNodeWithTag(LearningLessonStudyActionTag).assert(hasText("Complete lesson"))
     }
 
     private fun available(
@@ -813,12 +924,18 @@ private fun content(
     previous: AdjacentLessonUiModel? = null,
     next: AdjacentLessonUiModel? = null,
     studyState: StudyProgressUiState<LessonStudyUiModel> = StudyProgressUiState.Loading,
+    placement: LessonPlacementUiModel? = LessonPlacementUiModel(
+        unitTitle = "Unit A",
+        position = 2,
+        lessonCount = 5,
+    ),
 ): LearningLessonUiState.Content =
     LearningLessonUiState.Content(
         unitId = "unit_a",
         lessonId = lessonId,
         title = "Title of $lessonId",
         summary = "Summary of $lessonId",
+        placement = placement,
         sections = sections,
         sources = sources,
         previousLesson = previous,

@@ -2,20 +2,28 @@ package org.artkachenko.kmp_learning_app
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserItemUiModel
+import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserScreen
+import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserUiState
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 
 @OptIn(ExperimentalTestApi::class)
@@ -86,6 +94,57 @@ internal class AppNavigationBarTest {
         val padding = requireNotNull(contentPadding)
         assertEquals(0.dp, padding.calculateTopPadding())
         assertEquals(0.dp, padding.calculateBottomPadding())
+    }
+
+    /**
+     * The end of a scrolling screen must be reachable, not merely rendered.
+     *
+     * The shell's inset contract above says the navigation bar is reserved once; this says what
+     * that buys the learner, end to end and through a real screen: scrolled to the bottom, the last
+     * Topic card sits wholly above the navigation bar with a comfortable gap rather than half
+     * underneath it. Asserted from measured bounds rather than from a hardcoded bar height, which
+     * is the thing screens must never reach for.
+     */
+    @Test
+    fun theLastRowOfAScrollingScreenClearsTheBottomNavigation() = runComposeUiTest {
+        setContent {
+            AppTheme {
+                Box(Modifier.size(400.dp, 700.dp)) {
+                    AppNavigationScaffold(
+                        selected = AppTopLevelDestination.TOPICS,
+                        onSelect = {},
+                        showsNavigation = true,
+                    ) { padding ->
+                        Box(Modifier.fillMaxSize().padding(padding)) {
+                            TopicBrowserScreen(
+                                state = TopicBrowserUiState.Content(
+                                    topics = List(20) { index ->
+                                        TopicBrowserItemUiModel(
+                                            topicId = "topic_$index",
+                                            topicName = "Topic $index",
+                                        )
+                                    },
+                                ),
+                                onTopicClick = {},
+                                onRetry = {},
+                                topWindowInsets = WindowInsets(0, 0, 0, 0),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        onNode(hasScrollAction()).performScrollToNode(hasText("Topic 19"))
+        waitForIdle()
+
+        val lastRowBottom = onNodeWithText("Topic 19").fetchSemanticsNode().boundsInRoot.bottom
+        val navigationTop = onNodeWithTag(AppNavigationBarDividerTag)
+            .fetchSemanticsNode().boundsInRoot.top
+        assertTrue(
+            lastRowBottom < navigationTop,
+            "the last row ended at $lastRowBottom, below the navigation edge at $navigationTop",
+        )
     }
 
     @Test

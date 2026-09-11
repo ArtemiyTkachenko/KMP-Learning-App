@@ -57,6 +57,13 @@ internal class FakeLessonStudyRepository(
     /** The same for a read, so a surface can be observed while study state is still Loading. */
     var readGate: CompletableDeferred<Unit>? = null
 
+    /**
+     * When set, the *next* read takes its snapshot on entry and only returns it once this
+     * completes — a read that reached the database before a later write and returns after it.
+     * [readGate] cannot express that, because it snapshots after the gate opens.
+     */
+    var staleReadGate: CompletableDeferred<Unit>? = null
+
     override suspend fun markStudied(lessonId: String) {
         markCalls += lessonId
         writeGate?.await()
@@ -80,6 +87,14 @@ internal class FakeLessonStudyRepository(
 
     override suspend fun getStudiedLessons(): List<StudiedLesson> {
         studiedLessonReads += 1
+        val stale = staleReadGate
+        if (stale != null) {
+            staleReadGate = null
+            val snapshot = studiedLessons.toList()
+            stale.await()
+            if (failReads) error("Study state unavailable.")
+            return snapshot
+        }
         readGate?.await()
         if (failReads) error("Study state unavailable.")
         return studiedLessons.toList()

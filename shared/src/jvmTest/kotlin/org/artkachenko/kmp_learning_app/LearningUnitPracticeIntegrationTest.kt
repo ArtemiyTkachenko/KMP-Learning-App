@@ -168,10 +168,11 @@ internal class LearningUnitPracticeIntegrationTest {
                     "unit_cancellation_failure_and_coordination",
                     "unit_flow_fundamentals",
                     "unit_flow_composition_timing_and_failure",
+                    "unit_stateflow_sharedflow_and_hot_streams",
                 ),
                 coroutinesUnits.map { it.id },
             )
-            assertEquals(listOf(5, 4, 5, 5, 5), coroutinesUnits.map { it.lessons.size })
+            assertEquals(listOf(5, 4, 5, 5, 5, 5), coroutinesUnits.map { it.lessons.size })
             coroutinesUnits.forEach { coroutinesUnit ->
                 coroutinesUnit.lessons.forEach { lesson ->
                     awaitNext(coroutinesUnit.id, lesson.id)
@@ -211,9 +212,9 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             val rebuilt = LocalLessonStudyRepository(database)
             assertFalse(rebuilt.isStudied(earlierLesson.id))
-            // 21 `android_ui` Lessons plus 24 in the coroutines and Flow Units, less the
+            // 21 `android_ui` Lessons plus 29 in the coroutines and Flow Units, less the
             // one that was just un-studied.
-            assertEquals(44, rebuilt.getStudiedLessons().size)
+            assertEquals(49, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -283,6 +284,22 @@ internal class LearningUnitPracticeIntegrationTest {
                         "flow_buffering",
                         "flow_errors",
                     ) to 7
+                ),
+                // E24-07. `hot_vs_cold_streams` is primary in the first and last Lessons,
+                // so five Lessons practise four concepts. `kotlin_equality`,
+                // `state_ownership`, `lifecycle_coroutines` and `flow_buffering` stay out
+                // of the scope, which is what `supportingOnly` below proves; the `livedata`
+                // Question that states StateFlow conflation most clearly is unmapped by
+                // E24 and so is not Unit practice either. GAP-U6-A, GAP-U6-B and GAP-U6-C
+                // in `docs/content/coroutines-flow-units-1-6-plan.md` depend on that,
+                // because none of these six Questions assesses the reasoning they name.
+                "unit_stateflow_sharedflow_and_hot_streams" to (
+                    setOf(
+                        "hot_vs_cold_streams",
+                        "stateflow",
+                        "sharedflow",
+                        "flow_sharing",
+                    ) to 6
                 ),
             )
             val content = BundledLearningContentRepository()

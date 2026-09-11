@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `ce24d8f9f9718a59e9d84f2db6537c95f5da75fe0245a0ade6ae5e7090e787c1` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `33c5addeb9c1fc21a8eda7193143439c3979606c72a17931df6837838f1500e8` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `5870ff2387861aad48c54681cff420572f40ce00800035f2e8747476a2ccfc32` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,12 +68,12 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 11 |
-| Active lessons in those units | 45 |
-| Distinct primary subtopics | 27 |
-| Distinct supporting subtopics | 59 |
-| Unique active questions reached through primary mappings | 52 |
-| Primary subtopics with at least one active question | 27 |
+| Active learning units | 12 |
+| Active lessons in those units | 50 |
+| Distinct primary subtopics | 31 |
+| Distinct supporting subtopics | 61 |
+| Unique active questions reached through primary mappings | 58 |
+| Primary subtopics with at least one active question | 31 |
 | Primary subtopics with no active question | 0 |
 | Active questions in the bank | 370 |
 | Deprecated questions excluded from this report | 41 |
@@ -102,6 +102,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Cancellation, Failure and Coordination (`unit_cancellation_failure_and_coordination`) | 5 | 4 | 2 | 3 | 2 | 7 |
 | Flow Fundamentals (`unit_flow_fundamentals`) | 5 | 3 | 5 | 0 | 0 | 5 |
 | Flow Composition, Timing and Failure (`unit_flow_composition_timing_and_failure`) | 5 | 3 | 4 | 3 | 0 | 7 |
+| StateFlow, SharedFlow and Hot Streams (`unit_stateflow_sharedflow_and_hot_streams`) | 5 | 4 | 4 | 2 | 0 | 6 |
 
 ## Unit and lesson detail
 
@@ -974,6 +975,104 @@ Supporting context — not primary coverage:
 | `coroutine_cancellation` — Cancellation | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `flow_operators` — Flow operators | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `error_modeling` — Error representation/modeling | 2 | `architecture` — Application Architecture & Design Principles |
+
+### StateFlow, SharedFlow and Hot Streams (`unit_stateflow_sharedflow_and_hot_streams`)
+
+Home topic: `async_reactive` — Coroutines, Flow & Reactive Programming.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 4 | `flow_state_in_while_subscribed`, `shared_flow_replay_late_subscriber`, `stateflow_001`, `stateflow_vs_sharedflow_current_value` |
+| APPLIED | 2 | `flow_share_in_vs_state_in`, `flow_vs_channel_delivery_model` |
+| ADVANCED | 0 | — |
+
+#### Hot and Cold: When Production Happens (`lesson_hot_and_cold_streams`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `hot_vs_cold_streams` — Hot vs cold streams | 0 | 1 | 0 | 1 | `flow_vs_channel_delivery_model` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `flow_fundamentals` — Flow fundamentals | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_collection` — Flow collection | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `stateflow` — StateFlow | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `sharedflow` — SharedFlow | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+
+#### `StateFlow`: One Current Value (`lesson_state_flow`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `stateflow` — StateFlow | 2 | 0 | 0 | 2 | `stateflow_001`, `stateflow_vs_sharedflow_current_value` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `hot_vs_cold_streams` — Hot vs cold streams | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_collection` — Flow collection | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `kotlin_equality` — Structural vs referential equality | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+
+#### `SharedFlow`: Replay, Buffering and Subscribers (`lesson_shared_flow`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `sharedflow` — SharedFlow | 1 | 1 | 0 | 2 | `flow_share_in_vs_state_in`, `shared_flow_replay_late_subscriber` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `hot_vs_cold_streams` — Hot vs cold streams | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_buffering` — Buffering and conflation | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `stateflow` — StateFlow | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_collection` — Flow collection | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+
+#### Sharing Cold Flows with `stateIn` and `shareIn` (`lesson_sharing_cold_flows`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `flow_sharing` — stateIn, shareIn, and sharing policies | 1 | 0 | 0 | 1 | `flow_state_in_while_subscribed` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `stateflow` — StateFlow | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `sharedflow` — SharedFlow | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_scope` — CoroutineScope | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `lifecycle_coroutines` — Lifecycle-aware coroutine scopes | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+
+#### Choosing a Stream Abstraction by Delivery Guarantees (`lesson_choosing_a_stream_abstraction`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `hot_vs_cold_streams` — Hot vs cold streams | 0 | 1 | 0 | 1 | `flow_vs_channel_delivery_model` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `stateflow` — StateFlow | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `sharedflow` — SharedFlow | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_sharing` — stateIn, shareIn, and sharing policies | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
 
 ## Primary assessment gaps
 

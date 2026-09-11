@@ -7757,6 +7757,965 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "unit_stateflow_sharedflow_and_hot_streams",
+      "topicId": "async_reactive",
+      "title": "StateFlow, SharedFlow and Hot Streams",
+      "summary": "The previous two units settled cold Flow: production described once, run per collector, inside the collecting coroutine. This unit asks what changes when production exists independently of any one collector. Three questions get answered separately and are constantly confused with each other: where production lives, which is what hot and cold mean; what a subscriber can recover that was emitted before it arrived, which is retention and is configured; and when a shared upstream actually runs, which is a policy attached to the scope that owns it. StateFlow answers the first two by always holding one current value; SharedFlow answers them with a replay cache and a buffer you configure; stateIn and shareIn convert a cold upstream into either. The unit ends by choosing among a plain value, a suspending function, a cold Flow, a StateFlow, a SharedFlow and a Channel from the delivery guarantee the problem actually requires.",
+      "lessons": [
+        {
+          "id": "lesson_hot_and_cold_streams",
+          "title": "Hot and Cold: When Production Happens",
+          "summary": "Hot and cold answer exactly one question: does production begin separately for each collector, or does the stream instance exist independently of any one of them? What a late subscriber then receives is a second, separate question, and when production starts and stops is a third.",
+          "primarySubtopicIds": [
+            "hot_vs_cold_streams"
+          ],
+          "supportingSubtopicIds": [
+            "flow_fundamentals",
+            "flow_collection",
+            "stateflow",
+            "sharedflow"
+          ],
+          "relatedLessonIds": [
+            "lesson_cold_flows",
+            "lesson_flow_collection_lifetime",
+            "lesson_snapshot_flow"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Everything the previous two units taught was cold. A cold Flow is a description of how to produce values, and the description runs once per collector: the documentation calls it a recipe, and each collector cooks its own meal. Two collectors of the same cold Flow are two independent executions that happen to share a definition."
+                },
+                {
+                  "type": "code",
+                  "code": "val flow = flow {\n    emit(load())\n}\n\n// Measured on this project's JVM target: collecting `flow` twice\n// ran the builder block twice.",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A hot stream inverts that relationship. The stream instance exists independently of any individual collector: it is there before anyone subscribes, it outlives them all leaving, and subscribing joins that one instance rather than creating a private copy of it. The StateFlow and SharedFlow documentation both use the same phrase, and it is the definition worth memorising: a flow is hot because its active instance exists independently of the presence of collectors."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read that as a statement about the stream, not about whether anything is being produced into it right now. The two come apart, and the fourth lesson of this unit is where they do: a shared stream can exist with its production not yet started, and under some sharing policies the arrival of the first subscriber is exactly what starts it. Measured on this project's JVM target with a lazily started shared stream: before any subscriber the object was there and its current value readable, while the upstream had not run once; the first subscriber to arrive started it. So \"a subscriber never starts anything\" is not part of the definition. What is, is that production is not per-collector."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "An active collector of a hot flow has its own name in this documentation. It is called a subscriber, and the word is a useful reminder that what it joins already exists as a stream — even when, as above, its arrival is what sets production going."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Everything else people say about hot streams is a claim about something else. \"Hot\" does not mean fast, eager, buffered, replaying, or immortal. It says where production lives. It says nothing about what has been kept for you, and nothing about whether production is running right now."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Cold means production begins separately for each collector. Hot means the stream instance exists independently of any one collector. That is the whole distinction, and it decides nothing else on its own."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Three questions get confused with each other constantly, and this unit keeps them apart on purpose. Production lifetime is this lesson. Retention — what a subscriber can obtain that was emitted before it arrived — belongs to StateFlow and SharedFlow, which are the next two lessons. Start and stop policy — when a shared upstream is actually collected — belongs to the sharing lesson after those."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Question",
+                    "Axis",
+                    "Where the answer lives"
+                  ],
+                  "rows": [
+                    [
+                      "Does each collector get its own execution of the producer?",
+                      "Production lifetime — hot or cold",
+                      "This lesson"
+                    ],
+                    [
+                      "What can a subscriber obtain that was emitted before it subscribed?",
+                      "Retention — a current value, a replay cache, or nothing",
+                      "The StateFlow and SharedFlow lessons"
+                    ],
+                    [
+                      "When does the upstream of a shared stream actually run?",
+                      "Start and stop policy",
+                      "The sharing lesson"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The reason the axes have to stay apart is that the interesting question — what does a late subscriber receive? — cannot be answered from hotness alone. Take a producer that emits four values over time and a subscriber that arrives between the second and the third."
+                },
+                {
+                  "type": "code",
+                  "code": "producer:    A----B----C----D\n                    ^\n                 subscribe",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "If the stream is cold, the question does not arise: the new collector starts its own execution and gets A, B, C and D from the beginning, because that is what its own execution produces. Nothing was missed, because nothing was shared."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "If the stream is hot, the answer is genuinely \"it depends\", and what it depends on is retention. A hot stream that retains nothing delivers C and D and the subscriber never learns that A and B happened. A hot stream that retains one value hands over B immediately and then continues with C and D. A hot stream that retains two hands over A and B first. All three of those are hot; they differ in what was kept, not in where production lives."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The same split governs the other half of the question — what happens to a value emitted while nobody is subscribed. A cold Flow cannot be in that situation at all, because with no collector there is no production. A hot stream can be, and again the outcome is a retention decision rather than a hotness one. Measured on this project's JVM target against the configured coroutines version: a shared stream that keeps nothing produced six values before any subscriber existed, and the first value the subscriber saw was the seventh. The same stream configured to keep the last two handed over the two most recent and then continued live."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"A hot flow throws away anything emitted while nobody is listening\" and \"a hot flow replays what you missed\" are both offered as definitions of hotness, and they contradict each other because neither is one. They are two different retention configurations of the same production model. Answer the question in two steps instead: is production per-collector, and separately, what was retained?"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A third claim in the same family is that a hot producer keeps running whatever happens. That one is about the start-and-stop axis, and the sharing lesson shows a shared stream whose upstream stops the moment its last subscriber leaves — hot throughout, and not running."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Nothing about hotness is decided by the API's name either. A `callbackFlow` wraps a genuinely hot external source — a sensor, a listener, a socket — and the Flow it produces is still cold, because each collector registers its own callback and starts its own subscription. A cold repository Flow handed to `shareIn` becomes hot, because production moves out of the collector and into one shared coroutine. What changes in each case is where production lives, which is exactly the axis this lesson owns."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "There is a sharper version of the retention argument, and the Compose curriculum already made it. The snapshot lesson observes that observable state is a lossy compression of the events that produced it: three edits that leave a field reading \"abc\" are indistinguishable, later, from one edit that typed it in full. That is why an observer of state can arrive late and still be completely correct, while an observer of events cannot."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read the retention axis through that lens and it stops being a configuration table. A stream that retains one current value is representing state, and lateness is harmless by construction because the current value is the whole truth. A stream that retains nothing is representing occurrences, and lateness is loss, because what happened is not recoverable from what is. The configuration is downstream of what the stream is modelling."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is also the honest answer to why the choice matters at all. If a stream carries state, an arriving observer needs the current value and nothing else, and conflation costs nothing. If it carries occurrences, every one may matter, and the delivery guarantee has to be stated rather than assumed. The last lesson in this unit turns that into a decision procedure across every abstraction the subject offers."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Answer \"what is the difference between hot and cold?\" with production lifetime, then volunteer the second axis before being asked: what a late subscriber receives is retention, which is configured separately. Candidates who give the one-line definition and stop are common; candidates who separate the axes and can say why \"hot means it replays\" is wrong are not."
+                }
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "title": "Flows",
+              "url": "https://kotlinlang.org/docs/coroutines-flow.html"
+            },
+            {
+              "title": "kotlinx.coroutines: StateFlow",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-state-flow/"
+            },
+            {
+              "title": "kotlinx.coroutines: SharedFlow",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-shared-flow/"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_state_flow",
+          "title": "`StateFlow`: One Current Value",
+          "summary": "A StateFlow always has a current value, and everything else about it follows from that: the mandatory initial value, the replay of exactly one value, the equality comparison that decides whether an assignment is even observable, and the fact that it never completes.",
+          "primarySubtopicIds": [
+            "stateflow"
+          ],
+          "supportingSubtopicIds": [
+            "hot_vs_cold_streams",
+            "flow_collection",
+            "kotlin_equality",
+            "state_ownership"
+          ],
+          "relatedLessonIds": [
+            "lesson_hot_and_cold_streams",
+            "lesson_flow_buffering_and_conflation",
+            "lesson_shared_state_and_coordination"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The usual introduction to `StateFlow` is that it is for UI state. That is where it is most often used, but it is not its contract and it does not predict any of its behaviour. The contract is one sentence: there is always a current value. Every other property is a consequence."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Because there is always a current value, construction requires an initial one — there is no way to make a `StateFlow` that has not got a value yet. Because there is always a current value, it can be read synchronously through the `value` property without collecting anything. And because there is always a current value, a new collector receives it immediately rather than waiting for the next change."
+                },
+                {
+                  "type": "code",
+                  "code": "private val _state = MutableStateFlow(ScreenState.Loading)\nval state: StateFlow<ScreenState> = _state\n\nfun onLoaded(items: List<Item>) {\n    _state.value = ScreenState.Loaded(items)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The private mutable property with a read-only public one is API encapsulation rather than architecture: `MutableStateFlow` carries the setter, `StateFlow` does not, so exposing the narrower type is what stops callers writing to state they do not own. Where that state should live, and what shape it should take, is an architecture question this unit deliberately leaves alone."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The documentation states the retention rule precisely, and the precision matters: a state flow always has an initial value, replays one most recent value to new subscribers, and does not buffer any more values. One value, not a history. A `StateFlow` is not a queue of the changes that happened to it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "It also never completes. A call to `collect` on a state flow never returns normally, and there is no `close`. The documentation is explicit that a `StateFlow` can never represent a failure and that errors and completion signals must be materialised if they are needed — which in practice means a failed load is a value in your state type, not something done to the flow."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "There is always a current value. Initial value mandatory, readable without collecting, replayed to every new subscriber, never completes, and never an error — all of it follows from that one sentence."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The behaviour that surprises people is what happens when you assign a value that is equal to the one already there. The documentation gives it a heading of its own — strong equality-based conflation — and states that values are conflated using `Any.equals`, suppressing emission when the new value is equal to the previously emitted one. Setting `value` to something equal to the previous value does nothing at all."
+                },
+                {
+                  "type": "code",
+                  "code": "val state = MutableStateFlow(User(\"Ada\"))\n\nstate.value = User(\"Ada\")   // data class: equal to the current value, nothing is emitted\nstate.value = User(\"Grace\") // different: collectors are updated",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Measured on this project's JVM target: a `MutableStateFlow` holding a `data class`, with a collector attached and three spaced assignments of an equal value, delivered exactly one value — the initial one, and nothing after it. The same experiment with a class that inherits identity equality delivered four: the initial value, plus one for each of the three assignments, because two distinct instances carrying the same field are not equal to each other. Same code, same assignments, different `equals`."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "State type",
+                    "`state.value = SameLookingValue()`",
+                    "What the collector observes"
+                  ],
+                  "rows": [
+                    [
+                      "`data class` with the field in the primary constructor",
+                      "Compares equal to the current value",
+                      "Nothing — the assignment is suppressed"
+                    ],
+                    [
+                      "Ordinary class with no `equals` override",
+                      "Compares unequal, being a different instance",
+                      "A new value every time"
+                    ],
+                    [
+                      "Class whose `equals` ignores a field that changed",
+                      "Compares equal although the object differs",
+                      "Nothing — the change is invisible"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That third row is where real bugs live, and it is worth saying plainly: the equality semantics of the state type are part of the observable behaviour of the `StateFlow`. If two states that should look different to the user compare equal, the UI will not be told about the second one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Mutable state inside the value makes the same failure worse, because there is no assignment for equality to suppress. Measured on this project's JVM target: an object held in a `MutableStateFlow` was mutated in place from 1 to 99, and then an equal instance was assigned. The collector received the value once, at subscription, and never again — while reading `value.count` afterwards returned 99. The state had changed twice and no collector was told either time."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Holding mutable objects in a `StateFlow` and expecting collectors to notice. Mutating in place emits nothing because nothing was assigned, and reassigning an equal instance emits nothing because conflation compares with `equals`. The documentation goes further and says behaviour with classes that violate the `Any.equals` contract is unspecified, so this is not a corner to be clever in — hold values whose equality means what you think it means."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The other half of what a collector sees is a speed question rather than an equality one, and the buffering lesson already established the model. Because updates are conflated, a slow collector skips fast updates but always collects the most recently emitted value. Measured on this project's JVM target, with the value assigned 1 through 10 at 20-millisecond intervals and a collector taking 200 milliseconds per value: the collector observed 0, 7 and 10. Seven intermediate states were never delivered, and the final state was."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is the property that makes `StateFlow` right for state and wrong for anything countable. Three \"refresh finished\" notices that arrive faster than the collector runs are not three notices; they may be one, and if two of them carried equal values they were already one before the collector's speed came into it."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Assigning to `value` is thread-safe, but a read-modify-write built out of it is not atomic — the read and the write are two operations, and another coroutine can assign in between. This is the shared-state problem from the cancellation and coordination unit, arriving in a place where it is easy to miss."
+                },
+                {
+                  "type": "code",
+                  "code": "// Lost updates when two coroutines do this concurrently\nstate.value = state.value + 1\n\n// Atomic read-modify-write\nstate.update { current -> current + 1 }",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Measured on this project's JVM target: eight coroutines each performing 2,000 increments through `value = value + 1` produced 5,998 out of an expected 16,000. The same load through `update` produced exactly 16,000. `update` is a compare-and-set loop, which is why it works and also why its documentation warns that the function may be evaluated more than once if the value is being concurrently updated — so the lambda must compute a new value and do nothing else."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One further subtlety in the same family: `compareAndSet` compares with `equals`, and its documentation notes that when both the expected and the new value are equal to the current one it returns `true` without actually storing the new reference. An identity-sensitive caller cannot rely on the object it passed being the one that is now held."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two smaller facts round out the model. Several operators are no-ops on a `StateFlow` — the documentation lists `flowOn`, `conflate`, `buffer` with conflated or rendezvous capacity, `distinctUntilChanged` and `cancellable` — because the type already provides what they would add. And a `StateFlow` is a specialised `SharedFlow`: the same document describes it as a high-performance implementation of shared flow for the narrow case of sharing state, which is the connection the next lesson picks up."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Finally, the honest boundary. `StateFlow` knows nothing about a UI, a lifecycle, or a ViewModel; it is a Kotlin Multiplatform type with no Android in it. How a Compose screen collects one safely, and how application state should be modelled and owned, are questions later material answers. This lesson's job is what a collector of one observes."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Be able to say why assigning an equal value produces no emission, and name `Any.equals` as the reason rather than saying \"it deduplicates\". Be able to say that a slow collector skips intermediate states but always ends on the latest. Be able to say why a state flow cannot fail, and where a failure goes instead."
+                }
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "title": "kotlinx.coroutines: StateFlow",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-state-flow/"
+            },
+            {
+              "title": "kotlinx.coroutines: MutableStateFlow",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-mutable-state-flow/"
+            },
+            {
+              "title": "kotlinx.coroutines: MutableStateFlow.update",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/update.html"
+            },
+            {
+              "title": "Flows",
+              "url": "https://kotlinlang.org/docs/coroutines-flow.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_shared_flow",
+          "title": "`SharedFlow`: Replay, Buffering and Subscribers",
+          "summary": "A SharedFlow broadcasts each value to every current subscriber, and its three configuration parameters decide the rest: what a late subscriber can recover, whether a slow subscriber makes the emitter wait, and what happens to a value emitted when nobody is subscribed at all.",
+          "primarySubtopicIds": [
+            "sharedflow"
+          ],
+          "supportingSubtopicIds": [
+            "hot_vs_cold_streams",
+            "flow_buffering",
+            "stateflow",
+            "flow_collection"
+          ],
+          "relatedLessonIds": [
+            "lesson_hot_and_cold_streams",
+            "lesson_state_flow",
+            "lesson_flow_buffering_and_conflation"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "`SharedFlow` is the general hot flow, and `StateFlow` is the special case of it that holds exactly one current value. The documentation defines it as a hot flow that shares emitted values among all its collectors in a broadcast fashion, so that all collectors get all emitted values. Broadcast is the word that matters, and what it fixes is **fan-out**: a value is offered to every subscriber rather than consumed by one of them at the others' expense. Whether a particular subscriber then actually receives every value is a second question, and the configuration below is what answers it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Like `StateFlow` it never completes, and like `StateFlow` its active collectors are called subscribers. Unlike `StateFlow` it has no current value, no mandatory initial value, and no fixed retention — retention is something you configure."
+                },
+                {
+                  "type": "code",
+                  "code": "private val _events = MutableSharedFlow<Event>()\nval events: SharedFlow<Event> = _events.asSharedFlow()\n\nsuspend fun publish(event: Event) {\n    _events.emit(event)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Three parameters configure it, and they answer different questions. `replay` is how many of the most recent values a subscriber receives when it arrives. `extraBufferCapacity` is additional room beyond replay, so that an emitter is not held up by a subscriber that is behind. `onBufferOverflow` decides what happens when that room runs out: suspend the emitter, drop the oldest buffered value, or drop the value being emitted."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Replay and extra buffer are not the same knob, but the line between them is not the one usually drawn. `replay` does double duty: it is what a late subscriber recovers, **and** it counts as room for a subscriber that is present but behind. `extraBufferCapacity` reserves room that serves only the second purpose — it is never replayed. So the space a slow subscriber may lag by before the emitter has to wait is `replay + extraBufferCapacity`, while what a late subscriber can recover is `replay` alone."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Configuration",
+                    "Room for a present slow subscriber",
+                    "What a late subscriber recovers"
+                  ],
+                  "rows": [
+                    [
+                      "`replay = 0, extraBufferCapacity = 0`",
+                      "None — the emitter waits for every value",
+                      "Nothing"
+                    ],
+                    [
+                      "`replay = 1, extraBufferCapacity = 0`",
+                      "One value",
+                      "One value"
+                    ],
+                    [
+                      "`replay = 0, extraBufferCapacity = 1`",
+                      "One value",
+                      "Nothing"
+                    ],
+                    [
+                      "`replay = 2, extraBufferCapacity = 3`",
+                      "Five values",
+                      "Two values"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Both columns are measured on this project's JVM target. The left one counts how many values a present 400-millisecond subscriber could fall behind by before `tryEmit` began returning `false`, and it came out as `replay + extraBufferCapacity` in every configuration tried. The right one emitted six values with nobody subscribed and then subscribed: `replay = 0, extraBufferCapacity = 3` delivered nothing at all, which is the half of the rule that catches people out — extra capacity buys headroom for a subscriber that is there, and retains nothing for one that is not."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A value is fanned out to every current subscriber rather than consumed by one of them. `replay` decides what a subscriber who was not there can still recover; `extraBufferCapacity` and `onBufferOverflow` decide what happens when a present subscriber cannot keep up — and under a dropping strategy, that includes letting it miss values."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Start with what a subscriber that arrives late receives, because it is the question the configuration is usually chosen for and the one most often assumed rather than checked."
+                },
+                {
+                  "type": "code",
+                  "code": "val withoutReplay = MutableSharedFlow<Event>(replay = 0)\n// emit(A) with nobody subscribed, then subscribe, then emit(B)\n// Measured on this project's JVM target: the subscriber received B only.\n\nval withReplay = MutableSharedFlow<Event>(replay = 1)\n// The same sequence.\n// Measured on this project's JVM target: the subscriber received A, then B.",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "code",
+                  "code": "emit(A)          subscribe        emit(B)\n   |                 |               |\n   v                 v               v\nreplay = 0:  A is gone            B delivered\nreplay = 1:  A delivered on subscribe, then B",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "With `replay = 0` the subscriber is not merely late to A; A is unrecoverable, because the replay cache is the only thing a later subscriber can see and there is none. This is the same fact seen from both ends: a value reaches whoever is subscribed at the moment it is emitted, plus whoever arrives while it is still in replay."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now the emitter's side. A `MutableSharedFlow()` constructed with no arguments has neither replay nor extra buffer, and its `emit` suspends until all subscribers receive the emitted value. Measured on this project's JVM target with one subscriber taking 300 milliseconds per value: three emissions returned at roughly 109, 414 and 718 milliseconds from the start. The first handed straight over to a waiting subscriber; each later one waited for the subscriber to come back for the next value."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Configuring `onBufferOverflow` is how that waiting is avoided, and the cost is paid by whichever subscriber was behind. Measured on this project's JVM target with one subscriber taking 300 milliseconds per value and six values emitted 20 milliseconds apart: the default suspending strategy delivered all six, while the same flow with one slot of extra buffer and a drop-oldest strategy delivered 1 and 6. The subscriber was present throughout both runs. That is the qualification the broadcast rule needs — fan-out says the value is offered to everyone, not that everyone receives it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The same unbuffered flow with nobody subscribed behaves completely differently, and this is the part that contradicts the folklore. The documentation says `emit` returns immediately if there are no subscribers, and the value is simply dropped when no replay cache was configured. Measured on this project's JVM target: a thousand emissions to an unbuffered `MutableSharedFlow` with no subscribers completed in about 1 millisecond and left an empty replay cache. Nothing suspended, nothing was queued, and every one of those values is gone."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"`SharedFlow` is for events\" is a heuristic, not a delivery guarantee, and an unbuffered shared flow with `replay = 0` will silently discard an event emitted while nothing is collecting. That is a legitimate configuration — it is exactly right for \"tell whoever is watching right now\" — but it does not satisfy \"this event must not be lost\". Choose it because you have answered that question, not because the value is called an event."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The absence of subscribers changes buffering too, in a way worth stating because it looks like an exception. The documentation is explicit that buffer overflow can only happen when at least one subscriber is not ready for a new value; with no subscribers only the most recent `replay` values are stored, and the overflow strategy has no effect at all. Measured on this project's JVM target: ten emissions to a `replay = 2` flow with no subscribers left a replay cache of the last two."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`tryEmit` is the non-suspending variant, and its result is easy to over-read. It returns `false` only when the strategy is to suspend and there is a subscriber that cannot take the value; with no subscribers it returns `true`. Measured on this project's JVM target: `tryEmit` on an unbuffered flow with no subscribers returned `true` and the replay cache stayed empty — the value was accepted and immediately lost. With one slow subscriber attached, the same call returned `false`."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Reading `tryEmit(value) == true` as \"someone received it\". It means the flow accepted the value under its current configuration. On an unbuffered flow, `true` is precisely the case where there was nobody to give it to."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Put the two behaviours together and the design question stops being \"state or event\" and becomes a set of answerable questions about delivery."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Ask",
+                    "If yes",
+                    "If no"
+                  ],
+                  "rows": [
+                    [
+                      "Must an observer arriving at any moment know the current truth?",
+                      "`StateFlow` — no `SharedFlow` configuration gives a value that is always already there",
+                      "Retention is optional"
+                    ],
+                    [
+                      "Should only observers present at emission receive the value?",
+                      "`replay = 0`",
+                      "Choose a replay size deliberately"
+                    ],
+                    [
+                      "Must a slow subscriber hold the emitter up?",
+                      "Leave the default suspending strategy and size the buffer",
+                      "Configure a dropping overflow strategy"
+                    ],
+                    [
+                      "Must the occurrence eventually be handled by somebody, even if nobody is subscribed when it happens?",
+                      "No shared flow configuration guarantees this",
+                      "`replay = 0` is honest and cheap, and a small replay window covers a short gap"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The first row deserves as much care as the last, because `replay = 1` looks like it should do that job and does not. A freshly constructed `MutableSharedFlow(replay = 1)` has an empty replay cache until something is emitted into it, so a subscriber arriving before the first emission receives nothing and waits. Measured on this project's JVM target: it received nothing at all, and nothing again after a later `resetReplayCache()`, while a `MutableStateFlow` built alongside it handed over its initial value immediately. The mandatory initial value is what closes that gap, and the `StateFlow` documentation spells out the rest — a shared flow behaves like a state flow only when it is created with `replay = 1` and a drop-oldest strategy, seeded with `tryEmit(initialValue)`, and read through `distinctUntilChanged`. Three ingredients, of which `replay = 1` is one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That last row is the one worth being able to defend in an interview. Replay retains values for a subscriber that arrives later, so a small replay window does cover a short gap — but it is retention, not delivery: nothing tracks whether anyone consumed the value, and nothing waits for someone to. If the requirement is that an occurrence must eventually be handled by somebody, no `SharedFlow` configuration expresses it, and the final lesson of this unit says what does."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The documentation's own event-bus example is a good illustration of choosing suspension deliberately: an unbuffered shared flow whose `emit` suspends until every subscriber has received the event, described as rendezvous delivery. That is a real guarantee about present subscribers, bought by letting the slowest of them backpressure the producer — which is the trade the buffering lesson framed for cold flows, appearing here with a hot stream's twist that no subscribers means no backpressure at all."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two narrower APIs are worth knowing exist rather than studying. `subscriptionCount` is a `StateFlow<Int>` of the current number of subscribers, and it is the mechanism the sharing policies in the next lesson are built on. `resetReplayCache` clears retained values on a `MutableSharedFlow`. Neither carries a decision this unit needs."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "State the broadcast rule, then distinguish replay from extra buffer capacity in one sentence each. Be able to say what an unbuffered `emit` does with subscribers and without them, and be able to say why `tryEmit` returning `true` is not evidence of delivery."
+                }
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "title": "kotlinx.coroutines: SharedFlow",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-shared-flow/"
+            },
+            {
+              "title": "kotlinx.coroutines: MutableSharedFlow",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-mutable-shared-flow/"
+            },
+            {
+              "title": "Flows",
+              "url": "https://kotlinlang.org/docs/coroutines-flow.html"
+            },
+            {
+              "title": "kotlinx.coroutines: StateFlow",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-state-flow/"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_sharing_cold_flows",
+          "title": "Sharing Cold Flows with `stateIn` and `shareIn`",
+          "summary": "stateIn and shareIn do more than change a Flow's type. They move production of a cold upstream into a sharing coroutine owned by a scope you supply, and the SharingStarted policy — not the collectors — decides when that upstream actually runs.",
+          "primarySubtopicIds": [
+            "flow_sharing"
+          ],
+          "supportingSubtopicIds": [
+            "stateflow",
+            "sharedflow",
+            "coroutine_scope",
+            "lifecycle_coroutines"
+          ],
+          "relatedLessonIds": [
+            "lesson_coroutine_scope_ownership",
+            "lesson_cold_flows",
+            "lesson_state_flow",
+            "lesson_shared_flow"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A repository that exposes a cold Flow gives every collector its own execution. That is usually the right default, and occasionally it is expensive: two screens observing the same query run the query twice, and a flow that opens a connection opens two."
+                },
+                {
+                  "type": "code",
+                  "code": "val source: Flow<Data> = repository.observeData()\n\n// Two direct collectors of a cold source are two collections of it.\n// Measured on this project's JVM target: collecting a cold flow twice\n// ran its builder block twice.",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`shareIn` and `stateIn` change that. Each launches a single coroutine — the sharing coroutine — in a scope you pass in, and that one coroutine collects the upstream and fans out what it produces to the subscribers. What sharing removes is one collection **per collector**: however many subscribers are present, one upstream collection serves all of them. How many times that collection is started over the stream's lifetime is a separate question, and the policy below is what answers it — `WhileSubscribed` in particular stops and restarts it."
+                },
+                {
+                  "type": "code",
+                  "code": "val shared: SharedFlow<Data> = source.shareIn(\n    scope = scope,\n    started = SharingStarted.WhileSubscribed(),\n    replay = 1,\n)\n\nval state: StateFlow<Data> = source.stateIn(\n    scope = scope,\n    started = SharingStarted.WhileSubscribed(),\n    initialValue = Data.Empty,\n)\n\n// Measured on this project's JVM target: three concurrent subscribers to a\n// shared cold upstream started that upstream exactly once between them.",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`stateIn` produces a hot `StateFlow`, so it needs an initial value and gives you the current-value contract from the state lesson. `shareIn` produces a hot `SharedFlow` with whatever replay you ask for, including none, and gives you the broadcast contract from the previous lesson. The difference between them is not the return type's name; it is whether the result is obliged to have a current value."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The change that actually matters is neither of those. It is that production has moved. The upstream is no longer run by whoever collects — it is run by a coroutine in the scope you supplied, which means the scope now decides how long that production can exist at all."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Sharing relocates a cold upstream's lifetime from the collector to a supplied scope. The scope bounds how long the shared production can live; the `SharingStarted` policy decides when, inside that bound, it actually runs."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Ownership is the first question, and the scope-ownership lesson answers it: a scope owns the coroutines launched in it, and cancelling the scope cancels them. Hand `stateIn` a screen-lifetime scope and the shared upstream cannot outlive that screen; hand it a process-lifetime scope and it can run for as long as the app does. Neither is wrong, but the choice is a lifetime decision made at the call site, not a detail of the operator."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second question is what starts and stops the upstream inside that lifetime, and that is what `SharingStarted` answers. The three built-in policies are best learned as three different trades rather than three names."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Measured on this project's JVM target, using a cold source that counts how many times it is started and stopped, with one subscriber that arrives and later leaves:"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Policy",
+                    "Before any subscriber",
+                    "When the last subscriber leaves",
+                    "On a later subscriber"
+                  ],
+                  "rows": [
+                    [
+                      "`Eagerly`",
+                      "Upstream already started and producing",
+                      "Keeps running; nothing stopped",
+                      "Joins the run already in progress"
+                    ],
+                    [
+                      "`Lazily`",
+                      "Not started",
+                      "Keeps running; nothing stopped",
+                      "Joins the run already in progress"
+                    ],
+                    [
+                      "`WhileSubscribed()`",
+                      "Not started",
+                      "Stopped immediately; retained value kept",
+                      "Upstream is started again from the beginning"
+                    ],
+                    [
+                      "`WhileSubscribed(500)`",
+                      "Not started",
+                      "Still running for a further 500 ms, then stopped",
+                      "Started again if the grace period expired"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`Eagerly` starts sharing immediately and never stops. That costs work while nobody is observing, and it buys having the data ready when a subscriber does arrive. Note the consequence the `shareIn` documentation spells out: with `Eagerly`, values emitted beyond what `replay` retains are immediately discarded, so an eager stream with `replay = 0` produces into nothing until someone subscribes. Measured here: six values were produced before a subscriber joined, and the first value it saw was the seventh."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`Lazily` starts when the first subscriber appears and then never stops. The documentation notes what that buys: with `shareIn`'s default buffering, the first subscriber is guaranteed to get every emitted value, while later ones get only the replay. What it does not do is stop when subscribers leave — the symmetry its name suggests is not in the contract."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`WhileSubscribed` is the one with a decision in it. It starts on the first subscriber and stops after the last one leaves, with two independent delays, both defaulted."
+                },
+                {
+                  "type": "code",
+                  "code": "SharingStarted.WhileSubscribed(\n    stopTimeoutMillis = 0,                    // default: stop as soon as the last subscriber leaves\n    replayExpirationMillis = Long.MAX_VALUE,  // default: keep the retained value forever\n)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`stopTimeoutMillis` is a grace period after the last subscriber disappears, and nothing else. It is not a polling interval, not a refresh interval, and not a delay before a subscriber is served."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Reading `WhileSubscribed(5_000)` as \"refresh every five seconds\". It is \"wait five seconds after the last subscriber goes away before stopping the upstream\". Nothing in it delays a new subscriber or re-runs the upstream on a timer. What a subscriber has to show for joining at once is whatever was retained — the current value for `stateIn`, the replay cache for `shareIn`, and at `replay = 0` nothing at all, in which case it waits for the upstream exactly as it would have anyway."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The five-second figure is an application choice, not an API rule — the default is zero. It is common on Android because a configuration change destroys and recreates the collector within a few hundred milliseconds, and a grace period longer than that gap avoids tearing down and restarting an expensive query for a subscriber that is about to come straight back, while a real departure from the screen still stops the work. Pick the number from how long your gaps actually are and how expensive the restart actually is."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "And `Eagerly` is not a mistake to be corrected on sight. This repository's own state holders use `stateIn(scope, SharingStarted.Eagerly, ...)`, and it is worth being precise about why, because the tempting reason is wrong. It is **not** that their scope lives as long as the process: the scope only sets the maximum lifetime, and `WhileSubscribed` on that same scope would still stop the upstream every time the subscriber count reached zero. The actual reason is what the upstream is — a derivation over shared history that several screens read — so keeping it running means the figures are already computed the first time a screen opens, and still current after a gap, instead of being re-derived on every entry. What that costs is the derivation running while nobody is looking, which is affordable here because the result is one small value. Ask what the upstream costs to keep running and what restarting it costs; the scope's lifetime is a different question."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "`WhileSubscribed`'s two parameters are two clocks that start one after the other, and conflating them is the most common misreading of the policy. Stopping the upstream and clearing what was retained are separate decisions."
+                },
+                {
+                  "type": "code",
+                  "code": "subscriber count:\n1 -------- 0 -------------------------------- 1\n           |<--- stopTimeoutMillis --->|\nupstream:\nrunning ------- still running ------- stopped ------ restarted",
+                  "language": "text"
+                },
+                {
+                  "type": "code",
+                  "code": "upstream stopped\n       |<--- replayExpirationMillis --->|\n                                       retained value is reset",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The default `replayExpirationMillis` is `Long.MAX_VALUE`, which the documentation glosses as keeping the replay cache forever and never resetting the buffer. So with a plain `WhileSubscribed()` the upstream stops immediately and the last value stays available indefinitely — measured here, the state still read its last upstream value long after the upstream had stopped. Give it a finite expiration and the reset happens on its own clock: measured with a 200-millisecond expiration, the value was still the last real one 150 milliseconds after the stop and had reverted to the `initialValue` 750 milliseconds after it. For `shareIn` the equivalent reset empties the replay cache."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That default is worth deciding about rather than inheriting, and it also disposes of a common assumption: stopping the upstream does not send a returning subscriber back to the initial value. Measured on this project's JVM target with a plain `WhileSubscribed()`, a subscriber returning after the upstream had stopped received the value retained from the previous run within a few milliseconds, and the restarted upstream's own first value only 250 milliseconds later. So a screen re-entered much later renders the figure from its previous visit until the restart produces a new one — right when that value is a cheap-to-confirm cache, wrong when a stale figure is misleading. That is `stateIn`, where there is always a value to retain: the same measurement against `shareIn(..., replay = 0)` gave the returning subscriber nothing for those 250 milliseconds, because retention is what fills the gap and at `replay = 0` there is none."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Upstream completion and failure both behave in ways that do not follow from the cold model. Normal completion of the upstream has no effect on subscribers: the sharing coroutine keeps running, the hot result does not complete, and the last value stays. Measured on this project's JVM target with an upstream that emitted once and finished, the collector was still active afterwards and the state still read that value. Failure is different — an exception in the upstream terminates the sharing coroutine without affecting subscribers, and is handled by the scope the sharing was launched in. If an upstream can fail recoverably, `catch` or `retry` belongs before the `shareIn` or `stateIn` call, where it can still see the failure."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two smaller notes. There is a suspending `stateIn(scope)` overload with no initial value: it starts the upstream, suspends until the first value arrives, and throws `NoSuchElementException` if the upstream completes without emitting — useful when there is genuinely no sensible initial value, at the cost of a caller that has to wait. And the same operator-fusion rule from the state lesson applies to the result: applying `flowOn`, `conflate` or `distinctUntilChanged` to what `stateIn` returns has no effect."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Be able to say what owns the coroutine `shareIn` creates, and what that implies about lifetime. Be able to say what `WhileSubscribed(5_000)` delays and what it does not, that the figure is an application choice, and that replay expiration is a second, separate timer that defaults to never."
+                }
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "title": "kotlinx.coroutines: stateIn",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/state-in.html"
+            },
+            {
+              "title": "kotlinx.coroutines: shareIn",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/share-in.html"
+            },
+            {
+              "title": "kotlinx.coroutines: SharingStarted",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-sharing-started/"
+            },
+            {
+              "title": "kotlinx.coroutines: SharingStarted.WhileSubscribed",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-sharing-started/-companion/-while-subscribed.html"
+            },
+            {
+              "title": "Flows",
+              "url": "https://kotlinlang.org/docs/coroutines-flow.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_choosing_a_stream_abstraction",
+          "title": "Choosing a Stream Abstraction by Delivery Guarantees",
+          "summary": "A plain value, a suspending function, a cold Flow, a StateFlow, a SharedFlow and a Channel are not interchangeable styles. Each provides a different delivery guarantee, and the scenario decides which guarantee is required — not which type is fashionable.",
+          "primarySubtopicIds": [
+            "hot_vs_cold_streams"
+          ],
+          "supportingSubtopicIds": [
+            "stateflow",
+            "sharedflow",
+            "flow_sharing",
+            "state_ownership"
+          ],
+          "relatedLessonIds": [
+            "lesson_why_flow",
+            "lesson_hot_and_cold_streams",
+            "lesson_state_flow",
+            "lesson_shared_flow",
+            "lesson_sharing_cold_flows"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "This unit ends where the Flow half of this curriculum has been heading: given a problem, choose the abstraction and be able to name the property that decided it. The way to get there is not to memorise a table of types. It is to ask five questions in order, stopping at the first one that settles the choice."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The first is whether there is one value or a series of them over time. That question alone eliminates most of the candidates."
+                },
+                {
+                  "type": "code",
+                  "code": "fun currentConfig(): Config                 // one value, available now\nsuspend fun loadConfig(): Config            // one value, computed asynchronously\nfun observeConfig(): Flow<Config>           // values over time",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second is whether each consumer should drive its own production. If two collectors should each perform the producer's work — each running the query, each opening its own subscription — a cold `Flow` is the answer, and no sharing is wanted. If they should observe one shared production, some hot or shared abstraction fits and the sharing lesson says how to get there from a cold source."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The third is whether there must always be a current value. Ask it as a question about observers: can a new observer arrive at any moment and still need to know the current truth immediately? If yes, current-value semantics are a requirement rather than a convenience, and `StateFlow` is the type that guarantees them."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The fourth is whether this is broadcast delivery — several active subscribers all receiving the same value. If it is, `SharedFlow` fits, and the follow-up questions are the ones the previous lesson listed: should late subscribers receive earlier values, how many, may values be dropped under load, should the emitter suspend for a slow subscriber, and what should happen when nobody is subscribed."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The fifth is whether each element is work for exactly one receiver. That is the question no Flow shape answers, and it is where the last candidate comes in."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "One value or many; per-collector or shared production; is a current value obligatory; is delivery broadcast; is each element for exactly one receiver. The first question that a requirement answers decides the type."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A `Channel` has a delivery shape none of the Flow types offer. The documentation describes it as conceptually very similar to a `BlockingQueue`, with suspending `send` and `receive` instead of blocking ones, and it describes fan-out as several coroutines receiving from the same channel and distributing work between themselves. That is the property: a queued element is taken by one receiver, not broadcast to all of them."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is why a `Channel` cannot be swapped for a `StateFlow` or a `SharedFlow` mechanically, and the difference is the **shape** of the delivery rather than how reliable it is. A shared flow offers the same value to all of its subscribers; a channel gives each element to one receiver, and the others never see it. A queue of outgoing commands worked through by a pool of workers is a channel problem, and expressing it as a shared flow would offer every command to every worker instead of dividing the queue between them."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What a channel does not provide deserves the same care, because it is the distinction this Lesson ends on. Receiving an element removes it, and nothing tracks what happens next. Measured on this project's JVM target with five queued elements and one worker: the worker took 1, 2 and 3 and finished 1 and 2 before being cancelled part-way through 3. A replacement receiver then drained 4 and 5 — and 3 was never redelivered and never finished by anyone. A channel decides which receiver gets an element, not that the work on it ever completes."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is all this curriculum teaches about channels, and the boundary is deliberate. Pipelines, fan-in topologies, `produce`, `select` and the capacity taxonomy are a subject of their own, and none of them is needed to make this decision."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Requirement",
+                    "Candidate",
+                    "The property that decides it"
+                  ],
+                  "rows": [
+                    [
+                      "A value that is simply available",
+                      "A plain value or property",
+                      "Nothing observes changes"
+                    ],
+                    [
+                      "One result, computed asynchronously",
+                      "A suspending function",
+                      "One value, and the caller waits for it"
+                    ],
+                    [
+                      "Repeated values, produced independently per consumer",
+                      "Cold `Flow`",
+                      "Production is per-collector"
+                    ],
+                    [
+                      "Repeated values, one production shared by several consumers",
+                      "`shareIn` or `stateIn` over the cold source",
+                      "Production moves to a supplied scope"
+                    ],
+                    [
+                      "A current value every observer needs, including late ones",
+                      "`StateFlow`",
+                      "There is always a current value"
+                    ],
+                    [
+                      "Values broadcast to whoever is subscribed, with chosen replay",
+                      "`SharedFlow`",
+                      "Each value is fanned out to current subscribers; what each one receives depends on the buffering configuration"
+                    ],
+                    [
+                      "Each element taken by exactly one receiver rather than by all of them",
+                      "`Channel`",
+                      "Queued delivery to a single receiver, not broadcast"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The table is a summary of reasoning already done, not a substitute for it. It cannot tell you whether a value is state or an occurrence, whether a late observer needs history, or whether losing a value is acceptable — and those are the inputs. Every row is also about **delivery** and none of them is a guarantee of handling: no entry here promises that the work a value triggers ever finishes. Two rows can look equally plausible until the requirement is stated precisely enough to separate them, which is the actual work."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Worked briefly: current authentication state that any screen may start observing at any moment and must immediately know is a `StateFlow`, because arriving late must still be correct. A \"sync finished\" notice that only the screens currently open should react to is a `SharedFlow` with `replay = 0`, or a small replay window if a subscriber arriving a moment later should still hear it. A database query observed by two screens is a cold repository `Flow` shared with `stateIn`, because the query should run once and both screens need the current rows."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The slogan this unit set out to replace is \"`StateFlow` for state, `SharedFlow` for events\", and it is worth saying exactly what is wrong with it. The state half is close to right, because current-value semantics really are what state needs. The event half quietly promises a delivery guarantee that no `SharedFlow` provides."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Choosing `SharedFlow` for a one-off occurrence and assuming it will be delivered. A `replay = 0` shared flow with no subscriber accepts the value and drops it, as the previous lesson measured — though a replay window would have retained it for a subscriber arriving later, so retention across a gap is configurable. What no configuration provides is a guarantee that the occurrence is eventually **handled**: nothing records whether a subscriber consumed it, and nothing waits for one to appear. If that is the requirement, no setting meets it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A `Channel` does not rescue it either, which is worth saying because single-receiver delivery sounds like the stronger guarantee: the measurement above lost an element to a receiver that was cancelled part-way through it. Take the requirement seriously and the honest options are outside this unit. Model the occurrence as durable state that is marked handled — the acknowledgement is what turns delivery into handling. Queue it somewhere that persists. Or accept the loss deliberately, having established that a missed notice is harmless. Each of those is an architectural answer, and the value of getting the stream semantics right first is that it tells you when you need one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The Compose side of the same question — how a screen collects a stream safely, and how a one-off effect should be modelled and consumed in a UI — belongs to the effects and architecture material later in this path. Once the delivery guarantee is chosen, that material decides how a UI models and consumes it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What this unit's five lessons contribute to the decision is worth recalling as one argument. Whether production is per-collector or shared is where the two families divide. What a late subscriber can recover is retention, configured independently. Where a shared upstream's lifetime lives, and what starts and stops it, is scope and policy. And from the earlier units: one value or a stream is the first question of all; whether every value or only the latest must be delivered is a delivery decision, not a performance tweak; and a scope owns the work it launches."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Given a scenario, name the deciding property before naming the type — \"a late observer must know the current value, so this needs current-value semantics\" rather than \"use `StateFlow`\". Be ready for the follow-up about one-off events, and answer that a shared flow with no subscribers drops the value, so a must-not-be-lost occurrence needs state, acknowledgement or a queue rather than a hot flow."
+                }
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "title": "Channels",
+              "url": "https://kotlinlang.org/docs/channels.html"
+            },
+            {
+              "title": "Flows",
+              "url": "https://kotlinlang.org/docs/coroutines-flow.html"
+            },
+            {
+              "title": "kotlinx.coroutines: StateFlow",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-state-flow/"
+            },
+            {
+              "title": "kotlinx.coroutines: SharedFlow",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-shared-flow/"
+            },
+            {
+              "title": "StateFlow and SharedFlow",
+              "url": "https://developer.android.com/kotlin/flow/stateflow-and-sharedflow"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
     }
   ]
 }

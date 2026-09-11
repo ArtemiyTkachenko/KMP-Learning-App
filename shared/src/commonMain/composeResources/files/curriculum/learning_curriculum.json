@@ -7989,7 +7989,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Measured on this project's JVM target: a `MutableStateFlow` holding a `data class`, with a collector attached and three spaced assignments of an equal value, delivered exactly one value — the initial one. The same experiment with a class that inherits identity equality delivered three, because two distinct instances with the same field are not equal to each other."
+                  "text": "Measured on this project's JVM target: a `MutableStateFlow` holding a `data class`, with a collector attached and three spaced assignments of an equal value, delivered exactly one value — the initial one, and nothing after it. The same experiment with a class that inherits identity equality delivered four: the initial value, plus one for each of the three assignments, because two distinct instances carrying the same field are not equal to each other. Same code, same assignments, different `equals`."
                 },
                 {
                   "type": "comparison",
@@ -8119,7 +8119,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "`SharedFlow` is the general hot flow, and `StateFlow` is the special case of it that holds exactly one current value. The documentation defines it as a hot flow that shares emitted values among all its collectors in a broadcast fashion, so that all collectors get all emitted values. Broadcast is the word that matters: an emission is not consumed by one subscriber at the expense of the others, and every active subscriber sees it."
+                  "text": "`SharedFlow` is the general hot flow, and `StateFlow` is the special case of it that holds exactly one current value. The documentation defines it as a hot flow that shares emitted values among all its collectors in a broadcast fashion, so that all collectors get all emitted values. Broadcast is the word that matters, and what it fixes is **fan-out**: a value is offered to every subscriber rather than consumed by one of them at the others' expense. Whether a particular subscriber then actually receives every value is a second question, and the configuration below is what answers it."
                 },
                 {
                   "type": "paragraph",
@@ -8141,7 +8141,7 @@
                 {
                   "type": "callout",
                   "kind": "KEY_TAKEAWAY",
-                  "text": "Every current subscriber gets every emitted value. `replay` decides what a subscriber who was not there can still recover; `extraBufferCapacity` and `onBufferOverflow` decide what happens to an emitter when a present subscriber cannot keep up."
+                  "text": "A value is fanned out to every current subscriber rather than consumed by one of them. `replay` decides what a subscriber who was not there can still recover; `extraBufferCapacity` and `onBufferOverflow` decide what happens when a present subscriber cannot keep up — and under a dropping strategy, that includes letting it miss values."
                 }
               ]
             },
@@ -8169,6 +8169,10 @@
                 {
                   "type": "paragraph",
                   "text": "Now the emitter's side. A `MutableSharedFlow()` constructed with no arguments has neither replay nor extra buffer, and its `emit` suspends until all subscribers receive the emitted value. Measured on this project's JVM target with one subscriber taking 300 milliseconds per value: three emissions returned at roughly 109, 414 and 718 milliseconds from the start. The first handed straight over to a waiting subscriber; each later one waited for the subscriber to come back for the next value."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Configuring `onBufferOverflow` is how that waiting is avoided, and the cost is paid by whichever subscriber was behind. Measured on this project's JVM target with one subscriber taking 300 milliseconds per value and six values emitted 20 milliseconds apart: the default suspending strategy delivered all six, while the same flow with one slot of extra buffer and a drop-oldest strategy delivered 1 and 6. The subscriber was present throughout both runs. That is the qualification the broadcast rule needs — fan-out says the value is offered to everyone, not that everyone receives it."
                 },
                 {
                   "type": "paragraph",
@@ -8225,9 +8229,9 @@
                       "Configure a dropping overflow strategy"
                     ],
                     [
-                      "Must the value survive having no subscribers?",
-                      "No shared flow configuration provides this",
-                      "`replay = 0` is honest and cheap"
+                      "Must the occurrence eventually be handled by somebody, even if nobody is subscribed when it happens?",
+                      "No shared flow configuration guarantees this",
+                      "`replay = 0` is honest and cheap, and a small replay window covers a short gap"
                     ]
                   ]
                 },
@@ -8409,7 +8413,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "And `Eagerly` is not a mistake to be corrected on sight. This repository's own state holders use `stateIn(scope, SharingStarted.Eagerly, ...)` on an application-lifetime scope, deliberately: the derived caches they hold are shared by several screens and must survive a navigation entry being destroyed, so a returning screen renders the last value on its first frame instead of a spinner. `WhileSubscribed` would buy nothing there, because the scope lives as long as the process anyway. Ask what lifetime the scope has and whether eager collection is wanted, rather than applying a default from a different situation."
+                  "text": "And `Eagerly` is not a mistake to be corrected on sight. This repository's own state holders use `stateIn(scope, SharingStarted.Eagerly, ...)`, and it is worth being precise about why, because the tempting reason is wrong. It is **not** that their scope lives as long as the process: the scope only sets the maximum lifetime, and `WhileSubscribed` on that same scope would still stop the upstream every time the subscriber count reached zero. The actual reason is what the upstream is — a derivation over shared history that several screens read — so keeping it running means the figures are already computed the first time a screen opens, and still current after a gap, instead of being re-derived on every entry. What that costs is the derivation running while nobody is looking, which is affordable here because the result is one small value. Ask what the upstream costs to keep running and what restarting it costs; the scope's lifetime is a different question."
                 }
               ]
             },
@@ -8436,7 +8440,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "That default is worth deciding about rather than inheriting. A screen re-entered much later will render the value from its previous visit until the restarted upstream produces a new one, which is right when the value is a cheap-to-confirm cache and wrong when a stale figure is misleading."
+                  "text": "That default is worth deciding about rather than inheriting, and it also disposes of a common assumption: stopping the upstream does not send a returning subscriber back to the initial value. Measured on this project's JVM target with a plain `WhileSubscribed()`, a subscriber returning after the upstream had stopped received the value retained from the previous run first, and the restarted upstream's own first value only after it. So a screen re-entered much later renders the figure from its previous visit until the restart produces a new one — right when that value is a cheap-to-confirm cache, wrong when a stale figure is misleading."
                 },
                 {
                   "type": "paragraph",

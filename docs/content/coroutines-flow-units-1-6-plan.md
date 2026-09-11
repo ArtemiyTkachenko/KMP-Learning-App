@@ -1701,8 +1701,11 @@ plus the blueprint's status and two of its headings.
 therefore reaches **four** concepts — `hot_vs_cold_streams`, `stateflow`, `sharedflow`,
 `flow_sharing` — and **six** ACTIVE Questions, each counted once. That is asserted in
 `LearningUnitPracticeIntegrationTest` rather than left to the generated snapshot. Each Lesson
-carries Core, Practical and Senior depth and runs 1,110–1,286 words, inside the range Units 4
-and 5 occupy.
+carries Core, Practical and Senior depth and runs 1,110–1,408 words after the review
+corrections below. L6.4 is the longest Lesson in the epic: it carries sharing, three policies,
+two timers and upstream completion, which is the load the plan's five-Lesson justification for
+this Unit already anticipated. It is still inside Rule 8's reading-time target, and it was not
+split, because splitting it would separate the policy from the scope that gives it meaning.
 
 ### The two title corrections, and why they are not scope changes
 
@@ -1758,7 +1761,7 @@ figures are evidence for a semantic claim, not published guarantees.
 | --- | --- | --- |
 | Collector attached to a `MutableStateFlow` whose value had already moved on | Received the current value immediately, matching `value` | L6.2's current-value contract |
 | `data class` state, three spaced assignments of an equal value | **One** delivery — the initial one | Equality-based conflation as behaviour |
-| Same shape with a class inheriting identity equality | **Three** deliveries | That the state type's `equals` is what decides |
+| Same shape with a class inheriting identity equality | **Four** deliveries — the initial value plus one per assignment | That the state type's `equals` is what decides |
 | Object mutated in place 1 → 99, then an equal instance assigned | Collector saw the value **once**, at subscription; `value.count` read 99 afterwards | The mutable-state failure mode, stated without inventing a guarantee |
 | Value assigned 1…10 at 20 ms with a 200 ms collector | Collector observed **0, 7, 10** | Slow-collector conflation, ending on the latest |
 | 8 coroutines × 2,000 increments through `value = value + 1` | **5,998** of 16,000 | Why read-modify-write is not atomic |
@@ -1767,6 +1770,8 @@ figures are evidence for a semantic claim, not published guarantees.
 | `replay = 1`: same sequence | Subscriber received **A then B** | Replay as the only thing a late subscriber can see |
 | Unbuffered `emit` × 3 with one 300 ms subscriber | Returned at ≈109, 414, 718 ms | That `emit` waits for subscribers to take the value |
 | Unbuffered `emit` × 1,000 with **no** subscribers | ≈1 ms, replay cache empty | That absent subscribers mean no backpressure and total loss |
+| Six values, 20 ms apart, one 300 ms subscriber, default `SUSPEND` | All six delivered | The baseline the dropping case is measured against |
+| The same with `extraBufferCapacity = 1` and `DROP_OLDEST` | **1 and 6** delivered, subscriber present throughout | That broadcast is fan-out, not a delivery guarantee |
 | `replay = 2`, ten emissions, no subscribers | Replay cache held the last two | That overflow strategy has no effect with no subscribers |
 | `tryEmit` on an unbuffered flow with no subscribers | `true`, replay cache still empty | That `true` is not evidence of delivery |
 | `tryEmit` on the same flow with one slow subscriber | `false` | The documented `false` condition |
@@ -1776,6 +1781,7 @@ figures are evidence for a semantic claim, not published guarantees.
 | `Eagerly` + `shareIn(replay = 0)`, subscriber joins after six values | First value seen was the **seventh** | The KDoc's "immediately discarded" clause |
 | The same at `replay = 2` | Subscriber received the two most recent, then live values | Replay against eager production |
 | Upstream that emits once and completes, under `WhileSubscribed()` | Collector still active afterwards; state still read that value | "Normal completion has no effect on subscribers" |
+| Subscriber returning after a `WhileSubscribed()` stop | Received the **retained** value first, then the restarted upstream's first value | That a stop does not send a returning subscriber back to `initialValue` |
 
 ### The `SharingStarted` probe, in full
 
@@ -1818,8 +1824,11 @@ before L6.4 was written. The four application-scoped ones run on `AppCoroutineSc
 is `SupervisorJob() + Dispatchers.Default` and lives as long as the process, and
 `ProgressStateHolder`'s own documentation states the reason: the navigation entry destroys
 the ViewModel on a tab switch, so the dashboard was rebuilt from nothing on every visit.
-`WhileSubscribed` would buy nothing against a process-lifetime scope and would reintroduce
-the spinner the holder exists to remove. L6.4 uses this as its contrast case, teaches
+The first draft of L6.4 justified the choice by the scope's lifetime, and that was wrong twice
+over — see [four corrections made during review](#four-corrections-made-during-review). L6.4 ships the
+justification the code actually supports: the upstream is a derivation several screens read, so
+keeping it running means the figures are computed before the first open and stay current across
+gaps, at the cost of running while nobody looks. L6.4 uses this as its contrast case, teaches
 `Eagerly` through its trade rather than as a mistake, and **no production code was changed**.
 
 ### The `SharedFlow` no-subscriber behaviour, as taught
@@ -1926,6 +1935,65 @@ decision for E24-08 to take deliberately.
 | GAP-U6-D | Unit 6 / `lesson_shared_flow` | What an unbuffered `SharedFlow`'s `emit` does with and without subscribers, and that `tryEmit() == true` is not evidence anyone received the value | `shared_flow_replay_late_subscriber` assesses the late-subscriber half of delivery. The emitter's half is unassessed, and it is where "SharedFlow is for events" actually fails: the measured 1,000 emissions into an empty subscriber set completed in about a millisecond and were all lost. A strong ADVANCED candidate, in the half of the Topic that has none | Add coverage in E24-08 |
 | GAP-U6-E | Unit 6 / `lesson_sharing_cold_flows` | That `stopTimeoutMillis` and `replayExpirationMillis` are two timers on two clocks, and that the second defaults to never | `flow_state_in_while_subscribed` teaches the first and does not mention the second. The measured pair of runs — same stop moment, reset 500 ms apart — is a ready-made tracing scenario. Overlaps GAP-U6-B and could be folded into it or split off | Add coverage in E24-08, possibly as part of GAP-U6-B |
 | GAP-U6-F | Unit 6 / `lesson_choosing_a_stream_abstraction` | That a must-not-be-lost occurrence is not satisfied by any hot Flow configuration, so the answer is durable state, a queue or acknowledgement | `flow_vs_channel_delivery_model` assesses the single-receiver contrast, which is a different property. `durable_state_vs_one_off_event` in the `architecture` Topic is the closest and is supporting-only here, so it creates no Unit 6 practice. This is the reasoning the epic exists to replace the slogan with, and nothing in `async_reactive` assesses it | Add coverage in E24-08 |
+
+### Four corrections made during review
+
+Four defects were found by review of the shipped prose and all four were re-measured before
+being corrected. Three of them are the same failure in different clothes: a rule stated
+without the qualification that the Unit's own material supplies two paragraphs later.
+
+**1. The identity-equality delivery count was wrong.** L6.2 said that three spaced assignments
+of an equal value delivered one value for a `data class` and "three" for a class with identity
+equality. Three is the count for *two* assignments; the probe behind the sentence made two, and
+the prose said three. Re-measured at both sizes: two assignments give 1 against 3, three
+assignments give **1 against 4** — the initial value plus one per assignment, since no two
+instances compare equal. The Lesson now states the three-assignment pair and says outright that
+it is the same code with a different `equals`.
+
+**2. "Every current subscriber gets every emitted value" is not true under a dropping
+strategy.** The `SharedFlow` KDoc's own sentence says all collectors get all emitted values, and
+L6.3 repeated it as a `KEY_TAKEAWAY` — three paragraphs above teaching `onBufferOverflow`, whose
+whole purpose is to drop values rather than suspend the emitter. Buffer overflow requires a
+subscriber that is not ready, so the subscriber that loses the value is a *present* one.
+Measured: six values 20 ms apart with one 300 ms subscriber delivered all six under the default
+`SUSPEND` and **1 and 6** with `extraBufferCapacity = 1, DROP_OLDEST`, with the subscriber
+present for both runs. L6.3 now teaches broadcast as **fan-out** — the value is offered to every
+subscriber rather than consumed by one — and treats "does this subscriber receive every value?"
+as the separate question the configuration answers. The measurement is in the Lesson.
+
+**3. "Must the value survive having no subscribers?" was the wrong question.** L6.3's decision
+table answered it "no shared flow configuration provides this", which contradicts `replay = 1`,
+the Lesson's own measurement of it, and the paragraph directly beneath the table. Survival is
+exactly what replay provides. The requirement no configuration meets is the stronger one, so the
+row now asks whether the occurrence must eventually be **handled by somebody** even if nobody is
+subscribed when it happens, which is the requirement L6.5 then sends to durable state, a queue
+or acknowledgement.
+
+**4. `Eagerly` was justified from the scope's lifetime, which is the axis error this Unit
+exists to prevent.** L6.4 said `WhileSubscribed` "would buy nothing" against this repository's
+process-lifetime state holders and "would reintroduce the spinner". Both halves are false, and
+both collapse axes the Unit separates:
+
+- *Scope lifetime is not start/stop policy.* A process-lifetime scope sets the **maximum**
+  lifetime. `WhileSubscribed` on that same scope still stops the upstream every time the
+  subscriber count reaches zero, so it buys exactly what it always buys.
+- *Stopping is not resetting.* With the default `replayExpirationMillis` of `Long.MAX_VALUE`,
+  `stateIn` keeps its last value while stopped. Measured with a plain `WhileSubscribed()`: after
+  the last subscriber left the upstream stopped and `value` still read the last real value, and
+  a returning subscriber received **that retained value first**, before the restarted upstream's
+  own first value. A returning screen therefore never sees `initialValue`, so no spinner is
+  reintroduced.
+
+L6.4 now justifies `Eagerly` from what the upstream is: a derivation over shared history that
+several screens read, kept running so the figures are computed before the first open and stay
+current across gaps, paid for by running while nobody is looking. The Lesson says explicitly
+that the scope's lifetime is a different question, and the corrected retained-value measurement
+is in its Senior section. **No production code changed**, and the conclusion about the
+repository's four holders is unchanged — only the reasoning offered for it.
+
+The wider lesson for E24-09: every one of these was a general rule stated without the
+qualification that the same Lesson supplies. That is the specific failure mode of a Unit whose
+subject is separating axes, and it is worth re-reading the other five Units for the same shape.
 
 ### Cross-links and validation
 
@@ -2205,8 +2273,12 @@ Two consequences that examples depend on:
 - **The repository's own coroutine usage is a legitimate grounding source.** It uses exactly
   one explicit dispatcher (`CoroutineScope(SupervisorJob() + Dispatchers.Default)` in
   `AppCoroutineScope`) and four `stateIn(..., SharingStarted.Eagerly, ...)` state holders. The
-  `Eagerly` choice is a useful, honest contrast case for L6.4 — an app-lifetime holder where
-  `WhileSubscribed` would buy nothing.
+  `Eagerly` choice is a useful, honest contrast case for L6.4. **Corrected by E24-07:** this row
+  originally read "an app-lifetime holder where `WhileSubscribed` would buy nothing", which is
+  false. A process-lifetime scope sets the maximum lifetime only; `WhileSubscribed` on that same
+  scope would still stop the upstream whenever the subscriber count reached zero. The defensible
+  justification is the cost of keeping the derivation running against the cost of restarting it
+  — see [four corrections made during review](#four-corrections-made-during-review).
 
 ### The coroutines documentation has been restructured
 

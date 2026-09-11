@@ -1693,8 +1693,9 @@ The Unit id, title and `async_reactive` home Topic, all five Lesson ids, their a
 and their exact primary and supporting mappings shipped verbatim from the identity tables. No
 Lesson was reordered, split or merged, and no Lesson from an earlier Unit, no Compose Lesson,
 no Question and no taxonomy record was touched. Outside this Unit the diff is the two tests
-that pin Unit and Lesson counts and reach, the generated coverage snapshot, and this document
-plus the blueprint's status and two of its headings.
+that pin Unit and Lesson counts and reach, the generated coverage snapshot, this document plus
+the blueprint's status and two of its headings, and one production fix that the added Lessons
+surfaced — see [the study-state race](#the-study-state-race-this-unit-surfaced).
 
 `hot_vs_cold_streams` is deliberately primary in both L6.1 and L6.5, which the plan's
 [shared-primaries](#identity-and-mapping-checks-performed) note anticipated. Unit practice
@@ -1838,7 +1839,9 @@ over — see [corrections made during review of Unit 6](#corrections-made-during
 justification the code actually supports: the upstream is a derivation several screens read, so
 keeping it running means the figures are computed before the first open and stay current across
 gaps, at the cost of running while nobody looks. L6.4 uses this as its contrast case, teaches
-`Eagerly` through its trade rather than as a mistake, and **no production code was changed**.
+`Eagerly` through its trade rather than as a mistake. **No state holder and no sharing policy in
+this repository was changed**; the one production change in this issue's diff is unrelated to
+`Eagerly` and is recorded below.
 
 ### The `SharedFlow` no-subscriber behaviour, as taught
 
@@ -2195,6 +2198,53 @@ successive hand-written regexes each missed the next instance by matching the wo
 one; and that sweep catches over-general *delivery* claims but not *substitution* claims — "X at
 minimum" offered in place of Y — which need their own pass, as round four showed.
 
+### The study-state race this Unit surfaced
+
+Adding five Lessons made `LearningUnitPracticeIntegrationTest`'s
+`existingLearnerTraversesTheExpansionWithLiveParentProgressAndDurableIdentities` fail
+intermittently with a ten-second timeout, waiting for a Lesson it had just marked to read back as
+studied and not pending. The cause is a real defect in `StudyProgressStateHolder`, not in the
+content and not in the test.
+
+**The race.** Opening a Learn destination constructs a `LearningLessonViewModel`, whose `init`
+calls `StudyProgressStateHolder.refresh()`, which launches a `getStudiedLessons()` read. If the
+learner then marks that Lesson studied, `toggleStudied` writes and reads back on a separate
+coroutine. The `reading` mutex serialised refreshes against each other but not against that
+read-back, so a refresh read that reached the database **before** the write could return
+**after** it and publish its older snapshot over the persisted result. The holder then showed the
+Lesson as unstudied while the database held it as studied — the exact fabrication its own
+documentation forbids, arriving from the read side rather than the write side.
+
+**Why it surfaced as a flake rather than a visible bug.** The correct state does exist, for an
+instant, between the write settling and the stale read landing. `StateFlow` conflates, so a
+collector not scheduled inside that window never observes it — which is Unit 6's own
+slow-collector contract, and the reason the test waited for a state that had already come and
+gone. The test traverses every authored Lesson, so five more Lessons meant five more chances per
+run.
+
+**Reproduced deterministically** with a repository whose read snapshots on entry and returns on
+command: the database ended holding `lesson_a` while the holder published `studied=[]`, and the
+observed sequence was `[]`, `[] pending=[a]`, `[a] pending=[]`, `[]`. No existing test could
+express it, because the fake's read gate snapshots *after* the gate opens.
+
+**The fix** takes the same `reading` mutex around the mutation's read-back, so a read can never
+publish a snapshot older than one already published. The write itself stays outside the lock,
+which is what keeps a mutation on one Lesson from delaying a mutation on another — the behaviour
+`aSecondTapOnThePendingLessonIsIgnoredWhileOtherLessonsStayUsable` pins, and which serialising the
+whole mutation would have broken. `StudyProgressStateHolderTest` gains
+`aReadIssuedBeforeAWriteDoesNotOverwriteItAfterwards`, confirmed to fail against the unfixed
+holder and pass against the fixed one, and `FakeLessonStudyRepository` gains a `staleReadGate`
+that can express a read older than a write.
+
+After the fix the reported test passed **100 out of 100** direct runs, and its whole class 60 out
+of 60. It had already passed 100 out of 100 before the fix when run in isolation, which is why the
+reproduction was built rather than the flake chased.
+
+**This is production code and outside E24-07's authoring scope.** It is in this diff because the
+Unit's own Lessons surfaced it and leaving a known-failing test would be worse. It is
+self-contained — one `withLock`, its documentation, one test and one test-support capability — and
+can be split into its own change without touching any content.
+
 ### Cross-links and validation
 
 Backward-only, and every target already ships:
@@ -2229,7 +2279,9 @@ Validation run, all passing: `python3 tools/learning_question_coverage.py --writ
 `python3 -m unittest discover -s tools -p "test_*.py"` for the coverage generator itself.
 `./gradlew :shared:iosSimulatorArm64Test` reported UP-TO-DATE against the changed bundle, so
 its results directory was removed and the task re-run: 427 tests, no failures.
-`LearningCurriculumValidator` reported no error against the shipped bundle. Unlike Unit 5, it
+`./gradlew :shared:jvmTest --tests "*StudyProgressStateHolderTest*"` covers the production fix
+above, and the reported integration test was additionally run 100 times directly against the JVM
+test classpath. `LearningCurriculumValidator` reported no error against the shipped bundle. Unlike Unit 5, it
 caught nothing during authoring; the one defect that did surface — a `SharedFlow` snippet that
 declared the same `val` twice — was found by reading the rendered Lesson end to end, which is a
 useful reminder of where the machine-checkable half of the authoring contract stops.

@@ -229,6 +229,40 @@ internal class StudyProgressStateHolderTest {
         assertEquals(setOf("lesson_a", "lesson_b"), settled.studiedLessonIds)
     }
 
+    /**
+     * A read that reached the database before a write must not publish its older snapshot after it.
+     *
+     * Opening a Learn destination calls [StudyProgressStateHolder.refresh], so a learner who marks a
+     * Lesson studied just after arriving has a read in flight that predates the write. Before the
+     * read-back was ordered against those reads, the late refresh overwrote the persisted result and
+     * the Lesson was drawn as unstudied while the database said otherwise — a state this holder
+     * exists to make impossible, arriving from the read side rather than the write side.
+     */
+    @Test
+    fun aReadIssuedBeforeAWriteDoesNotOverwriteItAfterwards() = runTest {
+        val repository = FakeLessonStudyRepository()
+        val holder = loadedHolder(repository)
+
+        // A destination opens: its refresh reads the pre-write snapshot and is held open.
+        val staleRead = CompletableDeferred<Unit>()
+        repository.staleReadGate = staleRead
+        holder.refresh()
+        advanceUntilIdle()
+
+        // The learner marks the Lesson. The write and its read-back both complete.
+        holder.toggleStudied("lesson_a")
+        advanceUntilIdle()
+        assertEquals(listOf("lesson_a"), repository.markCalls)
+
+        // Only now does the older read return.
+        staleRead.complete(Unit)
+        advanceUntilIdle()
+
+        val settled = assertIs<StudyProgressState.Loaded>(holder.state.value)
+        assertEquals(setOf("lesson_a"), settled.studiedLessonIds)
+        assertEquals(emptySet(), settled.pendingLessonIds)
+    }
+
     /** A toggle needs a persisted value to reverse; guessing one is the fabrication being forbidden. */
     @Test
     fun aToggleIsIgnoredWhileStudyStateIsUnknown() = runTest {

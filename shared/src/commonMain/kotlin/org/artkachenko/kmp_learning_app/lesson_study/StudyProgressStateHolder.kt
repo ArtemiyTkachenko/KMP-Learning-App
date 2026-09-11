@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.artkachenko.kmp_learning_app.lesson_study.repository.LessonStudyRepository
 
 /**
@@ -32,7 +33,16 @@ internal class StudyProgressStateHolder(
     private val _state = MutableStateFlow<StudyProgressState>(StudyProgressState.Loading)
     val state: StateFlow<StudyProgressState> = _state.asStateFlow()
 
-    /** Held for the duration of a read so concurrent Learn entries share one query, not one each. */
+    /**
+     * Held for the duration of a read so concurrent Learn entries share one query, not one each,
+     * and so a read can never publish a snapshot older than one already published.
+     *
+     * A mutation's read-back takes it too. Without that, a [refresh] read that reached the database
+     * *before* a write could return *after* it and overwrite the persisted result with its own
+     * older snapshot — leaving a Lesson the learner had just marked drawn as unstudied while the
+     * database said otherwise. The write itself stays outside the lock, so a mutation on one Lesson
+     * is still never delayed by a mutation on another.
+     */
     private val reading = Mutex()
 
     /**
@@ -85,7 +95,9 @@ internal class StudyProgressStateHolder(
      * the learner sees predictable.
      *
      * The visible state changes only after the write succeeds and is then read back from the
-     * repository, so the control never displays a studied state that was not persisted.
+     * repository, so the control never displays a studied state that was not persisted — and the
+     * read-back is ordered against concurrent [refresh] reads, so nothing published afterwards can
+     * revert it to a snapshot taken before the write.
      */
     fun toggleStudied(lessonId: String) {
         val loaded = _state.value as? StudyProgressState.Loaded ?: return
@@ -101,7 +113,8 @@ internal class StudyProgressStateHolder(
         scope.launch {
             runCatching {
                 if (mark) repository.markStudied(lessonId) else repository.unmarkStudied(lessonId)
-                repository.getStudiedLessons()
+                // The read-back is ordered against [refresh]'s reads; see [reading].
+                reading.withLock { repository.getStudiedLessons() }
             }.fold(
                 onSuccess = { studied -> settle(lessonId) { it.copy(studiedLessons = studied) } },
                 // The write failed, or the read after it did. Either way the last state actually

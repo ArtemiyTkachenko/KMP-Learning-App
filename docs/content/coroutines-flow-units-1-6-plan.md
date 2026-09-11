@@ -2500,6 +2500,340 @@ Two observations that are **not** gaps and must not be treated as quotas:
 
 ---
 
+## Assessment outcomes for E24-08
+
+Added by E24-08 after the gap table above was re-read against the finished Lessons. The table
+stays as the record of what was found; this section is the record of what was done about it.
+Every measurement below was executed on this repository's toolchain against the resolved
+`kotlinx-coroutines-core:1.11.0`, and every source was opened rather than recalled.
+
+### Scope
+
+A semantic assessment review of the **primary** concepts of Units 1–6 and the ACTIVE Questions
+reachable through them — **not** a bank-wide audit. That is 21 primary Subtopics and the 38
+ACTIVE `async_reactive` Questions reachable through them, plus the five DEPRECATED Questions on
+the same Subtopics and the supporting-only Questions in `performance`, `architecture`,
+`android_ui`, `networking`, `testing`, `kmp` and `lifecycle_coroutines` that the earlier review
+listed. Those last two groups were read for duplication only; none of them closes an E24 gap and
+none was re-mapped. Nineteen Questions were authored, three were re-mapped, one had its level
+raised and one had an explanation clause corrected; the other 407 questions in
+`initial_curriculum.json` were not re-reviewed and their prior verdicts stand.
+`docs/content/question-audit-log.yml` records the review under that scope.
+
+### Final disposition of the 21 gap candidates
+
+Every gap was re-read against the finished prose and against the Questions already on its
+Subtopic before anything was written. **None was found already closed.** Twenty are addressed,
+one is deferred.
+
+| Gap | Disposition | Question ID |
+| --- | --- | --- |
+| GAP-U1-A | Addressed | `coroutine_suspend_does_not_move_blocking_work` |
+| GAP-U1-B | Addressed | `coroutine_scope_outlives_its_consumer` |
+| GAP-U1-C | Addressed | `coroutine_parent_job_waits_for_children` |
+| GAP-U2-A | Addressed | `coroutine_child_context_inherits_and_overrides` |
+| GAP-U2-B | Addressed | `coroutine_io_and_default_share_threads` |
+| GAP-U2-C | Addressed | `coroutine_concurrency_needs_independence` |
+| GAP-U3-A | Addressed | `coroutine_timeout_cleanup_needs_non_cancellable` |
+| GAP-U3-B | Addressed in part; the mechanism-choice half deferred | `coroutine_shared_counter_lost_update` |
+| GAP-U4-A | Addressed | `flow_one_shot_result_vs_observable_stream` |
+| GAP-U4-B | Addressed | `flow_emit_must_keep_the_collector_context` |
+| GAP-U4-C | **Deferred** | — |
+| GAP-U5-A | Addressed | `flow_flat_map_concat_preserves_grouping` |
+| GAP-U5-B | Addressed | `flow_on_completion_observes_every_ending` |
+| GAP-U5-C | Addressed | `flow_sample_cadence_vs_debounce_quiet_period` |
+| GAP-U5-D | Addressed | `flow_retry_re_collects_the_upstream` |
+| GAP-U6-A | Addressed | `state_flow_equal_value_is_not_a_new_state` |
+| GAP-U6-B | Addressed, combined with GAP-U6-E | `flow_sharing_policy_and_replay_expiration` |
+| GAP-U6-C | Addressed | `hot_sharing_changes_production_not_retention` |
+| GAP-U6-D | Addressed | `shared_flow_try_emit_true_is_not_delivery` |
+| GAP-U6-E | Addressed, combined with GAP-U6-B | `flow_sharing_policy_and_replay_expiration` |
+| GAP-U6-F | Addressed | `stream_choice_cannot_supply_a_delivery_guarantee` |
+
+**One combination.** GAP-U6-B and GAP-U6-E are one Question because one scenario requires both
+and neither half is answerable without the other: three stated requirements select the policy,
+and only the two timers read separately satisfy all three. Splitting them would have produced a
+policy Question whose keyed configuration a reader could reach without knowing what its second
+argument does, and a timer Question with no reason to care.
+
+**No gap was split.** GAP-U3-B was the only candidate for it, and it went the other way — see
+below.
+
+**One deferral, GAP-U4-C.** The gap asks a reader to choose among `flow`, `channelFlow` and
+`callbackFlow` by producer shape. The rule that decides that choice is the `flow` builder's
+single-coroutine emission limit, and `flow_emit_must_keep_the_collector_context` now assesses
+exactly that limit from the invariant side, while `callback_flow_await_close_registration`
+already assesses the callback adapter's own contract. A third Question on `flow_fundamentals`
+would mostly re-ask the invariant in builder clothing, which is the duplication `Q20` exists to
+prevent. The canonical plan already ranked this gap lowest, and the reasoning it names is taught
+in L4.5 in full. Recorded as open rather than closed.
+
+**One half-deferral, GAP-U3-B.** The gap names two separable things: recognising a race over
+shared mutable state, and choosing among an atomic, confinement and a `Mutex`.
+`coroutine_shared_counter_lost_update` takes the first together with the smallest sufficient
+mechanism for a plain counter, which is an atomic; the `@Volatile` dead end is its strongest
+distractor. The mechanism-selection half — an invariant spanning more than one variable, where
+per-field atomics are insufficient and a `Mutex` or confinement is required — is **deferred**,
+for a structural reason rather than an editorial one. `coroutine_parallelism` is the primary
+concept of both L2.4 and L3.5, so every Question mapped to it enters **Unit 2's** practice as
+well as Unit 3's, and Unit 2 teaches neither `Mutex` nor confinement. One such Question is a
+tolerable overlap and two would not be. Nothing in any Topic assesses that reasoning yet, which
+makes it the largest remaining hole in the epic.
+
+### The nineteen new Questions
+
+| Question | Subtopic | Level | Gap |
+| --- | --- | --- | --- |
+| `coroutine_suspend_does_not_move_blocking_work` | `coroutine_fundamentals` | Applied | GAP-U1-A |
+| `coroutine_scope_outlives_its_consumer` | `coroutine_scope` | Applied | GAP-U1-B |
+| `coroutine_parent_job_waits_for_children` | `coroutine_jobs` | Applied | GAP-U1-C |
+| `coroutine_child_context_inherits_and_overrides` | `coroutine_context` | Applied | GAP-U2-A |
+| `coroutine_io_and_default_share_threads` | `coroutine_dispatchers` | **Advanced** | GAP-U2-B |
+| `coroutine_concurrency_needs_independence` | `coroutine_parallelism` | Applied | GAP-U2-C |
+| `coroutine_timeout_cleanup_needs_non_cancellable` | `coroutine_cancellation` | **Advanced** | GAP-U3-A |
+| `coroutine_shared_counter_lost_update` | `coroutine_parallelism` | Applied | GAP-U3-B |
+| `flow_one_shot_result_vs_observable_stream` | `flow_fundamentals` | Applied | GAP-U4-A |
+| `flow_emit_must_keep_the_collector_context` | `flow_context` | Applied | GAP-U4-B |
+| `flow_flat_map_concat_preserves_grouping` | `flow_operators` | Applied | GAP-U5-A |
+| `flow_on_completion_observes_every_ending` | `flow_errors` | Applied | GAP-U5-B |
+| `flow_sample_cadence_vs_debounce_quiet_period` | `flow_operators` | Applied | GAP-U5-C |
+| `flow_retry_re_collects_the_upstream` | `flow_errors` | Applied | GAP-U5-D |
+| `state_flow_equal_value_is_not_a_new_state` | `stateflow` | **Advanced** | GAP-U6-A |
+| `flow_sharing_policy_and_replay_expiration` | `flow_sharing` | **Advanced** | GAP-U6-B + GAP-U6-E |
+| `hot_sharing_changes_production_not_retention` | `hot_vs_cold_streams` | Applied | GAP-U6-C |
+| `shared_flow_try_emit_true_is_not_delivery` | `sharedflow` | **Advanced** | GAP-U6-D |
+| `stream_choice_cannot_supply_a_delivery_guarantee` | `hot_vs_cold_streams` | **Advanced** | GAP-U6-F |
+
+Each was solved from its stem and options alone before `correctAnswerIds` was consulted, every
+option was tested for defensibility under the stem as written, and every cited page was opened
+and the supporting sentence located. Four defects were found and fixed by that pass, all of them
+in the stem rather than the key — and a fifth of the same shape was found afterwards by PR
+review, recorded below the four:
+
+- **GAP-U2-C had a speculative-prefetch escape.** The first draft made the second call *needed*
+  only for premium accounts, which leaves starting it early genuinely faster on the premium path
+  — so the keyed "overlapping cannot shorten the wait" was defensibly wrong. The stem now makes
+  the second call take an id carried by the first call's response, which is a data dependency
+  rather than a conditional one.
+- **GAP-U5-A's `flatMapLatest` distractor was defensible.** "One at a time, in order, never
+  interleaved" is all true of `flatMapLatest`; what it breaks is completeness. The stem now
+  requires every file's updates from first to last.
+- **GAP-U4-A had two soft distractors** that argued from style rather than fact. Both were
+  replaced with claims that are checkable and false: that a value the server can change must be
+  exposed as a stream, and that a cold Flow delivers one value per collection.
+- **GAP-U6-B's "within a few seconds" was not a discriminator.** The stem now says five seconds,
+  which makes the thirty-second stop distractor definitively wrong rather than arguably slow.
+
+A fifth was caught before authoring. A draft of GAP-U6-A used a `data class` holding a
+`MutableList` mutated in place, which lands exactly on the `StateFlow` KDoc's "behavior with
+classes that violate the contract for `Any.equals` is unspecified" clause. The shipped stem
+assigns a **newly built, equal** instance of a well-behaved type instead, which is specified
+behaviour and makes the same point more sharply.
+
+A sixth was found by PR review, and it is the same failure as the first four — an unstated
+premise the key depended on. **GAP-U3-A's stem said only that `close()` is a suspending
+function**, and `suspend` is a capability rather than a promise that a call reaches a
+cancellable suspension point: a `close()` that flushes synchronously, suspends
+non-cancellably, or handles the cancellation itself completes normally in a cancelled
+coroutine. A reader who knew that could reject all four options. The stem now states that the
+flush is awaited at an ordinary cancellable suspension point, and the explanation says what
+follows when it is not — which turns the hole into the Unit's own point, that cancellation is
+observed only where the code lets it be. Question and AnswerOption ids, the key, the level and
+the Subtopic are unchanged: the assessed claim did not move, the stem stopped depending on an
+assumption it never made.
+
+**All nineteen are `SINGLE`.** Each asks for one prediction or one decision, and a `MULTIPLE`
+question about, say, three true properties of `SharedFlow` is the descriptive shape these gaps
+exist because of. **None is `FOUNDATION`**, which is a consequence rather than a policy: every
+gap in the table names reasoning that the descriptive layer already has a Question for, which is
+why it was a gap.
+
+Answer positions were redistributed across the batch after authoring — nineteen Questions all
+keying their first option is a position cue, and answer identity is by ID, so reordering costs
+nothing. The bank's position distribution is unchanged at 28/27/26/19/1.
+
+### The six Advanced levels, justified one at a time
+
+The plan's observation that the Flow half held no `ADVANCED` Question was **not** used as a
+reason. Each level below was decided from the contract's minimum-sufficient-reasoning test, and
+thirteen of the nineteen came out `APPLIED`.
+
+| Question | Why the reasoning is Advanced |
+| --- | --- |
+| `coroutine_io_and_default_share_threads` | Four mechanisms combine: that `IO` and `Default` share threads, that the switch is still a real dispatcher change, that `IO`'s parallelism is separate and elastic, and that what moves is the accounting rather than the thread. The strongest distractor is the correct over-correction |
+| `coroutine_timeout_cleanup_needs_non_cancellable` | A timeout is cancellation, cancellation unwinds through `finally`, a suspension point inside a cancelled coroutine resumes with the cancellation, and `NonCancellable` is the bounded remedy. Four documented contracts, traced in order, and two distractors that each get one of them right |
+| `state_flow_equal_value_is_not_a_new_state` | Equality-based conflation, a data class's generated `equals`, and the inference that a new instance is not a new state — plus separating equality conflation from slow-collector conflation, which is the distractor a descriptive reading picks |
+| `flow_sharing_policy_and_replay_expiration` | Three explicit requirements against four viable-looking configurations, two independent timers, and two surprising defaults. This is the contract's "explicit requirements rather than a universal best practice determine the correct decision" |
+| `shared_flow_try_emit_true_is_not_delivery` | The unbuffered `emit` contract, the no-subscriber path, what `tryEmit`'s boolean actually reports, and replay semantics — and the counter-intuitive direction of the answer, where success is the failure |
+| `stream_choice_cannot_supply_a_delivery_guarantee` | Three retention configurations traced against a requirement that includes absent consumers and a process restart, ending in a decision that none of the offered mechanisms is the right kind of thing |
+
+`flow_emit_must_keep_the_collector_context` was considered for `ADVANCED` — the plan named it a
+strong candidate — and shipped `APPLIED`. One documented invariant supplies the key, and the
+distractors test understanding of that one invariant rather than an interaction between several.
+Calling it Advanced would have been levelling the subject rather than the reasoning.
+
+### The three mapping corrections, all three taken
+
+| Question | From | To | Why |
+| --- | --- | --- | --- |
+| `parent_cancellation_propagates_children` | `coroutine_jobs` | `coroutine_cancellation` | Its key is cooperative resumption and its three distractors need `cancelAndJoin`, `NonCancellable` and the difference between requesting and observing cancellation. E24-04 confirmed the Question became answerable only once Unit 3 shipped, while the Subtopic kept it in Unit 1's practice |
+| `coroutine_async_exception_surfaces_at_await` | `coroutine_builders` | `coroutine_exceptions` | Its reasoning is failure propagation from a dropped `Deferred` and how `supervisorScope` changes it, which is L3.3 and L3.4. E24-04 confirmed it is answerable from Unit 3 and E24-02 confirmed it is not answerable from Unit 1 |
+| `coroutine_run_blocking_main_thread` | `coroutine_fundamentals` | `coroutine_builders` | `runBlocking` is a builder that bridges blocking code, which L1.2 owns. Both Lessons are in Unit 1, so Unit practice is unaffected; what changes is that a `coroutine_builders`-scoped practice run now gets a builder Question, and `coroutine_fundamentals` keeps the suspension pair |
+
+All three preserved `Question.id` and every `AnswerOption.id`: a Subtopic is where a Question is
+filed, not what it asserts, so no historical attempt changes meaning. The first two are visible
+as routing, and `unitPracticeRoutesReMappedQuestionsToTheUnitThatTeachesThem` in
+`LearningUnitPracticeIntegrationTest` asserts that routing rather than the metadata, so a
+re-mapping that drifted back would fail a test rather than pass quietly.
+
+**One level change, decided separately from its mapping.**
+`parent_cancellation_propagates_children` moves from `FOUNDATION` to `APPLIED`. Eliminating its
+three distractors requires four separate cancellation contracts — that cancellation is observed
+at cooperative points, that it does not preempt, that `cancel()` returns at once, and that a
+suspending call in `finally` needs `NonCancellable` — which is past "one primary documented
+concept determines the answer". It is not `ADVANCED`: each of the four is a direct documented
+contract and none of them interacts subtly with another.
+
+**Two levels reviewed and deliberately retained.** `callback_flow_await_close_registration` stays
+`FOUNDATION`: one builder contract supplies the key and all three distractors fall to the same
+contract, which is the rubric's own definition of the level, and the depth E24-05 was reaching
+for is better served by a Question that applies the rule than by re-levelling one that
+recognises it. `flow_combine_vs_zip_emission_rule` stays `FOUNDATION` for the same reason — it
+distinguishes two documented operator contracts, and a startup precondition is part of one
+contract rather than a second mechanism.
+
+**One mapping drift deliberately retained.** `flow_share_in_vs_state_in` still sits on
+`sharedflow` while its reasoning is L6.4's `flow_sharing`. It is outside the three corrections
+this issue names, both Subtopics are Unit 6 concepts so Unit practice is unaffected, and moving
+it would take `sharedflow` to two and `flow_sharing` to three rather than three and two. Recorded
+again so a later reviewer does not have to re-derive the judgement.
+
+### The explanation correction
+
+`coroutine_run_interruptible_blocking_call`'s explanation ended with "withTimeout resumes the
+coroutine while leaving the blocked thread occupied". The measurement was re-run for this issue
+rather than inherited: `withTimeoutOrNull(100)` around
+`withContext(Dispatchers.IO) { Thread.sleep(1500) }` returned `null` after **1,542 ms and
+1,505 ms** across two runs, against a cooperative `delay(1500)` calibration under the same
+deadline that returned after **103 ms**. The caller is not resumed at the deadline; it waits for
+the blocking call. The clause now reads that a timeout does not abandon the call either — the
+deadline cancels the block, but the coroutine is not resumed until the blocking method returns,
+so the deadline bounds nothing here.
+
+`Question.id`, all four `AnswerOption.id`s, the key, the level, the Subtopic and the assessed
+claim are unchanged. This is an editorial correction to the same assessment responsibility, which
+the contract keeps under the existing id, and no replacement Question was created.
+
+### What the new Questions were built on
+
+Every behavioural claim was executed before it was written down. A throwaway JVM probe, deleted
+afterwards, measured all of the following against the resolved `kotlinx-coroutines-core:1.11.0`.
+
+| Claim a Question depends on | Measured result |
+| --- | --- |
+| A timeout does not resume the caller around a blocking call | `null` after 1,542 / 1,505 ms for a 100 ms deadline; cooperative calibration 103 ms |
+| A suspending cleanup in `finally` under a timeout does not complete | Completed **false** without `NonCancellable`, raising `TimeoutCancellationException`; **true** with it |
+| Assigning an equal but newly built `data class` value emits nothing | **1** delivery for three assignments; the identical code with identity equality delivered **4** |
+| `tryEmit` on an unbuffered `SharedFlow` with no subscriber | Returned **true**, `replayCache` empty |
+| `extraBufferCapacity` retains nothing for an absent subscriber | Six emissions at `extraBufferCapacity = 64` with no subscriber; the later subscriber received **nothing** |
+| `flow { withContext(IO) { emit(v) } }` | `IllegalStateException`, "Flow invariant is violated", naming both contexts |
+| `retry` re-collects a cold upstream | Producer ran **3** times; collector received **Sending, Sending, Sending, Sent** |
+| Concurrent `total += 1` is not atomic | **14,729** of 16,000; the same load through `AtomicInt` gave **16,000** |
+| `debounce` emits nothing against a source faster than its timeout | `debounce(1000)` over 1.2 s of 50 ms readings produced **nothing**; `sample(300)` produced **3** values |
+| `flatMapMerge` does not preserve the order inner flows were started in | `flatMapConcat` → `[A-1, A-2, B-1, B-2]`; `flatMapMerge` → `[B-1, B-2, A-1, A-2]`, A started first |
+| A parent whose body has returned is completing, not complete | `isActive` true, `isCompleted` false, one child, printed `StandaloneCoroutine{Completing}`; `join()` resumed 237 ms later |
+| A builder argument overrides the dispatcher and never the `Job` | Name `repo` retained, dispatcher `Dispatchers.IO`; child `Job` was not the scope's `Job` and its `parent` was |
+| `replayExpirationMillis` runs on its own clock after the stop | At `WhileSubscribed(0, replayExpirationMillis = 200)` the value survived 100 ms after the last subscriber and was back at `initialValue` by 500 ms; with the default it still held the value at 600 ms |
+
+Two Questions rest on documentation alone, because their claims are contractual rather than
+observable: `coroutine_io_and_default_share_threads` (the `Dispatchers.IO` KDoc states the
+shared-threads and elasticity clauses outright, and E24-05's measurement D already observed a
+`flowOn(IO)` upstream running on a `Default` worker) and
+`stream_choice_cannot_supply_a_delivery_guarantee`, whose keyed answer is about what survives a
+process restart.
+
+### Sources
+
+Thirty-two distinct URLs are cited by the new and changed Questions, and **every one was opened
+during this issue** and the supporting sentence located. All are `kotlinlang.org` except the
+Android coroutines best-practices page, which supplies the main-safety convention and the
+one-shot-versus-Flow division and nothing semantic.
+
+The restructuring warning was honoured: no section was cited from memory. Three pages the epic
+depends on were re-read and are unchanged from what E24-04 and E24-06 recorded —
+`coroutines-cancellation.html` ("Cancellation and timeouts", 27 July 2026),
+`coroutines-basics.html` (07 September 2026) and `shared-mutable-state-and-concurrency.html`
+(27 September 2024). Where the rewritten guides no longer carry the detail, the 1.11.0 API
+reference is cited instead: `withTimeout`, `debounce`, `sample`, `retry`, `onCompletion`,
+`flattenConcat`, `merge`, `flowOn`, `flow`, `StateFlow`, `SharedFlow`,
+`MutableSharedFlow.tryEmit`, `SharingStarted.WhileSubscribed`, `stateIn`, `shareIn`, `Job`,
+`Deferred`, `launch`, `async`, `Dispatchers.IO`, `Dispatchers.Default` and `CoroutineContext`.
+
+**The hot-flow warning was honoured too.** `hot_sharing_changes_production_not_retention` takes
+its definition from the `SharedFlow` KDoc — the active instance exists independently of the
+presence of collectors — and makes the guide page's looser "keep emitting values even when no
+collector is active" one of its distractors, false precisely because `WhileSubscribed` stops the
+upstream when the last subscriber leaves. That sentence is now assessed as a misconception rather
+than quoted as a definition.
+
+All three of the playbook's Part 7 source scripts were run over the whole bank after the batch
+landed: 317 unique URLs all returned HTTP 200, all 285 distinct pages behind them rendered a
+non-empty body, and all 48 `#fragment` citations resolved to a real anchor.
+
+### Final Unit practice reach
+
+Primary concepts only. Supporting mappings contribute nothing, which
+`expandedUnitsConfigureOnlyTheirPrimaryConceptsAndDeduplicateProductionQuestions` asserts by
+subtracting each Unit's supporting Subtopics from its scope and requiring the intersection to be
+empty.
+
+| Unit | Primary concepts | Before | After |
+| --- | --- | ---: | ---: |
+| Unit 1 — Coroutine Fundamentals and Structured Concurrency | `coroutine_fundamentals`, `coroutine_builders`, `coroutine_jobs`, `coroutine_scope`, `structured_concurrency` | 7 | **8** |
+| Unit 2 — Coroutine Context, Dispatchers and Concurrent Work | `coroutine_context`, `coroutine_dispatchers`, `coroutine_context_switching`, `coroutine_parallelism` | 5 | **9** |
+| Unit 3 — Cancellation, Failure and Coordination | `coroutine_cancellation`, `coroutine_exceptions`, `coroutine_supervision`, `coroutine_parallelism` | 7 | **12** |
+| Unit 4 — Flow Fundamentals | `flow_fundamentals`, `flow_collection`, `flow_context` | 5 | **7** |
+| Unit 5 — Flow Composition, Timing and Failure | `flow_operators`, `flow_buffering`, `flow_errors` | 7 | **11** |
+| Unit 6 — StateFlow, SharedFlow and Hot Streams | `hot_vs_cold_streams`, `stateflow`, `sharedflow`, `flow_sharing` | 6 | **11** |
+
+Unit 1's count moves by one rather than by three because two Questions left it in the same
+change. That is the intended outcome: the Unit now practises five concepts it teaches instead of
+seven Questions two of which a Unit 1 reader could not answer. The bank goes from 370 to 389
+ACTIVE, 41 DEPRECATED is unchanged, and `async_reactive` goes from 38 to 57 ACTIVE — 2.19 per
+Subtopic, the densest Topic in the bank and deliberately so, because six learning Units practise
+it.
+
+Two Questions that discuss this subject remain outside every Unit's practice by design and were
+re-checked rather than assumed: `viewmodel_scope_cleared_cancellation` on `lifecycle_coroutines`
+and `live_data_vs_state_flow_ui_state` on `livedata`. So do `performance_coroutine_scope_leak`,
+`repository_observable_api_shape` and `durable_state_vs_one_off_event`, each of which is the
+closest existing assessment of an E24 decision from another Topic's side. All five were read for
+duplication; the new Questions were written to a different assessment responsibility in each
+case — ownership of coroutine lifetime rather than retention, the one-shot half of the API
+choice rather than the observable half, and whether any transient hot flow supplies a delivery
+guarantee rather than how a UI models state against events.
+
+### Remaining limitations for E24-09
+
+- **The coordination-mechanism half of GAP-U3-B is unassessed anywhere in the bank.** Choosing
+  among an atomic, confinement and a `Mutex` when an invariant spans more than one variable is
+  taught in L3.5 and asked nowhere. The structural reason is recorded above: `coroutine_parallelism`
+  is shared by L2.4 and L3.5, so the Question would enter Unit 2's practice as well.
+- **GAP-U4-C is open by decision**, not by oversight.
+- **`coroutine_parallelism`'s three Questions reach Unit 2 as well as Unit 3.** Two of them are
+  Unit 2 material; `coroutine_shared_counter_lost_update` is not, and a Unit 2 learner meeting it
+  will be reasoning past what Unit 2 taught. This is the price of the shared primary concept the
+  plan assigned, and it is the one place where a Unit's practice is not fully bounded by what the
+  Unit teaches.
+- **`coroutine_jobs`, `structured_concurrency`, `coroutine_supervision` and
+  `coroutine_context_switching` hold one Question each.** That is the bank's ordinary density and
+  not a gap, but it means a short Unit 1 or Unit 3 run can miss a concept entirely.
+- **Nothing in the assessment layer knows about Units.** `PracticeTargetResolver` derives a scope
+  from primary concepts every time, so a later Lesson re-mapping silently changes practice. The
+  two integration tests named above are the only thing that would notice.
+
+---
+
 ## Source freshness and technical assumptions
 
 ### Configured versions this plan assumes
@@ -2918,6 +3252,12 @@ Question changed. Its counts were last regenerated by E23-07 at 370 ACTIVE / 41 
 which matches the current bundle exactly — verified during this review rather than assumed.
 E24-08 regenerates it and `learning-question-coverage.md` together.
 
+**E24-08 is done.** What it decided about each of the twenty-one gaps, the three mapping
+corrections and the explanation clause is recorded in
+[Assessment outcomes for E24-08](#assessment-outcomes-for-e24-08). Read that section rather
+than re-deriving anything from the paragraphs above, which are the record of what was handed
+over and not of what happened.
+
 ### For E24-09
 
 The six Units read in blueprint order, and the concept boundaries in this document are what
@@ -2941,3 +3281,11 @@ Question that no E24 Unit reaches through a primary mapping. That is intended �
 integration is E25's and the architecture curriculum's subject — but it means those two
 Questions remain reachable only through the general assessment flow, not through any new
 Unit's practice.
+
+E24-08 added four more, listed in full under
+[Remaining limitations for E24-09](#remaining-limitations-for-e24-09): the
+coordination-mechanism half of GAP-U3-B and GAP-U4-C are open by decision rather than by
+oversight, `coroutine_parallelism`'s Questions reach Unit 2 as well as Unit 3 because both
+Units take it as a primary concept, and four Subtopics hold one Question each. None of them is
+a defect to fix in E24-09; they are the shape of the practice a cross-Unit review should read
+before judging it.

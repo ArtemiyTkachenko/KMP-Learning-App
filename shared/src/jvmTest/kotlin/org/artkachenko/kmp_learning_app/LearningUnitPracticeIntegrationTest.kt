@@ -66,6 +66,7 @@ import org.artkachenko.kmp_learning_app.topic_study.focused_practice.toAssessmen
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultEvent
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultUiState
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
+import org.artkachenko.kmp_learning_app.topic_study.practice_builder.DefaultPracticeQuestionCount
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeAvailability
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderEvent
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderTarget
@@ -232,6 +233,11 @@ internal class LearningUnitPracticeIntegrationTest {
                 // E24-02. Five Lessons, five distinct primary concepts, and the cross-Topic
                 // bridges into lifecycle, performance, Android platform and Kotlin stay out
                 // of the scope entirely — which is what `supportingOnly` below proves.
+                // E24-08 re-mapped two Questions out of this Unit, because their reasoning
+                // is Unit 3's: `parent_cancellation_propagates_children` to
+                // `coroutine_cancellation` and `coroutine_async_exception_surfaces_at_await`
+                // to `coroutine_exceptions`. The re-mapping routing test below is what keeps
+                // that from drifting back.
                 "unit_coroutines_and_structured_concurrency" to (
                     setOf(
                         "coroutine_fundamentals",
@@ -239,7 +245,7 @@ internal class LearningUnitPracticeIntegrationTest {
                         "coroutine_jobs",
                         "coroutine_scope",
                         "structured_concurrency",
-                    ) to 7
+                    ) to 8
                 ),
                 "unit_context_dispatchers_and_concurrency" to (
                     setOf(
@@ -247,7 +253,7 @@ internal class LearningUnitPracticeIntegrationTest {
                         "coroutine_dispatchers",
                         "coroutine_context_switching",
                         "coroutine_parallelism",
-                    ) to 5
+                    ) to 9
                 ),
                 // E24-04. `coroutine_cancellation` is primary in two of the five Lessons,
                 // and `coroutine_parallelism` is shared with Unit 2 — a Subtopic taught at
@@ -258,7 +264,7 @@ internal class LearningUnitPracticeIntegrationTest {
                         "coroutine_exceptions",
                         "coroutine_supervision",
                         "coroutine_parallelism",
-                    ) to 7
+                    ) to 12
                 ),
                 // E24-05. `flow_fundamentals` is primary in three of the five Lessons, so
                 // five Lessons practise three concepts. The architecture, Kotlin, lifecycle
@@ -269,37 +275,37 @@ internal class LearningUnitPracticeIntegrationTest {
                         "flow_fundamentals",
                         "flow_collection",
                         "flow_context",
-                    ) to 5
+                    ) to 7
                 ),
                 // E24-06. `flow_operators` is primary in three of the five Lessons —
                 // filtering, combining and flattening are three depths of one concept —
                 // so five Lessons practise three concepts. `stateflow`, the Kotlin
                 // bridges and the architecture bridge stay out of the scope, which is
-                // what `supportingOnly` below proves; GAP-U5-A and GAP-U5-B in
-                // `docs/content/coroutines-flow-units-1-6-plan.md` depend on that,
-                // because neither reasoning is assessed by any of these seven Questions.
+                // what `supportingOnly` below proves. E24-08 closed GAP-U5-A to
+                // GAP-U5-D here: ordering under flattening, the cadence/quiet-period
+                // choice, what `onCompletion` observes, and what retrying costs.
                 "unit_flow_composition_timing_and_failure" to (
                     setOf(
                         "flow_operators",
                         "flow_buffering",
                         "flow_errors",
-                    ) to 7
+                    ) to 11
                 ),
                 // E24-07. `hot_vs_cold_streams` is primary in the first and last Lessons,
                 // so five Lessons practise four concepts. `kotlin_equality`,
                 // `state_ownership`, `lifecycle_coroutines` and `flow_buffering` stay out
                 // of the scope, which is what `supportingOnly` below proves; the `livedata`
                 // Question that states StateFlow conflation most clearly is unmapped by
-                // E24 and so is not Unit practice either. GAP-U6-A, GAP-U6-B and GAP-U6-C
-                // in `docs/content/coroutines-flow-units-1-6-plan.md` depend on that,
-                // because none of these six Questions assesses the reasoning they name.
+                // E24 and so is still not Unit practice, and neither is
+                // `durable_state_vs_one_off_event` in `architecture`. E24-08 closed
+                // GAP-U6-A to GAP-U6-F inside `async_reactive` instead.
                 "unit_stateflow_sharedflow_and_hot_streams" to (
                     setOf(
                         "hot_vs_cold_streams",
                         "stateflow",
                         "sharedflow",
                         "flow_sharing",
-                    ) to 6
+                    ) to 11
                 ),
             )
             val content = BundledLearningContentRepository()
@@ -307,11 +313,19 @@ internal class LearningUnitPracticeIntegrationTest {
                 val (concepts, count) = expectation
                 val unit = assertNotNull(content.getUnitById(unitId))
                 val builder = builder(PracticeBuilderTarget.LearningUnit(unitId))
-                builder.settled()
-                builder.selectQuestionCount(10)
                 val state = builder.settled()
                 assertEquals(unit.title, state.scope.name)
-                assertEquals(count, assertIs<PracticeAvailability.Available>(state.availability).eligibleQuestionCount)
+                // The builder opens on the default count and the count control deliberately does
+                // not re-run the eligibility read, so this figure is what a run started now would
+                // ask. That equals the pool only while the pool is smaller than the default, which
+                // stopped being true for three Units when E24-08 authored against their gaps.
+                assertEquals(
+                    minOf(count, DefaultPracticeQuestionCount),
+                    assertIs<PracticeAvailability.Available>(state.availability).eligibleQuestionCount,
+                )
+                // Ask for more than any Unit's pool, so what follows sees the whole pool.
+                builder.selectQuestionCount(20)
+                builder.settled()
                 val config = builder.start()
                 assertEquals(AssessmentScope.Subtopics(concepts), config.scope, unitId)
                 val questions = selectedQuestions(config)
@@ -324,6 +338,74 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             assertEquals(0, attemptCount())
         }
+
+    /**
+     * E24-08: the three mapping corrections, asserted as routing rather than as metadata.
+     *
+     * A Subtopic mapping is only visible to a learner through which Unit's practice a Question
+     * appears in, so re-mapping one is a behaviour change and belongs here. Each assertion names
+     * the reasoning that moved: cancellation propagation and dropped-`Deferred` failure are Unit 3
+     * material that Unit 1 used to hand out, `runBlocking` is builder reasoning that sat on the
+     * suspension concept, and the new hot-stream Questions must reach Unit 6 while the
+     * architecture and lifecycle Questions that discuss the same subject stay outside it.
+     */
+    @Test
+    fun unitPracticeRoutesReMappedQuestionsToTheUnitThatTeachesThem() = runUnitPracticeTest {
+        suspend fun reach(unitId: String): Set<String> {
+            val builder = builder(PracticeBuilderTarget.LearningUnit(unitId))
+            builder.settled()
+            builder.selectQuestionCount(20)
+            builder.settled()
+            return selectedQuestions(builder.start()).map { it.id }.toSet()
+        }
+
+        val unitOne = reach("unit_coroutines_and_structured_concurrency")
+        val unitThree = reach("unit_cancellation_failure_and_coordination")
+        val unitSix = reach("unit_stateflow_sharedflow_and_hot_streams")
+
+        // Unit 1 no longer practises Unit 3's cancellation and failure reasoning.
+        listOf(
+            "parent_cancellation_propagates_children",
+            "coroutine_async_exception_surfaces_at_await",
+        ).forEach { questionId ->
+            assertFalse(questionId in unitOne, "Unit 1 still practises $questionId")
+            assertContains(unitThree, questionId)
+        }
+
+        // `runBlocking` moved within Unit 1, so the Unit is unaffected and the concept is not.
+        assertContains(unitOne, "coroutine_run_blocking_main_thread")
+        assertEquals(
+            setOf("coroutine_run_blocking_main_thread", "launch_vs_async_unawaited_result"),
+            selectedQuestions(
+                AssessmentConfig.Focused(
+                    scope = AssessmentScope.Subtopic("coroutine_builders"),
+                    questionCount = 20,
+                    levels = AllQuestionLevels,
+                    source = PracticeQuestionSource.ALL,
+                ),
+            ).map { it.id }.toSet(),
+        )
+
+        // Unit 6 gains the new stream-semantics Questions; the Questions on the same subject that
+        // E24 maps as supporting, or does not map at all, stay out.
+        listOf(
+            "state_flow_equal_value_is_not_a_new_state",
+            "shared_flow_try_emit_true_is_not_delivery",
+            "flow_sharing_policy_and_replay_expiration",
+            "hot_sharing_changes_production_not_retention",
+            "stream_choice_cannot_supply_a_delivery_guarantee",
+        ).forEach { assertContains(unitSix, it) }
+        listOf(
+            "durable_state_vs_one_off_event",
+            "live_data_vs_state_flow_ui_state",
+            "viewmodel_scope_cleared_cancellation",
+            "performance_coroutine_scope_leak",
+        ).forEach { questionId ->
+            assertFalse(questionId in unitSix, "A supporting-only Question reached Unit 6: $questionId")
+            assertFalse(questionId in unitOne, "A supporting-only Question reached Unit 1: $questionId")
+        }
+        assertEquals(0, attemptCount())
+    }
 
     /**
      * The whole runtime flow in one pass: the route's Unit ID becomes the current Unit, its ACTIVE

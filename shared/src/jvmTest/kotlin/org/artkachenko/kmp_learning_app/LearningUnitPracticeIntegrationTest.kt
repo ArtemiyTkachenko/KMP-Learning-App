@@ -114,7 +114,7 @@ internal class LearningUnitPracticeIntegrationTest {
 
             // Keep the real parent ViewModels alive throughout every child mutation.
             val browser = browser()
-            val topic = topic()
+            val topic = topic("android_ui")
             val parents = units.associate { it.id to unit(it.id) }
             suspend fun awaitTopic(count: Int) {
                 topic.uiState.await { state ->
@@ -159,7 +159,7 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             // Continue Learning walks the whole authored document rather than one Topic, so
             // exhausting `android_ui` hands the learner across to the next authored Unit —
-            // browsed under a different home Topic. Study both authored coroutines Units
+            // browsed under a different home Topic. Study all authored coroutines Units
             // before expecting the exhausted outcome.
             val coroutinesUnits = BundledLearningContentRepository().getActiveUnitsByTopic("async_reactive")
             assertEquals(
@@ -174,8 +174,19 @@ internal class LearningUnitPracticeIntegrationTest {
                 coroutinesUnits.map { it.id },
             )
             assertEquals(listOf(5, 4, 5, 5, 5, 5), coroutinesUnits.map { it.lessons.size })
+            val coroutinesTopic = topic("async_reactive")
+            val coroutinesParents = coroutinesUnits.associate { it.id to unit(it.id) }
+            suspend fun awaitCoroutinesTopic(count: Int) {
+                coroutinesTopic.uiState.await { state ->
+                    state is TopicDetailUiState.Content &&
+                        (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
+                        StudyProgressSummary.Progress(count, 29)
+                }
+            }
+            awaitCoroutinesTopic(0)
+            var coroutinesStudiedCount = 0
             coroutinesUnits.forEach { coroutinesUnit ->
-                coroutinesUnit.lessons.forEach { lesson ->
+                coroutinesUnit.lessons.forEachIndexed { index, lesson ->
                     awaitNext(coroutinesUnit.id, lesson.id)
                     val crossTopicReader = lesson(coroutinesUnit.id, lesson.id)
                     crossTopicReader.uiState.await { state ->
@@ -189,6 +200,13 @@ internal class LearningUnitPracticeIntegrationTest {
                                 it.isStudied && !it.isPending
                             } == true
                     }
+                    coroutinesStudiedCount += 1
+                    awaitCoroutinesTopic(coroutinesStudiedCount)
+                    coroutinesParents.getValue(coroutinesUnit.id).uiState.await { state ->
+                        state is LearningUnitUiState.Content &&
+                            (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
+                            StudyProgressSummary.Progress(index + 1, coroutinesUnit.lessons.size)
+                    }
                 }
             }
             browser.uiState.await { state ->
@@ -196,6 +214,28 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             // The `android_ui` Topic's own progress is unaffected by Units in another Topic.
             awaitTopic(21)
+            val firstCoroutinesUnit = coroutinesUnits.first()
+            val lastLessonInFirstCoroutinesUnit = firstCoroutinesUnit.lessons.last()
+            val coroutinesReader = lesson(firstCoroutinesUnit.id, lastLessonInFirstCoroutinesUnit.id)
+            coroutinesReader.toggleStudied()
+            coroutinesReader.uiState.await { state ->
+                state is LearningLessonUiState.Content &&
+                    (state.studyState as? StudyProgressUiState.Available)?.value?.let {
+                        !it.isStudied && !it.isPending
+                    } == true
+            }
+            awaitCoroutinesTopic(28)
+            coroutinesParents.getValue(firstCoroutinesUnit.id).uiState.await { state ->
+                state is LearningUnitUiState.Content &&
+                    (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
+                    StudyProgressSummary.Progress(4, 5)
+            }
+            awaitNext(firstCoroutinesUnit.id, lastLessonInFirstCoroutinesUnit.id)
+            coroutinesReader.toggleStudied()
+            awaitCoroutinesTopic(29)
+            browser.uiState.await { state ->
+                state is TopicBrowserUiState.Content && state.continueLearning == ContinueLearningUiModel.Complete
+            }
             val earlierUnit = units[1]
             val earlierLesson = earlierUnit.lessons.last()
             val reader = lesson(earlierUnit.id, earlierLesson.id)
@@ -663,7 +703,7 @@ private class UnitPracticeGraph(
         koin.get { parametersOf(target) }
 
     fun browser(): TopicBrowserViewModel = koin.get()
-    fun topic(): TopicDetailViewModel = koin.get { parametersOf("android_ui") }
+    fun topic(topicId: String): TopicDetailViewModel = koin.get { parametersOf(topicId) }
     fun unit(id: String): LearningUnitViewModel = koin.get { parametersOf(id) }
     fun lesson(unitId: String, lessonId: String): LearningLessonViewModel =
         koin.get { parametersOf(unitId, lessonId) }

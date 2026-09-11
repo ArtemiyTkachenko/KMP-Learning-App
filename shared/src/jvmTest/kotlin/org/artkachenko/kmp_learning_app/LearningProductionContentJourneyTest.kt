@@ -28,6 +28,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.runSkikoComposeUiTest
 import androidx.compose.ui.unit.Dp
@@ -66,6 +67,7 @@ import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLess
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonPreviousTag
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonReadingColumnTag
 import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitPracticeButtonTag
+import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitStudyProgressTag
 import org.artkachenko.kmp_learning_app.topic_study.learning_unit.learningLessonRowTag
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.DefaultPracticeQuestionCount
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderAvailabilityTag
@@ -76,6 +78,7 @@ import org.artkachenko.kmp_learning_app.topic_study.practice_builder.practiceSou
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserSearchFieldTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicStudyListTag
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicStudyProgressTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.learningUnitCardTag
 import org.koin.compose.KoinApplication
 import org.koin.core.context.stopKoin
@@ -115,24 +118,41 @@ internal class LearningProductionContentJourneyTest {
     @Test
     fun studyActionsOnNewLessonsUpdateTheExistingUnitAndTopicScreens() = runProductionJourneyTest {
         ShippedUnits.drop(1).forEach { unit ->
+            val topicLessonCount = ShippedUnits
+                .filter { it.topicId == unit.topicId }
+                .sumOf { it.lessons.size }
             openFirstShippedLesson(unit)
             waitForText("Mark as studied")
             onNodeWithText("Mark as studied").performScrollTo().assertOperable("Mark as studied")
             onNodeWithText("Mark as studied").performClick()
             waitForText("Mark as not studied")
             onNodeWithContentDescription("Back").performClick()
+            onNode(hasScrollAction()).performScrollToNode(hasTestTag(LearningUnitStudyProgressTag))
             waitForText("1 of ${unit.lessons.size} lessons studied")
             onNodeWithContentDescription("Back").performClick()
-            waitForText("1 of ${unit.lessons.size} lessons studied")
+            onNodeWithTag(TopicStudyListTag).performScrollToNode(hasTestTag(TopicStudyProgressTag))
+            waitForText("1 of $topicLessonCount lessons studied")
             scrollToLearningUnit(unit.id)
             onNodeWithTag(learningUnitCardTag(unit.id)).performClick()
-            onNodeWithTag(learningLessonRowTag(unit.lessons.first().id)).performScrollTo().performClick()
+            waitUntil(timeoutMillis = JourneyTimeoutMillis) {
+                onAllNodesWithTag(TopicStudyListTag, useUnmergedTree = true)
+                    .fetchSemanticsNodes().isEmpty() &&
+                    onAllNodesWithText(unit.title).fetchSemanticsNodes().isNotEmpty()
+            }
+            onNode(hasScrollAction()).performScrollToNode(
+                hasTestTag(learningLessonRowTag(unit.lessons.first().id)),
+            )
+            onNodeWithTag(learningLessonRowTag(unit.lessons.first().id)).performClick()
             waitForText("Mark as not studied")
             onNodeWithText("Mark as not studied").performScrollTo().assertOperable("Mark as not studied")
             onNodeWithText("Mark as not studied").performClick()
             waitForText("Mark as studied")
             onNodeWithContentDescription("Back").performClick()
+            onNode(hasScrollAction()).performScrollToNode(hasTestTag(LearningUnitStudyProgressTag))
             waitForText("0 of ${unit.lessons.size} lessons studied")
+            onNodeWithContentDescription("Back").performClick()
+            onNodeWithTag(TopicStudyListTag).performScrollToNode(hasTestTag(TopicStudyProgressTag))
+            waitForText("0 of $topicLessonCount lessons studied")
             onNodeWithTag(LearnAreaTag).performClick()
         }
     }
@@ -188,7 +208,7 @@ internal class LearningProductionContentJourneyTest {
      */
     @Test
     fun everyShippedUnitsAuthoredBlocksRenderInTheReader() = runProductionJourneyTest { openedUris ->
-        assertTrue(ShippedUnits.size > 1, "Expected the Compose Topic to ship more than one Unit.")
+        assertTrue(ShippedUnits.size > 1, "Expected the learning document to ship more than one Unit.")
 
         var asserted = 0
         var overflowing = 0
@@ -528,14 +548,20 @@ private val ShippedUnit: LearningUnit by lazy {
 }
 
 /**
- * Every Unit the document currently ships under the Compose Topic, in authored order.
+ * Every active Unit in the document, in authored order.
  *
  * Read rather than listed, so authoring a Unit brings it under the renderer automatically
  * instead of leaving newly authored prose as the one thing this suite never looked at.
  */
 private val ShippedUnits: List<LearningUnit> by lazy {
     runBlocking {
-        BundledLearningContentRepository().getActiveUnitsByTopic(UiTopicId)
+        BundledLearningContentRepository().getActiveUnits()
+    }
+}
+
+private val ShippedTopicNames: Map<String, String> by lazy {
+    runBlocking {
+        BundledCurriculumSource.load().topics.associate { it.id to it.name }
     }
 }
 
@@ -551,22 +577,22 @@ private fun ComposeUiTest.scrollToLearningUnit(unitId: String) {
 /**
  * Learn -> the Topic, by clicking what a learner clicks, and confirming they arrived.
  *
- * Two things make a single blind click unreliable here. The Topic's name is on the browser row *and*
- * in Topic Detail's own top bar, so waiting on the name alone can match the screen being left rather
- * than the one being opened — hence waiting for the search field, which only the browser has. And
- * the browser rebuilds its rows as learning context and Continue Learning resolve underneath them,
- * so a click dispatched into a row that is being replaced is simply lost. A learner who tapped a
- * Topic and stayed put would tap again; this does the same, rather than waiting out a navigation
- * that was never started.
+ * Search makes every Topic selectable in the phone-sized viewport, including rows that the browser's
+ * lazy list has not composed. The query is replaced because the browser preserves it after Back.
+ * The Topic's name is also on Topic Detail's top bar, so the search field is the screen-specific
+ * signal that the browser is ready before the row is clicked.
  */
 @OptIn(ExperimentalTestApi::class)
-private suspend fun ComposeUiTest.openTopicFromBrowser() {
+private suspend fun ComposeUiTest.openTopicFromBrowser(topicName: String = UiTopicName) {
     waitForTag(TopicBrowserSearchFieldTag)
-    waitForText(UiTopicName)
+    onNodeWithTag(TopicBrowserSearchFieldTag).performTextReplacement(topicName)
+    waitForText(topicName)
     repeat(NavigationAttempts) {
-        if (onAllNodesWithTag(TopicStudyListTag, useUnmergedTree = true)
-                .fetchSemanticsNodes().isNotEmpty()
-        ) {
+        val browserVisible = onAllNodesWithTag(TopicBrowserSearchFieldTag, useUnmergedTree = true)
+            .fetchSemanticsNodes().isNotEmpty()
+        val topicVisible = onAllNodesWithTag(TopicStudyListTag, useUnmergedTree = true)
+            .fetchSemanticsNodes().isNotEmpty()
+        if (!browserVisible && topicVisible) {
             return
         }
         // Re-tap only while the row is still on screen. The retry exists for a tap that did not
@@ -574,25 +600,49 @@ private suspend fun ComposeUiTest.openTopicFromBrowser() {
         // row it came from has already left composition — and tapping a node that is gone throws
         // a node-not-found instead of retrying, turning a slow frame into a failure about the
         // test's own timing rather than about the content under test.
-        if (onAllNodesWithText(UiTopicName).fetchSemanticsNodes().isNotEmpty()) {
-            onNodeWithText(UiTopicName).performClick()
+        val matches = onAllNodesWithText(topicName)
+        if (browserVisible && matches.fetchSemanticsNodes().size > 1) {
+            // The first match is the search field's editable value; the second is the result row.
+            matches[1].performClick()
         }
         waitForIdle()
     }
     // Nothing arrived after several attempts, so let the ordinary wait produce the failure and its
     // message rather than throwing something less informative from here.
-    waitForTag(TopicStudyListTag)
+    waitUntil(timeoutMillis = JourneyTimeoutMillis) {
+        onAllNodesWithTag(TopicBrowserSearchFieldTag, useUnmergedTree = true)
+            .fetchSemanticsNodes().isEmpty() &&
+            onAllNodesWithTag(TopicStudyListTag, useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty()
+    }
 }
 
 /** Learn -> the Topic -> a shipped Unit, by clicking what a learner clicks. */
 @OptIn(ExperimentalTestApi::class)
 private suspend fun ComposeUiTest.openShippedUnit(unit: LearningUnit = ShippedUnit) {
-    openTopicFromBrowser()
+    openTopicFromBrowser(ShippedTopicNames.getValue(unit.topicId))
     // A Topic opens on its Study tab, and the Units are a lazy list: a Unit further down does not
     // exist in the semantics tree until the list has been scrolled to it.
     waitForTag(TopicStudyListTag)
-    scrollToLearningUnit(unit.id)
-    onNodeWithTag(learningUnitCardTag(unit.id)).performClick()
+    repeat(NavigationAttempts) {
+        if (onAllNodesWithTag(TopicStudyListTag, useUnmergedTree = true)
+                .fetchSemanticsNodes().isEmpty()
+        ) {
+            waitForIdle()
+            return@repeat
+        }
+        // A late progress refresh can replace the lazy list and reset its scroll position.
+        scrollToLearningUnit(unit.id)
+        onNodeWithTag(learningUnitCardTag(unit.id)).performClick()
+        waitForIdle()
+    }
+    waitUntil(timeoutMillis = JourneyTimeoutMillis) {
+        onAllNodesWithTag(TopicStudyListTag, useUnmergedTree = true)
+            .fetchSemanticsNodes().isEmpty() &&
+            onAllNodesWithText(unit.title).fetchSemanticsNodes().isNotEmpty()
+    }
+    // A long title and summary can put the first Lesson below a phone-sized viewport.
+    onNode(hasScrollAction()).performScrollToNode(hasTestTag(learningLessonRowTag(unit.lessons.first().id)))
     waitForTag(learningLessonRowTag(unit.lessons.first().id))
 }
 

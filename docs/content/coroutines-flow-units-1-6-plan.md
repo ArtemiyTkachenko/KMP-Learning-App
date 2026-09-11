@@ -2834,6 +2834,103 @@ guarantee rather than how a UI models state against events.
 
 ---
 
+## Verification outcomes for E24-09
+
+Verified on 2026-09-11 against the final production bundles after E24-01 through E24-08.
+
+### Production sequence and editorial review
+
+The `async_reactive` Topic contains **6 Units / 29 Lessons** in this production order:
+
+1. `unit_coroutines_and_structured_concurrency` — 5 Lessons
+2. `unit_context_dispatchers_and_concurrency` — 4 Lessons
+3. `unit_cancellation_failure_and_coordination` — 5 Lessons
+4. `unit_flow_fundamentals` — 5 Lessons
+5. `unit_flow_composition_timing_and_failure` — 5 Lessons
+6. `unit_stateflow_sharedflow_and_hot_streams` — 5 Lessons
+
+The stable Unit and Lesson identities match this plan. Reading all 29 Lessons in that order found
+the intended prerequisite progression at every Unit boundary: Unit 2 refines Unit 1's Job and
+ownership model with context and concurrency; Unit 3 completes the deferred cancellation,
+failure, supervision and coordination model; Unit 4 applies coroutine lifetime and cancellation
+to cold Flow collection; Unit 5 builds composition and delivery transformations on that model;
+and Unit 6 keeps hotness, retained/replayed values and sharing policy separate. The paired
+`launch(SupervisorJob())` discussions form one argument and do not imply universal parentage.
+
+The terminology pass found no remaining contradiction or accidental duplicate curriculum.
+Cancellation remains distinct from ordinary failure, concurrency from parallelism, buffering
+from replay, conflation from latest cancellation, and hotness from retention and sharing policy.
+`lesson_snapshot_flow` is consistent with Units 3–6: Snapshot observation remains Compose-owned,
+its returned Flow is cold, collection owns its lifetime, state/event guidance agrees with Unit 6,
+and both related Lesson IDs resolve. All 75 E24 related-Lesson links resolve; no E24 explanation
+requires a future Lesson to be intelligible.
+
+All 96 Kotlin code blocks were reviewed for plausible syntax, API names and agreement with their
+surrounding claims. One concrete defect was corrected in L3.1: a broad-catch example claimed that
+`ensureActive()` rethrows a received `CancellationException`, although an otherwise-active Job
+would not do so. It now catches `Exception` and rethrows `CancellationException` unchanged before
+handling ordinary failures. No new Lesson, section, example or Question was added.
+
+### Reader, progress and practice verification
+
+The production reader journey now derives every active Unit from the bundle rather than only the
+Compose Topic. In a 400 x 900 phone-shaped window it exercised all 12 shipped Units / 50 Lessons,
+including every E24 paragraph, bullet list, code block, comparison and callout. Reading-column
+containment held, genuinely wide code/comparisons scrolled internally, and every one of E24's 129
+Sources rendered as an operable title and passed its exact authored URL to the app URI boundary.
+Source URL formatting and content rules passed repository validation. The URLs were not fetched
+again because this issue changed no Source and E24-08's same-day freshness pass already verified
+317 unique production URLs, 285 response bodies and 48 anchors.
+
+Using the real study repository and production content, the journeys verified mark and unmark at
+Lesson, Unit and `async_reactive` Topic level, including return from 29/29 to 28/29 and from 5/5 to
+4/5. Continue Learning followed every production E24 Lesson identity in order, advanced within a
+Unit, crossed every Unit boundary (including Unit 1 to Unit 2), returned to an unmarked earlier
+Lesson, and produced `Complete` only after the whole authored learning document was exhausted.
+That is the current product contract; E24 does not wrap or complete while unrelated authored
+Lessons remain.
+
+Production practice resolution remains primary-concept-only, excludes supporting mappings and
+deduplicates repeated Questions. Final reach is **8, 9, 12, 7, 11 and 11** for Units 1–6. All six
+Unit actions enter the existing Practice Builder with the derived availability/count.
+`parent_cancellation_propagates_children` and `coroutine_async_exception_surfaces_at_await` reach
+Unit 3 rather than Unit 1; `coroutine_run_blocking_main_thread` remains in Unit 1 through
+`coroutine_builders`; supporting-only Questions do not leak into practice. The final bank contains
+**389 ACTIVE / 41 DEPRECATED** Questions.
+
+### Validation and disposition
+
+The following checks passed:
+
+- `python3 -m unittest discover -s tools -p 'test_*.py'` — 21 tool tests.
+- `python3 tools/learning_question_coverage.py --check` after regenerating with `--write` — current.
+- Targeted `:shared:jvmTest` runs for bundled curricula, codecs, end-to-end content, production
+  reader/progress journeys, Continue Learning and Unit practice.
+- `./gradlew --no-daemon :androidApp:assembleDebug :desktopApp:assemble :webApp:assemble :shared:check`
+  — Android, JVM/Desktop, JS browser, Wasm/JS browser and iOS simulator tasks passed. Webpack's
+  existing bundle-size warnings and Kotlin/Native metadata warnings remain non-failing.
+
+`.github/project/validate_backlog.py` could not run locally because the environment has no
+`PyYAML` module (`ModuleNotFoundError: No module named 'yaml'`); the backlog file was not changed.
+The curriculum schema/identity/taxonomy/mapping/status/content/source checks, generated coverage
+freshness and all platform checks above passed. The Question audit remains consistent with the
+unchanged 389 ACTIVE / 41 DEPRECATED production bank.
+
+Remaining non-blocking limitations are classified as follows:
+
+- **Deferred future work:** the coordination-mechanism selection half of GAP-U3-B remains
+  unassessed, and GAP-U4-C remains deliberately deferred.
+- **Accepted structural limitation:** shared-primary `coroutine_parallelism` makes Unit 2 reach
+  `coroutine_shared_counter_lost_update`, and mapping-derived routing means later primary mapping
+  changes can alter Unit practice reach.
+- **Intentional boundary:** several primary concepts have one Question; `lifecycle_coroutines`
+  and `livedata` Questions remain outside E24 Unit practice.
+
+No item is an unresolved defect or release blocker. E24-09 satisfies its acceptance criteria and
+**E24 is ready to close** after review and merge.
+
+---
+
 ## Source freshness and technical assumptions
 
 ### Configured versions this plan assumes

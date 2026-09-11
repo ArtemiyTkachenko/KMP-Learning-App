@@ -440,6 +440,43 @@ internal class TopicBrowserViewModelTest {
     }
 
     @Test
+    fun historyEnrichmentIsPublishedAsOneSnapshot() = runViewModelTest {
+        val repository = continueStudyingRepository()
+        val history = historyRepository(
+            listOf(completedFocusedAttempt("attempt", "compose")),
+        )
+        val recommendationStarted = CompletableDeferred<Unit>()
+        val releaseRecommendation = CompletableDeferred<Unit>()
+        val viewModel = viewModel(
+            repository = repository,
+            history = history,
+            learningRecommendationResolver = LearningRecommendationResolver {
+                recommendationStarted.complete(Unit)
+                releaseRecommendation.await()
+                0
+            },
+        )
+        advanceUntilIdle()
+        assertTrue(recommendationStarted.isCompleted)
+
+        // Search is an independent writer and forces a render while history enrichment is paused.
+        // It must not expose topic progress before the cards from that same history are ready.
+        viewModel.onSearchQueryChange("compose")
+        val pending = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        assertTrue(pending.topicMatches.all { it.learningContext == null })
+        assertNull(pending.recommendedNext)
+        assertNull(pending.continueStudying)
+
+        releaseRecommendation.complete(Unit)
+        advanceUntilIdle()
+        viewModel.onSearchQueryChange("")
+
+        val complete = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        assertTrue(complete.topics.all { it.learningContext != null })
+        assertNotNull(complete.continueStudying)
+    }
+
+    @Test
     fun emptyCompletedHistoryOffersNoContinueShortcut() = runViewModelTest {
         val viewModel = viewModel(continueStudyingRepository(), historyRepository())
         advanceUntilIdle()

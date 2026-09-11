@@ -5348,7 +5348,7 @@
                 },
                 {
                   "type": "code",
-                  "code": "try {\n    doWork()\n} catch (e: Throwable) {\n    // Re-checks the coroutine's own state and rethrows if it was cancelled.\n    if (e is CancellationException) ensureActive()\n    log(e)\n}",
+                  "code": "try {\n    doWork()\n} catch (e: Exception) {\n    // Cancellation is coroutine control flow, so preserve it unchanged.\n    if (e is CancellationException) throw e\n    log(e)\n}",
                   "language": "kotlin"
                 },
                 {

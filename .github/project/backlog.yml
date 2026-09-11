@@ -4640,3 +4640,446 @@ epics:
         priority: "P1"
         size: "M"
         initial_status: "Backlog"
+
+  - key: E25
+    github_title: "EPIC-25 Compose Effects and Production Screen State"
+
+    goal: >
+      Expand the Compose curriculum with a coherent production-screen sequence
+      that joins the state and execution mechanics from E23 to the coroutine and
+      Flow mechanics from E24 at the Compose boundary. Teach state ownership and
+      unidirectional data flow as a screen contract, converting observable
+      streams into Compose state, lifecycle-aware collection, composition-scoped
+      and event-driven coroutine work, effect restart semantics, cleanup and
+      external synchronization, state producers, and deliberate handling of
+      transient UI effects. Deliver the curriculum through the existing
+      production learning-content system, with reviewed assessment coverage and
+      verified integration into the existing learning experience. Detailed
+      application architecture and state-holder design, dependency injection,
+      navigation curriculum, comprehensive Compose and coroutine testing, RxJava
+      and LiveData curriculum, new learning UI, database changes, and unrelated
+      product changes remain outside this epic.
+
+    issues:
+      - key: E25-01
+        title: "Confirm the Compose effects and production screen state curriculum scope and assessment coverage"
+
+        issue: >
+          The Compose blueprint already maps this territory as Units 7 and 8,
+          but that map predates the shipped E23 Compose Units and the whole of
+          E24, and Unit 8 as written reaches into application architecture that
+          a later epic owns. The Units this epic delivers therefore need a
+          reconciled map, identities, prerequisites, source and platform
+          expectations, and assessment gaps before production authoring begins.
+
+        approach: >
+          Inspect what already exists rather than assuming: the shipped Compose
+          Units and every Lesson that already bridges into effects, collection
+          or screen state, the shipped Coroutines and Flow Units and the
+          boundaries their planning documents already recorded for this epic,
+          the `snapshotFlow` Lesson, the existing state-hoisting and
+          unidirectional-data-flow material, the current `android_ui`,
+          `async_reactive`, `lifecycle_navigation` and `architecture`
+          Subtopics, and the ACTIVE and relevant DEPRECATED Questions mapped to
+          them, searching conceptually rather than only for literal API names.
+          Reconcile the existing Compose blueprint Units 7 and 8 against this
+          epic's boundary, moving the application-architecture material Unit 8
+          currently carries to the architecture curriculum and keeping only a
+          bounded screen-level state-holder bridge. Then produce the map the
+          learning-content authoring contract requires together with the
+          confirmed authoring plan: the Unit and Lesson blueprint for this epic,
+          stable Unit and Lesson identities following existing conventions,
+          primary and supporting mappings using real IDs,
+          Teach/Bridge/Reference/Exclude decisions, prerequisites that are
+          already taught or need bounded bridging, the source-sensitive and
+          platform-sensitive claims with the authoritative sources that must
+          settle them, and a semantic review of existing Questions. Record it in
+          canonical documentation under `docs/content/` following the precedent
+          of the earlier planning documents, register it in the documentation
+          map, and update the Compose blueprint in the same change where this
+          reconciliation changes it. The backlog assumes six instructional
+          Units; adjust that only with a documented pedagogical reason. Keep
+          this issue planning-only: do not add production Lessons or Questions.
+
+        acceptance_criteria:
+          - "Existing learning content and ACTIVE Questions covering Compose effects, collection and screen state are inventoried, including existing bridges into the subject."
+          - "The existing Compose blueprint Units 7 and 8 are reconciled with this epic's plan, and every change to them is justified and applied to the blueprint."
+          - "The plan defines each Unit's Lessons, objectives, and boundaries, and justifies any departure from six Units."
+          - "Unit and Lesson identities are defined using existing conventions and are stable for the authoring issues."
+          - "Primary and supporting mappings use valid IDs, and concepts with no exact Subtopic are documented, not given invented IDs."
+          - "Prerequisites are already taught, included earlier in the sequence, or explicitly bridged."
+          - "Existing Questions receive a semantic review with gaps and mismatches recorded, rather than being assumed adequate because a mapping exists."
+          - "The configured Compose Multiplatform and lifecycle versions are recorded, and the availability and behavior of each effect and collection API is established per source set and target rather than inferred from Android-only documentation."
+          - "The plan states whether lifecycle-aware collection is available to this repository's shared code, with the evidence that settles it."
+          - "Boundaries with the state and execution Units, the coroutines and Flow Units, the application-architecture curriculum, the dependency-injection curriculum, and the testing curriculum are stated concept by concept."
+          - "Known misconception risks the Lessons must address are recorded as reasoning targets rather than as API checklists."
+          - "This issue introduces no production Lessons or Questions."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Ready"
+
+      - key: E25-02
+        title: "Author Production Screen State and Unidirectional Data Flow"
+
+        issue: >
+          Learners need a defensible answer to who owns a piece of screen state
+          before any effect API is introduced, because most production Compose
+          state problems are ownership problems rather than API problems.
+
+        approach: >
+          After E25-01, author the planned screen-contract Unit in the
+          production learning-content format, covering the planned territory:
+          local UI state against hoisted state against screen-level state,
+          deciding ownership from who reads a value, who writes it, and how long
+          it must survive, state down and events up, stateless content
+          composables and the stateful screen boundary, an immutable current
+          screen state, event callbacks rather than passing writable state
+          everywhere, and a screen-level state holder treated as a bounded
+          bridge. Follow the learning-content authoring contract, preserve the
+          plan's pedagogical order and stable identities, and use clear
+          objectives, substantive Core explanations, practical examples, and
+          Senior-depth reasoning where useful. Explain supporting concepts only
+          as far as this Unit needs them. Use valid taxonomy IDs, distinguish
+          primary from supporting mappings, verify claims against specific
+          authoritative sources with extra care for version-sensitive behavior,
+          and semantically review associated Questions against what the Lessons
+          actually teach. Keep the planning and generated learning-to-question
+          coverage documents current, then run and honestly report the relevant
+          existing content validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "Ownership is decided from who reads the state, who writes it, and how long it must survive, with worked scenarios rather than a rule of thumb."
+          - "Local, hoisted, and screen-level state are compared on the same screen, including state that should stay local."
+          - "The claim that production Compose puts all state in a state holder is addressed directly and shown to be wrong."
+          - "Hoisting is not presented as pushing state as high as possible, and the cost of over-hoisting is demonstrated."
+          - "The stateless content boundary is explained through what it makes possible, including reuse and preview."
+          - "Events flow back through callbacks, and passing writable state downward is explained through the problems it causes."
+          - "A screen-level state holder appears only as a bounded bridge, with detailed state-holder and pattern architecture deferred."
+          - "Unit practice mappings contain only primary concepts."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E25-03
+        title: "Author Observable State Collection and Lifecycle"
+
+        issue: >
+          Learners need to convert the observable streams taught in the
+          Coroutines and Flow Units into Compose state correctly, including what
+          the collection itself costs and how long it lasts.
+
+        approach: >
+          After E25-02, author the planned collection Unit in the production
+          learning-content format, covering the planned territory: why external
+          observable state must become Compose `State` before a composable can
+          render it, `collectAsState`, collecting a `StateFlow` and its current
+          value, initial values where they matter, the recomposition that
+          collected state causes, collection lifetime and its resource
+          consequences, lifecycle-aware collection with
+          `collectAsStateWithLifecycle`, and what is actually available to this
+          repository's shared Compose Multiplatform code as established by
+          E25-01. Teach collection as a purpose-built state conversion rather
+          than as a side effect the learner must launch by hand. Follow the
+          learning-content authoring contract, preserve the plan's pedagogical
+          order and stable identities, and use clear objectives, substantive
+          Core explanations, practical examples, and Senior-depth reasoning
+          where useful. Explain supporting concepts only as far as this Unit
+          needs them. Use valid taxonomy IDs, distinguish primary from
+          supporting mappings, verify every collection and lifecycle claim
+          against the configured libraries and specific authoritative sources
+          with extra care for behavior that differs by platform, and
+          semantically review associated Questions against what the Lessons
+          actually teach. Keep the planning and generated learning-to-question
+          coverage documents current, then run and honestly report the relevant
+          existing content validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "The need to convert an observable stream into Compose `State` is explained through what a composable can and cannot observe."
+          - "`collectAsState` behavior, including initial and current values, is verified against the configured libraries."
+          - "Collection is taught as having a lifetime and a cost, with the consequences of collecting longer than needed made concrete."
+          - "Lifecycle-aware collection is explained through the problem it solves, not as a naming convention."
+          - "Platform and source-set availability claims match what E25-01 established for this repository, and Android-only guidance is not presented as multiplatform behavior."
+          - "Manual collection inside a launched effect is not taught as the default way to render ongoing state, and where it is shown the reason is explicit."
+          - "Upstream sharing policy is bridged only as far as the lifetime argument requires, with Flow mechanics left to the Coroutines and Flow Units."
+          - "Lifecycle architecture, Fragment collection, and Flow testing remain outside this Unit."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E25-04
+        title: "Author Effect Lifecycle and LaunchedEffect"
+
+        issue: >
+          Learners need to understand why controlled effect APIs exist and what
+          an effect's keys actually declare, because effect defects usually come
+          from a wrong lifetime rather than a wrong API.
+
+        approach: >
+          After E25-03, author the planned effect-lifecycle Unit in the
+          production learning-content format, covering the planned territory:
+          why composable execution should stay free of side effects, what goes
+          wrong when work starts directly in a composable body, what an effect
+          means in Compose, `LaunchedEffect`, the composition-scoped coroutine
+          lifetime it creates, cancellation on leaving composition, restart when
+          a key changes, and the relationship between effect lifetime and
+          call-site identity. Apply rather than reteach the composition,
+          recomposition and identity material from the state and execution Units
+          and the scope, `Job` and cancellation material from the Coroutines and
+          Flow Units, cross-linking instead of duplicating. Give effect-key
+          selection substantial treatment, teaching the failures at both ends.
+          Follow the learning-content authoring contract, preserve the plan's
+          pedagogical order and stable identities, and use clear objectives,
+          substantive Core explanations, practical examples, and Senior-depth
+          reasoning where useful. Explain supporting concepts only as far as
+          this Unit needs them. Use valid taxonomy IDs, distinguish primary from
+          supporting mappings, verify effect lifetime, cancellation and restart
+          claims against specific authoritative sources and the configured
+          runtime with extra care for version-sensitive behavior, and
+          semantically review associated Questions against what the Lessons
+          actually teach. Keep the planning and generated learning-to-question
+          coverage documents current, then run and honestly report the relevant
+          existing content validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "The danger of starting work in a composable body is demonstrated through repeated execution, skipping, and abandonment rather than asserted."
+          - "The claim that a composable runs once is addressed directly and shown to be wrong."
+          - "Effect lifetime is explained as entering, leaving, and re-entering composition, with cancellation as a consequence of leaving."
+          - "Key changes are explained as cancelling and restarting the effect, with what happens to in-flight work made explicit."
+          - "Too few keys are demonstrated through stale or continuing work, and too many or unstable keys through needless restarts."
+          - "Keys are explained as a dependency declaration with ownership and lifetime meaning, not as a list of every value the effect reads."
+          - "A constant key is explained as a claim about lifetime that deserves scrutiny, rather than as the default way to run something once."
+          - "Composition, recomposition, identity, scope, and cancellation are applied and cross-linked rather than retaught."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E25-05
+        title: "Author Latest-Value Effects and Event-Driven Coroutine Work"
+
+        issue: >
+          Learners need to separate work that a composition state should start
+          from work a user event should start, and to keep a long-lived effect
+          reading current values without restarting it.
+
+        approach: >
+          After E25-04, author the planned latest-value and event-driven Unit in
+          the production learning-content format, covering the planned
+          territory: `rememberUpdatedState`, values and callbacks a long-lived
+          effect must read currently without restarting, why a constant-key
+          effect deserves scrutiny, `rememberCoroutineScope`, composition-driven
+          against event-driven work, launching suspend UI work from callbacks,
+          the lifetime of manually launched work and when cancelling it is the
+          caller's job, and practical snackbar or animation-like UI work. Build
+          the central comparison from who owns the trigger rather than from API
+          names, and include a worked example that contrasts incorrect
+          composition-driven launching with correct event-driven launching on
+          the same screen. Follow the learning-content authoring contract,
+          preserve the plan's pedagogical order and stable identities, and use
+          clear objectives, substantive Core explanations, practical examples,
+          and Senior-depth reasoning where useful. Explain supporting concepts
+          only as far as this Unit needs them. Use valid taxonomy IDs,
+          distinguish primary from supporting mappings, verify claims against
+          specific authoritative sources and the configured runtime with extra
+          care for version-sensitive behavior, and semantically review
+          associated Questions against what the Lessons actually teach. Keep the
+          planning and generated learning-to-question coverage documents
+          current, then run and honestly report the relevant existing content
+          validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "`rememberUpdatedState` is explained through a long-lived effect that must read a current value, with the keyed alternative and its restart cost shown beside it."
+          - "`rememberUpdatedState` is not presented as a way to prevent or reduce recomposition."
+          - "The choice between a composition-triggered effect and a remembered scope is reasoned from who owns the trigger, not from API names."
+          - "A worked example contrasts incorrect composition-driven launching with correct event-driven launching on the same screen."
+          - "`rememberCoroutineScope` is shown to launch nothing on its own, with the caller responsible for when work starts."
+          - "The lifetime of work launched from a remembered scope is explained, including what happens when the screen leaves composition."
+          - "Work that must outlive the screen is identified as belonging elsewhere, with that owner left to the architecture curriculum."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E25-06
+        title: "Author Cleanup, External Synchronization and State Producers"
+
+        issue: >
+          Learners need to own the external world a screen touches: registrations
+          that must be released, non-Compose objects that need composed values,
+          and asynchronous sources that must become Compose state.
+
+        approach: >
+          After E25-05, author the planned cleanup and producers Unit in the
+          production learning-content format, covering the planned territory:
+          `DisposableEffect` for registration and release, cleanup when a key
+          changes and when the effect leaves composition, listeners, observers
+          and external resources, effect ownership; `SideEffect` for publishing
+          Compose state to non-Compose code only after a successful composition,
+          and why writing the same call in the composable body is different;
+          `produceState` as a composition-scoped producer that adapts
+          asynchronous or external data into Compose `State`, its restart keys,
+          its conflated result, and its relationship to a launched effect
+          writing remembered state; and `awaitDispose` where a non-suspending
+          subscription API needs it. Include the Senior comparison between
+          adapting a source into a Flow below the UI and keeping a
+          Compose-local producer at the UI boundary, answered from ownership and
+          reuse rather than API preference. Do not turn this into another Flow
+          builder Lesson. Follow the learning-content authoring contract,
+          preserve the plan's pedagogical order and stable identities, and use
+          clear objectives, substantive Core explanations, practical examples,
+          and Senior-depth reasoning where useful. Explain supporting concepts
+          only as far as this Unit needs them. Use valid taxonomy IDs,
+          distinguish primary from supporting mappings, verify disposal, timing
+          and producer claims against specific authoritative sources and the
+          configured runtime with extra care for version-sensitive behavior, and
+          semantically review associated Questions against what the Lessons
+          actually teach. Keep the planning and generated learning-to-question
+          coverage documents current, then run and honestly report the relevant
+          existing content validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "Every registration in the examples has a matching release, and the failure from a missing one is concrete."
+          - "Cleanup is explained for both a key change and leaving composition, including why setup and cleanup share a key set."
+          - "`DisposableEffect` is distinguished from a launched effect by what it is for rather than described as one with cleanup added."
+          - "`SideEffect` timing is explained as publishing after a successful composition, with what an abandoned or skipped composition means for it."
+          - "`SideEffect` is not presented as a general event handler or a place to start work."
+          - "`produceState` is explained as a composition-scoped producer with restart keys and a conflated result, and compared with a launched effect writing remembered state."
+          - "`produceState` is not presented as a replacement for ordinary stream collection, and the choice between a Flow below the UI and a Compose-local producer is decided from ownership and reuse."
+          - "`awaitDispose` is taught where a non-suspending subscription genuinely needs it, with Flow builder mechanics left to the Coroutines and Flow Units."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E25-07
+        title: "Author Production UI Effects and Mechanism Selection"
+
+        issue: >
+          Learners who know each API individually still choose the wrong one
+          under production pressure, so the sequence needs a synthesis Unit that
+          decides between mechanisms from requirements rather than from
+          familiarity.
+
+        approach: >
+          After E25-06, author the planned synthesis Unit in the production
+          learning-content format, working through realistic screen-level
+          scenarios rather than introducing another API catalogue. Build the
+          decision around the questions the epic exists to answer: is this state
+          to render, is it ongoing observable state to collect, is the work
+          triggered by entering a composition state or by a user event, does an
+          external registration need cleanup, does a non-Compose object need the
+          latest successfully composed value, does a long-lived effect need a
+          current callback without restarting, does an external producer need
+          converting into Compose `State`, and is the requirement actually a
+          delivery guarantee that an ephemeral UI effect cannot provide. Treat
+          navigation and snackbar-like behavior as Compose-side effect mechanics
+          and a delivery problem, connecting explicitly to the stream-abstraction
+          reasoning the Coroutines and Flow Units established and leaving
+          application-level event architecture to the architecture curriculum.
+          Follow the learning-content authoring contract, preserve the plan's
+          pedagogical order and stable identities, and use clear objectives,
+          substantive Core explanations, practical examples, and Senior-depth
+          reasoning where useful. Explain supporting concepts only as far as
+          this Unit needs them. Use valid taxonomy IDs, distinguish primary from
+          supporting mappings, verify claims against specific authoritative
+          sources and the configured runtime with extra care for
+          version-sensitive behavior, and semantically review associated
+          Questions against what the Lessons actually teach. Keep the planning
+          and generated learning-to-question coverage documents current, then
+          run and honestly report the relevant existing content validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "The Unit synthesizes the earlier Units through production screen scenarios rather than introducing a new API catalogue."
+          - "Each scenario is decided from ownership, lifetime, and trigger, and names the smallest sufficient mechanism."
+          - "Rendering, local and hoisted state, collection, lifecycle-aware collection, composition-triggered effects, event-triggered work, latest-value reads, cleanup, external publication, and state producers are all reachable outcomes of the decision."
+          - "Current state and a transient occurrence are distinguished, and the delivery problem behind a one-off UI effect is explained."
+          - "The slogan that one stream type is for state and another for events is not taught, consistent with the Coroutines and Flow Units."
+          - "A broadcast stream is not presented as the standard solution for every one-off UI event."
+          - "A successfully emitted transient event is not presented as necessarily delivered to a UI, and the conditions are stated."
+          - "Application-level event architecture, state-holder patterns, and dependency injection remain outside this Unit and are cross-linked rather than taught."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E25-08
+        title: "Address assessment gaps for the Compose effects and screen state Units"
+
+        issue: >
+          Structural mappings between Lessons and Questions do not establish
+          meaningful practice coverage for the new Compose effects and screen
+          state Units, and the existing effect Questions are few and mostly
+          foundational.
+
+        approach: >
+          After E25-02 through E25-07, revisit E25-01's semantic coverage
+          analysis against the finished Lessons. Add or correct Questions for
+          substantive conceptual gaps using the existing question-authoring and
+          validation workflows, giving particular attention to the misconceptions
+          the Units exist to correct and to scenarios that require choosing a
+          mechanism from a stated requirement. Preserve Question identities and
+          lifecycle conventions, independently solve every changed or added
+          Question, verify its Sources, and keep the generated coverage reports
+          current.
+
+        acceptance_criteria:
+          - "Each Unit's primary concepts receive a documented semantic coverage review."
+          - "Material gaps are addressed or explicitly justified as deferred."
+          - "Questions assess reasoning rather than copied Lesson wording or the existence of an API."
+          - "Misconception and mechanism-selection scenarios are represented where the Lessons teach the reasoning they require."
+          - "Difficulty matches required reasoning without per-Lesson or per-level quotas."
+          - "Every changed or added Question is independently solved and its Sources verified."
+          - "Supporting-only mappings do not broaden practice eligibility."
+          - "Question identity and lifecycle conventions are preserved."
+          - "Affected coverage reports are regenerated."
+          - "Every new Unit has meaningful practice or a reviewed explanation for its absence."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E25-09
+        title: "Verify the Compose effects and production screen state learning experience and close E25"
+
+        issue: >
+          The new Units must work as one coherent learning sequence, sit
+          correctly between the shipped Compose and Coroutines and Flow Units,
+          and integrate with study progress, Continue Learning, and Unit practice
+          without changing unrelated product behavior.
+
+        approach: >
+          After E25-08, review the Units as one learning sequence and verify
+          their integration using existing tooling and focused production-content
+          checks, including how the sequence sits alongside the shipped Compose
+          state and execution Units and the Coroutines and Flow Units, and
+          whether the cross-links between them resolve. Add tests only for
+          concrete gaps and accurately report content, build, and platform
+          verification results.
+
+        acceptance_criteria:
+          - "Every authored Unit and Lesson appears in the intended authored order."
+          - "Cross-Unit review checks prerequisites, contradictions, duplication, and terminology consistency."
+          - "Terminology for state, ownership, composition lifetime, effects, keys, collection, and delivery is consistent across Units and with existing content."
+          - "Cross-links to the Compose state and execution Units and to the Coroutines and Flow Units resolve and do not duplicate what they reference."
+          - "Structured content, code examples, and Sources render correctly."
+          - "Mark and unmark update Unit and Topic study progress correctly."
+          - "Continue Learning traverses the expanded content and handles completion correctly."
+          - "Unit practice uses intended primary concepts through the existing assessment flow."
+          - "Content and coverage validation passes with current reports."
+          - "New tests address concrete gaps rather than duplicating existing checks."
+          - "Required build and platform checks are reported accurately."
+          - "Remaining limitations and any material deferred to the architecture, dependency-injection, or testing curriculum are recorded."
+          - "No unrelated product behavior changes."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"

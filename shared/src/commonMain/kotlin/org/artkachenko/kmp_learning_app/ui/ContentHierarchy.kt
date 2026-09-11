@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 
@@ -75,13 +76,14 @@ internal fun SecondarySummaryCard(
 internal fun SectionHeading(
     text: String,
     modifier: Modifier = Modifier,
+    topPadding: Dp = AppSpacing.Section,
 ) {
     Text(
         text = text,
         style = MaterialTheme.typography.titleLarge,
         color = MaterialTheme.colorScheme.onSurface,
         modifier = modifier
-            .padding(top = AppSpacing.Section)
+            .padding(top = topPadding)
             .semantics { heading() },
     )
 }

@@ -153,7 +153,7 @@ private fun ProgressContent(
     LazyColumn(
         modifier = modifier.fillMaxSize().testTag(ProgressContentTag),
         contentPadding = appScreenContentPadding(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(org.artkachenko.kmp_learning_app.ui.theme.AppSpacing.Grouped),
     ) {
         item {
             ProgressSectionTitle(stringResource(Res.string.progress_overall))
@@ -177,7 +177,10 @@ private fun ProgressContent(
         }
         if (state.weakAreas.isNotEmpty()) {
             item {
-                ProgressSectionTitle(stringResource(Res.string.progress_weak_areas))
+                ProgressSectionTitle(
+                    stringResource(Res.string.progress_weak_areas),
+                    topPadding = org.artkachenko.kmp_learning_app.ui.theme.AppSpacing.Grouped,
+                )
             }
             items(state.weakAreas, key = { "${it.type}:${it.stableId}" }) { area ->
                 WeakAreaCard(area) { onPracticePreset(area.toPracticePreset()) }
@@ -187,7 +190,10 @@ private fun ProgressContent(
         // example after a curriculum import replaces the question IDs the history refers to.
         if (state.topics.isNotEmpty()) {
             item {
-                ProgressSectionTitle(stringResource(Res.string.progress_topic_performance))
+                ProgressSectionTitle(
+                    stringResource(Res.string.progress_topic_performance),
+                    topPadding = org.artkachenko.kmp_learning_app.ui.theme.AppSpacing.Grouped,
+                )
             }
             items(state.topics, key = ProgressTopicUiModel::topicId) { topic ->
                 TopicPerformanceCard(topic) { onTopicClick(topic.topicId) }
@@ -195,7 +201,10 @@ private fun ProgressContent(
         }
         if (state.history.isNotEmpty()) {
             item {
-                ProgressSectionTitle(stringResource(Res.string.progress_history))
+                ProgressSectionTitle(
+                    stringResource(Res.string.progress_history),
+                    topPadding = org.artkachenko.kmp_learning_app.ui.theme.AppSpacing.Grouped,
+                )
             }
             items(state.history, key = CompletedAttemptUiModel::attemptId) { attempt ->
                 HistoryCard(attempt) {
@@ -260,15 +269,14 @@ private fun CurriculumCoverageSummary(coverage: ProgressCoverageUiModel) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
-            MetricFigure(text = formatAccuracy(percentage))
             Text(
                 text = stringResource(
                     Res.string.progress_coverage_count,
                     coverage.attemptedQuestionCount,
                     coverage.totalQuestionCount,
                 ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             ProgressMeter(
                 // The exact count ratio, not the rounded percentage above it.

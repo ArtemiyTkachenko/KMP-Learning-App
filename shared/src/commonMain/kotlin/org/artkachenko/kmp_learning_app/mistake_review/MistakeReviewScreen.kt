@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -23,7 +24,12 @@ import kmp_learning_app.shared.generated.resources.mistake_review_empty_action
 import kmp_learning_app.shared.generated.resources.mistake_review_empty_detail
 import kmp_learning_app.shared.generated.resources.mistake_review_error
 import kmp_learning_app.shared.generated.resources.mistake_review_loading
+import kmp_learning_app.shared.generated.resources.mistake_review_practice_all
+import kmp_learning_app.shared.generated.resources.mistake_review_study_lesson
 import kmp_learning_app.shared.generated.resources.mistake_review_title
+import kmp_learning_app.shared.generated.resources.mistake_review_unresolved_count
+import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
+import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import kmp_learning_app.shared.generated.resources.practice_shortcut_subtopic_mistakes
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
@@ -43,8 +49,10 @@ import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.pluralStringResource
 
 internal const val MistakeReviewLoadingTag = "mistake_review_loading"
+internal const val MistakeReviewPracticeAllTag = "mistake_review_practice_all"
 
 /** Stable per-entry handle for the scoped practice shortcut, whose label repeats on every card. */
 internal fun mistakePracticeShortcutTag(questionId: String): String =
@@ -64,6 +72,8 @@ internal fun MistakeReviewScreen(
     onBrowseTopics: () -> Unit,
     onSourceClick: (String) -> Unit,
     onPracticePreset: (PracticePreset) -> Unit,
+    onStartPractice: (AssessmentConfig.Focused) -> Unit = {},
+    onStudyLesson: (MistakeStudyLesson) -> Unit = {},
     savedQuestions: SavedQuestionsState = SavedQuestionsState.Loading,
     onToggleSaved: (String) -> Unit = {},
     failedSourceUrl: String? = null,
@@ -96,6 +106,8 @@ internal fun MistakeReviewScreen(
                 state = state,
                 onSourceClick = onSourceClick,
                 onPracticePreset = onPracticePreset,
+                onStartPractice = onStartPractice,
+                onStudyLesson = onStudyLesson,
                 savedQuestions = savedQuestions,
                 onToggleSaved = onToggleSaved,
                 failedSourceUrl = failedSourceUrl,
@@ -110,23 +122,62 @@ private fun MistakeReviewContent(
     state: MistakeReviewUiState.Content,
     onSourceClick: (String) -> Unit,
     onPracticePreset: (PracticePreset) -> Unit,
+    onStartPractice: (AssessmentConfig.Focused) -> Unit,
+    onStudyLesson: (MistakeStudyLesson) -> Unit,
     savedQuestions: SavedQuestionsState,
     onToggleSaved: (String) -> Unit,
     failedSourceUrl: String?,
     modifier: Modifier,
 ) {
+    val practiceableMistakes = state.mistakes.mapNotNull { mistake ->
+        (mistake.reviewItem as? ReviewQuestionItem.Available)?.question
+            ?.takeIf { it.subtopicId.isNotBlank() }
+    }
+    val practiceSubtopicIds = practiceableMistakes.mapTo(mutableSetOf()) { it.subtopicId }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = appScreenContentPadding(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(org.artkachenko.kmp_learning_app.ui.theme.AppSpacing.Comfortable),
     ) {
         item {
-            Text(
-                text = stringResource(Res.string.mistake_review_description),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = stringResource(
+                        Res.string.mistake_review_unresolved_count,
+                        state.mistakes.size,
+                    ),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    text = stringResource(Res.string.mistake_review_description),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (practiceableMistakes.isNotEmpty()) {
+                    Button(
+                        onClick = {
+                            onStartPractice(
+                                AssessmentConfig.Focused(
+                                    scope = AssessmentScope.Subtopics(practiceSubtopicIds),
+                                    questionCount = practiceableMistakes.size,
+                                    levels = AllQuestionLevels,
+                                    source = PracticeQuestionSource.UNRESOLVED_MISTAKES,
+                                ),
+                            )
+                        },
+                        modifier = Modifier.testTag(MistakeReviewPracticeAllTag),
+                    ) {
+                        Text(
+                            pluralStringResource(
+                                Res.plurals.mistake_review_practice_all,
+                                practiceableMistakes.size,
+                                practiceableMistakes.size,
+                            ),
+                        )
+                    }
+                }
+            }
         }
         // Review rendering is reused from the shared assessment-review components so selected
         // answers, correct answers, explanation, and sources stay consistent with result screens.
@@ -172,6 +223,16 @@ private fun MistakeReviewContent(
                             Text(
                                 text = stringResource(
                                     Res.string.practice_shortcut_subtopic_mistakes,
+                                ),
+                            )
+                        }
+                    }
+                    mistake.studyLesson?.let { lesson ->
+                        TextButton(onClick = { onStudyLesson(lesson) }) {
+                            Text(
+                                stringResource(
+                                    Res.string.mistake_review_study_lesson,
+                                    lesson.title,
                                 ),
                             )
                         }

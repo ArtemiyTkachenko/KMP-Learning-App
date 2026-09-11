@@ -78,7 +78,8 @@ internal class ProgressTopicScreenTest {
         onNodeWithText("Subtopics").assertExists()
         onNodeWithText("Coroutines").assertExists()
         onNodeWithText("2 / 3 correct").assertExists()
-        onNodeWithText("66.7%").assertExists()
+        onNodeWithText("66.7%").assertDoesNotExist()
+        onNodeWithText("Not enough data yet. Practice more to measure this area.").assertExists()
         onNodeWithText("Basics").assertExists()
         // Only the weak subtopic is flagged; the aggregate card is not weak here.
         onAllNodesWithText("Weak area").assertCountEquals(1)
@@ -111,7 +112,7 @@ internal class ProgressTopicScreenTest {
         onNodeWithText("2 / 3 correct").assertExists()
         onNodeWithText("6 of 12 current questions explored").assertExists()
         // Zero current coverage does not erase the Subtopic's historical performance.
-        onNodeWithText("0 / 2 correct").assertExists()
+        onNodeWithText("0 / 5 correct").assertExists()
         onNodeWithText("0 of 4 current questions explored").assertExists()
     }
 
@@ -188,6 +189,8 @@ internal class ProgressTopicScreenTest {
         }
 
         onNodeWithText("Subtopics").assertDoesNotExist()
+        onNodeWithText("1 / 1 correct").assertIsDisplayed()
+        onNodeWithText("100%").assertDoesNotExist()
     }
 }
 
@@ -207,7 +210,7 @@ private fun subtopicRows(): List<ProgressSubtopicUiModel> =
         ProgressSubtopicUiModel(
             "basics",
             "Basics",
-            2,
+            5,
             0,
             0.0,
             isWeak = true,

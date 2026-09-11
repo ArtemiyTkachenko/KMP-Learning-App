@@ -48,7 +48,7 @@ internal class SavedQuestionsScreenTest {
 
         onNodeWithText("No saved questions yet.").assertIsDisplayed()
         onNodeWithText(
-            "Save a question while reviewing an assessment or your mistakes and it will appear here.",
+            "Save a question while reviewing Results or Mistakes and it will appear here.",
         ).assertIsDisplayed()
         // An empty collection is not a failure, so it offers a way forward rather than a Retry.
         onNodeWithText("Retry").assertDoesNotExist()

@@ -8,9 +8,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -32,12 +32,15 @@ import kmp_learning_app.shared.generated.resources.mixed_result_repeat_source_mi
 import kmp_learning_app.shared.generated.resources.mixed_result_title
 import kmp_learning_app.shared.generated.resources.mixed_result_topic_score
 import kmp_learning_app.shared.generated.resources.mixed_result_topic_unavailable
+import kmp_learning_app.shared.generated.resources.assessment_review_interview_complete
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentScoreSummary
 import org.artkachenko.kmp_learning_app.assessment_review.MissingReviewQuestion
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionCard
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.assessment_review.UnresolvedReviewQuestionsNotice
+import org.artkachenko.kmp_learning_app.assessment_review.MistakeRetentionNotice
 import org.artkachenko.kmp_learning_app.assessment_review.reviewSaveAction
+import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
@@ -60,6 +63,7 @@ internal fun MixedInterviewResultScreen(
     onBack: () -> Unit,
     onSourceClick: (String) -> Unit,
     onRepeatInterview: () -> Unit = {},
+    onPracticeMistakes: ((AssessmentConfig.Focused) -> Unit)? = null,
     savedQuestions: SavedQuestionsState = SavedQuestionsState.Loading,
     onToggleSaved: (String) -> Unit = {},
     failedSourceUrl: String? = null,
@@ -91,6 +95,7 @@ internal fun MixedInterviewResultScreen(
                 state = state,
                 onSourceClick = onSourceClick,
                 onRepeatInterview = onRepeatInterview,
+                onPracticeMistakes = onPracticeMistakes,
                 savedQuestions = savedQuestions,
                 onToggleSaved = onToggleSaved,
                 failedSourceUrl = failedSourceUrl,
@@ -105,6 +110,7 @@ private fun MixedResultContent(
     state: MixedInterviewResultUiState.Content,
     onSourceClick: (String) -> Unit,
     onRepeatInterview: () -> Unit,
+    onPracticeMistakes: ((AssessmentConfig.Focused) -> Unit)?,
     savedQuestions: SavedQuestionsState,
     onToggleSaved: (String) -> Unit,
     failedSourceUrl: String?,
@@ -113,16 +119,19 @@ private fun MixedResultContent(
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = appScreenContentPadding(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(org.artkachenko.kmp_learning_app.ui.theme.AppSpacing.Comfortable),
     ) {
         item {
-            AssessmentScoreSummary(
-                correctAnswers = state.correctAnswers,
-                totalQuestions = state.totalQuestions,
-                percentage = state.percentage,
-            )
-            UnresolvedReviewQuestionsNotice(state.questions, state.totalQuestions)
-            when (state.repeatInterviewState) {
+            Column(verticalArrangement = Arrangement.spacedBy(org.artkachenko.kmp_learning_app.ui.theme.AppSpacing.Comfortable)) {
+                AssessmentScoreSummary(
+                    correctAnswers = state.correctAnswers,
+                    totalQuestions = state.totalQuestions,
+                    percentage = state.percentage,
+                    title = stringResource(Res.string.assessment_review_interview_complete),
+                )
+                UnresolvedReviewQuestionsNotice(state.questions, state.totalQuestions)
+                MistakeRetentionNotice(state.questions, onPracticeMistakes)
+                when (state.repeatInterviewState) {
                 RepeatInterviewState.Idle -> Unit
                 RepeatInterviewState.Creating ->
                     Text(stringResource(Res.string.mixed_result_practice_starting))
@@ -141,27 +150,34 @@ private fun MixedResultContent(
                         stringResource(Res.string.mixed_result_repeat_error),
                         color = MaterialTheme.colorScheme.error,
                     )
-            }
-            Button(
-                onClick = onRepeatInterview,
-                enabled = state.repeatInterviewState != RepeatInterviewState.Creating,
-                modifier = Modifier.testTag(MixedResultPracticeAgainTag),
-            ) {
-                if (state.repeatInterviewState == RepeatInterviewState.Creating) {
-                    CircularProgressIndicator(Modifier.testTag(MixedResultCreatingIndicatorTag))
-                } else {
-                    Text(stringResource(Res.string.mixed_result_practice_again))
+                }
+                OutlinedButton(
+                    onClick = onRepeatInterview,
+                    enabled = state.repeatInterviewState != RepeatInterviewState.Creating,
+                    modifier = Modifier.testTag(MixedResultPracticeAgainTag),
+                ) {
+                    if (state.repeatInterviewState == RepeatInterviewState.Creating) {
+                        CircularProgressIndicator(Modifier.testTag(MixedResultCreatingIndicatorTag))
+                    } else {
+                        Text(stringResource(Res.string.mixed_result_practice_again))
+                    }
                 }
             }
         }
         item {
-            SectionHeading(stringResource(Res.string.mixed_result_performance_by_topic))
+            SectionHeading(
+                stringResource(Res.string.mixed_result_performance_by_topic),
+                topPadding = org.artkachenko.kmp_learning_app.ui.theme.AppSpacing.Related,
+            )
         }
         items(state.topicPerformance, key = { it.topicId }) { topic ->
             TopicPerformanceCard(topic)
         }
         item {
-            SectionHeading(stringResource(Res.string.mixed_result_question_review))
+            SectionHeading(
+                stringResource(Res.string.mixed_result_question_review),
+                topPadding = org.artkachenko.kmp_learning_app.ui.theme.AppSpacing.Related,
+            )
         }
         items(state.questions) { item ->
             when (item) {

@@ -2,8 +2,10 @@ package org.artkachenko.kmp_learning_app.learning_progress
 
 internal object LearningProgressPolicy {
     const val WeakAccuracyThresholdPercentage = 70.0
-    const val WeakTopicMinimumAnswered = 3
-    const val WeakSubtopicMinimumAnswered = 2
+    /** A recommendation should be based on a pattern, not one unlucky question. */
+    const val WeakAreaMinimumAnswered = 5
+    const val WeakTopicMinimumAnswered = WeakAreaMinimumAnswered
+    const val WeakSubtopicMinimumAnswered = WeakAreaMinimumAnswered
 
     fun isWeakTopic(
         answeredCount: Int,

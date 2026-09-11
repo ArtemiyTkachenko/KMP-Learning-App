@@ -87,6 +87,9 @@ internal class ProgressStateHolder(
      */
     private fun toUiModel(recent: RecentPerformance): ProgressRecentPerformanceUiModel? {
         val percentage = recent.percentage ?: return null
+        if (recent.attemptCount < org.artkachenko.kmp_learning_app.learning_progress.RecentPerformancePolicy.MinimumVisibleAttempts) {
+            return null
+        }
         return ProgressRecentPerformanceUiModel(
             attemptCount = recent.attemptCount,
             answeredQuestionCount = recent.answeredQuestionCount,
@@ -209,4 +212,3 @@ private suspend fun <K, V> MutableMap<K, V?>.getOrLoad(
     if (containsKey(key)) return this[key]
     return load().also { this[key] = it }
 }
-

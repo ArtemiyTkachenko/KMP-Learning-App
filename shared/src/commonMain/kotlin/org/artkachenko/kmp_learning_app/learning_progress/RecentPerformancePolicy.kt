@@ -34,6 +34,9 @@ internal object RecentPerformancePolicy {
      */
     const val MinimumTrendAttempts = 3
 
+    /** Progress does not promote a recent summary until it represents more than a tiny history. */
+    const val MinimumVisibleAttempts = 5
+
     /**
      * Upper bound on the per-answer series. The series exists so presentation can show a fine
      * grained recent history without loading attempts again; it is not the source of the recent

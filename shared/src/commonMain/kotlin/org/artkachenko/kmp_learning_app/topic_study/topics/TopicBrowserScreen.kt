@@ -37,10 +37,11 @@ import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.continue_learning_complete_message
 import kmp_learning_app.shared.generated.resources.continue_learning_complete_title
 import kmp_learning_app.shared.generated.resources.continue_learning_title
+import kmp_learning_app.shared.generated.resources.continue_lesson_action
+import kmp_learning_app.shared.generated.resources.continue_practice_action
 import kmp_learning_app.shared.generated.resources.continue_studying_source_mistakes
 import kmp_learning_app.shared.generated.resources.continue_studying_source_unseen
 import kmp_learning_app.shared.generated.resources.continue_studying_source_weak_areas
-import kmp_learning_app.shared.generated.resources.continue_studying_title
 import kmp_learning_app.shared.generated.resources.learning_context_accuracy
 import kmp_learning_app.shared.generated.resources.learning_context_explored
 import kmp_learning_app.shared.generated.resources.learning_context_not_studied
@@ -255,7 +256,7 @@ private fun TopicList(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = AppListBottomPadding),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
     ) {
         // Inside the list rather than pinned above it: guidance is worth one glance on arrival, and
         // scrolls away for a learner who came to browse the catalogue instead. At most one of each,
@@ -293,6 +294,12 @@ private fun TopicList(
         // the learner curated themselves, not one more thing the app is suggesting they do.
         item(key = "saved_questions") {
             SavedQuestionsEntry(onClick = onSavedQuestionsClick)
+        }
+        item(key = "topics_heading") {
+            SectionHeading(
+                text = stringResource(Res.string.topic_browser_search_topics),
+                topPadding = AppSpacing.Grouped,
+            )
         }
         items(
             items = topics,
@@ -383,7 +390,7 @@ private fun ContinueStudyingCard(
         // A quiet container rather than the primaryContainer the Interview hero uses: this is a
         // shortcut sitting above the Topic cards, and it should read as one of them with emphasis.
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ),
     ) {
         Row(
@@ -396,29 +403,34 @@ private fun ContinueStudyingCard(
                 verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
             ) {
                 Text(
-                    text = stringResource(Res.string.continue_studying_title),
+                    text = stringResource(
+                        when (context.target) {
+                            is ContinueStudyingTarget.Practice -> Res.string.continue_practice_action
+                            is ContinueStudyingTarget.Topic -> Res.string.continue_lesson_action
+                        },
+                    ),
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     // Resolved from the current curriculum, so a renamed Topic is named correctly
                     // here without anything stored in history being migrated.
                     text = context.scopeName,
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 context.supportingLabel()?.let { label ->
                     Text(
                         text = label,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
             Icon(
                 imageVector = AppIcons.ChevronRight,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp),
             )
         }
@@ -449,11 +461,9 @@ private fun ContinueStudyingContext.supportingLabel(): String? =
 /**
  * The next Lesson in the authored sequence, or the fact that there is not one.
  *
- * Named "Continue learning" against the other card's "Continue studying", and drawn in the tertiary
- * container so the three guided cards read as three different things rather than as a ranked list of
- * one kind of thing: Recommended Next is primary, Continue Studying secondary, and this is the
- * reading shortcut beside them. It answers a question neither of the others asks, from inputs
- * neither of them reads.
+ * Explicitly named "Next lesson" so it cannot be confused with the separate practice-continuation
+ * shortcut. Both supporting actions use neutral containers; the policy recommendation is the only
+ * surface that receives the strongest accent treatment.
  *
  * [ContinueLearningUiModel.Complete] deliberately loses both the accent container and the chevron
  * and takes no click: a state with nowhere to go must not look like a state with somewhere to go.
@@ -475,7 +485,7 @@ private fun ContinueLearningCard(
             modifier = modifier.fillMaxWidth().testTag(TopicBrowserContinueLearningTag),
             shape = MaterialTheme.shapes.medium,
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             ),
         ) {
             ContinueLearningCardContent(
@@ -484,7 +494,7 @@ private fun ContinueLearningCard(
                 // correctly here without anything stored being migrated.
                 headline = model.lessonTitle,
                 supporting = model.unitTitle,
-                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSurface,
                 showChevron = true,
             )
         }

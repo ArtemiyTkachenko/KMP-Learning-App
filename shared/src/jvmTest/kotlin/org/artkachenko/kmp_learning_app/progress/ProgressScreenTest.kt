@@ -108,7 +108,7 @@ internal class ProgressScreenTest {
         // labels would pass no matter what numbers the state carried.
         // Pair each value with its own label: two metrics can legitimately share a value, so a
         // bare onNodeWithText("3") is both ambiguous and unable to say which row it checked.
-        onNode(hasText("Completed assessments") and hasText("3")).assertIsDisplayed()
+        onNode(hasText("Completed sessions") and hasText("3")).assertIsDisplayed()
         onNode(hasText("Questions answered") and hasText("30")).assertIsDisplayed()
         onNode(hasText("Correct answers") and hasText("21")).assertIsDisplayed()
         // Now that a recent figure exists, the lifetime one has to say which of the two it is.
@@ -164,10 +164,10 @@ internal class ProgressScreenTest {
 
         // Overall statistics survive a curriculum import that orphans historical questions,
         // so the derived sections must disappear rather than leave dangling headers.
-        onNodeWithText("Completed assessments").assertIsDisplayed()
+        onNodeWithText("Completed sessions").assertIsDisplayed()
         onNodeWithText("Weak areas").assertDoesNotExist()
         onNodeWithText("Topic performance").assertDoesNotExist()
-        onNodeWithText("Assessment history").assertDoesNotExist()
+        onNodeWithText("Session history").assertDoesNotExist()
     }
 
     @Test
@@ -302,9 +302,9 @@ internal class ProgressScreenTest {
             }
         }
 
-        onNodeWithText("Assessment history").assertIsDisplayed()
+        onNodeWithText("Session history").assertIsDisplayed()
         onNodeWithText("Mixed Android Interview").assertIsDisplayed().performClick()
-        onNodeWithText("Focused practice").assertIsDisplayed().performClick()
+        onNodeWithText("Practice").assertIsDisplayed().performClick()
         onNodeWithText("Kotlin · Coroutines").assertIsDisplayed()
         onNodeWithText("2026-08-29T00:15:00Z").assertIsDisplayed()
         assertEquals(
@@ -353,8 +353,8 @@ internal class ProgressScreenTest {
             }
         }
 
-        onNodeWithText("Topic unavailable").assertIsDisplayed()
-        onNodeWithText("Subtopic unavailable").assertIsDisplayed()
+        onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("Topic unavailable"))
+        onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("Subtopic unavailable"))
     }
 
     @Test
@@ -374,7 +374,6 @@ internal class ProgressScreenTest {
         }
 
         onNodeWithText("Curriculum coverage").assertIsDisplayed()
-        onNodeWithText("25%").assertIsDisplayed()
         // Coverage next to accuracy is two unexplained percentages unless the counts are visible,
         // and the bar alone must never be the only place the figure appears.
         onNodeWithText("25 of 100 questions explored").assertIsDisplayed()
@@ -396,7 +395,6 @@ internal class ProgressScreenTest {
             }
         }
 
-        onNodeWithText("90%").assertIsDisplayed()
         onNodeWithText("90 of 100 questions explored").assertIsDisplayed()
     }
 
@@ -446,7 +444,7 @@ internal class ProgressScreenTest {
         onNodeWithText("Recent performance").assertIsDisplayed()
         // The lifetime figure is 70%; only the recent surface may read 82%.
         onNodeWithText("82%").assertIsDisplayed()
-        onNodeWithText("Last 5 completed assessments").assertIsDisplayed()
+        onNodeWithText("Last 5 completed sessions").assertIsDisplayed()
         onNodeWithText("41 / 50 correct").assertIsDisplayed()
         onNodeWithText("All-time accuracy").assertIsDisplayed()
         onAllNodesWithText("70%").assertCountEquals(1)
@@ -474,10 +472,10 @@ internal class ProgressScreenTest {
             }
         }
 
-        onNodeWithText("Last completed assessment").assertIsDisplayed()
+        onNodeWithText("Last completed session").assertIsDisplayed()
         onNodeWithText("9 / 11 correct").assertIsDisplayed()
         onNodeWithTag(ProgressRecentTrendChartTag).assertDoesNotExist()
-        onNodeWithText("A trend appears after 3 completed assessments.").assertIsDisplayed()
+        onNodeWithText("A trend appears after 3 completed sessions.").assertIsDisplayed()
     }
 
     @Test
@@ -506,9 +504,9 @@ internal class ProgressScreenTest {
         // information the learner has actually earned.
         onNodeWithText("Recent performance").assertIsDisplayed()
         onNodeWithText("80%").assertIsDisplayed()
-        onNodeWithText("Last 2 completed assessments").assertIsDisplayed()
+        onNodeWithText("Last 2 completed sessions").assertIsDisplayed()
         onNodeWithTag(ProgressRecentTrendChartTag).assertDoesNotExist()
-        onNodeWithText("A trend appears after 3 completed assessments.").assertIsDisplayed()
+        onNodeWithText("A trend appears after 3 completed sessions.").assertIsDisplayed()
     }
 
     @Test
@@ -533,11 +531,11 @@ internal class ProgressScreenTest {
             }
         }
 
-        onNodeWithText("A trend appears after 3 completed assessments.").assertDoesNotExist()
+        onNodeWithText("A trend appears after 3 completed sessions.").assertDoesNotExist()
         // The drawing carries no information of its own: everything it plots is also readable.
         onNodeWithTag(ProgressRecentTrendChartTag)
             .assertContentDescriptionEquals(
-                "Recent assessment accuracy, oldest to newest: 60%, 68%, 72%.",
+                "Recent session accuracy, oldest to newest: 60%, 68%, 72%.",
             )
     }
 
@@ -563,7 +561,7 @@ internal class ProgressScreenTest {
 
         onNodeWithTag(ProgressRecentTrendChartTag)
             .assertContentDescriptionEquals(
-                "Recent assessment accuracy, oldest to newest: 60%, 68%, 72%, 77%, 81%.",
+                "Recent session accuracy, oldest to newest: 60%, 68%, 72%, 77%, 81%.",
             )
     }
 
@@ -627,8 +625,8 @@ internal class ProgressScreenTest {
         onNodeWithText("Weak areas").assertIsDisplayed()
         onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("Topic performance"))
         onNodeWithText("Topic performance").assertIsDisplayed()
-        onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("Assessment history"))
-        onNodeWithText("Assessment history").assertIsDisplayed()
+        onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("Session history"))
+        onNodeWithText("Session history").assertIsDisplayed()
     }
 
     @Test

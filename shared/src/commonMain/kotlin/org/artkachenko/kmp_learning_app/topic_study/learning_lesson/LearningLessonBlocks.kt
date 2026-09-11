@@ -3,6 +3,7 @@ package org.artkachenko.kmp_learning_app.topic_study.learning_lesson
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -20,6 +21,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -108,10 +115,9 @@ internal fun LearningBlockContent(
 /**
  * Authored prose, rendered as prose.
  *
- * `Text` takes a `String`, so `**bold**`, a backtick, or an anchor tag reaches the learner as the
- * characters the author typed. That is the E20 contract rather than an omission: the document model
- * is structured precisely so nothing downstream has to run a Markdown or HTML parser, and adding
- * one here would silently reinterpret content that was validated as plain text.
+ * The curriculum's prose is authored with a small Markdown subset. Keeping parsing here means a
+ * lesson reads consistently regardless of the block that contains it, without mutating stable
+ * authored content or making each lesson compensate for renderer details.
  */
 @Composable
 private fun ParagraphBlock(
@@ -119,7 +125,7 @@ private fun ParagraphBlock(
     modifier: Modifier = Modifier,
 ) {
     Text(
-        text = block.text,
+        text = block.text.toLessonAnnotatedString(),
         style = MaterialTheme.typography.bodyLarge,
         color = MaterialTheme.colorScheme.onSurface,
         modifier = modifier.fillMaxWidth(),
@@ -153,7 +159,7 @@ private fun BulletListBlock(
                     modifier = Modifier.width(BulletMarkerWidth),
                 )
                 Text(
-                    text = item,
+                    text = item.toLessonAnnotatedString(),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f),
@@ -211,30 +217,32 @@ private fun CodeBlock(
     }
 }
 
-/**
- * A comparison table: header row, then authored rows, all inside one horizontal scroll.
- *
- * One scroll state for the whole table is the point. Scrolling each row separately would let the
- * columns drift out of line with their headers, which is the only thing making the cells readable.
- * Column width is a fixed readable measure rather than a measured fit: a text-measurement pass
- * would be considerably more machinery for a table of a few authored columns, and a shared width
- * already guarantees a cell sits under its own header.
- *
- * Ragged rows are rendered as authored. Column-count consistency is content validation's rule, and
- * a renderer that padded or trimmed rows would hide an authoring fault instead of showing it.
- */
+/** A wide table or a compact stack, chosen once at the reusable content boundary. */
 @Composable
 private fun ComparisonBlock(
     block: LearningBlock.Comparison,
     modifier: Modifier = Modifier,
 ) {
-    val scrollState = rememberScrollState()
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.small,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
-        Column(Modifier.horizontalScroll(scrollState).testTag(LearningLessonComparisonTag)) {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            if (maxWidth < CompactComparisonBreakpoint) {
+                CompactComparison(block)
+            } else {
+                WideComparison(block)
+            }
+        }
+    }
+}
+
+@Composable
+private fun WideComparison(block: LearningBlock.Comparison) {
+    Column(
+        Modifier.horizontalScroll(rememberScrollState()).testTag(LearningLessonComparisonTag),
+    ) {
             Row {
                 block.headers.forEach { header ->
                     ComparisonCell(
@@ -252,13 +260,38 @@ private fun ComparisonBlock(
                 Row {
                     row.forEach { cell ->
                         ComparisonCell(
-                            text = cell,
+                        text = cell,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
             }
+    }
+}
+
+/** On phones, rows become labelled facts rather than a hidden horizontal spreadsheet. */
+@Composable
+private fun CompactComparison(block: LearningBlock.Comparison) {
+    Column(
+        Modifier.fillMaxWidth().testTag(LearningLessonComparisonTag),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+    ) {
+        block.rows.forEachIndexed { rowIndex, row ->
+            Column(
+                Modifier.fillMaxWidth().padding(AppSpacing.Grouped),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Related),
+            ) {
+                row.firstOrNull()?.let { concern ->
+                    Text(concern.toLessonAnnotatedString(), style = MaterialTheme.typography.titleSmall)
+                }
+                row.drop(1).forEachIndexed { index, value ->
+                    val heading = block.headers.getOrNull(index + 1) ?: return@forEachIndexed
+                    Text(heading.toLessonAnnotatedString(), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(value.toLessonAnnotatedString(), style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            if (rowIndex < block.rows.lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
     }
 }
@@ -270,7 +303,7 @@ private fun ComparisonCell(
     color: Color,
 ) {
     Text(
-        text = text,
+        text = text.toLessonAnnotatedString(),
         style = style,
         color = color,
         modifier = Modifier.width(ComparisonColumnWidth).padding(AppSpacing.Grouped),
@@ -306,7 +339,7 @@ private fun CalloutBlock(
                 color = colors.onContainer,
             )
             Text(
-                text = block.text,
+            text = block.text.toLessonAnnotatedString(),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.onContainer,
             )
@@ -373,6 +406,39 @@ private fun LearningCalloutKind.calloutColors(): CalloutColors =
 private const val BulletMarker = "•"
 
 private val BulletMarkerWidth: Dp = 20.dp
+
+private val CompactComparisonBreakpoint = 520.dp
+
+/** Small, intentionally conservative Markdown subset supported by the learning format. */
+private fun String.toLessonAnnotatedString() = buildAnnotatedString {
+    appendLessonMarkdown(this@toLessonAnnotatedString)
+}
+
+private fun AnnotatedString.Builder.appendLessonMarkdown(text: String) {
+    var cursor = 0
+    val pattern = Regex("(\\*\\*[^*]+\\*\\*)|(`[^`]+`)|(\\*[^*]+\\*)|(\\[[^]]+](?:\\([^)]*\\)))")
+    pattern.findAll(text).forEach { match ->
+        append(text.substring(cursor, match.range.first))
+        val token = match.value
+        when {
+            token.startsWith("**") -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                appendLessonMarkdown(token.drop(2).dropLast(2))
+            }
+            token.startsWith('`') -> withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) { append(token.drop(1).dropLast(1)) }
+            token.startsWith('*') -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+                appendLessonMarkdown(token.drop(1).dropLast(1))
+            }
+            token.startsWith('[') -> {
+                val label = token.substringAfter('[').substringBefore(']')
+                withStyle(SpanStyle(fontWeight = FontWeight.Medium)) {
+                    appendLessonMarkdown(label)
+                }
+            }
+        }
+        cursor = match.range.last + 1
+    }
+    append(text.substring(cursor))
+}
 
 /**
  * Wide enough for a short sentence to wrap sensibly, narrow enough that a three-column table is

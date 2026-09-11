@@ -200,8 +200,9 @@ internal class MixedInterviewJourneyIntegrationTest {
                     scrollToText("Compose multiple question")
                     onNodeWithText("Compose multiple question").assertIsDisplayed()
                     assertTrue(onAllNodesWithText("Incorrect").fetchSemanticsNodes().isNotEmpty())
-                    assertTrue(onAllNodesWithText("Your answer").fetchSemanticsNodes().isNotEmpty())
-                    assertTrue(onAllNodesWithText("Correct answer").fetchSemanticsNodes().isNotEmpty())
+                    assertTrue(onAllNodesWithText("✓ Correctly selected").fetchSemanticsNodes().isNotEmpty())
+                    assertTrue(onAllNodesWithText("✕ Missed").fetchSemanticsNodes().isNotEmpty())
+                    assertTrue(onAllNodesWithText("✕ Incorrectly selected").fetchSemanticsNodes().isNotEmpty())
                     scrollToText("Compose exact-set explanation")
                     onNodeWithText("Compose exact-set explanation").assertIsDisplayed()
                     scrollToText("Source: Compose docs")
@@ -211,7 +212,7 @@ internal class MixedInterviewJourneyIntegrationTest {
                     val sourceBeforeRetake = assertNotNull(
                         components.repository.getById(OriginalAttemptId),
                     )
-                    scrollToText("Practice Again")
+                    scrollToText("Retake interview")
                     onNodeWithTag(MixedResultPracticeAgainTag).performClick()
                     waitForText("Kotlin single question")
                     onNodeWithText("Kotlin single question").assertIsDisplayed()
@@ -234,7 +235,7 @@ internal class MixedInterviewJourneyIntegrationTest {
                     onNodeWithText("Score: 2 / 4").assertIsDisplayed()
                     scrollToText("Compose exact-set explanation")
                     onNodeWithText("Compose exact-set explanation").assertIsDisplayed()
-                    scrollToText("Practice Again")
+                    scrollToText("Retake interview")
                     onNodeWithTag(MixedResultPracticeAgainTag)
                         .assertIsEnabled()
                 }

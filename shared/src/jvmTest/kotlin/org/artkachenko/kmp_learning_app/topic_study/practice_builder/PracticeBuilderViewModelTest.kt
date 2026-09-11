@@ -57,9 +57,9 @@ internal class PracticeBuilderViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(PracticeScopeKind.TOPIC, state.scope.kind)
         assertEquals("Topic A", state.scope.name)
-        // The default is the count one-tap focused practice always used, so arriving and pressing
-        // Start reproduces the run this screen replaced.
-        assertEquals(DefaultPracticeQuestionCount, state.questionCount)
+        // A three-question pool cannot advertise the historical ten-question default.
+        assertEquals(3, state.questionCount)
+        assertEquals(listOf(3), state.questionCountOptions)
         assertTrue(QuestionLevel.FOUNDATION in state.levels)
         assertTrue(QuestionLevel.APPLIED in state.levels)
         assertTrue(QuestionLevel.ADVANCED in state.levels)
@@ -99,10 +99,10 @@ internal class PracticeBuilderViewModelTest {
             viewModel(PracticeBuilderTarget.Topic("topic_a"), FakeCurriculumRepository())
         advanceUntilIdle()
 
-        viewModel.selectQuestionCount(5)
+        viewModel.selectQuestionCount(3)
 
-        assertEquals(5, viewModel.uiState.value.questionCount)
-        assertEquals(5, startedConfig(viewModel).questionCount)
+        assertEquals(3, viewModel.uiState.value.questionCount)
+        assertEquals(3, startedConfig(viewModel).questionCount)
     }
 
     /** The control offers a fixed ladder, which is what keeps the count positive without a guard. */
@@ -116,7 +116,7 @@ internal class PracticeBuilderViewModelTest {
         viewModel.selectQuestionCount(-3)
         viewModel.selectQuestionCount(999)
 
-        assertEquals(DefaultPracticeQuestionCount, viewModel.uiState.value.questionCount)
+        assertEquals(3, viewModel.uiState.value.questionCount)
     }
 
     @Test
@@ -282,7 +282,7 @@ internal class PracticeBuilderViewModelTest {
     }
 
     @Test
-    fun choosingWeakAreasRunsPreflightAndStartsWithTheWeakAreaSource() = runViewModelTest {
+    fun insufficientWeakAreaEvidenceDisablesWeakAreaPractice() = runViewModelTest {
         val viewModel = viewModel(
             target = PracticeBuilderTarget.Topic("topic_a"),
             curriculum = FakeCurriculumRepository(),
@@ -300,9 +300,8 @@ internal class PracticeBuilderViewModelTest {
         advanceUntilIdle()
 
         assertEquals(PracticeQuestionSource.WEAK_AREAS, viewModel.uiState.value.source)
-        assertEquals(3, availableCount(viewModel))
-        assertTrue(viewModel.uiState.value.isStartEnabled)
-        assertEquals(PracticeQuestionSource.WEAK_AREAS, startedConfig(viewModel).source)
+        assertEquals(PracticeAvailability.NoEligibleQuestions, viewModel.uiState.value.availability)
+        assertFalse(viewModel.uiState.value.isStartEnabled)
     }
 
     @Test
@@ -401,14 +400,14 @@ internal class PracticeBuilderViewModelTest {
         val viewModel =
             viewModel(PracticeBuilderTarget.Subtopic("subtopic_a"), FakeCurriculumRepository())
         advanceUntilIdle()
-        viewModel.selectQuestionCount(15)
+        viewModel.selectQuestionCount(2)
         viewModel.toggleLevel(QuestionLevel.APPLIED)
         advanceUntilIdle()
 
         assertEquals(
             AssessmentConfig.Focused(
                 scope = AssessmentScope.Subtopic("subtopic_a"),
-                questionCount = 15,
+                questionCount = 2,
                 levels = setOf(QuestionLevel.FOUNDATION, QuestionLevel.ADVANCED),
                 source = PracticeQuestionSource.ALL,
             ),
@@ -431,7 +430,7 @@ internal class PracticeBuilderViewModelTest {
         assertEquals(PracticeQuestionSource.UNSEEN, state.source)
         // The preset carries scope and source only: count and levels stay the builder's defaults
         // rather than reconstructing the run the intent was remembered from.
-        assertEquals(DefaultPracticeQuestionCount, state.questionCount)
+        assertEquals(2, state.questionCount)
         assertEquals(AllQuestionLevels, state.levels)
         // And it is preflighted against current content, not against a snapshot: one of the three
         // Questions in scope has since been seen.
@@ -469,7 +468,7 @@ internal class PracticeBuilderViewModelTest {
 
         val config = startedConfig(viewModel)
         assertEquals(PracticeQuestionSource.ALL, config.source)
-        assertEquals(5, config.questionCount)
+        assertEquals(3, config.questionCount)
     }
 
     @Test
@@ -509,7 +508,7 @@ internal class PracticeBuilderViewModelTest {
         assertEquals(
             AssessmentConfig.Focused(
                 scope = AssessmentScope.Subtopics(setOf("subtopic_a", "subtopic_b")),
-                questionCount = DefaultPracticeQuestionCount,
+                questionCount = 3,
                 levels = AllQuestionLevels,
                 source = PracticeQuestionSource.ALL,
             ),
@@ -531,12 +530,12 @@ internal class PracticeBuilderViewModelTest {
                 // answers give weak areas and unresolved mistakes, and the untouched third
                 // Question keeps unseen non-empty. Which Questions each policy picks is the
                 // selector's own subject; this asserts only that the choice reaches the config.
-                completedAttempts = listOf(
+                completedAttempts = List(3) {
                     completedHistoryOfAnswers(
                         "q_foundation" to false,
                         "q_applied" to false,
-                    ),
-                ),
+                    )
+                },
                 learningContent = FakeLearningContentRepository(units = listOf(practiceableUnit())),
             )
             advanceUntilIdle()

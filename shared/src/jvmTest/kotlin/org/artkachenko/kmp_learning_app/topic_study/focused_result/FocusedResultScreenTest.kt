@@ -2,11 +2,14 @@ package org.artkachenko.kmp_learning_app.topic_study.focused_result
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runComposeUiTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -57,12 +60,17 @@ internal class FocusedResultScreenTest {
         }
 
         onNodeWithText("Score: 1 / 2").assertIsDisplayed()
-        onNodeWithText("50", substring = true).assertIsDisplayed()
+        onNodeWithText("50", substring = true).assertDoesNotExist()
         onNodeWithText("Correct").assertIsDisplayed()
-        onNodeWithText("Your answer").assertIsDisplayed()
+        onNodeWithText("Read the explanation").assertDoesNotExist()
+        onNodeWithText("Review answer").performClick()
+        onNodeWithText("✓ Correctly selected").assertIsDisplayed()
         onNodeWithText("Explanation").assertIsDisplayed()
-        onNodeWithText("Source: Official docs").performClick()
+        onNodeWithText("Source: Official docs").performScrollTo().performClick()
         assertEquals("https://example.com/docs", openedUrl)
+        onNode(hasScrollAction()).performScrollToNode(
+            hasText("Question q2 is no longer available."),
+        )
         onNodeWithText("Question q2 is no longer available.").assertIsDisplayed()
         onNodeWithText("1 of 2 questions", substring = true).assertIsDisplayed()
     }
@@ -95,6 +103,7 @@ internal class FocusedResultScreenTest {
             }
         }
 
+        onNodeWithText("Review answer").performClick()
         onNodeWithText("This source could not be opened.").assertIsDisplayed()
     }
 

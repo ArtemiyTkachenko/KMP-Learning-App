@@ -22,6 +22,8 @@
     </plurals>
     <string name="topic_browser_search_no_results">No topics or subtopics match &quot;%1$s&quot;</string>
     <string name="continue_studying_title">Continue studying</string>
+    <string name="continue_lesson_action">Pick up where you left off</string>
+    <string name="continue_practice_action">Continue practising</string>
     <string name="continue_studying_source_unseen">Unseen practice</string>
     <string name="continue_studying_source_weak_areas">Weak-area practice</string>
     <string name="continue_studying_source_mistakes">Mistake practice</string>
@@ -52,7 +54,7 @@
     <string name="progress_loading">Loading progress</string>
     <string name="progress_overall">Overall progress</string>
     <string name="progress_accuracy_caption">All-time accuracy</string>
-    <string name="progress_completed_attempts_label">Completed assessments</string>
+    <string name="progress_completed_attempts_label">Completed sessions</string>
     <string name="progress_questions_answered_label">Questions answered</string>
     <string name="progress_correct_answers_label">Correct answers</string>
     <string name="progress_empty_action">Browse topics</string>
@@ -60,19 +62,19 @@
     <string name="progress_coverage_count">%1$d of %2$d questions explored</string>
     <string name="progress_coverage_unavailable">No active curriculum available</string>
     <string name="progress_recent_title">Recent performance</string>
-    <string name="progress_recent_window_one">Last completed assessment</string>
-    <string name="progress_recent_window_other">Last %1$d completed assessments</string>
-    <string name="progress_recent_trend_title">Recent assessment trend</string>
-    <string name="progress_recent_trend_insufficient">A trend appears after %1$d completed assessments.</string>
-    <string name="progress_recent_trend_description">Recent assessment accuracy, oldest to newest: %1$s.</string>
+    <string name="progress_recent_window_one">Last completed session</string>
+    <string name="progress_recent_window_other">Last %1$d completed sessions</string>
+    <string name="progress_recent_trend_title">Recent session trend</string>
+    <string name="progress_recent_trend_insufficient">A trend appears after %1$d completed sessions.</string>
+    <string name="progress_recent_trend_description">Recent session accuracy, oldest to newest: %1$s.</string>
     <string name="progress_weak_areas">Weak areas</string>
     <string name="progress_topic_performance">Topic performance</string>
-    <string name="progress_history">Assessment history</string>
+    <string name="progress_history">Session history</string>
     <string name="progress_empty">Complete an interview or focused practice session to start tracking your progress.</string>
     <string name="progress_error">Progress could not be loaded.</string>
     <string name="progress_topic_unavailable">Topic unavailable</string>
     <string name="progress_subtopic_unavailable">Subtopic unavailable</string>
-    <string name="progress_focused_practice">Focused practice</string>
+    <string name="progress_focused_practice">Practice</string>
     <string name="progress_focused_subtopic_scope">%1$s · %2$s</string>
     <string name="progress_score">%1$d / %2$d correct</string>
     <string name="progress_weak_label">Weak area</string>
@@ -83,6 +85,10 @@
     <string name="progress_topic_error">Topic performance could not be loaded.</string>
     <string name="progress_topic_coverage">%1$d of %2$d current questions explored</string>
     <string name="mistake_review_unresolved_count">%1$d unresolved mistakes to review</string>
+    <plurals name="mistake_review_practice_all">
+        <item quantity="one">Practice %1$d mistake</item>
+        <item quantity="other">Practice %1$d mistakes</item>
+    </plurals>
     <string name="interview_history_title">Your interview record</string>
     <string name="interview_history_attempts">%1$d completed</string>
     <string name="interview_history_latest">Latest</string>
@@ -96,6 +102,7 @@
     <string name="mistake_review_empty">No unresolved mistakes.</string>
     <string name="mistake_review_empty_detail">Questions disappear from this list after your most recent completed answer is correct.</string>
     <string name="mistake_review_error">Mistakes could not be loaded.</string>
+    <string name="mistake_review_study_lesson">Review lesson: %1$s</string>
     <string name="mixed_interview_title">Mixed Android Interview</string>
     <string name="mixed_interview_description">Test your knowledge across Android topics.</string>
     <string name="mixed_interview_question_count">%1$d-question interview</string>
@@ -109,7 +116,7 @@
     <string name="mixed_result_question_review">Question review</string>
     <string name="mixed_result_topic_score">%1$d / %2$d correct</string>
     <string name="mixed_result_topic_unavailable">Topic unavailable</string>
-    <string name="mixed_result_practice_again">Practice Again</string>
+    <string name="mixed_result_practice_again">Retake interview</string>
     <string name="mixed_result_practice_starting">Starting interview</string>
     <string name="mixed_result_repeat_source_missing">The original interview is no longer available.</string>
     <string name="mixed_result_repeat_no_questions">No interview questions are currently available.</string>
@@ -133,7 +140,7 @@
         <item quantity="other">%1$d lessons</item>
     </plurals>
     <string name="topic_detail_learning_unavailable">Learning material could not be loaded.</string>
-    <string name="focused_practice_title">Focused practice</string>
+    <string name="focused_practice_title">Practice</string>
     <string name="practice_builder_title">Set up practice</string>
     <string name="practice_builder_scope_topic">Topic: %1$s</string>
     <string name="practice_builder_scope_subtopic">Subtopic: %1$s</string>
@@ -144,6 +151,7 @@
     <string name="practice_builder_level_foundation">Foundation</string>
     <string name="practice_builder_level_applied">Applied</string>
     <string name="practice_builder_level_advanced">Advanced</string>
+    <string name="practice_builder_level_help">Foundation checks core concepts. Applied uses them in code. Advanced focuses on trade-offs and edge cases.</string>
     <string name="practice_builder_source">Draw from</string>
     <string name="practice_builder_source_all">All</string>
     <string name="practice_builder_source_unseen">Unseen</string>
@@ -176,26 +184,42 @@
     <string name="assessment_taking_finish">Finish and view results</string>
     <string name="assessment_taking_completion_save_error">Results could not be saved. Try again.</string>
     <string name="assessment_taking_results_opening">Opening results</string>
-    <string name="focused_result_title">Practice results</string>
+    <string name="focused_result_title">Results</string>
     <string name="focused_result_loading">Loading results</string>
-    <string name="focused_result_attempt_not_found">This assessment could not be found.</string>
-    <string name="focused_result_not_completed">This assessment is not complete yet.</string>
+    <string name="focused_result_attempt_not_found">This practice session could not be found.</string>
+    <string name="focused_result_not_completed">This practice session is not complete yet.</string>
     <string name="focused_result_error">Results could not be loaded.</string>
     <string name="assessment_review_score">Score: %1$d / %2$d</string>
     <string name="assessment_review_accuracy_caption">correct</string>
+    <string name="progress_not_enough_data">Not enough data yet. Practice more to measure this area.</string>
     <string name="assessment_review_correct">Correct</string>
     <string name="assessment_review_incorrect">Incorrect</string>
     <string name="assessment_review_partially_correct">Partially correct</string>
     <string name="assessment_review_selected">Your answer</string>
     <string name="assessment_review_correct_answer">Correct answer</string>
+    <string name="assessment_review_correctly_selected">Correctly selected</string>
+    <string name="assessment_review_missed">Missed</string>
+    <string name="assessment_review_incorrectly_selected">Incorrectly selected</string>
+    <string name="assessment_review_expand">Review answer</string>
+    <string name="assessment_review_collapse">Hide answer review</string>
     <string name="assessment_review_explanation">Explanation</string>
     <string name="assessment_review_source">Source: %1$s</string>
     <string name="assessment_review_missing_question">Question %1$s is no longer available.</string>
     <string name="assessment_review_unresolved_questions">%1$d of %2$d questions are no longer available and are not included below.</string>
+    <string name="assessment_review_practice_complete">Practice complete</string>
+    <string name="assessment_review_interview_complete">Interview complete</string>
+    <plurals name="assessment_review_mistakes_retained">
+        <item quantity="one">1 question remains in Mistakes for review.</item>
+        <item quantity="other">%1$d questions remain in Mistakes for review.</item>
+    </plurals>
+    <plurals name="assessment_review_practice_mistakes">
+        <item quantity="one">Practice 1 mistake</item>
+        <item quantity="other">Practice %1$d mistakes</item>
+    </plurals>
     <string name="assessment_review_source_open_failed">This source could not be opened.</string>
     <string name="assessment_review_save_question">Save</string>
     <string name="assessment_review_unsave_question">Unsave</string>
-    <string name="focused_result_practice_again">Practice Again</string>
+    <string name="focused_result_practice_again">Practice again</string>
     <string name="focused_result_practice_starting">Starting practice</string>
     <string name="focused_result_repeat_source_missing">The original attempt is no longer available.</string>
     <string name="focused_result_repeat_no_questions">No practice questions are currently available for this scope.</string>
@@ -205,7 +229,7 @@
     <string name="saved_questions_description">Questions you saved while reviewing, most recently saved first.</string>
     <string name="saved_questions_loading">Loading saved questions</string>
     <string name="saved_questions_empty">No saved questions yet.</string>
-    <string name="saved_questions_empty_detail">Save a question while reviewing an assessment or your mistakes and it will appear here.</string>
+    <string name="saved_questions_empty_detail">Save a question while reviewing Results or Mistakes and it will appear here.</string>
     <string name="saved_questions_empty_action">Browse topics</string>
     <string name="saved_questions_error">Saved questions could not be loaded.</string>
     <string name="saved_questions_remove">Remove</string>
@@ -236,7 +260,7 @@
     <string name="learning_lesson_mark_studied">Mark as studied</string>
     <string name="learning_lesson_unmark_studied">Mark as not studied</string>
     <string name="learning_study_progress_unavailable">Study progress unavailable</string>
-    <string name="continue_learning_title">Continue learning</string>
+    <string name="continue_learning_title">Next lesson</string>
     <string name="continue_learning_complete_title">All lessons studied</string>
     <string name="continue_learning_complete_message">You have studied every lesson available.</string>
     <plurals name="learning_unit_lessons_studied">

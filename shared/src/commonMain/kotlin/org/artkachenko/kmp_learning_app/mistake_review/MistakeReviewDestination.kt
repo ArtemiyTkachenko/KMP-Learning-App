@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
+import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -15,6 +16,8 @@ internal fun MistakeReviewDestination(
     onBack: (() -> Unit)? = null,
     onBrowseTopics: () -> Unit,
     onConfigurePractice: (PracticePreset) -> Unit,
+    onStartPractice: (AssessmentConfig.Focused) -> Unit,
+    onStudyLesson: (MistakeStudyLesson) -> Unit = {},
     viewModel: MistakeReviewViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -28,6 +31,8 @@ internal fun MistakeReviewDestination(
         onRetry = viewModel::refresh,
         onBrowseTopics = onBrowseTopics,
         onPracticePreset = onConfigurePractice,
+        onStartPractice = onStartPractice,
+        onStudyLesson = onStudyLesson,
         savedQuestions = savedQuestions,
         onToggleSaved = viewModel::toggleSaved,
         onSourceClick = { url ->

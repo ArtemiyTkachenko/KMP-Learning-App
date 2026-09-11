@@ -41,6 +41,9 @@ internal object AppSpacing {
      * near-identical and proximity stopped communicating grouping at all.
      */
     val Section: Dp = 24.dp
+
+    /** Rarely used separation between major regions of a screen. */
+    val Major: Dp = 32.dp
 }
 
 /**

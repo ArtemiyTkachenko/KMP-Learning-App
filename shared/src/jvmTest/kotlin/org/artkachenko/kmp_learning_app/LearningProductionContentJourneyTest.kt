@@ -20,6 +20,7 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -69,11 +70,9 @@ import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLess
 import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitPracticeButtonTag
 import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitStudyProgressTag
 import org.artkachenko.kmp_learning_app.topic_study.learning_unit.learningLessonRowTag
-import org.artkachenko.kmp_learning_app.topic_study.practice_builder.DefaultPracticeQuestionCount
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderAvailabilityTag
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderStartButtonTag
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.practiceLevelTag
-import org.artkachenko.kmp_learning_app.topic_study.practice_builder.practiceQuestionCountTag
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.practiceSourceTag
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserSearchFieldTag
@@ -228,14 +227,13 @@ internal class LearningProductionContentJourneyTest {
                 if (assertOverflowScrollsInternally(LearningLessonCodeBlockTag, rootWidth)) {
                     overflowing += 1
                 }
-                if (assertOverflowScrollsInternally(LearningLessonComparisonTag, rootWidth)) {
-                    overflowing += 1
-                }
+                // Compact comparisons stack their cells and therefore need no hidden scroll.
 
                 // Every authored Source is reachable and opens the URL it declares.
                 lesson.sources.forEach { source ->
-                    onNodeWithText(source.title).performScrollTo().assert(hasClickAction())
-                    onNodeWithText(source.title).performClick()
+                    val sourceNode = onNode(hasText(source.title) and hasClickAction())
+                    sourceNode.performScrollTo()
+                    sourceNode.performClick()
                     assertEquals(source.url, openedUris.last())
                 }
                 if (index < unit.lessons.lastIndex) {
@@ -341,8 +339,6 @@ internal class LearningProductionContentJourneyTest {
 
             waitForText(ShippedUnitBuilderLabel)
             // Configuration, not a started run: every dimension the builder owns is offered.
-            onNodeWithTag(practiceQuestionCountTag(DefaultPracticeQuestionCount))
-                .assertIsDisplayed()
             QuestionLevel.entries.forEach { level ->
                 onNodeWithTag(practiceLevelTag(level)).performScrollTo().assertIsDisplayed()
             }
@@ -394,17 +390,21 @@ private fun ComposeUiTest.assertRenders(block: LearningBlock): String = when (bl
         "bullet_list"
     }
     is LearningBlock.Code -> {
-        assertReadable(block.code)
-        block.language?.let { assertReadable(it) }
+        assertReadable(block.code, markdown = false)
+        block.language?.let { assertReadable(it, markdown = false) }
         onAllNodesWithTag(LearningLessonCodeBlockTag, useUnmergedTree = true)
             .assertAll(hasScrollAction())
         "code"
     }
     is LearningBlock.Comparison -> {
-        block.headers.forEach { assertReadable(it) }
+        // Compact comparisons use the first cell in each row as the concern heading, so only the
+        // value-column headers are repeated in the stacked presentation.
+        block.headers.drop(1).forEach { assertReadable(it) }
         block.rows.flatten().forEach { assertReadable(it) }
-        onAllNodesWithTag(LearningLessonComparisonTag, useUnmergedTree = true)
-            .assertAll(hasScrollAction())
+        assertTrue(
+            onAllNodesWithTag(LearningLessonComparisonTag, useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty(),
+        )
         "comparison"
     }
     is LearningBlock.Callout -> {
@@ -421,8 +421,16 @@ private fun ComposeUiTest.assertRenders(block: LearningBlock): String = when (bl
  * enum name, or was dropped. Very short authored strings are matched whole.
  */
 @OptIn(ExperimentalTestApi::class)
-private fun ComposeUiTest.assertReadable(text: String) {
-    val snippet = text.take(TextSnippetLength)
+private fun ComposeUiTest.assertReadable(text: String, markdown: Boolean = true) {
+    val visibleText = if (markdown) {
+        text.replace(Regex("\\[([^]]+)]\\([^)]+\\)"), "$1")
+            .replace("**", "")
+            .replace("*", "")
+            .replace("`", "")
+    } else {
+        text
+    }
+    val snippet = visibleText.take(TextSnippetLength)
     val matches = onAllNodesWithText(snippet, substring = true).fetchSemanticsNodes()
     assertTrue(matches.isNotEmpty(), "Authored content did not reach the reader: \"$snippet\".")
 }

@@ -75,6 +75,7 @@ internal fun AssessmentTakingScreen(
     state: AssessmentTakingUiState,
     onAnswerClick: (String) -> Unit,
     onSubmit: () -> Unit,
+    onNext: () -> Unit = {},
     onRetry: () -> Unit,
     onBack: () -> Unit,
     onComplete: () -> Unit,
@@ -117,6 +118,7 @@ internal fun AssessmentTakingScreen(
                 state = state,
                 onAnswerClick = onAnswerClick,
                 onSubmit = onSubmit,
+                onNext = onNext,
                 modifier = Modifier.weight(1f),
             )
 
@@ -182,6 +184,7 @@ private fun QuestionContent(
     state: AssessmentTakingUiState.Content,
     onAnswerClick: (String) -> Unit,
     onSubmit: () -> Unit,
+    onNext: () -> Unit,
     modifier: Modifier,
 ) {
     LazyColumn(
@@ -229,7 +232,7 @@ private fun QuestionContent(
                 answerText = answer.text,
                 selected = selected,
                 mode = state.question.selectionMode,
-                enabled = !state.isSubmitting,
+                enabled = !state.isSubmitting && state.feedback == null,
                 onClick = { onAnswerClick(answer.id) },
             )
         }
@@ -240,21 +243,27 @@ private fun QuestionContent(
                     color = MaterialTheme.colorScheme.error,
                 )
             }
+            state.feedback?.let { feedback ->
+                Text(
+                    text = if (feedback.isCorrect) "Correct. Nice work." else "Not quite. Review the correct answer below.",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (feedback.isCorrect) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                )
+                state.question.answers.filter { it.id in state.question.correctAnswerIds }.forEach {
+                    Text("Correct answer: ${it.text}", style = MaterialTheme.typography.bodyMedium)
+                }
+                Text(state.question.explanation, style = MaterialTheme.typography.bodyMedium)
+            }
             Button(
-                onClick = onSubmit,
-                enabled = state.canSubmit && !state.isSubmitting,
+                onClick = if (state.feedback == null) onSubmit else onNext,
+                enabled = (state.canSubmit && !state.isSubmitting) || state.feedback != null,
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag(AssessmentTakingSubmitTag),
             ) {
                 Text(
-                    text = stringResource(
-                        if (state.isSubmitting) {
-                            Res.string.assessment_taking_submitting
-                        } else {
-                            Res.string.assessment_taking_submit
-                        },
-                    ),
+                    if (state.feedback != null) "Next question"
+                    else stringResource(if (state.isSubmitting) Res.string.assessment_taking_submitting else Res.string.assessment_taking_submit),
                 )
             }
         }

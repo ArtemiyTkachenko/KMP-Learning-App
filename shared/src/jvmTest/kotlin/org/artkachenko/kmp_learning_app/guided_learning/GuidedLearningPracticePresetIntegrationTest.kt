@@ -77,8 +77,7 @@ internal class GuidedLearningPracticePresetIntegrationTest {
     @Test
     fun aWeakAreaRecommendationOpensAValidBuilderOnTheBuildersOwnDefaults() = runGuidedTest {
         val curriculum = FakeCurriculumRepository()
-        // Every coroutines Question answered wrongly once and correctly since: nothing is
-        // unresolved, and 50% over four occurrences is weak by the established policy.
+        // Nothing is unresolved, and five observations establish a credible weak area.
         val history = MutableHistoryRepository(weakCoroutinesHistory())
 
         val recommendation = assertNotNull(recommend(curriculum, history))
@@ -94,7 +93,7 @@ internal class GuidedLearningPracticePresetIntegrationTest {
         assertEquals(PracticeQuestionSource.WEAK_AREAS, state.source)
         assertEquals("Coroutines", state.scope.name)
         // The preset carries nothing else, so the builder's own defaults still decide the run.
-        assertEquals(DefaultPracticeQuestionCount, state.questionCount)
+        assertEquals(4, state.questionCount)
         assertEquals(AllQuestionLevels, state.levels)
         // And the recommendation is worth acting on: the weak scope still has content to ask.
         assertEquals(PracticeAvailability.Available(eligibleQuestionCount = 4), state.availability)
@@ -132,7 +131,7 @@ internal class GuidedLearningPracticePresetIntegrationTest {
         assertEquals(
             AssessmentConfig.Focused(
                 scope = AssessmentScope.Subtopic("coroutines"),
-                questionCount = 5,
+                questionCount = 2,
                 levels = setOf(QuestionLevel.FOUNDATION),
                 source = PracticeQuestionSource.WEAK_AREAS,
             ),
@@ -309,6 +308,7 @@ internal class GuidedLearningPracticePresetIntegrationTest {
             listOf(
                 completedAttempt("newer", "q_coroutines_1" to true, "q_coroutines_2" to true),
                 completedAttempt("older", "q_coroutines_1" to false, "q_coroutines_2" to false),
+                completedAttempt("oldest", "q_coroutines_1" to false),
             )
 
         fun completedAttempt(

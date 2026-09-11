@@ -8,4 +8,6 @@ internal data class AssessmentQuestionUiModel(
     val text: String,
     val answers: List<AnswerOption>,
     val selectionMode: AnswerSelectionMode,
+    val correctAnswerIds: List<String> = emptyList(),
+    val explanation: String = "",
 )

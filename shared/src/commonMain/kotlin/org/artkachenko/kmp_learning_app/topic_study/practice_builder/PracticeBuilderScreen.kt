@@ -5,11 +5,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -26,6 +29,7 @@ import kmp_learning_app.shared.generated.resources.practice_builder_error
 import kmp_learning_app.shared.generated.resources.practice_builder_level_advanced
 import kmp_learning_app.shared.generated.resources.practice_builder_level_applied
 import kmp_learning_app.shared.generated.resources.practice_builder_level_foundation
+import kmp_learning_app.shared.generated.resources.practice_builder_level_help
 import kmp_learning_app.shared.generated.resources.practice_builder_levels
 import kmp_learning_app.shared.generated.resources.practice_builder_no_practiceable_concepts
 import kmp_learning_app.shared.generated.resources.practice_builder_no_questions
@@ -93,7 +97,7 @@ internal fun PracticeBuilderScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = appScreenContentPadding(),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+            verticalArrangement = Arrangement.spacedBy(org.artkachenko.kmp_learning_app.ui.theme.AppSpacing.Section),
         ) {
             item {
                 Text(
@@ -108,21 +112,29 @@ internal fun PracticeBuilderScreen(
                         FilterChip(
                             selected = option == state.questionCount,
                             onClick = { onQuestionCountClick(option) },
-                            label = { Text(option.toString()) },
+                            label = { Text("$option questions") },
                             modifier = Modifier.testTag(practiceQuestionCountTag(option)),
                         )
                     }
                 }
             }
             item {
-                BuilderSection(heading = stringResource(Res.string.practice_builder_levels)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Select any that apply", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    BuilderSection(heading = stringResource(Res.string.practice_builder_levels)) {
                     QuestionLevel.entries.forEach { level ->
                         FilterChip(
                             selected = level in state.levels,
                             onClick = { onLevelClick(level) },
-                            label = { Text(stringResource(level.labelResource())) },
+                            label = { Row { Checkbox(checked = level in state.levels, onCheckedChange = null); Text(stringResource(level.labelResource())) } },
                             modifier = Modifier.testTag(practiceLevelTag(level)),
                         )
+                    }
+                    Text(
+                        text = stringResource(Res.string.practice_builder_level_help),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     }
                 }
             }
@@ -130,10 +142,10 @@ internal fun PracticeBuilderScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     BuilderSection(heading = stringResource(Res.string.practice_builder_source)) {
                         state.sourceOptions.forEach { option ->
-                            FilterChip(
+                        FilterChip(
                                 selected = option.source == state.source,
                                 onClick = { onSourceClick(option.source) },
-                                label = { Text(stringResource(option.source.labelResource())) },
+                            label = { Row { RadioButton(selected = option.source == state.source, onClick = null); Text(stringResource(option.source.labelResource())) } },
                                 // Disabled rather than absent: the learner can see that weak-area
                                 // and mistake practice exist and are not ready yet.
                                 enabled = option.isAvailable,
@@ -174,7 +186,9 @@ internal fun PracticeBuilderScreen(
                             .fillMaxWidth()
                             .testTag(PracticeBuilderStartButtonTag),
                     ) {
-                        Text(text = stringResource(Res.string.practice_builder_start))
+                        val count = (state.availability as? PracticeAvailability.Available)?.eligibleQuestionCount
+                            ?.let { minOf(it, state.questionCount) }
+                        Text(text = count?.let { "Start $it-question practice" } ?: stringResource(Res.string.practice_builder_start))
                     }
                 }
             }

@@ -5,6 +5,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.time.Instant
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -149,12 +150,21 @@ internal class ProgressViewModelTest {
     @Test
     fun recentPerformanceIsQuestionWeightedAndNotTheMeanOfItsAttempts() = runTest {
         setMain(testScheduler)
-        // 1/1 and 10/20 is 11/21, not the 75% a mean of the two attempt percentages would give.
+        // 1/1 and four 5-question attempts totalling 10/20 is 11/21, not an attempt mean.
         val context = TestContext(
             attempts = listOf(
                 attemptAt("small", "2026-08-29T10:00:00Z", listOf("s_0" to true)),
-                attemptAt("large", "2026-08-29T09:00:00Z", List(20) { "l_$it" to (it < 10) }),
-            ),
+            ) + List(4) { chunk ->
+                val start = chunk * 5
+                attemptAt(
+                    "large_$chunk",
+                    "2026-08-29T0${chunk + 1}:00:00Z",
+                    List(5) { offset ->
+                        val index = start + offset
+                        "l_$index" to (index < 10)
+                    },
+                )
+            },
             questions = (List(20) { question("l_$it", "topic", "subtopic") } +
                 question("s_0", "topic", "subtopic")),
             topics = listOf(Topic("topic", "Kotlin")),
@@ -165,7 +175,7 @@ internal class ProgressViewModelTest {
         advanceUntilIdle()
 
         val recent = assertNotNull(content(context.viewModel).recentPerformance)
-        assertEquals(2, recent.attemptCount)
+        assertEquals(5, recent.attemptCount)
         assertEquals(21, recent.answeredQuestionCount)
         assertEquals(11, recent.correctAnswerCount)
         assertEquals(11.0 / 21.0 * 100.0, recent.percentage)
@@ -215,7 +225,7 @@ internal class ProgressViewModelTest {
     }
 
     @Test
-    fun aShortHistoryKeepsItsRecentSummaryAndReportsTheTrendAsUnavailable() = runTest {
+    fun aShortHistoryDoesNotCreateADuplicateRecentSummary() = runTest {
         setMain(testScheduler)
         for (attemptCount in 1..2) {
             val attempts = List(attemptCount) { index ->
@@ -235,20 +245,14 @@ internal class ProgressViewModelTest {
             context.viewModel.refresh()
             advanceUntilIdle()
 
-            val recent = assertNotNull(content(context.viewModel).recentPerformance)
-            assertEquals(attemptCount, recent.attemptCount)
-            assertEquals(100.0, recent.percentage, "the summary is real evidence and must survive")
-            assertEquals(
-                ProgressRecentTrendUiModel.InsufficientHistory(requiredAttemptCount = 3),
-                recent.trend,
-            )
+            assertNull(content(context.viewModel).recentPerformance)
         }
     }
 
     @Test
-    fun aThirdAttemptMakesTheTrendAvailable() = runTest {
+    fun fiveAttemptsMakeRecentPerformanceVisible() = runTest {
         setMain(testScheduler)
-        val attempts = List(3) { index ->
+        val attempts = List(5) { index ->
             attemptAt(
                 id = "attempt-$index",
                 completedAt = "2026-08-29T0$index:00:00Z",
@@ -268,7 +272,7 @@ internal class ProgressViewModelTest {
         val trend = assertIs<ProgressRecentTrendUiModel.Available>(
             assertNotNull(content(context.viewModel).recentPerformance).trend,
         )
-        assertEquals(3, trend.attempts.size)
+        assertEquals(5, trend.attempts.size)
     }
 
     @Test
@@ -288,7 +292,7 @@ internal class ProgressViewModelTest {
         // Both summaries come off the snapshot the derivation already produced, so the dashboard
         // still reads the history once and the ACTIVE bank once per derivation.
         assertEquals(ProgressCoverageUiModel(4, 4, 100.0), content.coverage)
-        assertNotNull(content.recentPerformance)
+        assertNull(content.recentPerformance)
         assertEquals(1, context.assessment.getCompletedCalls)
         assertEquals(1, context.curriculum.activeQuestionCalls)
     }
@@ -319,7 +323,13 @@ internal class ProgressViewModelTest {
     @Test
     fun weakAreasAndTopicPerformanceMapWithoutReorderingOrReclassification() = runTest {
         setMain(testScheduler)
-        val answers = listOf("q1" to true, "q2" to false, "q3" to false)
+        val answers = listOf(
+            "q1" to true,
+            "q2" to false,
+            "q3" to false,
+            "q4" to false,
+            "q5" to false,
+        )
         val context = TestContext(
             attempts = listOf(completedAttempt("attempt", AssessmentConfig.Mixed(3), answers)),
             questions = answers.map { question(it.first, "topic", "subtopic") },
@@ -331,14 +341,14 @@ internal class ProgressViewModelTest {
         advanceUntilIdle()
 
         val content = content(context.viewModel)
-        assertEquals(listOf(WeakAreaType.SUBTOPIC, WeakAreaType.TOPIC), content.weakAreas.map { it.type })
+        assertEquals(listOf(WeakAreaType.SUBTOPIC), content.weakAreas.map { it.type })
         assertEquals("State and lifecycle", content.weakAreas[0].title)
         assertEquals("Android platform", content.weakAreas[0].subtitle)
-        assertEquals(3, content.weakAreas[0].answeredCount)
+        assertEquals(5, content.weakAreas[0].answeredCount)
         assertEquals(1, content.weakAreas[0].correctCount)
-        assertEquals(1.0 / 3.0 * 100.0, content.weakAreas[0].percentage)
+        assertEquals(20.0, content.weakAreas[0].percentage)
         assertEquals(
-            ProgressTopicUiModel("topic", "Android platform", 3, 1, 1.0 / 3.0 * 100.0),
+            ProgressTopicUiModel("topic", "Android platform", 5, 1, 20.0),
             content.topics.single(),
         )
     }

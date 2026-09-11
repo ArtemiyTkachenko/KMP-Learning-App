@@ -45,6 +45,7 @@ internal fun PerformanceCard(
     isWeak: Boolean = false,
     weakLabel: String? = null,
     showChevron: Boolean = false,
+    showPercentage: Boolean = true,
     isSummary: Boolean = false,
     action: (@Composable () -> Unit)? = null,
 ) {
@@ -110,11 +111,13 @@ internal fun PerformanceCard(
                     )
                 }
             }
-            Text(
-                text = formatAccuracy(percentage),
-                style = MaterialTheme.typography.titleLarge,
-                color = accuracyColor(percentage),
-            )
+            if (showPercentage) {
+                Text(
+                    text = formatAccuracy(percentage),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = accuracyColor(percentage),
+                )
+            }
             if (showChevron) {
                 Icon(
                     imageVector = AppIcons.ChevronRight,

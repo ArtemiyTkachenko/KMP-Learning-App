@@ -41,6 +41,7 @@ internal fun AssessmentTakingDestination(
         state = state,
         onAnswerClick = viewModel::selectAnswer,
         onSubmit = viewModel::submitAnswer,
+        onNext = viewModel::nextQuestion,
         onRetry = viewModel::retry,
         onBack = onBack,
         onComplete = viewModel::completeAssessment,

@@ -122,16 +122,19 @@ internal class FocusedLearningJourneyIntegrationTest {
             onNodeWithText("Single question").assertIsDisplayed()
             onNodeWithText("A").performClick()
             onNodeWithTag(AssessmentTakingSubmitTag).performClick()
+            onNodeWithText("Correct. Nice work.").assertIsDisplayed()
+            onNodeWithText("Next question").performClick()
             onNodeWithText("Multiple question").assertIsDisplayed()
             onNodeWithText("A").performClick()
             onNodeWithText("B").performClick()
             onNodeWithTag(AssessmentTakingSubmitTag).performClick()
-            onNodeWithText("All questions answered. Ready to finish.").assertIsDisplayed()
-            onNodeWithTag(AssessmentTakingFinishTag).performClick()
+            onNodeWithText("Not quite. Review the correct answer below.").assertIsDisplayed()
+            onNodeWithText("Next question").performClick()
 
             onNodeWithText("Score: 1 / 2").assertIsDisplayed()
-            onNodeWithText("Single explanation").assertIsDisplayed()
-            onNodeWithText("Source: Single source").assertIsDisplayed()
+            onNodeWithText("Review answer").performClick()
+            onNodeWithText("Single explanation").performScrollTo().assertIsDisplayed()
+            onNodeWithText("Source: Single source").performScrollTo().assertIsDisplayed()
             assertEquals(AssessmentStatus.COMPLETED, components.repository.getById("attempt-original")?.status)
             assertEquals(1, components.repository.getById("attempt-original")?.score?.correctAnswers)
             // The configured run survives Room: history describes the practice the learner set up,
@@ -139,7 +142,7 @@ internal class FocusedLearningJourneyIntegrationTest {
             assertEquals(
                 AssessmentConfig.Focused(
                     scope = AssessmentScope.Topic("topic_android"),
-                    questionCount = 10,
+                    questionCount = 2,
                     levels = setOf(QuestionLevel.FOUNDATION),
                     source = PracticeQuestionSource.ALL,
                 ),
@@ -161,6 +164,7 @@ internal class FocusedLearningJourneyIntegrationTest {
             assertEquals(null, components.repository.getById("attempt-retake-2"))
 
             onNodeWithContentDescription("Back").performClick()
+            onNode(hasScrollAction()).performScrollToNode(hasText("Score: 1 / 2"))
             onNodeWithText("Score: 1 / 2").assertIsDisplayed()
 
             // Result, then the builder it was configured in, then the Topic: backing out of a run
@@ -181,8 +185,8 @@ internal class FocusedLearningJourneyIntegrationTest {
             // 50% is the overall headline here and also the topic and weak-area figures.
             onNodeWithText("All-time accuracy").assertIsDisplayed()
             assertTrue(onAllNodesWithText("50%").fetchSemanticsNodes().isNotEmpty())
-            onNode(hasScrollAction()).performScrollToNode(hasText("Focused practice"))
-            onNodeWithText("Focused practice").performClick()
+            onNode(hasScrollAction()).performScrollToNode(hasText("Practice"))
+            onNodeWithText("Practice").performClick()
             waitUntil(timeoutMillis = 5_000) {
                 onAllNodesWithText("Score: 1 / 2").fetchSemanticsNodes().isNotEmpty()
             }
@@ -216,7 +220,7 @@ internal class FocusedLearningJourneyIntegrationTest {
             waitUntil(timeoutMillis = 5_000) {
                 onAllNodesWithText("Core").fetchSemanticsNodes().isNotEmpty()
             }
-            onNodeWithText("Weak area").assertIsDisplayed()
+            onNodeWithText("Weak area").assertDoesNotExist()
             // All-time correctness and current coverage on the same analytics card, each naming
             // what it counts, so this drill-down says the same things Topic Detail now does. Both
             // appear twice: once for the Topic, once for its only observed Subtopic.
@@ -268,7 +272,7 @@ internal class FocusedLearningJourneyIntegrationTest {
             onNodeWithTag(PracticeBuilderStartButtonTag).performScrollTo().performClick()
             onNodeWithText("Single question").assertIsDisplayed()
             assertEquals(
-                AssessmentConfig.Focused(AssessmentScope.Subtopic("subtopic_core"), 10),
+                AssessmentConfig.Focused(AssessmentScope.Subtopic("subtopic_core"), 2),
                 components.repository.getById("attempt-subtopic")?.config,
             )
                 }

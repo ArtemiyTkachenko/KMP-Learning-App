@@ -1701,11 +1701,14 @@ plus the blueprint's status and two of its headings.
 therefore reaches **four** concepts — `hot_vs_cold_streams`, `stateflow`, `sharedflow`,
 `flow_sharing` — and **six** ACTIVE Questions, each counted once. That is asserted in
 `LearningUnitPracticeIntegrationTest` rather than left to the generated snapshot. Each Lesson
-carries Core, Practical and Senior depth and runs 1,110–1,408 words after the review
-corrections below. L6.4 is the longest Lesson in the epic: it carries sharing, three policies,
-two timers and upstream completion, which is the load the plan's five-Lesson justification for
-this Unit already anticipated. It is still inside Rule 8's reading-time target, and it was not
-split, because splitting it would separate the policy from the scope that gives it meaning.
+carries Core, Practical and Senior depth and runs 1,110–1,486 words after the review
+corrections below, which added measured material to L6.3 and L6.4. Those two are the Unit's
+longest — L6.3 carries delivery plus the whole buffering configuration, L6.4 carries sharing,
+three policies, two timers and upstream completion — and that is the load the plan's
+five-Lesson justification for this Unit already anticipated. Neither was split: splitting L6.4
+would separate the policy from the scope that gives it meaning, and both sit inside the range
+the shipped document already spans, where eight Lessons are longer and the maximum is 2,169
+words.
 
 ### The two title corrections, and why they are not scope changes
 
@@ -1772,6 +1775,8 @@ figures are evidence for a semantic claim, not published guarantees.
 | Unbuffered `emit` × 1,000 with **no** subscribers | ≈1 ms, replay cache empty | That absent subscribers mean no backpressure and total loss |
 | Six values, 20 ms apart, one 300 ms subscriber, default `SUSPEND` | All six delivered | The baseline the dropping case is measured against |
 | The same with `extraBufferCapacity = 1` and `DROP_OLDEST` | **1 and 6** delivered, subscriber present throughout | That broadcast is fan-out, not a delivery guarantee |
+| Consecutive `tryEmit` successes against a present 400 ms subscriber, over seven `replay`/`extraBufferCapacity` pairs | **`replay + extraBufferCapacity`** every time, including 1 slot at `replay = 1, extra = 0` | That `replay` is also buffer for a present slow subscriber |
+| Six values emitted with no subscriber at `replay = 0, extraBufferCapacity = 3` | Late subscriber received **nothing** | That extra capacity retains nothing for an absent subscriber |
 | `replay = 2`, ten emissions, no subscribers | Replay cache held the last two | That overflow strategy has no effect with no subscribers |
 | `tryEmit` on an unbuffered flow with no subscribers | `true`, replay cache still empty | That `true` is not evidence of delivery |
 | `tryEmit` on the same flow with one slow subscriber | `false` | The documented `false` condition |
@@ -1825,7 +1830,7 @@ is `SupervisorJob() + Dispatchers.Default` and lives as long as the process, and
 `ProgressStateHolder`'s own documentation states the reason: the navigation entry destroys
 the ViewModel on a tab switch, so the dashboard was rebuilt from nothing on every visit.
 The first draft of L6.4 justified the choice by the scope's lifetime, and that was wrong twice
-over — see [four corrections made during review](#four-corrections-made-during-review). L6.4 ships the
+over — see [corrections made during review of Unit 6](#corrections-made-during-review-of-unit-6). L6.4 ships the
 justification the code actually supports: the upstream is a derivation several screens read, so
 keeping it running means the figures are computed before the first open and stay current across
 gaps, at the cost of running while nobody looks. L6.4 uses this as its contrast case, teaches
@@ -1936,11 +1941,13 @@ decision for E24-08 to take deliberately.
 | GAP-U6-E | Unit 6 / `lesson_sharing_cold_flows` | That `stopTimeoutMillis` and `replayExpirationMillis` are two timers on two clocks, and that the second defaults to never | `flow_state_in_while_subscribed` teaches the first and does not mention the second. The measured pair of runs — same stop moment, reset 500 ms apart — is a ready-made tracing scenario. Overlaps GAP-U6-B and could be folded into it or split off | Add coverage in E24-08, possibly as part of GAP-U6-B |
 | GAP-U6-F | Unit 6 / `lesson_choosing_a_stream_abstraction` | That a must-not-be-lost occurrence is not satisfied by any hot Flow configuration, so the answer is durable state, a queue or acknowledgement | `flow_vs_channel_delivery_model` assesses the single-receiver contrast, which is a different property. `durable_state_vs_one_off_event` in the `architecture` Topic is the closest and is supporting-only here, so it creates no Unit 6 practice. This is the reasoning the epic exists to replace the slogan with, and nothing in `async_reactive` assesses it | Add coverage in E24-08 |
 
-### Four corrections made during review
+### Corrections made during review of Unit 6
 
-Four defects were found by review of the shipped prose and all four were re-measured before
-being corrected. Three of them are the same failure in different clothes: a rule stated
-without the qualification that the Unit's own material supplies two paragraphs later.
+Eight defects were found by review of the shipped prose, across two rounds, and every one was
+re-measured before being corrected. Nearly all are the same failure in different clothes: a rule
+stated without the qualification that the Unit's own material supplies two paragraphs later.
+
+#### Round one
 
 **1. The identity-equality delivery count was wrong.** L6.2 said that three spaced assignments
 of an equal value delivered one value for a `data class` and "three" for a class with identity
@@ -1991,9 +1998,68 @@ that the scope's lifetime is a different question, and the corrected retained-va
 is in its Senior section. **No production code changed**, and the conclusion about the
 repository's four holders is unchanged — only the reasoning offered for it.
 
-The wider lesson for E24-09: every one of these was a general rule stated without the
-qualification that the same Lesson supplies. That is the specific failure mode of a Unit whose
-subject is separating axes, and it is worth re-reading the other five Units for the same shape.
+#### Round two
+
+Four more, and **three of them were round one's own corrections left unpropagated**. Round one
+fixed the sentences that had been pointed at instead of sweeping the Unit for the claim shape,
+so the identical over-general statement survived in a neighbouring Lesson. That is the process
+failure worth recording, more than the individual defects.
+
+**5. `replay` is also buffer for a present slow subscriber.** This one is a genuine technical
+error rather than a stray copy, and it was the most damaging in the Unit, because it teaches
+the wrong overflow behaviour. L6.3 said replay "is about a subscriber that is not there yet"
+and extra buffer "is about a subscriber that is there and behind", as though they served
+disjoint purposes. The `SharedFlow` KDoc says otherwise: the replay cache "also provides buffer
+for emissions to the shared flow, allowing slow subscribers to get values from the buffer
+without suspending emitters", and `extraBufferCapacity` reserves capacity "beyond replay".
+Measured across seven configurations, the number of consecutive `tryEmit` calls that succeed
+against a present 400-millisecond subscriber is **`replay + extraBufferCapacity`** every time —
+`replay = 1, extraBufferCapacity = 0` gives one slot, from replay alone. The Unit's own earlier
+measurement had already shown this (`tryEmit` × 5 at `replay = 1` returned `true` then four
+`false`) and the prose contradicted it. The other half holds: measured at
+`replay = 0, extraBufferCapacity = 3`, six values emitted with nobody subscribed left a late
+subscriber **nothing**. L6.3 now teaches `replay`'s dual role explicitly, states the total as
+`replay + extraBufferCapacity`, and carries a four-row measured table with one column for a
+present slow subscriber and one for a late one.
+
+**6. "Collects the upstream once" is false under `WhileSubscribed`.** L6.4's Core said the
+sharing coroutine "collects the upstream once", four paragraphs above its own measured table
+showing `WhileSubscribed()` stopping and restarting that collection. What sharing removes is
+one collection **per collector** — one upstream collection serves however many subscribers are
+present — and how many times it is started over the stream's lifetime is the policy's business.
+L6.4 now says exactly that and points forward to the restart in the same sentence. The code
+comment beside it now reads "three concurrent subscribers … exactly once between them".
+
+**7. The unconditional broadcast claim survived into L6.5.** Round one corrected L6.3's Core
+gloss and `KEY_TAKEAWAY` to fan-out, and left L6.5's decision table asserting that a
+`SharedFlow` means "all current subscribers receive each value" — the exact guarantee the
+previous Lesson now spends a measured paragraph refuting. The row now reads that each value is
+fanned out to current subscribers and that what each one receives depends on the buffering
+configuration.
+
+**8. The survival-is-impossible claim survived into L6.5.** Same shape. Round one corrected
+L6.3's decision-table row to ask about eventual handling rather than survival; L6.5's
+`COMMON_MISTAKE` still said that an occurrence surviving with no collector is something "no
+amount of configuration" provides, which `replay = 1` plainly does and which the Unit measures
+twice. The callout now scopes the `replay = 0` case accurately, notes that a replay window does
+retain across a gap, and names the unmeetable requirement as eventual **handling** —
+nothing records whether a subscriber consumed the value and nothing waits for one to appear.
+
+**What the sweep covered.** After these fixes the whole Unit was searched for the five claim
+shapes involved — unconditional receipt by all subscribers, survival-with-no-subscribers stated
+as impossible, "once" applied to upstream collection, "no configuration provides", and replay
+described as ordinary buffering. Five matches remain and all five are correct in context: the
+`SharedFlow` KDoc quotation in L6.3's Core, which the next clause qualifies; the unbuffered
+`emit` contract, which genuinely does wait for all subscribers under the default suspending
+strategy; the two `once` matches, which describe a probe's upstream rather than the sharing
+model; and the two "no configuration" statements, both now scoped to guaranteed handling.
+
+**The wider lesson for E24-09.** Every one of these eight was a general rule stated without the
+qualification the same Lesson supplies, and half of round two existed only because round one
+patched the flagged sentence rather than the claim. That is the specific failure mode of a Unit
+whose subject is separating axes. Two things follow: the other five Units are worth re-reading
+for the same shape, and a correction to a general claim should be applied by searching the whole
+document for the claim, not by editing the sentence that was reported.
 
 ### Cross-links and validation
 
@@ -2278,7 +2344,7 @@ Two consequences that examples depend on:
   false. A process-lifetime scope sets the maximum lifetime only; `WhileSubscribed` on that same
   scope would still stop the upstream whenever the subscriber count reached zero. The defensible
   justification is the cost of keeping the derivation running against the cost of restarting it
-  — see [four corrections made during review](#four-corrections-made-during-review).
+  — see [corrections made during review of Unit 6](#corrections-made-during-review-of-unit-6).
 
 ### The coroutines documentation has been restructured
 

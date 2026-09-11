@@ -8136,7 +8136,41 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Keeping replay and extra buffer distinct is the single most useful thing to get right here. Replay is about a subscriber that is not there yet. Extra buffer is about a subscriber that is there and behind. They are configured separately because they solve separate problems, and calling both of them \"buffering\" hides the fact that a stream can retain history for late arrivals while still suspending its emitter for slow ones, or the reverse."
+                  "text": "Replay and extra buffer are not the same knob, but the line between them is not the one usually drawn. `replay` does double duty: it is what a late subscriber recovers, **and** it counts as room for a subscriber that is present but behind. `extraBufferCapacity` reserves room that serves only the second purpose — it is never replayed. So the space a slow subscriber may lag by before the emitter has to wait is `replay + extraBufferCapacity`, while what a late subscriber can recover is `replay` alone."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Configuration",
+                    "Room for a present slow subscriber",
+                    "What a late subscriber recovers"
+                  ],
+                  "rows": [
+                    [
+                      "`replay = 0, extraBufferCapacity = 0`",
+                      "None — the emitter waits for every value",
+                      "Nothing"
+                    ],
+                    [
+                      "`replay = 1, extraBufferCapacity = 0`",
+                      "One value",
+                      "One value"
+                    ],
+                    [
+                      "`replay = 0, extraBufferCapacity = 1`",
+                      "One value",
+                      "Nothing"
+                    ],
+                    [
+                      "`replay = 2, extraBufferCapacity = 3`",
+                      "Five values",
+                      "Two values"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Both columns are measured on this project's JVM target. The left one counts how many values a present 400-millisecond subscriber could fall behind by before `tryEmit` began returning `false`, and it came out as `replay + extraBufferCapacity` in every configuration tried. The right one emitted six values with nobody subscribed and then subscribed: `replay = 0, extraBufferCapacity = 3` delivered nothing at all, which is the half of the rule that catches people out — extra capacity buys headroom for a subscriber that is there, and retains nothing for one that is not."
                 },
                 {
                   "type": "callout",
@@ -8309,11 +8343,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "`shareIn` and `stateIn` change that. Each launches a single coroutine — the sharing coroutine — in a scope you pass in, collects the upstream once inside it, and broadcasts the result to subscribers."
+                  "text": "`shareIn` and `stateIn` change that. Each launches a single coroutine — the sharing coroutine — in a scope you pass in, and that one coroutine collects the upstream and broadcasts what it produces to every subscriber. What sharing removes is one collection **per collector**: however many subscribers are present, one upstream collection serves all of them. How many times that collection is started over the stream's lifetime is a separate question, and the policy below is what answers it — `WhileSubscribed` in particular stops and restarts it."
                 },
                 {
                   "type": "code",
-                  "code": "val shared: SharedFlow<Data> = source.shareIn(\n    scope = scope,\n    started = SharingStarted.WhileSubscribed(),\n    replay = 1,\n)\n\nval state: StateFlow<Data> = source.stateIn(\n    scope = scope,\n    started = SharingStarted.WhileSubscribed(),\n    initialValue = Data.Empty,\n)\n\n// Measured on this project's JVM target: three subscribers to a shared\n// cold upstream started that upstream exactly once.",
+                  "code": "val shared: SharedFlow<Data> = source.shareIn(\n    scope = scope,\n    started = SharingStarted.WhileSubscribed(),\n    replay = 1,\n)\n\nval state: StateFlow<Data> = source.stateIn(\n    scope = scope,\n    started = SharingStarted.WhileSubscribed(),\n    initialValue = Data.Empty,\n)\n\n// Measured on this project's JVM target: three concurrent subscribers to a\n// shared cold upstream started that upstream exactly once between them.",
                   "language": "kotlin"
                 },
                 {
@@ -8593,7 +8627,7 @@
                     [
                       "Values broadcast to whoever is subscribed, with chosen replay",
                       "`SharedFlow`",
-                      "All current subscribers receive each value"
+                      "Each value is fanned out to current subscribers; what each one receives depends on the buffering configuration"
                     ],
                     [
                       "Each element handled by exactly one receiver",
@@ -8622,7 +8656,7 @@
                 {
                   "type": "callout",
                   "kind": "COMMON_MISTAKE",
-                  "text": "Choosing `SharedFlow` for a one-off occurrence and assuming it will be delivered. A `replay = 0` shared flow with no subscriber accepts the value and drops it, as the previous lesson measured. If the requirement is that the occurrence must survive having no collector, that requirement is not met, and no amount of configuration meets it."
+                  "text": "Choosing `SharedFlow` for a one-off occurrence and assuming it will be delivered. A `replay = 0` shared flow with no subscriber accepts the value and drops it, as the previous lesson measured — though a replay window would have retained it for a subscriber arriving later, so retention across a gap is configurable. What no configuration provides is a guarantee that the occurrence is eventually **handled**: nothing records whether a subscriber consumed it, and nothing waits for one to appear. If that is the requirement, no setting meets it."
                 },
                 {
                   "type": "paragraph",

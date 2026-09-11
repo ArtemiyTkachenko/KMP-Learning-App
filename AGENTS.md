@@ -109,6 +109,7 @@ does not cover: [CI](docs/workflows/ci.md).
 [learning-content authoring contract](docs/content/learning-content-authoring.md) ·
 [Compose learning blueprint](docs/content/compose-learning-blueprint.md) ·
 [Compose Units 2-6 plan](docs/content/compose-units-2-6-plan.md) ·
+[Compose Units 7-12 plan](docs/content/compose-units-7-12-plan.md) ·
 [Coroutines and Flow blueprint](docs/content/coroutines-flow-learning-blueprint.md) ·
 [Coroutines and Flow Units 1-6 plan](docs/content/coroutines-flow-units-1-6-plan.md) ·
 [learning-to-question coverage](docs/content/learning-question-coverage.md)

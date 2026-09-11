@@ -403,7 +403,8 @@ all three are why this Unit is fourth rather than first.
 - **Prerequisites:** L1.4, L3.1, L4.2.
 - **Boundary:** lifecycle-aware collection (`repeatOnLifecycle`, `flowWithLifecycle`) and
   Compose collection (`collectAsStateWithLifecycle`) are one bridging sentence each and are
-  owned by E25 and the Compose blueprint's Unit 8.
+  owned by E25 and the Compose blueprint's Unit 8, *Observable State Collection and
+  Lifecycle* (renumbered by E25-01; see `compose-units-7-12-plan.md`).
 
 #### `lesson_flow_context_and_flow_on` (L4.4)
 
@@ -511,8 +512,9 @@ sharing moves an upstream's lifetime onto a scope.
   sees.
 - **Prerequisites:** L6.1; Kotlin equality, bridged, because conflation is `Any.equals`.
 - **Boundary:** screen-state modelling, `UiState` hierarchies and ViewModel design are owned
-  by the Compose blueprint's Unit 8 and the architecture curriculum. `LiveData` is one
-  Reference row.
+  by the architecture curriculum; E25-01 moved `UiState` modelling and ViewModel design out
+  of the Compose blueprint, which now bounds its screen-state material to Unit 7. `LiveData`
+  is one Reference row.
 
 #### `lesson_shared_flow` (L6.3)
 
@@ -3259,15 +3261,16 @@ Three, each in the same change as this document. None changes production content
 2. **`AGENTS.md` documentation map updated** — both new documents are registered under
    "Content — learning", which is where E23's two planning documents are listed.
 3. **`docs/content/compose-learning-blueprint.md` corrected, bounded.** Its Unit 6 note and
-   its Unit 8 notes both point at "the Flow curriculum" as an abstract future subject,
+   its then-Unit 8 notes both point at "the Flow curriculum" as an abstract future subject,
    written when none existed. Two pointers now name the blueprint that does. Nothing else in
    that file changes, and no Compose Lesson boundary moves: the Compose Units keep every Flow
    concept as supporting context exactly as before.
 
 No correction to the Compose blueprint's **content** was needed. Its treatment of Flow is
-already correctly bounded — Unit 8's L8.2 explicitly bridges sharing strategies, operators,
-buffering and cancellation to the Flow curriculum rather than teaching them — which is what
-made the E24 boundary easy to draw.
+already correctly bounded — the then-Unit 8's L8.2 explicitly bridges sharing strategies,
+operators, buffering and cancellation to the Flow curriculum rather than teaching them —
+which is what made the E24 boundary easy to draw. E25-01 later rewrote that Unit and kept the
+same bridge depth; see `compose-units-7-12-plan.md`.
 
 ---
 

@@ -543,7 +543,8 @@ anything runs, and where it runs — before a single operator or hot abstraction
   `coroutine_jobs`
 - **Notes:** Lifecycle-aware collection on Android (`repeatOnLifecycle`, `flowWithLifecycle`)
   and Compose collection (`collectAsStateWithLifecycle`) are **Bridge** at one sentence each
-  and are owned by E25 and the Compose blueprint's Unit 8. `cancellable()` is **Reference**.
+  and are owned by E25 and the Compose blueprint's Unit 8, *Observable State Collection and
+  Lifecycle* (renumbered by E25-01). `cancellable()` is **Reference**.
 
 #### L4.4 — Context Preservation and `flowOn`
 
@@ -771,8 +772,9 @@ and end at a defensible decision among all the abstractions the subject offers.
   (kotlin_language), `state_ownership` (architecture)
 - **Notes:** **Bridge** to `architecture` for state ownership; **Bridge** to `android_ui` and
   E25 for how a UI collects it. Screen-state modelling, `UiState` hierarchies and ViewModel
-  design are **Exclude** here — the Compose blueprint's Unit 8 and the architecture
-  curriculum own them. `LiveData` comparison is **Reference**, one row in a table.
+  design are **Exclude** here — the Compose blueprint's Units 7 and 12 and the architecture
+  curriculum own them; E25-01 moved `UiState` modelling and ViewModel design out of the
+  Compose blueprint entirely and into the architecture curriculum. `LiveData` comparison is **Reference**, one row in a table.
 
 #### L6.3 — `SharedFlow`: Replay, Buffering and Subscribers
 
@@ -890,7 +892,7 @@ adding a Lesson.
 | Exhaustive Flow operator catalogue | An API list, not a path through the subject; Unit 5 is organised by decision instead |
 | Full Channel curriculum | Would unbalance Units 3 and 6 for an abstraction most product code meets only as a comparison |
 | `runTest`, `TestDispatcher`, virtual time, Turbine | Owned by the coroutine-testing curriculum (E31); teaching it here would date twice |
-| Compose effect APIs and lifecycle-aware collection | Owned by E25 and the Compose blueprint's Unit 8 |
+| Compose effect APIs and lifecycle-aware collection | Owned by E25 and the Compose blueprint's Units 8–12 (renumbered by E25-01) |
 | MVVM/MVI, ViewModel and repository architecture | Owned by the architecture curriculum; E24 uses them as bounded examples only |
 | Uncaught-exception host behaviour per platform | Platform trivia; the propagation model is what transfers |
 | Java memory-model detail beyond visibility versus atomicity | The distinction is what decides a mechanism; the model itself is `jvm_fundamentals`' subject |

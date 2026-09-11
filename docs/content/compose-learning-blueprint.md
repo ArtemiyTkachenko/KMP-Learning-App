@@ -12,8 +12,14 @@ a runtime artifact. Authoring proceeds incrementally, Unit by Unit, against this
 
 Home Topic: `android_ui` (UI — Views & Jetpack Compose).
 
-Scope: 14 Learning Units, 50 planned Lessons, plus explicit Reference and Exclude
+Scope: 18 Learning Units, 63 planned Lessons, plus explicit Reference and Exclude
 decisions and a record of concepts the current assessment taxonomy cannot express.
+
+Units 7–12 were **renumbered and rewritten** by E25-01, which reconciled the former Units 7
+and 8 against the shipped Units 1–6, the shipped Coroutines and Flow curriculum, and the
+current epic boundaries; the former Units 9–14 are now 13–18. The reconciliation, the
+evidence behind it, and the confirmed authoring plan for Units 7–12 are in
+[`compose-units-7-12-plan.md`](compose-units-7-12-plan.md).
 
 ## How to Read This Blueprint
 
@@ -46,21 +52,21 @@ and deliberately does not mirror the Subtopic list one-to-one.
 4. Identity, Keys, Stability and Immutability
 5. Derived State and Expensive Work
 6. Snapshot Fundamentals
-7. Effects and Composable Lifecycle
-8. ViewModel, Flow and Production Screen State
-9. Modifiers and Layout
-10. Lazy Layouts
-11. CompositionLocal, Theme and Ambient Dependencies
-12. Accessibility and Semantics
-13. Compose Performance Mental Model
-14. Views and Compose Interoperability
+7. Production Screen State and Unidirectional Data Flow
+8. Observable State Collection and Lifecycle
+9. Effect Lifecycle and `LaunchedEffect`
+10. Latest-Value Effects and Event-Driven Coroutine Work
+11. Cleanup, External Synchronization and State Producers
+12. Production UI Effects and Mechanism Selection
+13. Modifiers and Layout
+14. Lazy Layouts
+15. CompositionLocal, Theme and Ambient Dependencies
+16. Accessibility and Semantics
+17. Compose Performance Mental Model
+18. Views and Compose Interoperability
 
 The order encodes conceptual dependencies, not convenience:
 
-- **Effects (7) after execution semantics (1) and recomposition (3).** `LaunchedEffect`
-  only makes sense once the learner knows a composable body may run repeatedly and is not
-  a one-time imperative lifecycle callback. Taught earlier, effects become memorized
-  incantations.
 - **Stability (4) after recomposition (3).** Skipping cannot be explained before there is
   something to skip. Stability introduced first is just annotation folklore.
 - **Derived state (5) after identity and stability (4).** `remember(key)` and
@@ -69,18 +75,35 @@ The order encodes conceptual dependencies, not convenience:
 - **Snapshots (6) after state (2), recomposition (3) and derived state (5).** The snapshot
   system explains *why* everything in Units 2–5 behaves as it does. Placed first it is
   abstract theory; placed here it is the unifying mechanism.
-- **ViewModel and Flow (8) after state ownership (2).** Integration builds on ownership
-  rather than defining it. A learner who meets `ViewModel` first concludes that "state
-  goes in the ViewModel", which is the wrong mental model.
-- **Layout (9) after the state model.** Modifiers and layout are largely independent of
+- **Screen state (7) after state ownership (2).** Unit 2 decides where one piece of state
+  lives; Unit 7 composes a whole screen from several classes of state at once and names the
+  owner that sits outside the Composition. Taught the other way round, a learner concludes
+  that "state goes in the ViewModel", which is the wrong mental model.
+- **Collection (8) after screen state (7), snapshots (6) and the Flow curriculum.**
+  Converting a stream into Compose `State` is only meaningful once the learner knows what a
+  Composition can observe and what a `StateFlow` already guarantees.
+- **Effects (9) after execution semantics (1), recomposition (3) and identity (4).**
+  `LaunchedEffect` only makes sense once the learner knows a composable body may run
+  repeatedly, may be skipped and may be abandoned, and is not a one-time imperative
+  lifecycle callback. Taught earlier, effects become memorized incantations. Effect keys
+  additionally require `remember(key)` from Unit 5 and skipping's instance comparison from
+  Unit 4, because the Lesson's whole point is the contrast between the two comparisons.
+- **Latest values and event-driven work (10) after effects (9).** Both Lessons are defined
+  against `LaunchedEffect`: one keeps its lifetime while changing what it reads, the other
+  takes the trigger away from composition entirely.
+- **Cleanup and producers (11) after 9 and 10.** Every API here is a variation on an
+  ownership decision the earlier two Units established.
+- **Mechanism selection (12) last of the six.** It is synthesis, and it is worthless before
+  every mechanism it chooses between exists.
+- **Layout (13) after the state model.** Modifiers and layout are largely independent of
   the state story, so they come after it rather than interleaved; deferred reads in
-  Unit 13 then have both halves available.
-- **Lazy layouts (10) after identity and keys (4)** and after layout (9). Lazy list keys
+  Unit 17 then have both halves available.
+- **Lazy layouts (14) after identity and keys (4)** and after layout (13). Lazy list keys
   are a direct application of composition identity.
-- **Performance (13) last but one.** By that point every mechanism it depends on —
+- **Performance (17) last but one.** By that point every mechanism it depends on —
   recomposition, stability, derived state, layout phases, lazy content — has been taught,
   so performance is synthesis rather than a random list of optimization tricks.
-- **Interop (14) last.** It is a migration concern that assumes both models are understood.
+- **Interop (18) last.** It is a migration concern that assumes both models are understood.
 
 ---
 
@@ -102,7 +125,7 @@ The order encodes conceptual dependencies, not convenience:
 - **Primary:** `compose_fundamentals`
 - **Supporting:** `views_fundamentals`, `view_rendering`
 - **Notes:** Views appear here only as the contrast case — **Bridge**, not Teach. The full
-  View story is Unit 14 and the Views half of `android_ui`. Do **not** turn this into an
+  View story is Unit 18 and the Views half of `android_ui`. Do **not** turn this into an
   XML tutorial; `xml_layouts` stays out.
 
 #### L1.2 — What a Composable Is and How It Executes
@@ -214,8 +237,9 @@ The order encodes conceptual dependencies, not convenience:
 - **Primary:** `compose_state_hoisting`
 - **Supporting:** `compose_udf`, `state_ownership` (architecture)
 - **Notes:** The `architecture` Topic owns state ownership as a general principle —
-  **Bridge**. `ViewModel`-owned screen state is introduced by name here and taught in
-  Unit 8. `compose_udf` is **supporting**, not primary: L1.3 owns unidirectional data flow
+  **Bridge**. `ViewModel`-owned screen state is introduced by name here and taken up as a
+  bounded boundary in Unit 7; the architecture curriculum owns the rest of it.
+  `compose_udf` is **supporting**, not primary: L1.3 owns unidirectional data flow
   and this lesson uses the direction to reason about ownership rather than teaching it.
   Two lessons claiming the same primary concept would also make Unit 2 practice assess a
   concept Unit 1 is responsible for.
@@ -259,7 +283,7 @@ recomposition is a defect.
 - **Supporting:** `compose_fundamentals`, `compose_state`
 - **Notes:** Name composition, layout and drawing as distinct phases at **Bridge** depth —
   without that distinction "recomposition redraws the screen" cannot be refuted. Per-phase
-  state reads and deferred reads stay in Unit 13.
+  state reads and deferred reads stay in Unit 17.
 
 #### L3.2 — Recomposition Scopes and Selective Execution
 
@@ -270,7 +294,7 @@ recomposition is a defect.
   the leaf; lambda parameters that keep a scope from being invalidated; how a single
   misplaced read widens the recomposing region.
 - **Senior:** why the read location, not the write location, defines the scope — the
-  reasoning deferred reads in Unit 13 build on.
+  reasoning deferred reads in Unit 17 build on.
 - **Primary:** `compose_recomposition`
 - **Supporting:** `compose_snapshot_system`, `compose_state`
 - **Notes:** Skipping is named here and mechanized in Unit 4. **Exclude** slot-table
@@ -287,7 +311,7 @@ recomposition is a defect.
 - **Primary:** `compose_recomposition`
 - **Supporting:** `compose_recomposition_performance` (performance)
 - **Notes:** Deliberately a short lesson; it exists to prevent a misconception that
-  otherwise distorts Units 4, 5 and 13. Measurement and tooling are **Bridge** to Unit 13.
+  otherwise distorts Units 4, 5 and 17. Measurement and tooling are **Bridge** to Unit 17.
 
 ---
 
@@ -320,7 +344,7 @@ inputs did not change".
 - **Primary:** `compose_identity_keys`
 - **Supporting:** `compose_lazy_layouts`
 - **Notes:** The lazy-list *application* is supporting here; `LazyColumn` as a whole is
-  Unit 10, which cross-references this lesson.
+  Unit 14, which cross-references this lesson.
 
 #### L4.3 — Immutability in Kotlin vs. What Compose Needs
 
@@ -353,7 +377,7 @@ inputs did not change".
 - **Supporting:** `compose_recomposition`, `compose_recomposition_performance` (performance)
 - **Notes:** **Explicitly correct** the obsolete claim that passing a `List` or any unstable
   parameter always forces recomposition. Pre–Strong Skipping optimization folklore is
-  **Exclude**. Compiler metrics and reports are **Reference**, in Unit 13.
+  **Exclude**. Compiler metrics and reports are **Reference**, in Unit 17.
 
 #### L4.5 — `@Stable` and `@Immutable` as Contracts
 
@@ -468,10 +492,10 @@ inputs did not change".
 - **Supporting:** `flow_fundamentals`, `hot_vs_cold_streams` (async_reactive),
   `compose_side_effects`
 - **Notes:** **Bridge** to the Flow curriculum — cold-stream semantics get one paragraph,
-  then a pointer. Collection inside `LaunchedEffect` is taught in Unit 7; this lesson
-  precedes it deliberately so the effect lesson has a concrete use. While Unit 7 and the
-  Flow curriculum are unauthored, both pointers name the subject in prose and cite external
-  documentation: `relatedLessonIds` cannot reference a Lesson that does not exist. The Flow
+  then a pointer. Collection inside `LaunchedEffect` is taught in Unit 9; this lesson
+  precedes it deliberately so the effect lesson has a concrete use. While Unit 9 is
+  unauthored, that pointer names the subject in prose and cites external documentation:
+  `relatedLessonIds` cannot reference a Lesson that does not exist. The Flow
   curriculum now has a map — `docs/content/coroutines-flow-learning-blueprint.md`, delivered
   by E24-01 — and its `lesson_cold_flows` and `lesson_flow_collection_lifetime` are the
   canonical treatment of the four facts this Lesson bridges. The shipped Lesson's sentence
@@ -485,170 +509,374 @@ inputs did not change".
 
 ---
 
-## Unit 7 — Effects and Composable Lifecycle
+## Unit 7 — Production Screen State and Unidirectional Data Flow
 
-**Purpose:** teach side effects problem-first, per Rule 5 of the authoring contract.
-**Prerequisites:** Units 1–3, 6.
+**Purpose:** decide who owns each piece of state on a complete production screen, before any
+effect API exists. Units 2 and 4 answered the question one piece of state at a time; this Unit
+answers it for a screen that carries several classes of state at once and has an owner outside
+the Composition.
+**Prerequisites:** Units 1–4. Confirmed authoring plan:
+[`compose-units-7-12-plan.md`](compose-units-7-12-plan.md).
 
-#### L7.1 — Why Side Effects Need Controlled APIs
+#### L7.1 — Three Classes of State on One Screen
 
-- **Objective:** explain why a composable body cannot start work directly.
-- **Core:** composables may run repeatedly, be skipped, run in any order, and be abandoned;
-  work started in the body is therefore started an unpredictable number of times and never
-  cleaned up; a composition enters, may recompose many times, and eventually leaves.
-- **Practical:** a network call in a composable body firing on every recomposition; the four
-  problems the effect APIs solve, stated before any API is named — lifetime-bound suspend
-  work, observer registration with cleanup, event-driven launching, and reading the latest
-  value inside a long-running effect.
+- **Objective:** place every piece of state on a realistic screen, and justify each placement.
+- **Core:** local UI-element state, state hoisted into a subtree, and screen-level state owned
+  outside the Composition, compared on one screen; the three ownership tests restated in one
+  sentence and applied rather than re-derived.
+- **Practical:** at least one piece of state that correctly stays local; the screen whose local
+  state has all been pushed to the top, and the parameter list and state type that result; why
+  "all production state belongs in a state holder" is wrong.
+- **Senior:** lifetime and ownership as separate axes when three classes coexist.
+- **Primary:** `compose_state_hoisting`
+- **Supporting:** `compose_state`, `state_ownership` (architecture), `viewmodel_lifecycle`
+  (lifecycle_navigation)
+- **Notes:** **Must not** re-derive L2.4. The three "at least" rules, the overload pair and the
+  over-hoisting argument are taught there and are linked, not repeated.
+
+#### L7.2 — The Stateless Content Boundary
+
+- **Objective:** split a screen into a stateful screen composable and a stateless content
+  composable, and justify the split by what it makes possible.
+- **Core:** the two-composable screen shape; the content composable receives a state value and
+  callbacks and owns nothing.
+- **Practical:** what the boundary buys — reuse, preview, one place where wiring lives; what a
+  content composable that reaches for its own owner loses.
+- **Primary:** `compose_udf`
+- **Supporting:** `compose_state_hoisting`, `compose_previews`, `compose_fundamentals`
+- **Notes:** `compose_previews` is deliberately question-empty and is used here as vocabulary,
+  not as claimed practice coverage. Compose UI testing is **Exclude** — the testing curriculum
+  owns it.
+
+#### L7.3 — One Screen State Value, Events Back Up
+
+- **Objective:** model what the screen renders as one immutable current value and what the user
+  does as callbacks describing intent.
+- **Core:** one state value per screen; callbacks as intent rather than as assignment.
+- **Practical:** a content composable handed a `MutableState` or a holder reference, and the
+  specific problems that creates — a second write path, no preview, no reuse; the rewritten
+  signature.
+- **Senior:** why immutability of the state value is what makes equality-based skipping work —
+  the payoff from Unit 4.
+- **Primary:** `compose_udf`
+- **Supporting:** `compose_state`, `unidirectional_data_flow` (architecture),
+  `kotlin_data_classes` (kotlin_language), `compose_stability`
+- **Notes:** **Exclude** `UiState` modelling strategy — sealed hierarchy against nullable
+  fields, partial states, error representation. That is the architecture curriculum's, and it is
+  the material the former Unit 8 wrongly claimed.
+
+#### L7.4 — The Screen-Level Owner as a Bounded Bridge
+
+- **Objective:** describe the boundary between the Composition and the thing that owns screen
+  state, and know where the curriculum hands over.
+- **Core:** what "outside the Composition" buys — surviving recomposition, surviving the
+  composable leaving composition, and surviving UI recreation; the composition talks to it
+  through a state value down and callbacks up.
+- **Practical:** that a plain remembered state holder is often the right answer and a
+  screen-level owner is not a default; what changes about a piece of state when its owner moves
+  out, and what does not.
+- **Primary:** `compose_state_hoisting`
+- **Supporting:** `state_ownership` (architecture), `viewmodel_lifecycle`,
+  `configuration_changes` (lifecycle_navigation), `kmp_lifecycle_viewmodel` (kmp)
+- **Notes:** **Bridge only.** MVVM, MVI, layering, repositories, use cases, `UiState` design and
+  dependency injection are **Exclude** here and belong to the architecture and
+  dependency-injection curricula. This Lesson keeps the promise that L2.3 and L2.4 currently
+  make to a "ViewModel unit"; both of those sentences are corrected when this Unit ships.
+
+---
+
+## Unit 8 — Observable State Collection and Lifecycle
+
+**Purpose:** turn the observable streams the coroutines and Flow curriculum teaches into
+something a Composition can render, and be honest about what the collection costs.
+**Prerequisites:** Units 2, 3, 6, 7, and the coroutines and Flow Units 4 and 6.
+
+#### L8.1 — What a Composable Can and Cannot Observe
+
+- **Objective:** explain why a `Flow` or `StateFlow` cannot drive a composable directly.
+- **Core:** a Composition observes snapshot-state reads and nothing else; a stream is not
+  snapshot state; conversion is therefore a real operation with a contract.
+- **Practical:** `someStateFlow.value` read in a composable body, and what the screen does when
+  the flow changes.
+- **Primary:** `compose_state`
+- **Supporting:** `stateflow`, `hot_vs_cold_streams` (async_reactive), `compose_snapshot_system`
+- **Notes:** Problem-first anchor; no API is named until L8.2.
+
+#### L8.2 — `collectAsState`: Converting a Stream into Compose State
+
+- **Objective:** use the state-conversion API correctly and know exactly what it does.
+- **Core:** both overloads; a `StateFlow`'s current value as the initial value; the mandatory
+  `initial` for a plain `Flow`; a collected value arriving is an ordinary state write.
+- **Practical:** the conversion is itself keyed on the flow instance, so a flow constructed
+  fresh on every recomposition restarts collection; why manual collection inside a launched
+  effect is **not** the default way to render ongoing state, and what would make it right.
+- **Primary:** `compose_state`
+- **Supporting:** `flow_collection`, `stateflow` (async_reactive), `compose_recomposition`
+- **Notes:** **Bridge** to the Flow curriculum for operators, `flowOn` and buffering. The
+  distinction between converting state and performing an effect returns in Unit 12.
+
+#### L8.3 — Collection Has a Lifetime and a Cost
+
+- **Objective:** reason about how long a collection runs and what that costs.
+- **Core:** the collection's lifetime is the call site's composition.
+- **Practical:** what "still collecting" costs — an active collector, an active upstream, work
+  applied to a UI nobody is looking at.
+- **Senior:** stopping the UI collector does not by itself stop upstream production; the
+  upstream's owner and sharing policy decide that.
+- **Primary:** `compose_state`
+- **Supporting:** `flow_collection`, `flow_sharing`, `coroutine_cancellation`,
+  `lifecycle_coroutines` (async_reactive)
+- **Notes:** **Bridge** to `stateIn`/`shareIn` in exactly one paragraph, then a link. Sharing
+  policies and their timeouts are **not** retaught.
+
+#### L8.4 — Lifecycle-Aware Collection and the Lifecycle a Screen Actually Has
+
+- **Objective:** decide between plain and lifecycle-aware collection from the problem, and know
+  what "lifecycle" means on each target this project builds.
+- **Core:** the problem lifecycle-aware collection solves; `collectAsStateWithLifecycle` and its
+  `minActiveState` default of `STARTED`; that it is built from a state producer and
+  `repeatOnLifecycle` and inherits both contracts.
+- **Practical:** what actually moves the lifecycle on Android, desktop, iOS and web, and the
+  user action that stops collection on each; the platform limits the multiplatform lifecycle
+  documents.
+- **Primary:** `compose_state`
+- **Supporting:** `lifecycle_aware_apis` (lifecycle_navigation), `flow_sharing`
+  (async_reactive), `kmp_lifecycle_viewmodel`, `compose_multiplatform` (kmp)
+- **Notes:** The lifecycle-aware API **is** available to this project's `commonMain` on every
+  target it builds, and is already used there; the evidence is recorded in
+  [`compose-units-7-12-plan.md`](compose-units-7-12-plan.md). An earlier version of this
+  blueprint said the opposite, and that claim was wrong. Android-only guidance must not be
+  presented as multiplatform behaviour, and a dependency in `commonMain` must not be presented
+  as identical behaviour everywhere. Fragment collection, lifecycle architecture and `LiveData`
+  are **Exclude** beyond one comparison clause.
+
+---
+
+## Unit 9 — Effect Lifecycle and `LaunchedEffect`
+
+**Purpose:** teach effects problem-first, per Rule 5 of the authoring contract, and give effect
+keys the treatment they need.
+**Prerequisites:** Units 1, 3, 4, 5, and the coroutines and Flow Units 1 and 3.
+
+#### L9.1 — Why Compose Needs an Effect API
+
+- **Objective:** state the ownership problem the effect family solves.
+- **Core:** a composable body is a description with no lifetime of its own, so work started
+  from it has no answer to how often it starts, who stops it, or what cleans it up.
+- **Practical:** the four problems the family solves, named before any API — lifetime-bound
+  suspend work, registration with cleanup, event-driven launching, and a current value inside
+  long-lived work.
 - **Primary:** `compose_side_effects`
 - **Supporting:** `compose_fundamentals`, `compose_recomposition`
-- **Notes:** The problem-first anchor for the whole Unit. No API is the subject here.
+- **Notes:** L1.2 already teaches the execution contract and the lines that should make a reader
+  look twice. This Lesson **applies** it and must not re-derive it.
 
-#### L7.2 — `LaunchedEffect` and Effect Keys
+#### L9.2 — `LaunchedEffect`: Work a Composition Owns
 
-- **Objective:** run suspend work tied to composition and key lifetime.
-- **Core:** `LaunchedEffect(key)` launches a coroutine when it enters composition, cancels it
-  when it leaves, and restarts it when a key changes; the coroutine is scoped to the
-  composition.
-- **Practical:** loading on first composition with `Unit`; restarting on an id change;
-  `LaunchedEffect(true)` used as an unclear "run once"; passing an unstable lambda or a new
-  object as a key and restarting on every recomposition; missing a key and never reloading.
-- **Senior:** the cancellation guarantee and what it means for in-flight work; why an
-  effect's key list is a dependency declaration in the same sense as `remember(key)`.
+- **Objective:** describe the coroutine lifetime `LaunchedEffect` creates.
+- **Core:** launched on entering composition, cancelled on leaving, cancelled and relaunched
+  when a key changes; the coroutine runs in the composition's context.
+- **Practical:** one effect traced through entering, recomposing, a key change and leaving, with
+  what happens to in-flight work at each point; the effect's identity is its call site's, so a
+  call site that stops being composed takes its effect with it.
+- **Senior:** what the cancellation guarantee does and does not promise about in-flight work.
 - **Primary:** `compose_side_effects`
-- **Supporting:** `coroutine_fundamentals`, `coroutine_cancellation`,
-  `structured_concurrency` (async_reactive)
-- **Notes:** **Bridge** to coroutines: cancellation is explained as far as "leaving
-  composition cancels the coroutine", then pointed at the coroutines Topic. Do **not**
-  reproduce the coroutine curriculum.
+- **Supporting:** `coroutine_scope`, `coroutine_cancellation`, `structured_concurrency`
+  (async_reactive), `compose_identity_keys`
+- **Notes:** **Bridge** to the coroutines curriculum: cancellation is cooperative, in one
+  sentence and a link. Do **not** say cancellation preempts arbitrary code. Keys are named here
+  and explained in L9.3.
 
-#### L7.3 — `rememberCoroutineScope`: Launching From Events
+#### L9.3 — What an Effect's Keys Declare
 
-- **Objective:** start work from a callback rather than from composition.
-- **Core:** `rememberCoroutineScope()` returns a scope bound to the call site's composition;
-  launch from an event handler, not from the composable body.
-- **Practical:** scrolling a list on click, showing a snackbar, animating on a gesture; the
-  decision rule — composition-driven work is `LaunchedEffect`, event-driven work is the
-  remembered scope.
-- **Senior:** why this scope is the wrong place for work that must outlive the screen, and
-  what belongs in the `ViewModel` scope instead.
+- **Objective:** read a key list as a claim about what the effect's lifetime depends on.
+- **Core:** the key list is a dependency declaration with lifetime meaning, not a list of every
+  value the effect reads; the decision is whether a change should *end the current work*.
+- **Practical:** the exact comparison — effect keys are compared the way a remembered
+  calculation's keys are — and the contrast with the instance comparison that decides skipping;
+  a constant key read as the degenerate claim "for this call site's whole composition lifetime",
+  which is sometimes right and is often an imperative "run once" in disguise.
 - **Primary:** `compose_side_effects`
-- **Supporting:** `coroutine_scope`, `coroutine_builders` (async_reactive),
-  `viewmodel_lifecycle` (lifecycle_navigation)
+- **Supporting:** `compose_derived_state`, `compose_stability`, `kotlin_equality`
+  (kotlin_language)
+- **Notes:** L5.1 and L4.4 already teach both comparisons. This Lesson links to them and adds
+  only the effect consequence.
 
-#### L7.4 — `DisposableEffect` and Cleanup
+#### L9.4 — Two Ways to Get Effect Keys Wrong
 
-- **Objective:** register something external and guarantee it is released.
-- **Core:** `DisposableEffect(key) { ... onDispose { ... } }`; the cleanup runs when the
-  effect leaves composition or a key changes; every registration needs a matching removal.
-- **Practical:** listeners, broadcast receivers, `LifecycleObserver`, sensor callbacks,
-  third-party SDK handles; the leak that results from a missing `onDispose`.
-- **Senior:** why cleanup is keyed the same way as setup, and what an asymmetric key list
+- **Objective:** diagnose both failure directions from a symptom.
+- **Core:** too few keys — a stale id still in use, old work continuing, an effect that never
+  restarts when its lifetime dependency changed.
+- **Practical:** keys that needlessly stop comparing equal — a freshly allocated value or lambda
+  supplied on every pass — and the valid in-flight work that is discarded; that a new object is
+  **not** automatically a changed key, with the cases that surprise people.
+- **Primary:** `compose_side_effects`
+- **Supporting:** `compose_identity_keys`, `coroutine_cancellation` (async_reactive),
+  `kotlin_lambdas` (kotlin_language)
+
+---
+
+## Unit 10 — Latest-Value Effects and Event-Driven Coroutine Work
+
+**Purpose:** separate two problems that look alike — an effect whose lifetime should not change
+but whose value must, and work that composition should not start at all.
+**Prerequisites:** Unit 9, and the coroutines and Flow Unit 1.
+
+#### L10.1 — Reading the Current Value Without Restarting
+
+- **Objective:** give a long-lived effect access to a current value without ending it.
+- **Core:** `rememberUpdatedState` is a remembered state holder reassigned on every
+  recomposition; the effect reads the current value at the moment it reads it.
+- **Practical:** the stale-callback failure; the alternative of keying the effect on the
+  changing value, and the restart it costs; that it is **not** a way to prevent or reduce
+  recomposition, and not a performance optimisation.
+- **Primary:** `compose_side_effects`
+- **Supporting:** `compose_state`, `compose_recomposition`, `kotlin_lambdas` (kotlin_language)
+
+#### L10.2 — `rememberCoroutineScope`: Launching From an Event
+
+- **Objective:** launch suspend work from a callback, with a lifetime the composition owns.
+- **Core:** it returns a scope and launches nothing; the caller decides when work starts; the
+  scope is cancelled when the call leaves composition.
+- **Practical:** scrolling, showing a snackbar, animating on a gesture; where the scope's
+  context comes from.
+- **Primary:** `compose_side_effects`
+- **Supporting:** `coroutine_scope`, `coroutine_builders`, `structured_concurrency`
+  (async_reactive)
+
+#### L10.3 — Composition-Driven or Event-Driven?
+
+- **Objective:** choose between the two from who owns the trigger, not from API names.
+- **Core:** composition state owns the trigger, or the event does.
+- **Practical:** one screen written both ways — a snackbar or scroll driven by composition state
+  against the same behaviour driven by the click — and what the wrong one does on a
+  recomposition or configuration change.
+- **Senior:** work that must continue after the composition is gone belongs to neither
+  mechanism; name the symptom and stop.
+- **Primary:** `compose_side_effects`
+- **Supporting:** `coroutine_scope`, `coroutine_cancellation`, `lifecycle_coroutines`
+  (async_reactive), `viewmodel_lifecycle` (lifecycle_navigation)
+- **Notes:** **Exclude** `viewModelScope` as a taught mechanism, WorkManager and background
+  work. The longer-lived owner is the architecture and background-work curricula's.
+
+---
+
+## Unit 11 — Cleanup, External Synchronization and State Producers
+
+**Purpose:** own the external world a screen touches, organised by problem rather than by API.
+**Prerequisites:** Units 9, 10, and the coroutines and Flow Unit 4.
+
+#### L11.1 — Registration and Release as One Decision
+
+- **Objective:** treat registration and release as one symmetric decision the composition owns.
+- **Core:** `DisposableEffect(key) { ... onDispose { ... } }`; setup on entering, disposal on
+  leaving **and** on a key change; one disposal per setup.
+- **Practical:** listeners, observers, lifecycle observers, sensor callbacks and third-party
+  handles; what accumulates when the release is missing.
+- **Senior:** why setup and cleanup necessarily share a key set, and what an asymmetric one
   breaks.
 - **Primary:** `compose_side_effects`
-- **Supporting:** `lifecycle_aware_apis` (lifecycle_navigation), `lifecycle_leaks`
-  (performance)
-- **Notes:** Leak diagnosis is **Bridge** to the performance Topic.
+- **Supporting:** `lifecycle_aware_apis` (lifecycle_navigation), `memory_leaks`,
+  `lifecycle_leaks` (performance)
+- **Notes:** Distinguished by *what it is for*, not described as a launched effect with cleanup
+  added. Leak diagnosis is **Bridge** to the performance Topic.
 
-#### L7.5 — `rememberUpdatedState` and `SideEffect`
+#### L11.2 — `SideEffect`: Publishing to Non-Compose Code
 
-- **Objective:** handle the two remaining cases the earlier APIs do not cover.
-- **Core:** `rememberUpdatedState` keeps a long-running effect reading the latest lambda or
-  value without restarting it; `SideEffect` publishes composed state to a non-Compose
-  object after every successful composition.
-- **Practical:** a timeout effect that must call the current `onTimeout` rather than the one
-  captured at launch; the alternative — keying the effect on the lambda — and why it
-  restarts the work; `SideEffect` used to update an analytics or legacy object.
+- **Objective:** publish a successfully composed value to something Compose does not manage.
+- **Core:** it runs after every successful composition that reached it.
+- **Practical:** updating an analytics or legacy object; why writing the same call in the body
+  is a different operation, because it can publish a value from a composition that was never
+  applied.
 - **Primary:** `compose_side_effects`
-- **Supporting:** `compose_state`, `compose_identity_keys`
-- **Notes:** Deliberately last in the Unit; these only make sense once keys and restarts
-  from L7.2 are understood.
+- **Supporting:** `compose_recomposition`, `compose_fundamentals`, `compose_state`
+- **Notes:** **Exclude** presenting it as a general event handler, a coroutine API, or a place
+  for expensive work.
+
+#### L11.3 — `produceState`: a Composition-Scoped Producer
+
+- **Objective:** adapt an asynchronous or external source into Compose `State`.
+- **Core:** an initial value, a producer launched on entering and cancelled on leaving, and
+  restart keys.
+- **Practical:** the returned state conflates, so an equal write is not a change; what the state
+  holds immediately after a key change but before the new producer has written.
+- **Senior:** its relationship to a launched effect writing remembered state, which is what it
+  is built from — as confirmation of the contract, not as the mental model.
+- **Primary:** `compose_side_effects`
+- **Supporting:** `compose_state`, `flow_collection`, `coroutine_cancellation` (async_reactive)
+
+#### L11.4 — A Flow Below the UI, or a Producer at the Boundary?
+
+- **Objective:** decide where an adapter for a callback-based source belongs.
+- **Core:** `awaitDispose` and the one case it is for — a non-suspending subscription inside a
+  producer.
+- **Practical:** the decision itself, answered from ownership and reuse: a reusable or
+  non-Compose-consumed source becomes a Flow below the UI; a source whose lifetime is
+  specifically a composition's can stay at the boundary.
+- **Primary:** `compose_side_effects`
+- **Supporting:** `flow_fundamentals`, `hot_vs_cold_streams` (async_reactive),
+  `separation_of_concerns` (architecture)
+- **Notes:** **Bridge** to `callbackFlow`/`awaitClose`, named once with a link. This is not
+  another Flow-builder Lesson.
 
 ---
 
-## Unit 8 — ViewModel, Flow and Production Screen State
+## Unit 12 — Production UI Effects and Mechanism Selection
 
-**Purpose:** connect Compose to a real application. **This Unit is explicitly
-bridge-heavy** — most of its supporting concepts are owned by `lifecycle_navigation`,
-`async_reactive`, and `architecture`, and it is the blueprint's clearest example of
-legitimate cross-Topic learning coverage.
-**Prerequisites:** Units 1–3, 7.
+**Purpose:** synthesis. No new API family; the Unit exists because engineers who know each API
+individually still choose the wrong one under production pressure.
+**Prerequisites:** Units 7–11, and the coroutines and Flow Unit 6.
 
-#### L8.1 — The Production Screen Pipeline
+#### L12.1 — Choosing the Smallest Sufficient Mechanism
 
-- **Objective:** describe the standard path from data to pixels and justify each hop.
-- **Core:** Repository → ViewModel → `UiState` exposed as `StateFlow` → Compose renders it →
-  events go back up to the `ViewModel`; each layer's single responsibility.
-- **Practical:** a realistic screen wired end to end; what belongs in each layer; symptoms
-  of collapsing two layers into one.
-- **Senior:** why the `ViewModel` boundary exists at all — survival across configuration
-  change, testability without the UI toolkit, and a single source of truth for screen state.
-- **Primary:** `compose_udf`
-- **Supporting:** `repository_pattern`, `mvvm`, `layered_architecture`,
-  `single_source_of_truth` (architecture), `viewmodel_lifecycle` (lifecycle_navigation)
-- **Notes:** **Bridge** to `architecture` — the pattern is applied, not taught. MVVM vs. MVI
-  is a pointer, not a section.
+- **Objective:** decide, from a stated requirement, which mechanism a screen needs.
+- **Core:** the four facts that decide it — who owns the state, who owns the trigger, what
+  lifetime is required, what cleanup is required.
+- **Practical:** realistic screen scenarios in which every outcome is reachable: plain
+  rendering, local state, hoisted state, collected state, lifecycle-aware collected state, a
+  composition-triggered coroutine, an event-triggered coroutine, a long-lived effect reading a
+  current value, a registration with cleanup, post-composition publication, an external source
+  adapted into state, and "none of these — this work has the wrong owner".
+- **Primary:** `compose_side_effects`
+- **Supporting:** `compose_state`, `compose_state_hoisting`, `compose_udf`
+- **Notes:** Scenarios, not a table of API definitions.
 
-#### L8.2 — Collecting Flow and StateFlow in Compose
+#### L12.2 — Rendering State and Running a Transient Effect
 
-- **Objective:** get a stream into a composable correctly.
-- **Core:** `collectAsState` / `collectAsStateWithLifecycle`; a `StateFlow` always has a
-  current value; collection is itself an effect with a lifetime.
-- **Practical:** why lifecycle-aware collection matters on Android — a plain
-  `collectAsState` keeps collecting while the screen is in the background, wasting work and
-  potentially holding upstream resources; the platform-neutral option in shared
-  Compose Multiplatform code, where the Android lifecycle-aware variant is not available on
-  every target.
-- **Senior:** upstream sharing policy (`stateIn` with a started policy) as the actual
-  control over whether the producer stops, and why the collection site alone does not
-  decide it.
-- **Primary:** `compose_state`
-- **Supporting:** `stateflow`, `flow_collection`, `flow_sharing`, `lifecycle_coroutines`
-  (async_reactive), `kmp_lifecycle_viewmodel`, `compose_multiplatform` (kmp)
-- **Notes:** **Bridge** to the Flow curriculum for sharing strategies, operators, buffering
-  and cancellation. Explain `stateIn` only as much as the lifecycle argument requires. Those
-  subjects are now mapped in `docs/content/coroutines-flow-learning-blueprint.md`, whose
-  Units 4–6 own them; this Lesson's bridge depth is unchanged, and the pointer becomes a
-  `relatedLessonIds` link once both Lessons ship.
+- **Objective:** separate what the screen *is* from something that should happen once.
+- **Core:** rendering current state and executing a transient effect are different operations.
+- **Practical:** snackbars, a one-time focus request, scrolling, animation and a navigation
+  request; which effect or scope lifetime executes each; the one-off modelled as state that
+  fires again after recreation.
+- **Primary:** `compose_side_effects`
+- **Supporting:** `coroutine_scope`, `sharedflow` (async_reactive), `compose_state`
+- **Notes:** Navigation is used as one occurrence among several; navigation APIs remain owned by
+  `lifecycle_navigation` and are **Exclude**.
 
-#### L8.3 — Modelling `UiState`
+#### L12.3 — What Delivery Guarantee Does This Occurrence Need?
 
-- **Objective:** design a screen state type that makes impossible states impossible.
-- **Core:** an immutable `UiState` holding everything the screen renders; loading, content
-  and error as modelled states rather than loose booleans.
-- **Practical:** sealed hierarchy vs. a single data class with nullable fields, and when each
-  is right; partial states (content plus a refresh indicator) that a naive sealed hierarchy
-  cannot express; error representation the UI can actually render.
-- **Senior:** why immutability of `UiState` is what makes skipping and equality-based
-  updates work — the payoff from Unit 4.
-- **Primary:** `compose_state`
-- **Supporting:** `error_modeling`, `single_source_of_truth` (architecture),
-  `kotlin_sealed_types`, `kotlin_data_classes` (kotlin_language)
-
-#### L8.4 — State vs. Events, and What Belongs Where
-
-- **Objective:** decide what goes in the `ViewModel` and what stays in the composable.
-- **Core:** state is re-rendered whenever it is read; an event must be consumed exactly once;
-  the two need different representations.
-- **Practical:** the one-off navigation or snackbar delivered as state and fired twice after
-  a configuration change; local UI state (a dropdown's expanded flag, a text field's focus)
-  that has no business in a `ViewModel`; screen and business state that must not live in
-  composition.
-- **Senior:** the trade-offs between a consumable event channel and modelling the event as
-  state with an explicit acknowledgement, and how `SavedStateHandle` interacts with each.
-- **Primary:** `compose_udf`, `compose_state_hoisting`
-- **Supporting:** `state_ownership`, `mvi` (architecture), `sharedflow` (async_reactive),
-  `saved_state` (lifecycle_navigation)
-- **Notes:** Closes the ownership question opened in L2.4 with the production answer.
+- **Objective:** ask the delivery question before choosing a mechanism.
+- **Core:** what must be true when the UI is absent; a successful emission is not a delivery.
+- **Practical:** why "one stream type is for state and another for events" is not the answer,
+  and why replacing it with a different stream type is the same mistake; when the requirement
+  needs persistence, acknowledgement or queueing, and has therefore left the Compose boundary.
+- **Primary:** `compose_side_effects`
+- **Supporting:** `stateflow`, `sharedflow`, `hot_vs_cold_streams` (async_reactive),
+  `state_ownership` (architecture)
+- **Notes:** The coroutines and Flow Unit 6 already establishes the delivery argument; this
+  Lesson applies it at the Compose boundary and links rather than re-deriving. Application-level
+  event architecture — durable against transient modelling, `Channel` against `SharedFlow` as a
+  design, acknowledgement and queueing — is **Exclude** and belongs to the architecture
+  curriculum.
 
 ---
 
-## Unit 9 — Modifiers and Layout
+## Unit 13 — Modifiers and Layout
 
 **Purpose:** teach how Compose sizes and positions things.
-**Prerequisites:** Unit 1. Independent of Units 2–8.
+**Prerequisites:** Unit 1. Independent of Units 2–12.
 
-#### L9.1 — What a Modifier Is and Why Order Matters
+#### L13.1 — What a Modifier Is and Why Order Matters
 
 - **Objective:** stop treating modifiers as a bag of unordered attributes.
 - **Core:** a `Modifier` is an ordered, immutable chain of decorations applied outside-in;
@@ -659,7 +887,7 @@ legitimate cross-Topic learning coverage.
 - **Primary:** `compose_layouts_modifiers`
 - **Supporting:** `compose_fundamentals`
 
-#### L9.2 — Designing Composable APIs With Modifiers
+#### L13.2 — Designing Composable APIs With Modifiers
 
 - **Objective:** write reusable composables that behave the way callers expect.
 - **Core:** accept a `modifier: Modifier = Modifier` parameter, place it first, and apply it
@@ -671,7 +899,7 @@ legitimate cross-Topic learning coverage.
 - **Primary:** `compose_layouts_modifiers`
 - **Supporting:** `compose_state_hoisting`
 
-#### L9.3 — The Layout Contract
+#### L13.3 — The Layout Contract
 
 - **Objective:** explain the single-pass measurement model.
 - **Core:** constraints go down, sizes come up, parents place children; each child is
@@ -685,7 +913,7 @@ legitimate cross-Topic learning coverage.
 - **Notes:** **Bridge** to classic View measure/layout/draw for the contrast; the View
   rendering pipeline itself belongs to the Views half of `android_ui`.
 
-#### L9.4 — `Row`, `Column`, `Box` and `weight`
+#### L13.4 — `Row`, `Column`, `Box` and `weight`
 
 - **Objective:** compose the standard layouts predictably.
 - **Core:** `Row` and `Column` main/cross axis, arrangement and alignment; `Box` stacking;
@@ -698,7 +926,7 @@ legitimate cross-Topic learning coverage.
   [Taxonomy gaps](#taxonomy-gaps-concepts-with-no-exact-assessment-subtopic).
 - **Primary:** `compose_layouts_modifiers`
 
-#### L9.5 — Custom `Layout` and Intrinsics
+#### L13.5 — Custom `Layout` and Intrinsics
 
 - **Objective:** know that the escape hatch exists and when it is justified.
 - **Core:** the `Layout` composable — measure children, decide a size, place them; intrinsic
@@ -714,12 +942,12 @@ legitimate cross-Topic learning coverage.
 
 ---
 
-## Unit 10 — Lazy Layouts
+## Unit 14 — Lazy Layouts
 
 **Purpose:** teach lists, which is where identity, keys and derived state pay off.
-**Prerequisites:** Units 4, 5, 9.
+**Prerequisites:** Units 4, 5, 13.
 
-#### L10.1 — Why Lazy Composition Exists
+#### L14.1 — Why Lazy Composition Exists
 
 - **Objective:** explain the model rather than the API.
 - **Core:** lazy layouts compose only what is visible (plus a small buffer); items are
@@ -734,7 +962,7 @@ legitimate cross-Topic learning coverage.
 - **Supporting:** `recyclerview`, `recyclerview_performance` (android_ui / performance)
 - **Notes:** **Bridge** to `RecyclerView` for the comparison only.
 
-#### L10.2 — Item Identity, Keys and `contentType`
+#### L14.2 — Item Identity, Keys and `contentType`
 
 - **Objective:** keep item state correct across list mutations.
 - **Core:** stable `key` per item; state and animations follow the key rather than the
@@ -746,7 +974,7 @@ legitimate cross-Topic learning coverage.
 - **Supporting:** `compose_identity_keys`
 - **Notes:** Direct application of L4.2 — cross-reference rather than re-teach.
 
-#### L10.3 — `LazyListState` and Observing Scroll
+#### L14.3 — `LazyListState` and Observing Scroll
 
 - **Objective:** react to scroll without recomposing the world.
 - **Core:** `rememberLazyListState()`; `firstVisibleItemIndex` and friends are snapshot state
@@ -761,12 +989,12 @@ legitimate cross-Topic learning coverage.
 
 ---
 
-## Unit 11 — CompositionLocal, Theme and Ambient Dependencies
+## Unit 15 — CompositionLocal, Theme and Ambient Dependencies
 
 **Purpose:** explain implicit tree-scoped values and their cost.
 **Prerequisites:** Units 1–3.
 
-#### L11.1 — `CompositionLocal`
+#### L15.1 — `CompositionLocal`
 
 - **Objective:** decide when an implicit tree-scoped value is justified.
 - **Core:** `CompositionLocal` provides a value to a whole subtree without threading it
@@ -782,7 +1010,7 @@ legitimate cross-Topic learning coverage.
 - **Supporting:** `service_locator_vs_di`, `di_fundamentals` (dependency_injection)
 - **Notes:** **Bridge** to the DI Topic for the service-locator argument.
 
-#### L11.2 — Theme and Design Tokens
+#### L15.2 — Theme and Design Tokens
 
 - **Objective:** use and extend a theme without memorizing a component catalogue.
 - **Core:** `MaterialTheme` as colour, typography and shape delivered through
@@ -801,12 +1029,12 @@ legitimate cross-Topic learning coverage.
 
 ---
 
-## Unit 12 — Accessibility and Semantics
+## Unit 16 — Accessibility and Semantics
 
 **Purpose:** teach accessibility as behavior, which also explains how UI tests see the tree.
-**Prerequisites:** Units 1, 9.
+**Prerequisites:** Units 1, 13.
 
-#### L12.1 — The Semantics Tree
+#### L16.1 — The Semantics Tree
 
 - **Objective:** explain the parallel tree Compose exposes to accessibility services.
 - **Core:** composables emit semantics alongside layout; the semantics tree describes meaning,
@@ -816,7 +1044,7 @@ legitimate cross-Topic learning coverage.
 - **Primary:** `compose_accessibility`
 - **Supporting:** `compose_fundamentals`
 
-#### L12.2 — Accessible Behavior, Not Just Labels
+#### L16.2 — Accessible Behavior, Not Just Labels
 
 - **Objective:** move past `contentDescription` as the whole of accessibility.
 - **Core:** `contentDescription` for meaningful images and null for decorative ones; role,
@@ -831,7 +1059,7 @@ legitimate cross-Topic learning coverage.
 - **Supporting:** `view_events` (android_ui, Views)
 - **Notes:** Exhaustive focus and input API surfaces are **Reference**.
 
-#### L12.3 — Semantics and Compose UI Testing
+#### L16.3 — Semantics and Compose UI Testing
 
 - **Objective:** connect semantics to how tests find and assert on nodes.
 - **Core:** the Compose testing APIs query the semantics tree; a node that is inaccessible is
@@ -846,14 +1074,14 @@ legitimate cross-Topic learning coverage.
 
 ---
 
-## Unit 13 — Compose Performance Mental Model
+## Unit 17 — Compose Performance Mental Model
 
-**Purpose:** synthesis. Nothing here is new machinery; it is the machinery of Units 3–10
+**Purpose:** synthesis. Nothing here is new machinery; it is the machinery of Units 3–6 and 13–14
 organized around cost. Its primary mappings deliberately reach into the `performance`
 Topic, which is the intended cross-Topic behavior, not a taxonomy error.
-**Prerequisites:** Units 3, 4, 5, 9, 10.
+**Prerequisites:** Units 3, 4, 5, 13, 14.
 
-#### L13.1 — The Three Phases
+#### L17.1 — The Three Phases
 
 - **Objective:** locate cost in the right phase.
 - **Core:** composition, layout, draw; a state change does not necessarily invalidate all
@@ -867,7 +1095,7 @@ Topic, which is the intended cross-Topic behavior, not a taxonomy error.
   in `docs/content/question-bank-coverage.md`. The blueprint records this; it does not
   change it.
 
-#### L13.2 — Deferred Reads and Where You Read State
+#### L17.2 — Deferred Reads and Where You Read State
 
 - **Objective:** apply the read-location rule from L3.2 as a performance technique.
 - **Core:** reading state in a lambda passed to a phase-specific modifier defers the read to
@@ -880,7 +1108,7 @@ Topic, which is the intended cross-Topic behavior, not a taxonomy error.
 - **Primary:** `compose_recomposition_performance` (performance)
 - **Supporting:** `compose_layouts_modifiers`, `compose_derived_state`, `compose_recomposition`
 
-#### L13.3 — Putting the Tools Together
+#### L17.3 — Putting the Tools Together
 
 - **Objective:** choose the right tool for an observed cost.
 - **Core:** a decision path — expensive work in composition → move it out or `remember(key)`;
@@ -895,7 +1123,7 @@ Topic, which is the intended cross-Topic behavior, not a taxonomy error.
 - **Supporting:** `compose_stability`, `compose_derived_state`, `compose_lazy_layouts`,
   `compose_recomposition`
 
-#### L13.4 — Measure Instead of Guessing
+#### L17.4 — Measure Instead of Guessing
 
 - **Objective:** insist on evidence before optimization.
 - **Core:** measure before and after; **debug-build behavior is not performance evidence** —
@@ -915,13 +1143,13 @@ Topic, which is the intended cross-Topic behavior, not a taxonomy error.
 
 ---
 
-## Unit 14 — Views and Compose Interoperability
+## Unit 18 — Views and Compose Interoperability
 
 **Purpose:** teach the migration boundary honestly, including its long-term cost.
-**Prerequisites:** Units 1, 2, 7. Familiarity with the Views half of `android_ui` helps but
+**Prerequisites:** Units 1, 2, 9. Familiarity with the Views half of `android_ui` helps but
 is not assumed.
 
-#### L14.1 — Compose Inside Views: `ComposeView`
+#### L18.1 — Compose Inside Views: `ComposeView`
 
 - **Objective:** add Compose to an existing View-based screen correctly.
 - **Core:** `ComposeView` as a `View` hosting a composition; the composition must be disposed
@@ -934,7 +1162,7 @@ is not assumed.
   `view_binding` (android_ui, Views)
 - **Notes:** **Bridge** to lifecycle for the Fragment view-lifecycle distinction.
 
-#### L14.2 — Views Inside Compose: `AndroidView`
+#### L18.2 — Views Inside Compose: `AndroidView`
 
 - **Objective:** embed a `View` in a composition without duplicating state.
 - **Core:** `AndroidView(factory, update)` — `factory` runs once, `update` runs on
@@ -947,7 +1175,7 @@ is not assumed.
 - **Primary:** `views_compose_interop`
 - **Supporting:** `views_fundamentals`, `view_rendering` (android_ui, Views)
 
-#### L14.3 — Migration Strategy and the Cost of Permanent Bridges
+#### L18.3 — Migration Strategy and the Cost of Permanent Bridges
 
 - **Objective:** reason about interop as an engineering decision, not just an API.
 - **Core:** incremental migration — screen by screen, or leaf component first; interop exists
@@ -992,14 +1220,14 @@ adding a lesson.
 | Area | Why excluded |
 | --- | --- |
 | Memorizing the Material component set | Recall, not reasoning; looked up in seconds |
-| Exhaustive `Modifier` API memorization | An API catalogue; the *order and contract* concepts in Unit 9 are what carry interview signal |
+| Exhaustive `Modifier` API memorization | An API catalogue; the *order and contract* concepts in Unit 13 are what carry interview signal |
 | Compose compiler-generated function signatures | Implementation detail of the compiler plugin; no product decision depends on it |
 | Internal runtime class-name trivia | Recall of names, not understanding of behavior |
 | `SlotTable` implementation detail | The observable consequences are taught in Units 3–4; the data structure adds nothing |
 | Exhaustive snapshot MVCC implementation | Same reasoning; the mental model in L6.1 is the useful part |
 | Pre–Strong Skipping optimization folklore | Actively wrong now — L4.4 corrects it explicitly rather than repeating it |
 | Unmeasured micro-optimization tricks | Contradicts L13.4; advice without measurement is superstition |
-| Paging library internals | Its own subject; would unbalance Unit 10 |
+| Paging library internals | Its own subject; would unbalance Unit 14 |
 | Compose-specific navigation APIs | Navigation is owned by `lifecycle_navigation`; a Compose lesson would fragment it |
 
 ## Taxonomy Gaps: Concepts With No Exact Assessment Subtopic
@@ -1020,6 +1248,17 @@ decision for a future question-bank change.
 | Custom `Modifier.Node` authoring | `compose_layouts_modifiers` | Excluded from the main path anyway. |
 | Compose-specific navigation | `navigation_fundamentals`, `navigation_2_vs_3` (lifecycle_navigation) | Both exist but are not Compose-scoped; navigation stays with its own Topic. |
 | Compose runtime and compiler internals | none | Deliberately excluded, so no gap needs filling. |
+| Converting an external observable stream into Compose `State` | `compose_state` | The nearest fit and the one Unit 8 uses, but every active `compose_state` Question assesses Unit 2's material, so Unit 8's practice currently assesses none of what it teaches. Recorded by E25-01. |
+| Effect lifetime and effect-key semantics | `compose_side_effects` | Distinct reasoning from the API inventory the Subtopic name suggests. Recorded by E25-01. |
+| Composition-scoped state producers (`produceState`, `awaitDispose`) | `compose_side_effects` | Same Subtopic, different mental model. Recorded by E25-01. |
+| Mechanism selection across the effect family | `compose_side_effects` | A synthesis concept with no Subtopic of its own in any Topic. Recorded by E25-01. |
+| Compose-side handling of a transient UI occurrence | `compose_side_effects`; `state_ownership` and `sharedflow` adjacent | The delivery half is assessed in `async_reactive` and `architecture`; the Compose-side half has no home. Recorded by E25-01. |
+
+Because Units 9–12 all take `compose_side_effects` as their only primary concept, and Unit
+practice is resolved from primary concepts, **all four Units receive an identical practice
+pool**. That is a consequence of the four gaps above rather than a defect in the Units, and
+it is analysed in
+[`compose-units-7-12-plan.md`](compose-units-7-12-plan.md#the-compose_side_effects-overlap).
 
 Separately, four Subtopics this blueprint maps have **no active questions**, which affects
 what "Practice this material" can offer for the corresponding Lessons:
@@ -1044,12 +1283,15 @@ still cite the specific page supporting each claim, per Rule 9.
   Skipping in particular, where secondary sources are frequently out of date.
 - **Kotlin documentation** for collections, delegation, equality, sealed types, coroutines
   and Flow when those appear as bridged supporting concepts.
-- **Compose Multiplatform documentation** (JetBrains) for the platform-neutral half of
-  Unit 8 and anything shared-source-set specific.
-- **Android accessibility documentation** for Unit 12, which is broader than the Compose
+- **Compose Multiplatform and multiplatform lifecycle documentation** (JetBrains), together
+  with the resolved `androidx.lifecycle` sources, for Units 7–12 and anything
+  shared-source-set specific. Android-only documentation does not settle a multiplatform
+  claim, and a dependency declared in `commonMain` does not settle a behavioural one; see
+  [`compose-units-7-12-plan.md`](compose-units-7-12-plan.md).
+- **Android accessibility documentation** for Unit 16, which is broader than the Compose
   guides alone.
 - **Android performance documentation** — Baseline Profiles, Macrobenchmark, R8 — for
-  Unit 13.
+  Unit 17.
 
 Compose APIs and recommendations are on the question bank's freshness watch list. Re-check
 sources on any material edit; guidance older than roughly two releases is suspect.
@@ -1060,8 +1302,45 @@ This blueprint is complete as a map. Units 1–6 are authored and ship in
 `learning_curriculum.json` as `unit_thinking_in_compose`,
 `unit_state_and_state_ownership`, `unit_recomposition`,
 `unit_identity_keys_and_stability`, `unit_derived_state_and_expensive_work` and
-`unit_snapshot_fundamentals`; Units 7–14 are still plans. When authoring reveals a wrong
+`unit_snapshot_fundamentals`; Units 7–18 are still plans. When authoring reveals a wrong
 Lesson boundary, update this file in the same change.
+
+Units 7–12 have a confirmed authoring plan in
+[`compose-units-7-12-plan.md`](compose-units-7-12-plan.md), delivered by E25-01. It records
+their Unit and Lesson identities, objectives, prerequisites and boundaries, the semantic
+review of the Questions their primary Subtopics reach, the assessment gaps for E25-08, and
+the version-sensitive and platform-sensitive claims their Lessons depend on.
+
+**E25-01 reconciled the former Units 7 and 8 rather than appending to them.** What changed,
+and why:
+
+- **The former Unit 7 (Effects and Composable Lifecycle, five Lessons) became Units 9, 10 and
+  11.** Its `LaunchedEffect` Lesson carried three mental models at once — composition-owned
+  coroutine lifetime, what a key list claims, and the two opposite ways of getting a key list
+  wrong — and became three Lessons. Its `rememberUpdatedState`/`SideEffect` Lesson was split:
+  pairing them was an API-inventory decision rather than a conceptual one. `produceState`,
+  `awaitDispose` and the Flow-adapter-or-Compose-producer decision are new; the former Unit
+  named none of them on the main path.
+- **The former Unit 8 (ViewModel, Flow and Production Screen State, four Lessons) was
+  dissolved.** Its collection Lesson became the whole of Unit 8. The bounded screen-state half
+  of its pipeline and its state-versus-events Lesson became Unit 7 and Unit 12. Its layering,
+  MVVM and `UiState`-modelling material — the production screen pipeline as architecture,
+  sealed-against-nullable state design, application-level event modelling, and the consumable
+  event channel against acknowledged state — **moved to the architecture curriculum**, which
+  is where the current roadmap places it.
+- **One factual correction.** The former L8.2 said the lifecycle-aware collection variant "is
+  not available on every target". That is false for this repository: the API is declared in
+  `commonMain` of the resolved lifecycle artifact, is already used in this project's
+  `commonMain`, and compiles on every target the shared module builds. The corrected Unit 8
+  L8.4 states what is available, what supplies the `LifecycleOwner` per target, and where the
+  behaviour genuinely differs.
+- **Two shipped Lessons still promise a "ViewModel unit".** `lesson_state_hoisting` and
+  `lesson_remember_saveable` each point at a Unit that no longer exists under that name. The
+  issue that ships Unit 7 owns both edits.
+- **Numbering.** Six Units replace two, so the former Units 9–14 are now 13–18, and the
+  planned totals are 18 Units and 63 Lessons. Shipped Units 1–6 are untouched in number,
+  identity and responsibility. No production identity encodes a Unit number: Unit and Lesson
+  ids are semantic and unnumbered, and learner progress is keyed by Lesson id.
 
 Units 2–6 have a confirmed authoring plan in
 [`compose-units-2-6-plan.md`](compose-units-2-6-plan.md), which records their proposed Unit
@@ -1088,7 +1367,8 @@ they affect later Units:
   does not survive it on its own because it unregisters its value provider as it leaves.
   The shipped Lesson teaches four rungs — re-execution, leaving the Composition, UI
   recreation, process recreation. The Core line here is left as the blueprint's shorthand
-  rather than rewritten, but Unit 8 should not inherit the three-rung framing.
+  rather than rewritten, but Unit 7 — the screen-state Unit, renumbered by E25-01 — should
+  not inherit the three-rung framing.
 - **Unit 2's saved-state platform caveat is carried as a Note, not a claim.** L2.3 states
   the Android guarantee precisely and says plainly that Compose Multiplatform documents no
   equivalent for desktop, iOS or web, per the plan's instruction. The unresolved question
@@ -1154,7 +1434,8 @@ three findings matter to Unit 6 and to E23-07:
 
 Authoring Unit 6 kept both planned Lesson boundaries, identities, titles and concept
 mappings unchanged. Two blueprint Notes were extended above rather than any line being
-rewritten, and four findings matter to Unit 7 and to E23-07:
+rewritten, and four findings matter to the effects Units — 9, 10 and 11 after E25-01's
+renumbering — and to E23-07:
 
 - **The Unit's behavioural claims were measured against the resolved runtime.** Two
   throwaway probes on the JVM target — one `runComposeUiTest` probe for L6.1 and one
@@ -1165,7 +1446,7 @@ rewritten, and four findings matter to Unit 7 and to E23-07:
 - **`snapshotFlow` was verified against `androidx.compose.runtime:runtime:1.11.2`, not
   against upstream.** The resolved artifact's `SnapshotFlow.kt` and the current
   `androidx-main` file agree word for word on every claim the Lesson makes, which is worth
-  recording because Unit 5 found the opposite for `derivedStateOf`. Unit 7 should keep
+  recording because Unit 5 found the opposite for `derivedStateOf`. Units 9–11 should keep
   checking rather than assuming the agreement holds.
 - **An equal write is not a write at all.** Assigning a `mutableStateOf` the value it
   already holds skips the write entirely — it produced no composable execution, no
@@ -1178,7 +1459,7 @@ rewritten, and four findings matter to Unit 7 and to E23-07:
   inside one snapshot "cannot see half an update". It can: two ordinary assignments to two
   holders are two separate changes, and an observer running between them sees a torn pair,
   which was measured. L6.1 now states the limit and points at the in-scope fix — one state
-  object for values that form one invariant. Unit 7 will meet the same boundary from the
+  object for values that form one invariant. Units 9–11 will meet the same boundary from the
   effects side and should not inherit the stronger claim.
 - **Unit 6 states evaluation and emission counts, and states their conditions with them.**
   Unit 3 asked for no counts and Unit 5 relaxed that to counts labelled as measurements of

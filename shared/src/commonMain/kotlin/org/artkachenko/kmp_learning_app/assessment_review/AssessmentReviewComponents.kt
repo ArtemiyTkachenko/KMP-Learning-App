@@ -351,7 +351,7 @@ private fun ReviewAnswerRow(answer: ReviewAnswerUiModel) {
         tags = if (label != null) {
             {
                 QuestionAnswerTag(
-                    text = if (outcome == AnswerOutcome.CORRECT) "✓ $label" else "✕ $label",
+                    text = label,
                     color = if (outcome == AnswerOutcome.WRONG) semantic.incorrect else semantic.correct,
                 )
             }

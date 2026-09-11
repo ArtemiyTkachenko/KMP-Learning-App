@@ -34,6 +34,7 @@ import kmp_learning_app.shared.generated.resources.practice_builder_levels
 import kmp_learning_app.shared.generated.resources.practice_builder_no_practiceable_concepts
 import kmp_learning_app.shared.generated.resources.practice_builder_no_questions
 import kmp_learning_app.shared.generated.resources.practice_builder_question_count
+import kmp_learning_app.shared.generated.resources.practice_builder_question_count_option
 import kmp_learning_app.shared.generated.resources.practice_builder_scope_learning_unit
 import kmp_learning_app.shared.generated.resources.practice_builder_scope_subtopic
 import kmp_learning_app.shared.generated.resources.practice_builder_scope_topic
@@ -45,6 +46,8 @@ import kmp_learning_app.shared.generated.resources.practice_builder_source_unava
 import kmp_learning_app.shared.generated.resources.practice_builder_source_unseen
 import kmp_learning_app.shared.generated.resources.practice_builder_source_weak_areas
 import kmp_learning_app.shared.generated.resources.practice_builder_start
+import kmp_learning_app.shared.generated.resources.practice_builder_start_count
+import kmp_learning_app.shared.generated.resources.practice_builder_select_any
 import kmp_learning_app.shared.generated.resources.practice_builder_target_unavailable
 import kmp_learning_app.shared.generated.resources.practice_builder_title
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
@@ -54,6 +57,7 @@ import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 internal const val PracticeBuilderStartButtonTag = "practice_builder_start"
@@ -112,7 +116,15 @@ internal fun PracticeBuilderScreen(
                         FilterChip(
                             selected = option == state.questionCount,
                             onClick = { onQuestionCountClick(option) },
-                            label = { Text("$option questions") },
+                            label = {
+                                Text(
+                                    pluralStringResource(
+                                        Res.plurals.practice_builder_question_count_option,
+                                        option,
+                                        option,
+                                    ),
+                                )
+                            },
                             modifier = Modifier.testTag(practiceQuestionCountTag(option)),
                         )
                     }
@@ -120,7 +132,11 @@ internal fun PracticeBuilderScreen(
             }
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Select any that apply", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        stringResource(Res.string.practice_builder_select_any),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     BuilderSection(heading = stringResource(Res.string.practice_builder_levels)) {
                     QuestionLevel.entries.forEach { level ->
                         FilterChip(
@@ -188,7 +204,15 @@ internal fun PracticeBuilderScreen(
                     ) {
                         val count = (state.availability as? PracticeAvailability.Available)?.eligibleQuestionCount
                             ?.let { minOf(it, state.questionCount) }
-                        Text(text = count?.let { "Start $it-question practice" } ?: stringResource(Res.string.practice_builder_start))
+                        Text(
+                            text = count?.let {
+                                pluralStringResource(
+                                    Res.plurals.practice_builder_start_count,
+                                    it,
+                                    it,
+                                )
+                            } ?: stringResource(Res.string.practice_builder_start),
+                        )
                     }
                 }
             }

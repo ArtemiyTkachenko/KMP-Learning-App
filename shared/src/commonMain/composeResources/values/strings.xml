@@ -147,7 +147,12 @@
     <string name="practice_builder_scope_learning_unit">Learning unit: %1$s</string>
     <string name="practice_builder_scope_unknown">Practice scope</string>
     <string name="practice_builder_question_count">Questions</string>
+    <plurals name="practice_builder_question_count_option">
+        <item quantity="one">%1$d question</item>
+        <item quantity="other">%1$d questions</item>
+    </plurals>
     <string name="practice_builder_levels">Levels</string>
+    <string name="practice_builder_select_any">Select any that apply</string>
     <string name="practice_builder_level_foundation">Foundation</string>
     <string name="practice_builder_level_applied">Applied</string>
     <string name="practice_builder_level_advanced">Advanced</string>
@@ -165,6 +170,10 @@
     <string name="practice_builder_target_unavailable">This learning unit is no longer available for practice.</string>
     <string name="practice_builder_no_practiceable_concepts">This learning unit has no practiceable concepts yet.</string>
     <string name="practice_builder_start">Start practice</string>
+    <plurals name="practice_builder_start_count">
+        <item quantity="one">Start %1$d-question practice</item>
+        <item quantity="other">Start %1$d-question practice</item>
+    </plurals>
     <string name="practice_shortcut_weak_area">Practice weak area</string>
     <plurals name="practice_shortcut_unseen_count">
         <item quantity="one">Practice %1$d unseen question</item>
@@ -176,6 +185,10 @@
     <string name="assessment_taking_select_all">Select all that apply</string>
     <string name="assessment_taking_submit">Submit</string>
     <string name="assessment_taking_submitting">Submitting</string>
+    <string name="assessment_taking_feedback_correct">Correct. Nice work.</string>
+    <string name="assessment_taking_feedback_incorrect">Not quite. Review the correct answer below.</string>
+    <string name="assessment_taking_correct_answer">Correct answer: %1$s</string>
+    <string name="assessment_taking_next_question">Next question</string>
     <string name="assessment_taking_loading">Preparing questions</string>
     <string name="assessment_taking_answer_save_error">Answer could not be saved. Try again.</string>
     <string name="assessment_taking_no_questions">No practice questions are currently available.</string>
@@ -197,11 +210,12 @@
     <string name="assessment_review_partially_correct">Partially correct</string>
     <string name="assessment_review_selected">Your answer</string>
     <string name="assessment_review_correct_answer">Correct answer</string>
-    <string name="assessment_review_correctly_selected">Correctly selected</string>
-    <string name="assessment_review_missed">Missed</string>
-    <string name="assessment_review_incorrectly_selected">Incorrectly selected</string>
+    <string name="assessment_review_correctly_selected">✓ Correctly selected</string>
+    <string name="assessment_review_missed">✕ Missed</string>
+    <string name="assessment_review_incorrectly_selected">✕ Incorrectly selected</string>
     <string name="assessment_review_expand">Review answer</string>
     <string name="assessment_review_collapse">Hide answer review</string>
+    <string name="assessment_review_question_review">Question review</string>
     <string name="assessment_review_explanation">Explanation</string>
     <string name="assessment_review_source">Source: %1$s</string>
     <string name="assessment_review_missing_question">Question %1$s is no longer available.</string>

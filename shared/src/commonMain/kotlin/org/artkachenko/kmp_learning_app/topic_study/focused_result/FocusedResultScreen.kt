@@ -27,6 +27,7 @@ import kmp_learning_app.shared.generated.resources.focused_result_repeat_source_
 import kmp_learning_app.shared.generated.resources.focused_result_repeat_no_questions
 import kmp_learning_app.shared.generated.resources.focused_result_repeat_error
 import kmp_learning_app.shared.generated.resources.assessment_review_practice_complete
+import kmp_learning_app.shared.generated.resources.assessment_review_question_review
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentScoreSummary
 import org.artkachenko.kmp_learning_app.assessment_review.MissingReviewQuestion
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionCard
@@ -146,7 +147,12 @@ private fun ResultContent(
                 }
             }
         }
-        item { SectionHeading("Question review", topPadding = AppSpacing.Related) }
+        item {
+            SectionHeading(
+                stringResource(Res.string.assessment_review_question_review),
+                topPadding = AppSpacing.Related,
+            )
+        }
         items(state.questions) { item ->
             when (item) {
                 // A Question the curriculum no longer holds is not review content the learner can

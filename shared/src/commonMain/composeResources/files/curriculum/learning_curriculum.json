@@ -8343,7 +8343,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "`shareIn` and `stateIn` change that. Each launches a single coroutine — the sharing coroutine — in a scope you pass in, and that one coroutine collects the upstream and broadcasts what it produces to every subscriber. What sharing removes is one collection **per collector**: however many subscribers are present, one upstream collection serves all of them. How many times that collection is started over the stream's lifetime is a separate question, and the policy below is what answers it — `WhileSubscribed` in particular stops and restarts it."
+                  "text": "`shareIn` and `stateIn` change that. Each launches a single coroutine — the sharing coroutine — in a scope you pass in, and that one coroutine collects the upstream and fans out what it produces to the subscribers. What sharing removes is one collection **per collector**: however many subscribers are present, one upstream collection serves all of them. How many times that collection is started over the stream's lifetime is a separate question, and the policy below is what answers it — `WhileSubscribed` in particular stops and restarts it."
                 },
                 {
                   "type": "code",
@@ -8421,7 +8421,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "`Lazily` starts when the first subscriber appears and then never stops. The documentation notes what that buys: the first subscriber is guaranteed to get every emitted value, while later ones get only the replay. What it does not do is stop when subscribers leave — the symmetry its name suggests is not in the contract."
+                  "text": "`Lazily` starts when the first subscriber appears and then never stops. The documentation notes what that buys: with `shareIn`'s default buffering, the first subscriber is guaranteed to get every emitted value, while later ones get only the replay. What it does not do is stop when subscribers leave — the symmetry its name suggests is not in the contract."
                 },
                 {
                   "type": "paragraph",
@@ -8585,7 +8585,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "This is why a `Channel` cannot be swapped for a `StateFlow` or a `SharedFlow` mechanically. A shared flow hands the same value to every subscriber; a channel hands each element to one. A queue of outgoing commands processed by a pool of workers is a channel problem, and expressing it as a shared flow would give every worker every command."
+                  "text": "This is why a `Channel` cannot be swapped for a `StateFlow` or a `SharedFlow` mechanically, and the difference is the **shape** of the delivery rather than how reliable it is. A shared flow offers the same value to all of its subscribers; a channel gives each element to one receiver, and the others never see it. A queue of outgoing commands worked through by a pool of workers is a channel problem, and expressing it as a shared flow would offer every command to every worker instead of dividing the queue between them."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What a channel does not provide deserves the same care, because it is the distinction this Lesson ends on. Receiving an element removes it, and nothing tracks what happens next. Measured on this project's JVM target with five queued elements and one worker: the worker took 1, 2 and 3 and finished 1 and 2 before being cancelled part-way through 3. A replacement receiver then drained 4 and 5 — and 3 was never redelivered and never finished by anyone. A channel decides which receiver gets an element, not that the work on it ever completes."
                 },
                 {
                   "type": "paragraph",
@@ -8630,15 +8634,15 @@
                       "Each value is fanned out to current subscribers; what each one receives depends on the buffering configuration"
                     ],
                     [
-                      "Each element handled by exactly one receiver",
+                      "Each element taken by exactly one receiver rather than by all of them",
                       "`Channel`",
-                      "Queued delivery, not broadcast"
+                      "Queued delivery to a single receiver, not broadcast"
                     ]
                   ]
                 },
                 {
                   "type": "paragraph",
-                  "text": "The table is a summary of reasoning already done, not a substitute for it. It cannot tell you whether a value is state or an occurrence, whether a late observer needs history, or whether losing a value is acceptable — and those are the inputs. Two rows can look equally plausible until the requirement is stated precisely enough to separate them, which is the actual work."
+                  "text": "The table is a summary of reasoning already done, not a substitute for it. It cannot tell you whether a value is state or an occurrence, whether a late observer needs history, or whether losing a value is acceptable — and those are the inputs. Every row is also about **delivery** and none of them is a guarantee of handling: no entry here promises that the work a value triggers ever finishes. Two rows can look equally plausible until the requirement is stated precisely enough to separate them, which is the actual work."
                 },
                 {
                   "type": "paragraph",
@@ -8660,7 +8664,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Take the requirement seriously and the honest options are outside this unit. Model the occurrence as durable state that is marked handled — the acknowledgement is what makes delivery guaranteed. Queue it somewhere that persists. Or accept the loss deliberately, having established that a missed notice is harmless. Each of those is an architectural answer, and the value of getting the stream semantics right first is that it tells you when you need one."
+                  "text": "A `Channel` does not rescue it either, which is worth saying because single-receiver delivery sounds like the stronger guarantee: the measurement above lost an element to a receiver that was cancelled part-way through it. Take the requirement seriously and the honest options are outside this unit. Model the occurrence as durable state that is marked handled — the acknowledgement is what turns delivery into handling. Queue it somewhere that persists. Or accept the loss deliberately, having established that a missed notice is harmless. Each of those is an architectural answer, and the value of getting the stream semantics right first is that it tells you when you need one."
                 },
                 {
                   "type": "paragraph",

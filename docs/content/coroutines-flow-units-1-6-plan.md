@@ -1776,6 +1776,7 @@ figures are evidence for a semantic claim, not published guarantees.
 | Six values, 20 ms apart, one 300 ms subscriber, default `SUSPEND` | All six delivered | The baseline the dropping case is measured against |
 | The same with `extraBufferCapacity = 1` and `DROP_OLDEST` | **1 and 6** delivered, subscriber present throughout | That broadcast is fan-out, not a delivery guarantee |
 | Consecutive `tryEmit` successes against a present 400 ms subscriber, over seven `replay`/`extraBufferCapacity` pairs | **`replay + extraBufferCapacity`** every time, including 1 slot at `replay = 1, extra = 0` | That `replay` is also buffer for a present slow subscriber |
+| Five queued `Channel` elements, one worker cancelled part-way through the third | Worker took 1–3 and finished 1–2; a replacement receiver drained 4 and 5; **3 was never redelivered** | That a `Channel` gives single-receiver delivery, not handling |
 | Six values emitted with no subscriber at `replay = 0, extraBufferCapacity = 3` | Late subscriber received **nothing** | That extra capacity retains nothing for an absent subscriber |
 | `replay = 2`, ten emissions, no subscribers | Replay cache held the last two | That overflow strategy has no effect with no subscribers |
 | `tryEmit` on an unbuffered flow with no subscribers | `true`, replay cache still empty | That `true` is not evidence of delivery |
@@ -1943,7 +1944,7 @@ decision for E24-08 to take deliberately.
 
 ### Corrections made during review of Unit 6
 
-Eight defects were found by review of the shipped prose, across two rounds, and every one was
+Twelve defects were found by review of the shipped prose, across three rounds, and every one was
 re-measured before being corrected. Nearly all are the same failure in different clothes: a rule
 stated without the qualification that the Unit's own material supplies two paragraphs later.
 
@@ -2054,12 +2055,59 @@ described as ordinary buffering. Five matches remain and all five are correct in
 strategy; the two `once` matches, which describe a probe's upstream rather than the sharing
 model; and the two "no configuration" statements, both now scoped to guaranteed handling.
 
-**The wider lesson for E24-09.** Every one of these eight was a general rule stated without the
-qualification the same Lesson supplies, and half of round two existed only because round one
-patched the flagged sentence rather than the claim. That is the specific failure mode of a Unit
-whose subject is separating axes. Two things follow: the other five Units are worth re-reading
-for the same shape, and a correction to a general claim should be applied by searching the whole
-document for the claim, not by editing the sentence that was reported.
+#### Round three
+
+Two more reported, both in L6.5, and both the same claim shape yet again — which is what finally
+forced a sweep method that works.
+
+**9. "A shared flow hands the same value to every subscriber."** The Channel comparison restored
+the unconditional delivery guarantee that rounds one and two had removed from L6.3 and from
+L6.5's own table. The round-two sweep missed it because that regex anchored on receive-side
+verbs near a universal quantifier, and this sentence puts the verb first and uses "hands". L6.5
+now draws the contrast as the **shape** of delivery rather than its reliability: a shared flow
+offers the same value to all of its subscribers, a channel gives each element to one receiver.
+
+**10. A `Channel` was offered as the answer to "each element handled by exactly one receiver".**
+Receiving an element removes it, and nothing tracks what happens next, so a channel provides
+competing-receiver *delivery* and not handling. Measured on this project's JVM target with five
+queued elements and one worker: the worker took 1, 2 and 3, finished 1 and 2, and was cancelled
+part-way through 3; a replacement receiver drained 4 and 5, and **3 was never redelivered and
+never finished by anyone**. This mattered more than a wording slip, because the row was offering
+`Channel` as the answer to the requirement L6.5's own Senior section sends to durable state,
+acknowledgement or a queue. The row now reads "each element taken by exactly one receiver rather
+than by all of them" with the property "queued delivery to a single receiver, not broadcast";
+the measurement is in the Lesson; the table's limits paragraph now states that every row is
+about delivery and none is a guarantee of handling; and the Senior section says outright that a
+`Channel` does not rescue the requirement either. The Unit's closing argument is stronger for
+it — **no** primitive here guarantees eventual handling, not `SharedFlow` and not `Channel`.
+
+**A sweep method that actually works.** Three rounds of regex sweeps each missed the next
+instance, because each was written to match the wording of the defect that had just been
+reported. The replacement is mechanical rather than clever: split every block in the Unit into
+sentences, select the ones pairing a universal or negative quantifier (`all`, `every`, `each`,
+`any`, `no`, `never`, `always`, `only`, `exactly`) with an audience noun (`subscriber`,
+`collector`, `receiver`, `worker`, `observer`, `consumer`), and read all of them. That produced
+63 sentences — small enough to check by hand, and it does not depend on predicting how the next
+over-general claim will be phrased.
+
+It found **two further instances that were not reported**, both now fixed: L6.4's Core said the
+sharing coroutine "broadcasts what it produces to every subscriber", which is now "fans out …
+to the subscribers"; and L6.4's `Lazily` paragraph quoted the KDoc's guarantee that the first
+subscriber gets every emitted value without noting that it holds for `shareIn`'s default
+buffering, which a fused `conflate()` would change. The other 61 were checked and are correct in
+context — the `SharedFlow` KDoc quotation that the following clause qualifies, the unbuffered
+`emit` contract, `StateFlow`'s genuinely unconditional replay-one-to-every-new-subscriber rule,
+and the measured statements.
+
+**The wider lesson for E24-09.** Almost every one of these twelve was a general rule stated
+without the qualification the same Lesson supplies, and most of rounds two and three existed
+only because the previous round patched the flagged sentence rather than the claim. That is the
+specific failure mode of a Unit whose subject is separating axes. Three things follow: the other
+five Units are worth re-reading for the same shape; a correction to a general claim must be
+applied by searching the whole document for the claim rather than editing the reported sentence;
+and the search should be the mechanical quantifier-plus-audience sweep described above, because
+three successive hand-written regexes each missed the next instance by matching the wording of
+the last one.
 
 ### Cross-links and validation
 

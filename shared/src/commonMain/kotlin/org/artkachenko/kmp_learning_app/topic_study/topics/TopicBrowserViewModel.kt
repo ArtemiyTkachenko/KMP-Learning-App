@@ -156,20 +156,26 @@ internal class TopicBrowserViewModel(
                 // catalog stays browsable and loses only its decoration. No derivation can turn
                 // this screen into an Error, and none can hide another's result.
                 val progress = attempts?.derivedOrNull { learningProgressService.load(it) }
-                learningContexts = progress?.let(::LearningContextIndex)
+                val nextLearningContexts = progress?.let(::LearningContextIndex)
                 // The one progress derivation above is reused rather than a second load being
                 // issued for the recommendation: Topic rows and the recommendation describe the
                 // same history, so they must not be able to disagree about it either.
-                recommendedNext = if (attempts != null && progress != null) {
+                val nextRecommendedNext = if (attempts != null && progress != null) {
                     attempts.derivedOrNull {
                         learningRecommendationResolver.resolve(it, progress)
                     }
                 } else {
                     null
                 }
-                continueStudying = attempts?.derivedOrNull {
+                val nextContinueStudying = attempts?.derivedOrNull {
                     continueStudyingResolver.resolve(it)
                 }
+                // Publish the three answers together. Catalogue, search, and study-state work can
+                // render while either resolver above is suspended; assigning earlier would expose
+                // topic progress from the new history beside cards from the previous one.
+                learningContexts = nextLearningContexts
+                recommendedNext = nextRecommendedNext
+                continueStudying = nextContinueStudying
                 render()
             }
         }

@@ -556,10 +556,7 @@ internal class AssessmentTakingViewModelTest {
     private fun viewModel(
         questions: List<Question>,
         repository: RecordingAssessmentRepository = RecordingAssessmentRepository(),
-        config: AssessmentConfig = AssessmentConfig.Focused(
-            scope = AssessmentScope.Topic("topic"),
-            questionCount = 10,
-        ),
+        config: AssessmentConfig = AssessmentConfig.Mixed(questionCount = 10),
     ) = AssessmentTakingViewModel(
         launch = AssessmentTakingLaunch.New(config),
         assessmentEngine = AssessmentEngine(

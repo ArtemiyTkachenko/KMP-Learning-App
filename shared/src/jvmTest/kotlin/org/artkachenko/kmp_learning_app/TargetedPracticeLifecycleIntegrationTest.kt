@@ -114,6 +114,7 @@ internal class TargetedPracticeLifecycleIntegrationTest {
 
         // Every control the learner can touch, each one re-running the eligibility read. Preflight
         // asks the selector, never the engine, so none of this may leave an attempt behind.
+        // Five is not offered for a six-question pool, so the exact available count stays selected.
         builder.selectQuestionCount(5)
         builder.toggleLevel(QuestionLevel.FOUNDATION)
         assertEquals(PracticeAvailability.Available(4), builder.settled().availability)
@@ -121,16 +122,15 @@ internal class TargetedPracticeLifecycleIntegrationTest {
         assertEquals(PracticeAvailability.Available(4), builder.settled().availability)
         builder.selectSource(PracticeQuestionSource.ALL)
         builder.toggleLevel(QuestionLevel.FOUNDATION)
-        // Six Questions are eligible again, but availability reports what the run will actually
-        // ask, and the count is still the five chosen above.
-        assertEquals(PracticeAvailability.Available(5), builder.settled().availability)
+        // Availability reports the truthful pool; the invalid five-question request was ignored.
+        assertEquals(PracticeAvailability.Available(TopicAQuestionIds.size), builder.settled().availability)
         assertEquals(0, attemptCount())
 
         val configured = builder.start()
         assertEquals(
             AssessmentConfig.Focused(
                 scope = AssessmentScope.Topic(TopicA),
-                questionCount = 5,
+                questionCount = TopicAQuestionIds.size,
                 levels = AllQuestionLevels,
                 source = PracticeQuestionSource.ALL,
             ),
@@ -150,7 +150,7 @@ internal class TargetedPracticeLifecycleIntegrationTest {
         assertEquals(fromRoute, started.config)
         assertNull(started.score)
         val askedIds = started.questionAttempts.map { it.questionId }
-        assertEquals(5, askedIds.size)
+        assertEquals(TopicAQuestionIds.size, askedIds.size)
         assertEquals(askedIds.size, askedIds.toSet().size)
         assertTrue(askedIds.all { it in TopicAQuestionIds })
         assertTrue(started.questionAttempts.all { it.answerState == QuestionAnswerState.Unanswered })
@@ -161,7 +161,10 @@ internal class TargetedPracticeLifecycleIntegrationTest {
         val completed = requireNotNull(assessmentRepository.getById(completedId))
         assertEquals(1, attemptCount())
         assertEquals(AssessmentStatus.COMPLETED, completed.status)
-        assertEquals(AssessmentScore(totalQuestions = 5, correctAnswers = 1), completed.score)
+        assertEquals(
+            AssessmentScore(totalQuestions = TopicAQuestionIds.size, correctAnswers = 1),
+            completed.score,
+        )
         assertEquals(fromRoute, completed.config)
         assertEquals(listOf(completedId), assessmentRepository.getCompletedAttempts().map { it.id })
     }
@@ -259,15 +262,16 @@ internal class TargetedPracticeLifecycleIntegrationTest {
 
     @Test
     fun weakPracticeContributesToOrdinaryProgressStatistics() = runPracticeTest {
-        // Two answered Questions at 0% makes this Subtopic weak while leaving its parent Topic
-        // below the Topic evidence minimum, which is what keeps the healthy-parent case honest.
-        runPractice(
-            practiceOnA2(levels = setOf(QuestionLevel.FOUNDATION, QuestionLevel.APPLIED)),
-            correctFor = emptySet(),
-        )
+        // Repeated observations reach the explicit evidence threshold before this area is weak.
+        repeat(3) {
+            runPractice(
+                practiceOnA2(levels = setOf(QuestionLevel.FOUNDATION, QuestionLevel.APPLIED)),
+                correctFor = emptySet(),
+            )
+        }
         val before = progressService.load()
-        assertEquals(1, before.completedAttemptCount)
-        assertEquals(2, before.answeredQuestionCount)
+        assertEquals(3, before.completedAttemptCount)
+        assertEquals(6, before.answeredQuestionCount)
         assertEquals(0, before.correctAnswerCount)
 
         // Scoped to the whole Topic: only the weak child contributes eligibility, and it contributes
@@ -282,14 +286,14 @@ internal class TargetedPracticeLifecycleIntegrationTest {
         val attemptId = runPractice(weakConfig, correctFor = A2QuestionIds.toSet())
 
         val after = progressService.load()
-        assertEquals(2, after.completedAttemptCount)
-        assertEquals(5, after.answeredQuestionCount)
+        assertEquals(4, after.completedAttemptCount)
+        assertEquals(9, after.answeredQuestionCount)
         assertEquals(3, after.correctAnswerCount)
         val subtopic = after.subtopics.single { it.subtopicId == SubtopicA2 }
-        assertEquals(5, subtopic.answeredCount)
+        assertEquals(9, subtopic.answeredCount)
         assertEquals(3, subtopic.correctCount)
         val topic = after.topics.single { it.topicId == TopicA }
-        assertEquals(5, topic.answeredCount)
+        assertEquals(9, topic.answeredCount)
         assertEquals(3, topic.correctCount)
         assertEquals(
             PracticeQuestionSource.WEAK_AREAS,
@@ -301,10 +305,12 @@ internal class TargetedPracticeLifecycleIntegrationTest {
 
     @Test
     fun aWeakAreaAttemptIsIndistinguishableFromAnyOtherCompletedAttemptToProgress() = runPracticeTest {
-        runPractice(
-            practiceOnA2(levels = setOf(QuestionLevel.FOUNDATION, QuestionLevel.APPLIED)),
-            correctFor = emptySet(),
-        )
+        repeat(3) {
+            runPractice(
+                practiceOnA2(levels = setOf(QuestionLevel.FOUNDATION, QuestionLevel.APPLIED)),
+                correctFor = emptySet(),
+            )
+        }
         runPractice(
             AssessmentConfig.Focused(
                 scope = AssessmentScope.Topic(TopicA),
@@ -685,6 +691,20 @@ private suspend fun AssessmentTakingViewModel.answerAllAndComplete(
         }
         selectAnswer(answerId)
         submitAnswer()
+        val submitted = uiState.await { state ->
+            state is AssessmentTakingUiState.Content && !state.isSubmitting && state.feedback != null ||
+                state is AssessmentTakingUiState.Content && state.questionNumber > content.questionNumber ||
+                state is AssessmentTakingUiState.ReadyToComplete ||
+                state is AssessmentTakingUiState.CompletionSucceeded
+        }
+        if (submitted is AssessmentTakingUiState.Content && submitted.feedback != null) {
+            nextQuestion()
+            if (content.questionNumber == content.totalQuestions) {
+                return assertIs<AssessmentTakingUiState.CompletionSucceeded>(
+                    uiState.await { it is AssessmentTakingUiState.CompletionSucceeded },
+                ).attemptId
+            }
+        }
         questionNumber += 1
     }
 
@@ -702,6 +722,12 @@ private suspend fun AssessmentTakingViewModel.answerOneQuestion(questionNumber: 
     val content = assertIs<AssessmentTakingUiState.Content>(awaitQuestion(questionNumber))
     selectAnswer(incorrectAnswerId(content.question.id))
     submitAnswer()
+    val submitted = uiState.await { state ->
+        state is AssessmentTakingUiState.Content && !state.isSubmitting && state.feedback != null ||
+            state is AssessmentTakingUiState.Content && state.questionNumber > content.questionNumber ||
+            state is AssessmentTakingUiState.ReadyToComplete
+    }
+    if (submitted is AssessmentTakingUiState.Content && submitted.feedback != null) nextQuestion()
     awaitQuestion(questionNumber + 1)
 }
 

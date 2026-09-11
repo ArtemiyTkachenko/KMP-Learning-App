@@ -16,6 +16,7 @@ internal sealed interface AssessmentTakingUiState {
         val canSubmit: Boolean,
         val isSubmitting: Boolean,
         val submissionFailed: Boolean,
+        val feedback: PracticeFeedback? = null,
     ) : AssessmentTakingUiState
 
     data class ReadyToComplete(
@@ -29,3 +30,6 @@ internal sealed interface AssessmentTakingUiState {
         val attemptId: String,
     ) : AssessmentTakingUiState
 }
+
+/** Feedback is only populated for formative Focused practice, never for an Interview. */
+internal data class PracticeFeedback(val isCorrect: Boolean)

@@ -586,7 +586,7 @@ internal class TopicBrowserScreenTest {
         }
 
         onNodeWithTag(TopicBrowserContinueStudyingTag).assertIsDisplayed()
-        onNodeWithText("Continue studying").assertIsDisplayed()
+        onNodeWithText("Pick up where you left off").assertIsDisplayed()
         onNodeWithText("Coroutines").assertIsDisplayed()
         // The card is a shortcut, not a report: no score, coverage, or rationale appears on it.
         onNodeWithText("accuracy").assertDoesNotExist()
@@ -663,7 +663,7 @@ internal class TopicBrowserScreenTest {
         }
 
         onNodeWithTag(TopicBrowserContinueStudyingTag).assertDoesNotExist()
-        onNodeWithText("Continue studying").assertDoesNotExist()
+        onNodeWithText("Pick up where you left off").assertDoesNotExist()
         onNodeWithText("Kotlin").assertIsDisplayed()
     }
 
@@ -720,7 +720,7 @@ internal class TopicBrowserScreenTest {
             }
         }
 
-        onNodeWithText("Continue studying").assertIsDisplayed()
+        onNodeWithText("Pick up where you left off").assertIsDisplayed()
         onNodeWithText("Structured concurrency & cancellation").assertIsDisplayed()
         onNodeWithText("Kotlin Language & JVM Fundamentals").assertIsDisplayed()
         // The Topic rows below are unchanged by the addition.
@@ -1022,7 +1022,7 @@ internal class TopicBrowserScreenTest {
         onNodeWithText("Review mistakes").assertIsDisplayed()
         onNodeWithText("You have 3 unresolved mistakes to revisit.").assertIsDisplayed()
         onNodeWithTag(TopicBrowserContinueStudyingTag).assertIsDisplayed()
-        onNodeWithText("Continue studying").assertIsDisplayed()
+        onNodeWithText("Pick up where you left off").assertIsDisplayed()
         onNodeWithText("Coroutines").assertIsDisplayed()
         onNodeWithText("Application Architecture & Design Principles")
             .assertIsDisplayed()
@@ -1052,7 +1052,7 @@ internal class TopicBrowserScreenTest {
             onNodeWithText("Review questions you saved").assertIsDisplayed()
             // It says where it goes, and nothing about what to do: it is not a recommendation.
             onNodeWithText("Recommended next").assertDoesNotExist()
-            onNodeWithText("Continue studying").assertDoesNotExist()
+            onNodeWithText("Pick up where you left off").assertDoesNotExist()
         }
 
     @Test
@@ -1371,8 +1371,8 @@ internal class TopicBrowserScreenTest {
 
         onNodeWithTag(TopicBrowserContinueLearningTag).assertIsDisplayed()
         // Named apart from the other shortcut, and reading as its own thing rather than a variant.
-        onNodeWithText("Continue learning").assertIsDisplayed()
-        onNodeWithText("Continue studying").assertDoesNotExist()
+        onNodeWithText("Next lesson").assertIsDisplayed()
+        onNodeWithText("Pick up where you left off").assertDoesNotExist()
         onNodeWithText("Recomposition").assertIsDisplayed()
         onNodeWithText("Thinking in Compose").assertIsDisplayed()
     }
@@ -1448,7 +1448,7 @@ internal class TopicBrowserScreenTest {
         }
 
         onNodeWithTag(TopicBrowserContinueLearningTag).assertDoesNotExist()
-        onNodeWithText("Continue learning").assertDoesNotExist()
+        onNodeWithText("Next lesson").assertDoesNotExist()
         onNodeWithText("Kotlin").assertIsDisplayed()
     }
 
@@ -1517,9 +1517,9 @@ internal class TopicBrowserScreenTest {
         onNodeWithTag(TopicBrowserRecommendedNextTag).assertIsDisplayed()
         onNodeWithText("Recommended next").assertIsDisplayed()
         onNodeWithTag(TopicBrowserContinueStudyingTag).assertIsDisplayed()
-        onNodeWithText("Continue studying").assertIsDisplayed()
+        onNodeWithText("Pick up where you left off").assertIsDisplayed()
         onNodeWithTag(TopicBrowserContinueLearningTag).assertIsDisplayed()
-        onNodeWithText("Continue learning").assertIsDisplayed()
+        onNodeWithText("Next lesson").assertIsDisplayed()
 
         // Each card emits only its own target: the two continue shortcuts are not one control.
         onNodeWithTag(TopicBrowserContinueLearningTag).performClick()

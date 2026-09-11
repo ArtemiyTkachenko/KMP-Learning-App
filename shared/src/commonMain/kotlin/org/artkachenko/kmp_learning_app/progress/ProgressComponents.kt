@@ -34,6 +34,7 @@ internal fun ProgressPerformanceCard(
     caption: String? = null,
     isWeak: Boolean = false,
     showChevron: Boolean = false,
+    showPercentage: Boolean = true,
     isSummary: Boolean = false,
     action: (@Composable () -> Unit)? = null,
 ) {
@@ -47,12 +48,17 @@ internal fun ProgressPerformanceCard(
         isWeak = isWeak,
         weakLabel = stringResource(Res.string.progress_weak_label),
         showChevron = showChevron,
+        showPercentage = showPercentage,
         isSummary = isSummary,
         action = action,
     )
 }
 
 @Composable
-internal fun ProgressSectionTitle(text: String) {
-    SectionHeading(text)
+internal fun ProgressSectionTitle(
+    text: String,
+    modifier: Modifier = Modifier,
+    topPadding: androidx.compose.ui.unit.Dp = org.artkachenko.kmp_learning_app.ui.theme.AppSpacing.Section,
+) {
+    SectionHeading(text, modifier, topPadding)
 }

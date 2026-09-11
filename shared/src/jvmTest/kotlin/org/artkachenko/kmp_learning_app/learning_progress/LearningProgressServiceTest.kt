@@ -357,7 +357,7 @@ internal class LearningProgressServiceTest {
         assertEquals(3, snapshot.topics[1].answeredCount)
         assertEquals(2, snapshot.topics[1].correctCount)
         assertEquals(2.0 / 3.0 * 100.0, snapshot.topics[1].percentage, 0.0000001)
-        assertTrue(snapshot.topics[1].isWeak)
+        assertFalse(snapshot.topics[1].isWeak)
         assertEquals(
             listOf("topic_a:sub_a", "topic_a:sub_b", "topic_b:sub_b"),
             snapshot.subtopics.map { "${it.topicId}:${it.subtopicId}" },
@@ -458,11 +458,11 @@ internal class LearningProgressServiceTest {
         val fixtures = mutableListOf<Question>()
         val observations = mutableListOf<Pair<String, Boolean>>()
         addTopicObservations(fixtures, observations, "topic_under", 2, 0)
-        addTopicObservations(fixtures, observations, "topic_weak", 3, 2)
+        addTopicObservations(fixtures, observations, "topic_weak", 5, 3)
         addTopicObservations(fixtures, observations, "topic_exact", 10, 7)
         addTopicObservations(fixtures, observations, "topic_above", 4, 3)
         addSubtopicObservations(fixtures, observations, "topic_sub", "sub_under", 1, 0)
-        addSubtopicObservations(fixtures, observations, "topic_sub", "sub_weak", 2, 1)
+        addSubtopicObservations(fixtures, observations, "topic_sub", "sub_weak", 5, 2)
         addSubtopicObservations(fixtures, observations, "topic_sub", "sub_exact", 10, 7)
         val context = TestContext(
             attempts = listOf(completedAttempt("boundaries", observations)),
@@ -908,7 +908,7 @@ internal class LearningProgressServiceTest {
 
     @Test
     fun weakAreasStayAllTimeWhenTheirEvidenceIsOlderThanTheWindow() = runTest {
-        val weakQuestions = List(3) { index -> question("weak_q_$index", "topic_weak", "sub_weak") }
+        val weakQuestions = List(5) { index -> question("weak_q_$index", "topic_weak", "sub_weak") }
         val context = TestContext(
             attempts = listOf(
                 completedAttempt(
@@ -927,9 +927,11 @@ internal class LearningProgressServiceTest {
 
         // The only failing evidence is outside the recent window and still defines the weak area.
         assertEquals(
-            listOf("topic_weak"),
-            snapshot.weakAreas.filterIsInstance<WeakArea.Topic>().map { it.performance.topicId },
+            listOf("sub_weak"),
+            snapshot.weakAreas.filterIsInstance<WeakArea.Subtopic>()
+                .map { it.performance.subtopicId },
         )
+        assertTrue(snapshot.weakAreas.none { it is WeakArea.Topic })
         assertEquals(0.0, snapshot.topics.first { it.topicId == "topic_weak" }.percentage)
         assertEquals(100.0, assertNotNull(snapshot.recentPerformance.percentage))
     }

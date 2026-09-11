@@ -355,16 +355,14 @@ internal class LearningUnitPracticeIntegrationTest {
                 val builder = builder(PracticeBuilderTarget.LearningUnit(unitId))
                 val state = builder.settled()
                 assertEquals(unit.title, state.scope.name)
-                // The builder opens on the default count and the count control deliberately does
-                // not re-run the eligibility read, so this figure is what a run started now would
-                // ask. That equals the pool only while the pool is smaller than the default, which
-                // stopped being true for three Units when E24-08 authored against their gaps.
+                // Availability is the full filtered pool, independent of the chosen session
+                // length, so the builder can present only truthful count choices.
                 assertEquals(
-                    minOf(count, DefaultPracticeQuestionCount),
+                    count,
                     assertIs<PracticeAvailability.Available>(state.availability).eligibleQuestionCount,
                 )
-                // Ask for more than any Unit's pool, so what follows sees the whole pool.
-                builder.selectQuestionCount(20)
+                // Select the exact dynamic pool option, so what follows sees the whole pool.
+                builder.selectQuestionCount(count)
                 builder.settled()
                 val config = builder.start()
                 assertEquals(AssessmentScope.Subtopics(concepts), config.scope, unitId)
@@ -394,7 +392,10 @@ internal class LearningUnitPracticeIntegrationTest {
         suspend fun reach(unitId: String): Set<String> {
             val builder = builder(PracticeBuilderTarget.LearningUnit(unitId))
             builder.settled()
-            builder.selectQuestionCount(20)
+            builder.selectQuestionCount(
+                assertIs<PracticeAvailability.Available>(builder.uiState.value.availability)
+                    .eligibleQuestionCount,
+            )
             builder.settled()
             return selectedQuestions(builder.start()).map { it.id }.toSet()
         }
@@ -429,7 +430,7 @@ internal class LearningUnitPracticeIntegrationTest {
         // Unit 6 gains the new stream-semantics Questions; the Questions on the same subject that
         // E24 maps as supporting, or does not map at all, stay out.
         listOf(
-            "state_flow_equal_value_is_not_a_new_state",
+            "stateflow_vs_sharedflow_current_value",
             "shared_flow_try_emit_true_is_not_delivery",
             "flow_sharing_policy_and_replay_expiration",
             "hot_sharing_changes_production_not_retention",
@@ -726,16 +727,23 @@ private class UnitPracticeGraph(
         var questionNumber = 1
         while (true) {
             val state = viewModel.awaitQuestion(questionNumber)
-            if (state is AssessmentTakingUiState.ReadyToComplete) break
+            if (
+                state is AssessmentTakingUiState.ReadyToComplete ||
+                state is AssessmentTakingUiState.CompletionSucceeded
+            ) break
             val content = assertIs<AssessmentTakingUiState.Content>(state)
             // The authored key, read from the curriculum: this suite runs on real Questions, so
             // no naming convention can stand in for the correct answer.
             val question = assertNotNull(curriculumRepository.getQuestionById(content.question.id))
             question.correctAnswerIds.forEach(viewModel::selectAnswer)
             viewModel.submitAnswer()
+            viewModel.uiState.await { it is AssessmentTakingUiState.Content && it.feedback != null }
+            viewModel.nextQuestion()
             questionNumber += 1
         }
-        viewModel.completeAssessment()
+        if (viewModel.uiState.value is AssessmentTakingUiState.ReadyToComplete) {
+            viewModel.completeAssessment()
+        }
         return assertIs<AssessmentTakingUiState.CompletionSucceeded>(
             viewModel.uiState.await { it is AssessmentTakingUiState.CompletionSucceeded },
         ).attemptId
@@ -747,8 +755,9 @@ private suspend fun AssessmentTakingViewModel.awaitQuestion(
 ): AssessmentTakingUiState = uiState.await { state ->
     when (state) {
         is AssessmentTakingUiState.Content ->
-            !state.isSubmitting && state.questionNumber == questionNumber
+            !state.isSubmitting && state.feedback == null && state.questionNumber == questionNumber
         is AssessmentTakingUiState.ReadyToComplete -> !state.isCompleting
+        is AssessmentTakingUiState.CompletionSucceeded -> true
         AssessmentTakingUiState.NoQuestions,
         AssessmentTakingUiState.Error,
         -> error("Assessment taking reached $state instead of question $questionNumber.")

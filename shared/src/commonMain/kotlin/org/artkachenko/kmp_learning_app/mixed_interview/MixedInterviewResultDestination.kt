@@ -10,12 +10,14 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
+import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 
 @Composable
 internal fun MixedInterviewResultDestination(
     attemptId: String,
     onBack: () -> Unit,
     onRetakeCreated: (String) -> Unit,
+    onPracticeMistakes: (AssessmentConfig.Focused) -> Unit,
     viewModel: MixedInterviewResultViewModel = koinViewModel { parametersOf(attemptId) },
 ) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
@@ -35,6 +37,7 @@ internal fun MixedInterviewResultDestination(
         onRetry = viewModel::retry,
         onBack = onBack,
         onRepeatInterview = viewModel::repeatInterview,
+        onPracticeMistakes = onPracticeMistakes,
         savedQuestions = savedQuestions,
         onToggleSaved = viewModel::toggleSaved,
         onSourceClick = { url ->

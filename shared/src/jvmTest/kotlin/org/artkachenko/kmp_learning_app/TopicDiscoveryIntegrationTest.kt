@@ -573,14 +573,19 @@ private val WideWidth = 900.dp
  *
  * The Topic list is a `LazyColumn`, so a row past the viewport is never composed and is absent
  * from the semantics tree — which makes any assertion that counts rows really an assertion about
- * this height. At 700.dp the third Topic card did not fit: it was composed only because a sliver
- * of it still showed, and that sliver was what the count of three rested on. The learning-unit
- * badge E21-01 added to the first row pushed the sliver from 43 pixels down to 15, and roughly
- * one more wrapped line above it would have taken the row out of composition and the count with
- * it. At this height every card is laid out in full with margin to spare, so the assertion says
- * what it means. Width stays the knob these tests actually vary.
+ * this height. The margin here has been eaten twice already: at 700.dp the third Topic card was
+ * composed only because a 43-pixel sliver of it still showed, the learning-unit badge E21-01 added
+ * to the first row cut that sliver to 15, and 900.dp bought the margin back only until the list
+ * gained a section heading above the Topics and widened its item spacing, which cut the sliver to
+ * 6. A sliver is not margin: it makes the count a claim about text metrics, and text metrics are
+ * not the same on every machine. The JVM tests run on macOS locally and on Linux in CI, whose
+ * system fonts lay the long Topic names out differently, so one extra wrapped line on CI was
+ * enough to drop the third row out of composition and fail the count there while it passed here.
+ * At this height every card is laid out in full with roughly four wrapped lines of slack below the
+ * last one, so the assertion says what it means on either platform. Width stays the knob these
+ * tests actually vary.
  */
-private val WindowHeight = 900.dp
+private val WindowHeight = 1100.dp
 
 /** Mirrors TopicBrowserHeaderSpacing, which is private to the screen. */
 private val HeaderSpacing = 12.dp

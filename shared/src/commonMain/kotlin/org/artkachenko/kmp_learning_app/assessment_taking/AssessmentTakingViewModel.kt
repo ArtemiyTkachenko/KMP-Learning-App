@@ -42,7 +42,7 @@ internal class AssessmentTakingViewModel(
 
     fun selectAnswer(answerId: String) {
         val currentState = uiState.value as? AssessmentTakingUiState.Content ?: return
-        if (currentState.isSubmitting) return
+        if (currentState.isSubmitting || currentState.feedback != null) return
 
         val question = session?.questions?.getOrNull(currentQuestionIndex) ?: return
         if (question.answers.none { it.id == answerId }) return
@@ -79,7 +79,16 @@ internal class AssessmentTakingViewModel(
                 updatedSession
             }.onSuccess { updatedSession ->
                 session = updatedSession
-                if (currentQuestionIndex == updatedSession.questions.lastIndex) {
+                if (isFormativePractice()) {
+                    _uiState.value = currentState.copy(
+                        selectedAnswerIds = pendingSelectedAnswerIds,
+                        isSubmitting = false,
+                        feedback = PracticeFeedback(
+                            isCorrect = (updatedSession.attempt.questionAttempts[currentQuestionIndex]
+                                .answerState as QuestionAnswerState.Answered).isCorrect,
+                        ),
+                    )
+                } else if (currentQuestionIndex == updatedSession.questions.lastIndex) {
                     _uiState.value = AssessmentTakingUiState.ReadyToComplete(
                         attemptId = updatedSession.attempt.id,
                         totalQuestions = updatedSession.questions.size,
@@ -95,6 +104,27 @@ internal class AssessmentTakingViewModel(
                     submissionFailed = true,
                 )
             }
+        }
+    }
+
+    /** Moves forward only after the learner has seen formative feedback. */
+    fun nextQuestion() {
+        val currentState = uiState.value as? AssessmentTakingUiState.Content ?: return
+        if (currentState.feedback == null) return
+        val currentSession = session ?: return
+        if (currentQuestionIndex == currentSession.questions.lastIndex) {
+            _uiState.value = AssessmentTakingUiState.ReadyToComplete(
+                attemptId = currentSession.attempt.id,
+                totalQuestions = currentSession.questions.size,
+            )
+            // Practice has no decision left after its final feedback. Completing here preserves
+            // the same persistence/history invalidation path as Interview while removing a
+            // redundant "ready to finish" stop between learning and Results.
+            completeAssessment()
+        } else {
+            currentQuestionIndex += 1
+            pendingSelectedAnswerIds = emptySet()
+            publishContent()
         }
     }
 
@@ -197,6 +227,7 @@ internal class AssessmentTakingViewModel(
             canSubmit = false,
             isSubmitting = false,
             submissionFailed = false,
+            feedback = null,
         )
     }
 
@@ -212,6 +243,7 @@ internal class AssessmentTakingViewModel(
             canSubmit = pendingSelectedAnswerIds.isNotEmpty(),
             isSubmitting = false,
             submissionFailed = false,
+            feedback = null,
         )
     }
 
@@ -221,5 +253,10 @@ internal class AssessmentTakingViewModel(
             text = text,
             answers = answers,
             selectionMode = selectionMode,
+            correctAnswerIds = correctAnswerIds,
+            explanation = explanation,
         )
+
+    private fun isFormativePractice(): Boolean =
+        (session?.attempt?.config ?: (launch as? AssessmentTakingLaunch.New)?.config) is AssessmentConfig.Focused
 }

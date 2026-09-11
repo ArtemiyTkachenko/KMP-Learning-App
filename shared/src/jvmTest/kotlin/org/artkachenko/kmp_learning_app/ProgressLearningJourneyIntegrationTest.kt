@@ -123,7 +123,7 @@ internal class ProgressLearningJourneyIntegrationTest {
 
                     onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.PROGRESS))
                         .performClick()
-                    waitForText("Completed assessments")
+                    waitForText("Completed sessions")
                     // The derived values, not just their labels.
                     onNode(hasText("Questions answered") and hasText("7")).assertIsDisplayed()
                     onNode(hasText("Correct answers") and hasText("3")).assertIsDisplayed()
@@ -132,31 +132,14 @@ internal class ProgressLearningJourneyIntegrationTest {
                         onAllNodesWithText("42.9%").fetchSemanticsNodes().isNotEmpty(),
                     )
 
-                    // Coverage and recent performance answer different questions from the lifetime
-                    // accuracy above, and this fixture makes the difference visible: the learner
-                    // has met every current Question and answered fewer than half of them right.
-                    // The percentages alone cannot be told apart here — lifetime and recent are the
-                    // same 42.9% over three attempts — so each surface is asserted through wording
-                    // only it produces.
+                    // Coverage is a count, while three sessions are intentionally too little
+                    // history to promote a separate Recent Performance surface.
                     scrollToText("Curriculum coverage")
                     onNodeWithText("3 of 3 questions explored").assertIsDisplayed()
-                    scrollToText("Recent performance")
-                    onNodeWithText("Last 3 completed assessments").assertIsDisplayed()
-                    onNodeWithText("3 / 7 correct").assertIsDisplayed()
-                    scrollToTag(ProgressRecentTrendChartTag)
-                    // Oldest -> newest, in the order the domain produced, and every value taken
-                    // from persisted correctness rather than the current answer keys.
-                    onNodeWithContentDescription(
-                        "Recent assessment accuracy, oldest to newest: 0%, 100%, 50%.",
-                    ).assertIsDisplayed()
+                    onNodeWithText("Recent performance").assertDoesNotExist()
 
                     scrollToText("Weak areas")
                     assertTrue(onAllNodesWithText("Android").fetchSemanticsNodes().isNotEmpty())
-                    assertTrue(onAllNodesWithText("Lifecycle").fetchSemanticsNodes().isNotEmpty())
-                    // Scroll first: the navigation bar shortens the list, so a row further down
-                    // is no longer composed just because the section header is visible.
-                    scrollToText("State")
-                    assertTrue(onAllNodesWithText("State").fetchSemanticsNodes().isNotEmpty())
 
                     // Scrolled to as a lazy node rather than with performScrollTo: that only works
                     // on an already-composed node, so it depended on this row happening to fall
@@ -173,10 +156,15 @@ internal class ProgressLearningJourneyIntegrationTest {
                     onNodeWithText("40%").assertIsDisplayed()
                     onNodeWithText("Lifecycle").assertIsDisplayed()
                     onNodeWithText("1 / 3 correct").assertIsDisplayed()
-                    onNodeWithText("33.3%").assertIsDisplayed()
+                    onNodeWithText("33.3%").assertDoesNotExist()
                     onNodeWithText("State").assertIsDisplayed()
                     onNodeWithText("1 / 2 correct").assertIsDisplayed()
-                    onNodeWithText("50%").assertIsDisplayed()
+                    onNodeWithText("50%").assertDoesNotExist()
+                    assertTrue(
+                        onAllNodesWithText(
+                            "Not enough data yet. Practice more to measure this area.",
+                        ).fetchSemanticsNodes().isNotEmpty(),
+                    )
                     onNodeWithText("Never observed").assertDoesNotExist()
                     // Current coverage sits beside the historical fraction on each card rather
                     // than replacing it: "2 / 5 correct" counts every occurrence, "3 of 3" counts
@@ -184,7 +172,7 @@ internal class ProgressLearningJourneyIntegrationTest {
                     onNodeWithText("3 of 3 current questions explored").assertIsDisplayed()
                     onNodeWithText("2 of 2 current questions explored").assertIsDisplayed()
                     onNodeWithText("1 of 1 current questions explored").assertIsDisplayed()
-                    assertTrue(onAllNodesWithText("Weak area").fetchSemanticsNodes().size >= 3)
+                    assertEquals(1, onAllNodesWithText("Weak area").fetchSemanticsNodes().size)
                     onNodeWithContentDescription("Back").performClick()
                     waitForText("Progress")
 
@@ -238,9 +226,11 @@ internal class ProgressLearningJourneyIntegrationTest {
                     scrollToText("Legacy question")
                     onNodeWithText("Legacy question").assertIsDisplayed()
                     onNodeWithText("Selected legacy answer").performScrollTo().assertIsDisplayed()
-                    assertTrue(onAllNodesWithText("Your answer").fetchSemanticsNodes().isNotEmpty())
+                    assertTrue(
+                        onAllNodesWithText("✕ Incorrectly selected").fetchSemanticsNodes().isNotEmpty(),
+                    )
                     onNodeWithText("Correct legacy answer").performScrollTo().assertIsDisplayed()
-                    assertTrue(onAllNodesWithText("Correct answer").fetchSemanticsNodes().isNotEmpty())
+                    assertTrue(onAllNodesWithText("✕ Missed").fetchSemanticsNodes().isNotEmpty())
                     onNodeWithText("Legacy explanation").performScrollTo().assertIsDisplayed()
                     scrollToText("Source: Lifecycle docs")
                     onNodeWithText("Source: Lifecycle docs").performClick()
@@ -365,14 +355,14 @@ internal class ProgressLearningJourneyIntegrationTest {
             3,
             1,
             100.0 / 3.0,
-            true,
+            false,
         )
         assertPerformance(
             snapshot.subtopics.single { it.subtopicId == StateSubtopicId },
             2,
             1,
             50.0,
-            true,
+            false,
         )
         assertPerformance(
             snapshot.subtopics.single { it.subtopicId == LegacySubtopicId },
@@ -383,7 +373,7 @@ internal class ProgressLearningJourneyIntegrationTest {
         )
         assertFalse(snapshot.subtopics.any { it.subtopicId == UnobservedSubtopicId })
         assertEquals(
-            listOf(LifecycleSubtopicId, AndroidTopicId, StateSubtopicId),
+            listOf(AndroidTopicId),
             snapshot.weakAreas.map {
                 when (it) {
                     is WeakArea.Topic -> it.performance.topicId

@@ -48,6 +48,8 @@ internal class MixedInterviewResultScreenTest {
         onNodeWithText("Topic unavailable").performScrollTo().assertIsDisplayed()
         onNodeWithText("2 / 3 correct").performScrollTo().assertIsDisplayed()
         onNodeWithText("Question review").performScrollTo().assertIsDisplayed()
+        onNode(hasScrollAction()).performScrollToNode(hasText("Review answer"))
+        onNodeWithText("Review answer").performClick()
         onNodeWithText("Authored explanation").performScrollTo().assertIsDisplayed()
         onNodeWithText("Source: Official docs").performScrollTo().performClick()
         assertEquals("https://example.com/docs", openedUrl)
@@ -112,6 +114,8 @@ internal class MixedInterviewResultScreenTest {
             }
         }
 
+        onNode(hasScrollAction()).performScrollToNode(hasText("Review answer"))
+        onNodeWithText("Review answer").performClick()
         onNodeWithText("This source could not be opened.")
             .performScrollTo()
             .assertIsDisplayed()
@@ -199,7 +203,7 @@ internal class MixedInterviewResultScreenTest {
             }
         }
 
-        onNodeWithText("Practice Again").assertIsDisplayed().performClick()
+        onNodeWithText("Retake interview").assertIsDisplayed().performClick()
         assertEquals(1, repeats)
     }
 
@@ -221,6 +225,8 @@ internal class MixedInterviewResultScreenTest {
         onNodeWithText("Starting interview").assertIsDisplayed()
         onNodeWithText("Score: 3 / 5").assertIsDisplayed()
         onNodeWithText("Performance by topic").performScrollTo().assertIsDisplayed()
+        onNode(hasScrollAction()).performScrollToNode(hasText("Review answer"))
+        onNodeWithText("Review answer").performClick()
         onNodeWithText("Authored explanation").performScrollTo().assertIsDisplayed()
     }
 
@@ -245,7 +251,7 @@ internal class MixedInterviewResultScreenTest {
 
         repeatState = RepeatInterviewState.NoEligibleQuestions
         onNodeWithText("No interview questions are currently available.").assertIsDisplayed()
-        onNodeWithText("Practice Again").assertIsDisplayed()
+        onNodeWithText("Retake interview").assertIsDisplayed()
 
         repeatState = RepeatInterviewState.Error
         onNodeWithText("Interview could not be started. Try again.").assertIsDisplayed()
@@ -295,7 +301,7 @@ internal class MixedInterviewResultScreenTest {
         onNodeWithText("Kotlin").performScrollTo().assertIsDisplayed()
         onNodeWithText("2 / 3 correct").performScrollTo().assertIsDisplayed()
         onNodeWithText("Unsave").performScrollTo().assertIsDisplayed()
-        onNodeWithText("Practice Again").assertIsDisplayed()
+        onNodeWithText("Retake interview").assertIsDisplayed()
     }
 
     /** A saved-state failure must not remove the result the learner came here to read. */

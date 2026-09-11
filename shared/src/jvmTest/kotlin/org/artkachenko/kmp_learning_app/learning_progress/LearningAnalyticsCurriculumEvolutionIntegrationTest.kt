@@ -326,7 +326,7 @@ internal class LearningAnalyticsCurriculumEvolutionIntegrationTest {
             assertEquals(1, topic.attemptedQuestionCount)
             assertEquals(2, topic.totalQuestionCount)
             assertEquals(50.0, assertNotNull(topic.coveragePercentage), absoluteTolerance = Tolerance)
-            assertTrue(topic.isWeak)
+            assertFalse(topic.isWeak)
             assertFalse(topic.isUnstudied)
 
             val subtopic = index.forSubtopic(LifecycleSubtopicId)
@@ -362,19 +362,10 @@ internal class LearningAnalyticsCurriculumEvolutionIntegrationTest {
         assertPerformance(snapshot.topics.single(), answered = 3, correct = 2)
         assertPerformance(snapshot.subtopics.single(), answered = 3, correct = 2)
 
-        // Weakness is a verdict about historical evidence, and coverage plays no part in it: this
-        // scope is fully covered and still weak.
-        assertTrue(snapshot.topics.single().isWeak)
-        assertTrue(snapshot.subtopics.single().isWeak)
-        assertEquals(
-            listOf(LifecycleSubtopicId, AndroidTopicId),
-            snapshot.weakAreas.map {
-                when (it) {
-                    is WeakArea.Topic -> it.performance.topicId
-                    is WeakArea.Subtopic -> it.performance.subtopicId
-                }
-            },
-        )
+        // Three observations preserve the measured accuracy but are exploratory, not a Weak Area.
+        assertFalse(snapshot.topics.single().isWeak)
+        assertFalse(snapshot.subtopics.single().isWeak)
+        assertEquals(emptyList(), snapshot.weakAreas)
 
         assertEquals(
             listOf(FirstAttemptId, SecondAttemptId, ThirdAttemptId),

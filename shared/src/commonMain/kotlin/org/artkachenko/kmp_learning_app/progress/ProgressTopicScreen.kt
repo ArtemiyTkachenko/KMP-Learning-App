@@ -21,6 +21,8 @@ import kmp_learning_app.shared.generated.resources.progress_topic_coverage
 import kmp_learning_app.shared.generated.resources.progress_topic_loading
 import kmp_learning_app.shared.generated.resources.progress_topic_subtopics
 import kmp_learning_app.shared.generated.resources.progress_topic_unavailable
+import kmp_learning_app.shared.generated.resources.progress_not_enough_data
+import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressPolicy
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.layout.PaddingValues
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
@@ -80,15 +82,17 @@ private fun ProgressTopicContent(
         item {
             ProgressPerformanceCard(
                 title = state.topicName ?: stringResource(Res.string.progress_topic_unavailable),
-                subtitle = null,
+                subtitle = evidenceLabel(state.answeredCount),
                 correctCount = state.correctCount,
                 answeredCount = state.answeredCount,
                 percentage = state.percentage,
+                showPercentage = state.answeredCount >= LearningProgressPolicy.WeakAreaMinimumAnswered,
                 // Historical correctness above, current coverage below it: the same two concepts
                 // Topic Detail now shows, so a learner does not have to switch surfaces for one
                 // of them. Adding it as a caption keeps this to one card per scope.
                 caption = coverageCaption(state.coverage),
-                isWeak = state.isWeak,
+                isWeak = state.isWeak &&
+                    state.answeredCount >= LearningProgressPolicy.WeakAreaMinimumAnswered,
                 isSummary = true,
             )
         }
@@ -102,17 +106,27 @@ private fun ProgressTopicContent(
                 ProgressPerformanceCard(
                     title = subtopic.subtopicName
                         ?: stringResource(Res.string.progress_subtopic_unavailable),
-                    subtitle = null,
+                    subtitle = evidenceLabel(subtopic.answeredCount),
                     correctCount = subtopic.correctCount,
                     answeredCount = subtopic.answeredCount,
                     percentage = subtopic.percentage,
+                    showPercentage = subtopic.answeredCount >= LearningProgressPolicy.WeakAreaMinimumAnswered,
                     caption = coverageCaption(subtopic.coverage),
-                    isWeak = subtopic.isWeak,
+                    isWeak = subtopic.isWeak &&
+                        subtopic.answeredCount >= LearningProgressPolicy.WeakAreaMinimumAnswered,
                 )
             }
         }
     }
 }
+
+@Composable
+private fun evidenceLabel(answeredCount: Int): String? =
+    if (answeredCount < LearningProgressPolicy.WeakAreaMinimumAnswered) {
+        stringResource(Res.string.progress_not_enough_data)
+    } else {
+        null
+    }
 
 /**
  * Wording that names the denominator, because this row already carries a second fraction: "5 / 8

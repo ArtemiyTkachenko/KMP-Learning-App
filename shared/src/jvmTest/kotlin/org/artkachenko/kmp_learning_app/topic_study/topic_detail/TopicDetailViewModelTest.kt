@@ -577,10 +577,12 @@ internal class TopicDetailViewModelTest {
                 question("q_weak_1", topic.id, "weak_sub"),
                 question("q_weak_2", topic.id, "weak_sub"),
                 question("q_weak_3", topic.id, "weak_sub"),
+                question("q_weak_4", topic.id, "weak_sub"),
+                question("q_weak_5", topic.id, "weak_sub"),
                 question("q_sparse_1", topic.id, "sparse_sub"),
             ),
         )
-        // weak_sub: three answers at 33%. sparse_sub: one answer at 0%, below the evidence
+        // weak_sub: five answers at 20%. sparse_sub: one answer at 0%, below the evidence
         // threshold the policy needs, so it is just as low without being weak.
         val history = historyRepository(
             completedAttempt(
@@ -588,6 +590,8 @@ internal class TopicDetailViewModelTest {
                 "q_weak_1" to true,
                 "q_weak_2" to false,
                 "q_weak_3" to false,
+                "q_weak_4" to false,
+                "q_weak_5" to false,
                 "q_sparse_1" to false,
             ),
         )

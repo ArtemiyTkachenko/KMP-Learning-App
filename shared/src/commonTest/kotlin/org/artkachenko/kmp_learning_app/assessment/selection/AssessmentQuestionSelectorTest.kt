@@ -546,6 +546,8 @@ internal class AssessmentQuestionSelectorTest {
             question("evidence_a", topicId = "topic_a", subtopicId = "sub_a"),
             question("evidence_b", topicId = "topic_a", subtopicId = "sub_b"),
             question("evidence_c", topicId = "topic_a", subtopicId = "sub_c"),
+            question("evidence_d", topicId = "topic_a", subtopicId = "sub_d"),
+            question("evidence_e", topicId = "topic_a", subtopicId = "sub_e"),
         )
         repository.topicQuestions = mapOf(
             "topic_a" to listOf(
@@ -559,6 +561,8 @@ internal class AssessmentQuestionSelectorTest {
                 "evidence_a" to false,
                 "evidence_b" to false,
                 "evidence_c" to true,
+                "evidence_d" to false,
+                "evidence_e" to true,
             ),
         )
 
@@ -572,7 +576,7 @@ internal class AssessmentQuestionSelectorTest {
     @Test
     fun weakSubtopicDoesNotMakeItsHealthySiblingEligibleWhenTheParentIsHealthy() = runSelectorTest {
         repository.historicalQuestions = buildList {
-            addAll(questionsIn("weak_evidence", 2, "topic_a", "sub_weak"))
+            addAll(questionsIn("weak_evidence", 5, "topic_a", "sub_weak"))
             addAll(questionsIn("healthy_evidence", 5, "topic_a", "sub_healthy"))
         }
         repository.topicQuestions = mapOf(
@@ -599,12 +603,21 @@ internal class AssessmentQuestionSelectorTest {
             question("a", topicId = "topic_a", subtopicId = "sub_a"),
             question("b", topicId = "topic_a", subtopicId = "sub_b"),
             question("c", topicId = "topic_a", subtopicId = "sub_c"),
+            question("d", topicId = "topic_a", subtopicId = "sub_d"),
+            question("e", topicId = "topic_a", subtopicId = "sub_e"),
         )
         repository.subtopicQuestions = mapOf(
             "sub_a" to listOf(question("candidate", topicId = "topic_a", subtopicId = "sub_a")),
         )
         history.attempts = listOf(
-            completedAttemptWithOutcomes("weak_parent", "a" to false, "b" to false, "c" to true),
+            completedAttemptWithOutcomes(
+                "weak_parent",
+                "a" to false,
+                "b" to false,
+                "c" to true,
+                "d" to false,
+                "e" to true,
+            ),
         )
 
         val selected = selector().selectQuestions(
@@ -616,7 +629,7 @@ internal class AssessmentQuestionSelectorTest {
 
     @Test
     fun topicAndSubtopicWeaknessRemainAUnionWithoutDuplicateQuestions() = runSelectorTest {
-        repository.historicalQuestions = questionsIn("evidence", 3, "topic_a", "sub_a")
+        repository.historicalQuestions = questionsIn("evidence", 5, "topic_a", "sub_a")
         val candidate = question("candidate", topicId = "topic_a", subtopicId = "sub_a")
         repository.topicQuestions = mapOf("topic_a" to listOf(candidate, candidate))
         history.attempts = listOf(
@@ -668,7 +681,7 @@ internal class AssessmentQuestionSelectorTest {
 
     @Test
     fun weakAreaSelectionRespectsLevelsAndDoesNotFillFromUnselectedLevels() = runSelectorTest {
-        repository.historicalQuestions = questionsIn("evidence", 3, "topic_a", "sub_a")
+        repository.historicalQuestions = questionsIn("evidence", 5, "topic_a", "sub_a")
         repository.topicQuestions = mapOf(
             "topic_a" to listOf(
                 question("foundation", topicId = "topic_a", subtopicId = "sub_a"),
@@ -700,8 +713,8 @@ internal class AssessmentQuestionSelectorTest {
     @Test
     fun configuredTopicScopeExcludesOtherWeakTopics() = runSelectorTest {
         repository.historicalQuestions =
-            questionsIn("a", 3, "topic_a", "sub_a") +
-                questionsIn("b", 3, "topic_b", "sub_b")
+            questionsIn("a", 5, "topic_a", "sub_a") +
+                questionsIn("b", 5, "topic_b", "sub_b")
         repository.topicQuestions = mapOf(
             "topic_a" to listOf(question("candidate_a", topicId = "topic_a", subtopicId = "sub_a")),
             "topic_b" to listOf(question("candidate_b", topicId = "topic_b", subtopicId = "sub_b")),
@@ -722,8 +735,8 @@ internal class AssessmentQuestionSelectorTest {
     @Test
     fun configuredSubtopicScopeExcludesOtherWeakSubtopics() = runSelectorTest {
         repository.historicalQuestions =
-            questionsIn("a", 2, "topic_a", "sub_a") +
-                questionsIn("b", 2, "topic_b", "sub_b")
+            questionsIn("a", 5, "topic_a", "sub_a") +
+                questionsIn("b", 5, "topic_b", "sub_b")
         repository.subtopicQuestions = mapOf(
             "sub_a" to listOf(question("candidate_a", topicId = "topic_a", subtopicId = "sub_a")),
             "sub_b" to listOf(question("candidate_b", topicId = "topic_b", subtopicId = "sub_b")),
@@ -745,7 +758,7 @@ internal class AssessmentQuestionSelectorTest {
 
     @Test
     fun weakAreaSelectionUsesActiveCandidatesAndPreservesCountAndRandomization() = runSelectorTest {
-        repository.historicalQuestions = questionsIn("evidence", 3, "topic_a", "sub_a")
+        repository.historicalQuestions = questionsIn("evidence", 5, "topic_a", "sub_a")
         repository.topicQuestions = mapOf(
             "topic_a" to listOf(
                 question("candidate_a", topicId = "topic_a", subtopicId = "sub_a"),
@@ -1424,8 +1437,8 @@ internal class AssessmentQuestionSelectorTest {
     @Test
     fun multiSubtopicWeakPracticeCannotAdmitAWeakSubtopicOutsideTheScope() = runSelectorTest {
         repository.historicalQuestions =
-            questionsIn("weak_scoped_evidence", 2, "topic_a", "sub_a") +
-                questionsIn("weak_outside_evidence", 2, "topic_b", "sub_out")
+            questionsIn("weak_scoped_evidence", 5, "topic_a", "sub_a") +
+                questionsIn("weak_outside_evidence", 5, "topic_b", "sub_out")
         repository.subtopicQuestions = mapOf(
             "sub_a" to listOf(question("weak_scoped", topicId = "topic_a", subtopicId = "sub_a")),
             "sub_b" to listOf(question("healthy_scoped", topicId = "topic_a", subtopicId = "sub_b")),

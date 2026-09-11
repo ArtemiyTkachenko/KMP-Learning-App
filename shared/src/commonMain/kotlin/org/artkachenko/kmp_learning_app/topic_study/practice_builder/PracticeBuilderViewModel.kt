@@ -75,13 +75,8 @@ internal class PracticeBuilderViewModel(
         resolveTarget()
     }
 
-    /**
-     * Count does not change which Questions are eligible, only how many of them are asked, so this
-     * deliberately does not re-run the eligibility read. Selection takes what exists when fewer
-     * Questions are eligible than requested, which is the pre-existing focused-practice contract.
-     */
     fun selectQuestionCount(questionCount: Int) {
-        if (questionCount !in PracticeQuestionCountOptions) return
+        if (questionCount !in _uiState.value.questionCountOptions) return
         _uiState.update { it.copy(questionCount = questionCount) }
     }
 
@@ -221,9 +216,30 @@ internal class PracticeBuilderViewModel(
         _uiState.update { it.copy(availability = PracticeAvailability.Checking) }
         availabilityJob = viewModelScope.launch {
             val availability = try {
-                when (val selection = questionSelector.select(currentConfig(scope))) {
-                    is AssessmentSelectionResult.Selected ->
-                        PracticeAvailability.Available(selection.questions.size)
+                // Ask the selector for a deliberately large run to discover the actual eligible
+                // pool. The normal selector remains the single selection boundary; the builder
+                // merely uses that answer to avoid promising an impossible session length.
+                when (val selection = questionSelector.select(currentConfig(scope, Int.MAX_VALUE))) {
+                    is AssessmentSelectionResult.Selected -> {
+                        val available = selection.questions.size
+                        val presets = PracticeQuestionCountOptions.filter { it <= available }
+                        // Preserve familiar presets and append the exact pool size whenever the
+                        // pool falls between them. It is the only truthful way to offer all six,
+                        // eight, or seventeen matching Questions without calling that option ten.
+                        val options = when {
+                            available == 0 -> emptyList()
+                            available in presets -> presets
+                            else -> presets + available
+                        }
+                        val selected = _uiState.value.questionCount
+                            .takeIf { it in options }
+                            ?: options.lastOrNull()
+                            ?: DefaultPracticeQuestionCount
+                        _uiState.update {
+                            it.copy(questionCount = selected, questionCountOptions = options)
+                        }
+                        PracticeAvailability.Available(available)
+                    }
                     // Every no-content reason is the same answer here: this configuration has
                     // nothing to ask. The typed reasons stay useful at the selection boundary,
                     // but the builder's own invariants already rule out the two it could
@@ -246,6 +262,6 @@ internal class PracticeBuilderViewModel(
         _uiState.update { it.copy(availability = availability) }
     }
 
-    private fun currentConfig(scope: AssessmentScope): AssessmentConfig.Focused =
-        _uiState.value.toAssessmentConfig(scope)
+    private fun currentConfig(scope: AssessmentScope, questionCount: Int = _uiState.value.questionCount): AssessmentConfig.Focused =
+        _uiState.value.toAssessmentConfig(scope).copy(questionCount = questionCount)
 }

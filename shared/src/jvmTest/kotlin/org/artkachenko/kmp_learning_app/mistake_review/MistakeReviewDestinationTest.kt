@@ -67,6 +67,7 @@ internal class MistakeReviewDestinationTest {
                         onBack = {},
                         onBrowseTopics = {},
                         onConfigurePractice = {},
+                        onStartPractice = {},
                         viewModel = viewModel,
                     )
                 }
@@ -101,6 +102,7 @@ internal class MistakeReviewDestinationTest {
                         onBack = {},
                         onBrowseTopics = {},
                         onConfigurePractice = {},
+                        onStartPractice = {},
                         viewModel = destinationViewModel(),
                     )
                 }
@@ -125,6 +127,7 @@ internal class MistakeReviewDestinationTest {
                         onBack = {},
                         onBrowseTopics = {},
                         onConfigurePractice = {},
+                        onStartPractice = {},
                         viewModel = destinationViewModel(),
                     )
                 }

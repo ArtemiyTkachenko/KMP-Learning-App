@@ -10,10 +10,49 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
+import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
+import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
+import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
+import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 
 @OptIn(ExperimentalTestApi::class)
 internal class AssessmentReviewComponentsTest {
+    @Test
+    fun retainedMistakesStartAnExactUnresolvedPractice() = runComposeUiTest {
+        val configs = mutableListOf<AssessmentConfig.Focused>()
+        setContent {
+            AppTheme {
+                MistakeRetentionNotice(
+                    questions = listOf(
+                        ReviewQuestionItem.Available(question(isCorrect = false)),
+                        ReviewQuestionItem.Available(
+                            question(isCorrect = false).copy(questionId = "q2", subtopicId = "other"),
+                        ),
+                        ReviewQuestionItem.Available(
+                            question(isCorrect = true).copy(questionId = "q3"),
+                        ),
+                    ),
+                    onPracticeMistakes = configs::add,
+                )
+            }
+        }
+
+        onNodeWithText("Practice 2 mistakes").performClick()
+
+        assertEquals(
+            listOf(
+                AssessmentConfig.Focused(
+                    scope = AssessmentScope.Subtopics(setOf("topic_basics", "other")),
+                    questionCount = 2,
+                    levels = AllQuestionLevels,
+                    source = PracticeQuestionSource.UNRESOLVED_MISTAKES,
+                ),
+            ),
+            configs,
+        )
+    }
+
     @Test
     fun questionReviewRendersAnswerMeaningExplanationAndOrderedSources() = runComposeUiTest {
         val openedUrls = mutableListOf<String>()
@@ -42,8 +81,8 @@ internal class AssessmentReviewComponentsTest {
         }
 
         onNodeWithText("Incorrect").assertIsDisplayed()
-        onNodeWithText("Your answer").assertIsDisplayed()
-        onNodeWithText("Correct answer").assertIsDisplayed()
+        onNodeWithText("✕ Incorrectly selected").assertIsDisplayed()
+        onNodeWithText("✕ Missed").assertIsDisplayed()
         onNodeWithText("Authored explanation").assertIsDisplayed()
         onNodeWithText("Source: Source B").performClick()
         onNodeWithText("Source: Source A").performClick()
@@ -234,8 +273,8 @@ internal class AssessmentReviewComponentsTest {
 
         // Answer review is unchanged by the addition of the save action.
         onNodeWithText("Incorrect").assertIsDisplayed()
-        onNodeWithText("Your answer").assertIsDisplayed()
-        onNodeWithText("Correct answer").assertIsDisplayed()
+        onNodeWithText("✕ Incorrectly selected").assertIsDisplayed()
+        onNodeWithText("✕ Missed").assertIsDisplayed()
         onNodeWithText("Authored explanation").assertIsDisplayed()
     }
 

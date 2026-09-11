@@ -11,6 +11,8 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
+import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
+import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewAnswerUiModel
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
@@ -23,6 +25,98 @@ import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 
 @OptIn(ExperimentalTestApi::class)
 internal class MistakeReviewScreenTest {
+    @Test
+    fun aMappedMistakeNavigatesToItsStableLessonIds() = runComposeUiTest {
+        val opened = mutableListOf<MistakeStudyLesson>()
+        setContent {
+            MaterialTheme {
+                MistakeReviewScreen(
+                    state = MistakeReviewUiState.Content(
+                        listOf(
+                            availableMistake("q1").copy(
+                                studyLesson = MistakeStudyLesson(
+                                    unitId = "unit-compose",
+                                    lessonId = "lesson-state",
+                                    title = "State hoisting",
+                                ),
+                            ),
+                        ),
+                    ),
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onSourceClick = {},
+                    onPracticePreset = {},
+                    onStudyLesson = opened::add,
+                )
+            }
+        }
+
+        onNodeWithText("Review lesson: State hoisting").performScrollTo().performClick()
+
+        assertEquals(
+            listOf(MistakeStudyLesson("unit-compose", "lesson-state", "State hoisting")),
+            opened,
+        )
+    }
+
+    @Test
+    fun queueSummaryStartsOnePracticeForEveryAvailableMistake() = runComposeUiTest {
+        val configs = mutableListOf<AssessmentConfig.Focused>()
+        setContent {
+            MaterialTheme {
+                MistakeReviewScreen(
+                    state = MistakeReviewUiState.Content(
+                        listOf(
+                            availableMistake("q1", subtopicId = "flows"),
+                            availableMistake("q2", subtopicId = "coroutines"),
+                            UnresolvedMistake("gone", "attempt", ReviewQuestionItem.Missing("gone")),
+                        ),
+                    ),
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onSourceClick = {},
+                    onPracticePreset = {},
+                    onStartPractice = configs::add,
+                )
+            }
+        }
+
+        onNodeWithText("3 unresolved mistakes to review").assertIsDisplayed()
+        onNodeWithText("Practice 2 mistakes").performClick()
+
+        assertEquals(
+            listOf(
+                AssessmentConfig.Focused(
+                    scope = AssessmentScope.Subtopics(setOf("flows", "coroutines")),
+                    questionCount = 2,
+                    levels = AllQuestionLevels,
+                    source = PracticeQuestionSource.UNRESOLVED_MISTAKES,
+                ),
+            ),
+            configs,
+        )
+    }
+
+    @Test
+    fun missingQuestionsAreCountedButDoNotCreateAFabricatedPracticeScope() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MistakeReviewScreen(
+                    state = MistakeReviewUiState.Content(
+                        listOf(UnresolvedMistake("gone", "attempt", ReviewQuestionItem.Missing("gone"))),
+                    ),
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onSourceClick = {},
+                    onPracticePreset = {},
+                )
+            }
+        }
+
+        onNodeWithText("1 unresolved mistakes to review").assertIsDisplayed()
+        onNodeWithTag(MistakeReviewPracticeAllTag).assertDoesNotExist()
+    }
+
     @Test
     fun loadingStateRenders() = runComposeUiTest {
         setContent {
@@ -83,8 +177,8 @@ internal class MistakeReviewScreenTest {
         onNodeWithText("Question q1").assertIsDisplayed()
         // Rendered by the shared ReviewQuestionCard rather than a mistake-specific copy.
         onNodeWithText("Incorrect").assertExists()
-        onNodeWithText("Your answer").assertExists()
-        onNodeWithText("Correct answer").assertExists()
+        onNodeWithText("✕ Incorrectly selected").assertExists()
+        onNodeWithText("✕ Missed").assertExists()
         onNodeWithText("Explanation").performScrollTo().assertIsDisplayed()
         onNodeWithText("Explanation for q1").assertExists()
         onNodeWithText("Source: Kotlin docs").assertExists()

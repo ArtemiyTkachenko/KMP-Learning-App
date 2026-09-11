@@ -10,12 +10,14 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
+import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 
 @Composable
 internal fun FocusedResultDestination(
     attemptId: String,
     onBack: () -> Unit,
     onRetakeCreated: (String) -> Unit,
+    onPracticeMistakes: (AssessmentConfig.Focused) -> Unit,
     viewModel: FocusedResultViewModel = koinViewModel { parametersOf(attemptId) },
 ) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
@@ -39,6 +41,7 @@ internal fun FocusedResultDestination(
             failedSourceUrl = url.takeIf { runCatching { uriHandler.openUri(it) }.isFailure }
         },
         onRepeatPractice = viewModel::repeatPractice,
+        onPracticeMistakes = onPracticeMistakes,
         savedQuestions = savedQuestions,
         // The semantic action, not the repository: persistence stays behind the ViewModel.
         onToggleSaved = viewModel::toggleSaved,

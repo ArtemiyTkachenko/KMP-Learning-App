@@ -40,9 +40,13 @@ import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.assessment_taking_answer_save_error
 import kmp_learning_app.shared.generated.resources.assessment_taking_completion_save_error
+import kmp_learning_app.shared.generated.resources.assessment_taking_correct_answer
+import kmp_learning_app.shared.generated.resources.assessment_taking_feedback_correct
+import kmp_learning_app.shared.generated.resources.assessment_taking_feedback_incorrect
 import kmp_learning_app.shared.generated.resources.assessment_taking_finish
 import kmp_learning_app.shared.generated.resources.assessment_taking_loading
 import kmp_learning_app.shared.generated.resources.assessment_taking_no_questions
+import kmp_learning_app.shared.generated.resources.assessment_taking_next_question
 import kmp_learning_app.shared.generated.resources.assessment_taking_question_progress
 import kmp_learning_app.shared.generated.resources.assessment_taking_ready
 import kmp_learning_app.shared.generated.resources.assessment_taking_results_opening
@@ -75,6 +79,7 @@ internal fun AssessmentTakingScreen(
     state: AssessmentTakingUiState,
     onAnswerClick: (String) -> Unit,
     onSubmit: () -> Unit,
+    onNext: () -> Unit = {},
     onRetry: () -> Unit,
     onBack: () -> Unit,
     onComplete: () -> Unit,
@@ -117,6 +122,7 @@ internal fun AssessmentTakingScreen(
                 state = state,
                 onAnswerClick = onAnswerClick,
                 onSubmit = onSubmit,
+                onNext = onNext,
                 modifier = Modifier.weight(1f),
             )
 
@@ -182,6 +188,7 @@ private fun QuestionContent(
     state: AssessmentTakingUiState.Content,
     onAnswerClick: (String) -> Unit,
     onSubmit: () -> Unit,
+    onNext: () -> Unit,
     modifier: Modifier,
 ) {
     LazyColumn(
@@ -229,7 +236,7 @@ private fun QuestionContent(
                 answerText = answer.text,
                 selected = selected,
                 mode = state.question.selectionMode,
-                enabled = !state.isSubmitting,
+                enabled = !state.isSubmitting && state.feedback == null,
                 onClick = { onAnswerClick(answer.id) },
             )
         }
@@ -240,21 +247,45 @@ private fun QuestionContent(
                     color = MaterialTheme.colorScheme.error,
                 )
             }
+            state.feedback?.let { feedback ->
+                Text(
+                    text = stringResource(
+                        if (feedback.isCorrect) {
+                            Res.string.assessment_taking_feedback_correct
+                        } else {
+                            Res.string.assessment_taking_feedback_incorrect
+                        },
+                    ),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (feedback.isCorrect) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                )
+                state.question.answers.filter { it.id in state.question.correctAnswerIds }.forEach {
+                    Text(
+                        stringResource(Res.string.assessment_taking_correct_answer, it.text),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+                Text(state.question.explanation, style = MaterialTheme.typography.bodyMedium)
+            }
             Button(
-                onClick = onSubmit,
-                enabled = state.canSubmit && !state.isSubmitting,
+                onClick = if (state.feedback == null) onSubmit else onNext,
+                enabled = (state.canSubmit && !state.isSubmitting) || state.feedback != null,
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag(AssessmentTakingSubmitTag),
             ) {
                 Text(
-                    text = stringResource(
-                        if (state.isSubmitting) {
-                            Res.string.assessment_taking_submitting
-                        } else {
-                            Res.string.assessment_taking_submit
-                        },
-                    ),
+                    if (state.feedback != null) {
+                        stringResource(Res.string.assessment_taking_next_question)
+                    } else {
+                        stringResource(
+                            if (state.isSubmitting) {
+                                Res.string.assessment_taking_submitting
+                            } else {
+                                Res.string.assessment_taking_submit
+                            },
+                        )
+                    },
                 )
             }
         }

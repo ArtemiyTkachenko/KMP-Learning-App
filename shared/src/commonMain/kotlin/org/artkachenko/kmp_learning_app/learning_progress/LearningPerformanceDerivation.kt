@@ -80,9 +80,15 @@ internal class LearningPerformanceDerivation(
                 )
             }
 
+        // A parent aggregate and one of its children are two views of the same evidence. Prefer the
+        // actionable child whenever one qualifies; retain a Topic only when none of its children
+        // has enough weak evidence, so Topic-scoped recommendations still work without duplication.
+        val weakSubtopics = subtopics.filter(SubtopicPerformance::isWeak)
+        val topicsWithWeakChildren = weakSubtopics.mapTo(mutableSetOf()) { it.topicId }
         val weakAreas = buildList {
-            topics.filter(TopicPerformance::isWeak).forEach { add(WeakArea.Topic(it)) }
-            subtopics.filter(SubtopicPerformance::isWeak).forEach { add(WeakArea.Subtopic(it)) }
+            weakSubtopics.forEach { add(WeakArea.Subtopic(it)) }
+            topics.filter { it.isWeak && it.topicId !in topicsWithWeakChildren }
+                .forEach { add(WeakArea.Topic(it)) }
         }.sortedWith(
             compareBy<WeakArea> { it.percentage }
                 .thenByDescending { it.answeredCount }

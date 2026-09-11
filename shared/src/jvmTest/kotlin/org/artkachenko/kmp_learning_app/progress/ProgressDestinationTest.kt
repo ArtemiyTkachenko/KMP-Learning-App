@@ -76,7 +76,7 @@ internal class ProgressDestinationTest {
 
         owner.moveTo(Lifecycle.State.RESUMED)
         waitForIdle()
-        onNodeWithText("Completed assessments").assertIsDisplayed()
+        onNodeWithText("Completed sessions").assertIsDisplayed()
 
         // The dashboard no longer re-reads on every resume: the shared cache is what changes, and
         // it does so when something marks it stale. Leaving and returning must show the new data
@@ -87,7 +87,7 @@ internal class ProgressDestinationTest {
         owner.moveTo(Lifecycle.State.RESUMED)
         waitForIdle()
 
-        onNodeWithText("Completed assessments").assertIsDisplayed()
+        onNodeWithText("Completed sessions").assertIsDisplayed()
         // The dashboard now carries coverage and recent performance above the history, so the rows
         // sit below the fold; each is scrolled to by its own stable attempt handle rather than
         // counted, which also says which attempt was found.
@@ -133,8 +133,8 @@ internal class ProgressDestinationTest {
         onNodeWithTag(ProgressContentTag)
             .performScrollToNode(hasText("Mixed Android Interview"))
         onNodeWithText("Mixed Android Interview").performClick()
-        onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("Focused practice"))
-        onNodeWithText("Focused practice").performClick()
+        onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("Practice"))
+        onNodeWithText("Practice").performClick()
 
         assertEquals(listOf("mixed-attempt"), mixedTargets)
         assertEquals(listOf("focused-attempt"), focusedTargets)

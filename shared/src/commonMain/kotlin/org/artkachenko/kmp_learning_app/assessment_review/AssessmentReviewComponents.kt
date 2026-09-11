@@ -7,11 +7,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -20,8 +25,17 @@ import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.assessment_review_accuracy_caption
 import kmp_learning_app.shared.generated.resources.assessment_review_correct
 import kmp_learning_app.shared.generated.resources.assessment_review_correct_answer
+import kmp_learning_app.shared.generated.resources.assessment_review_correctly_selected
+import kmp_learning_app.shared.generated.resources.assessment_review_collapse
+import kmp_learning_app.shared.generated.resources.assessment_review_expand
 import kmp_learning_app.shared.generated.resources.assessment_review_incorrect
+import kmp_learning_app.shared.generated.resources.assessment_review_incorrectly_selected
 import kmp_learning_app.shared.generated.resources.assessment_review_missing_question
+import kmp_learning_app.shared.generated.resources.assessment_review_interview_complete
+import kmp_learning_app.shared.generated.resources.assessment_review_practice_complete
+import kmp_learning_app.shared.generated.resources.assessment_review_mistakes_retained
+import kmp_learning_app.shared.generated.resources.assessment_review_missed
+import kmp_learning_app.shared.generated.resources.assessment_review_practice_mistakes
 import kmp_learning_app.shared.generated.resources.assessment_review_partially_correct
 import kmp_learning_app.shared.generated.resources.assessment_review_save_question
 import kmp_learning_app.shared.generated.resources.assessment_review_score
@@ -29,6 +43,10 @@ import kmp_learning_app.shared.generated.resources.assessment_review_selected
 import kmp_learning_app.shared.generated.resources.assessment_review_unresolved_questions
 import kmp_learning_app.shared.generated.resources.assessment_review_unsave_question
 import org.artkachenko.kmp_learning_app.ui.AccuracyHeadline
+import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
+import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
+import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
+import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.ui.PrimarySummaryCard
 import org.artkachenko.kmp_learning_app.ui.StatusBadge
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
@@ -40,20 +58,85 @@ internal fun AssessmentScoreSummary(
     correctAnswers: Int,
     totalQuestions: Int,
     percentage: Double,
+    title: String? = null,
     modifier: Modifier = Modifier,
 ) {
     PrimarySummaryCard(modifier) {
-        // The outcome of the assessment leads at display size instead of being a plain line of
-        // text the same weight as everything under it.
-        AccuracyHeadline(
-            percentage = percentage,
-            caption = stringResource(Res.string.assessment_review_accuracy_caption),
-            supporting = stringResource(
-                Res.string.assessment_review_score,
-                correctAnswers,
-                totalQuestions,
-            ),
-        )
+        title?.let {
+            Text(it, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+        }
+        if (totalQuestions < MeaningfulPercentageQuestionCount) {
+            Text(
+                text = stringResource(
+                    Res.string.assessment_review_score,
+                    correctAnswers,
+                    totalQuestions,
+                ),
+                style = MaterialTheme.typography.displaySmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        } else {
+            AccuracyHeadline(
+                percentage = percentage,
+                caption = stringResource(Res.string.assessment_review_accuracy_caption),
+                supporting = stringResource(
+                    Res.string.assessment_review_score,
+                    correctAnswers,
+                    totalQuestions,
+                ),
+            )
+        }
+    }
+}
+
+private const val MeaningfulPercentageQuestionCount = 5
+
+@Composable
+internal fun MistakeRetentionNotice(
+    questions: List<ReviewQuestionItem>,
+    onPracticeMistakes: ((AssessmentConfig.Focused) -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    val retainedQuestions = questions.mapNotNull { item ->
+        (item as? ReviewQuestionItem.Available)?.question?.takeIf { !it.isCorrect }
+    }
+    val retained = retainedQuestions.size
+    if (retained > 0) {
+        Column(modifier, verticalArrangement = Arrangement.spacedBy(AppSpacing.Related)) {
+            Text(
+                text = org.jetbrains.compose.resources.pluralStringResource(
+                    Res.plurals.assessment_review_mistakes_retained,
+                    retained,
+                    retained,
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = AppThemeExtras.semanticColors.partiallyCorrect,
+            )
+            if (onPracticeMistakes != null) {
+                Button(
+                    onClick = {
+                        onPracticeMistakes(
+                            AssessmentConfig.Focused(
+                                scope = AssessmentScope.Subtopics(
+                                    retainedQuestions.mapTo(linkedSetOf()) { it.subtopicId },
+                                ),
+                                questionCount = retained,
+                                levels = AllQuestionLevels,
+                                source = PracticeQuestionSource.UNRESOLVED_MISTAKES,
+                            ),
+                        )
+                    },
+                ) {
+                    Text(
+                        org.jetbrains.compose.resources.pluralStringResource(
+                            Res.plurals.assessment_review_practice_mistakes,
+                            retained,
+                            retained,
+                        ),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -135,6 +218,7 @@ internal fun ReviewQuestionCard(
     saveAction: ReviewSaveAction? = null,
     modifier: Modifier = Modifier,
 ) {
+    var expanded by rememberSaveable(question.questionId) { mutableStateOf(!question.isCorrect) }
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -158,15 +242,28 @@ internal fun ReviewQuestionCard(
                 }
             }
             QuestionOutcomeLabel(question.outcome())
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                question.answers.forEach { ReviewAnswerRow(it) }
+            TextButton(onClick = { expanded = !expanded }) {
+                Text(
+                    stringResource(
+                        if (expanded) {
+                            Res.string.assessment_review_collapse
+                        } else {
+                            Res.string.assessment_review_expand
+                        },
+                    ),
+                )
             }
-            QuestionExplanationBlock(question.explanation)
-            QuestionSources(
-                sources = question.sources,
-                onSourceClick = onSourceClick,
-                failedSourceUrl = failedSourceUrl,
-            )
+            if (expanded) {
+                Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Related)) {
+                    question.answers.forEach { ReviewAnswerRow(it) }
+                }
+                QuestionExplanationBlock(question.explanation)
+                QuestionSources(
+                    sources = question.sources,
+                    onSourceClick = onSourceClick,
+                    failedSourceUrl = failedSourceUrl,
+                )
+            }
         }
     }
 }
@@ -241,24 +338,22 @@ private fun ReviewAnswerRow(answer: ReviewAnswerUiModel) {
         AnswerOutcome.MISSED, AnswerOutcome.NEUTRAL -> MaterialTheme.colorScheme.surface
     }
 
+    val label = when (outcome) {
+        AnswerOutcome.CORRECT -> stringResource(Res.string.assessment_review_correctly_selected)
+        AnswerOutcome.MISSED -> stringResource(Res.string.assessment_review_missed)
+        AnswerOutcome.WRONG -> stringResource(Res.string.assessment_review_incorrectly_selected)
+        AnswerOutcome.NEUTRAL -> null
+    }
     QuestionAnswerOption(
         text = answer.text,
         borderColor = border,
         containerColor = container,
-        tags = if (answer.wasSelected || answer.isCorrectAnswer) {
+        tags = if (label != null) {
             {
-                if (answer.wasSelected) {
-                    QuestionAnswerTag(
-                        text = stringResource(Res.string.assessment_review_selected),
-                        color = if (answer.isCorrectAnswer) semantic.correct else semantic.incorrect,
-                    )
-                }
-                if (answer.isCorrectAnswer) {
-                    QuestionAnswerTag(
-                        text = stringResource(Res.string.assessment_review_correct_answer),
-                        color = semantic.correct,
-                    )
-                }
+                QuestionAnswerTag(
+                    text = label,
+                    color = if (outcome == AnswerOutcome.WRONG) semantic.incorrect else semantic.correct,
+                )
             }
         } else {
             null

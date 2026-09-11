@@ -220,6 +220,14 @@ private fun AppShell(
                             onConfigurePractice = { preset ->
                                 navigator.push(preset.toPracticeBuilderRoute())
                             },
+                            onStartPractice = { config ->
+                                navigator.push(config.toPracticeRoute())
+                            },
+                            onStudyLesson = { lesson ->
+                                navigator.push(
+                                    AppRoute.LearningLesson(lesson.unitId, lesson.lessonId),
+                                )
+                            },
                         )
                     }
                     entry<AppRoute.MixedInterview> { route ->
@@ -250,6 +258,9 @@ private fun AppShell(
                             onBack = { popBack() },
                             onRetakeCreated = { attemptId ->
                                 navigator.push(AppRoute.MixedInterviewAttempt(attemptId))
+                            },
+                            onPracticeMistakes = { config ->
+                                navigator.push(config.toPracticeRoute())
                             },
                         )
                     }
@@ -427,6 +438,9 @@ private fun AppShell(
                             onBack = { popBack() },
                             onRetakeCreated = { attemptId ->
                                 navigator.push(AppRoute.FocusedPracticeAttempt(attemptId))
+                            },
+                            onPracticeMistakes = { config ->
+                                navigator.push(config.toPracticeRoute())
                             },
                         )
                     }

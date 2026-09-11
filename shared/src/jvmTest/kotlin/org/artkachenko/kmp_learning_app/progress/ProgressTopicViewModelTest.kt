@@ -83,15 +83,21 @@ internal class ProgressTopicViewModelTest {
     fun weakSubtopicsUseTheDerivedPolicyFlagWithoutRecalculation() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val context = topicTestContext(
-            // coroutines: 0/2 -> weak (>=2 observations below 70%). basics: 1/1 -> not weak.
+            // coroutines: 0/5 -> weak at the evidence threshold. basics: 1/1 -> exploratory.
             answers = listOf(
                 answer("kotlin_co_1", false),
                 answer("kotlin_co_2", false),
+                answer("kotlin_co_3", false),
+                answer("kotlin_co_4", false),
+                answer("kotlin_co_5", false),
                 answer("kotlin_basics_1", true),
             ),
             questions = listOf(
                 topicQuestion("kotlin_co_1", "kotlin", "coroutines"),
                 topicQuestion("kotlin_co_2", "kotlin", "coroutines"),
+                topicQuestion("kotlin_co_3", "kotlin", "coroutines"),
+                topicQuestion("kotlin_co_4", "kotlin", "coroutines"),
+                topicQuestion("kotlin_co_5", "kotlin", "coroutines"),
                 topicQuestion("kotlin_basics_1", "kotlin", "basics"),
             ),
             topics = listOf(Topic("kotlin", "Kotlin")),

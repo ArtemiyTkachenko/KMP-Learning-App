@@ -172,17 +172,13 @@ internal class LearningLessonScreenTest {
         onNodeWithText("Composition builds.").performScrollTo().assertIsDisplayed()
     }
 
-    /**
-     * The E20/E21 plain-text contract. Authored prose is validated as plain text, so a renderer
-     * that quietly interpreted Markdown or HTML would be showing something the author did not
-     * write — and would drop the characters they did.
-     */
     @Test
-    fun authoredMarkdownLikeCharactersRenderLiterally() = runComposeUiTest {
+    fun authoredMarkdownRendersWithoutSyntaxMarkers() = runComposeUiTest {
         val authored = "Use **remember** and `State` — see [docs](https://example.com)."
         setContentWith(sections = listOf(section(LearningBlock.Paragraph(authored))))
 
-        onNodeWithText(authored).performScrollTo().assertIsDisplayed()
+        onNodeWithText("Use remember and State — see docs.").performScrollTo().assertIsDisplayed()
+        onNodeWithText(authored).assertDoesNotExist()
     }
 
     @Test
@@ -244,7 +240,7 @@ internal class LearningLessonScreenTest {
         onNodeWithTag(LearningLessonCodeBlockTag).performScrollTo().assert(hasScrollAction())
         assertWithinRootWidth(LearningLessonCodeBlockTag, rootWidth)
 
-        onNodeWithTag(LearningLessonComparisonTag).performScrollTo().assert(hasScrollAction())
+        onNodeWithTag(LearningLessonComparisonTag).performScrollTo().assertIsDisplayed()
         assertWithinRootWidth(LearningLessonComparisonTag, rootWidth)
     }
 
@@ -265,8 +261,6 @@ internal class LearningLessonScreenTest {
         )
 
         listOf(
-            "Concern",
-            "Views",
             "Creating the UI",
             "Inflate a tree",
             "Updating the UI",

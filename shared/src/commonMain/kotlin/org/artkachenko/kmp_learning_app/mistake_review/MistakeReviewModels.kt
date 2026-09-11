@@ -12,4 +12,11 @@ internal data class UnresolvedMistake(
     val questionId: String,
     val sourceAttemptId: String,
     val reviewItem: ReviewQuestionItem,
+    val studyLesson: MistakeStudyLesson? = null,
+)
+
+internal data class MistakeStudyLesson(
+    val unitId: String,
+    val lessonId: String,
+    val title: String,
 )

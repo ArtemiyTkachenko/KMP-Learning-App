@@ -72,6 +72,7 @@ internal val topicStudyPresentationModule = module {
             mistakeReviewService = get(),
             historyStore = get(),
             scope = get<AppCoroutineScope>(),
+            learningContentRepository = get(),
         )
     }
     single {

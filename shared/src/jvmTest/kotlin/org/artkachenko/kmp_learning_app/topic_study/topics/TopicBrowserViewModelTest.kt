@@ -347,14 +347,21 @@ internal class TopicBrowserViewModelTest {
 
     @Test
     fun weakStatusIsCopiedFromTheDomainRatherThanInferredFromThePercentage() = runViewModelTest {
-        // compose: three answers at 33%, past the policy's evidence threshold, so it is weak.
+        // compose: five answers below 70%, at the policy's evidence threshold, so it is weak.
         // architecture: one answer at 0%, just as low but too little evidence to be called weak.
         val viewModel = loadedViewModel(
             history = historyRepository(
-                answer("q_compose_1", true),
-                answer("q_compose_2", false),
-                answer("q_compose_3", false),
-                answer("q_architecture_1", false),
+                listOf(
+                    completedAttempt(
+                        "newer",
+                        answer("q_compose_1", true),
+                        answer("q_compose_2", false),
+                        answer("q_compose_3", false),
+                        answer("q_compose_4", false),
+                        answer("q_architecture_1", false),
+                    ),
+                    completedAttempt("older", answer("q_compose_1", false)),
+                ),
             ),
         )
 
@@ -874,9 +881,19 @@ internal class TopicBrowserViewModelTest {
     fun unresolvedMistakesOutrankACoexistingWeakAreaAndRemainingCoverage() = runViewModelTest {
         val viewModel = loadedViewModel(
             history = historyRepository(
-                answer("q_compose_1", false),
-                answer("q_compose_2", false),
-                answer("q_compose_3", false),
+                listOf(
+                    completedAttempt(
+                        "newer",
+                        answer("q_compose_1", false),
+                        answer("q_compose_2", false),
+                        answer("q_compose_3", false),
+                    ),
+                    completedAttempt(
+                        "older",
+                        answer("q_compose_1", false),
+                        answer("q_compose_2", false),
+                    ),
+                ),
             ),
         )
 
@@ -950,6 +967,7 @@ internal class TopicBrowserViewModelTest {
                     answer("q_retired_scope_1", false),
                     answer("q_retired_scope_2", false),
                 ),
+                completedAttempt("oldest", answer("q_retired_scope_1", false)),
             ),
         )
         val viewModel = loadedViewModel(history = history, repository = repository)
@@ -965,7 +983,7 @@ internal class TopicBrowserViewModelTest {
         )
 
         val recommendation = assertNotNull(recommendedNext(viewModel))
-        // 50% over four occurrences is weak, and the scope those occurrences name no longer has
+        // 40% over five occurrences is weak, and the scope those occurrences name no longer has
         // ACTIVE content, so the coverage branch answers instead.
         assertEquals(
             LearningRecommendationTarget.Practice(

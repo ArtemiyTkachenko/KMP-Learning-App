@@ -101,6 +101,23 @@ short or heterogeneous lists, flat divider rows for the long ones.
 - **Status is stated in words**, with colour and icons as a second channel, never the only
   one. `StatusBadge` is the app's pill; Material's `Badge` is reserved for the navigation
   bar count.
+- **A badge must add something the container does not already say.** Under a heading that
+  reads "Weak areas", a "Weak area" badge on every card repeats the heading once per row;
+  on a screen titled by its count of unresolved mistakes, an "Incorrect" badge on every
+  card does the same. Both are suppressed there and kept where the surrounding list is
+  mixed — `PerformanceCard(weakLabel = null)` and
+  `ReviewQuestionCard(statesOutcome = false)` are how a caller says the context already
+  states it. A badge that distinguishes a *different* state, such as "Partially correct"
+  in the mistake queue, always stays.
+- **Semantic colour marks, it does not flood.** A weak row carries an accent border and a
+  tinted figure over the ordinary neutral container rather than filling the whole card
+  with `partiallyCorrectContainer`: one saturated card reads as emphasis, six in a column
+  read as an alarm wall in which nothing stands out. Never use the error palette for an
+  ordinary navigation or continuation action.
+- **A toggle looks like a state, not a command.** The saved-Question control is a bookmark
+  whose fill, shape, and word all change together, and publishes `stateDescription` plus
+  `toggleableState` beside its action label, so assistive technology hears both what
+  pressing it does and what is true now.
 
 ## Deliberate deviations
 

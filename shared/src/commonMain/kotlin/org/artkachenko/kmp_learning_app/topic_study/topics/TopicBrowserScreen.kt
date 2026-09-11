@@ -17,14 +17,18 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -44,7 +48,7 @@ import kmp_learning_app.shared.generated.resources.continue_studying_source_unse
 import kmp_learning_app.shared.generated.resources.continue_studying_source_weak_areas
 import kmp_learning_app.shared.generated.resources.learning_context_accuracy
 import kmp_learning_app.shared.generated.resources.learning_context_explored
-import kmp_learning_app.shared.generated.resources.learning_context_not_studied
+import kmp_learning_app.shared.generated.resources.learning_context_not_started
 import kmp_learning_app.shared.generated.resources.progress_weak_label
 import kmp_learning_app.shared.generated.resources.recommended_next_mistakes_action
 import kmp_learning_app.shared.generated.resources.recommended_next_mistakes_reason
@@ -99,6 +103,9 @@ internal const val TopicBrowserLoadingTag = "topic_browser_loading"
 internal const val TopicBrowserHeaderTag = "topic_browser_header"
 internal const val TopicBrowserViewportTag = "topic_browser_viewport"
 internal const val TopicBrowserSearchFieldTag = "topic_browser_search_field"
+
+/** The rule under the pinned header, present only while something has scrolled beneath it. */
+internal const val TopicBrowserHeaderDividerTag = "topic_browser_header_divider"
 internal const val TopicBrowserContinueStudyingTag = "topic_browser_continue_studying"
 internal const val TopicBrowserRecommendedNextTag = "topic_browser_recommended_next"
 internal const val TopicBrowserContinueLearningTag = "topic_browser_continue_learning"
@@ -129,6 +136,17 @@ internal fun TopicBrowserScreen(
     onContinueLearningClick: (ContinueLearningTarget) -> Unit = {},
     onSavedQuestionsClick: () -> Unit = {},
 ) {
+    // Hoisted so the pinned header above can ask whether anything has scrolled beneath it. One
+    // state per list rather than one shared: browsing and search results are different lists with
+    // different lengths, and sharing a state would carry a browse offset into a fresh result set.
+    val browseListState = rememberLazyListState()
+    val resultsListState = rememberLazyListState()
+    val query = (state as? TopicBrowserUiState.Content)?.query.orEmpty()
+    val scrolledUnderHeader = if (query.isBlank()) {
+        browseListState.canScrollBackward
+    } else {
+        resultsListState.canScrollBackward
+    }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -137,32 +155,20 @@ internal fun TopicBrowserScreen(
             // not ours: the shell's Scaffold already ends this content at the top of the navigation
             // bar, so bottom padding out here would show as a strip of background above it. Any
             // scroll-end spacing belongs inside the list, as contentPadding.
-            .windowInsetsPadding(topWindowInsets)
-            .padding(horizontal = LocalAppContentMargin.current)
-            .padding(top = TopicBrowserHeaderSpacing),
+            .windowInsetsPadding(topWindowInsets),
     ) {
-        Text(
-            text = stringResource(Res.string.topic_browser_title),
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.testTag(TopicBrowserHeaderTag),
+        TopicBrowserHeader(
+            query = query,
+            showsSearch = state is TopicBrowserUiState.Content,
+            scrolledUnder = scrolledUnderHeader,
+            onSearchQueryChange = onSearchQueryChange,
         )
-        Text(
-            text = stringResource(Res.string.topic_browser_subtitle),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (state is TopicBrowserUiState.Content) {
-            TopicSearchField(
-                query = state.query,
-                onQueryChange = onSearchQueryChange,
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        Box(modifier = Modifier.weight(1f).testTag(TopicBrowserViewportTag)) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = LocalAppContentMargin.current)
+                .testTag(TopicBrowserViewportTag),
+        ) {
             when (state) {
                 TopicBrowserUiState.Loading -> ScreenLoading(
                     message = stringResource(Res.string.topic_browser_loading),
@@ -181,6 +187,7 @@ internal fun TopicBrowserScreen(
                         continueLearning = state.continueLearning,
                         onContinueLearningClick = onContinueLearningClick,
                         onSavedQuestionsClick = onSavedQuestionsClick,
+                        listState = browseListState,
                     )
                     state.topicMatches.isEmpty() && state.subtopicMatches.isEmpty() -> {
                         ScreenMessage(
@@ -195,6 +202,7 @@ internal fun TopicBrowserScreen(
                         subtopicMatches = state.subtopicMatches,
                         onTopicClick = onTopicClick,
                         onSubtopicClick = onSubtopicClick,
+                        listState = resultsListState,
                     )
                 }
                 TopicBrowserUiState.Empty -> ScreenMessage(
@@ -203,6 +211,69 @@ internal fun TopicBrowserScreen(
                 TopicBrowserUiState.Error -> ScreenError(
                     message = stringResource(Res.string.topic_browser_error),
                     onRetry = onRetry,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The pinned region: the screen's heading and the search field that filters everything below it.
+ *
+ * It is a `Surface` now, and that is the whole of the fix. The heading and the field used to be bare
+ * children of the screen's Column, painting nothing of their own, with the list starting flush
+ * against the bottom of a search field whose own container is transparent. A card scrolling up
+ * therefore reached the field's edge and was cut off against it with no surface, gap, or rule in
+ * between, which reads as the list being sliced rather than as it passing behind something pinned.
+ *
+ * Three things now say where the pinned region ends: it paints the window background explicitly, so
+ * nothing can show through it; the list below carries top content padding, so a row at rest never
+ * touches it; and a rule appears the moment something has actually scrolled underneath — the same
+ * scrolled-under cue Material gives a top app bar, and the same `outlineVariant` rule this app
+ * already draws between the navigation and the page. At the top of an unscrolled list there is
+ * nothing behind it, so there is no rule: a permanent line would frame a boundary nothing is
+ * crossing.
+ *
+ * Deliberately not an elevated or tonally-shifted bar. The heading is the page's own title rather
+ * than a toolbar, and a shadow under it at rest would make one screen look like two stacked panes.
+ */
+@Composable
+private fun TopicBrowserHeader(
+    query: String,
+    showsSearch: Boolean,
+    scrolledUnder: Boolean,
+    onSearchQueryChange: (String) -> Unit,
+) {
+    Surface(color = MaterialTheme.colorScheme.background) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = LocalAppContentMargin.current)
+                    .padding(top = TopicBrowserHeaderSpacing),
+            ) {
+                Text(
+                    text = stringResource(Res.string.topic_browser_title),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.testTag(TopicBrowserHeaderTag),
+                )
+                Text(
+                    text = stringResource(Res.string.topic_browser_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (showsSearch) {
+                    Spacer(modifier = Modifier.height(AppSpacing.Comfortable))
+                    TopicSearchField(query = query, onQueryChange = onSearchQueryChange)
+                }
+                Spacer(modifier = Modifier.height(AppSpacing.Grouped))
+            }
+            // Full bleed rather than inset to the content margin: it marks the edge of a pinned
+            // region that spans the pane, not the edge of the text inside it.
+            if (scrolledUnder) {
+                HorizontalDivider(
+                    modifier = Modifier.testTag(TopicBrowserHeaderDividerTag),
+                    color = MaterialTheme.colorScheme.outlineVariant,
                 )
             }
         }
@@ -252,10 +323,18 @@ private fun TopicList(
     continueLearning: ContinueLearningUiModel?,
     onContinueLearningClick: (ContinueLearningTarget) -> Unit,
     onSavedQuestionsClick: () -> Unit,
+    listState: LazyListState,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = AppListBottomPadding),
+        state = listState,
+        // Top padding as well as bottom: the first row must rest clear of the pinned search field
+        // above it, so that what appears under that field while scrolling reads as content passing
+        // behind a header rather than as a card cut off by it.
+        contentPadding = PaddingValues(
+            top = AppSpacing.Tight,
+            bottom = AppListBottomPadding,
+        ),
         verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
     ) {
         // Inside the list rather than pinned above it: guidance is worth one glance on arrival, and
@@ -771,9 +850,35 @@ private fun TopicLearningAvailability(learningUnitCount: Int?) {
  * figure measures and "43%" beside an accuracy percentage does not. It stays in the neutral
  * variant colour: a learner at 10% coverage has not done anything wrong, they simply have most of
  * the bank still ahead of them.
+ *
+ * An untouched Topic gets one line instead of two. It used to print "0 of 28 explored" and then
+ * "Not studied yet" underneath, which is the same absence stated twice — the second line adding
+ * nothing except the length of the card, on the rows of a seventeen-Topic list where most rows are
+ * untouched to begin with. "Not started · 28 questions" says both facts once and keeps the size of
+ * the Topic, which is the part a learner choosing what to open actually wants.
+ *
+ * This is deliberately only the all-zero case. The moment either figure is non-zero the two are
+ * genuinely independent — historical accuracy can exist beside zero current coverage after the
+ * Questions it was earned on were retired — so both are reported normally.
  */
 @Composable
 private fun TopicLearningContext(context: LearningContextUiModel) {
+    if (context.isUnstudied) {
+        if (context.hasCoverageScope) {
+            Text(
+                text = pluralStringResource(
+                    Res.plurals.learning_context_not_started,
+                    context.totalQuestionCount,
+                    context.totalQuestionCount,
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        // A weak verdict cannot coexist with an unstudied scope — weakness needs answers — so the
+        // badge below is unreachable from here and the early return costs nothing.
+        return
+    }
     if (context.hasCoverageScope) {
         Text(
             text = stringResource(
@@ -782,13 +887,6 @@ private fun TopicLearningContext(context: LearningContextUiModel) {
                 context.totalQuestionCount,
             ),
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-    if (context.isUnstudied) {
-        Text(
-            text = stringResource(Res.string.learning_context_not_studied),
-            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
@@ -827,11 +925,16 @@ private fun TopicSearchResults(
     subtopicMatches: List<SubtopicSearchResult>,
     onTopicClick: (String) -> Unit,
     onSubtopicClick: (topicId: String, subtopicId: String) -> Unit,
+    listState: LazyListState,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = AppListBottomPadding),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        state = listState,
+        contentPadding = PaddingValues(
+            top = AppSpacing.Tight,
+            bottom = AppListBottomPadding,
+        ),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Related),
     ) {
         if (topicMatches.isNotEmpty()) {
             item(key = "topic_results_heading") {

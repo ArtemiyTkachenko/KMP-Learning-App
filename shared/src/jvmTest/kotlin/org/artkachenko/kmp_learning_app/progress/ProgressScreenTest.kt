@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
@@ -16,6 +17,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runComposeUiTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Instant
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
@@ -34,6 +36,7 @@ internal class ProgressScreenTest {
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
                     onPracticePreset = {},
+                    onReviewMistakes = {},
                 )
             }
         }
@@ -46,7 +49,7 @@ internal class ProgressScreenTest {
     fun emptyStateRendersGuidance() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, { _, _ -> }, {})
+                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, { _, _ -> }, {}, {})
             }
         }
         onNodeWithText(
@@ -59,7 +62,7 @@ internal class ProgressScreenTest {
         var retryCount = 0
         setContent {
             MaterialTheme {
-                ProgressScreen(ProgressUiState.Error, {}, { retryCount += 1 }, {}, {}, { _, _ -> }, {})
+                ProgressScreen(ProgressUiState.Error, {}, { retryCount += 1 }, {}, {}, { _, _ -> }, {}, {})
             }
         }
         onNodeWithText("Progress could not be loaded.").assertIsDisplayed()
@@ -100,6 +103,7 @@ internal class ProgressScreenTest {
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
                     onPracticePreset = {},
+                    onReviewMistakes = {},
                 )
             }
         }
@@ -141,6 +145,7 @@ internal class ProgressScreenTest {
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
                     onPracticePreset = {},
+                    onReviewMistakes = {},
                 )
             }
         }
@@ -158,7 +163,7 @@ internal class ProgressScreenTest {
     fun observationBasedSectionsAreAbsentWhenTheyHaveNoRows() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                ProgressScreen(contentState(), {}, {}, {}, {}, { _, _ -> }, {})
+                ProgressScreen(contentState(), {}, {}, {}, {}, { _, _ -> }, {}, {})
             }
         }
 
@@ -171,7 +176,8 @@ internal class ProgressScreenTest {
     }
 
     @Test
-    fun theUnresolvedCountIsReportedWithoutDuplicatingTheMistakesDestination() = runComposeUiTest {
+    fun theUnresolvedCountRoutesIntoTheMistakeQueue() = runComposeUiTest {
+        var reviews = 0
         setContent {
             MaterialTheme {
                 ProgressScreen(
@@ -182,20 +188,46 @@ internal class ProgressScreenTest {
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
                     onPracticePreset = {},
+                    onReviewMistakes = { reviews += 1 },
                 )
             }
         }
 
         onNodeWithText("3 unresolved mistakes to review").assertIsDisplayed()
-        // The Mistakes navigation item owns opening the queue, so nothing here is clickable.
-        onNodeWithText("3 unresolved mistakes to review").assertHasNoClickAction()
+        // Progress answers "what should I work on next?", and the most concrete answer it holds is
+        // a queue of questions already got wrong. Reporting its size and then refusing to open it
+        // stopped one step short of being useful.
+        onNodeWithTag(ProgressReviewMistakesTag).assertHasClickAction().performClick()
+        assertEquals(1, reviews)
+    }
+
+    /** An empty queue has nothing to open, so the row states a fact and offers no action. */
+    @Test
+    fun aResolvedQueueReportsItselfWithoutOfferingARoute() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    state = contentState(unresolvedMistakeCount = 0),
+                    onBack = {},
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onTopicClick = {},
+                    onHistoryClick = { _, _ -> },
+                    onPracticePreset = {},
+                    onReviewMistakes = {},
+                )
+            }
+        }
+
+        onNodeWithText("No unresolved mistakes — nice work.").assertIsDisplayed()
+        onNodeWithTag(ProgressReviewMistakesTag).assertDoesNotExist()
     }
 
     @Test
     fun theUnresolvedCountIsAbsentWhenNoAssessmentHasBeenCompleted() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, { _, _ -> }, {})
+                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, { _, _ -> }, {}, {})
             }
         }
 
@@ -215,6 +247,7 @@ internal class ProgressScreenTest {
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
                     onPracticePreset = {},
+                    onReviewMistakes = {},
                 )
             }
         }
@@ -228,7 +261,7 @@ internal class ProgressScreenTest {
         var browsed = 0
         setContent {
             MaterialTheme {
-                ProgressScreen(ProgressUiState.Empty, {}, {}, { browsed += 1 }, {}, { _, _ -> }, {})
+                ProgressScreen(ProgressUiState.Empty, {}, {}, { browsed += 1 }, {}, { _, _ -> }, {}, {})
             }
         }
 
@@ -255,6 +288,7 @@ internal class ProgressScreenTest {
                     onTopicClick = clicked::add,
                     onHistoryClick = { _, _ -> },
                     onPracticePreset = {},
+                    onReviewMistakes = {},
                 )
             }
         }
@@ -275,7 +309,7 @@ internal class ProgressScreenTest {
                 20,
                 15,
                 75.0,
-                "2026-08-29T00:15:00Z",
+                Instant.parse("2026-08-29T00:15:00Z"),
             ),
             CompletedAttemptUiModel(
                 "focused-id",
@@ -284,7 +318,7 @@ internal class ProgressScreenTest {
                 10,
                 8,
                 80.0,
-                "2026-08-28T21:30:00Z",
+                Instant.parse("2026-08-28T21:30:00Z"),
             ),
         )
 
@@ -298,6 +332,7 @@ internal class ProgressScreenTest {
                     onTopicClick = {},
                     onHistoryClick = { type, id -> clicks += type to id },
                     onPracticePreset = {},
+                    onReviewMistakes = {},
                 )
             }
         }
@@ -306,7 +341,9 @@ internal class ProgressScreenTest {
         onNodeWithText("Mixed Android Interview").assertIsDisplayed().performClick()
         onNodeWithText("Practice").assertIsDisplayed().performClick()
         onNodeWithText("Kotlin · Coroutines").assertIsDisplayed()
-        onNodeWithText("2026-08-29T00:15:00Z").assertIsDisplayed()
+        // The raw instant never reaches the UI; how it reads is `timestampText`'s job and is
+        // asserted there, against an explicit zone rather than the agent's.
+        onNodeWithText("2026-08-29T00:15:00Z").assertDoesNotExist()
         assertEquals(
             listOf(
                 CompletedAssessmentType.MIXED to "mixed-id",
@@ -330,7 +367,7 @@ internal class ProgressScreenTest {
                                 1,
                                 0,
                                 0.0,
-                                "2026-08-29T00:00:00Z",
+                                Instant.parse("2026-08-29T00:00:00Z"),
                             ),
                             CompletedAttemptUiModel(
                                 "missing-subtopic",
@@ -339,7 +376,7 @@ internal class ProgressScreenTest {
                                 1,
                                 0,
                                 0.0,
-                                "2026-08-28T00:00:00Z",
+                                Instant.parse("2026-08-28T00:00:00Z"),
                             ),
                         ),
                     ),
@@ -349,6 +386,7 @@ internal class ProgressScreenTest {
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
                     onPracticePreset = {},
+                    onReviewMistakes = {},
                 )
             }
         }
@@ -368,6 +406,7 @@ internal class ProgressScreenTest {
                     {},
                     {},
                     { _, _ -> },
+                    {},
                     {},
                 )
             }
@@ -391,6 +430,7 @@ internal class ProgressScreenTest {
                     {},
                     { _, _ -> },
                     {},
+                    {},
                 )
             }
         }
@@ -409,6 +449,7 @@ internal class ProgressScreenTest {
                     {},
                     {},
                     { _, _ -> },
+                    {},
                     {},
                 )
             }
@@ -436,6 +477,7 @@ internal class ProgressScreenTest {
                     {},
                     {},
                     { _, _ -> },
+                    {},
                     {},
                 )
             }
@@ -468,6 +510,7 @@ internal class ProgressScreenTest {
                     {},
                     { _, _ -> },
                     {},
+                    {},
                 )
             }
         }
@@ -495,6 +538,7 @@ internal class ProgressScreenTest {
                     {},
                     {},
                     { _, _ -> },
+                    {},
                     {},
                 )
             }
@@ -527,6 +571,7 @@ internal class ProgressScreenTest {
                     {},
                     { _, _ -> },
                     {},
+                    {},
                 )
             }
         }
@@ -555,6 +600,7 @@ internal class ProgressScreenTest {
                     {},
                     { _, _ -> },
                     {},
+                    {},
                 )
             }
         }
@@ -569,7 +615,7 @@ internal class ProgressScreenTest {
     fun aNewLearnerSeesGuidanceRatherThanAnAllZeroDashboard() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, { _, _ -> }, {})
+                ProgressScreen(ProgressUiState.Empty, {}, {}, {}, {}, { _, _ -> }, {}, {})
             }
         }
 
@@ -602,7 +648,7 @@ internal class ProgressScreenTest {
                                 20,
                                 15,
                                 75.0,
-                                "2026-08-29T00:15:00Z",
+                                Instant.parse("2026-08-29T00:15:00Z"),
                             ),
                         ),
                     ),
@@ -611,6 +657,7 @@ internal class ProgressScreenTest {
                     {},
                     {},
                     { _, _ -> },
+                    {},
                     {},
                 )
             }
@@ -654,6 +701,7 @@ internal class ProgressScreenTest {
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
                     onPracticePreset = presets::add,
+                    onReviewMistakes = {},
                 )
             }
         }
@@ -694,6 +742,7 @@ internal class ProgressScreenTest {
                     onTopicClick = {},
                     onHistoryClick = { _, _ -> },
                     onPracticePreset = presets::add,
+                    onReviewMistakes = {},
                 )
             }
         }
@@ -737,16 +786,17 @@ internal class ProgressScreenTest {
                     onTopicClick = topicClicks::add,
                     onHistoryClick = { _, _ -> },
                     onPracticePreset = presets::add,
+                    onReviewMistakes = {},
                 )
             }
         }
 
         onNodeWithText("25 of 100 questions explored").assertIsDisplayed()
         onNodeWithText("17 unresolved mistakes to review").assertIsDisplayed()
-        // Neither aggregate offers practice, and neither is clickable in some other way that would
-        // amount to the same thing.
+        // Coverage is a statistic with no single scope to act on, so it offers nothing. The mistake
+        // row does route into the queue, but it is a route and never a practice preset: this count
+        // spans the whole curriculum and focused practice has to name a Topic or Subtopic.
         onNodeWithText("25 of 100 questions explored").assertHasNoClickAction()
-        onNodeWithText("17 unresolved mistakes to review").assertHasNoClickAction()
         onAllNodesWithText("Practice weak area").assertCountEquals(0)
         onAllNodesWithText("Practice unseen questions").assertCountEquals(0)
 

@@ -29,23 +29,30 @@ import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.interview_history_attempts
 import kmp_learning_app.shared.generated.resources.interview_history_best
+import kmp_learning_app.shared.generated.resources.interview_history_empty_detail
+import kmp_learning_app.shared.generated.resources.interview_history_empty_title
 import kmp_learning_app.shared.generated.resources.interview_history_latest
 import kmp_learning_app.shared.generated.resources.interview_history_score
 import kmp_learning_app.shared.generated.resources.interview_history_title
 import kmp_learning_app.shared.generated.resources.mixed_interview_description
 import kmp_learning_app.shared.generated.resources.mixed_interview_how_it_works
 import kmp_learning_app.shared.generated.resources.mixed_interview_question_count
+import kmp_learning_app.shared.generated.resources.mixed_interview_review_note
 import kmp_learning_app.shared.generated.resources.mixed_interview_start
 import kmp_learning_app.shared.generated.resources.mixed_interview_title
 import org.artkachenko.kmp_learning_app.ui.MetricFigure
 import org.artkachenko.kmp_learning_app.ui.PerformanceCard
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
+import org.artkachenko.kmp_learning_app.ui.time.timestampText
 import org.jetbrains.compose.resources.stringResource
 
 internal const val InterviewStartButtonTag = "interview_start"
 
 internal const val InterviewRecordTag = "interview_record"
+
+/** The deliberate first-visit state, so a test can tell it from an absent record. */
+internal const val InterviewNoHistoryTag = "interview_no_history"
 internal const val InterviewHistoryLoadingTag = "interview_history_loading"
 
 /**
@@ -103,6 +110,16 @@ internal fun InterviewStartScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
+                    // The one rule that makes an Interview different from Practice, stated before
+                    // the learner commits to twenty questions rather than discovered on question
+                    // one. Practice marks each answer as it is given; an Interview holds every
+                    // verdict back until it is over, which is exactly the asymmetry this screen
+                    // exists to make deliberate.
+                    Text(
+                        text = stringResource(Res.string.mixed_interview_review_note),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
                     Button(
                         onClick = onStartMixedInterview,
                         modifier = Modifier.fillMaxWidth().testTag(InterviewStartButtonTag),
@@ -130,7 +147,9 @@ internal fun InterviewStartScreen(
                     CircularProgressIndicator(modifier = Modifier.testTag(InterviewHistoryLoadingTag))
                 }
             }
-            InterviewHistoryUiState.Empty -> Unit
+            InterviewHistoryUiState.Empty -> item {
+                FirstInterviewNote()
+            }
             is InterviewHistoryUiState.Content -> item {
                 InterviewRecord(history = history.history, onOpenResult = onOpenResult)
             }
@@ -139,8 +158,48 @@ internal fun InterviewStartScreen(
 }
 
 /**
- * The learner's own results, shown only once there are some. On a first visit the screen stays a
- * plain invitation rather than an empty table; afterwards these two rows are the reason to return.
+ * The first-visit state, said deliberately rather than left as a gap.
+ *
+ * A learner with no interviews used to reach a screen that simply stopped after the explanation,
+ * with the space where the record will be showing nothing at all — which reads as something that
+ * failed to load rather than as something they have not done yet. This states what will appear here
+ * and why it is worth coming back to, in the quietest treatment on the page: the invitation to start
+ * is the filled button above, and a second call to action down here would compete with it.
+ *
+ * It deliberately shows no empty table, no zeroed score, and no placeholder row — a 0 of 20 would be
+ * a result the learner never got.
+ */
+@Composable
+private fun FirstInterviewNote() {
+    Column(
+        modifier = Modifier.fillMaxWidth().testTag(InterviewNoHistoryTag),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+    ) {
+        Text(
+            text = stringResource(Res.string.interview_history_empty_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = stringResource(Res.string.interview_history_empty_detail),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * The learner's own results, shown only once there are some.
+ *
+ * The most recent interview leads, and carries its date. Recency is what makes the record useful —
+ * "how did I do last time, and how long ago was that?" is the question a returning learner has — and
+ * a record without a date cannot answer the second half of it.
+ *
+ * Best is kept, and kept second. It is genuine information and the data model already supports it,
+ * but it is not what this screen is for: a personal best promoted above the latest result turns a
+ * preparation tool into a high-score table, and the app has no leaderboard, streak, or points
+ * anywhere else. Repeating one attempt under both headings would be noise, so the best row appears
+ * only once it is a different interview from the latest one.
  */
 @Composable
 private fun InterviewRecord(
@@ -149,7 +208,7 @@ private fun InterviewRecord(
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().testTag(InterviewRecordTag),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Related),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -172,14 +231,16 @@ private fun InterviewRecord(
         InterviewRecordRow(
             title = stringResource(Res.string.interview_history_latest),
             attempt = history.latest,
+            showsDate = true,
             onOpenResult = onOpenResult,
         )
-        // Repeating one attempt under both headings would be noise, so the best row appears only
-        // once it is a different interview from the latest one.
         if (history.best.attemptId != history.latest.attemptId) {
             InterviewRecordRow(
                 title = stringResource(Res.string.interview_history_best),
                 attempt = history.best,
+                // The best result's own date is not the point of the row — it is the score that
+                // earns it a place — and printing two dates invites reading the pair as a timeline.
+                showsDate = false,
                 onOpenResult = onOpenResult,
             )
         }
@@ -190,6 +251,7 @@ private fun InterviewRecord(
 private fun InterviewRecordRow(
     title: String,
     attempt: InterviewAttemptUiModel,
+    showsDate: Boolean,
     onOpenResult: (String) -> Unit,
 ) {
     PerformanceCard(
@@ -200,6 +262,7 @@ private fun InterviewRecordRow(
             attempt.totalQuestions,
         ),
         percentage = attempt.percentage,
+        caption = if (showsDate) timestampText(attempt.completedAt) else null,
         showChevron = true,
         modifier = Modifier.clickable { onOpenResult(attempt.attemptId) },
     )

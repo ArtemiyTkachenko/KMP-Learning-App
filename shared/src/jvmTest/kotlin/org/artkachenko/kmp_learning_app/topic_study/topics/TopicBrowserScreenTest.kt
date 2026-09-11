@@ -15,12 +15,14 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.assertTouchHeightIsEqualTo
 import androidx.compose.ui.test.assertTouchWidthIsEqualTo
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
@@ -420,8 +422,14 @@ internal class TopicBrowserScreenTest {
         onNodeWithText("Weak area").assertDoesNotExist()
     }
 
+    /**
+     * An untouched Topic says its state once, with the size of the Topic attached.
+     *
+     * "0 of 14 explored" over "Not studied yet" was the same absence twice, on the rows of a
+     * seventeen-Topic list where most rows look like this. One line carries both facts.
+     */
     @Test
-    fun anUnseenTopicIsNeutralRatherThanZeroPercent() = runComposeUiTest {
+    fun anUntouchedTopicStatesItsStateOnceAndNeverAsZeroPercent() = runComposeUiTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
@@ -436,8 +444,9 @@ internal class TopicBrowserScreenTest {
             }
         }
 
-        onNodeWithText("0 of 14 explored").assertIsDisplayed()
-        onNodeWithText("Not studied yet").assertIsDisplayed()
+        onNodeWithText("Not started · 14 questions").assertIsDisplayed()
+        onNodeWithText("0 of 14 explored").assertDoesNotExist()
+        onNodeWithText("Not studied yet").assertDoesNotExist()
         // Never answered is not the same as answered and got none right.
         onNodeWithText("0%").assertDoesNotExist()
         onNodeWithText("accuracy").assertDoesNotExist()
@@ -1557,6 +1566,44 @@ internal class TopicBrowserScreenTest {
             .assertHeightIsAtLeast(MinimumTouchTarget)
         onNodeWithText("State hoisting and unidirectional data flow").assertIsDisplayed()
         onNodeWithText("Kotlin").assertIsDisplayed()
+    }
+
+    /**
+     * The pinned heading and search field only declare their edge once something is actually behind
+     * them. At rest the rule would frame a boundary nothing is crossing; the moment the catalogue
+     * scrolls underneath, the rule is what stops a card looking as though the search field had
+     * sliced it in half.
+     */
+    @Test
+    fun thePinnedHeaderMarksItsEdgeOnlyWhileContentIsScrolledBeneathIt() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                Box(Modifier.size(360.dp, 400.dp)) {
+                    TopicBrowserScreen(
+                        state = TopicBrowserUiState.Content(
+                            topics = List(20) { index ->
+                                topicItem("topic_$index", "Topic $index")
+                            },
+                        ),
+                        onTopicClick = {},
+                        onRetry = {},
+                        topWindowInsets = WindowInsets(0, 0, 0, 0),
+                    )
+                }
+            }
+        }
+
+        onNodeWithTag(TopicBrowserSearchFieldTag).assertIsDisplayed()
+        onNodeWithTag(TopicBrowserHeaderDividerTag).assertDoesNotExist()
+
+        onNode(hasScrollAction()).performScrollToNode(hasText("Topic 15"))
+        waitForIdle()
+
+        onNodeWithTag(TopicBrowserHeaderDividerTag).assertIsDisplayed()
+        // The header itself never scrolls away: it is pinned, and the search field it carries has
+        // to stay reachable while the learner is looking at what it filters.
+        onNodeWithTag(TopicBrowserSearchFieldTag).assertIsDisplayed()
+        onNodeWithTag(TopicBrowserHeaderTag).assertIsDisplayed()
     }
 }
 

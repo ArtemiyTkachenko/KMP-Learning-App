@@ -194,6 +194,11 @@ private fun MistakeReviewContent(
                         question = item.question,
                         onSourceClick = onSourceClick,
                         failedSourceUrl = failedSourceUrl,
+                        // The screen is titled "N unresolved mistakes to review" and every entry
+                        // under it is one, so the card does not repeat that verdict per row. A
+                        // partially correct answer still earns its badge: that is a different fact
+                        // from the one the heading states.
+                        statesOutcome = false,
                         // Saving is learner intent about this Question, independent of the scoped
                         // practice shortcut below and of whether the mistake is still unresolved.
                         saveAction = savedQuestions.reviewSaveAction(

@@ -170,9 +170,8 @@ has for it:
 | Surface | Visible signal | Preset |
 | --- | --- | --- |
 | Progress weak-area row | The row is in `LearningProgressSnapshot.weakAreas` | `WEAK_AREAS` for the row's stable ID |
-| Topic detail, Topic | `LearningContextUiModel.isWeak` | `WEAK_AREAS` for the Topic |
-| Topic detail, Topic | `LearningContextUiModel.hasUnseenQuestions` | `UNSEEN` for the Topic |
-| Topic detail, Subtopic row | The same two facts, per Subtopic | `WEAK_AREAS` / `UNSEEN` for the Subtopic |
+| Topic detail, Practice tab | Whatever `topicPracticeRecommendation` ranked first | That source, for the Topic |
+| Topic detail, Subtopic row | `isWeak` and remaining coverage, per Subtopic | `WEAK_AREAS` / `UNSEEN` for the Subtopic |
 | Mistake Review entry | The entry is in the unresolved queue | `UNRESOLVED_MISTAKES` for the Question's Subtopic |
 
 Nothing is re-derived. Weakness is the domain's `isWeak` verdict, copied verbatim,
@@ -184,10 +183,41 @@ history at the moment practice is configured. The unresolved queue stays
 `UnresolvedMistakeDerivation`'s, and the clicked Question supplies its Subtopic as
 *context*, never as a candidate list; no Question ID travels in a route.
 
-Two signals can be true for one scope. Both actions are then offered, because the
-learner chose to look at that scope; inventing a precedence between them would
-turn the feature into a second recommendation policy. Ordinary `ALL` practice is
-untouched and remains the primary action on Topic detail.
+### The Topic Practice tab promotes one action
+
+Topic detail is the exception to "offer every true signal", and deliberately so. Its
+Practice tab used to give the only filled button on the page to `ALL` practice — the
+least-informed action it could offer — while the two signals that knew something about
+the learner sat above it as text buttons inside a summary card. The page therefore
+recommended nothing.
+
+`topicPracticeRecommendation` is the smallest thing that fixes that: a total order over
+evidence the page is already displaying, with no weights, no scoring, and no repository
+read of its own.
+
+| Rank | Signal | Why here |
+| --- | --- | --- |
+| 1 | `LearningContextUiModel.isWeak` | The domain's verdict, already past `LearningProgressPolicy`'s evidence threshold. It names a demonstrated gap rather than an absence |
+| 2 | Unresolved mistakes in this Topic | Questions actually got wrong and not since got right. Concrete and finite, but narrower than a weak area |
+| 3 | Unseen questions, once something has been attempted | Coverage rather than performance — the weakest claim, because nothing has gone wrong yet |
+| 4 | Nothing | No evidence, so no recommendation is invented and `ALL` practice leads |
+
+The promoted action takes the filled button and prints the reason underneath it, in the
+same terms the summary above already used; `Custom practice…` is a `TextButton` reaching
+the same builder with every dimension editable, so promoting one intent takes nothing
+away. When there is no recommendation there is no second control either — a "Custom
+practice" button beside an unfiltered "Start practice" button would be two labels for one
+thing.
+
+The mistake count is `TopicDetailViewModel`'s intersection of `UnresolvedMistakeDerivation`
+over the history cache with the ACTIVE Question IDs the curriculum read already produced,
+so it costs no extra read and cannot count a mistake against a Question the Topic no longer
+holds. It is nullable for the same reason `learningContext` is: unknown history is not an
+empty queue. The two are asked separately, so an absent signal neither produces a
+recommendation nor suppresses one that *was* read.
+
+Subtopic rows are unchanged: they are a drill-down the learner is reading across, nothing
+ranks them against each other, and both their shortcuts stay available together.
 
 An aggregate signal gets no shortcut. Curriculum coverage and the global
 unresolved-mistake count on Progress identify no Topic or Subtopic, and there is

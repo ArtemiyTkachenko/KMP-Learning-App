@@ -142,6 +142,13 @@ internal class LearningLessonViewModel(
             lessonId = lesson.id,
             title = lesson.title,
             summary = lesson.summary,
+            // Derived from the same ACTIVE list the neighbours come from, so the position a
+            // learner reads and the sequence Next steps through can never disagree.
+            placement = LessonPlacementUiModel(
+                unitTitle = unit.title,
+                position = index + 1,
+                lessonCount = activeLessons.size,
+            ),
             sections = lesson.sections,
             sources = lesson.sources,
             previousLesson = activeLessons.getOrNull(index - 1)?.toAdjacentLesson(),

@@ -234,10 +234,15 @@ internal class TopicDiscoveryIntegrationTest {
             // Waits for learning context too, so the baseline is taken after the enrichment read
             // rather than racing it. No assessment has been completed in this fixture, so every
             // Topic reports the unstudied state rather than a fabricated 0%.
-            waitForTextContaining("explored")
+            waitForTextContaining("Not started")
             // All three Topics: a brand-new learner gets the neutral state everywhere, never a
-            // fabricated 0%.
-            assertEquals(3, onAllNodesWithText("Not studied yet").fetchSemanticsNodes().size)
+            // fabricated 0%. One line each, not a "0 of N explored" count with "Not studied yet"
+            // repeating the same absence underneath it.
+            assertEquals(
+                3,
+                onAllNodesWithText("Not started", substring = true).fetchSemanticsNodes().size,
+            )
+            onNodeWithText("explored", substring = true).assertDoesNotExist()
             onNodeWithText("0%").assertDoesNotExist()
             val readsAfterLoad = repository.reads()
             // Coverage costs one read of the ACTIVE bank for the whole screen, not one per Topic

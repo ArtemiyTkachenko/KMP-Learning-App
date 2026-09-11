@@ -38,6 +38,22 @@ internal sealed interface LearningLessonUiState {
         val lessonId: String,
         val title: String,
         val summary: String,
+        /**
+         * Where this Lesson sits in the curriculum, resolved from the Unit it was opened through.
+         *
+         * A learner inside the reader could previously see the Lesson title and nothing else: the
+         * Topic -> Unit -> Lesson hierarchy they navigated down became invisible the moment they
+         * arrived, so "am I near the end of this Unit?" could only be answered by going back. It is
+         * a presentation model rather than the `LearningUnit` itself, for the same reason the
+         * neighbours are: the reader needs a name and a position, and handing it the parent Unit
+         * would give it every sibling Lesson's body by accident.
+         *
+         * Nullable so the reader degrades rather than fabricates: a Lesson opened without a
+         * resolvable parent sequence simply loses the orientation line. The ViewModel always
+         * supplies one, because it resolves the Lesson *through* its Unit and therefore always has
+         * the sequence in hand.
+         */
+        val placement: LessonPlacementUiModel?,
         val sections: List<LearningSection>,
         val sources: List<SourceReference>,
         val previousLesson: AdjacentLessonUiModel?,
@@ -53,6 +69,27 @@ internal sealed interface LearningLessonUiState {
 
     /** The learning document could not be read. Retryable, unlike [NotFound]. */
     data object Error : LearningLessonUiState
+}
+
+/**
+ * Which Unit a Lesson is being read in, and where it falls in that Unit's authored sequence.
+ *
+ * [position] and [lessonCount] count ACTIVE Lessons only, which is the same list previous/next step
+ * through: a retired Lesson is not a waypoint, so it must not be counted in a total the learner is
+ * measuring their progress against either. Both are 1-based as displayed.
+ */
+internal data class LessonPlacementUiModel(
+    val unitTitle: String,
+    val position: Int,
+    val lessonCount: Int,
+) {
+    /**
+     * Whether the position is worth printing. "Lesson 1 of 1" states that there is no sequence,
+     * which the absence of the phrase says more quietly; the Unit title is still shown, because
+     * knowing which Unit you are reading is useful however many Lessons it holds.
+     */
+    val hasSequence: Boolean
+        get() = lessonCount > 1
 }
 
 /**

@@ -281,7 +281,7 @@ internal class MixedInterviewResultScreenTest {
     }
 
     @Test
-    fun aSavedMixedResultQuestionReadsAsUnsaveWithoutDisturbingTheBreakdown() = runComposeUiTest {
+    fun aSavedMixedResultQuestionReadsAsSavedWithoutDisturbingTheBreakdown() = runComposeUiTest {
         setContent {
             MaterialTheme {
                 MixedInterviewResultScreen(
@@ -300,7 +300,7 @@ internal class MixedInterviewResultScreenTest {
         onNodeWithText("Score: 3 / 5").assertIsDisplayed()
         onNodeWithText("Kotlin").performScrollTo().assertIsDisplayed()
         onNodeWithText("2 / 3 correct").performScrollTo().assertIsDisplayed()
-        onNodeWithText("Unsave").performScrollTo().assertIsDisplayed()
+        onNodeWithText("Saved").performScrollTo().assertIsDisplayed()
         onNodeWithText("Retake interview").assertIsDisplayed()
     }
 

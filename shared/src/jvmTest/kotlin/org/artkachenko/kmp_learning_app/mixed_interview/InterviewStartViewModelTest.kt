@@ -76,6 +76,25 @@ internal class InterviewStartViewModelTest {
         assertEquals(90.0, history.best.percentage)
     }
 
+    /**
+     * The recent result carries when it happened, because "how long ago was that?" is half of the
+     * question a returning learner has. It travels as the domain instant, not as text: how it reads
+     * depends on the reader's zone and is decided in the composable.
+     */
+    @Test
+    fun theLatestInterviewCarriesItsCompletionInstant() = runTest(dispatcher) {
+        val completedAt = Instant.parse("2026-09-11T12:23:46.872Z")
+        val state = interviewState(
+            RecordingRepository(
+                listOf(mixedAttempt("newest", correct = 14, total = 20, completedAt = completedAt)),
+            ),
+        )
+        testScheduler.advanceUntilIdle()
+
+        val history = assertIs<InterviewHistoryUiState.Content>(state.value).history
+        assertEquals(completedAt, history.latest.completedAt)
+    }
+
     @Test
     fun aSingleInterviewIsBothTheLatestAndTheBest() = runTest(dispatcher) {
         val state = interviewState(
@@ -107,8 +126,13 @@ internal class InterviewStartViewModelTest {
 
 }
 
-private fun mixedAttempt(id: String, correct: Int, total: Int): TestAttempt =
-    attempt(id, AssessmentConfig.Mixed(questionCount = total), correct, total)
+private fun mixedAttempt(
+    id: String,
+    correct: Int,
+    total: Int,
+    completedAt: Instant = Instant.fromEpochMilliseconds(1),
+): TestAttempt =
+    attempt(id, AssessmentConfig.Mixed(questionCount = total), correct, total, completedAt)
 
 private fun focusedAttempt(id: String, correct: Int, total: Int): TestAttempt =
     attempt(
@@ -126,6 +150,7 @@ private fun attempt(
     config: AssessmentConfig,
     correct: Int,
     total: Int,
+    completedAt: Instant = Instant.fromEpochMilliseconds(1),
 ): TestAttempt =
     TestAttempt(
         id = id,
@@ -144,7 +169,7 @@ private fun attempt(
         },
         score = AssessmentScore(totalQuestions = total, correctAnswers = correct),
         startedAt = Instant.fromEpochMilliseconds(0),
-        completedAt = Instant.fromEpochMilliseconds(1),
+        completedAt = completedAt,
     )
 
 private class RecordingRepository(

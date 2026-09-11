@@ -4,6 +4,8 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -143,6 +145,51 @@ internal class LearningLessonViewModelTest {
         assertEquals(AdjacentLessonUiModel("lesson_a", "Title of lesson_a"), last.previousLesson)
     }
 
+    /**
+     * The orientation line names the Unit and places the Lesson in it, from the same ACTIVE list
+     * the neighbours come from — so "Lesson 2 of 3" and what Next actually opens can never disagree.
+     */
+    @Test
+    fun placementNamesTheUnitAndCountsPositionAcrossActiveLessons() = runViewModelTest {
+        assertEquals(
+            LessonPlacementUiModel("Title of unit_a", position = 1, lessonCount = 3),
+            adjacentState(lessonId = "lesson_a").placement,
+        )
+        assertEquals(
+            LessonPlacementUiModel("Title of unit_a", position = 2, lessonCount = 3),
+            adjacentState(lessonId = "lesson_b").placement,
+        )
+        assertEquals(
+            LessonPlacementUiModel("Title of unit_a", position = 3, lessonCount = 3),
+            adjacentState(lessonId = "lesson_c").placement,
+        )
+    }
+
+    /**
+     * A retired Lesson is neither a waypoint nor a denominator: counting it would tell the learner
+     * they are 2 of 3 through a Unit that only has two readable Lessons left in it.
+     */
+    @Test
+    fun placementCountsOnlyActiveLessons() = runViewModelTest {
+        val repository = FakeLearningContentRepository(
+            units = listOf(
+                testLearningUnit(
+                    id = "unit_a",
+                    lessons = listOf(
+                        testLearningLesson("lesson_a"),
+                        testLearningLesson("lesson_retired", ContentStatus.DEPRECATED),
+                        testLearningLesson("lesson_c"),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(
+            LessonPlacementUiModel("Title of unit_a", position = 2, lessonCount = 2),
+            contentState("unit_a", "lesson_c", repository).placement,
+        )
+    }
+
     @Test
     fun theOnlyLessonInAUnitHasNeitherNeighbour() = runViewModelTest {
         val state = contentState(
@@ -157,6 +204,11 @@ internal class LearningLessonViewModelTest {
 
         assertNull(state.previousLesson)
         assertNull(state.nextLesson)
+        // The Unit is still worth naming; the position within a sequence of one is not, and the
+        // reader drops it rather than printing "Lesson 1 of 1".
+        val placement = assertNotNull(state.placement)
+        assertEquals("Title of unit_a", placement.unitTitle)
+        assertFalse(placement.hasSequence)
     }
 
     @Test

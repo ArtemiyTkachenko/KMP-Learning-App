@@ -175,8 +175,11 @@ internal class MistakeReviewScreenTest {
         onNodeWithText("Questions stay here until your most recent completed answer is correct.")
             .assertIsDisplayed()
         onNodeWithText("Question q1").assertIsDisplayed()
-        // Rendered by the shared ReviewQuestionCard rather than a mistake-specific copy.
-        onNodeWithText("Incorrect").assertExists()
+        // Rendered by the shared ReviewQuestionCard rather than a mistake-specific copy — but
+        // without its "Incorrect" badge: the heading above already says every entry here is an
+        // unresolved mistake, and repeating that on every card is a wall of red saying nothing the
+        // learner did not know when they opened the screen.
+        onNodeWithText("Incorrect").assertDoesNotExist()
         onNodeWithText("✕ Incorrectly selected").assertExists()
         onNodeWithText("✕ Missed").assertExists()
         onNodeWithText("Explanation").performScrollTo().assertIsDisplayed()
@@ -374,7 +377,7 @@ internal class MistakeReviewScreenTest {
     }
 
     @Test
-    fun aSavedUnresolvedMistakeOffersUnsave() = runComposeUiTest {
+    fun aSavedUnresolvedMistakeReadsAsSaved() = runComposeUiTest {
         setContent {
             MaterialTheme {
                 MistakeReviewScreen(
@@ -392,7 +395,7 @@ internal class MistakeReviewScreenTest {
             }
         }
 
-        onNodeWithText("Unsave").assertIsDisplayed()
+        onNodeWithText("Saved").assertIsDisplayed()
         onNodeWithText("Save").assertDoesNotExist()
     }
 

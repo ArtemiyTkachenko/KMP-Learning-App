@@ -9,6 +9,8 @@ import kotlinx.coroutines.launch
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistory
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
+import org.artkachenko.kmp_learning_app.assessment.history.UnresolvedMistakeDerivation
+import org.artkachenko.kmp_learning_app.assessment.history.UnresolvedMistakeOccurrence
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
@@ -63,6 +65,12 @@ internal class TopicDetailViewModel(
     /** Identifies the newest load, so a slower earlier one cannot write over it. */
     private var loadGeneration: Int = 0
     private var learningContexts: LearningContextIndex? = null
+    /**
+     * Every stable Question ID the learner currently owes an answer to, across the whole history —
+     * not this Topic's. Intersecting is left to [render], because the curriculum and the history
+     * arrive independently and either may be the one that is still missing.
+     */
+    private var unresolvedMistakeQuestionIds: Set<String>? = null
     private var studyState: StudyProgressState = StudyProgressState.Loading
 
     /**
@@ -144,6 +152,17 @@ internal class TopicDetailViewModel(
                         LearningContextIndex(learningProgressService.load(history.attempts))
                     }.getOrNull()
                 }
+                // The same shared derivation the Mistakes queue uses, over the same attempts, so
+                // this screen can never disagree with that queue about what is unresolved. It is
+                // kept separate from the analytics above because the two fail independently: a
+                // failed progress derivation must not also take away a mistake count that was read.
+                unresolvedMistakeQuestionIds = when (history) {
+                    AssessmentHistory.Loading, AssessmentHistory.Failed -> null
+                    is AssessmentHistory.Loaded -> runCatching {
+                        UnresolvedMistakeDerivation.derive(history.attempts)
+                            .mapTo(mutableSetOf(), UnresolvedMistakeOccurrence::questionId)
+                    }.getOrNull()
+                }
                 render()
             }
         }
@@ -212,6 +231,7 @@ internal class TopicDetailViewModel(
         return TopicCurriculum.Loaded(
             topic = topic,
             questionCount = questions.size,
+            questionIds = questions.mapTo(mutableSetOf()) { it.id },
             // Only Subtopics that can actually be practised become rows.
             subtopics = subtopics.mapNotNull { subtopic ->
                 questionCounts[subtopic.id]
@@ -251,6 +271,9 @@ internal class TopicDetailViewModel(
                         studiedLessonIds = loaded.studiedLessonIds,
                     )
                 },
+                unresolvedMistakeCount = unresolvedMistakeQuestionIds?.count {
+                    it in curriculum.questionIds
+                },
             )
         }
     }
@@ -268,5 +291,7 @@ private sealed interface TopicCurriculum {
         val topic: Topic,
         val questionCount: Int,
         val subtopics: List<Pair<Subtopic, Int>>,
+        /** This Topic's ACTIVE Question IDs, kept so the mistake count is an intersection. */
+        val questionIds: Set<String>,
     ) : TopicCurriculum
 }

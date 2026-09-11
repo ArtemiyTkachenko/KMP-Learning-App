@@ -1,19 +1,36 @@
 package org.artkachenko.kmp_learning_app.progress
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import org.artkachenko.kmp_learning_app.ui.formatAccuracy
+import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 
-/** Stable handle so tests can assert the chart appears and disappears without reading pixels. */
+/**
+ * Stable handle so tests can assert the chart appears and disappears without reading pixels.
+ *
+ * Applied to the plot itself rather than to the labelled row around it, because the plot is the node
+ * that carries the description of what is drawn: the axis labels beside it are decoration with their
+ * semantics cleared, and a tag on the row would name a node holding no description at all.
+ */
 internal const val ProgressRecentTrendChartTag = "progress_recent_trend_chart"
 
 /** A point in chart space: `x` left to right, `y` from the top (0f) to the bottom (1f). */
@@ -88,6 +105,65 @@ private val GuideWidth = 1.dp
  */
 @Composable
 internal fun RecentTrendChart(
+    percentages: List<Double>,
+    description: String,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.widthIn(max = MaxChartWidth + AxisLabelWidth).fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.Related),
+    ) {
+        // The guides were drawn unlabelled, which left the drawing readable only as "the line went
+        // up". Naming the three fixed guides is what turns it into a chart: a learner can now see
+        // that a point sits just under half rather than only that it sits lower than the one before
+        // it, and it states that the axis is the full 0-100 range rather than fitted to the data.
+        //
+        // Labels rather than a second described node: the Canvas's own description already repeats
+        // every plotted value in order, so these are decoration to a screen reader and are cleared.
+        Column(
+            modifier = Modifier
+                .width(AxisLabelWidth)
+                .height(ChartHeight)
+                // The same inset the plot applies, so the label band is exactly the band the
+                // guides span: the top label sits on the 100% line and the bottom label on the 0%
+                // line rather than half a line outside each. Robust at any font scale, which an
+                // offset by half a text height would not be.
+                .padding(vertical = MarkerRadius)
+                .clearAndSetSemantics {},
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.End,
+        ) {
+            AxisGuideLabels.forEach { percentage ->
+                Text(
+                    text = formatAccuracy(percentage),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        TrendPlot(
+            percentages = percentages,
+            description = description,
+            modifier = Modifier.testTag(ProgressRecentTrendChartTag),
+        )
+    }
+}
+
+/**
+ * The three guide values, top to bottom, matching [GuideFractions]. They are the ends and the
+ * midpoint of the fixed scale, never values read off the data.
+ */
+private val AxisGuideLabels = listOf(
+    AxisMaximumPercentage,
+    (AxisMinimumPercentage + AxisMaximumPercentage) / 2,
+    AxisMinimumPercentage,
+)
+
+/** Wide enough for "100%" at `labelSmall`, so the plot's left edge does not move between values. */
+private val AxisLabelWidth = 36.dp
+
+@Composable
+private fun TrendPlot(
     percentages: List<Double>,
     description: String,
     modifier: Modifier = Modifier,

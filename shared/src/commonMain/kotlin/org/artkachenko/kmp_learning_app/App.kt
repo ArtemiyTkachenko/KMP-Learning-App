@@ -204,6 +204,14 @@ private fun AppShell(
                             onConfigurePractice = { preset ->
                                 navigator.push(preset.toPracticeBuilderRoute())
                             },
+                            // The Mistakes area, selected rather than pushed: the queue is one of
+                            // the four top-level destinations, so Progress sends the learner to it
+                            // exactly as the navigation bar does instead of growing a second copy of
+                            // it inside the Progress stack. Back then returns to Topics, which is
+                            // where back from an area root goes everywhere else in the app.
+                            onReviewMistakes = {
+                                navigator.select(AppTopLevelDestination.MISTAKES)
+                            },
                         )
                     }
                     entry<AppRoute.ProgressTopic> { route ->

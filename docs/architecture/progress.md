@@ -78,9 +78,19 @@ resolving focused scope labels through stable historical Topic/Subtopic lookup.
 The destination refreshes on lifecycle resume so retained navigation entries
 show attempts completed while another result or retake destination was open.
 History rows navigate by stable attempt ID to the existing focused or mixed
-result destinations; no progress snapshot or history summary is persisted. The
-dashboard reports the unresolved mistake count as plain text — the Mistakes
-navigation item, badged with the same count, owns opening the queue.
+result destinations; no progress snapshot or history summary is persisted. A row's
+completion time travels as the domain `Instant` and is phrased at the point of
+display — see *Dates* below — so no pre-formatted timestamp reaches the state.
+
+The unresolved mistake count is both a report and a route. Progress exists to answer
+two questions — how am I doing, and what should I work on next — and the most concrete
+answer it holds to the second is a queue of questions the learner has already got
+wrong, so the row opens Mistake Review by selecting that area exactly as the
+navigation bar does. It remains a route and never a practice preset: the count spans
+the whole curriculum while focused practice has to name a Topic or Subtopic, and
+picking one on the learner's behalf would be an unexplained recommendation. Scoped
+mistake practice is offered where a scope is actually known, on a queue entry. A
+resolved queue keeps no action, because an empty destination is not worth a tap.
 
 The dashboard presents the snapshot's three signals as three separate surfaces,
 because they answer three different questions and are routinely different
@@ -109,7 +119,13 @@ count of assessments rather than by elapsed time, so the gaps carry no duration
 meaning. The chart appears only at the domain's `RecentTrendAvailability.Available`
 and the shorter cases say plainly that a trend appears after three assessments,
 rather than hiding the summary that one or two completed assessments legitimately
-support. It plots `attemptSeries` and not `answerSeries` — one visualization is the
+support. In practice the whole surface is gated harder than that:
+`RecentPerformancePolicy.MinimumVisibleAttempts` is five, so the recent card — chart
+included — does not appear until the window is full, and a three-point drawing
+presented as a trajectory is unreachable. The three fixed guides are labelled with
+their percentages, which is what makes the drawing a chart rather than a shape: a
+learner can read that a point sits just under half, and the labels state that the
+axis is the full 0-100 range rather than fitted to the data. It plots `attemptSeries` and not `answerSeries` — one visualization is the
 budget — draws no direction colouring or "improving"/"declining" label, since the
 domain deliberately exposes raw observations, and carries a semantic description
 listing every plotted percentage oldest-first so the drawing is never the only

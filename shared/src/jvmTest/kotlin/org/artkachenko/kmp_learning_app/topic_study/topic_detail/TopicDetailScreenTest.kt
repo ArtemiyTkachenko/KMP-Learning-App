@@ -872,8 +872,10 @@ internal class TopicDetailScreenTest {
         }
 
         selectTab(TopicPracticeTabTag)
-        onNodeWithTag(TopicUnseenPracticeTag).assertDoesNotExist()
-        // Ordinary practice is untouched: it is the one way in, which is the point.
+        // Nothing attempted anywhere, so no evidence to promote: the one action is ordinary
+        // practice, and there is no second "Custom practice" control duplicating it.
+        onNodeWithText("Start Practice").assertIsDisplayed()
+        onNodeWithTag(TopicCustomPracticeTag).assertDoesNotExist()
         onNodeWithTag(TopicPracticeButtonTag).assertIsDisplayed()
 
         selectTab(TopicSubtopicsTabTag)
@@ -914,8 +916,9 @@ internal class TopicDetailScreenTest {
         }
 
         selectTab(TopicPracticeTabTag)
+        // Promoted onto the primary button, with the count read off the coverage above it.
         onNodeWithText("Practice 16 unseen questions").assertIsDisplayed()
-        onNodeWithTag(TopicUnseenPracticeTag).performClick()
+        onNodeWithTag(TopicPracticeButtonTag).performClick()
 
         selectTab(TopicSubtopicsTabTag)
         // One left, so the plural resource has to select the singular form.
@@ -958,8 +961,8 @@ internal class TopicDetailScreenTest {
         }
 
         selectTab(TopicPracticeTabTag)
-        onNodeWithTag(TopicUnseenPracticeTag).assertDoesNotExist()
-        onNodeWithTag(TopicWeakPracticeTag).assertIsDisplayed().performClick()
+        onNodeWithText("Practice weak area").assertIsDisplayed()
+        onNodeWithTag(TopicPracticeButtonTag).performClick()
 
         assertEquals(
             listOf(
@@ -1246,11 +1249,11 @@ internal class TopicDetailScreenTest {
     }
 
     /**
-     * A weak Topic offers weak-area practice for itself, and the ordinary Start Practice action is
-     * still there and still carries no source of its own.
+     * A weak Topic promotes weak-area practice onto its primary action, and ordinary practice is
+     * still reachable — one tap lower, through Custom practice, still carrying no source of its own.
      */
     @Test
-    fun aWeakTopicOffersWeakAreaPracticeBesideOrdinaryPractice() = runComposeUiTest {
+    fun aWeakTopicPromotesWeakAreaPracticeAndKeepsCustomPracticeAvailable() = runComposeUiTest {
         val presets = mutableListOf<PracticePreset>()
         var ordinaryStarts = 0
         setContent {
@@ -1269,8 +1272,9 @@ internal class TopicDetailScreenTest {
         }
 
         selectTab(TopicPracticeTabTag)
-        onNodeWithTag(TopicWeakPracticeTag).assertIsDisplayed().performClick()
         onNodeWithTag(TopicPracticeButtonTag).assertIsDisplayed().performClick()
+        onNodeWithText("Recommended: this is currently one of your weak areas.").assertIsDisplayed()
+        onNodeWithTag(TopicCustomPracticeTag).assertIsDisplayed().performClick()
 
         assertEquals(
             listOf(
@@ -1304,7 +1308,9 @@ internal class TopicDetailScreenTest {
         }
 
         selectTab(TopicPracticeTabTag)
-        onNodeWithTag(TopicWeakPracticeTag).assertDoesNotExist()
+        // Fully covered and not weak, so there is nothing to promote and the generic action leads.
+        onNodeWithText("Practice weak area").assertDoesNotExist()
+        onNodeWithText("Start Practice").assertIsDisplayed()
         onNodeWithTag(TopicPracticeButtonTag).assertIsDisplayed()
     }
 
@@ -1325,7 +1331,8 @@ internal class TopicDetailScreenTest {
         }
 
         selectTab(TopicPracticeTabTag)
-        onNodeWithTag(TopicUnseenPracticeTag).assertIsDisplayed().performClick()
+        onNodeWithText("Practice 4 unseen questions").assertIsDisplayed()
+        onNodeWithTag(TopicPracticeButtonTag).performClick()
 
         assertEquals(
             listOf(
@@ -1354,17 +1361,18 @@ internal class TopicDetailScreenTest {
         }
 
         selectTab(TopicPracticeTabTag)
-        onNodeWithTag(TopicUnseenPracticeTag).assertDoesNotExist()
+        onNodeWithText("Start Practice").assertIsDisplayed()
+        onNodeWithTag(TopicCustomPracticeTag).assertDoesNotExist()
         onNodeWithTag(TopicPracticeButtonTag).assertIsDisplayed()
     }
 
     /**
-     * Both conditions can hold at once, and both actions are then offered: the learner chose to look
-     * at this scope, so nothing here ranks one intent above the other. Choosing one action globally
-     * is Recommended Next's job, on a different surface.
+     * Both conditions can hold at once, and the weak verdict wins. It is the stronger claim — a
+     * demonstrated gap rather than material not yet met — and promoting exactly one action is the
+     * whole point of the change. Unseen practice stays reachable through the builder.
      */
     @Test
-    fun aTopicThatIsBothWeakAndPartlyCoveredOffersBothWithNoPrecedence() = runComposeUiTest {
+    fun aTopicThatIsBothWeakAndPartlyCoveredPromotesTheWeakArea() = runComposeUiTest {
         val presets = mutableListOf<PracticePreset>()
         setContent {
             MaterialTheme {
@@ -1382,8 +1390,9 @@ internal class TopicDetailScreenTest {
         }
 
         selectTab(TopicPracticeTabTag)
-        onNodeWithTag(TopicWeakPracticeTag).assertIsDisplayed().performClick()
-        onNodeWithTag(TopicUnseenPracticeTag).assertIsDisplayed().performClick()
+        onNodeWithText("Practice weak area").assertIsDisplayed()
+        onNodeWithText("Practice 6 unseen questions").assertDoesNotExist()
+        onNodeWithTag(TopicPracticeButtonTag).performClick()
 
         assertEquals(
             listOf(
@@ -1391,10 +1400,101 @@ internal class TopicDetailScreenTest {
                     AssessmentScope.Topic("topic_a"),
                     PracticeQuestionSource.WEAK_AREAS,
                 ),
-                PracticePreset(AssessmentScope.Topic("topic_a"), PracticeQuestionSource.UNSEEN),
             ),
             presets,
         )
+    }
+
+    /**
+     * Mistakes rank below a weak verdict and above unseen coverage: they name questions this
+     * learner actually got wrong, which is more concrete than material not yet met and narrower
+     * than a demonstrated gap across the Topic.
+     */
+    @Test
+    fun unresolvedMistakesArePromotedWhenTheTopicIsNotWeak() = runComposeUiTest {
+        val presets = mutableListOf<PracticePreset>()
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningContext = learningContext(6, 10, 80.0),
+                        unresolvedMistakeCount = 3,
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = presets::add,
+                    onRetry = {},
+                )
+            }
+        }
+
+        selectTab(TopicPracticeTabTag)
+        onNodeWithText("Practice 3 unresolved mistakes").assertIsDisplayed()
+        // Unseen coverage exists too and is deliberately not the promoted action.
+        onNodeWithText("Practice 4 unseen questions").assertDoesNotExist()
+        onNodeWithTag(TopicPracticeButtonTag).performClick()
+
+        assertEquals(
+            listOf(
+                PracticePreset(
+                    AssessmentScope.Topic("topic_a"),
+                    PracticeQuestionSource.UNRESOLVED_MISTAKES,
+                ),
+            ),
+            presets,
+        )
+    }
+
+    /** A weak Topic outranks its own mistake queue: the broader demonstrated gap leads. */
+    @Test
+    fun aWeakTopicOutranksItsOwnMistakeCount() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningContext = learningContext(10, 10, 41.0, isWeak = true),
+                        unresolvedMistakeCount = 5,
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        selectTab(TopicPracticeTabTag)
+        onNodeWithText("Practice weak area").assertIsDisplayed()
+        onNodeWithText("Practice 5 unresolved mistakes").assertDoesNotExist()
+    }
+
+    /**
+     * History that has not been read is not an empty queue: an unknown count must not promote a
+     * mistake run, and it must not take the unseen recommendation away either.
+     */
+    @Test
+    fun anUnknownMistakeCountPromotesNoMistakeRun() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningContext = learningContext(6, 10, 80.0),
+                        unresolvedMistakeCount = null,
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        selectTab(TopicPracticeTabTag)
+        onNodeWithText("unresolved mistakes", substring = true).assertDoesNotExist()
+        onNodeWithText("Practice 4 unseen questions").assertIsDisplayed()
     }
 
     // --------------------------------------------------------- subtopics page
@@ -1545,8 +1645,8 @@ internal class TopicDetailScreenTest {
         }
 
         selectTab(TopicPracticeTabTag)
-        onNodeWithTag(TopicWeakPracticeTag).assertDoesNotExist()
-        onNodeWithTag(TopicUnseenPracticeTag).assertDoesNotExist()
+        onNodeWithText("Practice weak area").assertDoesNotExist()
+        onNodeWithTag(TopicCustomPracticeTag).assertDoesNotExist()
         onNodeWithTag(TopicPracticeButtonTag).performClick()
 
         selectTab(TopicSubtopicsTabTag)
@@ -1667,6 +1767,7 @@ private fun topicContent(
     subtopics: List<SubtopicPracticeItem> = emptyList(),
     learningUnits: TopicLearningUnitsUiState = TopicLearningUnitsUiState.Loading,
     studyProgress: StudyProgressUiState<TopicStudyProgress> = StudyProgressUiState.Loading,
+    unresolvedMistakeCount: Int? = null,
 ): TopicDetailUiState.Content =
     TopicDetailUiState.Content(
         topic = Topic("topic_a", "Topic A"),
@@ -1675,6 +1776,7 @@ private fun topicContent(
         learningUnits = learningUnits,
         learningContext = learningContext,
         studyProgress = studyProgress,
+        unresolvedMistakeCount = unresolvedMistakeCount,
     )
 
 private fun subtopicItem(

@@ -121,9 +121,9 @@ internal class LearningProductionContentJourneyTest {
                 .filter { it.topicId == unit.topicId }
                 .sumOf { it.lessons.size }
             openFirstShippedLesson(unit)
-            waitForText("Mark as studied")
-            onNodeWithText("Mark as studied").performScrollTo().assertOperable("Mark as studied")
-            onNodeWithText("Mark as studied").performClick()
+            waitForText("Complete lesson")
+            onNodeWithText("Complete lesson").performScrollTo().assertOperable("Complete lesson")
+            onNodeWithText("Complete lesson").performClick()
             waitForText("Mark as not studied")
             onNodeWithContentDescription("Back").performClick()
             onNode(hasScrollAction()).performScrollToNode(hasTestTag(LearningUnitStudyProgressTag))
@@ -145,7 +145,7 @@ internal class LearningProductionContentJourneyTest {
             waitForText("Mark as not studied")
             onNodeWithText("Mark as not studied").performScrollTo().assertOperable("Mark as not studied")
             onNodeWithText("Mark as not studied").performClick()
-            waitForText("Mark as studied")
+            waitForText("Complete lesson")
             onNodeWithContentDescription("Back").performClick()
             onNode(hasScrollAction()).performScrollToNode(hasTestTag(LearningUnitStudyProgressTag))
             waitForText("0 of ${unit.lessons.size} lessons studied")

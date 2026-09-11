@@ -1,5 +1,7 @@
 package org.artkachenko.kmp_learning_app.progress
 
+import kotlin.time.Instant
+
 internal sealed interface ProgressUiState {
     data object Loading : ProgressUiState
 
@@ -116,6 +118,15 @@ internal sealed interface FocusedScopeUiModel {
     ) : FocusedScopeUiModel
 }
 
+/**
+ * [completedAt] travels as the domain `Instant` rather than as pre-formatted text.
+ *
+ * It used to be `completedAt.toString()`, which put `2026-08-29T00:15:00Z` on a history card: the
+ * instant stated in UTC, to the millisecond, in a notation nobody reads a date in. Formatting is a
+ * presentation decision that needs the reader's zone and the reader's idea of "today", so it belongs
+ * in the composable — see `ui/time/TimestampText.kt` — and the state carries the fact instead of one
+ * rendering of it.
+ */
 internal data class CompletedAttemptUiModel(
     val attemptId: String,
     val assessmentType: CompletedAssessmentType,
@@ -123,5 +134,5 @@ internal data class CompletedAttemptUiModel(
     val totalQuestions: Int,
     val correctAnswers: Int,
     val percentage: Double,
-    val completedAtText: String,
+    val completedAt: Instant,
 )

@@ -318,6 +318,36 @@ internal object AppIcons {
         }
     }
 
+    /**
+     * A saved Question. The standard Material `bookmark` shape: a ribbon with a notched foot.
+     *
+     * The filled and outlined variants are the same silhouette, which is what lets the two states
+     * read as one control changing rather than as two different controls — see `SaveQuestionAction`,
+     * where the shape is never the only signal either way.
+     */
+    val Bookmark: ImageVector by lazy {
+        icon("Bookmark") {
+            moveTo(5f, 3f); lineTo(19f, 3f); lineTo(19f, 21f); lineTo(12f, 18f); lineTo(5f, 21f)
+            close()
+        }
+    }
+
+    /**
+     * An unsaved Question: the same ribbon, drawn as an outline.
+     *
+     * The inner path is wound against the outer one so the non-zero fill rule punches it out, which
+     * is the same trick [rect] uses with `cutOut` — written by hand here because the shape is a
+     * notched pentagon rather than a rectangle.
+     */
+    val BookmarkBorder: ImageVector by lazy {
+        icon("BookmarkBorder") {
+            moveTo(5f, 3f); lineTo(19f, 3f); lineTo(19f, 21f); lineTo(12f, 18f); lineTo(5f, 21f)
+            close()
+            moveTo(7f, 5f); lineTo(7f, 18f); lineTo(12f, 15.82f); lineTo(17f, 18f); lineTo(17f, 5f)
+            close()
+        }
+    }
+
     /** Kotlin Multiplatform & Compose Multiplatform. */
     val Devices: ImageVector by lazy {
         icon("Devices") {

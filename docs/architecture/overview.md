@@ -49,12 +49,20 @@ where it was left. Back leaves the current area's detail first, then returns to 
 start area (Topics), and only then reports the event unconsumed so the host can close
 the app. Re-selecting the area already shown returns it to its root.
 
-Which screens keep the navigation control is decided by `AppRoute.showsAreaNavigation()`:
-browsing screens — including the topic and progress-topic details, Saved Questions, and the
-Learning Unit and Lesson study destinations — keep it, because
-hiding it on every detail trapped the learner inside an area until they pressed back.
-Screens that own the learner's full attention (an assessment in progress, and its
-result) hide it and rely on their own back affordance.
+Which screens keep the navigation control is decided by `AppRoute.showsAreaNavigation()`,
+and the rule is one sentence: **normal application mode everywhere except while a question
+is actually being answered.** Browsing, reading, configuring, and reviewing are all normal
+mode — including the topic and progress-topic details, Saved Questions, the Practice
+Builder, the Learning Unit and Lesson study destinations, and both result screens — because
+hiding the control on every detail trapped the learner inside an area until they pressed
+back. Focus mode is the two assessment-taking routes and their in-progress attempts, where
+a one-tap move to another area would abandon unanswered work.
+
+A result screen is deliberately normal mode. The attempt is persisted and scored before
+either result route is reached, so there is nothing left to interrupt and a learner reading
+their answers back is browsing; leaving them in focus mode meant finishing a practice run
+left the app without navigation until they pressed back, which is the arbitrary
+appear/disappear behaviour the rule exists to remove.
 
 `AppNavigationScaffold` places that control adaptively: below
 `AppNavigationRailBreakpoint` (600.dp, the Material compact/medium boundary) a
@@ -64,9 +72,10 @@ the platform, because the same host can be either size — a desktop or browser 
 be dragged narrow.
 
 `AppShellViewModel` supplies the one piece of state the control itself needs: the
-unresolved mistake count, badged onto the Mistakes item. The Progress dashboard reports
-the same count as plain text rather than as a second button, so one destination has one
-control.
+unresolved mistake count, badged onto the Mistakes item. The Progress dashboard reports the
+same count and routes into the same destination — see [Progress](progress.md) — because a
+dashboard that names a queue of questions the learner has already got wrong and then
+declines to open it stops one step short of answering "what should I work on next?".
 
 Navigation motion is declared in `AppNavigationTransitions` rather than left to
 Navigation 3's defaults, which animate on Android but resolve to `EnterTransition.None`
@@ -438,3 +447,45 @@ read-only indicators. Every surface models study state as
 its content state, so an unreadable study record costs an indicator rather than a
 screen and never touches practice. Nothing is drawn before it is persisted and
 read back. Continue Learning is not implemented yet.
+
+## Dates, Counts, And Early-Data States
+
+The app stores every timestamp as a `kotlin.time.Instant`, which is the right thing to
+persist and the wrong thing to show: `Instant.toString()` produces
+`2026-09-11T12:23:46.872Z`, which states the moment in UTC to the millisecond and answers
+nothing a learner asked. Presentation state therefore carries the instant itself —
+`CompletedAttemptUiModel.completedAt`, `InterviewAttemptUiModel.completedAt` — and the
+phrasing happens in the composable, where the reader's zone and the reader's idea of
+"today" are available.
+
+`ui/time` holds one convention: `Today · 13:23` while the day is near enough to name, and
+`11 Sep 2026 · 13:23` once it is genuinely a date. Only today and yesterday are named,
+because "3 days ago" is harder to place than a date. Every part of it, month abbreviations
+and separator included, is a string resource.
+
+The split inside `ui/time` is the load-bearing decision. `localUtcOffset` is an
+`expect`/`actual` — four one-line implementations over `java.util.TimeZone`, `NSTimeZone`,
+and the browser's `Date` — because `kotlin.time` models an instant but carries no zone
+database, and pulling in `kotlinx-datetime` (plus an npm package on the two browser
+targets) to answer one question every host already answers was not a trade worth making.
+Everything above it — which local day an instant falls on, whether that day is today, how
+it reads — is ordinary arithmetic in `commonMain` and takes its offset and its "now" as
+arguments, so the rules are pinned by tests that state a zone rather than inheriting the
+build agent's.
+
+The same honesty rule applies to counts. Where two figures say the same absence they are
+stated once: an untouched Topic card reads `Not started · 28 questions` rather than
+`0 of 28 explored` above `Not studied yet`. This is only the all-zero case — the moment
+either figure is non-zero the two are genuinely independent, because real historical
+accuracy can sit beside zero current coverage after the Questions it was earned on were
+retired, and both are then reported normally.
+
+**Learning-unit counts on Topic cards are real, and unevenly present on purpose.** Only
+`android_ui` and `async_reactive` currently publish authored Learning Units — six each — so
+fifteen of the seventeen Topics carry no unit badge. That is content availability rather
+than a rendering bug: `TopicBrowserViewModel` counts `getActiveUnitsByTopic` for every
+Topic through the same call, and `learningUnitCount` distinguishes three states —
+`null` (the learning document could not be read), `0` (no authored Units yet), and a
+positive count. The badge is drawn only for the third, because "0 learning units" is noise
+on most rows of a seventeen-Topic list and a guess when the document is unreadable. Nothing
+fabricates a count to make the list look uniform.

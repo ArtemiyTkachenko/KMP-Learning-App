@@ -95,7 +95,12 @@ internal class ProgressViewModelTest {
         assertEquals(listOf("new", "mid", "old"), content.history.map { it.attemptId })
         assertEquals(CompletedAssessmentType.MIXED, content.history.first().assessmentType)
         assertEquals(7, content.history.first().correctAnswers)
-        assertEquals("2026-08-29T00:15:00Z", content.history.first().completedAtText)
+        // The instant itself reaches presentation; how it reads is decided in the composable, so
+        // the dashboard state can never carry a pre-formatted UTC timestamp again.
+        assertEquals(
+            Instant.parse("2026-08-29T00:15:00Z"),
+            content.history.first().completedAt,
+        )
     }
 
     @Test

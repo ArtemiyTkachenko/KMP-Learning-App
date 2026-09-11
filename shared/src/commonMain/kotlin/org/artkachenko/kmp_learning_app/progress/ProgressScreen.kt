@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -25,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.mistake_review_none
 import kmp_learning_app.shared.generated.resources.mistake_review_unresolved_count
+import kmp_learning_app.shared.generated.resources.progress_review_mistakes_action
 import kmp_learning_app.shared.generated.resources.mixed_interview_title
 import kmp_learning_app.shared.generated.resources.practice_shortcut_weak_area
 import kmp_learning_app.shared.generated.resources.progress_accuracy_caption
@@ -74,6 +77,7 @@ import org.artkachenko.kmp_learning_app.ui.SecondarySummaryCard
 import org.artkachenko.kmp_learning_app.ui.accuracyColor
 import org.artkachenko.kmp_learning_app.ui.formatAccuracy
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
+import org.artkachenko.kmp_learning_app.ui.time.timestampText
 import org.jetbrains.compose.resources.stringResource
 
 internal const val ProgressLoadingTag = "progress_loading"
@@ -86,6 +90,15 @@ internal fun progressTopicCardTag(topicId: String): String = "progress_topic_car
 
 /** Stable per-row handle for completed attempts whose visible labels may be identical. */
 internal fun progressHistoryCardTag(attemptId: String): String = "progress_history_card_$attemptId"
+
+/** The row that opens Mistake Review, so a test can act on it rather than on its label text. */
+internal const val ProgressReviewMistakesTag = "progress_review_mistakes"
+
+/**
+ * Material's minimum touch target. Stated here because this row is not a Material component and so
+ * gets no minimum of its own, and it becomes a tap target whenever the queue is non-empty.
+ */
+private val MinimumTouchTargetSize = 48.dp
 
 /** Stable per-row handle for a weak area's practice shortcut, whose label repeats across rows. */
 internal fun progressWeakAreaPracticeTag(area: WeakAreaUiModel): String =
@@ -106,6 +119,7 @@ internal fun ProgressScreen(
     onTopicClick: (String) -> Unit,
     onHistoryClick: (CompletedAssessmentType, String) -> Unit,
     onPracticePreset: (PracticePreset) -> Unit,
+    onReviewMistakes: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollBehavior = rememberAppTopBarScrollBehavior()
@@ -135,6 +149,7 @@ internal fun ProgressScreen(
                     onTopicClick = onTopicClick,
                     onHistoryClick = onHistoryClick,
                     onPracticePreset = onPracticePreset,
+                    onReviewMistakes = onReviewMistakes,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -148,6 +163,7 @@ private fun ProgressContent(
     onTopicClick: (String) -> Unit,
     onHistoryClick: (CompletedAssessmentType, String) -> Unit,
     onPracticePreset: (PracticePreset) -> Unit,
+    onReviewMistakes: () -> Unit,
     modifier: Modifier,
 ) {
     LazyColumn(
@@ -173,7 +189,10 @@ private fun ProgressContent(
             }
         }
         item {
-            UnresolvedMistakeSummary(unresolvedCount = state.unresolvedMistakeCount)
+            UnresolvedMistakeSummary(
+                unresolvedCount = state.unresolvedMistakeCount,
+                onReviewMistakes = onReviewMistakes,
+            )
         }
         if (state.weakAreas.isNotEmpty()) {
             item {
@@ -345,7 +364,6 @@ private fun RecentPerformanceSummary(recent: ProgressRecentPerformanceUiModel) {
                         Res.string.progress_recent_trend_description,
                         percentages.joinToString(transform = ::formatAccuracy),
                     ),
-                    modifier = Modifier.testTag(ProgressRecentTrendChartTag),
                 )
             }
         }
@@ -361,23 +379,53 @@ private fun recentWindowLabel(attemptCount: Int): String =
     }
 
 /**
- * Reports the size of the mistake queue without offering to open it. Opening it is the Mistakes
- * navigation item's job, and that item carries the same count as a badge; a button here as well
- * gave the learner two controls for one destination sitting a few millimetres apart.
+ * The size of the mistake queue, and — when there is one — the way into it.
  *
- * It gets no practice shortcut either, for a different reason: this count spans the whole
- * curriculum, and focused practice has to name a Topic or Subtopic. Choosing one — the first, the
- * weakest, the one holding the most mistakes — would be a recommendation made silently on the
- * learner's behalf. Scoped mistake practice is offered where a scope is actually known, on a queue
- * entry in Mistake Review.
+ * This used to be inert text, on the reasoning that the Mistakes navigation item already carries the
+ * same count as a badge. That reasoning holds for the *count*, and not for the route: Progress
+ * exists to answer "what should I work on next?", and the single most concrete answer it can give is
+ * a queue of questions the learner has already got wrong. A line of text stating that queue's size
+ * and then declining to open it is the dashboard stopping one step short of being useful.
+ *
+ * It remains one row rather than becoming a card, and it stays a route into Mistake Review rather
+ * than starting anything: this count spans the whole curriculum, and focused practice has to name a
+ * Topic or Subtopic. Choosing one — the first, the weakest, the one holding the most mistakes —
+ * would be a recommendation made silently on the learner's behalf. Scoped mistake practice is
+ * offered where a scope is actually known, on a queue entry in Mistake Review.
+ *
+ * The resolved state keeps no action: an empty queue has nothing to review, and a row that stayed
+ * tappable when it led to an empty screen would be worse than a statement of fact. The whole row is
+ * the target when it is one, with the chevron saying so, and the tap is announced from the row's own
+ * label plus an explicit action label rather than from the icon.
  */
 @Composable
-private fun UnresolvedMistakeSummary(unresolvedCount: Int) {
+private fun UnresolvedMistakeSummary(
+    unresolvedCount: Int,
+    onReviewMistakes: () -> Unit,
+) {
     val semantic = AppThemeExtras.semanticColors
     val resolved = unresolvedCount == 0
+    val reviewLabel = stringResource(Res.string.progress_review_mistakes_action)
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (resolved) {
+                    Modifier
+                } else {
+                    Modifier
+                        .clickable(
+                            onClickLabel = reviewLabel,
+                            onClick = onReviewMistakes,
+                        )
+                        .testTag(ProgressReviewMistakesTag)
+                },
+            )
+            // Inside the clickable, so the state layer spans the row rather than being inset from
+            // it, and the row still clears the minimum touch target when it is a target.
+            .heightIn(min = MinimumTouchTargetSize)
+            .padding(vertical = AppSpacing.Tight),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.Related),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -394,7 +442,16 @@ private fun UnresolvedMistakeSummary(unresolvedCount: Int) {
             },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
         )
+        if (!resolved) {
+            Icon(
+                imageVector = AppIcons.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+        }
     }
 }
 
@@ -407,6 +464,13 @@ private fun UnresolvedMistakeSummary(unresolvedCount: Int) {
  *
  * The shortcut is offered because the row is here at all — the domain put it in the snapshot's weak
  * areas — so nothing about weakness is re-decided from the percentage this card displays.
+ *
+ * It carries no "Weak area" badge, unlike the same card elsewhere. Every row in this section is a
+ * weak area and the section says so directly above them, so a badge on each one repeats the heading
+ * once per card and adds nothing a learner did not already know from where they are looking. The
+ * accent container and the accuracy colour still mark the row; ordering, the figure, and the counts
+ * carry the rest. The badge stays where it is doing work — on a Topic card in a mixed list, where
+ * nothing else states the verdict.
  */
 @Composable
 private fun WeakAreaCard(
@@ -431,6 +495,7 @@ private fun WeakAreaCard(
         answeredCount = area.answeredCount,
         percentage = area.percentage,
         isWeak = true,
+        weakLabel = null,
         action = {
             TextButton(
                 onClick = onPracticeClick,
@@ -480,7 +545,9 @@ private fun HistoryCard(
             .testTag(progressHistoryCardTag(attempt.attemptId))
             .clickable(onClick = onClick),
         subtitle = focusedScopeLabel(attempt.focusedScope),
-        caption = attempt.completedAtText,
+        // Formatted here, where the reader's zone and their idea of "today" are available; the state
+        // carries the instant itself. See ui/time/TimestampText.kt.
+        caption = timestampText(attempt.completedAt),
         showChevron = true,
     )
 }

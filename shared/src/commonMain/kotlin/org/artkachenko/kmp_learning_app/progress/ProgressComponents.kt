@@ -14,8 +14,9 @@ import org.jetbrains.compose.resources.stringResource
  *
  * The accuracy figure is the point of the row, so it is the largest thing in it and is coloured
  * against the domain's weakness threshold — these numbers used to render at body size in a uniform
- * colour, which made a weak area and a strong one look identical. A weak row additionally tints its
- * container and carries a badge, so it is identifiable without reading the number at all.
+ * colour, which made a weak area and a strong one look identical. A weak row additionally carries an
+ * accent border and, where the context does not already state it, a badge — so it is identifiable
+ * without reading the number at all.
  *
  * [caption] is the row's quietest line, and is where current-curriculum coverage goes: a second
  * figure with a different denominator, worth saying but never worth another card.
@@ -33,6 +34,12 @@ internal fun ProgressPerformanceCard(
     modifier: Modifier = Modifier,
     caption: String? = null,
     isWeak: Boolean = false,
+    /**
+     * The badge text for a weak row, or `null` to leave the accent border and the coloured figure to
+     * say it alone. A caller passes `null` where the surrounding context already states it — under a
+     * "Weak areas" heading, every card carrying the badge repeats that heading once per row.
+     */
+    weakLabel: String? = stringResource(Res.string.progress_weak_label),
     showChevron: Boolean = false,
     showPercentage: Boolean = true,
     isSummary: Boolean = false,
@@ -46,7 +53,7 @@ internal fun ProgressPerformanceCard(
         subtitle = subtitle,
         caption = caption,
         isWeak = isWeak,
-        weakLabel = stringResource(Res.string.progress_weak_label),
+        weakLabel = weakLabel,
         showChevron = showChevron,
         showPercentage = showPercentage,
         isSummary = isSummary,

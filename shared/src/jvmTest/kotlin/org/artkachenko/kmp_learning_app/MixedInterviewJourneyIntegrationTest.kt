@@ -111,6 +111,10 @@ internal class MixedInterviewJourneyIntegrationTest {
                     waitForText("Kotlin single question")
                     onNodeWithText("Kotlin single question").assertIsDisplayed()
                     onNodeWithText("Question 1 of 4").assertIsDisplayed()
+                    // Focus mode: a question is on screen and unanswered work would be abandoned by
+                    // a one-tap move to another area, so area navigation is withdrawn.
+                    onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.INTERVIEW))
+                        .assertDoesNotExist()
                     val initial = assertNotNull(components.repository.getById(OriginalAttemptId))
                     assertEquals(AssessmentConfig.Mixed(questionCount = 20), initial.config)
                     assertEquals(
@@ -164,6 +168,10 @@ internal class MixedInterviewJourneyIntegrationTest {
 
                     waitForText("Score: 2 / 4")
                     onNodeWithText("Score: 2 / 4").assertIsDisplayed()
+                    // ... and back to normal application chrome the moment the assessment ends:
+                    // reviewing answers is reading, and there is nothing left to interrupt.
+                    onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.PROGRESS))
+                        .assertIsDisplayed()
                     assertTrue(
                         onAllNodesWithText("50", substring = true)
                             .fetchSemanticsNodes()
@@ -217,6 +225,10 @@ internal class MixedInterviewJourneyIntegrationTest {
                     waitForText("Kotlin single question")
                     onNodeWithText("Kotlin single question").assertIsDisplayed()
                     onNodeWithText("Question 1 of 4").assertIsDisplayed()
+                    // Focus mode: a question is on screen and unanswered work would be abandoned by
+                    // a one-tap move to another area, so area navigation is withdrawn.
+                    onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.INTERVIEW))
+                        .assertDoesNotExist()
 
                     val retake = assertNotNull(components.repository.getById(RetakeAttemptId))
                     assertNotEquals(sourceBeforeRetake.id, retake.id)
@@ -233,6 +245,10 @@ internal class MixedInterviewJourneyIntegrationTest {
                     onNodeWithContentDescription("Back").performClick()
                     waitForText("Score: 2 / 4")
                     onNodeWithText("Score: 2 / 4").assertIsDisplayed()
+                    // ... and back to normal application chrome the moment the assessment ends:
+                    // reviewing answers is reading, and there is nothing left to interrupt.
+                    onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.PROGRESS))
+                        .assertIsDisplayed()
                     scrollToText("Compose exact-set explanation")
                     onNodeWithText("Compose exact-set explanation").assertIsDisplayed()
                     scrollToText("Retake interview")

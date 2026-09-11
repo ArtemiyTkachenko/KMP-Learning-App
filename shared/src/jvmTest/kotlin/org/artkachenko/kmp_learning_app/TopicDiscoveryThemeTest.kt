@@ -201,8 +201,7 @@ internal class TopicDiscoveryThemeTest {
         // Learning context reads in either palette: a neutral coverage count on both cards, the
         // unstudied Topic saying so instead of showing a fabricated 0%, and the weak one carrying
         // both its accuracy and the domain's badge.
-        onNodeWithText("0 of 10 explored").assertIsDisplayed()
-        onNodeWithText("Not studied yet").assertIsDisplayed()
+        onNodeWithText("Not started · 10 questions").assertIsDisplayed()
         onNodeWithText("4 of 10 explored").assertIsDisplayed()
         onNodeWithText("42%").assertIsDisplayed()
         onNodeWithText("Weak area").assertIsDisplayed()

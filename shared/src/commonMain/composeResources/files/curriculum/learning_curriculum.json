@@ -8249,7 +8249,7 @@
                   "rows": [
                     [
                       "Must an observer arriving at any moment know the current truth?",
-                      "This is state — `StateFlow`, or `replay = 1` at minimum",
+                      "`StateFlow` — no `SharedFlow` configuration gives a value that is always already there",
                       "Retention is optional"
                     ],
                     [
@@ -8268,6 +8268,10 @@
                       "`replay = 0` is honest and cheap, and a small replay window covers a short gap"
                     ]
                   ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The first row deserves as much care as the last, because `replay = 1` looks like it should do that job and does not. A freshly constructed `MutableSharedFlow(replay = 1)` has an empty replay cache until something is emitted into it, so a subscriber arriving before the first emission receives nothing and waits. Measured on this project's JVM target: it received nothing at all, and nothing again after a later `resetReplayCache()`, while a `MutableStateFlow` built alongside it handed over its initial value immediately. The mandatory initial value is what closes that gap, and the `StateFlow` documentation spells out the rest — a shared flow behaves like a state flow only when it is created with `replay = 1` and a drop-oldest strategy, seeded with `tryEmit(initialValue)`, and read through `distinctUntilChanged`. Three ingredients, of which `replay = 1` is one."
                 },
                 {
                   "type": "paragraph",

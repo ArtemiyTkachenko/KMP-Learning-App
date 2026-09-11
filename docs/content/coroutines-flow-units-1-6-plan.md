@@ -1701,14 +1701,14 @@ plus the blueprint's status and two of its headings.
 therefore reaches **four** concepts — `hot_vs_cold_streams`, `stateflow`, `sharedflow`,
 `flow_sharing` — and **six** ACTIVE Questions, each counted once. That is asserted in
 `LearningUnitPracticeIntegrationTest` rather than left to the generated snapshot. Each Lesson
-carries Core, Practical and Senior depth and runs 1,110–1,486 words after the review
-corrections below, which added measured material to L6.3 and L6.4. Those two are the Unit's
-longest — L6.3 carries delivery plus the whole buffering configuration, L6.4 carries sharing,
-three policies, two timers and upstream completion — and that is the load the plan's
-five-Lesson justification for this Unit already anticipated. Neither was split: splitting L6.4
-would separate the policy from the scope that gives it meaning, and both sit inside the range
-the shipped document already spans, where eight Lessons are longer and the maximum is 2,169
-words.
+carries Core, Practical and Senior depth and runs 1,110–1,626 words after the review
+corrections below, which added measured material to L6.3, L6.4 and L6.5. L6.3 is the longest: it
+carries delivery, the whole buffering configuration, and the `replay = 1` against `StateFlow`
+distinction that round four added. L6.4 is next, with sharing, three policies, two timers and
+upstream completion. That is the load the plan's five-Lesson justification for this Unit already
+anticipated, and neither was split — splitting L6.4 would separate the policy from the scope
+that gives it meaning. Both sit inside the range the shipped document already spans, where six
+Lessons are longer and the maximum is 2,169 words.
 
 ### The two title corrections, and why they are not scope changes
 
@@ -1777,6 +1777,7 @@ figures are evidence for a semantic claim, not published guarantees.
 | The same with `extraBufferCapacity = 1` and `DROP_OLDEST` | **1 and 6** delivered, subscriber present throughout | That broadcast is fan-out, not a delivery guarantee |
 | Consecutive `tryEmit` successes against a present 400 ms subscriber, over seven `replay`/`extraBufferCapacity` pairs | **`replay + extraBufferCapacity`** every time, including 1 slot at `replay = 1, extra = 0` | That `replay` is also buffer for a present slow subscriber |
 | Five queued `Channel` elements, one worker cancelled part-way through the third | Worker took 1–3 and finished 1–2; a replacement receiver drained 4 and 5; **3 was never redelivered** | That a `Channel` gives single-receiver delivery, not handling |
+| Fresh `MutableSharedFlow(replay = 1)` against fresh `MutableStateFlow(initial)`, subscriber arriving before any emission | **Nothing** against the **initial value**; `resetReplayCache()` empties it again | That `replay = 1` is not a current-value contract |
 | Six values emitted with no subscriber at `replay = 0, extraBufferCapacity = 3` | Late subscriber received **nothing** | That extra capacity retains nothing for an absent subscriber |
 | `replay = 2`, ten emissions, no subscribers | Replay cache held the last two | That overflow strategy has no effect with no subscribers |
 | `tryEmit` on an unbuffered flow with no subscribers | `true`, replay cache still empty | That `true` is not evidence of delivery |
@@ -1944,7 +1945,7 @@ decision for E24-08 to take deliberately.
 
 ### Corrections made during review of Unit 6
 
-Twelve defects were found by review of the shipped prose, across three rounds, and every one was
+Thirteen defects were found by review of the shipped prose, across four rounds, and every one was
 re-measured before being corrected. Nearly all are the same failure in different clothes: a rule
 stated without the qualification that the Unit's own material supplies two paragraphs later.
 
@@ -2099,15 +2100,50 @@ context — the `SharedFlow` KDoc quotation that the following clause qualifies,
 `emit` contract, `StateFlow`'s genuinely unconditional replay-one-to-every-new-subscriber rule,
 and the measured statements.
 
-**The wider lesson for E24-09.** Almost every one of these twelve was a general rule stated
-without the qualification the same Lesson supplies, and most of rounds two and three existed
-only because the previous round patched the flagged sentence rather than the claim. That is the
-specific failure mode of a Unit whose subject is separating axes. Three things follow: the other
+#### Round four
+
+One more, and it is the sharpest of the twelve because the sentence contradicted the contract
+this Unit's second Lesson is built on.
+
+**13. `replay = 1` was offered as an alternative to `StateFlow` for current-value semantics.**
+L6.3's decision table answered "must an observer arriving at any moment know the current truth?"
+with "this is state — `StateFlow`, or `replay = 1` at minimum". The second half is false, and
+L6.2 already says why: a `StateFlow` requires an initial value, so there is never a moment when
+it has nothing to hand over, whereas `replay = 1` retains the most recent value **if there has
+been one**. Measured on this project's JVM target:
+
+| Case | What a subscriber arriving now receives |
+| --- | --- |
+| Fresh `MutableSharedFlow(replay = 1)`, nothing emitted yet | **Nothing** — it waits; the replay cache is empty |
+| The same flow after one emission | That value |
+| The same flow after `resetReplayCache()` | **Nothing** again |
+| Fresh `MutableStateFlow("INITIAL")` | **`INITIAL`**, immediately |
+| `replay = 1` + `DROP_OLDEST`, seeded with `tryEmit`, read through `distinctUntilChanged` | `INITIAL`, immediately |
+
+The last row is the `StateFlow` KDoc's own recipe for making a shared flow behave like a state
+flow, and it is the clearest available proof that `replay = 1` is one ingredient of three rather
+than an equivalent. The table row now reads "`StateFlow` — no `SharedFlow` configuration gives a
+value that is always already there", and a new paragraph beneath the table carries the
+measurement and the recipe. This also gives the Unit its sharpest `StateFlow`-against-`SharedFlow`
+distinction, which had previously been left implicit in L6.2's "there is always a current value".
+
+**Sweep for this shape.** The quantifier sweep does not catch a *substitution* claim, so the Unit
+was searched separately for every mention of `replay = 1`, "replay window", "at minimum", and
+phrasings of the form "like a `StateFlow`" or "instead of a `StateFlow`". Nine matches, of which
+this was the only substitution claim; the rest describe retention across a gap and are supported
+by the Unit's own measurements. L6.5's worked scenario already names `StateFlow` for current
+authentication state without offering an alternative, so nothing else needed changing.
+
+**The wider lesson for E24-09.** Almost every one of these thirteen was a general rule stated
+without the qualification the same Lesson supplies, and most of rounds two to four existed only
+because the previous round patched the flagged sentence rather than the claim. That is the
+specific failure mode of a Unit whose subject is separating axes. Four things follow: the other
 five Units are worth re-reading for the same shape; a correction to a general claim must be
 applied by searching the whole document for the claim rather than editing the reported sentence;
-and the search should be the mechanical quantifier-plus-audience sweep described above, because
-three successive hand-written regexes each missed the next instance by matching the wording of
-the last one.
+the search should be the mechanical quantifier-plus-audience sweep described above, because three
+successive hand-written regexes each missed the next instance by matching the wording of the last
+one; and that sweep catches over-general *delivery* claims but not *substitution* claims — "X at
+minimum" offered in place of Y — which need their own pass, as round four showed.
 
 ### Cross-links and validation
 

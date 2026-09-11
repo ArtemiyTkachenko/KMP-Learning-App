@@ -165,10 +165,13 @@ Two caveats before acting on this table:
   bottom partly because their taxonomies are unusually fine-grained (18 and 27
   subtopics for areas that carry fewer distinct interview concepts than, say,
   Compose).
-- **Density hides depth.** `async_reactive` looks comfortable at 1.46, but its
-  38 questions are spread across 24 subtopics, so most individual concepts still
-  have exactly one question. Use the Concept coverage section, not the density,
-  to judge whether a concept is genuinely tested.
+- **Density hides depth.** Read it together with how many *covered* subtopics
+  hold only one question, which is what density averages away. `async_reactive`
+  is now the one Topic where the two agree: 2.19, and only 6 of its 24 covered
+  subtopics are at one. Everywhere below it they diverge — `kotlin_language` at
+  1.09 has 13 of 19 at one, and `security`, `mobile_system_design` and `kmp` are
+  all above 90%. Use the Concept coverage section, not the density, to judge
+  whether a concept is genuinely tested.
 
 ## Audit baselines
 

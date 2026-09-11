@@ -18122,7 +18122,7 @@
       "id": "coroutine_timeout_cleanup_needs_non_cancellable",
       "topicId": "async_reactive",
       "subtopicId": "coroutine_cancellation",
-      "text": "An upload runs inside withTimeout(2_000) { }, and a finally block calls a suspending connection.close() that flushes before closing. The deadline passes while the upload is still in flight. What happens to close()?",
+      "text": "An upload runs inside withTimeout(2_000) { }, and a finally block calls a suspending connection.close() that awaits its flush at an ordinary cancellable suspension point before closing. The deadline passes while the upload is still in flight. What happens to close()?",
       "answers": [
         {
           "id": "coroutine_timeout_cleanup_needs_non_cancellable_b",
@@ -18146,7 +18146,7 @@
       "correctAnswerIds": [
         "coroutine_timeout_cleanup_needs_non_cancellable_a"
       ],
-      "explanation": "A timeout is cancellation with a clock. withTimeout cancels its block with a TimeoutCancellationException rather than stopping it: the documentation says it will not automatically stop the code inside from being executed and that it is up to the block to notice. Cancellation unwinds through finally in the ordinary way, so the cleanup is entered - but the coroutine is cancelled by then, and the first suspension point inside the cleanup resumes with the cancellation exception instead of doing the work. Measured on this repository's toolchain, a suspending cleanup in exactly this shape never completed, and the same cleanup wrapped in withContext(NonCancellable) did. That is what NonCancellable is for and the whole of what it is for: a bounded suspending cleanup that has to finish. It is not a way to mark work as important, and using it around anything unbounded leaves a cancelled coroutine that cannot be stopped.",
+      "explanation": "A timeout is cancellation with a clock. withTimeout cancels its block with a TimeoutCancellationException rather than stopping it: the documentation says it will not automatically stop the code inside from being executed and that it is up to the block to notice. Cancellation unwinds through finally in the ordinary way, so the cleanup is entered - but the coroutine is cancelled by then, and the first suspension point inside the cleanup resumes with the cancellation exception instead of doing the work. Measured on this repository's toolchain, a suspending cleanup in exactly this shape never completed, and the same cleanup wrapped in withContext(NonCancellable) did. That is what NonCancellable is for and the whole of what it is for: a bounded suspending cleanup that has to finish. It is not a way to mark work as important, and using it around anything unbounded leaves a cancelled coroutine that cannot be stopped. Note what the stem has to say for the outcome to follow: a close() that returns without ever reaching a cancellable suspension point runs to the end even in a cancelled coroutine, because cancellation is only ever observed where the code lets it be.",
       "sources": [
         {
           "title": "withTimeout",

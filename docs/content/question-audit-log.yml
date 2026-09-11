@@ -235,6 +235,16 @@ audits:
         classes violating the Any.equals contract is unspecified. The shipped stem assigns a
         newly built, equal instance of a well-behaved type instead.
 
+        A sixth was found by PR review, the same shape as the first four.
+        coroutine_timeout_cleanup_needs_non_cancellable said only that close() is a suspending
+        function, which does not make its invocation a cancellation point: a close() that
+        flushes synchronously, suspends non-cancellably, or handles the cancellation itself
+        completes normally inside a cancelled coroutine, so a knowledgeable reader could reject
+        every option. The stem now states that the flush is awaited at an ordinary cancellable
+        suspension point, and the explanation states what happens when a cleanup never reaches
+        one. Question.id, all four AnswerOption ids, the key, the level and the Subtopic are
+        unchanged; the assessed claim did not move.
+
   - review: Compose Units 2-6 assessment gaps (E23-07)
     date: 2026-09-08
     scope: >-

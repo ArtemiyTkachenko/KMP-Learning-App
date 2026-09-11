@@ -2607,7 +2607,8 @@ makes it the largest remaining hole in the epic.
 Each was solved from its stem and options alone before `correctAnswerIds` was consulted, every
 option was tested for defensibility under the stem as written, and every cited page was opened
 and the supporting sentence located. Four defects were found and fixed by that pass, all of them
-in the stem rather than the key:
+in the stem rather than the key — and a fifth of the same shape was found afterwards by PR
+review, recorded below the four:
 
 - **GAP-U2-C had a speculative-prefetch escape.** The first draft made the second call *needed*
   only for premium accounts, which leaves starting it early genuinely faster on the premium path
@@ -2628,6 +2629,18 @@ A fifth was caught before authoring. A draft of GAP-U6-A used a `data class` hol
 classes that violate the contract for `Any.equals` is unspecified" clause. The shipped stem
 assigns a **newly built, equal** instance of a well-behaved type instead, which is specified
 behaviour and makes the same point more sharply.
+
+A sixth was found by PR review, and it is the same failure as the first four — an unstated
+premise the key depended on. **GAP-U3-A's stem said only that `close()` is a suspending
+function**, and `suspend` is a capability rather than a promise that a call reaches a
+cancellable suspension point: a `close()` that flushes synchronously, suspends
+non-cancellably, or handles the cancellation itself completes normally in a cancelled
+coroutine. A reader who knew that could reject all four options. The stem now states that the
+flush is awaited at an ordinary cancellable suspension point, and the explanation says what
+follows when it is not — which turns the hole into the Unit's own point, that cancellation is
+observed only where the code lets it be. Question and AnswerOption ids, the key, the level and
+the Subtopic are unchanged: the assessed claim did not move, the stem stopped depending on an
+assumption it never made.
 
 **All nineteen are `SINGLE`.** Each asks for one prediction or one decision, and a `MULTIPLE`
 question about, say, three true properties of `SharedFlow` is the descriptive shape these gaps

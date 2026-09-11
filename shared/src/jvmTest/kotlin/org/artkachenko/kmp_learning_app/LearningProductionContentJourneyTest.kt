@@ -569,7 +569,14 @@ private suspend fun ComposeUiTest.openTopicFromBrowser() {
         ) {
             return
         }
-        onNodeWithText(UiTopicName).performClick()
+        // Re-tap only while the row is still on screen. The retry exists for a tap that did not
+        // navigate, but a tap that *did* leaves the Topic's list a frame or more away while the
+        // row it came from has already left composition — and tapping a node that is gone throws
+        // a node-not-found instead of retrying, turning a slow frame into a failure about the
+        // test's own timing rather than about the content under test.
+        if (onAllNodesWithText(UiTopicName).fetchSemanticsNodes().isNotEmpty()) {
+            onNodeWithText(UiTopicName).performClick()
+        }
         waitForIdle()
     }
     // Nothing arrived after several attempts, so let the ordinary wait produce the failure and its

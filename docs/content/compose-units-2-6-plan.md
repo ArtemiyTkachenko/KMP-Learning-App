@@ -116,7 +116,7 @@ the route into stability — and the Unit title is unchanged.
   `kotlin_language`, `lifecycle_navigation`, `architecture`, `performance` and
   `async_reactive`, which Rule 3 of the authoring contract expects.
 - **Taxonomy gaps.** Units 2–6 need no Subtopic that does not exist. The blueprint's recorded
-  gaps (insets, animation, gestures, focus, and so on) all sit in Units 9–14. `kotlin_variables`,
+  gaps (insets, animation, gestures, focus, and so on) all sit in Units 13–18. `kotlin_variables`,
   cited by L4.3, has no active question by deliberate policy — it is vocabulary, not practice
   coverage, and that is unchanged here.
 - **Overlap.** No Lesson lists the same Subtopic as both primary and supporting, which the
@@ -181,7 +181,7 @@ bridged, and the boundary that keeps the Lesson from absorbing its neighbour.
   `lesson_state_down_events_up`; general state ownership, bridged to the `architecture` Topic.
 - **Boundary:** teaches the mechanics and the ownership decision. The direction of data flow is
   Unit 1's contract and appears here only as supporting context; `ViewModel`-owned screen state
-  is named and deferred.
+  is named and deferred to Unit 7, the screen-state Unit.
 
 #### `lesson_observable_collections` (L2.5)
 
@@ -206,7 +206,7 @@ bridged, and the boundary that keeps the Lesson from absorbing its neighbour.
 - **Prerequisites:** Unit 1's execution contract; Unit 2's observable state.
 - **Boundary:** names composition, layout and drawing as separate phases so that "recomposition
   redraws the screen" can be refuted, and stops there — per-phase state reads and deferred reads
-  are Unit 13. Recomposition scopes are the next Lesson.
+  are Unit 17. Recomposition scopes are the next Lesson.
 
 #### `lesson_recomposition_scopes` (L3.2)
 
@@ -217,7 +217,7 @@ bridged, and the boundary that keeps the Lesson from absorbing its neighbour.
 - **Prerequisites:** L3.1.
 - **Boundary:** skipping is named as "an unchanged input can let a scope be skipped" and
   mechanised in `lesson_stability_and_skipping`. Slot-table internals are excluded. Deferred
-  reads as a performance technique stay in Unit 13.
+  reads as a performance technique stay in Unit 17.
 
 #### `lesson_recomposition_cost` (L3.3)
 
@@ -226,7 +226,7 @@ bridged, and the boundary that keeps the Lesson from absorbing its neighbour.
   the executing body actually costs rather than counting executions.
 - **Prerequisites:** L3.1 and L3.2.
 - **Boundary:** deliberately short. It names misconceptions and the real costs; measurement,
-  tooling and optimisation belong to Unit 13, and the fixes belong to Units 4 and 5. It must not
+  tooling and optimisation belong to Unit 17, and the fixes belong to Units 4 and 5. It must not
   become a performance lesson, and it must not present a recomposition count as evidence of a
   defect on its own.
 
@@ -250,7 +250,7 @@ bridged, and the boundary that keeps the Lesson from absorbing its neighbour.
   explain why an index key fails exactly when it matters.
 - **Prerequisites:** L4.1.
 - **Boundary:** `key` as an identity mechanism, with its limits. `LazyColumn` itself, item reuse
-  and `contentType` are Unit 10; this Lesson uses a lazy list as the setting, not the subject.
+  and `contentType` are Unit 14; this Lesson uses a lazy list as the setting, not the subject.
 
 #### `lesson_immutability_vs_stability` (L4.3)
 
@@ -270,7 +270,7 @@ bridged, and the boundary that keeps the Lesson from absorbing its neighbour.
 - **Prerequisites:** L4.3; recomposition scopes (L3.2).
 - **Boundary:** must explicitly correct the pre–Strong Skipping claim that an unstable parameter
   always forces re-execution, and must state the Strong Skipping assumption wherever an example
-  depends on it. Compiler metrics and reports are Reference material in Unit 13.
+  depends on it. Compiler metrics and reports are Reference material in Unit 17.
 
 #### `lesson_stability_annotations` (L4.5)
 
@@ -311,7 +311,7 @@ bridged, and the boundary that keeps the Lesson from absorbing its neighbour.
   never belonged in composition", and name the layer that should own the work.
 - **Prerequisites:** Unit 1's execution contract; L3.3.
 - **Boundary:** the layering argument is stated and bridged to the `architecture` Topic.
-  Coroutine execution and effect selection are Unit 7, named only.
+  Coroutine execution and effect selection are Units 9 and 12, named only.
 
 ### Unit 6 — Snapshot Fundamentals (`unit_snapshot_fundamentals`)
 
@@ -406,7 +406,7 @@ verbatim. No Lesson boundary moved, no Lesson split or merged, and no blueprint 
 was needed beyond the four this review had already made. The eight Lessons carry Core and
 Practical depth throughout; `lesson_recomposition_cost` deliberately carries no Senior
 section, because the plan asked for a short Lesson and manufacturing deeper material would
-have pulled Unit 13's content forward.
+have pulled Unit 17's content forward.
 
 ### Semantic re-check of the two recomposition Questions
 
@@ -499,7 +499,7 @@ guarantee. `rememberSaveable` *is* the composable-level answer to system-initiat
 death with the task retained; what it is not is durable storage.
 
 The blueprint's L2.3 line still says "three lifetimes". That shorthand is what this authoring
-found too coarse, and Unit 8 should not inherit it.
+found too coarse, and Unit 7 — the screen-state Unit — should not inherit it.
 
 **Unresolved question 1 is still unresolved.** The plan asked E23-02 to re-check whether
 Compose Multiplatform 1.11.x restores `rememberSaveable` state across application restart on
@@ -840,7 +840,7 @@ Both Unit 5 gaps stand, and teaching a concept does not close an assessment gap.
   uses the same documentation's statement that the domain layer is optional and use cases
   should be added only when required to refuse the "therefore write a use case" conclusion.
   The four questions it leaves the reader with — cost, lifetime, reuse, responsibility —
-  are the transferable part, and they are what Unit 8 should build on rather than restate.
+  are the transferable part, and they are what Unit 7 should build on rather than restate.
 - **The absolute claim is refused in both directions.** "All calculations must leave
   composition" is named and rejected beside the misplacement failure, because a Lesson that
   argues only one way produces a state holder whose job is string concatenation.
@@ -1003,7 +1003,7 @@ GAP-U6-B.
 - **Neither API is presented as persistence or as threading.** The `snapshotFlow` versus
   `derivedStateOf` comparison ends by saying that nothing either produces outlives its
   Composition or coroutine, and that a collector runs in whatever context its coroutine was
-  given. Unit 7 will meet the threading question properly; this is the bounded version.
+  given. Unit 9 will meet the threading question properly; this is the bounded version.
 
 ## Assessment gaps for E23-07
 
@@ -1246,7 +1246,7 @@ Reviewed 2026-09-08. Each row is a claim the Lessons depend on, with the page th
 | Hoisting rules: lowest common parent of readers, highest level of writers, hoist together what changes together | <https://developer.android.com/develop/ui/compose/state> | Supports L2.4's "lowest sensible owner" framing |
 | `rememberSaveable` stores state in a `Bundle` through the saved-instance-state mechanism, survives configuration change and system-initiated process death, is size-limited (`TransactionTooLargeException`), and needs a Saver for non-primitive types | <https://developer.android.com/develop/ui/compose/state-saving> | Android-specific; see the platform caveat below |
 | A composable's identity is its call site; `key` distinguishes multiple calls from one call site and need only be unique among those calls | <https://developer.android.com/develop/ui/compose/lifecycle> | Supports L4.1 and L4.2 |
-| Composition, layout and drawing are distinct phases; state read in layout or draw changes the screen without recomposing | <https://developer.android.com/develop/ui/compose/phases> | Bridge depth only in L3.1 — the phase argument is Unit 13 |
+| Composition, layout and drawing are distinct phases; state read in layout or draw changes the screen without recomposing | <https://developer.android.com/develop/ui/compose/phases> | Bridge depth only in L3.1 — the phase argument is Unit 17 |
 | A type is stable if it is immutable or if Compose can know whether its value changed; collections such as `List`, `Set` and `Map` are always treated as unstable because immutability cannot be guaranteed | <https://developer.android.com/develop/ui/compose/performance/stability> | Supports L4.3 and L4.4 |
 | Strong Skipping is enabled by default from Kotlin 2.0.20; all restartable composables become skippable; unstable parameters are compared with `===` and stable ones with `equals`; lambdas are automatically remembered | <https://developer.android.com/develop/ui/compose/performance/stability/strongskipping> | The anchor for L4.4, and for correcting the obsolete "unstable always recomposes" claim |
 | The stability configuration file is an opt-in contract with the compiler and does not make a class stable; kotlinx immutable collections are treated as immutable | <https://developer.android.com/develop/ui/compose/performance/stability/fix> | Reference only, in L4.5 |
@@ -1332,7 +1332,7 @@ None changes the Unit or Lesson count.
    teaches is Android's; the product ships on desktop, iOS and web, where no equivalent
    guarantee is documented.
 4. **L6.2 — Note added that the Effects and Flow pointers must not promise in-app Lessons.**
-   Unit 7 and the Flow curriculum are outside E23, and `relatedLessonIds` cannot reference a
+   Unit 9 and the Flow curriculum are outside E23, and `relatedLessonIds` cannot reference a
    Lesson that does not exist.
 
 ---
@@ -1420,3 +1420,27 @@ promoted, and the four tests that pin the cross-Topic mappings as supporting sti
 the boundaries E23-08 is asked to verify are the ones this document describes. And one
 candidate is deferred rather than closed — Applied coverage of read placement, recorded by
 E23-03 — which is a content decision for a later issue and not an integration risk.
+
+---
+
+## Blueprint renumbering note (E25-01)
+
+E25-01 replaced the former Compose blueprint Units 7 and 8 with six Units and renumbered the
+former Units 9–14 to 13–18. Every Unit number in this document that names a **later** Unit was
+updated in that change, so the handoff instructions above point at the curriculum boundaries
+that now exist:
+
+| Was | Now | Subject |
+| --- | --- | --- |
+| Unit 7 | Units 9–12 | Effects, latest values and event-driven work, cleanup and producers, mechanism selection |
+| Unit 8 | Unit 7 (bounded) and the architecture curriculum | Screen state and the screen-level owner; `UiState` modelling, layering and MVVM moved out of the Compose blueprint entirely |
+| Unit 9 | Unit 13 | Modifiers and Layout |
+| Unit 10 | Unit 14 | Lazy Layouts |
+| Unit 11 | Unit 15 | CompositionLocal, Theme and Ambient Dependencies |
+| Unit 12 | Unit 16 | Accessibility and Semantics |
+| Unit 13 | Unit 17 | Compose Performance Mental Model |
+| Unit 14 | Unit 18 | Views and Compose Interoperability |
+
+Units 2–6 — this document's own subject — are unchanged in number, identity and
+responsibility. The reconciliation is recorded in
+[`compose-units-7-12-plan.md`](compose-units-7-12-plan.md).

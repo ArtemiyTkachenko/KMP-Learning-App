@@ -452,11 +452,21 @@ name all four.
 - **Objective:** describe the boundary between the composition and the thing that owns screen
   state, and know where the curriculum hands over.
 - **Demonstrable reasoning:** say what changes about a piece of state when its owner moves
-  outside the Composition, and what does not.
-- **Teach:** what "outside the Composition" buys (survives recomposition *and* the composable
-  leaving composition *and* UI recreation); that the composition talks to it through a state
-  value down and callbacks up, which is L7.3 applied one level higher; that a plain remembered
-  state holder is often the right answer and a screen-level owner is not a default.
+  outside the Composition, and what does not; for a given action — recomposing, rotating,
+  navigating forward, popping the destination — say whether the screen-level state survives,
+  and name the lifetime that decided it.
+- **Teach:** what "outside the Composition" changes — the state stops being tied to the
+  composable's own composition, so recomposition, the composable leaving composition and UI
+  recreation no longer decide its fate; that the composition talks to it through a state value
+  down and callbacks up, which is L7.3 applied one level higher; that a plain remembered state
+  holder is often the right answer and a screen-level owner is not a default.
+- **Teach, and this is the correction the Lesson exists to make:** moving state out of the
+  Composition does not by itself make it survive anything. **What it survives is decided by the
+  owner's own lifetime**, which a platform host controls. In this repository each Navigation 3
+  back-stack entry owns its own `ViewModelStore` and the ViewModel is cleared when that entry is
+  removed (`docs/architecture/overview.md`), so a popped destination's screen-level state is
+  gone even though it lived outside the Composition. "Outside the Composition" is a change of
+  owner, not a promise of persistence.
 - **Bridge:** `viewmodel_lifecycle` and `kmp_lifecycle_viewmodel` — in this repository the
   owner's *lifetime* is supplied by a platform host, which is why the boundary is worth naming
   (see `kmp_shared_viewmodel_owner_platform`); `configuration_changes` for the Android case.
@@ -763,6 +773,7 @@ entry names the Lesson responsible.
 | "Hoist state as high as possible." | L7.1 | Predict the parameter list, the state type and the invalidation cost of a screen whose local state has been pushed to the top |
 | "A child may hold writable state or a state-holder reference." | L7.3 | Name the specific problems — a second write path, lost previewability, lost reuse — and rewrite the signature |
 | "The screen state type is where the interesting design is." | L7.3, and deliberately left to E26 | Say what E25 settles (one immutable current value) and what it does not (how that value is modelled) |
+| "Moving state outside the Composition makes it survive." | L7.4 | For a named action — recomposing, rotating, navigating forward, popping the destination — say whether the screen-level state survives, and name the owner lifetime that decided it rather than the move itself |
 | "A `StateFlow` can drive a composable directly." | L8.1 | Predict what `flow.value` read in a body does when the flow changes, and explain it from what composition observes |
 | "`collectAsState` and `collectAsStateWithLifecycle` have the same lifetime and cost." | L8.3, L8.4 | For a named target and a named user action, say whether collection stops |
 | "`collectAsStateWithLifecycle` is Android-only." | L8.4 | Name the artifact, the source set, the package, and what supplies the `LifecycleOwner` on each target this project builds |
@@ -1271,7 +1282,7 @@ invalid until their target ships.**
 | L9.4 | `lesson_remember_key_memoization` | Both failure directions, already taught for a cached value |
 | L10.1 | `lesson_launched_effect`, `lesson_effect_keys_as_dependencies` | The alternative it is compared against |
 | L10.3 | `lesson_coroutine_scope_ownership`, `lesson_structured_concurrency` | Where work that outlives the screen belongs |
-| L11.1 | `lesson_disposable_effect`'s own Unit; `lesson_flow_collection_lifetime` | Cancellation as the other shape of cleanup |
+| L11.1 | `lesson_cancellation_cleanup_and_timeouts`, `lesson_flow_collection_lifetime` | Cancellation as the other shape of cleanup, and what a cancelled collector releases |
 | L11.3, L11.4 | `lesson_flow_builders_and_callback_adapters`, `lesson_snapshot_flow` | The two adapters on the other side of the boundary |
 | L12.1 | Every earlier E25 Lesson, and `lesson_work_outside_composition` | It is the synthesis |
 | L12.3 | `lesson_choosing_a_stream_abstraction`, `lesson_shared_flow` | The delivery argument it applies |

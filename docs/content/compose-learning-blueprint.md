@@ -569,12 +569,14 @@ the Composition.
 
 - **Objective:** describe the boundary between the Composition and the thing that owns screen
   state, and know where the curriculum hands over.
-- **Core:** what "outside the Composition" buys — surviving recomposition, surviving the
-  composable leaving composition, and surviving UI recreation; the composition talks to it
-  through a state value down and callbacks up.
-- **Practical:** that a plain remembered state holder is often the right answer and a
-  screen-level owner is not a default; what changes about a piece of state when its owner moves
-  out, and what does not.
+- **Core:** what "outside the Composition" changes — the state is no longer tied to the
+  composable's own composition; the composition talks to it through a state value down and
+  callbacks up.
+- **Practical:** that what the state actually survives is decided by the **owner's** lifetime
+  rather than by the move itself — a screen owner scoped to a navigation entry is cleared when
+  that entry is popped, so its state is gone; that a plain remembered state holder is often the
+  right answer and a screen-level owner is not a default; what changes about a piece of state
+  when its owner moves out, and what does not.
 - **Primary:** `compose_state_hoisting`
 - **Supporting:** `state_ownership` (architecture), `viewmodel_lifecycle`,
   `configuration_changes` (lifecycle_navigation), `kmp_lifecycle_viewmodel` (kmp)

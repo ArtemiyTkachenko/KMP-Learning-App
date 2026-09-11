@@ -7797,11 +7797,15 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "A hot stream inverts that relationship. The stream instance exists independently of any individual collector, so a collector does not start it — it joins something that is already there. The StateFlow and SharedFlow documentation both use the same phrase for this, and the phrase is the definition worth memorising: a flow is hot because its active instance exists independently of the presence of collectors."
+                  "text": "A hot stream inverts that relationship. The stream instance exists independently of any individual collector: it is there before anyone subscribes, it outlives them all leaving, and subscribing joins that one instance rather than creating a private copy of it. The StateFlow and SharedFlow documentation both use the same phrase, and it is the definition worth memorising: a flow is hot because its active instance exists independently of the presence of collectors."
                 },
                 {
                   "type": "paragraph",
-                  "text": "An active collector of a hot flow has its own name in this documentation. It is called a subscriber, and the word is a useful reminder that subscribing is joining rather than starting."
+                  "text": "Read that as a statement about the stream, not about whether anything is being produced into it right now. The two come apart, and the fourth lesson of this unit is where they do: a shared stream can exist with its production not yet started, and under some sharing policies the arrival of the first subscriber is exactly what starts it. Measured on this project's JVM target with a lazily started shared stream: before any subscriber the object was there and its current value readable, while the upstream had not run once; the first subscriber to arrive started it. So \"a subscriber never starts anything\" is not part of the definition. What is, is that production is not per-collector."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "An active collector of a hot flow has its own name in this documentation. It is called a subscriber, and the word is a useful reminder that what it joins already exists as a stream — even when, as above, its arrival is what sets production going."
                 },
                 {
                   "type": "paragraph",
@@ -8443,7 +8447,7 @@
                 {
                   "type": "callout",
                   "kind": "COMMON_MISTAKE",
-                  "text": "Reading `WhileSubscribed(5_000)` as \"refresh every five seconds\". It is \"wait five seconds after the last subscriber goes away before stopping the upstream\". A new subscriber is served immediately from what is retained, and the upstream is not re-run on a timer."
+                  "text": "Reading `WhileSubscribed(5_000)` as \"refresh every five seconds\". It is \"wait five seconds after the last subscriber goes away before stopping the upstream\". Nothing in it delays a new subscriber or re-runs the upstream on a timer. What a subscriber has to show for joining at once is whatever was retained — the current value for `stateIn`, the replay cache for `shareIn`, and at `replay = 0` nothing at all, in which case it waits for the upstream exactly as it would have anyway."
                 },
                 {
                   "type": "paragraph",
@@ -8478,7 +8482,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "That default is worth deciding about rather than inheriting, and it also disposes of a common assumption: stopping the upstream does not send a returning subscriber back to the initial value. Measured on this project's JVM target with a plain `WhileSubscribed()`, a subscriber returning after the upstream had stopped received the value retained from the previous run first, and the restarted upstream's own first value only after it. So a screen re-entered much later renders the figure from its previous visit until the restart produces a new one — right when that value is a cheap-to-confirm cache, wrong when a stale figure is misleading."
+                  "text": "That default is worth deciding about rather than inheriting, and it also disposes of a common assumption: stopping the upstream does not send a returning subscriber back to the initial value. Measured on this project's JVM target with a plain `WhileSubscribed()`, a subscriber returning after the upstream had stopped received the value retained from the previous run within a few milliseconds, and the restarted upstream's own first value only 250 milliseconds later. So a screen re-entered much later renders the figure from its previous visit until the restart produces a new one — right when that value is a cheap-to-confirm cache, wrong when a stale figure is misleading. That is `stateIn`, where there is always a value to retain: the same measurement against `shareIn(..., replay = 0)` gave the returning subscriber nothing for those 250 milliseconds, because retention is what fills the gap and at `replay = 0` there is none."
                 },
                 {
                   "type": "paragraph",

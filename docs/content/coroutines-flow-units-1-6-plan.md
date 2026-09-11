@@ -1701,7 +1701,7 @@ plus the blueprint's status and two of its headings.
 therefore reaches **four** concepts — `hot_vs_cold_streams`, `stateflow`, `sharedflow`,
 `flow_sharing` — and **six** ACTIVE Questions, each counted once. That is asserted in
 `LearningUnitPracticeIntegrationTest` rather than left to the generated snapshot. Each Lesson
-carries Core, Practical and Senior depth and runs 1,110–1,626 words after the review
+carries Core, Practical and Senior depth and runs 1,236–1,626 words after the review
 corrections below, which added measured material to L6.3, L6.4 and L6.5. L6.3 is the longest: it
 carries delivery, the whole buffering configuration, and the `replay = 1` against `StateFlow`
 distinction that round four added. L6.4 is next, with sharing, three policies, two timers and
@@ -1778,6 +1778,8 @@ figures are evidence for a semantic claim, not published guarantees.
 | Consecutive `tryEmit` successes against a present 400 ms subscriber, over seven `replay`/`extraBufferCapacity` pairs | **`replay + extraBufferCapacity`** every time, including 1 slot at `replay = 1, extra = 0` | That `replay` is also buffer for a present slow subscriber |
 | Five queued `Channel` elements, one worker cancelled part-way through the third | Worker took 1–3 and finished 1–2; a replacement receiver drained 4 and 5; **3 was never redelivered** | That a `Channel` gives single-receiver delivery, not handling |
 | Fresh `MutableSharedFlow(replay = 1)` against fresh `MutableStateFlow(initial)`, subscriber arriving before any emission | **Nothing** against the **initial value**; `resetReplayCache()` empties it again | That `replay = 1` is not a current-value contract |
+| `stateIn(scope, Lazily, -1)` with no subscriber yet | Object present and `value` readable; upstream started **zero** times until the first subscriber arrived | That a hot stream can exist with production not started |
+| Returning subscriber after a `WhileSubscribed()` stop, upstream needing 250 ms to produce | `stateIn` delivered the retained value at **4 ms**; `shareIn(replay = 0)` delivered **nothing until 258 ms** | That "served immediately from what is retained" is `stateIn`-only |
 | Six values emitted with no subscriber at `replay = 0, extraBufferCapacity = 3` | Late subscriber received **nothing** | That extra capacity retains nothing for an absent subscriber |
 | `replay = 2`, ten emissions, no subscribers | Replay cache held the last two | That overflow strategy has no effect with no subscribers |
 | `tryEmit` on an unbuffered flow with no subscribers | `true`, replay cache still empty | That `true` is not evidence of delivery |
@@ -1945,7 +1947,7 @@ decision for E24-08 to take deliberately.
 
 ### Corrections made during review of Unit 6
 
-Thirteen defects were found by review of the shipped prose, across four rounds, and every one was
+Sixteen defects were found by review of the shipped prose, across five rounds, and every one was
 re-measured before being corrected. Nearly all are the same failure in different clothes: a rule
 stated without the qualification that the Unit's own material supplies two paragraphs later.
 
@@ -2134,8 +2136,56 @@ this was the only substitution claim; the rest describe retention across a gap a
 by the Unit's own measurements. L6.5's worked scenario already names `StateFlow` for current
 authentication state without offering an alternative, so nothing else needed changing.
 
-**The wider lesson for E24-09.** Almost every one of these thirteen was a general rule stated
-without the qualification the same Lesson supplies, and most of rounds two to four existed only
+#### Round five
+
+Two reported, one found alongside them, and between them they close the last of the three axes.
+
+**14. L6.1 implied that a hot stream's production is already running.** Its Core said a
+collector "does not start it — it joins something that is already there". The first half is the
+definition; the second quietly asserts that production is under way, which `Lazily` and
+`WhileSubscribed` contradict, as L6.4's own measured table shows four Lessons later. Measured on
+this project's JVM target with `stateIn(scope, SharingStarted.Lazily, -1)`: before any subscriber
+the object existed and its `value` read `-1`, while the upstream had started **zero** times; the
+first subscriber's arrival started it. L6.1 now says the instance exists — it is there before
+anyone subscribes, outlives them all leaving, and subscribing joins that one instance rather than
+making a private copy — and then separates that explicitly from whether anything is being
+produced into it, with the measurement and a forward pointer to L6.4. The closing line is now
+"'a subscriber never starts anything' is not part of the definition; what is, is that production
+is not per-collector."
+
+**15. The same claim in miniature, two paragraphs later, not reported.** The paragraph
+introducing the word *subscriber* said it "is a useful reminder that subscribing is joining
+rather than starting". Found while re-reading L6.1's Core after fixing the sentence above. It now
+reads that what a subscriber joins already exists as a stream, "even when, as above, its arrival
+is what sets production going".
+
+**16. "A new subscriber is served immediately from what is retained" is `stateIn`-only.** L6.4's
+`WhileSubscribed(5_000)` callout said it while the surrounding passage covers both operators, and
+`shareIn(..., replay = 0)` retains nothing, so a returning subscriber simply waits for the
+upstream. Measured on this project's JVM target with an upstream that takes 250 ms to produce
+anything, after a `WhileSubscribed()` stop:
+
+| Returning subscriber | At 120 ms | First value |
+| --- | --- | --- |
+| `stateIn(..., initialValue)` | the retained value | at **4 ms**, then the restarted upstream's values |
+| `shareIn(..., replay = 0)` | **nothing** | at **258 ms**, when the restart produced one |
+
+The callout now says that nothing in the timeout delays a subscriber or re-runs the upstream on a
+timer, and that what a subscriber has to show for joining at once is whatever was retained — the
+current value for `stateIn`, the replay cache for `shareIn`, nothing at `replay = 0`. The Senior
+paragraph on replay expiration carries the paired measurement.
+
+**Sweep for these shapes.** Two more passes, neither of which the earlier sweeps would have
+caught. One for already-running language (`already there`, `already running`, `in progress`,
+`joins`): five further matches, all correct — two describe `StateFlow`'s current value, and three
+are L6.4 policy-table cells for `Eagerly` and `Lazily`, where the upstream genuinely is already
+started and a later subscriber genuinely does join a run in progress. One for claims spanning
+both sharing operators, and for "a new subscriber … immediately": seven matches, all correct —
+`StateFlow`'s unconditional replay to a new collector, the `emit`-returns-immediately contract,
+a requirement phrased as a question, and three statements true of both operators.
+
+**The wider lesson for E24-09.** Almost every one of these sixteen was a general rule stated
+without the qualification the same Lesson supplies, and most of rounds two to five existed only
 because the previous round patched the flagged sentence rather than the claim. That is the
 specific failure mode of a Unit whose subject is separating axes. Four things follow: the other
 five Units are worth re-reading for the same shape; a correction to a general claim must be

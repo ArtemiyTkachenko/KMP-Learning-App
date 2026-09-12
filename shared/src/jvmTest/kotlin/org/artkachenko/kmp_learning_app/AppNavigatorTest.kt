@@ -7,8 +7,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
-import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 
 internal class AppNavigatorTest {
     /** Every value this saver produces is a String, which every host can store. */
@@ -80,7 +78,7 @@ internal class AppNavigatorTest {
     fun replacingTheTopKeepsTheEntryBelowIt() {
         val navigator = navigator()
         navigator.select(AppTopLevelDestination.INTERVIEW)
-        navigator.push(AppRoute.MixedInterview(questionCount = 20))
+        navigator.push(AppRoute.MixedInterviewAttempt("initial"))
 
         navigator.replaceTop(AppRoute.MixedInterviewAttempt("attempt"))
 
@@ -157,11 +155,7 @@ internal class AppNavigatorTest {
         ).forEach { assertTrue(it.showsAreaNavigation(), "$it should keep area navigation") }
 
         listOf(
-            AppRoute.MixedInterview(20),
             AppRoute.MixedInterviewAttempt("a"),
-            AppRoute.FocusedTopicPractice("t", 10, AllQuestionLevels.toList(), PracticeQuestionSource.ALL),
-            AppRoute.FocusedSubtopicPractice("s", 10, AllQuestionLevels.toList(), PracticeQuestionSource.ALL),
-            AppRoute.FocusedSubtopicsPractice(listOf("s"), 10, AllQuestionLevels.toList(), PracticeQuestionSource.ALL),
             AppRoute.FocusedPracticeAttempt("a"),
         ).forEach { assertFalse(it.showsAreaNavigation(), "$it should hide area navigation") }
     }

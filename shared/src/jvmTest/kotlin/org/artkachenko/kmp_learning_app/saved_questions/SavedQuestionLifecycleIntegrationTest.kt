@@ -35,6 +35,7 @@ import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentReposito
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
+import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
@@ -317,13 +318,16 @@ internal class SavedQuestionLifecycleIntegrationTest {
         val reviewLoader = AssessmentReviewLoader(curriculumRepository)
         val retakeService = AssessmentRetakeService(
             assessmentRepository = assessmentRepository,
-            assessmentEngine = AssessmentEngine(
-                questionSelector = AssessmentQuestionSelector(
-                    curriculumRepository = curriculumRepository,
-                    completedHistory = { assessmentRepository.getCompletedAttempts() },
-                    randomize = { it },
+            startAssessment = StartAssessment(
+                assessmentRepository = assessmentRepository,
+                assessmentEngine = AssessmentEngine(
+                    questionSelector = AssessmentQuestionSelector(
+                        curriculumRepository = curriculumRepository,
+                        completedHistory = { assessmentRepository.getCompletedAttempts() },
+                        randomize = { it },
+                    ),
+                    generateAttemptId = { "retake_attempt" },
                 ),
-                generateAttemptId = { "retake_attempt" },
             ),
         )
         val historyStore = AssessmentHistoryStore(assessmentRepository, scope)

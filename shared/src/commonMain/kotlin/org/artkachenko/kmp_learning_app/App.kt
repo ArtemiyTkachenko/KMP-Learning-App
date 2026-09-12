@@ -14,26 +14,20 @@ import androidx.navigation3.ui.NavDisplay
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
-import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingLaunch
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewDestination
 import org.artkachenko.kmp_learning_app.mixed_interview.InterviewStartDestination
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewDestination
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultDestination
-import org.artkachenko.kmp_learning_app.mixed_interview.mixedInterviewStartRoute
-import org.artkachenko.kmp_learning_app.mixed_interview.toAssessmentConfig
-import org.artkachenko.kmp_learning_app.mixed_interview.toAssessmentTakingLaunch
 import org.artkachenko.kmp_learning_app.progress.ProgressDestination
 import org.artkachenko.kmp_learning_app.progress.ProgressTopicDestination
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsDestination
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.FocusedPracticeDestination
-import org.artkachenko.kmp_learning_app.topic_study.focused_practice.toAssessmentConfig
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultDestination
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonDestination
 import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitDestination
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderDestination
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toPracticeBuilderRoute
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toPracticeBuilderTarget
-import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toPracticeRoute
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailDestination
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserDestination
 import org.artkachenko.kmp_learning_app.ui.selection.SelectableContent
@@ -178,9 +172,7 @@ private fun AppShell(
                     }
                     entry<AppRoute.Interview> {
                         InterviewStartDestination(
-                            onStartMixedInterview = {
-                                navigator.push(mixedInterviewStartRoute())
-                            },
+                            onInterviewStarted = navigator::pushMixedAttempt,
                             onOpenResult = { attemptId ->
                                 navigator.push(AppRoute.MixedInterviewResult(attemptId))
                             },
@@ -228,9 +220,7 @@ private fun AppShell(
                             onConfigurePractice = { preset ->
                                 navigator.push(preset.toPracticeBuilderRoute())
                             },
-                            onStartPractice = { config ->
-                                navigator.push(config.toPracticeRoute())
-                            },
+                            onPracticeStarted = navigator::pushFocusedAttempt,
                             onStudyLesson = { lesson ->
                                 navigator.push(
                                     AppRoute.LearningLesson(lesson.unitId, lesson.lessonId),
@@ -238,23 +228,10 @@ private fun AppShell(
                             },
                         )
                     }
-                    entry<AppRoute.MixedInterview> { route ->
-                        MixedInterviewDestination(
-                            launch = AssessmentTakingLaunch.New(route.toAssessmentConfig()),
-                            onBack = { popBack() },
-                            onAttemptPersisted = { attemptId ->
-                                navigator.replaceTop(AppRoute.MixedInterviewAttempt(attemptId))
-                            },
-                            onCompleted = { attemptId ->
-                                navigator.replaceTop(AppRoute.MixedInterviewResult(attemptId))
-                            },
-                        )
-                    }
                     entry<AppRoute.MixedInterviewAttempt> { route ->
                         MixedInterviewDestination(
-                            launch = route.toAssessmentTakingLaunch(),
+                            attemptId = route.attemptId,
                             onBack = { popBack() },
-                            onAttemptPersisted = {},
                             onCompleted = { attemptId ->
                                 navigator.replaceTop(AppRoute.MixedInterviewResult(attemptId))
                             },
@@ -264,12 +241,8 @@ private fun AppShell(
                         MixedInterviewResultDestination(
                             attemptId = route.attemptId,
                             onBack = { popBack() },
-                            onRetakeCreated = { attemptId ->
-                                navigator.push(AppRoute.MixedInterviewAttempt(attemptId))
-                            },
-                            onPracticeMistakes = { config ->
-                                navigator.push(config.toPracticeRoute())
-                            },
+                            onRetakeCreated = navigator::pushMixedAttempt,
+                            onPracticeStarted = navigator::pushFocusedAttempt,
                         )
                     }
                     entry<AppRoute.Topic> { route ->
@@ -359,9 +332,7 @@ private fun AppShell(
                         PracticeBuilderDestination(
                             target = route.toPracticeBuilderTarget(),
                             onBack = { popBack() },
-                            onStartPractice = { config ->
-                                navigator.push(config.toPracticeRoute())
-                            },
+                            onPracticeStarted = navigator::pushFocusedAttempt,
                             // Only the selection the builder opens on. It still applies its own count
                             // and level defaults and runs its normal preflight, so nothing starts here.
                             initialSource = route.source,
@@ -371,9 +342,7 @@ private fun AppShell(
                         PracticeBuilderDestination(
                             target = route.toPracticeBuilderTarget(),
                             onBack = { popBack() },
-                            onStartPractice = { config ->
-                                navigator.push(config.toPracticeRoute())
-                            },
+                            onPracticeStarted = navigator::pushFocusedAttempt,
                             initialSource = route.source,
                         )
                     }
@@ -384,57 +353,15 @@ private fun AppShell(
                             // and this entry stays a navigation identity.
                             target = route.toPracticeBuilderTarget(),
                             onBack = { popBack() },
-                            onStartPractice = { config ->
-                                navigator.push(config.toPracticeRoute())
-                            },
+                            onPracticeStarted = navigator::pushFocusedAttempt,
                             // No initialSource: nothing produces a Learning-Unit practice intent, so
                             // both Unit entries open on the builder's own ALL default.
                         )
                     }
-                    entry<AppRoute.FocusedTopicPractice> { route ->
-                        FocusedPracticeDestination(
-                            launch = AssessmentTakingLaunch.New(route.toAssessmentConfig()),
-                            onBack = { popBack() },
-                            onAttemptPersisted = { attemptId ->
-                                navigator.replaceTop(AppRoute.FocusedPracticeAttempt(attemptId))
-                            },
-                            onCompleted = { attemptId ->
-                                navigator.replaceTop(AppRoute.FocusedPracticeResult(attemptId))
-                            },
-                        )
-                    }
-                    entry<AppRoute.FocusedSubtopicPractice> { route ->
-                        FocusedPracticeDestination(
-                            launch = AssessmentTakingLaunch.New(route.toAssessmentConfig()),
-                            onBack = { popBack() },
-                            onAttemptPersisted = { attemptId ->
-                                navigator.replaceTop(AppRoute.FocusedPracticeAttempt(attemptId))
-                            },
-                            onCompleted = { attemptId ->
-                                navigator.replaceTop(AppRoute.FocusedPracticeResult(attemptId))
-                            },
-                        )
-                    }
-                    entry<AppRoute.FocusedSubtopicsPractice> { route ->
-                        // The same destination, engine, checkpointing, and result the other two use:
-                        // by this point a Unit run is an ordinary focused assessment over a scope that
-                        // happens to name several Subtopics.
-                        FocusedPracticeDestination(
-                            launch = AssessmentTakingLaunch.New(route.toAssessmentConfig()),
-                            onBack = { popBack() },
-                            onAttemptPersisted = { attemptId ->
-                                navigator.replaceTop(AppRoute.FocusedPracticeAttempt(attemptId))
-                            },
-                            onCompleted = { attemptId ->
-                                navigator.replaceTop(AppRoute.FocusedPracticeResult(attemptId))
-                            },
-                        )
-                    }
                     entry<AppRoute.FocusedPracticeAttempt> { route ->
                         FocusedPracticeDestination(
-                            launch = AssessmentTakingLaunch.ExistingAttempt(route.attemptId),
+                            attemptId = route.attemptId,
                             onBack = { popBack() },
-                            onAttemptPersisted = {},
                             onCompleted = { attemptId ->
                                 navigator.replaceTop(AppRoute.FocusedPracticeResult(attemptId))
                             },
@@ -444,12 +371,8 @@ private fun AppShell(
                         FocusedResultDestination(
                             attemptId = route.attemptId,
                             onBack = { popBack() },
-                            onRetakeCreated = { attemptId ->
-                                navigator.push(AppRoute.FocusedPracticeAttempt(attemptId))
-                            },
-                            onPracticeMistakes = { config ->
-                                navigator.push(config.toPracticeRoute())
-                            },
+                            onRetakeCreated = navigator::pushFocusedAttempt,
+                            onPracticeStarted = navigator::pushFocusedAttempt,
                         )
                     }
                 },

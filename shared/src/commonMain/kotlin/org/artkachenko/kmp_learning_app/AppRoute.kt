@@ -3,7 +3,6 @@ package org.artkachenko.kmp_learning_app
 import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
-import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 
 @Serializable
 internal sealed interface AppRoute : NavKey {
@@ -76,11 +75,6 @@ internal sealed interface AppRoute : NavKey {
     ) : AppRoute
 
     @Serializable
-    data class MixedInterview(
-        val questionCount: Int,
-    ) : AppRoute
-
-    @Serializable
     data class MixedInterviewAttempt(
         val attemptId: String,
     ) : AppRoute
@@ -130,47 +124,6 @@ internal sealed interface AppRoute : NavKey {
     @Serializable
     data class PracticeBuilderLearningUnit(
         val unitId: String,
-    ) : AppRoute
-
-    /**
-     * A configured practice run.
-     *
-     * Every dimension the builder exposes is carried as a typed field, because the destination
-     * rebuilds `AssessmentConfig.Focused` from the route and a missing dimension would silently
-     * become its default — practising all levels when the learner asked for one. Content is still
-     * addressed only by stable ID; no Question, answer, or curriculum text passes through here.
-     */
-    @Serializable
-    data class FocusedTopicPractice(
-        val topicId: String,
-        val questionCount: Int,
-        val levels: List<QuestionLevel>,
-        val source: PracticeQuestionSource,
-    ) : AppRoute
-
-    @Serializable
-    data class FocusedSubtopicPractice(
-        val subtopicId: String,
-        val questionCount: Int,
-        val levels: List<QuestionLevel>,
-        val source: PracticeQuestionSource,
-    ) : AppRoute
-
-    /**
-     * A configured practice run over several Subtopics at once.
-     *
-     * The scope arrives as the stable IDs it was derived into, never as the Learning Unit it came
-     * from: by this point the run is an ordinary focused assessment, and re-deriving the concepts
-     * here would let a mid-run content change alter what the learner is being asked. The list is
-     * sorted for the same reason [levels] is normalised — an identical configuration must be an
-     * identical back-stack entry — and becomes a `Set` again when the config is rebuilt.
-     */
-    @Serializable
-    data class FocusedSubtopicsPractice(
-        val subtopicIds: List<String>,
-        val questionCount: Int,
-        val levels: List<QuestionLevel>,
-        val source: PracticeQuestionSource,
     ) : AppRoute
 
     @Serializable

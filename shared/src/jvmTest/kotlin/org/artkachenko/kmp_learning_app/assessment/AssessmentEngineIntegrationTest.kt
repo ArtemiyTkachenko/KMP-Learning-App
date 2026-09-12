@@ -15,6 +15,7 @@ import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeResult
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
+import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentStartResult
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
@@ -181,16 +182,17 @@ internal class AssessmentEngineIntegrationTest {
 
             val retake = components.retakeService.createRetake(source.id)
 
-            val retakeSession = assertIs<AssessmentRetakeResult.Created>(retake).session
-            assertEquals("attempt_retake", retakeSession.attempt.id)
-            assertNotEquals(source.id, retakeSession.attempt.id)
-            assertEquals(source.config, retakeSession.attempt.config)
-            assertEquals(AssessmentStatus.IN_PROGRESS, retakeSession.attempt.status)
-            assertEquals(null, retakeSession.attempt.score)
-            assertEquals(null, retakeSession.attempt.completedAt)
-            assertTrue(retakeSession.attempt.questionAttempts.all { it.answerState == QuestionAnswerState.Unanswered })
+            val retakeId = assertIs<AssessmentRetakeResult.Created>(retake).attemptId
+            val retakeAttempt = assertNotNull(components.assessmentRepository.getById(retakeId))
+            assertEquals("attempt_retake", retakeAttempt.id)
+            assertNotEquals(source.id, retakeAttempt.id)
+            assertEquals(source.config, retakeAttempt.config)
+            assertEquals(AssessmentStatus.IN_PROGRESS, retakeAttempt.status)
+            assertEquals(null, retakeAttempt.score)
+            assertEquals(null, retakeAttempt.completedAt)
+            assertTrue(retakeAttempt.questionAttempts.all { it.answerState == QuestionAnswerState.Unanswered })
 
-            assertEquals(retakeSession.attempt, components.assessmentRepository.getById("attempt_retake"))
+            assertEquals(retakeAttempt, components.assessmentRepository.getById("attempt_retake"))
             assertEquals(sourceBeforeRetake, components.assessmentRepository.getById(source.id))
         }
     }
@@ -315,7 +317,7 @@ internal class AssessmentEngineIntegrationTest {
             assessmentRepository = assessmentRepository,
             retakeService = AssessmentRetakeService(
                 assessmentRepository = assessmentRepository,
-                assessmentEngine = engine,
+                startAssessment = StartAssessment(engine, assessmentRepository),
             ),
         )
     }

@@ -75,7 +75,7 @@ internal class MixedInterviewResultViewModel(
                             setRepeatState(RepeatInterviewState.Idle)
                             _events.send(
                                 MixedInterviewResultEvent.RetakeCreated(
-                                    result.session.attempt.id,
+                                    result.attemptId,
                                 ),
                             )
                         }

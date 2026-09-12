@@ -29,6 +29,8 @@ import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeServic
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
+import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
+import org.artkachenko.kmp_learning_app.assessment.start.StartAssessmentResult
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.Question
@@ -262,7 +264,7 @@ internal class AssessmentTakingViewModelTest {
         )
         val curriculum = FakeCurriculumRepository(questions)
         val viewModel = AssessmentTakingViewModel(
-            launch = AssessmentTakingLaunch.ExistingAttempt("retake-1"),
+            attemptId = "retake-1",
             assessmentEngine = AssessmentEngine(
                 questionSelector = AssessmentQuestionSelector(
                     curriculumRepository = curriculum,
@@ -311,21 +313,6 @@ internal class AssessmentTakingViewModelTest {
     }
 
     @Test
-    fun newMixedAssessmentWithoutEligibleQuestionsShowsNoQuestions() = runViewModelTest {
-        val repository = RecordingAssessmentRepository()
-        val viewModel = viewModel(
-            questions = emptyList(),
-            repository = repository,
-            config = AssessmentConfig.Mixed(questionCount = 3),
-        )
-
-        advanceUntilIdle()
-
-        assertIs<AssessmentTakingUiState.NoQuestions>(viewModel.uiState.value)
-        assertTrue(repository.savedAttempts.isEmpty())
-    }
-
-    @Test
     fun mixedSubmissionUsesSharedEngineAndAdvances() = runViewModelTest {
         val repository = RecordingAssessmentRepository()
         val viewModel = viewModel(
@@ -371,7 +358,7 @@ internal class AssessmentTakingViewModelTest {
         )
         val curriculum = FakeCurriculumRepository(questions)
         val viewModel = AssessmentTakingViewModel(
-            launch = AssessmentTakingLaunch.ExistingAttempt("mixed-existing"),
+            attemptId = "mixed-existing",
             assessmentEngine = AssessmentEngine(
                 questionSelector = AssessmentQuestionSelector(
                     curriculumRepository = curriculum,
@@ -431,13 +418,15 @@ internal class AssessmentTakingViewModelTest {
             },
             now = { Instant.fromEpochMilliseconds(3_000) },
         )
-        val retake = assertIs<AssessmentRetakeResult.Created>(
-            AssessmentRetakeService(repository, engine).createRetake(source.id),
-        ).session.attempt
+        val retakeId = assertIs<AssessmentRetakeResult.Created>(
+            AssessmentRetakeService(repository, StartAssessment(engine, repository))
+                .createRetake(source.id),
+        ).attemptId
+        val retake = requireNotNull(repository.getById(retakeId))
         assertEquals(1, curriculum.activeQuestionCalls)
 
         val viewModel = AssessmentTakingViewModel(
-            launch = AssessmentTakingLaunch.ExistingAttempt(retake.id),
+            attemptId = retake.id,
             assessmentEngine = engine,
             assessmentRepository = repository,
             assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum),
@@ -465,7 +454,7 @@ internal class AssessmentTakingViewModelTest {
         )
         val curriculum = FakeCurriculumRepository(questions)
         val viewModel = AssessmentTakingViewModel(
-            launch = AssessmentTakingLaunch.ExistingAttempt("mixed-ready"),
+            attemptId = "mixed-ready",
             assessmentEngine = AssessmentEngine(
                 questionSelector = AssessmentQuestionSelector(
                     curriculumRepository = curriculum,
@@ -503,7 +492,7 @@ internal class AssessmentTakingViewModelTest {
         )
         val curriculum = FakeCurriculumRepository(emptyList())
         val viewModel = AssessmentTakingViewModel(
-            launch = AssessmentTakingLaunch.ExistingAttempt("mixed-completed"),
+            attemptId = "mixed-completed",
             assessmentEngine = AssessmentEngine(
                 questionSelector = AssessmentQuestionSelector(
                     curriculumRepository = curriculum,
@@ -553,28 +542,32 @@ internal class AssessmentTakingViewModelTest {
         assertTrue(completed.completedAt != null)
     }
 
-    private fun viewModel(
+    private suspend fun viewModel(
         questions: List<Question>,
         repository: RecordingAssessmentRepository = RecordingAssessmentRepository(),
         config: AssessmentConfig = AssessmentConfig.Mixed(questionCount = 10),
-    ) = AssessmentTakingViewModel(
-        launch = AssessmentTakingLaunch.New(config),
-        assessmentEngine = AssessmentEngine(
+    ): AssessmentTakingViewModel {
+        val curriculum = FakeCurriculumRepository(questions)
+        val engine = AssessmentEngine(
             questionSelector = AssessmentQuestionSelector(
-                curriculumRepository = FakeCurriculumRepository(questions),
+                curriculumRepository = curriculum,
                 completedHistory = { emptyList() },
                 randomize = { it },
             ),
             generateAttemptId = { "attempt-1" },
             now = { Instant.fromEpochMilliseconds(1_000) },
-        ),
-        assessmentRepository = repository,
-        assessmentSessionLoader = AssessmentSessionLoader(
+        )
+        val attemptId = assertIs<StartAssessmentResult.Created>(
+            StartAssessment(engine, repository)(config),
+        ).attemptId
+        return AssessmentTakingViewModel(
+            attemptId = attemptId,
+            assessmentEngine = engine,
             assessmentRepository = repository,
-            curriculumRepository = FakeCurriculumRepository(questions),
-        ),
-        historyStore = AssessmentHistoryStore(repository, CoroutineScope(SupervisorJob())),
-    )
+            assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum),
+            historyStore = AssessmentHistoryStore(repository, CoroutineScope(SupervisorJob())),
+        )
+    }
 
     private fun content(viewModel: AssessmentTakingViewModel) =
         assertIs<AssessmentTakingUiState.Content>(viewModel.uiState.value)

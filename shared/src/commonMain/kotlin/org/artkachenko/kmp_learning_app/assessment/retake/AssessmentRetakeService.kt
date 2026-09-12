@@ -2,12 +2,12 @@ package org.artkachenko.kmp_learning_app.assessment.retake
 
 import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
-import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
-import org.artkachenko.kmp_learning_app.assessment.session.AssessmentStartResult
+import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
+import org.artkachenko.kmp_learning_app.assessment.start.StartAssessmentResult
 
 internal class AssessmentRetakeService(
     private val assessmentRepository: AssessmentRepository,
-    private val assessmentEngine: AssessmentEngine,
+    private val startAssessment: StartAssessment,
 ) {
     suspend fun createRetake(sourceAttemptId: String): AssessmentRetakeResult {
         require(sourceAttemptId.isNotBlank()) {
@@ -22,16 +22,14 @@ internal class AssessmentRetakeService(
             "Only completed attempts can be used as retake sources."
         }
 
-        return when (val startResult = assessmentEngine.start(sourceAttempt.config)) {
-            AssessmentStartResult.NoEligibleQuestions ->
+        return when (val startResult = startAssessment(sourceAttempt.config)) {
+            StartAssessmentResult.NoEligibleQuestions ->
                 AssessmentRetakeResult.NoEligibleQuestions
-            is AssessmentStartResult.Started -> {
-                val session = startResult.session
-                check(session.attempt.id != sourceAttempt.id) {
+            is StartAssessmentResult.Created -> {
+                check(startResult.attemptId != sourceAttempt.id) {
                     "Retake attempt ID must differ from the source attempt ID."
                 }
-                assessmentRepository.save(session.attempt)
-                AssessmentRetakeResult.Created(session)
+                AssessmentRetakeResult.Created(startResult.attemptId)
             }
         }
     }

@@ -73,7 +73,7 @@ internal class FocusedResultViewModel(
                     when (result) {
                         is AssessmentRetakeResult.Created -> {
                             _uiState.value = currentState.copy(repeatPracticeState = RepeatPracticeState.Idle)
-                            _events.send(FocusedResultEvent.RetakeCreated(result.session.attempt.id))
+                            _events.send(FocusedResultEvent.RetakeCreated(result.attemptId))
                         }
                         AssessmentRetakeResult.SourceAttemptNotFound ->
                             setRepeatState(RepeatPracticeState.SourceAttemptNotFound)

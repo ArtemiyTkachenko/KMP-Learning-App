@@ -4,13 +4,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import org.artkachenko.kmp_learning_app.AppRoute
-import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
-import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
-import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
-import org.artkachenko.kmp_learning_app.topic_study.focused_practice.toAssessmentConfig
 
 internal class PracticeBuilderRouteMappingTest {
     @Test
@@ -84,66 +80,6 @@ internal class PracticeBuilderRouteMappingTest {
     }
 
     /**
-     * The whole point of the wider route: a configured run has to survive navigation intact, or
-     * assessment taking would silently start something the learner did not configure.
-     */
-    @Test
-    fun aTopicConfigurationSurvivesTheRoundTrip() {
-        val config = AssessmentConfig.Focused(
-            scope = AssessmentScope.Topic("topic_a"),
-            questionCount = 15,
-            levels = setOf(QuestionLevel.ADVANCED, QuestionLevel.FOUNDATION),
-            source = PracticeQuestionSource.ALL,
-        )
-
-        val route = assertIsTopicRoute(config.toPracticeRoute())
-
-        assertEquals("topic_a", route.topicId)
-        assertEquals(15, route.questionCount)
-        assertEquals(
-            listOf(QuestionLevel.FOUNDATION, QuestionLevel.ADVANCED),
-            route.levels,
-        )
-        assertEquals(PracticeQuestionSource.ALL, route.source)
-        assertEquals(config, route.toAssessmentConfig())
-    }
-
-    @Test
-    fun aSubtopicConfigurationSurvivesTheRoundTrip() {
-        val config = AssessmentConfig.Focused(
-            scope = AssessmentScope.Subtopic("subtopic_a"),
-            questionCount = 5,
-            levels = setOf(QuestionLevel.APPLIED),
-            source = PracticeQuestionSource.ALL,
-        )
-
-        val route = assertIsSubtopicRoute(config.toPracticeRoute())
-
-        assertEquals("subtopic_a", route.subtopicId)
-        assertEquals(5, route.questionCount)
-        assertEquals(listOf(QuestionLevel.APPLIED), route.levels)
-        assertEquals(PracticeQuestionSource.ALL, route.source)
-        assertEquals(config, route.toAssessmentConfig())
-    }
-
-    /** Selection order must not change the route, so an equal setup produces an equal entry. */
-    @Test
-    fun levelOrderIsNormalisedSoAnEqualSetupIsAnEqualRoute() {
-        fun route(levels: Set<QuestionLevel>) =
-            AssessmentConfig.Focused(
-                scope = AssessmentScope.Topic("topic_a"),
-                questionCount = 10,
-                levels = levels,
-                source = PracticeQuestionSource.ALL,
-            ).toPracticeRoute()
-
-        assertEquals(
-            route(setOf(QuestionLevel.FOUNDATION, QuestionLevel.ADVANCED)),
-            route(setOf(QuestionLevel.ADVANCED, QuestionLevel.FOUNDATION)),
-        )
-    }
-
-    /**
      * The Unit entry carries identity and nothing derived from it. A route holding the Unit's
      * concepts or its title would be a second copy of authored content living in the back stack,
      * which is exactly what resolving on arrival exists to avoid.
@@ -173,42 +109,6 @@ internal class PracticeBuilderRouteMappingTest {
         }
     }
 
-    /**
-     * The configured Unit run has to survive navigation intact, exactly as the other two do — and
-     * it arrives at assessment taking as a plain multi-Subtopic scope, with no Unit identity left.
-     */
-    @Test
-    fun aUnitDerivedConfigurationSurvivesTheRoundTrip() {
-        val config = AssessmentConfig.Focused(
-            scope = AssessmentScope.Subtopics(setOf("subtopic_b", "subtopic_a")),
-            questionCount = 10,
-            levels = setOf(QuestionLevel.APPLIED, QuestionLevel.FOUNDATION),
-            source = PracticeQuestionSource.UNSEEN,
-        )
-
-        val route = assertIsSubtopicsRoute(config.toPracticeRoute())
-
-        assertEquals(listOf("subtopic_a", "subtopic_b"), route.subtopicIds)
-        assertEquals(10, route.questionCount)
-        assertEquals(listOf(QuestionLevel.FOUNDATION, QuestionLevel.APPLIED), route.levels)
-        assertEquals(PracticeQuestionSource.UNSEEN, route.source)
-        assertEquals(config, route.toAssessmentConfig())
-    }
-
-    /** Set order must not change the route, for the same reason level order must not. */
-    @Test
-    fun subtopicOrderIsNormalisedSoAnEqualScopeIsAnEqualRoute() {
-        fun route(subtopicIds: Set<String>) =
-            AssessmentConfig.Focused(
-                scope = AssessmentScope.Subtopics(subtopicIds),
-                questionCount = 10,
-                levels = AllQuestionLevels,
-                source = PracticeQuestionSource.ALL,
-            ).toPracticeRoute()
-
-        assertEquals(route(setOf("a", "b", "c")), route(setOf("c", "a", "b")))
-    }
-
     private fun assertIsTopicBuilderRoute(route: AppRoute): AppRoute.PracticeBuilderTopic =
         route as? AppRoute.PracticeBuilderTopic
             ?: error("Expected a topic practice builder route but was $route.")
@@ -217,15 +117,4 @@ internal class PracticeBuilderRouteMappingTest {
         route as? AppRoute.PracticeBuilderSubtopic
             ?: error("Expected a subtopic practice builder route but was $route.")
 
-    private fun assertIsTopicRoute(route: AppRoute): AppRoute.FocusedTopicPractice =
-        route as? AppRoute.FocusedTopicPractice
-            ?: error("Expected a topic practice route but was $route.")
-
-    private fun assertIsSubtopicRoute(route: AppRoute): AppRoute.FocusedSubtopicPractice =
-        route as? AppRoute.FocusedSubtopicPractice
-            ?: error("Expected a subtopic practice route but was $route.")
-
-    private fun assertIsSubtopicsRoute(route: AppRoute): AppRoute.FocusedSubtopicsPractice =
-        route as? AppRoute.FocusedSubtopicsPractice
-            ?: error("Expected a multi-subtopic practice route but was $route.")
 }

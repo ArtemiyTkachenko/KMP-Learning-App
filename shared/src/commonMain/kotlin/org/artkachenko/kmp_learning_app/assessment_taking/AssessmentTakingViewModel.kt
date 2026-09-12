@@ -19,7 +19,7 @@ import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.Question
 
 internal class AssessmentTakingViewModel(
-    private val launch: AssessmentTakingLaunch,
+    private val attemptId: String,
     private val assessmentEngine: AssessmentEngine,
     private val assessmentRepository: AssessmentRepository,
     private val assessmentSessionLoader: AssessmentSessionLoader,
@@ -33,11 +33,11 @@ internal class AssessmentTakingViewModel(
     private var pendingSelectedAnswerIds: Set<String> = emptySet()
 
     init {
-        startAssessment()
+        loadAssessment()
     }
 
     fun retry() {
-        startAssessment()
+        loadAssessment()
     }
 
     fun selectAnswer(answerId: String) {
@@ -162,36 +162,20 @@ internal class AssessmentTakingViewModel(
         }
     }
 
-    private fun startAssessment() {
+    private fun loadAssessment() {
         _uiState.value = AssessmentTakingUiState.Loading
         session = null
         currentQuestionIndex = 0
         pendingSelectedAnswerIds = emptySet()
 
         viewModelScope.launch {
-            runCatching {
-                when (val requestedLaunch = launch) {
-                    is AssessmentTakingLaunch.New -> startNewAssessment(requestedLaunch.config)
-                    is AssessmentTakingLaunch.ExistingAttempt -> loadExistingAttempt(requestedLaunch.attemptId)
-                }
-            }.onSuccess { state ->
+            runCatching { loadExistingAttempt(attemptId) }.onSuccess { state ->
                 _uiState.value = state
             }.onFailure {
                 _uiState.value = AssessmentTakingUiState.Error
             }
         }
     }
-
-    private suspend fun startNewAssessment(config: AssessmentConfig): AssessmentTakingUiState =
-        when (val result = assessmentEngine.start(config)) {
-            AssessmentStartResult.NoEligibleQuestions -> AssessmentTakingUiState.NoQuestions
-            is AssessmentStartResult.Started -> {
-                assessmentRepository.save(result.session.attempt)
-                session = result.session
-                currentQuestionIndex = 0
-                result.session.toContentState()
-            }
-        }
 
     private suspend fun loadExistingAttempt(attemptId: String): AssessmentTakingUiState {
         val loadedSession = when (val result = assessmentSessionLoader.load(attemptId)) {
@@ -258,5 +242,5 @@ internal class AssessmentTakingViewModel(
         )
 
     private fun isFormativePractice(): Boolean =
-        (session?.attempt?.config ?: (launch as? AssessmentTakingLaunch.New)?.config) is AssessmentConfig.Focused
+        session?.attempt?.config is AssessmentConfig.Focused
 }

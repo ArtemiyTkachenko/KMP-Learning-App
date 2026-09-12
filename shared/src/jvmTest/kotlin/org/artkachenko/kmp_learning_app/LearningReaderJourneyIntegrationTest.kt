@@ -8,6 +8,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -90,7 +92,9 @@ internal class LearningReaderJourneyIntegrationTest {
         // page — the screen suite asserts that containment directly.
         onAllNodesWithText("kotlin")[0].performScrollTo().assertIsDisplayed()
         onNodeWithText("Sources").performScrollTo().assertIsDisplayed()
-        onNodeWithText(FirstLessonSourceTitle).performScrollTo().assertIsDisplayed()
+        onNode(hasText(FirstLessonSourceTitle) and hasClickAction())
+            .performScrollTo()
+            .assertIsDisplayed()
         // Nothing precedes the first Lesson, so no control claims otherwise.
         onNodeWithTag(LearningLessonPreviousTag).assertDoesNotExist()
 

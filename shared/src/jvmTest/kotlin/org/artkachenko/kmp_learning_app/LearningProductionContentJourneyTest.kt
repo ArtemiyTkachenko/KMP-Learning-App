@@ -275,7 +275,7 @@ internal class LearningProductionContentJourneyTest {
             onNodeWithText("Sources").performScrollTo().assertIsDisplayed()
             // The whole control, not a label inside one: what the learner activates has to be the
             // thing carrying the title, or the title is decoration beside an unnamed button.
-            val link = onNodeWithText(source.title).performScrollTo()
+            val link = onNode(hasText(source.title) and hasClickAction()).performScrollTo()
             link.assert(hasClickAction())
             link.performClick()
 
@@ -309,7 +309,9 @@ internal class LearningProductionContentJourneyTest {
             )
             onNodeWithTag(LearningLessonPracticeButtonTag).performScrollTo()
                 .assertOperable("Practice this unit")
-            onNodeWithText(middle.sources.first().title).performScrollTo().assert(hasClickAction())
+            onNode(hasText(middle.sources.first().title) and hasClickAction())
+                .performScrollTo()
+                .assert(hasClickAction())
 
             // Nothing the learner needs was pushed off a phone-shaped page: the reading column is
             // inside the window, and the blocks too wide for it scroll inside themselves instead of

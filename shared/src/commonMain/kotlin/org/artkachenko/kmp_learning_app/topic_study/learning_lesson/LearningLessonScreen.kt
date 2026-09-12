@@ -1,5 +1,8 @@
 package org.artkachenko.kmp_learning_app.topic_study.learning_lesson
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,9 +24,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,7 +43,6 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.learning_lesson_complete
-import kmp_learning_app.shared.generated.resources.learning_lesson_context
 import kmp_learning_app.shared.generated.resources.learning_lesson_end_title
 import kmp_learning_app.shared.generated.resources.learning_lesson_error
 import kmp_learning_app.shared.generated.resources.learning_lesson_in_progress
@@ -46,6 +51,7 @@ import kmp_learning_app.shared.generated.resources.learning_lesson_next
 import kmp_learning_app.shared.generated.resources.learning_lesson_not_found
 import kmp_learning_app.shared.generated.resources.learning_lesson_position
 import kmp_learning_app.shared.generated.resources.learning_lesson_previous
+import kmp_learning_app.shared.generated.resources.learning_lesson_scroll_to_end
 import kmp_learning_app.shared.generated.resources.learning_lesson_source_open_failed
 import kmp_learning_app.shared.generated.resources.learning_lesson_sources
 import kmp_learning_app.shared.generated.resources.learning_lesson_studied
@@ -64,6 +70,7 @@ import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.artkachenko.kmp_learning_app.ui.StatusBadge
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.theme.AppLayout
+import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
 import org.jetbrains.compose.resources.stringResource
@@ -78,10 +85,14 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import kotlinx.coroutines.launch
@@ -105,9 +116,7 @@ internal const val LearningLessonPracticeButtonTag = "learning_lesson_practice_b
 internal const val LearningLessonStudyStatusTag = "learning_lesson_study_status"
 internal const val LearningLessonStudyActionTag = "learning_lesson_study_action"
 internal const val LearningLessonStudyUnavailableTag = "learning_lesson_study_unavailable"
-
-/** The Unit-and-position line above the Lesson title. */
-internal const val LearningLessonPlacementTag = "learning_lesson_placement"
+internal const val LearningLessonScrollToEndTag = "learning_lesson_scroll_to_end"
 
 /** The expanded-window section outline, absent at every other width. */
 internal const val LearningLessonOutlineTag = "learning_lesson_outline"
@@ -148,6 +157,7 @@ internal fun LearningLessonScreen(
     modifier: Modifier = Modifier,
     failedSourceUrl: String? = null,
     onToggleStudied: () -> Unit = {},
+    onBottomNavigationVisibilityChange: (Boolean) -> Unit = {},
 ) {
     val scrollBehavior = rememberAppTopBarScrollBehavior()
     // Hoisted out of the reading column so the column and the meter above it share one
@@ -157,10 +167,61 @@ internal fun LearningLessonScreen(
     val scrollState = key((state as? LearningLessonUiState.Content)?.lessonId) {
         rememberScrollState()
     }
+    val lessonId = (state as? LearningLessonUiState.Content)?.lessonId
+    val directionThresholdPx = with(LocalDensity.current) { AppSpacing.Section.roundToPx() }
+    val scrollReducer = remember(lessonId, directionThresholdPx) {
+        LessonScrollStateReducer(directionThresholdPx)
+    }
+    var scrollUiState by remember(lessonId) { mutableStateOf(InitialLessonScrollUiState) }
+    val currentVisibilityCallback by rememberUpdatedState(onBottomNavigationVisibilityChange)
+
+    DisposableEffect(Unit) {
+        onDispose { currentVisibilityCallback(true) }
+    }
+    LaunchedEffect(scrollState, scrollReducer) {
+        var previousBottom = false
+        var lastNavigationRequest: Boolean? = null
+        snapshotFlow { scrollState.value to scrollState.maxValue }.collect { (position, maximum) ->
+            val next = scrollReducer.update(position, maximum)
+            scrollUiState = next
+            if (next.showsBottomNavigation != lastNavigationRequest) {
+                currentVisibilityCallback(next.showsBottomNavigation)
+                lastNavigationRequest = next.showsBottomNavigation
+            }
+
+            val reachedBottom = next.isAtBottom && !previousBottom && maximum > 0
+            previousBottom = next.isAtBottom
+            if (reachedBottom) {
+                // Showing the reserved bottom bar shortens the viewport. Stay anchored to the end
+                // after remeasurement unless the reader has already moved upward.
+                val reachedPosition = position
+                withFrameNanos { }
+                if (scrollState.value >= reachedPosition) {
+                    scrollState.scrollTo(scrollState.maxValue)
+                }
+            }
+        }
+    }
+
+    val content = state as? LearningLessonUiState.Content
+    val topBarTitle = content?.placement?.unitTitle
+        ?: content?.title
+        ?: stringResource(Res.string.learning_lesson_title)
+    val topBarSubtitle = content?.placement?.let { placement ->
+        stringResource(
+            Res.string.learning_lesson_position,
+            placement.position,
+            placement.lessonCount,
+        )
+    }
     Column(modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)) {
-        // A stable label, for the same reason as the Unit overview: the Lesson title leads the
-        // content, and the bar has to read sensibly before the Lesson has resolved.
-        AppTopBar(stringResource(Res.string.learning_lesson_title), onBack, scrollBehavior)
+        AppTopBar(
+            title = topBarTitle,
+            onBack = onBack,
+            scrollBehavior = scrollBehavior,
+            subtitle = topBarSubtitle,
+            isSubtitleVisible = scrollUiState.showsToolbarSubtitle,
+        )
         // Only under a Lesson. Loading, NotFound, and Error each fill the page with a single
         // centred message that does not scroll, so a reading meter over one would be measuring
         // nothing.
@@ -190,6 +251,7 @@ internal fun LearningLessonScreen(
                 onOpenSource = onOpenSource,
                 onToggleStudied = onToggleStudied,
                 failedSourceUrl = failedSourceUrl,
+                showsScrollToEnd = scrollUiState.hasContentBelow,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -294,6 +356,7 @@ private fun LearningLessonContent(
     onOpenSource: (String) -> Unit,
     onToggleStudied: () -> Unit,
     failedSourceUrl: String?,
+    showsScrollToEnd: Boolean,
     modifier: Modifier,
 ) {
     val outline = rememberLessonOutline(state.sections)
@@ -327,7 +390,6 @@ private fun LearningLessonContent(
                     .testTag(LearningLessonReadingColumnTag),
                 verticalArrangement = Arrangement.spacedBy(AppSpacing.Related),
             ) {
-                LessonPlacement(state.placement)
                 Text(
                     text = state.title,
                     style = MaterialTheme.typography.headlineSmall,
@@ -392,7 +454,36 @@ private fun LearningLessonContent(
                 )
             }
         }
+        AnimatedVisibility(
+            visible = showsScrollToEnd,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(AppSpacing.Comfortable),
+            enter = fadeIn(AppMotion.effectSpec()),
+            exit = fadeOut(AppMotion.effectSpec(AppMotion.StateChangeDurationMillis / 2)),
+        ) {
+            SmallFloatingActionButton(
+                onClick = { scope.launch { scrollState.animateToLessonEnd() } },
+                modifier = Modifier.testTag(LearningLessonScrollToEndTag),
+            ) {
+                Icon(
+                    imageVector = AppIcons.ArrowDownward,
+                    contentDescription = stringResource(Res.string.learning_lesson_scroll_to_end),
+                )
+            }
+        }
     }
+}
+
+private suspend fun ScrollState.animateToLessonEnd() {
+    repeat(MaxEndScrollPasses) {
+        val target = maxValue
+        if (target <= 0 || target == Int.MAX_VALUE) return
+        animateScrollTo(target)
+        withFrameNanos { }
+        if (!canScrollForward || maxValue == target) return
+    }
+    animateScrollTo(maxValue)
 }
 
 /**
@@ -540,39 +631,6 @@ private const val MinimumOutlineEntries = 2
  * viewport is not knowable here, so this is a fixed, deliberately small allowance.
  */
 private const val OutlineActivationSlack = 24
-
-/**
- * Which Unit this Lesson belongs to, and how far into it the learner is.
- *
- * One line above the title, in the quietest type on the page. It is orientation, not chrome: no
- * breadcrumb chain back to the Topic, no reading-time estimate, and no header previous/next — each
- * of those is a second navigation system competing with the one at the bottom of the page, and on
- * a phone they would cost more of the reading area than the Lesson title itself. A section outline
- * appears only where it costs the reading column nothing: beside the page, on an expanded window.
- * It is never in this header and never on a phone.
- *
- * The Unit title carries the whole line when the Unit has only one readable Lesson, because a
- * position within a sequence of one is a statement about nothing.
- */
-@Composable
-private fun LessonPlacement(placement: LessonPlacementUiModel?) {
-    if (placement == null) return
-    val position = stringResource(
-        Res.string.learning_lesson_position,
-        placement.position,
-        placement.lessonCount,
-    )
-    Text(
-        text = if (placement.hasSequence) {
-            stringResource(Res.string.learning_lesson_context, placement.unitTitle, position)
-        } else {
-            placement.unitTitle
-        },
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.testTag(LearningLessonPlacementTag),
-    )
-}
 
 /**
  * The end of the Lesson: finish it, then choose where to go next.
@@ -915,3 +973,5 @@ private val StudiedIconSize = 18.dp
  * never compete with the Lesson title beneath it.
  */
 private val ReadingProgressHeight = 3.dp
+
+private const val MaxEndScrollPasses = 3

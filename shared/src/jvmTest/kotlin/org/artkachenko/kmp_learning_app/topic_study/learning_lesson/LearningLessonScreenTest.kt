@@ -118,6 +118,40 @@ internal class LearningLessonScreenTest {
         setContentWith(sections = listOf(section(LearningBlock.Paragraph("A one-line lesson."))))
 
         onNodeWithTag(LearningLessonReadingProgressTag).assertDoesNotExist()
+        onNodeWithTag(LearningLessonScrollToEndTag).assertDoesNotExist()
+    }
+
+    @Test
+    fun scrollToEndFabAnimatesToTheEndAndThenDisappears() = runComposeUiTest {
+        val navigationRequests = mutableListOf<Boolean>()
+        setContentWith(
+            sections = List(12) { section(LearningBlock.Paragraph("Body paragraph $it.")) },
+            height = ShortHeight,
+            onBottomNavigationVisibilityChange = navigationRequests::add,
+        )
+
+        onNodeWithTag(LearningLessonScrollToEndTag).assertIsDisplayed().performClick()
+        waitForIdle()
+
+        onNodeWithTag(LearningLessonScrollToEndTag).assertDoesNotExist()
+        onNodeWithTag(LearningLessonPracticeButtonTag).assertIsDisplayed()
+        assertTrue(false in navigationRequests, "Scrolling down should request the bar to hide.")
+        assertEquals(true, navigationRequests.last())
+    }
+
+    @Test
+    fun meaningfulScrollCollapsesTheSubtitleWithoutHidingTheUnitTitle() = runComposeUiTest {
+        setContentWith(
+            sections = List(12) { section(LearningBlock.Paragraph("Body paragraph $it.")) },
+            height = ShortHeight,
+        )
+
+        onNodeWithText("Lesson 2 of 5").assertIsDisplayed()
+        onNodeWithText("Body paragraph 6.").performScrollTo()
+        waitForIdle()
+        onNodeWithText("Unit A").assertIsDisplayed()
+        onNodeWithText("Lesson 2 of 5").assertDoesNotExist()
+
     }
 
     /**
@@ -504,12 +538,9 @@ internal class LearningLessonScreenTest {
         assertEquals(1, practised)
     }
 
-    /**
-     * Orientation without chrome: which Unit, and how far into it. One line, and no breadcrumb
-     * chain, reading estimate, outline, or header navigation beside it.
-     */
     @Test
-    fun theLessonNamesItsUnitAndItsPositionWithinIt() = runComposeUiTest {
+    fun theToolbarNamesTheUnitAndLessonPositionWithoutDuplicatingThemInTheBody() =
+        runComposeUiTest {
         setContentWith(
             placement = LessonPlacementUiModel(
                 unitTitle = "State and recomposition",
@@ -518,14 +549,13 @@ internal class LearningLessonScreenTest {
             ),
         )
 
-        onNodeWithTag(LearningLessonPlacementTag)
-            .assertIsDisplayed()
-            .assert(hasText("State and recomposition · Lesson 3 of 7"))
+        onNodeWithText("State and recomposition").assertIsDisplayed()
+        onNodeWithText("Lesson 3 of 7").assertIsDisplayed()
+        onAllNodesWithText("State and recomposition").assertCountEquals(1)
     }
 
-    /** A Unit with one readable Lesson has no sequence, so only its name is worth printing. */
     @Test
-    fun aUnitWithASingleLessonNamesItselfWithoutAPosition() = runComposeUiTest {
+    fun aUnitWithASingleLessonStillShowsItsExactPosition() = runComposeUiTest {
         setContentWith(
             placement = LessonPlacementUiModel(
                 unitTitle = "State and recomposition",
@@ -534,18 +564,16 @@ internal class LearningLessonScreenTest {
             ),
         )
 
-        onNodeWithTag(LearningLessonPlacementTag)
-            .assertIsDisplayed()
-            .assert(hasText("State and recomposition"))
-        onNodeWithText("Lesson 1 of 1").assertDoesNotExist()
+        onNodeWithText("State and recomposition").assertIsDisplayed()
+        onNodeWithText("Lesson 1 of 1").assertIsDisplayed()
     }
 
-    /** A Lesson whose parent sequence could not be resolved loses the line rather than faking it. */
     @Test
-    fun anUnresolvedPlacementIsSimplyAbsent() = runComposeUiTest {
+    fun anUnresolvedPlacementFallsBackToTheLessonTitleWithoutAPosition() = runComposeUiTest {
         setContentWith(placement = null)
 
-        onNodeWithTag(LearningLessonPlacementTag).assertDoesNotExist()
+        onAllNodesWithText("Title of lesson_a").assertCountEquals(2)
+        onNodeWithText("Lesson 2 of 5").assertDoesNotExist()
     }
 
     /**
@@ -658,6 +686,7 @@ internal class LearningLessonScreenTest {
         studyState: StudyProgressUiState<LessonStudyUiModel> = StudyProgressUiState.Loading,
         onToggleStudied: () -> Unit = {},
         placement: LessonPlacementUiModel? = LessonPlacementUiModel("Unit A", 2, 5),
+        onBottomNavigationVisibilityChange: (Boolean) -> Unit = {},
     ) {
         setContent {
             MaterialTheme {
@@ -678,6 +707,8 @@ internal class LearningLessonScreenTest {
                         onOpenSource = onOpenSource,
                         failedSourceUrl = failedSourceUrl,
                         onToggleStudied = onToggleStudied,
+                        onBottomNavigationVisibilityChange =
+                            onBottomNavigationVisibilityChange,
                     )
                 }
             }

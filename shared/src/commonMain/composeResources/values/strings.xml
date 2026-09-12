@@ -303,7 +303,7 @@
     <string name="learning_study_progress_unavailable">Study progress unavailable</string>
     <string name="learning_lesson_in_progress">In progress</string>
     <string name="learning_lesson_position">Lesson %1$d of %2$d</string>
-    <string name="learning_lesson_context">%1$s · %2$s</string>
+    <string name="learning_lesson_scroll_to_end">Scroll to the end of the lesson</string>
     <string name="learning_lesson_end_title">You&apos;ve reached the end of this lesson</string>
     <string name="learning_lesson_complete">Complete lesson</string>
     <string name="continue_learning_title">Next lesson</string>

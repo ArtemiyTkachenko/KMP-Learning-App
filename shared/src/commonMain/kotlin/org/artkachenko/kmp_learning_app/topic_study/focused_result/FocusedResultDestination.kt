@@ -10,15 +10,17 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
-import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
+import org.artkachenko.kmp_learning_app.assessment.start.AssessmentLaunchCoordinator
+import org.artkachenko.kmp_learning_app.assessment.start.AssessmentLaunchViewModel
 
 @Composable
 internal fun FocusedResultDestination(
     attemptId: String,
     onBack: () -> Unit,
     onRetakeCreated: (String) -> Unit,
-    onPracticeMistakes: (AssessmentConfig.Focused) -> Unit,
+    onPracticeStarted: (String) -> Unit,
     viewModel: FocusedResultViewModel = koinViewModel { parametersOf(attemptId) },
+    launchViewModel: AssessmentLaunchViewModel = koinViewModel(),
 ) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
     val savedQuestions = viewModel.savedQuestions.collectAsStateWithLifecycle().value
@@ -31,20 +33,25 @@ internal fun FocusedResultDestination(
             }
         }
     }
-    FocusedResultScreen(
-        state = state,
-        onRetry = viewModel::retry,
-        onBack = onBack,
-        onSourceClick = { url ->
-            // openUri throws when no host handler can open the URI. The failure used to be
-            // swallowed here, so a tap on a source looked like a no-op.
-            failedSourceUrl = url.takeIf { runCatching { uriHandler.openUri(it) }.isFailure }
-        },
-        onRepeatPractice = viewModel::repeatPractice,
-        onPracticeMistakes = onPracticeMistakes,
-        savedQuestions = savedQuestions,
-        // The semantic action, not the repository: persistence stays behind the ViewModel.
-        onToggleSaved = viewModel::toggleSaved,
-        failedSourceUrl = failedSourceUrl,
-    )
+    AssessmentLaunchCoordinator(
+        onAttemptCreated = onPracticeStarted,
+        viewModel = launchViewModel,
+    ) { startAssessment ->
+        FocusedResultScreen(
+            state = state,
+            onRetry = viewModel::retry,
+            onBack = onBack,
+            onSourceClick = { url ->
+                // openUri throws when no host handler can open the URI. The failure used to be
+                // swallowed here, so a tap on a source looked like a no-op.
+                failedSourceUrl = url.takeIf { runCatching { uriHandler.openUri(it) }.isFailure }
+            },
+            onRepeatPractice = viewModel::repeatPractice,
+            onPracticeMistakes = startAssessment,
+            savedQuestions = savedQuestions,
+            // The semantic action, not the repository: persistence stays behind the ViewModel.
+            onToggleSaved = viewModel::toggleSaved,
+            failedSourceUrl = failedSourceUrl,
+        )
+    }
 }

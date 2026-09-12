@@ -34,7 +34,8 @@ import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentReposito
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentSelectionResult
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
-import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingLaunch
+import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
+import org.artkachenko.kmp_learning_app.assessment.start.StartAssessmentResult
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingUiState
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingViewModel
 import org.artkachenko.kmp_learning_app.curriculum.content.BundledCurriculumSource
@@ -62,7 +63,6 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.Curriculu
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImporter
 import org.artkachenko.kmp_learning_app.data.local.lesson_study.lessonStudyDataModule
 import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
-import org.artkachenko.kmp_learning_app.topic_study.focused_practice.toAssessmentConfig
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultEvent
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultUiState
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
@@ -73,7 +73,6 @@ import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBui
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderUiState
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeScopeKind
-import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toPracticeRoute
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.koin.core.Koin
 import org.koin.core.parameter.parametersOf
@@ -372,7 +371,6 @@ internal class LearningUnitPracticeIntegrationTest {
                 assertEquals(concepts, questions.map { it.subtopicId }.toSet(), unitId)
                 val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
                 assertTrue(questions.none { it.subtopicId in supportingOnly }, unitId)
-                assertEquals(config, assertIs<AppRoute.FocusedSubtopicsPractice>(config.toPracticeRoute()).toAssessmentConfig())
             }
             assertEquals(0, attemptCount())
         }
@@ -499,12 +497,7 @@ internal class LearningUnitPracticeIntegrationTest {
                 )
             }
 
-            // The configured run survives the back stack unchanged, exactly as Topic and Subtopic
-            // runs do, and arrives at assessment taking as a plain multi-Subtopic scope.
-            val route = assertIs<AppRoute.FocusedSubtopicsPractice>(config.toPracticeRoute())
-            assertEquals(config, route.toAssessmentConfig())
-
-            val attemptId = runPractice(route.toAssessmentConfig())
+            val attemptId = runPractice(config)
 
             // One ordinary attempt, through the ordinary engine, scored and completed.
             assertEquals(1, attemptCount())
@@ -722,8 +715,11 @@ private class UnitPracticeGraph(
 
     /** Answers every question correctly and completes, through the ViewModel that owns persistence. */
     suspend fun runPractice(config: AssessmentConfig): String {
+        val attemptId = assertIs<StartAssessmentResult.Created>(
+            koin.get<StartAssessment>()(config),
+        ).attemptId
         val viewModel: AssessmentTakingViewModel =
-            koin.get { parametersOf(AssessmentTakingLaunch.New(config)) }
+            koin.get { parametersOf(attemptId) }
         var questionNumber = 1
         while (true) {
             val state = viewModel.awaitQuestion(questionNumber)

@@ -1,9 +1,7 @@
 package org.artkachenko.kmp_learning_app.topic_study.practice_builder
 
 import org.artkachenko.kmp_learning_app.AppRoute
-import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
-import org.artkachenko.kmp_learning_app.assessment.inAuthoredOrder
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 
 /**
@@ -79,30 +77,3 @@ internal fun AppRoute.PracticeBuilderLearningUnit.toPracticeBuilderTarget(): Pra
  * request the learner configured rather than an all-levels default that merely resembles it. The
  * level set is normalised to authored order so an identical configuration is an identical route.
  */
-internal fun AssessmentConfig.Focused.toPracticeRoute(): AppRoute =
-    when (val scope = scope) {
-        is AssessmentScope.Topic -> AppRoute.FocusedTopicPractice(
-            topicId = scope.topicId,
-            questionCount = questionCount,
-            levels = levels.inAuthoredOrder(),
-            source = source,
-        )
-
-        is AssessmentScope.Subtopic -> AppRoute.FocusedSubtopicPractice(
-            subtopicId = scope.subtopicId,
-            questionCount = questionCount,
-            levels = levels.inAuthoredOrder(),
-            source = source,
-        )
-
-        // The derived concepts travel, not the Learning Unit they came from: this is the run, and
-        // re-deriving it at the assessment would let mid-run re-authoring change what is asked.
-        // Sorted for the same reason the levels are normalised — an identical configuration has to
-        // be an identical back-stack entry, and a Set carries no order to preserve.
-        is AssessmentScope.Subtopics -> AppRoute.FocusedSubtopicsPractice(
-            subtopicIds = scope.subtopicIds.sorted(),
-            questionCount = questionCount,
-            levels = levels.inAuthoredOrder(),
-            source = source,
-        )
-    }

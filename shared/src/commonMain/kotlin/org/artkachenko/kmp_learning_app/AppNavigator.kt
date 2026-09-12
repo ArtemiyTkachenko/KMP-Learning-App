@@ -65,7 +65,7 @@ internal class AppNavigator(
         backStack.add(route)
     }
 
-    /** Replaces the current entry, used when a configuration route becomes a persisted attempt. */
+    /** Replaces the current entry when the current workflow advances without preserving it. */
     fun replaceTop(route: AppRoute) {
         backStack.replaceTopWith(route)
     }

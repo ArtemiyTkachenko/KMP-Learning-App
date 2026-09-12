@@ -6,6 +6,7 @@ import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewStateHolder
 import org.artkachenko.kmp_learning_app.mixed_interview.InterviewHistoryStateHolder
 import org.artkachenko.kmp_learning_app.progress.ProgressStateHolder
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
+import org.artkachenko.kmp_learning_app.assessment.start.AssessmentLaunchViewModel
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingViewModel
@@ -116,6 +117,9 @@ internal val topicStudyPresentationModule = module {
             mistakeReviewService = get(),
             historyStore = get(),
         )
+    }
+    viewModel {
+        AssessmentLaunchViewModel(startAssessment = get())
     }
     viewModel {
         MistakeReviewViewModel(
@@ -229,7 +233,7 @@ internal val topicStudyPresentationModule = module {
     }
     viewModel { parameters ->
         AssessmentTakingViewModel(
-            launch = parameters.get(),
+            attemptId = parameters.get(),
             assessmentEngine = get(),
             assessmentRepository = get(),
             assessmentSessionLoader = get<AssessmentSessionLoader>(),

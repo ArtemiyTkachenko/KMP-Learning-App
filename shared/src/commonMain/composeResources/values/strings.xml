@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="assessment_launch_loading">Preparing your assessment…</string>
+    <string name="assessment_launch_failed">Could not start the assessment.</string>
+    <string name="assessment_launch_no_questions">No questions are available for this selection.</string>
+    <string name="assessment_launch_unexpected">Something went wrong while preparing it. Try again.</string>
+    <string name="assessment_launch_retry">Retry</string>
+    <string name="assessment_launch_cancel">Cancel</string>
     <string name="app_back">Back</string>
     <string name="app_retry">Retry</string>
     <string name="destination_topics">Learn</string>

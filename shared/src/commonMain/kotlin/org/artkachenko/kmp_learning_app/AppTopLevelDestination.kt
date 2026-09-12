@@ -81,11 +81,7 @@ internal fun AppRoute.showsAreaNavigation(): Boolean =
 
         // Focus mode: a question is on screen and unanswered work would be abandoned by a one-tap
         // move to another area.
-        is AppRoute.MixedInterview,
         is AppRoute.MixedInterviewAttempt,
-        is AppRoute.FocusedTopicPractice,
-        is AppRoute.FocusedSubtopicPractice,
-        is AppRoute.FocusedSubtopicsPractice,
         is AppRoute.FocusedPracticeAttempt,
         -> false
     }

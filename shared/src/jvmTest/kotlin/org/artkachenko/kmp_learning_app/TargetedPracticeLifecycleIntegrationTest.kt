@@ -38,7 +38,8 @@ import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentSelection
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoadResult
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
-import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingLaunch
+import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
+import org.artkachenko.kmp_learning_app.assessment.start.StartAssessmentResult
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingUiState
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingViewModel
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
@@ -61,7 +62,6 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.Curriculu
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
 import org.artkachenko.kmp_learning_app.learning_progress.SubtopicCoverage
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
-import org.artkachenko.kmp_learning_app.topic_study.focused_practice.toAssessmentConfig
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultUiState
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeAvailability
@@ -69,7 +69,6 @@ import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBui
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderUiState
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderTarget
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
-import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toPracticeRoute
 import org.artkachenko.kmp_learning_app.data.local.lesson_study.lessonStudyDataModule
 import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
@@ -137,17 +136,11 @@ internal class TargetedPracticeLifecycleIntegrationTest {
             configured,
         )
 
-        // The builder hands navigation a configuration, not content, and the practice destination
-        // rebuilds it from route fields. Losing a dimension here would silently widen the run.
-        val fromRoute = assertIs<AppRoute.FocusedTopicPractice>(configured.toPracticeRoute())
-            .toAssessmentConfig()
-        assertEquals(configured, fromRoute)
-
-        val taking = startTaking(fromRoute)
+        val taking = startTaking(configured)
         val started = requireNotNull(assessmentRepository.getById(FirstAttemptId))
         assertEquals(1, attemptCount())
         assertEquals(AssessmentStatus.IN_PROGRESS, started.status)
-        assertEquals(fromRoute, started.config)
+        assertEquals(configured, started.config)
         assertNull(started.score)
         val askedIds = started.questionAttempts.map { it.questionId }
         assertEquals(TopicAQuestionIds.size, askedIds.size)
@@ -165,7 +158,7 @@ internal class TargetedPracticeLifecycleIntegrationTest {
             AssessmentScore(totalQuestions = TopicAQuestionIds.size, correctAnswers = 1),
             completed.score,
         )
-        assertEquals(fromRoute, completed.config)
+        assertEquals(configured, completed.config)
         assertEquals(listOf(completedId), assessmentRepository.getCompletedAttempts().map { it.id })
     }
 
@@ -431,9 +424,10 @@ internal class TargetedPracticeLifecycleIntegrationTest {
         assertEquals(AssessmentStatus.COMPLETED, completed.status)
         assertEquals(AssessmentScore(totalQuestions = 4, correctAnswers = 1), completed.score)
 
-        val retake = assertIs<AssessmentRetakeResult.Created>(
+        val retakeId = assertIs<AssessmentRetakeResult.Created>(
             retakeService.createRetake(completedId),
-        ).session.attempt
+        ).attemptId
+        val retake = requireNotNull(assessmentRepository.getById(retakeId))
 
         assertNotEquals(completedId, retake.id)
         assertEquals(config, retake.config)
@@ -452,9 +446,10 @@ internal class TargetedPracticeLifecycleIntegrationTest {
         val sourceId = runPractice(narrowed, correctFor = setOf(AdvancedQuestion))
         val sourceAttempt = requireNotNull(assessmentRepository.getById(sourceId))
 
-        val retake = assertIs<AssessmentRetakeResult.Created>(
+        val retakeId = assertIs<AssessmentRetakeResult.Created>(
             retakeService.createRetake(sourceId),
-        ).session.attempt
+        ).attemptId
+        val retake = requireNotNull(assessmentRepository.getById(retakeId))
 
         assertNotEquals(sourceId, retake.id)
         assertEquals(narrowed, retake.config)
@@ -534,9 +529,10 @@ internal class TargetedPracticeLifecycleIntegrationTest {
         assertEquals(4, progress.answeredQuestionCount)
         assertEquals(1, progress.correctAnswerCount)
         assertEquals(3, mistakeReviewService.countUnresolved())
-        val retake = assertIs<AssessmentRetakeResult.Created>(
+        val retakeId = assertIs<AssessmentRetakeResult.Created>(
             retakeService.createRetake(attemptId),
-        ).session.attempt
+        ).attemptId
+        val retake = requireNotNull(assessmentRepository.getById(retakeId))
         assertEquals(mixed, retake.config)
         assertNotEquals(attemptId, retake.id)
     }
@@ -630,12 +626,9 @@ private class PracticeGraph(
     fun resultViewModel(attemptId: String): FocusedResultViewModel =
         koin.get { parametersOf(attemptId) }
 
-    private fun takingViewModel(config: AssessmentConfig): AssessmentTakingViewModel =
-        koin.get { parametersOf(AssessmentTakingLaunch.New(config)) }
-
     /** Reopens a persisted in-progress attempt the way the attempt-ID route does. */
     fun resumeTaking(attemptId: String): AssessmentTakingViewModel =
-        koin.get { parametersOf(AssessmentTakingLaunch.ExistingAttempt(attemptId)) }
+        koin.get { parametersOf(attemptId) }
 
     suspend fun attemptCount(): Int = database.assessmentAttemptDao().countTestAttempts()
 
@@ -653,7 +646,10 @@ private class PracticeGraph(
 
     /** Starts a run the way the practice destination does, and waits for its first question. */
     suspend fun startTaking(config: AssessmentConfig): AssessmentTakingViewModel {
-        val viewModel = takingViewModel(config)
+        val attemptId = assertIs<StartAssessmentResult.Created>(
+            koin.get<StartAssessment>()(config),
+        ).attemptId
+        val viewModel: AssessmentTakingViewModel = koin.get { parametersOf(attemptId) }
         assertIs<AssessmentTakingUiState.Content>(viewModel.awaitQuestion(questionNumber = 1))
         return viewModel
     }

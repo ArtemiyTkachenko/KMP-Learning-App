@@ -8,7 +8,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
-import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
+import org.artkachenko.kmp_learning_app.assessment.start.AssessmentLaunchCoordinator
+import org.artkachenko.kmp_learning_app.assessment.start.AssessmentLaunchViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -16,30 +17,36 @@ internal fun MistakeReviewDestination(
     onBack: (() -> Unit)? = null,
     onBrowseTopics: () -> Unit,
     onConfigurePractice: (PracticePreset) -> Unit,
-    onStartPractice: (AssessmentConfig.Focused) -> Unit,
+    onPracticeStarted: (String) -> Unit,
     onStudyLesson: (MistakeStudyLesson) -> Unit = {},
     viewModel: MistakeReviewViewModel = koinViewModel(),
+    launchViewModel: AssessmentLaunchViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val savedQuestions by viewModel.savedQuestions.collectAsStateWithLifecycle()
     val uriHandler = LocalUriHandler.current
     var failedSourceUrl by remember { mutableStateOf<String?>(null) }
 
-    MistakeReviewScreen(
-        state = state,
-        onBack = onBack,
-        onRetry = viewModel::refresh,
-        onBrowseTopics = onBrowseTopics,
-        onPracticePreset = onConfigurePractice,
-        onStartPractice = onStartPractice,
-        onStudyLesson = onStudyLesson,
-        savedQuestions = savedQuestions,
-        onToggleSaved = viewModel::toggleSaved,
-        onSourceClick = { url ->
-            // Matches the result destinations: openUri throws when no host handler can open the
-            // URI, and the failure must stay visible instead of looking like a no-op.
-            failedSourceUrl = url.takeIf { runCatching { uriHandler.openUri(it) }.isFailure }
-        },
-        failedSourceUrl = failedSourceUrl,
-    )
+    AssessmentLaunchCoordinator(
+        onAttemptCreated = onPracticeStarted,
+        viewModel = launchViewModel,
+    ) { startAssessment ->
+        MistakeReviewScreen(
+            state = state,
+            onBack = onBack,
+            onRetry = viewModel::refresh,
+            onBrowseTopics = onBrowseTopics,
+            onPracticePreset = onConfigurePractice,
+            onStartPractice = startAssessment,
+            onStudyLesson = onStudyLesson,
+            savedQuestions = savedQuestions,
+            onToggleSaved = viewModel::toggleSaved,
+            onSourceClick = { url ->
+                // Matches the result destinations: openUri throws when no host handler can open the
+                // URI, and the failure must stay visible instead of looking like a no-op.
+                failedSourceUrl = url.takeIf { runCatching { uriHandler.openUri(it) }.isFailure }
+            },
+            failedSourceUrl = failedSourceUrl,
+        )
+    }
 }

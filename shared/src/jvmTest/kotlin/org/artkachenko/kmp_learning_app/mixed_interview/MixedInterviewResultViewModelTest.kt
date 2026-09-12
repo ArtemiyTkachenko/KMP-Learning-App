@@ -32,6 +32,7 @@ import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentReposito
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
+import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
@@ -365,14 +366,17 @@ internal class MixedInterviewResultViewModelTest {
         assessmentReviewLoader = AssessmentReviewLoader(curriculum),
         assessmentRetakeService = AssessmentRetakeService(
             assessmentRepository = repository,
-            assessmentEngine = AssessmentEngine(
-                questionSelector = AssessmentQuestionSelector(
-                    curriculumRepository = curriculum,
-                    completedHistory = { repository.getCompletedAttempts() },
-                    randomize = { it },
+            startAssessment = StartAssessment(
+                assessmentRepository = repository,
+                assessmentEngine = AssessmentEngine(
+                    questionSelector = AssessmentQuestionSelector(
+                        curriculumRepository = curriculum,
+                        completedHistory = { repository.getCompletedAttempts() },
+                        randomize = { it },
+                    ),
+                    generateAttemptId = { retakeId },
+                    now = { Instant.fromEpochMilliseconds(3) },
                 ),
-                generateAttemptId = { retakeId },
-                now = { Instant.fromEpochMilliseconds(3) },
             ),
         ),
         savedQuestionStateHolder = savedQuestionStateHolder(savedRepository),

@@ -7,6 +7,7 @@ import org.artkachenko.kmp_learning_app.assessment.history.AppCoroutineScope
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
+import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
 import org.artkachenko.kmp_learning_app.data.local.assessment.repository.LocalAssessmentRepository
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
 import org.artkachenko.kmp_learning_app.learning_progress.LearningPerformanceDerivation
@@ -59,9 +60,15 @@ internal val assessmentDataModule = module {
     }
 
     single {
+        StartAssessment(
+            assessmentEngine = get(),
+            assessmentRepository = get(),
+        )
+    }
+    single {
         AssessmentRetakeService(
             assessmentRepository = get(),
-            assessmentEngine = get(),
+            startAssessment = get(),
         )
     }
     single {

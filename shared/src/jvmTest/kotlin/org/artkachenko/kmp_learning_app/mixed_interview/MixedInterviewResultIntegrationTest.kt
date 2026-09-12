@@ -7,6 +7,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
@@ -31,6 +32,7 @@ import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeResult
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
+import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoadResult
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
@@ -75,14 +77,17 @@ internal class MixedInterviewResultIntegrationTest {
             assessmentRepository.save(source)
             val retakeService = AssessmentRetakeService(
                 assessmentRepository = assessmentRepository,
-                assessmentEngine = AssessmentEngine(
-                    questionSelector = AssessmentQuestionSelector(
-                        curriculumRepository = curriculumRepository,
-                        completedHistory = { assessmentRepository.getCompletedAttempts() },
-                        randomize = { it },
+                startAssessment = StartAssessment(
+                    assessmentRepository = assessmentRepository,
+                    assessmentEngine = AssessmentEngine(
+                        questionSelector = AssessmentQuestionSelector(
+                            curriculumRepository = curriculumRepository,
+                            completedHistory = { assessmentRepository.getCompletedAttempts() },
+                            randomize = { it },
+                        ),
+                        generateAttemptId = { "mixed-retake" },
+                        now = { Instant.fromEpochMilliseconds(3) },
                     ),
-                    generateAttemptId = { "mixed-retake" },
-                    now = { Instant.fromEpochMilliseconds(3) },
                 ),
             )
 
@@ -112,9 +117,10 @@ internal class MixedInterviewResultIntegrationTest {
             assertEquals(listOf(1, 0), state.topicPerformance.map { it.correctCount })
             assertEquals(2, state.topicPerformance.sumOf { it.questionCount })
 
-            val created = assertIs<AssessmentRetakeResult.Created>(
+            val createdId = assertIs<AssessmentRetakeResult.Created>(
                 retakeService.createRetake(source.id),
-            ).session.attempt
+            ).attemptId
+            val created = assertNotNull(assessmentRepository.getById(createdId))
             assertNotEquals(source.id, created.id)
             assertEquals(source.config, created.config)
             assertEquals(AssessmentStatus.IN_PROGRESS, created.status)

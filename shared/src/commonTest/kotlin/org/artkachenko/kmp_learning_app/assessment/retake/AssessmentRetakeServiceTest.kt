@@ -19,6 +19,7 @@ import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
+import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
@@ -49,20 +50,20 @@ internal class AssessmentRetakeServiceTest {
 
         val result = service().createRetake(source.id)
 
-        val created = assertIs<AssessmentRetakeResult.Created>(result).session
-        assertEquals("retake-1", created.attempt.id)
-        assertEquals(source.config, created.attempt.config)
-        assertEquals(listOf("question_b", "question_c"), created.attempt.questionAttempts.map { it.questionId })
-        assertEquals(listOf("question_b", "question_c"), created.questions.map { it.id })
+        val createdId = assertIs<AssessmentRetakeResult.Created>(result).attemptId
+        val created = requireNotNull(assessmentRepository.getById(createdId))
+        assertEquals("retake-1", created.id)
+        assertEquals(source.config, created.config)
+        assertEquals(listOf("question_b", "question_c"), created.questionAttempts.map { it.questionId })
         assertEquals(
             listOf(QuestionAnswerState.Unanswered, QuestionAnswerState.Unanswered),
-            created.attempt.questionAttempts.map { it.answerState },
+            created.questionAttempts.map { it.answerState },
         )
-        assertEquals(AssessmentStatus.IN_PROGRESS, created.attempt.status)
-        assertNull(created.attempt.score)
-        assertNull(created.attempt.completedAt)
-        assertEquals(RetakeStartedAt, created.attempt.startedAt)
-        assertEquals(created.attempt, assessmentRepository.getById("retake-1"))
+        assertEquals(AssessmentStatus.IN_PROGRESS, created.status)
+        assertNull(created.score)
+        assertNull(created.completedAt)
+        assertEquals(RetakeStartedAt, created.startedAt)
+        assertEquals(created, assessmentRepository.getById("retake-1"))
         assertEquals(source, assessmentRepository.getById(source.id))
     }
 
@@ -83,19 +84,20 @@ internal class AssessmentRetakeServiceTest {
 
         val result = service().createRetake(source.id)
 
-        val created = assertIs<AssessmentRetakeResult.Created>(result).session
-        assertEquals("retake-1", created.attempt.id)
-        assertEquals(source.config, created.attempt.config)
-        assertEquals(listOf("a1", "b1", "c1"), created.attempt.questionAttempts.map { it.questionId })
-        assertEquals(AssessmentStatus.IN_PROGRESS, created.attempt.status)
-        assertEquals(null, created.attempt.score)
-        assertEquals(null, created.attempt.completedAt)
+        val createdId = assertIs<AssessmentRetakeResult.Created>(result).attemptId
+        val created = requireNotNull(assessmentRepository.getById(createdId))
+        assertEquals("retake-1", created.id)
+        assertEquals(source.config, created.config)
+        assertEquals(listOf("a1", "b1", "c1"), created.questionAttempts.map { it.questionId })
+        assertEquals(AssessmentStatus.IN_PROGRESS, created.status)
+        assertEquals(null, created.score)
+        assertEquals(null, created.completedAt)
         assertEquals(
             listOf(QuestionAnswerState.Unanswered, QuestionAnswerState.Unanswered, QuestionAnswerState.Unanswered),
-            created.attempt.questionAttempts.map { it.answerState },
+            created.questionAttempts.map { it.answerState },
         )
         assertEquals(source, assessmentRepository.getById(source.id))
-        assertEquals(created.attempt, assessmentRepository.getById(created.attempt.id))
+        assertEquals(created, assessmentRepository.getById(created.id))
     }
 
     @Test
@@ -174,17 +176,19 @@ internal class AssessmentRetakeServiceTest {
         assessmentRepository.attempts[source.id] = source
         curriculumRepository.activeQuestions = listOf(question("question_b"))
 
-        val first = assertIs<AssessmentRetakeResult.Created>(
+        val firstId = assertIs<AssessmentRetakeResult.Created>(
             service().createRetake(source.id),
-        ).session
-        val second = assertIs<AssessmentRetakeResult.Created>(
+        ).attemptId
+        val secondId = assertIs<AssessmentRetakeResult.Created>(
             service().createRetake(source.id),
-        ).session
+        ).attemptId
+        val first = requireNotNull(assessmentRepository.getById(firstId))
+        val second = requireNotNull(assessmentRepository.getById(secondId))
 
-        assertEquals("retake-1", first.attempt.id)
-        assertEquals("retake-2", second.attempt.id)
-        assertEquals(first.attempt, assessmentRepository.getById("retake-1"))
-        assertEquals(second.attempt, assessmentRepository.getById("retake-2"))
+        assertEquals("retake-1", first.id)
+        assertEquals("retake-2", second.id)
+        assertEquals(first, assessmentRepository.getById("retake-1"))
+        assertEquals(second, assessmentRepository.getById("retake-2"))
         assertEquals(source, assessmentRepository.getById(source.id))
     }
 
@@ -214,14 +218,17 @@ internal class AssessmentRetakeServiceTest {
         fun service(): AssessmentRetakeService =
             AssessmentRetakeService(
                 assessmentRepository = assessmentRepository,
-                assessmentEngine = AssessmentEngine(
-                    questionSelector = AssessmentQuestionSelector(
-                        curriculumRepository = curriculumRepository,
-                        completedHistory = { emptyList() },
-                        randomize = { it },
+                startAssessment = StartAssessment(
+                    assessmentRepository = assessmentRepository,
+                    assessmentEngine = AssessmentEngine(
+                        questionSelector = AssessmentQuestionSelector(
+                            curriculumRepository = curriculumRepository,
+                            completedHistory = { emptyList() },
+                            randomize = { it },
+                        ),
+                        generateAttemptId = { "retake-${nextAttemptNumber++}" },
+                        now = { RetakeStartedAt },
                     ),
-                    generateAttemptId = { "retake-${nextAttemptNumber++}" },
-                    now = { RetakeStartedAt },
                 ),
             )
     }

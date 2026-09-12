@@ -4,21 +4,18 @@ import androidx.compose.runtime.Composable
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.mixed_interview_title
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingDestination
-import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingLaunch
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun MixedInterviewDestination(
-    launch: AssessmentTakingLaunch,
+    attemptId: String,
     onBack: () -> Unit,
-    onAttemptPersisted: (String) -> Unit,
     onCompleted: (String) -> Unit,
 ) {
     AssessmentTakingDestination(
         title = stringResource(Res.string.mixed_interview_title),
-        launch = launch,
+        attemptId = attemptId,
         onBack = onBack,
-        onAttemptPersisted = onAttemptPersisted,
         onCompleted = onCompleted,
     )
 }

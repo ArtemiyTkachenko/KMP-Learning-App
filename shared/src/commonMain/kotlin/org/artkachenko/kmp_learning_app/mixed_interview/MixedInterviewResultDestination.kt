@@ -10,15 +10,17 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
-import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
+import org.artkachenko.kmp_learning_app.assessment.start.AssessmentLaunchCoordinator
+import org.artkachenko.kmp_learning_app.assessment.start.AssessmentLaunchViewModel
 
 @Composable
 internal fun MixedInterviewResultDestination(
     attemptId: String,
     onBack: () -> Unit,
     onRetakeCreated: (String) -> Unit,
-    onPracticeMistakes: (AssessmentConfig.Focused) -> Unit,
+    onPracticeStarted: (String) -> Unit,
     viewModel: MixedInterviewResultViewModel = koinViewModel { parametersOf(attemptId) },
+    launchViewModel: AssessmentLaunchViewModel = koinViewModel(),
 ) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
     val savedQuestions = viewModel.savedQuestions.collectAsStateWithLifecycle().value
@@ -32,19 +34,24 @@ internal fun MixedInterviewResultDestination(
             }
         }
     }
-    MixedInterviewResultScreen(
-        state = state,
-        onRetry = viewModel::retry,
-        onBack = onBack,
-        onRepeatInterview = viewModel::repeatInterview,
-        onPracticeMistakes = onPracticeMistakes,
-        savedQuestions = savedQuestions,
-        onToggleSaved = viewModel::toggleSaved,
-        onSourceClick = { url ->
-            // openUri throws when no host handler can open the URI. The failure used to be
-            // swallowed here, so a tap on a source looked like a no-op.
-            failedSourceUrl = url.takeIf { runCatching { uriHandler.openUri(it) }.isFailure }
-        },
-        failedSourceUrl = failedSourceUrl,
-    )
+    AssessmentLaunchCoordinator(
+        onAttemptCreated = onPracticeStarted,
+        viewModel = launchViewModel,
+    ) { startAssessment ->
+        MixedInterviewResultScreen(
+            state = state,
+            onRetry = viewModel::retry,
+            onBack = onBack,
+            onRepeatInterview = viewModel::repeatInterview,
+            onPracticeMistakes = startAssessment,
+            savedQuestions = savedQuestions,
+            onToggleSaved = viewModel::toggleSaved,
+            onSourceClick = { url ->
+                // openUri throws when no host handler can open the URI. The failure used to be
+                // swallowed here, so a tap on a source looked like a no-op.
+                failedSourceUrl = url.takeIf { runCatching { uriHandler.openUri(it) }.isFailure }
+            },
+            failedSourceUrl = failedSourceUrl,
+        )
+    }
 }

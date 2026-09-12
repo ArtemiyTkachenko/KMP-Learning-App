@@ -11,7 +11,6 @@ import kotlin.test.assertTrue
 import kotlin.test.assertSame
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
-import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingTarget
 import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationTarget
 import org.artkachenko.kmp_learning_app.lesson_study.ContinueLearningTarget
@@ -19,6 +18,17 @@ import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toPracticeBuilderRoute
 
 internal class AppNavigationTest {
+    @Test
+    fun assessmentRouteHelpersPushOnlyTheCreatedAttemptIdentity() {
+        val navigator = navigator()
+
+        navigator.pushFocusedAttempt("focused-attempt")
+        assertEquals(AppRoute.FocusedPracticeAttempt("focused-attempt"), navigator.currentRoute)
+
+        navigator.pushMixedAttempt("mixed-attempt")
+        assertEquals(AppRoute.MixedInterviewAttempt("mixed-attempt"), navigator.currentRoute)
+    }
+
     @Test
     fun topicRoutesCarryStableIdentityWithOptionalSubtopicTarget() {
         assertEquals(
@@ -32,13 +42,12 @@ internal class AppNavigationTest {
     }
 
     @Test
-    fun persistedMixedAttemptReplacesConfigEntry() {
+    fun persistedMixedAttemptIsTheOnlyAssessmentRouteAdded() {
         val backStack = mutableListOf<AppRoute>(
             AppRoute.Topics,
-            AppRoute.MixedInterview(questionCount = 20),
         )
 
-        backStack.replaceTopWith(AppRoute.MixedInterviewAttempt("mixed-attempt"))
+        backStack.add(AppRoute.MixedInterviewAttempt("mixed-attempt"))
 
         assertEquals(
             listOf(AppRoute.Topics, AppRoute.MixedInterviewAttempt("mixed-attempt")),
@@ -47,15 +56,14 @@ internal class AppNavigationTest {
     }
 
     @Test
-    fun persistedFocusedAttemptReplacesConfigEntry() {
+    fun persistedFocusedAttemptKeepsTheBuilderBelowIt() {
         val backStack = mutableListOf<AppRoute>(
             AppRoute.Topics,
             AppRoute.Topic("topic"),
             AppRoute.PracticeBuilderTopic("topic"),
-            focusedTopicPractice(),
         )
 
-        backStack.replaceTopWith(AppRoute.FocusedPracticeAttempt("focused-attempt"))
+        backStack.add(AppRoute.FocusedPracticeAttempt("focused-attempt"))
 
         // The builder stays on the stack, so backing out of a practice run returns to the setup
         // the learner configured rather than all the way to the Topic.
@@ -75,14 +83,14 @@ internal class AppNavigationTest {
         val backStack = mutableListOf<AppRoute>(AppRoute.Topics, AppRoute.Topic("topic"))
 
         backStack.add(AppRoute.PracticeBuilderTopic("topic"))
-        backStack.add(focusedTopicPractice())
+        backStack.add(AppRoute.FocusedPracticeAttempt("focused-attempt"))
 
         assertEquals(
             listOf(
                 AppRoute.Topics,
                 AppRoute.Topic("topic"),
                 AppRoute.PracticeBuilderTopic("topic"),
-                focusedTopicPractice(),
+                AppRoute.FocusedPracticeAttempt("focused-attempt"),
             ),
             backStack,
         )
@@ -154,22 +162,12 @@ internal class AppNavigationTest {
         assertNull(AppTopLevelDestination.forRoute(route))
     }
 
-    /**
-     * Continue Learning answers a question about reading, so its target must not be able to reach
-     * an assessment of any kind — running, finished, or configured to start.
-     */
+    /** Continue Learning answers a question about reading, so it resolves only to a Lesson. */
     @Test
     fun noContinueLearningTargetCanReachAnAssessment() {
         val route = ContinueLearningTarget("unit_compose", "lesson_recomposition").toAppRoute()
 
         assertIs<AppRoute.LearningLesson>(route)
-        assertFalse(route is AppRoute.FocusedPracticeAttempt, "$route resumes an attempt")
-        assertFalse(route is AppRoute.MixedInterviewAttempt, "$route resumes an attempt")
-        assertFalse(route is AppRoute.FocusedPracticeResult, "$route reopens a result")
-        assertFalse(route is AppRoute.MixedInterviewResult, "$route reopens a result")
-        assertFalse(route is AppRoute.FocusedTopicPractice, "$route starts an assessment")
-        assertFalse(route is AppRoute.FocusedSubtopicPractice, "$route starts an assessment")
-        assertFalse(route is AppRoute.MixedInterview, "$route starts an assessment")
     }
 
     /**
@@ -198,9 +196,6 @@ internal class AppNavigationTest {
             // Nor a finished one, and nor a run configured to start immediately.
             assertFalse(route is AppRoute.FocusedPracticeResult, "$route reopens a result")
             assertFalse(route is AppRoute.MixedInterviewResult, "$route reopens a result")
-            assertFalse(route is AppRoute.FocusedTopicPractice, "$route starts an assessment")
-            assertFalse(route is AppRoute.FocusedSubtopicPractice, "$route starts an assessment")
-            assertFalse(route is AppRoute.MixedInterview, "$route starts an assessment")
         }
     }
 
@@ -277,9 +272,6 @@ internal class AppNavigationTest {
         ).map(LearningRecommendationTarget::toAppRoute)
 
         routes.forEach { route ->
-            assertFalse(route is AppRoute.FocusedTopicPractice, "$route starts an assessment")
-            assertFalse(route is AppRoute.FocusedSubtopicPractice, "$route starts an assessment")
-            assertFalse(route is AppRoute.MixedInterview, "$route starts an assessment")
             assertFalse(route is AppRoute.FocusedPracticeAttempt, "$route resumes an attempt")
             assertFalse(route is AppRoute.MixedInterviewAttempt, "$route resumes an attempt")
             assertFalse(route is AppRoute.FocusedPracticeResult, "$route reopens a result")
@@ -334,8 +326,6 @@ internal class AppNavigationTest {
                     route is AppRoute.PracticeBuilderSubtopic,
                 "$route is not the Practice Builder",
             )
-            assertFalse(route is AppRoute.FocusedTopicPractice, "$route starts an assessment")
-            assertFalse(route is AppRoute.FocusedSubtopicPractice, "$route starts an assessment")
             assertFalse(route is AppRoute.FocusedPracticeAttempt, "$route resumes an attempt")
             assertFalse(route is AppRoute.FocusedPracticeResult, "$route reopens a result")
         }
@@ -350,14 +340,6 @@ internal class AppNavigationTest {
     private fun navigator(): AppNavigator =
         AppNavigator(
             AppTopLevelDestination.entries.associateWith { mutableListOf<NavKey>(it.route) },
-        )
-
-    private fun focusedTopicPractice(): AppRoute.FocusedTopicPractice =
-        AppRoute.FocusedTopicPractice(
-            topicId = "topic",
-            questionCount = 10,
-            levels = listOf(QuestionLevel.ADVANCED),
-            source = PracticeQuestionSource.ALL,
         )
 
     /**
@@ -620,14 +602,7 @@ internal class AppNavigationTest {
     fun unitPracticeFollowsTheExistingAreaNavigationRule() {
         assertNull(AppTopLevelDestination.forRoute(AppRoute.PracticeBuilderLearningUnit("unit")))
         assertTrue(AppRoute.PracticeBuilderLearningUnit("unit").showsAreaNavigation())
-        assertFalse(
-            AppRoute.FocusedSubtopicsPractice(
-                subtopicIds = listOf("subtopic_a", "subtopic_b"),
-                questionCount = 10,
-                levels = QuestionLevel.entries,
-                source = PracticeQuestionSource.ALL,
-            ).showsAreaNavigation(),
-        )
+        assertFalse(AppRoute.FocusedPracticeAttempt("attempt").showsAreaNavigation())
     }
 
     @Test

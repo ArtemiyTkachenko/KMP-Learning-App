@@ -26,6 +26,7 @@ import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentReposito
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
+import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
@@ -244,14 +245,17 @@ internal class FocusedResultViewModelTest {
     private fun retakeService(repository: FakeAssessmentRepository, questions: List<Question>) =
         AssessmentRetakeService(
             assessmentRepository = repository,
-            assessmentEngine = AssessmentEngine(
-                questionSelector = AssessmentQuestionSelector(
-                    curriculumRepository = FakeCurriculumRepository(questions),
-                    completedHistory = { emptyList() },
-                    randomize = { it },
+            startAssessment = StartAssessment(
+                assessmentRepository = repository,
+                assessmentEngine = AssessmentEngine(
+                    questionSelector = AssessmentQuestionSelector(
+                        curriculumRepository = FakeCurriculumRepository(questions),
+                        completedHistory = { emptyList() },
+                        randomize = { it },
+                    ),
+                    generateAttemptId = { "retake" },
+                    now = { Instant.fromEpochMilliseconds(2) },
                 ),
-                generateAttemptId = { "retake" },
-                now = { Instant.fromEpochMilliseconds(2) },
             ),
         )
 

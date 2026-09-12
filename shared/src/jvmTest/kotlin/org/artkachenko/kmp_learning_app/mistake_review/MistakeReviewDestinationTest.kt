@@ -32,6 +32,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
+import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
+import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
+import org.artkachenko.kmp_learning_app.assessment.start.AssessmentLaunchViewModel
+import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.saved_questions.FakeSavedQuestionRepository
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder
@@ -67,8 +71,9 @@ internal class MistakeReviewDestinationTest {
                         onBack = {},
                         onBrowseTopics = {},
                         onConfigurePractice = {},
-                        onStartPractice = {},
+                        onPracticeStarted = {},
                         viewModel = viewModel,
+                        launchViewModel = destinationLaunchViewModel(repository),
                     )
                 }
             }
@@ -102,8 +107,9 @@ internal class MistakeReviewDestinationTest {
                         onBack = {},
                         onBrowseTopics = {},
                         onConfigurePractice = {},
-                        onStartPractice = {},
+                        onPracticeStarted = {},
                         viewModel = destinationViewModel(),
+                        launchViewModel = destinationLaunchViewModel(),
                     )
                 }
             }
@@ -127,8 +133,9 @@ internal class MistakeReviewDestinationTest {
                         onBack = {},
                         onBrowseTopics = {},
                         onConfigurePractice = {},
-                        onStartPractice = {},
+                        onPracticeStarted = {},
                         viewModel = destinationViewModel(),
+                        launchViewModel = destinationLaunchViewModel(),
                     )
                 }
             }
@@ -173,6 +180,22 @@ private fun destinationViewModel(
             ),
         )
     }
+
+private fun destinationLaunchViewModel(
+    repository: AssessmentRepository = DestinationHistoryRepository,
+): AssessmentLaunchViewModel = AssessmentLaunchViewModel(
+    StartAssessment(
+        assessmentEngine = AssessmentEngine(
+            questionSelector = AssessmentQuestionSelector(
+                curriculumRepository = DestinationCurriculumRepository,
+                completedHistory = { emptyList() },
+                randomize = { it },
+            ),
+            generateAttemptId = { "started-attempt" },
+        ),
+        assessmentRepository = repository,
+    ),
+)
 
 private class MistakeReviewLifecycleOwner : LifecycleOwner {
     private val registry = LifecycleRegistry.createUnsafe(this)

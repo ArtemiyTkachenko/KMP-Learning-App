@@ -22,8 +22,9 @@ import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeServic
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
+import org.artkachenko.kmp_learning_app.assessment.start.AssessmentLaunchViewModel
+import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
-import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingLaunch
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingViewModel
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
@@ -91,6 +92,7 @@ internal class TopicStudyPresentationModuleTest {
                     }
                     single<AssessmentRepository> { FakeAssessmentRepository() }
                     single { AssessmentSessionLoader(get(), get()) }
+                    single { StartAssessment(get(), get()) }
                     single { AssessmentRetakeService(get(), get()) }
                     single { LearningProgressService(get(), get()) }
                     // The presentation module now depends on the app-scoped history cache; the
@@ -119,26 +121,20 @@ internal class TopicStudyPresentationModuleTest {
             )
             assertIs<AssessmentTakingViewModel>(
                 app.koin.get<AssessmentTakingViewModel> {
-                    parametersOf(
-                        AssessmentTakingLaunch.New(AssessmentConfig.Focused(
-                            scope = AssessmentScope.Topic("topic"),
-                            questionCount = 1,
-                        )),
-                    )
+                    parametersOf("focused-attempt")
                 },
             )
             assertIs<AssessmentTakingViewModel>(
                 app.koin.get<AssessmentTakingViewModel> {
-                    parametersOf(
-                        AssessmentTakingLaunch.New(AssessmentConfig.Mixed(questionCount = 1)),
-                    )
+                    parametersOf("mixed-attempt")
                 },
             )
             assertIs<AssessmentTakingViewModel>(
                 app.koin.get<AssessmentTakingViewModel> {
-                    parametersOf(AssessmentTakingLaunch.ExistingAttempt("attempt"))
+                    parametersOf("attempt")
                 },
             )
+            assertIs<AssessmentLaunchViewModel>(app.koin.get<AssessmentLaunchViewModel>())
             // The Practice Builder is reached both ways: from content with a scope alone, and from
             // a guided-learning or contextual preset that also names the source it opens on. The
             // module reads that second parameter as optional, so both entries have to resolve and

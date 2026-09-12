@@ -142,6 +142,7 @@ internal fun AppNavigationScaffold(
     selected: AppTopLevelDestination,
     onSelect: (AppTopLevelDestination) -> Unit,
     showsNavigation: Boolean,
+    showsBottomNavigation: Boolean = showsNavigation,
     modifier: Modifier = Modifier,
     badges: AppNavigationBadges = emptyMap(),
     content: @Composable (PaddingValues) -> Unit,
@@ -180,7 +181,7 @@ internal fun AppNavigationScaffold(
                 // navigation bar instead of covering it.
                 snackbarHost = { SnackbarHost(snackbarHostState) },
                 bottomBar = {
-                    if (showsNavigation && !usesRail) {
+                    if (showsBottomNavigation && !usesRail) {
                         // Above `AppNavigationBar` rather than within it: the bar pads itself for
                         // the gesture inset, and a rule inside that padding would sit below the
                         // edge it is meant to draw rather than on it.

@@ -684,15 +684,13 @@ published as the button's `stateDescription`. No tick, colour, or icon is load-b
 no redundant content description is added on top of what Material already exposes.
 
 **Where the Lesson sits.** `Content` also carries `placement: LessonPlacementUiModel?` — the
-Unit's title and the Lesson's 1-based position among that Unit's ACTIVE Lessons — rendered as
-one quiet line above the title ("Thinking in Compose · Lesson 3 of 7"). The Topic → Unit →
-Lesson hierarchy the learner navigated down was otherwise invisible once they arrived. It is
-orientation, not chrome: no breadcrumb chain, no reading-time estimate, no section outline,
-and no header previous/next, each of which would be a second navigation system competing with
-the one at the end of the page. The counts come from the same ACTIVE list previous/next steps
-through, so a retired Lesson is neither a waypoint nor a denominator; a Unit with a single
-readable Lesson prints its name and drops the position, because a position within a sequence
-of one states nothing.
+Unit's title and the Lesson's 1-based position among that Unit's ACTIVE Lessons. The toolbar
+renders the Unit title as its persistent primary line and `Lesson X of Y` as a quieter second
+line, including for a one-Lesson Unit. Meaningful downward reading collapses only the position;
+meaningful upward reading or returning to the top restores it. The Topic → Unit → Lesson
+hierarchy the learner navigated down was otherwise invisible once they arrived. The counts come
+from the same ACTIVE list previous/next steps through, so a retired Lesson is neither a waypoint
+nor a denominator.
 
 **One primary continuation.** The end of the page ranks its two ways onward rather than
 offering both at equal weight. With a successor, the next-Lesson card takes the primary

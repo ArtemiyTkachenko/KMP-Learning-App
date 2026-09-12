@@ -247,9 +247,9 @@ private fun WideComparison(block: LearningBlock.Comparison) {
                 block.headers.forEach { header ->
                     ComparisonCell(
                         text = header,
-                        // Weight, not colour alone: the header row still reads as headings in a
-                        // monochrome or high-contrast rendering.
-                        style = MaterialTheme.typography.titleSmall,
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Medium,
+                        ),
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
@@ -258,11 +258,21 @@ private fun WideComparison(block: LearningBlock.Comparison) {
             block.rows.forEachIndexed { index, row ->
                 if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Row {
-                    row.forEach { cell ->
+                    row.forEachIndexed { columnIndex, cell ->
                         ComparisonCell(
-                        text = cell,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            text = cell,
+                            style = if (columnIndex == 0) {
+                                MaterialTheme.typography.titleSmall.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            } else {
+                                MaterialTheme.typography.bodyMedium
+                            },
+                            color = if (columnIndex == 0) {
+                                MaterialTheme.colorScheme.onSurface
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                         )
                     }
                 }
@@ -283,12 +293,28 @@ private fun CompactComparison(block: LearningBlock.Comparison) {
                 verticalArrangement = Arrangement.spacedBy(AppSpacing.Related),
             ) {
                 row.firstOrNull()?.let { concern ->
-                    Text(concern.toLessonAnnotatedString(), style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        text = concern.toLessonAnnotatedString(),
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = FontWeight.SemiBold,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
                 }
                 row.drop(1).forEachIndexed { index, value ->
                     val heading = block.headers.getOrNull(index + 1) ?: return@forEachIndexed
-                    Text(heading.toLessonAnnotatedString(), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(value.toLessonAnnotatedString(), style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = heading.toLessonAnnotatedString(),
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Medium,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = value.toLessonAnnotatedString(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
             if (rowIndex < block.rows.lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

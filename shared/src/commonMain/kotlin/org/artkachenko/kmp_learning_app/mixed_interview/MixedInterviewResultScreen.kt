@@ -51,10 +51,21 @@ import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
 import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.jetbrains.compose.resources.stringResource
+import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
+import org.artkachenko.kmp_learning_app.ui.theme.AppScreenPane
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.lazy.LazyListScope
+import org.artkachenko.kmp_learning_app.ui.AppTwoPaneRow
+import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
+import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 
 internal const val MixedResultLoadingTag = "mixed_result_loading"
 internal const val MixedResultPracticeAgainTag = "mixed_result_practice_again"
 internal const val MixedResultCreatingIndicatorTag = "mixed_result_creating_indicator"
+
+/** The two panes of the expanded result, named for the same reason the Progress panes are. */
+internal const val MixedResultSummaryPaneTag = "mixed_result_summary_pane"
+internal const val MixedResultReviewPaneTag = "mixed_result_review_pane"
 
 @Composable
 internal fun MixedInterviewResultScreen(
@@ -72,39 +83,59 @@ internal fun MixedInterviewResultScreen(
     val scrollBehavior = rememberAppTopBarScrollBehavior()
     Column(modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)) {
         AppTopBar(stringResource(Res.string.mixed_result_title), onBack, scrollBehavior)
-        when (state) {
-            MixedInterviewResultUiState.Loading -> ScreenLoading(
-                message = stringResource(Res.string.mixed_result_loading),
-                testTag = MixedResultLoadingTag,
-                modifier = Modifier.weight(1f),
-            )
-            MixedInterviewResultUiState.AttemptNotFound -> ScreenMessage(
-                message = stringResource(Res.string.mixed_result_attempt_not_found),
-                modifier = Modifier.weight(1f),
-            )
-            MixedInterviewResultUiState.NotCompleted -> ScreenMessage(
-                message = stringResource(Res.string.mixed_result_not_completed),
-                modifier = Modifier.weight(1f),
-            )
-            MixedInterviewResultUiState.Error -> ScreenError(
-                message = stringResource(Res.string.mixed_result_error),
-                onRetry = onRetry,
-                modifier = Modifier.weight(1f),
-            )
-            is MixedInterviewResultUiState.Content -> MixedResultContent(
-                state = state,
-                onSourceClick = onSourceClick,
-                onRepeatInterview = onRepeatInterview,
-                onPracticeMistakes = onPracticeMistakes,
-                savedQuestions = savedQuestions,
-                onToggleSaved = onToggleSaved,
-                failedSourceUrl = failedSourceUrl,
-                modifier = Modifier.weight(1f),
-            )
+        AppScreenPane(AppContentWidth.Paned) {
+            when (state) {
+                MixedInterviewResultUiState.Loading -> ScreenLoading(
+                    message = stringResource(Res.string.mixed_result_loading),
+                    testTag = MixedResultLoadingTag,
+                    modifier = Modifier.weight(1f),
+                )
+                MixedInterviewResultUiState.AttemptNotFound -> ScreenMessage(
+                    message = stringResource(Res.string.mixed_result_attempt_not_found),
+                    modifier = Modifier.weight(1f),
+                )
+                MixedInterviewResultUiState.NotCompleted -> ScreenMessage(
+                    message = stringResource(Res.string.mixed_result_not_completed),
+                    modifier = Modifier.weight(1f),
+                )
+                MixedInterviewResultUiState.Error -> ScreenError(
+                    message = stringResource(Res.string.mixed_result_error),
+                    onRetry = onRetry,
+                    modifier = Modifier.weight(1f),
+                )
+                is MixedInterviewResultUiState.Content -> MixedResultContent(
+                    state = state,
+                    onSourceClick = onSourceClick,
+                    onRepeatInterview = onRepeatInterview,
+                    onPracticeMistakes = onPracticeMistakes,
+                    savedQuestions = savedQuestions,
+                    onToggleSaved = onToggleSaved,
+                    failedSourceUrl = failedSourceUrl,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 }
 
+/**
+ * The result, as one scroll or as two panes.
+ *
+ * An Interview transcript is the longest single thing in the app: twenty questions, each with its
+ * options, the learner's answer, the correct answer, an explanation, and its sources. On a phone
+ * that is unavoidably one long scroll, and the score and the next actions sit at the top of it. On
+ * a desktop the same arrangement wastes the window and makes the summary something the learner has
+ * to scroll back up to — so the outcome, the notices about it, the way to take it again, and the
+ * per-Topic breakdown take a pane of their own, and the transcript scrolls beside them.
+ *
+ * This is deliberately not a master/detail list with one question shown at a time. Master/detail
+ * would mean introducing selection state for a document the learner is meant to read through, and
+ * it would hide nineteen of twenty reviews behind a click each — for a screen whose whole purpose
+ * is to go back over what happened. Every P0 review rule survives a two-pane split untouched,
+ * because the transcript pane holds the same `ReviewQuestionCard` list in the same order: mistakes
+ * keep their marking, correct answers keep their lower emphasis, the four-state multi-select review
+ * is the card's own, and explanations, sources, and study links are all still on the card.
+ */
 @Composable
 private fun MixedResultContent(
     state: MixedInterviewResultUiState.Content,
@@ -116,22 +147,79 @@ private fun MixedResultContent(
     failedSourceUrl: String?,
     modifier: Modifier,
 ) {
+    if (LocalAppWindowSizeClass.current.isExpanded) {
+        AppTwoPaneRow(
+            modifier = modifier,
+            primary = {
+                ResultPane(Modifier.weight(1f).testTag(MixedResultSummaryPaneTag)) {
+                    outcomeSection(
+                        state = state,
+                        onRepeatInterview = onRepeatInterview,
+                        onPracticeMistakes = onPracticeMistakes,
+                    )
+                }
+            },
+            secondary = {
+                ResultPane(Modifier.weight(1f).testTag(MixedResultReviewPaneTag)) {
+                    reviewSection(
+                        state = state,
+                        onSourceClick = onSourceClick,
+                        savedQuestions = savedQuestions,
+                        onToggleSaved = onToggleSaved,
+                        failedSourceUrl = failedSourceUrl,
+                    )
+                }
+            },
+        )
+        return
+    }
+    ResultPane(modifier) {
+        outcomeSection(
+            state = state,
+            onRepeatInterview = onRepeatInterview,
+            onPracticeMistakes = onPracticeMistakes,
+        )
+        reviewSection(
+            state = state,
+            onSourceClick = onSourceClick,
+            savedQuestions = savedQuestions,
+            onToggleSaved = onToggleSaved,
+            failedSourceUrl = failedSourceUrl,
+        )
+    }
+}
+
+/** One column of the result, with the same padding and rhythm in either arrangement. */
+@Composable
+private fun ResultPane(
+    modifier: Modifier,
+    content: LazyListScope.() -> Unit,
+) {
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxHeight(),
         contentPadding = appScreenContentPadding(),
-        verticalArrangement = Arrangement.spacedBy(org.artkachenko.kmp_learning_app.ui.theme.AppSpacing.Comfortable),
-    ) {
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(org.artkachenko.kmp_learning_app.ui.theme.AppSpacing.Comfortable)) {
-                AssessmentScoreSummary(
-                    correctAnswers = state.correctAnswers,
-                    totalQuestions = state.totalQuestions,
-                    percentage = state.percentage,
-                    title = stringResource(Res.string.assessment_review_interview_complete),
-                )
-                UnresolvedReviewQuestionsNotice(state.questions, state.totalQuestions)
-                MistakeRetentionNotice(state.questions, onPracticeMistakes)
-                when (state.repeatInterviewState) {
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Comfortable),
+        content = content,
+    )
+}
+
+/** What happened: the score, what follows from it, and where it went well or badly. */
+private fun LazyListScope.outcomeSection(
+    state: MixedInterviewResultUiState.Content,
+    onRepeatInterview: () -> Unit,
+    onPracticeMistakes: ((AssessmentConfig.Focused) -> Unit)?,
+) {
+    item {
+        Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Comfortable)) {
+            AssessmentScoreSummary(
+                correctAnswers = state.correctAnswers,
+                totalQuestions = state.totalQuestions,
+                percentage = state.percentage,
+                title = stringResource(Res.string.assessment_review_interview_complete),
+            )
+            UnresolvedReviewQuestionsNotice(state.questions, state.totalQuestions)
+            MistakeRetentionNotice(state.questions, onPracticeMistakes)
+            when (state.repeatInterviewState) {
                 RepeatInterviewState.Idle -> Unit
                 RepeatInterviewState.Creating ->
                     Text(stringResource(Res.string.mixed_result_practice_starting))
@@ -150,50 +238,59 @@ private fun MixedResultContent(
                         stringResource(Res.string.mixed_result_repeat_error),
                         color = MaterialTheme.colorScheme.error,
                     )
-                }
-                OutlinedButton(
-                    onClick = onRepeatInterview,
-                    enabled = state.repeatInterviewState != RepeatInterviewState.Creating,
-                    modifier = Modifier.testTag(MixedResultPracticeAgainTag),
-                ) {
-                    if (state.repeatInterviewState == RepeatInterviewState.Creating) {
-                        CircularProgressIndicator(Modifier.testTag(MixedResultCreatingIndicatorTag))
-                    } else {
-                        Text(stringResource(Res.string.mixed_result_practice_again))
-                    }
+            }
+            OutlinedButton(
+                onClick = onRepeatInterview,
+                enabled = state.repeatInterviewState != RepeatInterviewState.Creating,
+                modifier = Modifier.testTag(MixedResultPracticeAgainTag),
+            ) {
+                if (state.repeatInterviewState == RepeatInterviewState.Creating) {
+                    CircularProgressIndicator(Modifier.testTag(MixedResultCreatingIndicatorTag))
+                } else {
+                    Text(stringResource(Res.string.mixed_result_practice_again))
                 }
             }
         }
-        item {
-            SectionHeading(
-                stringResource(Res.string.mixed_result_performance_by_topic),
-                topPadding = org.artkachenko.kmp_learning_app.ui.theme.AppSpacing.Related,
+    }
+    item {
+        SectionHeading(
+            stringResource(Res.string.mixed_result_performance_by_topic),
+            topPadding = AppSpacing.Related,
+        )
+    }
+    items(state.topicPerformance, key = { it.topicId }) { topic ->
+        TopicPerformanceCard(topic)
+    }
+}
+
+/** The transcript: every question as it was answered, in the order it was asked. */
+private fun LazyListScope.reviewSection(
+    state: MixedInterviewResultUiState.Content,
+    onSourceClick: (String) -> Unit,
+    savedQuestions: SavedQuestionsState,
+    onToggleSaved: (String) -> Unit,
+    failedSourceUrl: String?,
+) {
+    item {
+        SectionHeading(
+            stringResource(Res.string.mixed_result_question_review),
+            topPadding = AppSpacing.Related,
+        )
+    }
+    items(state.questions) { item ->
+        when (item) {
+            is ReviewQuestionItem.Available -> ReviewQuestionCard(
+                question = item.question,
+                onSourceClick = onSourceClick,
+                failedSourceUrl = failedSourceUrl,
+                // The same shared card and the same shared saved state as the other review
+                // surfaces; Mixed results do not bookmark by their own rules.
+                saveAction = savedQuestions.reviewSaveAction(
+                    questionId = item.question.questionId,
+                    onToggleSaved = onToggleSaved,
+                ),
             )
-        }
-        items(state.topicPerformance, key = { it.topicId }) { topic ->
-            TopicPerformanceCard(topic)
-        }
-        item {
-            SectionHeading(
-                stringResource(Res.string.mixed_result_question_review),
-                topPadding = org.artkachenko.kmp_learning_app.ui.theme.AppSpacing.Related,
-            )
-        }
-        items(state.questions) { item ->
-            when (item) {
-                is ReviewQuestionItem.Available -> ReviewQuestionCard(
-                    question = item.question,
-                    onSourceClick = onSourceClick,
-                    failedSourceUrl = failedSourceUrl,
-                    // The same shared card and the same shared saved state as the other review
-                    // surfaces; Mixed results do not bookmark by their own rules.
-                    saveAction = savedQuestions.reviewSaveAction(
-                        questionId = item.question.questionId,
-                        onToggleSaved = onToggleSaved,
-                    ),
-                )
-                is ReviewQuestionItem.Missing -> MissingReviewQuestion(item.questionId)
-            }
+            is ReviewQuestionItem.Missing -> MissingReviewQuestion(item.questionId)
         }
     }
 }

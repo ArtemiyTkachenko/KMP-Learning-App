@@ -76,7 +76,8 @@ does not cover: [CI](docs/workflows/ci.md).
 **Architecture** — what the code currently does:
 
 - [Overview](docs/architecture/overview.md): app composition, Koin, Navigation 3, runtime hosts, curriculum content model.
-- [Assessment](docs/architecture/assessment.md): assessment configuration, selection, taking, scoring, retakes.
+- [Adaptive layout](docs/architecture/adaptive-layout.md): window size classes, content widths, which screens compose two panes, the lesson reading measure and outline.
+- [Assessment](docs/architecture/assessment.md): assessment configuration, selection, taking, scoring, retakes, and the interview-simulation features deliberately not built.
 - [Progress](docs/architecture/progress.md): derived accuracy, coverage, recent performance, learning context on study surfaces.
 - [Practice selection](docs/architecture/practice-selection.md): level and question-source policies.
 - [Recommendations](docs/architecture/recommendations.md): guided learning policy and Continue Studying.

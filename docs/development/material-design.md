@@ -34,6 +34,7 @@ Quote a token by name when a value needs justifying, so a reviewer can re-derive
 | `PrimaryNavigationTabTokens.ActiveIndicatorHeight` | 3dp |
 | `InteractiveComponentSize` minimum touch target | 48dp |
 | Window margins: compact / medium and up | 16dp / 24dp, breakpoint 600dp |
+| Window class breakpoints: compact / medium / expanded | 600dp / 1040dp (see below) |
 
 ## Do not re-declare the scales
 
@@ -42,7 +43,7 @@ Every scale already exists. Change the scale, never the call site.
 | Concern | Where |
 | --- | --- |
 | Spacing steps | `ui/theme/AppSpacing.kt` |
-| Window margin, breakpoint, max content width | `ui/theme/AppLayout.kt` |
+| Window margin, window classes, content widths | `ui/theme/AppLayout.kt` |
 | Corner radii | `ui/theme/AppShapes.kt` |
 | Type scale | `ui/theme/AppTypography.kt` |
 | Durations and easing | `ui/theme/AppMotion.kt` |
@@ -51,6 +52,43 @@ Every scale already exists. Change the scale, never the call site.
 No literal `.dp` spacing in a screen when a scale step says the same thing. A pill is the
 exception `AppShapes` documents: `RoundedCornerShape(percent = 50)` locally, because a pill
 is a function of the element's own height.
+
+## Adaptive layout
+
+**Never measure the window in a screen.** `AppNavigationScaffold` is the only composable
+that measures, and it publishes `LocalAppWindowSizeClass` (`Compact` / `Medium` /
+`Expanded`) and `LocalAppContentMargin`. A screen reads the class and composes; it does not
+compare `Dp` values of its own, and it does not introduce a second breakpoint.
+
+**State the content width, do not inherit one.** Every top-level screen wraps its content
+in `AppContentPane` — or `ColumnScope.AppScreenPane` under a `TopAppBar` — with one of
+`AppContentWidth.Reading` (lesson prose, ~65–75 characters), `Standard` (lists, forms,
+detail screens), or `Paned` (screens that compose two panes at `Expanded`). A `TopAppBar`
+stays outside the pane and spans the window: it is chrome, not content.
+
+**In a two-pane layout the first-declared pane is the one a phone shows first.**
+`AppTwoPaneRow` composes `primary` before `secondary`, and composition order is what a
+screen reader, a tab order, and a linear traversal follow. Declare the sections once as
+`LazyListScope` extensions and call them in the same order in both arrangements, so the two
+cannot drift.
+
+The classes, which screens use two panes, and the decisions behind the 1040dp expanded
+breakpoint are in [adaptive layout](../architecture/adaptive-layout.md).
+
+## Navigation and page-level tabs are different levels
+
+The app has two navigation systems and they are not peers. The bar or rail says which of
+the four **areas** of the product the learner is in and persists across every screen in it;
+a tab row says which of one screen's pages is showing and exists only there.
+
+- **Area navigation keeps the filled pill** — Material's `secondaryContainer` over
+  `onSecondaryContainer`.
+- **Page-level tabs take Material's own tab affordance** — a `primary` rule of
+  `ActiveIndicatorHeight` under the selected tab, with the label in `primary`.
+
+Drawing both as the same filled pill, which this app did until P2, made a page control look
+like a second copy of the app's navigation and made the Topic screen read as though it had
+two rows of destinations.
 
 ## Lists
 
@@ -130,7 +168,33 @@ than drifted into.
 | `AppShapes` departs from the Material baseline corner scale | Argued in `AppShapes.kt`: `medium` at 12dp made every content surface in the product the most generic shape Material can produce. |
 | `AppMotion` states spring constants literally rather than reading `MotionScheme` | `MotionScheme` is `@Composable`-scoped and several call sites are not. The numbers are Material's own. |
 
+## Empty and early states
+
+An empty surface is a state to design, not an edge case. A good one answers three
+questions: what this area is for, why it is empty, and what to do next.
+
+- **Do not state something the app cannot support.** An empty weak-area list means either
+  "the rule ran and singled nothing out" or "nothing was derived at all", and the state
+  carries no flag saying which — so Progress infers it from whether Topic performance was
+  derived, and shows no section rather than a sentence that might be false. Never classify
+  something prematurely to avoid a blank space.
+- **Do not draw an empty chart, a 0% gauge, or a placeholder row.** A `0 of 20` is a result
+  the learner never got. Say what will appear here and why it is worth coming back to.
+- **Match the surface to the message.** A "nothing to report" line under a heading is two
+  lines of type, not a card — a card there is one more surface of exactly the kind it is
+  denying.
+- **A no-match search keeps the query and offers to clear it**, quoting back what was
+  searched for so a typo can be seen. It does not recommend anything.
+- **Only offer an action the product state supports**, and only where one exists.
+  `ScreenAction` when there is a way forward, `ScreenMessage` when there is not.
+
 ## Verifying a layout change
+
+Width, wrapping, and reachability *are* assertable, and there are two harnesses for them:
+`ui/AdaptiveLayoutTest.kt` for the window classes and pane composition, and
+`ui/LargeFontScaleTest.kt` for a doubled type size on a 360dp window. Note that
+`runSkikoComposeUiTest` defaults to a 1024x768 display — a *medium* window here — so an
+expanded-layout test must pass `size` explicitly.
 
 Assertions do not see a state layer, a margin, or an overlap. When a change is about how
 something *looks*, capture it: a throwaway `runSkikoComposeUiTest` that renders the screen

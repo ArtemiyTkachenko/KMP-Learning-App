@@ -1,7 +1,6 @@
 package org.artkachenko.kmp_learning_app.topic_study.topic_detail
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,7 +12,6 @@ import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerSnapDistance
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
@@ -24,7 +22,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -47,6 +44,11 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
+import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
+import org.artkachenko.kmp_learning_app.ui.theme.AppScreenPane
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 
 internal const val TopicDetailLoadingTag = "topic_detail_loading"
 internal const val TopicPracticeButtonTag = "topic_practice_button"
@@ -117,39 +119,45 @@ private enum class TopicDetailTab(val label: StringResource, val testTag: String
 private const val TabSnapPositionalThreshold = 0.25f
 
 /**
- * The selected tab's pill. `Shapes` deliberately does not model one — a pill is a function of the
- * element's own height rather than a step on the shape scale — so it is declared locally, which is
- * the convention `AppShapes` sets out.
- */
-private val TabIndicatorShape = RoundedCornerShape(percent = 50)
-
-/**
- * Material's own tab height (`PrimaryNavigationTabTokens.ContainerHeight`), stated because the pill
- * means this row no longer gets it from `Tab`'s built-in text layout. It is also exactly the
+ * Material's own tab height (`PrimaryNavigationTabTokens.ContainerHeight`). It is also exactly the
  * minimum touch target, so the two constraints are satisfied by one number.
  */
 private val TabHeight = 48.dp
 
 /**
- * One tab, marked as selected by a filled pill rather than by a rule beneath it.
+ * Material's `PrimaryNavigationTabTokens.ActiveIndicatorHeight`, and the height of the rule that
+ * marks the selected tab.
+ */
+private val TabIndicatorHeight = 3.dp
+
+/**
+ * One tab, marked as selected by a rule beneath it.
  *
- * The pill is the same treatment the navigation bar already uses for the current area — Material's
- * `secondaryContainer` over `onSecondaryContainer` — so "this is the thing you are looking at"
- * looks the same everywhere in the app. An underline states the same fact far more quietly, and on
- * a three-tab row where the whole point is that the learner notices all three capabilities, the
- * selected one should be unmistakable.
+ * These tabs used to carry the same filled `secondaryContainer` pill the navigation bar gives the
+ * current area, on the reasoning that "this is the thing you are looking at" should look the same
+ * everywhere. The reasoning was sound about the *fact* and wrong about the *level*: the app has two
+ * navigation systems and they are not peers. The bar or rail says which of the four areas of the
+ * product the learner is in and persists across every screen in it; this row says which of one
+ * Topic's three capabilities is on screen and exists only here. Drawing them identically made a
+ * page control look like a second copy of the app's navigation, and made the Topic screen read as
+ * though it had two rows of destinations.
  *
- * The pill hugs its label rather than filling the tab cell: across a wide window a cell is a third
- * of the content measure, and a filled block that size stops reading as a selection marker.
+ * So the distinction is now the indicator itself: the app's navigation keeps the filled pill, and
+ * page-level tabs take Material's own tab affordance — a rule under the selected tab, with the
+ * label in `primary` rather than on a container. That is a step down in weight without being
+ * quiet: the rule is `primary` at full strength and the label changes colour with it, so the
+ * selected capability is still unmistakable at a glance.
  *
- * The tab's own state layer — hover, focus, press — is clipped to the same shape. A `Tab` otherwise
- * draws it as a hard-edged rectangle across the whole cell, which frames the pill instead of
- * agreeing with it. That is barely visible on a touch screen, where a press fades immediately, and
- * permanent on a desktop pointer: hover is the resting state of whichever tab the mouse happens to
- * be over. Clipping rather than insetting keeps the whole cell clickable.
+ * The rule is drawn by the tab rather than through `PrimaryTabRow`'s indicator slot, which is
+ * measured and placed after the tabs and so would sit on top of the label it is marking. It is
+ * drawn behind the tab's own content, so the state layer stays above it.
  *
- * Colour rather than shape animates, and it animates from the same colour at zero alpha rather than
- * from transparent black, which would drag every intermediate frame through grey.
+ * With no pill there is nothing for a hard-edged state layer to disagree with, so the tab keeps
+ * Material's full-cell hover, focus, and press — which is what it is meant to look like, and what
+ * makes the whole cell visibly the target on a pointer host.
+ *
+ * Colour animates rather than position, and it animates from the same colour at zero alpha rather
+ * than from transparent black, which would drag every intermediate frame through grey.
  */
 @Composable
 private fun TopicDetailTab(
@@ -157,9 +165,9 @@ private fun TopicDetailTab(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val indicatorColor = MaterialTheme.colorScheme.secondaryContainer
-    val container by animateColorAsState(
-        targetValue = if (selected) indicatorColor else indicatorColor.copy(alpha = 0f),
+    val activeColor = MaterialTheme.colorScheme.primary
+    val indicator by animateColorAsState(
+        targetValue = if (selected) activeColor else activeColor.copy(alpha = 0f),
         animationSpec = AppMotion.effectSpec(),
     )
     Tab(
@@ -167,23 +175,25 @@ private fun TopicDetailTab(
         onClick = onClick,
         modifier = Modifier
             .height(TabHeight)
-            // Enough of a gap that two adjacent state layers never meet.
-            .padding(horizontal = AppSpacing.Tight)
-            .clip(TabIndicatorShape)
+            .drawBehind {
+                val height = TabIndicatorHeight.toPx()
+                drawRect(
+                    color = indicator,
+                    topLeft = Offset(x = 0f, y = size.height - height),
+                    size = Size(width = size.width, height = height),
+                )
+            }
             .testTag(tab.testTag),
-        selectedContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        selectedContentColor = activeColor,
         unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
     ) {
         Text(
             text = stringResource(tab.label),
             style = MaterialTheme.typography.titleSmall,
-            // The pill sizes itself to the label and centres in the tab's fixed height.
-            modifier = Modifier
-                .background(container, TabIndicatorShape)
-                .padding(
-                    horizontal = AppSpacing.Comfortable,
-                    vertical = AppSpacing.Related,
-                ),
+            modifier = Modifier.padding(
+                horizontal = AppSpacing.Related,
+                vertical = AppSpacing.Related,
+            ),
         )
     }
 }
@@ -225,32 +235,34 @@ internal fun TopicDetailScreen(
             scrollBehavior = scrollBehavior,
         )
 
-        when (state) {
-            TopicDetailUiState.Loading -> ScreenLoading(
-                message = stringResource(Res.string.topic_detail_loading),
-                testTag = TopicDetailLoadingTag,
-                modifier = Modifier.weight(1f),
-            )
+        AppScreenPane(AppContentWidth.Standard) {
+            when (state) {
+                TopicDetailUiState.Loading -> ScreenLoading(
+                    message = stringResource(Res.string.topic_detail_loading),
+                    testTag = TopicDetailLoadingTag,
+                    modifier = Modifier.weight(1f),
+                )
 
-            is TopicDetailUiState.Content -> TopicDetailTabs(
-                state = state,
-                targetSubtopicId = targetSubtopicId,
-                onStartTopicPractice = onStartTopicPractice,
-                onStartSubtopicPractice = onStartSubtopicPractice,
-                onPracticePreset = onPracticePreset,
-                onLearningUnitClick = onLearningUnitClick,
-            )
+                is TopicDetailUiState.Content -> TopicDetailTabs(
+                    state = state,
+                    targetSubtopicId = targetSubtopicId,
+                    onStartTopicPractice = onStartTopicPractice,
+                    onStartSubtopicPractice = onStartSubtopicPractice,
+                    onPracticePreset = onPracticePreset,
+                    onLearningUnitClick = onLearningUnitClick,
+                )
 
-            TopicDetailUiState.NotFound -> ScreenMessage(
-                message = stringResource(Res.string.topic_detail_not_found),
-                modifier = Modifier.weight(1f),
-            )
+                TopicDetailUiState.NotFound -> ScreenMessage(
+                    message = stringResource(Res.string.topic_detail_not_found),
+                    modifier = Modifier.weight(1f),
+                )
 
-            TopicDetailUiState.Error -> ScreenError(
-                message = stringResource(Res.string.topic_browser_error),
-                onRetry = onRetry,
-                modifier = Modifier.weight(1f),
-            )
+                TopicDetailUiState.Error -> ScreenError(
+                    message = stringResource(Res.string.topic_browser_error),
+                    onRetry = onRetry,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 }

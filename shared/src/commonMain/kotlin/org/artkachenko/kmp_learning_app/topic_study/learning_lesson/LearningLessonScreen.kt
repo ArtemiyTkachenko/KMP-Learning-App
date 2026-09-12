@@ -67,6 +67,34 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppLayout
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import kotlinx.coroutines.launch
+import kmp_learning_app.shared.generated.resources.learning_lesson_depth_core
+import kmp_learning_app.shared.generated.resources.learning_lesson_depth_practical
+import kmp_learning_app.shared.generated.resources.learning_lesson_depth_senior
+import kmp_learning_app.shared.generated.resources.learning_lesson_outline_title
+import org.artkachenko.kmp_learning_app.curriculum.learning.LearningDepth
+import org.artkachenko.kmp_learning_app.curriculum.learning.LearningSection
+import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
+import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
+import org.artkachenko.kmp_learning_app.ui.theme.maxWidth
+import org.jetbrains.compose.resources.StringResource
 
 internal const val LearningLessonLoadingTag = "learning_lesson_loading"
 internal const val LearningLessonReadingColumnTag = "learning_lesson_reading_column"
@@ -80,6 +108,9 @@ internal const val LearningLessonStudyUnavailableTag = "learning_lesson_study_un
 
 /** The Unit-and-position line above the Lesson title. */
 internal const val LearningLessonPlacementTag = "learning_lesson_placement"
+
+/** The expanded-window section outline, absent at every other width. */
+internal const val LearningLessonOutlineTag = "learning_lesson_outline"
 
 /**
  * The Lesson reading surface.
@@ -229,17 +260,25 @@ private fun LessonReadingProgress(scrollState: ScrollState) {
 }
 
 /**
- * The whole Lesson in one scrolling column.
+ * The whole Lesson in one scrolling column, with an outline beside it where there is room.
  *
  * A `Column` with `verticalScroll` rather than a `LazyColumn`: a Lesson is a bounded authored
  * document of a few dozen blocks read end to end, so virtualization would buy nothing and would
  * cost the straightforward nesting the block renderers rely on.
  *
- * The column is capped at [AppLayout.MaxContentWidth] and centred. The shell applies the same cap,
- * but long-form prose is the surface where an uncapped measure is actually unreadable — a paragraph
- * spanning a 1600px browser window — so the reader states the limit itself instead of depending on
- * a shell it can be rendered without. On a phone the cap is never reached and the page is full
- * width behind the ordinary screen margins.
+ * The column is capped at the reading measure — [AppLayout.ReadingMeasure] plus the window margin
+ * on each side — and centred. This is the one screen in the app that does not take
+ * [AppLayout.MaxContentWidth]: 840dp of `bodyLarge` is something over a hundred characters a line,
+ * which is past the width at which the eye reliably finds the start of the next one. Dashboards
+ * and lists are scanned and do not have that problem; prose is read, and does. On a phone the cap
+ * is never reached and the page is full width behind the ordinary screen margins.
+ *
+ * The extra width an expanded window has is spent on orientation rather than on measure. The
+ * outline is built from the Lesson's own structure — the depth runs and the authored Section
+ * titles, which are the same two things [LearningSectionContent] draws as headings — so it cannot
+ * drift from the page and nothing is parsed out of rendered text to produce it. A Lesson whose
+ * Sections carry no titles and sit in one depth run produces fewer than two entries and gets no
+ * outline at all, which is correct: a contents list of one item is a decoration.
  *
  * The [scrollState] is keyed on the Lesson by the caller: previous/next replaces the route rather
  * than pushing one, and a reader that opened the next Lesson already scrolled halfway down would be
@@ -257,58 +296,260 @@ private fun LearningLessonContent(
     failedSourceUrl: String?,
     modifier: Modifier,
 ) {
+    val outline = rememberLessonOutline(state.sections)
+    val showsOutline = LocalAppWindowSizeClass.current.isExpanded && outline.size >= MinimumOutlineEntries
+    // Where each outlined Section starts, in the scrolling column's own coordinates. Measured
+    // rather than estimated: block heights depend on the font scale, the window width, and how a
+    // paragraph happened to wrap, none of which are knowable from the authored model. Keyed on the
+    // Lesson so positions from the previous one cannot survive a previous/next.
+    val sectionOffsets = remember(state.lessonId) { mutableStateMapOf<Int, Int>() }
+    var columnTop by remember(state.lessonId) { mutableStateOf(0f) }
+    val scope = rememberCoroutineScope()
+
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-        Column(
+        Row(
             modifier = Modifier
-                .widthIn(max = AppLayout.MaxContentWidth)
-                .fillMaxSize()
-                .verticalScroll(scrollState)
-                .padding(appScreenContentPadding())
-                .testTag(LearningLessonReadingColumnTag),
-            verticalArrangement = Arrangement.spacedBy(AppSpacing.Related),
+                .widthIn(max = lessonLayoutMaxWidth(showsOutline))
+                .fillMaxSize(),
+            horizontalArrangement = Arrangement.spacedBy(AppLayout.PaneGutter),
         ) {
-            LessonPlacement(state.placement)
-            Text(
-                text = state.title,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.semantics { heading() },
-            )
-            Text(
-                text = state.summary,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            LessonStudyStatus(studyState = state.studyState)
-            state.sections.forEachIndexed { index, section ->
-                LearningSectionContent(
-                    section = section,
-                    showDepthHeading = index == 0 ||
-                        state.sections[index - 1].depth != section.depth,
+            Column(
+                modifier = Modifier
+                    // `weight` rather than `widthIn` so the reading column keeps the measure it
+                    // would have had on its own: the Row above is capped at the measure plus the
+                    // outline plus the gutter, so what is left after the outline is exactly the
+                    // measure.
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .verticalScroll(scrollState)
+                    .padding(appScreenContentPadding())
+                    .onGloballyPositioned { columnTop = it.positionInWindow().y }
+                    .testTag(LearningLessonReadingColumnTag),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Related),
+            ) {
+                LessonPlacement(state.placement)
+                Text(
+                    text = state.title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.semantics { heading() },
+                )
+                Text(
+                    text = state.summary,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                LessonStudyStatus(studyState = state.studyState)
+                state.sections.forEachIndexed { index, section ->
+                    LearningSectionContent(
+                        section = section,
+                        showDepthHeading = index == 0 ||
+                            state.sections[index - 1].depth != section.depth,
+                        modifier = if (showsOutline) {
+                            Modifier.onGloballyPositioned { coordinates ->
+                                sectionOffsets[index] =
+                                    (coordinates.positionInWindow().y - columnTop).toInt() +
+                                        scrollState.value
+                            }
+                        } else {
+                            Modifier
+                        },
+                    )
+                }
+                LessonSources(
+                    sources = state.sources,
+                    onOpenSource = onOpenSource,
+                    failedSourceUrl = failedSourceUrl,
+                )
+                LessonEnding(
+                    state = state,
+                    onToggleStudied = onToggleStudied,
+                    onNavigateLesson = onNavigateLesson,
+                    onPracticeUnit = onPracticeUnit,
                 )
             }
-            LessonSources(
-                sources = state.sources,
-                onOpenSource = onOpenSource,
-                failedSourceUrl = failedSourceUrl,
-            )
-            LessonEnding(
-                state = state,
-                onToggleStudied = onToggleStudied,
-                onNavigateLesson = onNavigateLesson,
-                onPracticeUnit = onPracticeUnit,
+            if (showsOutline) {
+                LessonOutline(
+                    entries = outline,
+                    // Read inside the lambda so scrolling recomposes the outline and not the
+                    // Lesson: the reading column samples nothing from this.
+                    currentIndex = {
+                        outline.lastOrNull { entry ->
+                            (sectionOffsets[entry.sectionIndex] ?: Int.MAX_VALUE) <=
+                                scrollState.value + OutlineActivationSlack
+                        // Falling back to the first entry rather than to nothing. At the very top
+                        // of a Lesson the reader is above every Section — they are in the title and
+                        // summary — and an outline with no entry marked reads as one that has not
+                        // worked out where they are, rather than as an accurate statement that they
+                        // have not reached section one yet.
+                        }?.sectionIndex ?: outline.firstOrNull()?.sectionIndex
+                    },
+                    onEntryClick = { sectionIndex ->
+                        sectionOffsets[sectionIndex]?.let { offset ->
+                            scope.launch { scrollState.animateScrollTo(offset) }
+                        }
+                    },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The widest the Lesson layout may become.
+ *
+ * Without an outline this is the reading measure and nothing more, which is what keeps a Lesson
+ * centred in a desktop window rather than stretched across it. With one, the outline and its
+ * gutter are added on top, so the prose keeps exactly the same measure either way — the outline
+ * takes space from the empty margins, never from the text.
+ */
+@Composable
+@ReadOnlyComposable
+private fun lessonLayoutMaxWidth(showsOutline: Boolean): Dp {
+    val reading = AppContentWidth.Reading.maxWidth()
+    return if (showsOutline) reading + AppLayout.PaneGutter + LessonOutlineWidth else reading
+}
+
+/** One entry of the Lesson outline: what the page shows as a heading, and the Section it heads. */
+@Immutable
+private data class LessonOutlineEntry(
+    val sectionIndex: Int,
+    val label: String,
+)
+
+/**
+ * The outline, derived from the same two facts the page draws headings from.
+ *
+ * A Section earns an entry when it is the start of a depth run — which is exactly when
+ * [LearningSectionContent] draws the depth heading — or when it carries an authored title. Its
+ * label is that title where there is one and the depth otherwise, so every entry names something a
+ * reader can actually see on the page. A Section with no title in the middle of a depth run has no
+ * heading of its own and so gets no entry: there would be nothing for it to point at.
+ */
+@Composable
+private fun rememberLessonOutline(sections: List<LearningSection>): List<LessonOutlineEntry> {
+    val depthLabels = LearningDepth.entries.associateWith { stringResource(it.outlineLabel()) }
+    return remember(sections, depthLabels) {
+        sections.mapIndexedNotNull { index, section ->
+            val startsDepthRun = index == 0 || sections[index - 1].depth != section.depth
+            val label = section.title ?: depthLabels[section.depth].takeIf { startsDepthRun }
+            label?.let { LessonOutlineEntry(sectionIndex = index, label = it) }
+        }
+    }
+}
+
+/**
+ * Where the reader is in the Lesson, and a way to move within it.
+ *
+ * Beside the prose rather than above it, and only on a window wide enough that it costs the text
+ * nothing. On a phone this would be a second navigation system competing with the previous/next
+ * cards at the end of the Lesson, and it would take more of the reading area than the title.
+ *
+ * It does not scroll with the page — it is a sibling of the reading column, not a child of it — so
+ * it stays in view as a reader moves through a long Lesson, which is the whole reason it is worth
+ * the width. It scrolls on its own if the Lesson has more sections than the window is tall.
+ *
+ * Entries are buttons rather than a list of links: each one moves the page, which is an action.
+ * The current one is marked by weight and colour together, never colour alone, and publishes
+ * `selected` so assistive technology hears which section the reader is in rather than having to
+ * infer it from a tint.
+ */
+@Composable
+private fun LessonOutline(
+    entries: List<LessonOutlineEntry>,
+    currentIndex: () -> Int?,
+    onEntryClick: (Int) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .width(LessonOutlineWidth)
+            .fillMaxHeight()
+            .verticalScroll(rememberScrollState())
+            .padding(vertical = AppSpacing.Comfortable)
+            .testTag(LearningLessonOutlineTag),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+    ) {
+        Text(
+            text = stringResource(Res.string.learning_lesson_outline_title),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .padding(bottom = AppSpacing.Tight)
+                .semantics { heading() },
+        )
+        entries.forEach { entry ->
+            val isCurrent = currentIndex() == entry.sectionIndex
+            Text(
+                text = entry.label,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
+                ),
+                color = if (isCurrent) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(MaterialTheme.shapes.small)
+                    .selectable(
+                        selected = isCurrent,
+                        onClick = { onEntryClick(entry.sectionIndex) },
+                    )
+                    .heightIn(min = OutlineEntryMinHeight)
+                    .padding(
+                        horizontal = AppSpacing.Related,
+                        vertical = AppSpacing.Related,
+                    ),
             )
         }
     }
 }
 
 /**
+ * The depth layer's name as an outline entry.
+ *
+ * The same resources the page's own depth headings use, so an entry and the heading it points at
+ * can never disagree. It is a separate function only because the one in `LearningLessonBlocks` is
+ * private to that file.
+ */
+private fun LearningDepth.outlineLabel(): StringResource =
+    when (this) {
+        LearningDepth.CORE -> Res.string.learning_lesson_depth_core
+        LearningDepth.PRACTICAL -> Res.string.learning_lesson_depth_practical
+        LearningDepth.SENIOR -> Res.string.learning_lesson_depth_senior
+    }
+
+/**
+ * Narrow enough that the reading column keeps the whole measure, wide enough for a Section title
+ * to wrap to two lines rather than to five.
+ */
+private val LessonOutlineWidth: Dp = 220.dp
+
+/** Material's minimum touch target, which an outline entry has to clear like any other control. */
+private val OutlineEntryMinHeight: Dp = 48.dp
+
+/** Below this an outline is a decoration rather than a way of getting anywhere. */
+private const val MinimumOutlineEntries = 2
+
+/**
+ * How far past a Section's top the reader may be and still be "in" the previous one.
+ *
+ * Without it the entry would change the instant a heading's top pixel crossed the viewport's top
+ * edge, which happens while that heading is still off screen below. A quarter of the usual
+ * viewport is not knowable here, so this is a fixed, deliberately small allowance.
+ */
+private const val OutlineActivationSlack = 24
+
+/**
  * Which Unit this Lesson belongs to, and how far into it the learner is.
  *
  * One line above the title, in the quietest type on the page. It is orientation, not chrome: no
- * breadcrumb chain back to the Topic, no reading-time estimate, no section outline, and no header
- * previous/next — each of those is a second navigation system competing with the one at the bottom
- * of the page, and on a phone they would cost more of the reading area than the Lesson title itself.
+ * breadcrumb chain back to the Topic, no reading-time estimate, and no header previous/next — each
+ * of those is a second navigation system competing with the one at the bottom of the page, and on
+ * a phone they would cost more of the reading area than the Lesson title itself. A section outline
+ * appears only where it costs the reading column nothing: beside the page, on an expanded window.
+ * It is never in this header and never on a phone.
  *
  * The Unit title carries the whole line when the Unit has only one readable Lesson, because a
  * position within a sequence of one is a statement about nothing.

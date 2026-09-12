@@ -7,11 +7,13 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -57,11 +59,17 @@ import kmp_learning_app.shared.generated.resources.progress_title
 import kmp_learning_app.shared.generated.resources.progress_topic_performance
 import kmp_learning_app.shared.generated.resources.progress_topic_unavailable
 import kmp_learning_app.shared.generated.resources.progress_weak_areas
+import kmp_learning_app.shared.generated.resources.progress_weak_areas_none_detail
+import kmp_learning_app.shared.generated.resources.progress_weak_areas_none_title
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 import org.artkachenko.kmp_learning_app.ui.AccuracyHeadline
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.AppTwoPaneRow
+import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
+import org.artkachenko.kmp_learning_app.ui.theme.AppScreenPane
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
+import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.MetricFigure
@@ -84,6 +92,18 @@ internal const val ProgressLoadingTag = "progress_loading"
 
 /** The scrolling dashboard itself, so tests can reach sections below the fold. */
 internal const val ProgressContentTag = "progress_content"
+
+/**
+ * The two panes of the expanded dashboard.
+ *
+ * [ProgressContentTag] deliberately does not move onto either of them. It names the single
+ * scrolling dashboard, and at expanded widths there is no such thing — there are two scrollers
+ * holding different groups, and a test that scrolled "the dashboard" to find a Topic card would be
+ * asking a question with no answer. A test that cares about the expanded layout names the pane it
+ * expects the content in, which is the assertion worth making.
+ */
+internal const val ProgressStandingPaneTag = "progress_standing_pane"
+internal const val ProgressActionPaneTag = "progress_action_pane"
 
 /** Stable per-row handle so tests can target a Topic card without depending on label uniqueness. */
 internal fun progressTopicCardTag(topicId: String): String = "progress_topic_card_$topicId"
@@ -125,38 +145,64 @@ internal fun ProgressScreen(
     val scrollBehavior = rememberAppTopBarScrollBehavior()
     Column(modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)) {
         AppTopBar(stringResource(Res.string.progress_title), onBack, scrollBehavior)
-        ScreenStateTransition(state = state, modifier = Modifier.weight(1f)) { current ->
-            when (current) {
-                ProgressUiState.Loading -> ScreenLoading(
-                    message = stringResource(Res.string.progress_loading),
-                    testTag = ProgressLoadingTag,
-                    modifier = Modifier.fillMaxSize(),
-                )
-                ProgressUiState.Empty -> ScreenAction(
-                    message = stringResource(Res.string.progress_empty),
-                    actionLabel = stringResource(Res.string.progress_empty_action),
-                    onAction = onBrowseTopics,
-                    modifier = Modifier.fillMaxSize(),
-                    icon = AppIcons.Insights,
-                )
-                ProgressUiState.Error -> ScreenError(
-                    message = stringResource(Res.string.progress_error),
-                    onRetry = onRetry,
-                    modifier = Modifier.fillMaxSize(),
-                )
-                is ProgressUiState.Content -> ProgressContent(
-                    state = current,
-                    onTopicClick = onTopicClick,
-                    onHistoryClick = onHistoryClick,
-                    onPracticePreset = onPracticePreset,
-                    onReviewMistakes = onReviewMistakes,
-                    modifier = Modifier.fillMaxSize(),
-                )
+        // The bar above spans the window; the content below it does not. A `TopAppBar` is chrome
+        // and belongs to the window, which is why it sits outside the pane — inside one, a wide
+        // desktop window showed a bar that stopped short of both edges and floated over the page.
+        AppScreenPane(AppContentWidth.Paned) {
+            ScreenStateTransition(state = state, modifier = Modifier.fillMaxSize()) { current ->
+                when (current) {
+                    ProgressUiState.Loading -> ScreenLoading(
+                        message = stringResource(Res.string.progress_loading),
+                        testTag = ProgressLoadingTag,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    ProgressUiState.Empty -> ScreenAction(
+                        message = stringResource(Res.string.progress_empty),
+                        actionLabel = stringResource(Res.string.progress_empty_action),
+                        onAction = onBrowseTopics,
+                        modifier = Modifier.fillMaxSize(),
+                        icon = AppIcons.Insights,
+                    )
+                    ProgressUiState.Error -> ScreenError(
+                        message = stringResource(Res.string.progress_error),
+                        onRetry = onRetry,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    is ProgressUiState.Content -> ProgressContent(
+                        state = current,
+                        onTopicClick = onTopicClick,
+                        onHistoryClick = onHistoryClick,
+                        onPracticePreset = onPracticePreset,
+                        onReviewMistakes = onReviewMistakes,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
     }
 }
 
+/**
+ * The dashboard, as one column or as two.
+ *
+ * The information is the same either way and so is its order. What changes is only how much of it
+ * a learner can see at once: on a phone the three groups follow one another down a single scroll,
+ * and on a desktop the standing group — the lifetime figures, coverage, and the recent window —
+ * sits in its own pane while the groups a learner can *act* on take the other. That is the split
+ * the screen already had implicitly, stated in the layout.
+ *
+ * The groups are declared once, as [LazyListScope] extensions, and both layouts call them in the
+ * same order. This is the mechanism that keeps the two honest: a section added to the dashboard
+ * reaches the phone and the desktop at the same position, and neither arrangement can quietly
+ * acquire a card the other does not have. It is also the accessibility guarantee — composition
+ * order is traversal order, so the desktop reads standing, then actionable, then detail, exactly
+ * as the phone does.
+ *
+ * The P0 semantic distinctions survive the split unchanged: accuracy stays a rate on a display
+ * figure, coverage stays a count out of a finite bank with the meter as a second channel, studied
+ * state is not represented here at all, and recent performance keeps its own labelled card with
+ * its own evidence rule. Nothing became a tile in a grid of interchangeable numbers.
+ */
 @Composable
 private fun ProgressContent(
     state: ProgressUiState.Content,
@@ -166,71 +212,179 @@ private fun ProgressContent(
     onReviewMistakes: () -> Unit,
     modifier: Modifier,
 ) {
+    if (LocalAppWindowSizeClass.current.isExpanded) {
+        AppTwoPaneRow(
+            modifier = modifier,
+            primary = {
+                ProgressPane(Modifier.weight(1f).testTag(ProgressStandingPaneTag)) {
+                    standingSection(state)
+                }
+            },
+            secondary = {
+                ProgressPane(Modifier.weight(1f).testTag(ProgressActionPaneTag)) {
+                    actionableSection(state, onPracticePreset, onReviewMistakes)
+                    detailSection(state, onTopicClick, onHistoryClick)
+                }
+            },
+        )
+        return
+    }
     LazyColumn(
         modifier = modifier.fillMaxSize().testTag(ProgressContentTag),
         contentPadding = appScreenContentPadding(),
-        verticalArrangement = Arrangement.spacedBy(org.artkachenko.kmp_learning_app.ui.theme.AppSpacing.Grouped),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
     ) {
+        standingSection(state)
+        actionableSection(state, onPracticePreset, onReviewMistakes)
+        detailSection(state, onTopicClick, onHistoryClick)
+    }
+}
+
+/** One pane of the expanded dashboard: the same list styling, scrolling on its own. */
+@Composable
+private fun ProgressPane(
+    modifier: Modifier,
+    content: LazyListScope.() -> Unit,
+) {
+    LazyColumn(
+        modifier = modifier.fillMaxHeight(),
+        contentPadding = appScreenContentPadding(),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+        content = content,
+    )
+}
+
+/** Where the learner stands: lifetime accuracy, how much of the bank they have seen, and lately. */
+private fun LazyListScope.standingSection(state: ProgressUiState.Content) {
+    item {
+        ProgressSectionTitle(stringResource(Res.string.progress_overall))
+    }
+    item {
+        OverallSummary(state)
+    }
+    // Coverage and recent performance sit under the headline as quieter summaries: they answer
+    // different questions from all-time accuracy, so they must be separate surfaces, but making
+    // all three equally dominant would leave the screen with no headline at all.
+    item {
+        CurriculumCoverageSummary(state.coverage)
+    }
+    state.recentPerformance?.let { recent ->
         item {
-            ProgressSectionTitle(stringResource(Res.string.progress_overall))
+            RecentPerformanceSummary(recent)
         }
+    }
+}
+
+/** What the learner can do something about: the mistake queue, and the areas going badly. */
+private fun LazyListScope.actionableSection(
+    state: ProgressUiState.Content,
+    onPracticePreset: (PracticePreset) -> Unit,
+    onReviewMistakes: () -> Unit,
+) {
+    item {
+        UnresolvedMistakeSummary(
+            unresolvedCount = state.unresolvedMistakeCount,
+            onReviewMistakes = onReviewMistakes,
+        )
+    }
+    if (state.weakAreas.isNotEmpty()) {
         item {
-            OverallSummary(state)
-        }
-        // Coverage and recent performance sit under the headline as quieter summaries: they answer
-        // different questions from all-time accuracy, so they must be separate surfaces, but making
-        // all three equally dominant would leave the screen with no headline at all.
-        item {
-            CurriculumCoverageSummary(state.coverage)
-        }
-        state.recentPerformance?.let { recent ->
-            item {
-                RecentPerformanceSummary(recent)
-            }
-        }
-        item {
-            UnresolvedMistakeSummary(
-                unresolvedCount = state.unresolvedMistakeCount,
-                onReviewMistakes = onReviewMistakes,
+            ProgressSectionTitle(
+                stringResource(Res.string.progress_weak_areas),
+                topPadding = AppSpacing.Grouped,
             )
         }
-        if (state.weakAreas.isNotEmpty()) {
-            item {
-                ProgressSectionTitle(
-                    stringResource(Res.string.progress_weak_areas),
-                    topPadding = org.artkachenko.kmp_learning_app.ui.theme.AppSpacing.Grouped,
-                )
-            }
-            items(state.weakAreas, key = { "${it.type}:${it.stableId}" }) { area ->
-                WeakAreaCard(area) { onPracticePreset(area.toPracticePreset()) }
+        items(state.weakAreas, key = { "${it.type}:${it.stableId}" }) { area ->
+            WeakAreaCard(area) { onPracticePreset(area.toPracticePreset()) }
+        }
+    } else if (state.topics.isNotEmpty()) {
+        // Evidence, not emptiness — but only where the emptiness is actually evidence.
+        //
+        // An empty weak-area list means one of two quite different things, and the state carries
+        // no flag saying which. `topics` is what tells them apart: if per-Topic performance was
+        // derived at all, then the weakness rule ran over real observations and simply singled
+        // nothing out, which is a fact worth stating. If `topics` is empty too, the derivation
+        // produced nothing — the case a curriculum import creates when it replaces the question
+        // IDs the history refers to — and "no area stands out" would be a claim about a learner
+        // the app has no current observations for. That case keeps the P0 behaviour of showing no
+        // section at all rather than a dangling heading over a sentence that is not true.
+        //
+        // Nothing is classified here to fill the gap either way: which areas qualify as weak
+        // remains the P0 evidence rule's answer.
+        item {
+            ProgressSectionTitle(
+                stringResource(Res.string.progress_weak_areas),
+                topPadding = AppSpacing.Grouped,
+            )
+        }
+        item {
+            WeakAreasEarlyState(answeredQuestionCount = state.answeredQuestionCount)
+        }
+    }
+}
+
+/** The record behind the figures: per-Topic performance, then completed attempts. */
+private fun LazyListScope.detailSection(
+    state: ProgressUiState.Content,
+    onTopicClick: (String) -> Unit,
+    onHistoryClick: (CompletedAssessmentType, String) -> Unit,
+) {
+    // Observation-based sections can be empty even when overall statistics exist, for
+    // example after a curriculum import replaces the question IDs the history refers to.
+    if (state.topics.isNotEmpty()) {
+        item {
+            ProgressSectionTitle(
+                stringResource(Res.string.progress_topic_performance),
+                topPadding = AppSpacing.Grouped,
+            )
+        }
+        items(state.topics, key = ProgressTopicUiModel::topicId) { topic ->
+            TopicPerformanceCard(topic) { onTopicClick(topic.topicId) }
+        }
+    }
+    if (state.history.isNotEmpty()) {
+        item {
+            ProgressSectionTitle(
+                stringResource(Res.string.progress_history),
+                topPadding = AppSpacing.Grouped,
+            )
+        }
+        items(state.history, key = CompletedAttemptUiModel::attemptId) { attempt ->
+            HistoryCard(attempt) {
+                onHistoryClick(attempt.assessmentType, attempt.attemptId)
             }
         }
-        // Observation-based sections can be empty even when overall statistics exist, for
-        // example after a curriculum import replaces the question IDs the history refers to.
-        if (state.topics.isNotEmpty()) {
-            item {
-                ProgressSectionTitle(
-                    stringResource(Res.string.progress_topic_performance),
-                    topPadding = org.artkachenko.kmp_learning_app.ui.theme.AppSpacing.Grouped,
-                )
-            }
-            items(state.topics, key = ProgressTopicUiModel::topicId) { topic ->
-                TopicPerformanceCard(topic) { onTopicClick(topic.topicId) }
-            }
-        }
-        if (state.history.isNotEmpty()) {
-            item {
-                ProgressSectionTitle(
-                    stringResource(Res.string.progress_history),
-                    topPadding = org.artkachenko.kmp_learning_app.ui.theme.AppSpacing.Grouped,
-                )
-            }
-            items(state.history, key = CompletedAttemptUiModel::attemptId) { attempt ->
-                HistoryCard(attempt) {
-                    onHistoryClick(attempt.assessmentType, attempt.attemptId)
-                }
-            }
-        }
+    }
+}
+
+/**
+ * What the weak-areas section says when the domain has named none.
+ *
+ * Reached only once the learner has answered something: with no answers at all the whole dashboard
+ * is `ProgressUiState.Empty` and this section never composes. So the sentence can be specific —
+ * there is evidence, it simply has not singled anything out yet — rather than the generic "nothing
+ * here" that would leave a learner unsure whether the feature was broken or they were doing well.
+ */
+@Composable
+private fun WeakAreasEarlyState(answeredQuestionCount: Int) {
+    // Deliberately not a card. The section it stands in is a column of cards, each of which is a
+    // weak area; a card here would be a seventh surface of the same kind holding the statement
+    // that there are none, which is the shape of the thing it is denying. Two lines of type under
+    // the heading say it without pretending to be a row.
+    Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight)) {
+        Text(
+            text = stringResource(Res.string.progress_weak_areas_none_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = stringResource(
+                Res.string.progress_weak_areas_none_detail,
+                answeredQuestionCount,
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

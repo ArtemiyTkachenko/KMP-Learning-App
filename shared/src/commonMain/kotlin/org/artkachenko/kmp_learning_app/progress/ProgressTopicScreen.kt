@@ -31,6 +31,8 @@ import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
+import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
+import org.artkachenko.kmp_learning_app.ui.theme.AppScreenPane
 
 internal const val ProgressTopicLoadingTag = "progress_topic_loading"
 
@@ -46,25 +48,27 @@ internal fun ProgressTopicScreen(
         // The topic name is the aggregate card's title, so the bar keeps a stable label rather
         // than repeating it.
         AppTopBar(stringResource(Res.string.progress_topic_detail_title), onBack, scrollBehavior)
-        when (state) {
-            ProgressTopicUiState.Loading -> ScreenLoading(
-                message = stringResource(Res.string.progress_topic_loading),
-                testTag = ProgressTopicLoadingTag,
-                modifier = Modifier.weight(1f),
-            )
-            ProgressTopicUiState.Empty -> ScreenMessage(
-                message = stringResource(Res.string.progress_topic_empty),
-                modifier = Modifier.weight(1f),
-            )
-            ProgressTopicUiState.Error -> ScreenError(
-                message = stringResource(Res.string.progress_topic_error),
-                onRetry = onRetry,
-                modifier = Modifier.weight(1f),
-            )
-            is ProgressTopicUiState.Content -> ProgressTopicContent(
-                state = state,
-                modifier = Modifier.weight(1f),
-            )
+        AppScreenPane(AppContentWidth.Standard) {
+            when (state) {
+                ProgressTopicUiState.Loading -> ScreenLoading(
+                    message = stringResource(Res.string.progress_topic_loading),
+                    testTag = ProgressTopicLoadingTag,
+                    modifier = Modifier.weight(1f),
+                )
+                ProgressTopicUiState.Empty -> ScreenMessage(
+                    message = stringResource(Res.string.progress_topic_empty),
+                    modifier = Modifier.weight(1f),
+                )
+                ProgressTopicUiState.Error -> ScreenError(
+                    message = stringResource(Res.string.progress_topic_error),
+                    onRetry = onRetry,
+                    modifier = Modifier.weight(1f),
+                )
+                is ProgressTopicUiState.Content -> ProgressTopicContent(
+                    state = state,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 }

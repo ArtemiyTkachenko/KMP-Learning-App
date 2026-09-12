@@ -100,7 +100,12 @@ internal class FocusedLearningJourneyIntegrationTest {
             waitUntil(timeoutMillis = 5_000) {
                 onAllNodesWithText("Android").fetchSemanticsNodes().isNotEmpty()
             }
-            onNodeWithText("Android").assertIsDisplayed().performClick()
+            // Not a plain click: the catalogue's guidance cards are inserted above the Topic list
+            // as their reads resolve, so a Topic row keeps moving for some frames after it first
+            // appears. See clickRowWhenSettled.
+            clickRowWhenSettled("Android") {
+                onAllNodesWithTag(TopicSubtopicsTabTag).fetchSemanticsNodes().isNotEmpty()
+            }
             // Topic-level practice lives on the Topic's Practice tab; the Subtopic it drills into
             // lives on the Subtopics tab. Both are one tap from the top of the screen.
             selectTopicDetailTab(TopicSubtopicsTabTag)

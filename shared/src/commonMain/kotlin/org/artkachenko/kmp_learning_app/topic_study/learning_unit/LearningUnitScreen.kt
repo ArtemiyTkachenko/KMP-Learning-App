@@ -44,6 +44,8 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
+import org.artkachenko.kmp_learning_app.ui.theme.AppScreenPane
 
 internal const val LearningUnitLoadingTag = "learning_unit_loading"
 internal const val LearningUnitPracticeButtonTag = "learning_unit_practice_button"
@@ -76,27 +78,29 @@ internal fun LearningUnitScreen(
         // says, so repeating it in the bar would say it twice — and the bar would otherwise have
         // nothing to show while the Unit is still resolving or turns out not to be current.
         AppTopBar(stringResource(Res.string.learning_unit_title), onBack, scrollBehavior)
-        when (state) {
-            LearningUnitUiState.Loading -> ScreenLoading(
-                message = stringResource(Res.string.learning_unit_loading),
-                testTag = LearningUnitLoadingTag,
-                modifier = Modifier.weight(1f),
-            )
-            LearningUnitUiState.NotFound -> ScreenMessage(
-                message = stringResource(Res.string.learning_unit_not_found),
-                modifier = Modifier.weight(1f),
-            )
-            LearningUnitUiState.Error -> ScreenError(
-                message = stringResource(Res.string.learning_unit_error),
-                onRetry = onRetry,
-                modifier = Modifier.weight(1f),
-            )
-            is LearningUnitUiState.Content -> LearningUnitContent(
-                state = state,
-                onLessonClick = onLessonClick,
-                onPracticeUnit = onPracticeUnit,
-                modifier = Modifier.weight(1f),
-            )
+        AppScreenPane(AppContentWidth.Standard) {
+            when (state) {
+                LearningUnitUiState.Loading -> ScreenLoading(
+                    message = stringResource(Res.string.learning_unit_loading),
+                    testTag = LearningUnitLoadingTag,
+                    modifier = Modifier.weight(1f),
+                )
+                LearningUnitUiState.NotFound -> ScreenMessage(
+                    message = stringResource(Res.string.learning_unit_not_found),
+                    modifier = Modifier.weight(1f),
+                )
+                LearningUnitUiState.Error -> ScreenError(
+                    message = stringResource(Res.string.learning_unit_error),
+                    onRetry = onRetry,
+                    modifier = Modifier.weight(1f),
+                )
+                is LearningUnitUiState.Content -> LearningUnitContent(
+                    state = state,
+                    onLessonClick = onLessonClick,
+                    onPracticeUnit = onPracticeUnit,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 }

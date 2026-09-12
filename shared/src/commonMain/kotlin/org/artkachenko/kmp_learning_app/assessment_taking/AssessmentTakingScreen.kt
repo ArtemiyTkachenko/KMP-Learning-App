@@ -65,6 +65,10 @@ import org.artkachenko.kmp_learning_app.ui.ScreenMessage
 import org.artkachenko.kmp_learning_app.ui.ScreenStatus
 import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.jetbrains.compose.resources.stringResource
+import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
+import org.artkachenko.kmp_learning_app.ui.theme.AppScreenPane
+import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
+import org.artkachenko.kmp_learning_app.ui.theme.LocalAppContentMargin
 
 internal const val AssessmentTakingLoadingTag = "focused_practice_loading"
 internal const val AssessmentTakingSubmitTag = "focused_practice_submit"
@@ -100,60 +104,62 @@ internal fun AssessmentTakingScreen(
                 totalQuestions = state.totalQuestions,
             )
         }
-        when (state) {
-            AssessmentTakingUiState.Loading -> ScreenLoading(
-                message = stringResource(Res.string.assessment_taking_loading),
-                testTag = AssessmentTakingLoadingTag,
-                modifier = Modifier.weight(1f),
-            )
+        AppScreenPane(AppContentWidth.Standard) {
+            when (state) {
+                AssessmentTakingUiState.Loading -> ScreenLoading(
+                    message = stringResource(Res.string.assessment_taking_loading),
+                    testTag = AssessmentTakingLoadingTag,
+                    modifier = Modifier.weight(1f),
+                )
 
-            AssessmentTakingUiState.NoQuestions -> ScreenMessage(
-                message = stringResource(Res.string.assessment_taking_no_questions),
-                modifier = Modifier.weight(1f),
-            )
+                AssessmentTakingUiState.NoQuestions -> ScreenMessage(
+                    message = stringResource(Res.string.assessment_taking_no_questions),
+                    modifier = Modifier.weight(1f),
+                )
 
-            AssessmentTakingUiState.Error -> ScreenError(
-                message = stringResource(Res.string.assessment_taking_start_error),
-                onRetry = onRetry,
-                modifier = Modifier.weight(1f),
-            )
+                AssessmentTakingUiState.Error -> ScreenError(
+                    message = stringResource(Res.string.assessment_taking_start_error),
+                    onRetry = onRetry,
+                    modifier = Modifier.weight(1f),
+                )
 
-            is AssessmentTakingUiState.Content -> QuestionContent(
-                state = state,
-                onAnswerClick = onAnswerClick,
-                onSubmit = onSubmit,
-                onNext = onNext,
-                modifier = Modifier.weight(1f),
-            )
+                is AssessmentTakingUiState.Content -> QuestionContent(
+                    state = state,
+                    onAnswerClick = onAnswerClick,
+                    onSubmit = onSubmit,
+                    onNext = onNext,
+                    modifier = Modifier.weight(1f),
+                )
 
-            is AssessmentTakingUiState.ReadyToComplete -> ScreenStatus(Modifier.weight(1f)) {
-                Text(text = stringResource(Res.string.assessment_taking_ready))
-                if (state.completionFailed) {
-                    Text(
-                        text = stringResource(Res.string.assessment_taking_completion_save_error),
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(top = 12.dp),
-                    )
-                }
-                Button(
-                    onClick = onComplete,
-                    enabled = !state.isCompleting,
-                    modifier = Modifier
-                        .padding(top = 16.dp)
-                        .testTag(AssessmentTakingFinishTag),
-                ) {
-                    if (state.isCompleting) {
-                        CircularProgressIndicator()
-                    } else {
-                        Text(text = stringResource(Res.string.assessment_taking_finish))
+                is AssessmentTakingUiState.ReadyToComplete -> ScreenStatus(Modifier.weight(1f)) {
+                    Text(text = stringResource(Res.string.assessment_taking_ready))
+                    if (state.completionFailed) {
+                        Text(
+                            text = stringResource(Res.string.assessment_taking_completion_save_error),
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 12.dp),
+                        )
+                    }
+                    Button(
+                        onClick = onComplete,
+                        enabled = !state.isCompleting,
+                        modifier = Modifier
+                            .padding(top = 16.dp)
+                            .testTag(AssessmentTakingFinishTag),
+                    ) {
+                        if (state.isCompleting) {
+                            CircularProgressIndicator()
+                        } else {
+                            Text(text = stringResource(Res.string.assessment_taking_finish))
+                        }
                     }
                 }
-            }
 
-            is AssessmentTakingUiState.CompletionSucceeded -> ScreenMessage(
-                message = stringResource(Res.string.assessment_taking_results_opening),
-                modifier = Modifier.weight(1f),
-            )
+                is AssessmentTakingUiState.CompletionSucceeded -> ScreenMessage(
+                    message = stringResource(Res.string.assessment_taking_results_opening),
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 }
@@ -178,7 +184,13 @@ private fun AssessmentProgressMeter(questionNumber: Int, totalQuestions: Int) {
         progress = { animated },
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp)
+            // The window's own margin rather than a literal: this meter sits outside the content
+            // pane, spanning the window with the question counter it belongs to, so it has to line
+            // up with the margin the pane inside it uses.
+            .padding(
+                horizontal = LocalAppContentMargin.current,
+                vertical = AppSpacing.Related,
+            )
             .testTag(AssessmentProgressMeterTag),
     )
 }

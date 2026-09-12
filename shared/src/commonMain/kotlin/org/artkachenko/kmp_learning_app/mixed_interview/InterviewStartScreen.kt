@@ -25,7 +25,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.interview_history_attempts
 import kmp_learning_app.shared.generated.resources.interview_history_best
@@ -46,6 +45,12 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
 import org.artkachenko.kmp_learning_app.ui.time.timestampText
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.lazy.LazyListScope
+import org.artkachenko.kmp_learning_app.ui.AppTwoPaneRow
+import org.artkachenko.kmp_learning_app.ui.theme.AppContentPane
+import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
+import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 
 internal const val InterviewStartButtonTag = "interview_start"
 
@@ -68,91 +73,141 @@ internal fun InterviewStartScreen(
     history: InterviewHistoryUiState = InterviewHistoryUiState.Loading,
     onOpenResult: (String) -> Unit = {},
 ) {
-    // Scrollable rather than a fixed Column: with both a latest and a best result the heading,
-    // invitation, explanation, and two record cards overflow a compact window or a large font
-    // scale, and the lower cards were then unreachable.
-    LazyColumn(
+    AppContentPane(
+        width = AppContentWidth.Paned,
         modifier = modifier
-            .fillMaxSize()
             // This screen leads with its own heading instead of an AppTopBar, so there is no bar
             // here to pad for the status bar; without this the heading sits underneath it.
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)),
-        contentPadding = appScreenContentPadding(top = AppSpacing.Section, bottom = AppSpacing.Section),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        item {
-            Text(
-                text = stringResource(Res.string.mixed_interview_title),
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                ),
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    MetricFigure(
-                        text = stringResource(
-                            Res.string.mixed_interview_question_count,
-                            MixedInterviewDefaults.QuestionCount,
-                        ),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                    Text(
-                        text = stringResource(Res.string.mixed_interview_description),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                    // The one rule that makes an Interview different from Practice, stated before
-                    // the learner commits to twenty questions rather than discovered on question
-                    // one. Practice marks each answer as it is given; an Interview holds every
-                    // verdict back until it is over, which is exactly the asymmetry this screen
-                    // exists to make deliberate.
-                    Text(
-                        text = stringResource(Res.string.mixed_interview_review_note),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                    Button(
-                        onClick = onStartMixedInterview,
-                        modifier = Modifier.fillMaxWidth().testTag(InterviewStartButtonTag),
-                    ) {
-                        Text(text = stringResource(Res.string.mixed_interview_start))
+        if (LocalAppWindowSizeClass.current.isExpanded) {
+            // The landing page stays what it was — an invitation and a record of how it has gone
+            // — and gains no features here. What an expanded window changes is only that the two
+            // stop being stacked: side by side they fill the window without anything being
+            // invented to fill it, where one narrow column centred in a desktop viewport read as
+            // a small card adrift in a large empty page.
+            AppTwoPaneRow(
+                primary = {
+                    InterviewPane(Modifier.weight(1f)) {
+                        invitationSection(onStartMixedInterview)
                     }
-                }
-            }
-        }
-        item {
-            Text(
-                text = stringResource(Res.string.mixed_interview_how_it_works),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                },
+                secondary = {
+                    InterviewPane(Modifier.weight(1f)) {
+                        historySection(history = history, onOpenResult = onOpenResult)
+                    }
+                },
             )
+            return@AppContentPane
         }
-        // Loading is distinct from "no record yet": rendering the empty shape while the read is in
-        // flight is what made the card appear underneath the learner a moment after arriving.
-        when (history) {
-            InterviewHistoryUiState.Loading -> item {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center,
+        // Scrollable rather than a fixed Column: with both a latest and a best result the heading,
+        // invitation, explanation, and two record cards overflow a compact window or a large font
+        // scale, and the lower cards were then unreachable.
+        InterviewPane(Modifier.fillMaxSize()) {
+            invitationSection(onStartMixedInterview)
+            historySection(history = history, onOpenResult = onOpenResult)
+        }
+    }
+}
+
+/** One column of the landing page, with the same padding and rhythm in either arrangement. */
+@Composable
+private fun InterviewPane(
+    modifier: Modifier,
+    content: LazyListScope.() -> Unit,
+) {
+    LazyColumn(
+        modifier = modifier.fillMaxHeight(),
+        contentPadding = appScreenContentPadding(
+            top = AppSpacing.Section,
+            bottom = AppSpacing.Section,
+        ),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Comfortable),
+        content = content,
+    )
+}
+
+/** What an Interview is, and the one control that starts one. */
+private fun LazyListScope.invitationSection(onStartMixedInterview: () -> Unit) {
+    item {
+        Text(
+            text = stringResource(Res.string.mixed_interview_title),
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
+    item {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+            ),
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(AppSpacing.Generous),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+            ) {
+                MetricFigure(
+                    text = stringResource(
+                        Res.string.mixed_interview_question_count,
+                        MixedInterviewDefaults.QuestionCount,
+                    ),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                Text(
+                    text = stringResource(Res.string.mixed_interview_description),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                // The one rule that makes an Interview different from Practice, stated before
+                // the learner commits to twenty questions rather than discovered on question
+                // one. Practice marks each answer as it is given; an Interview holds every
+                // verdict back until it is over, which is exactly the asymmetry this screen
+                // exists to make deliberate.
+                Text(
+                    text = stringResource(Res.string.mixed_interview_review_note),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                Button(
+                    onClick = onStartMixedInterview,
+                    modifier = Modifier.fillMaxWidth().testTag(InterviewStartButtonTag),
                 ) {
-                    CircularProgressIndicator(modifier = Modifier.testTag(InterviewHistoryLoadingTag))
+                    Text(text = stringResource(Res.string.mixed_interview_start))
                 }
             }
-            InterviewHistoryUiState.Empty -> item {
-                FirstInterviewNote()
+        }
+    }
+    item {
+        Text(
+            text = stringResource(Res.string.mixed_interview_how_it_works),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** How it has gone so far, or a deliberate statement that it has not gone at all yet. */
+private fun LazyListScope.historySection(
+    history: InterviewHistoryUiState,
+    onOpenResult: (String) -> Unit,
+) {
+    // Loading is distinct from "no record yet": rendering the empty shape while the read is in
+    // flight is what made the card appear underneath the learner a moment after arriving.
+    when (history) {
+        InterviewHistoryUiState.Loading -> item {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(vertical = AppSpacing.Grouped),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(modifier = Modifier.testTag(InterviewHistoryLoadingTag))
             }
-            is InterviewHistoryUiState.Content -> item {
-                InterviewRecord(history = history.history, onOpenResult = onOpenResult)
-            }
+        }
+        InterviewHistoryUiState.Empty -> item {
+            FirstInterviewNote()
+        }
+        is InterviewHistoryUiState.Content -> item {
+            InterviewRecord(history = history.history, onOpenResult = onOpenResult)
         }
     }
 }

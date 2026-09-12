@@ -205,3 +205,25 @@ Topic detail screens use a Material 3 top app bar for back navigation, with the
 navigation icon invoking the existing Navigation 3 back-stack pop. Detail and
 practice destinations should keep this phone-style toolbar affordance instead
 of rendering a standalone text Back button in page content.
+
+## Interview Simulation: What Was Considered And Not Built
+
+The Interview is deliberately the least configurable thing in the app: twenty mixed
+questions, no per-question verdict until the end, one result, one repeat. P2 asked whether
+richer simulation features belong in the product. They were evaluated against two tests —
+does the feature fit the model already built, and is it low-risk — and none of them passed
+both. This records the reasoning so the question is not re-opened from scratch.
+
+| Considered | Why it is not here |
+| --- | --- |
+| A countdown timer | Time pressure is a second scoring dimension. Every accuracy figure in the app — all-time, recent, per-Topic, weak-area — is answers over attempts, and a timed run either leaves those untouched, in which case the timer changes nothing and is decoration, or feeds them, in which case every derived metric changes meaning. It also needs an answer for what happens to an expired attempt, which the persistence model has no state for. |
+| Recording elapsed time without a limit | Cheaper, but it is a schema change for a figure with no consumer: nothing in Progress, Recommendations, or the selection policies would read it, so it would be a column that exists to be shown on one card. |
+| Skip and return to a question | The taking engine advances one question at a time and records each answer as it is given, which is what makes an interrupted attempt resumable and a mistake queue derivable. Deferred answers would need an "unanswered but visited" state threaded through the engine, the attempt entity, and scoring. |
+| Choosing interview length or difficulty | The Practice Builder is where a learner configures a run, and the Interview's whole identity is that it is the one they do not configure. Adding options here would make the two surfaces near-duplicates and remove the reason the Interview exists. |
+| A per-question confidence rating | Plausible and genuinely used in interview prep, but it is new learner-authored data with its own persistence, its own empty states, and no existing policy that would consume it. That is a feature, not a refinement. |
+
+What P2 did change is compositional only, and is covered in
+[adaptive layout](adaptive-layout.md): on an expanded window the landing page puts the
+invitation and the learner's record side by side rather than stacking them, and the result
+screen keeps the score, the notices, and the repeat action in a pane beside the transcript
+instead of at the top of it. Neither adds a concept. The P1 no-history state is unchanged.

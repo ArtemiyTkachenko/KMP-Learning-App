@@ -21,6 +21,8 @@
         <item quantity="other">%1$d learning units</item>
     </plurals>
     <string name="topic_browser_search_no_results">No topics or subtopics match &quot;%1$s&quot;</string>
+    <string name="topic_browser_search_no_results_detail">Search covers topic and subtopic names. Try a shorter word, or clear the search to browse the full curriculum.</string>
+    <string name="topic_browser_search_clear">Clear search</string>
     <string name="continue_studying_title">Continue studying</string>
     <string name="continue_lesson_action">Pick up where you left off</string>
     <string name="continue_practice_action">Continue practising</string>
@@ -72,6 +74,8 @@
     <string name="progress_recent_trend_insufficient">A trend appears after %1$d completed sessions.</string>
     <string name="progress_recent_trend_description">Recent session accuracy, oldest to newest: %1$s.</string>
     <string name="progress_weak_areas">Weak areas</string>
+    <string name="progress_weak_areas_none_title">Nothing standing out yet</string>
+    <string name="progress_weak_areas_none_detail">Across your %1$d answered questions, no topic or subtopic is far enough behind the rest to single out. Keep practising and any that fall behind will be listed here.</string>
     <string name="progress_topic_performance">Topic performance</string>
     <string name="progress_history">Session history</string>
     <string name="progress_empty">Complete an interview or focused practice session to start tracking your progress.</string>
@@ -275,6 +279,7 @@
     <string name="learning_lesson_loading">Loading lesson</string>
     <string name="learning_lesson_not_found">This lesson is not available.</string>
     <string name="learning_lesson_error">Learning content could not be loaded.</string>
+    <string name="learning_lesson_outline_title">In this lesson</string>
     <string name="learning_lesson_depth_core">Core</string>
     <string name="learning_lesson_depth_practical">Practical</string>
     <string name="learning_lesson_depth_senior">Senior deep dive</string>

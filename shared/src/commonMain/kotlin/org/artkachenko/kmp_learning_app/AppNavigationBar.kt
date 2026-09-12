@@ -1,6 +1,5 @@
 package org.artkachenko.kmp_learning_app
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.HorizontalDivider
@@ -31,7 +29,6 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
@@ -39,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import org.artkachenko.kmp_learning_app.ui.LocalAppSnackbarHostState
 import org.artkachenko.kmp_learning_app.ui.theme.AppLayout
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppContentMargin
+import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 import org.jetbrains.compose.resources.stringResource
 
 /** Counts worth surfacing on a navigation item; absent or zero renders no badge. */
@@ -152,7 +150,8 @@ internal fun AppNavigationScaffold(
     // Scaffold; see LocalAppSnackbarHostState for why it is not left to each screen.
     val snackbarHostState = remember { SnackbarHostState() }
     BoxWithConstraints(modifier.fillMaxSize()) {
-        val usesRail = maxWidth >= AppNavigationRailBreakpoint
+        val windowSizeClass = AppLayout.windowSizeClassFor(maxWidth)
+        val usesRail = windowSizeClass.isAtLeastMedium
         // This is already the one place that measures the window, so it is also where the content
         // margin is decided; screens read it from the composition local rather than each deciding
         // for itself or re-measuring.
@@ -201,21 +200,18 @@ internal fun AppNavigationScaffold(
             ) { scaffoldPadding ->
                 CompositionLocalProvider(
                     LocalAppContentMargin provides contentMargin,
+                    LocalAppWindowSizeClass provides windowSizeClass,
                     LocalAppSnackbarHostState provides snackbarHostState,
                 ) {
-                    // Wide windows stop the layout growing with them. A phone layout stretched
-                    // across a desktop window puts a Topic name against the far left edge and its
-                    // accuracy figure against the far right, with a foot of empty card between —
-                    // readable on a phone, unreadable at 1600px. Centred rather than leading-aligned
-                    // so a window between the breakpoint and the cap does not appear off-balance.
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.TopCenter,
-                    ) {
-                        Box(Modifier.widthIn(max = AppLayout.MaxContentWidth).fillMaxSize()) {
-                            content(scaffoldPadding)
-                        }
-                    }
+                    // No width cap here. The shell used to centre everything below it inside a
+                    // single 840dp box, which stopped a phone layout stretching across a desktop
+                    // window but could not tell a Lesson from a dashboard, and capped each
+                    // screen's own `TopAppBar` along with its content — so on a wide window the
+                    // bar stopped short of both window edges and floated in the middle of the
+                    // page. Each screen now states which measure its content wants, with
+                    // `AppContentPane`; the shell states the window class and the margin, which
+                    // are facts about the window rather than about what is in it.
+                    content(scaffoldPadding)
                 }
             }
         }

@@ -150,13 +150,52 @@ internal class ProgressScreenTest {
             }
         }
 
+        // The weak-areas section now states that nothing stands out rather than vanishing, so the
+        // Topic rows below it start off screen and have to be scrolled into composition first.
+        onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("Topic performance"))
         onNodeWithText("Topic performance").assertExists()
         onNodeWithText("Kotlin").assertIsDisplayed()
         onNodeWithText("14 / 20 correct").assertExists()
         // The overall headline also reads 70%, so both nodes are expected here.
         onAllNodesWithText("70%").assertCountEquals(2)
+        onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("Topic unavailable"))
         onNodeWithText("Topic unavailable").assertExists()
         onNodeWithText("33.3%").assertExists()
+    }
+
+    /**
+     * An empty weak-area list means one of two different things and the state carries no flag
+     * saying which, so the presence of per-Topic performance is what decides. With Topics derived,
+     * the weakness rule ran over real observations and singled nothing out — a fact worth stating
+     * rather than a gap. Nothing is classified to fill it: the section still lists exactly what the
+     * domain put in `weakAreas`, which here is nothing.
+     */
+    @Test
+    fun anEmptyWeakAreaListIsStatedWhenTopicPerformanceWasDerived() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    state = contentState(
+                        topics = listOf(ProgressTopicUiModel("a", "Kotlin", 20, 14, 70.0)),
+                    ),
+                    onBack = {},
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onTopicClick = {},
+                    onHistoryClick = { _, _ -> },
+                    onPracticePreset = {},
+                    onReviewMistakes = {},
+                )
+            }
+        }
+
+        onNodeWithText("Weak areas").assertIsDisplayed()
+        onNodeWithText("Nothing standing out yet").assertIsDisplayed()
+        // The count is the learner's own evidence, not a threshold or a target.
+        onNodeWithText(
+            "Across your 30 answered questions, no topic or subtopic is far enough behind the " +
+                "rest to single out. Keep practising and any that fall behind will be listed here.",
+        ).assertIsDisplayed()
     }
 
     @Test
@@ -167,8 +206,10 @@ internal class ProgressScreenTest {
             }
         }
 
-        // Overall statistics survive a curriculum import that orphans historical questions,
-        // so the derived sections must disappear rather than leave dangling headers.
+        // Overall statistics survive a curriculum import that orphans historical questions, so
+        // the derived sections must disappear rather than leave dangling headers. The weak-area
+        // section goes with them: with no Topic performance derived there are no current
+        // observations, and "nothing stands out" would be a claim the app cannot support.
         onNodeWithText("Completed sessions").assertIsDisplayed()
         onNodeWithText("Weak areas").assertDoesNotExist()
         onNodeWithText("Topic performance").assertDoesNotExist()
@@ -293,6 +334,7 @@ internal class ProgressScreenTest {
             }
         }
 
+        onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("Android"))
         onNodeWithText("Android").performClick()
 
         assertEquals(listOf("topic_android"), clicked)

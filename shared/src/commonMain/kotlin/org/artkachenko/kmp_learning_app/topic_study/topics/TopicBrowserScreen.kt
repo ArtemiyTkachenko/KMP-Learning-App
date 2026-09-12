@@ -71,6 +71,8 @@ import kmp_learning_app.shared.generated.resources.topic_browser_loading
 import kmp_learning_app.shared.generated.resources.topic_browser_clear_search
 import kmp_learning_app.shared.generated.resources.topic_browser_search_label
 import kmp_learning_app.shared.generated.resources.topic_browser_search_no_results
+import kmp_learning_app.shared.generated.resources.topic_browser_search_no_results_detail
+import kmp_learning_app.shared.generated.resources.topic_browser_search_clear
 import kmp_learning_app.shared.generated.resources.topic_browser_search_subtopics
 import kmp_learning_app.shared.generated.resources.topic_browser_search_topics
 import kmp_learning_app.shared.generated.resources.topic_browser_subtitle
@@ -98,6 +100,13 @@ import org.artkachenko.kmp_learning_app.ui.theme.LocalAppContentMargin
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.lazy.LazyListScope
+import org.artkachenko.kmp_learning_app.ui.AppTwoPaneRow
+import org.artkachenko.kmp_learning_app.ui.ScreenAction
+import org.artkachenko.kmp_learning_app.ui.theme.AppContentPane
+import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
+import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 
 internal const val TopicBrowserLoadingTag = "topic_browser_loading"
 internal const val TopicBrowserHeaderTag = "topic_browser_header"
@@ -110,6 +119,13 @@ internal const val TopicBrowserContinueStudyingTag = "topic_browser_continue_stu
 internal const val TopicBrowserRecommendedNextTag = "topic_browser_recommended_next"
 internal const val TopicBrowserContinueLearningTag = "topic_browser_continue_learning"
 internal const val TopicBrowserSavedQuestionsTag = "topic_browser_saved_questions"
+
+/** The deliberate no-match state, so a test can tell it from a merely empty catalogue. */
+internal const val TopicBrowserNoResultsTag = "topic_browser_no_results"
+
+/** The panes of the expanded catalogue, named for the same reason the Progress panes are. */
+internal const val TopicBrowserGuidancePaneTag = "topic_browser_guidance_pane"
+internal const val TopicBrowserCataloguePaneTag = "topic_browser_catalogue_pane"
 
 /**
  * Space between the top safe area and the heading.
@@ -147,9 +163,13 @@ internal fun TopicBrowserScreen(
     } else {
         resultsListState.canScrollBackward
     }
-    Column(
+    // The whole screen is inside the pane, header included. Unlike every screen that starts with an
+    // `AppTopBar`, this one's heading and search field are its own content rather than window
+    // chrome, so they take the content measure with the list they belong to; a search field running
+    // the full width of a desktop window over a capped list would read as belonging to the window.
+    AppContentPane(
+        width = if (state.usesGuidancePane()) AppContentWidth.Paned else AppContentWidth.Standard,
         modifier = modifier
-            .fillMaxSize()
             // This screen carries its own heading instead of an AppTopBar, so it owns the top safe
             // area; the shell leaves that inset unconsumed for exactly this reason. The bottom is
             // not ours: the shell's Scaffold already ends this content at the top of the navigation
@@ -157,6 +177,7 @@ internal fun TopicBrowserScreen(
             // scroll-end spacing belongs inside the list, as contentPadding.
             .windowInsetsPadding(topWindowInsets),
     ) {
+    Column(modifier = Modifier.fillMaxSize()) {
         TopicBrowserHeader(
             query = query,
             showsSearch = state is TopicBrowserUiState.Content,
@@ -189,12 +210,27 @@ internal fun TopicBrowserScreen(
                         onSavedQuestionsClick = onSavedQuestionsClick,
                         listState = browseListState,
                     )
+                    // The query stays in the field and is quoted back in the message, so the
+                    // learner can see exactly what was searched for and correct a typo without
+                    // retyping. The button clears it rather than suggesting something else to
+                    // look at: this screen searches the catalogue it is showing, and an empty
+                    // result means that catalogue does not hold the word — not that the app
+                    // should start guessing what was meant.
                     state.topicMatches.isEmpty() && state.subtopicMatches.isEmpty() -> {
-                        ScreenMessage(
+                        ScreenAction(
                             message = stringResource(
                                 Res.string.topic_browser_search_no_results,
                                 state.query.trim(),
                             ),
+                            detail = stringResource(
+                                Res.string.topic_browser_search_no_results_detail,
+                            ),
+                            actionLabel = stringResource(
+                                Res.string.topic_browser_search_clear,
+                            ),
+                            onAction = { onSearchQueryChange("") },
+                            icon = AppIcons.Search,
+                            modifier = Modifier.testTag(TopicBrowserNoResultsTag),
                         )
                     }
                     else -> TopicSearchResults(
@@ -214,6 +250,7 @@ internal fun TopicBrowserScreen(
                 )
             }
         }
+    }
     }
 }
 
@@ -312,6 +349,25 @@ private fun TopicSearchField(
     )
 }
 
+/**
+ * The catalogue and the guidance above it, in one column or two.
+ *
+ * On a phone the two are one scroll: at most one recommendation, then the way back to what was
+ * being studied, then what to read next, then the learner's saved Questions, and only then the
+ * Topics. That order is the P1 hierarchy and it does not change here — the guidance pane is
+ * composed first at every width, so it is also first for a screen reader and first in tab order,
+ * and the single recommended action keeps its emphasis rather than being one of several equals.
+ *
+ * What an expanded window changes is that the guidance stops scrolling away. On a phone it is
+ * worth one glance on arrival and then gets out of the way, which is right when the catalogue has
+ * to share the same column; on a desktop there is room to keep both visible, so the guidance takes
+ * a pane of its own beside the catalogue rather than sitting at the top of it. The catalogue takes
+ * the larger share, because the point of the screen is still the curriculum.
+ *
+ * Nothing is added to fill the extra room. The guidance pane shows exactly the cards the state
+ * carries — often only one, sometimes none — and an empty guidance pane is simply a narrow empty
+ * column, not a place to put something decorative.
+ */
 @Composable
 private fun TopicList(
     topics: List<TopicBrowserItemUiModel>,
@@ -325,6 +381,56 @@ private fun TopicList(
     onSavedQuestionsClick: () -> Unit,
     listState: LazyListState,
 ) {
+    val guidance: LazyListScope.() -> Unit = {
+        guidanceSection(
+            recommendedNext = recommendedNext,
+            onRecommendedNextClick = onRecommendedNextClick,
+            continueStudying = continueStudying,
+            onContinueStudyingClick = onContinueStudyingClick,
+            continueLearning = continueLearning,
+            onContinueLearningClick = onContinueLearningClick,
+            onSavedQuestionsClick = onSavedQuestionsClick,
+        )
+    }
+    if (hasDerivedGuidance(recommendedNext, continueStudying, continueLearning) &&
+        LocalAppWindowSizeClass.current.isExpanded
+    ) {
+        AppTwoPaneRow(
+            primary = {
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(GuidancePaneWeight)
+                        .fillMaxHeight()
+                        .testTag(TopicBrowserGuidancePaneTag),
+                    contentPadding = PaddingValues(
+                        top = AppSpacing.Tight,
+                        bottom = AppListBottomPadding,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+                    content = guidance,
+                )
+            },
+            secondary = {
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(CataloguePaneWeight)
+                        .fillMaxHeight()
+                        .testTag(TopicBrowserCataloguePaneTag),
+                    // The catalogue keeps the list state, because it is the list a learner
+                    // scrolls and the one a restored position belongs to.
+                    state = listState,
+                    contentPadding = PaddingValues(
+                        top = AppSpacing.Tight,
+                        bottom = AppListBottomPadding,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+                ) {
+                    catalogueSection(topics = topics, onTopicClick = onTopicClick)
+                }
+            },
+        )
+        return
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = listState,
@@ -337,60 +443,120 @@ private fun TopicList(
         ),
         verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
     ) {
-        // Inside the list rather than pinned above it: guidance is worth one glance on arrival, and
-        // scrolls away for a learner who came to browse the catalogue instead. At most one of each,
-        // and in priority order — what to do now, then the way back to what was being done, then
-        // what to read next.
-        recommendedNext?.let { recommendation ->
-            item(key = "recommended_next") {
-                RecommendedNextCard(
-                    recommendation = recommendation,
-                    onClick = onRecommendedNextClick,
-                )
-            }
-        }
-        continueStudying?.let { context ->
-            item(key = "continue_studying") {
-                ContinueStudyingCard(
-                    context = context,
-                    onClick = onContinueStudyingClick,
-                )
-            }
-        }
-        // Below the two assessment-derived cards rather than between them: those two already state a
-        // priority between themselves, and inserting a card derived from entirely different inputs
-        // into that pair would restate it as a three-way ranking nobody decided. This is a third
-        // axis — reading rather than practice — so it sits after them and before the catalogue.
-        continueLearning?.let { model ->
-            item(key = "continue_learning") {
-                ContinueLearningCard(
-                    model = model,
-                    onClick = onContinueLearningClick,
-                )
-            }
-        }
-        // Below the guidance and above the catalogue, and always present: it is a way into content
-        // the learner curated themselves, not one more thing the app is suggesting they do.
-        item(key = "saved_questions") {
-            SavedQuestionsEntry(onClick = onSavedQuestionsClick)
-        }
-        item(key = "topics_heading") {
-            SectionHeading(
-                text = stringResource(Res.string.topic_browser_search_topics),
-                topPadding = AppSpacing.Grouped,
-            )
-        }
-        items(
-            items = topics,
-            key = { it.topicId },
-        ) { topic ->
-            TopicRow(
-                topic = topic,
-                onTopicClick = onTopicClick,
+        guidance()
+        catalogueSection(topics = topics, onTopicClick = onTopicClick)
+    }
+}
+
+/**
+ * Whether an expanded window should give the guidance its own pane.
+ *
+ * Only when there is guidance. The pane exists to keep a derived recommendation in view beside the
+ * catalogue, and a learner who has done nothing yet has none — the state carries no recommendation,
+ * no study context, and no next Lesson, so the pane would hold the single Saved Questions entry and
+ * then a column of empty space the width of a phone. That is the "tiny card in a huge viewport"
+ * this layout exists to avoid, arrived at from the other direction, so the screen stays one column
+ * and takes the ordinary content measure instead.
+ *
+ * Saved Questions deliberately does not count. It is always present and is not derived from
+ * anything, so letting it decide would mean the pane never collapses.
+ */
+private fun hasDerivedGuidance(
+    recommendedNext: RecommendedNextUiModel?,
+    continueStudying: ContinueStudyingContext?,
+    continueLearning: ContinueLearningUiModel?,
+): Boolean = recommendedNext != null || continueStudying != null || continueLearning != null
+
+/** The same question asked of the whole state, for the pane width the screen chooses up front. */
+private fun TopicBrowserUiState.usesGuidancePane(): Boolean {
+    val content = this as? TopicBrowserUiState.Content ?: return false
+    // Search results replace the catalogue and carry no guidance, so a query is always one column.
+    if (content.query.isNotBlank()) return false
+    return hasDerivedGuidance(
+        content.recommendedNext,
+        content.continueStudying,
+        content.continueLearning,
+    )
+}
+
+/**
+ * At most one of each, in priority order — what to do now, then the way back to what was being
+ * done, then what to read next, then the learner's own saved Questions.
+ */
+private fun LazyListScope.guidanceSection(
+    recommendedNext: RecommendedNextUiModel?,
+    onRecommendedNextClick: (LearningRecommendationTarget) -> Unit,
+    continueStudying: ContinueStudyingContext?,
+    onContinueStudyingClick: (ContinueStudyingTarget) -> Unit,
+    continueLearning: ContinueLearningUiModel?,
+    onContinueLearningClick: (ContinueLearningTarget) -> Unit,
+    onSavedQuestionsClick: () -> Unit,
+) {
+    recommendedNext?.let { recommendation ->
+        item(key = "recommended_next") {
+            RecommendedNextCard(
+                recommendation = recommendation,
+                onClick = onRecommendedNextClick,
             )
         }
     }
+    continueStudying?.let { context ->
+        item(key = "continue_studying") {
+            ContinueStudyingCard(
+                context = context,
+                onClick = onContinueStudyingClick,
+            )
+        }
+    }
+    // Below the two assessment-derived cards rather than between them: those two already state a
+    // priority between themselves, and inserting a card derived from entirely different inputs
+    // into that pair would restate it as a three-way ranking nobody decided. This is a third
+    // axis — reading rather than practice — so it sits after them and before the catalogue.
+    continueLearning?.let { model ->
+        item(key = "continue_learning") {
+            ContinueLearningCard(
+                model = model,
+                onClick = onContinueLearningClick,
+            )
+        }
+    }
+    // Below the guidance and above the catalogue, and always present: it is a way into content
+    // the learner curated themselves, not one more thing the app is suggesting they do.
+    item(key = "saved_questions") {
+        SavedQuestionsEntry(onClick = onSavedQuestionsClick)
+    }
 }
+
+/** The curriculum itself. */
+private fun LazyListScope.catalogueSection(
+    topics: List<TopicBrowserItemUiModel>,
+    onTopicClick: (String) -> Unit,
+) {
+    item(key = "topics_heading") {
+        SectionHeading(
+            text = stringResource(Res.string.topic_browser_search_topics),
+            // The heading introduces the catalogue in both layouts. In the expanded one it is the
+            // first thing in its pane, so it needs no separation from a section above it.
+            topPadding = AppSpacing.Grouped,
+        )
+    }
+    items(
+        items = topics,
+        key = { it.topicId },
+    ) { topic ->
+        TopicRow(
+            topic = topic,
+            onTopicClick = onTopicClick,
+        )
+    }
+}
+
+/**
+ * The catalogue takes the larger share of an expanded window: the guidance is supplementary, and
+ * a Topic row carries a name, a learning context line, and an accuracy figure that all need room.
+ */
+private const val GuidancePaneWeight = 2f
+private const val CataloguePaneWeight = 3f
 
 /**
  * The way into the Questions the learner saved for themselves.

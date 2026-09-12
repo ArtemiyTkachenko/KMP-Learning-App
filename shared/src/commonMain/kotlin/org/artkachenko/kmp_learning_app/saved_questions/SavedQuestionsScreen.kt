@@ -42,6 +42,8 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
 import org.jetbrains.compose.resources.stringResource
+import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
+import org.artkachenko.kmp_learning_app.ui.theme.AppScreenPane
 
 internal const val SavedQuestionsLoadingTag = "saved_questions_loading"
 
@@ -71,33 +73,35 @@ internal fun SavedQuestionsScreen(
     val scrollBehavior = rememberAppTopBarScrollBehavior()
     Column(modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)) {
         AppTopBar(stringResource(Res.string.saved_questions_title), onBack, scrollBehavior)
-        when (state) {
-            SavedQuestionsUiState.Loading -> ScreenLoading(
-                message = stringResource(Res.string.saved_questions_loading),
-                testTag = SavedQuestionsLoadingTag,
-                modifier = Modifier.weight(1f),
-            )
-            // An empty collection is a normal state with a way forward, not a failure: the learner
-            // has simply not saved anything yet, and the place to do that is a Question.
-            SavedQuestionsUiState.Empty -> ScreenAction(
-                message = stringResource(Res.string.saved_questions_empty),
-                actionLabel = stringResource(Res.string.saved_questions_empty_action),
-                onAction = onBrowseTopics,
-                modifier = Modifier.weight(1f),
-                detail = stringResource(Res.string.saved_questions_empty_detail),
-            )
-            SavedQuestionsUiState.Error -> ScreenError(
-                message = stringResource(Res.string.saved_questions_error),
-                onRetry = onRetry,
-                modifier = Modifier.weight(1f),
-            )
-            is SavedQuestionsUiState.Content -> SavedQuestionsContent(
-                state = state,
-                onRemoveSaved = onRemoveSaved,
-                onSourceClick = onSourceClick,
-                failedSourceUrl = failedSourceUrl,
-                modifier = Modifier.weight(1f),
-            )
+        AppScreenPane(AppContentWidth.Standard) {
+            when (state) {
+                SavedQuestionsUiState.Loading -> ScreenLoading(
+                    message = stringResource(Res.string.saved_questions_loading),
+                    testTag = SavedQuestionsLoadingTag,
+                    modifier = Modifier.weight(1f),
+                )
+                // An empty collection is a normal state with a way forward, not a failure: the learner
+                // has simply not saved anything yet, and the place to do that is a Question.
+                SavedQuestionsUiState.Empty -> ScreenAction(
+                    message = stringResource(Res.string.saved_questions_empty),
+                    actionLabel = stringResource(Res.string.saved_questions_empty_action),
+                    onAction = onBrowseTopics,
+                    modifier = Modifier.weight(1f),
+                    detail = stringResource(Res.string.saved_questions_empty_detail),
+                )
+                SavedQuestionsUiState.Error -> ScreenError(
+                    message = stringResource(Res.string.saved_questions_error),
+                    onRetry = onRetry,
+                    modifier = Modifier.weight(1f),
+                )
+                is SavedQuestionsUiState.Content -> SavedQuestionsContent(
+                    state = state,
+                    onRemoveSaved = onRemoveSaved,
+                    onSourceClick = onSourceClick,
+                    failedSourceUrl = failedSourceUrl,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 }

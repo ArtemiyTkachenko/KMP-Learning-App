@@ -1,7 +1,14 @@
 package org.artkachenko.kmp_learning_app
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,33 +16,43 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.artkachenko.kmp_learning_app.ui.LocalAppSnackbarHostState
 import org.artkachenko.kmp_learning_app.ui.theme.AppLayout
+import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
+import org.artkachenko.kmp_learning_app.ui.theme.AppNavigationOverlayInfo
+import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppContentMargin
+import org.artkachenko.kmp_learning_app.ui.theme.LocalAppNavigationOverlay
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 import org.jetbrains.compose.resources.stringResource
 
@@ -43,33 +60,29 @@ import org.jetbrains.compose.resources.stringResource
 internal typealias AppNavigationBadges = Map<AppTopLevelDestination, Int>
 
 @Composable
-private fun DestinationIcon(destination: AppTopLevelDestination, badges: AppNavigationBadges) {
+private fun DestinationIcon(
+    destination: AppTopLevelDestination,
+    badges: AppNavigationBadges,
+    modifier: Modifier = Modifier,
+) {
     val count = badges[destination] ?: 0
     if (count <= 0) {
-        Icon(destination.icon, contentDescription = null)
+        Icon(destination.icon, contentDescription = null, modifier = modifier)
         return
     }
     BadgedBox(badge = { Badge { Text(count.toString()) } }) {
-        Icon(destination.icon, contentDescription = null)
+        Icon(destination.icon, contentDescription = null, modifier = modifier)
     }
 }
 
 internal fun appNavigationBarItemTag(destination: AppTopLevelDestination): String =
     "app_nav_${destination.name.lowercase()}"
 
-/**
- * Tags for the rules that mark where area navigation ends and the page begins.
- *
- * Both layouts carry one so the boundary reads the same way whichever the window gets, but they
- * start from different places. The rail has no edge at all: `NavigationRail` paints `surface` and
- * the `Scaffold` beside it paints `background`, and this app's scheme gives those the same value
- * in both themes, so without a rule the items simply float in the content. The bottom bar does
- * have an edge — it paints `surfaceContainer` — but the step from the page is about 12/255 per
- * channel, slight enough to miss. A rule states the boundary in both cases rather than leaving it
- * to a tonal difference that is either absent or nearly so.
- */
+/** The rail needs a rule because its surface and the adjacent page share the same theme colour. */
 internal const val AppNavigationRailDividerTag = "app_nav_rail_divider"
-internal const val AppNavigationBarDividerTag = "app_nav_bar_divider"
+
+/** The compact floating container, used for layout assertions rather than item interaction. */
+internal const val AppNavigationBarTag = "app_navigation_bar"
 
 /**
  * Below this a window is phone-shaped and navigation sits along the bottom edge; at or above it
@@ -88,18 +101,35 @@ private val RailHeaderHeight: Dp = 12.dp
 internal fun AppNavigationBar(
     selected: AppTopLevelDestination,
     onSelect: (AppTopLevelDestination) -> Unit,
+    modifier: Modifier = Modifier,
     badges: AppNavigationBadges = emptyMap(),
 ) {
-    NavigationBar {
-        AppTopLevelDestination.entries.forEach { destination ->
-            val label = stringResource(destination.label)
-            NavigationBarItem(
-                selected = destination == selected,
-                onClick = { onSelect(destination) },
-                icon = { DestinationIcon(destination, badges) },
-                label = { Text(label) },
-                modifier = Modifier.testTag(appNavigationBarItemTag(destination)),
-            )
+    Surface(
+        modifier = modifier
+            .height(AppLayout.CompactNavigationHeight)
+            .testTag(AppNavigationBarTag),
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = NavigationContainerAlpha),
+        tonalElevation = NavigationContainerElevation,
+        shadowElevation = NavigationContainerElevation,
+    ) {
+        Row(Modifier.fillMaxSize().selectableGroup()) {
+            AppTopLevelDestination.entries.forEach { destination ->
+                val label = stringResource(destination.label)
+                NavigationBarItem(
+                    selected = destination == selected,
+                    onClick = { onSelect(destination) },
+                    icon = {
+                        DestinationIcon(
+                            destination = destination,
+                            badges = badges,
+                            modifier = Modifier.size(NavigationIconSize),
+                        )
+                    },
+                    label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                    modifier = Modifier.testTag(appNavigationBarItemTag(destination)),
+                )
+            }
         }
     }
 }
@@ -132,8 +162,8 @@ internal fun AppNavigationRail(
 /**
  * Places the content beside or above the area navigation, whichever the window has room for.
  *
- * Below [AppNavigationRailBreakpoint] the window is phone-shaped and navigation sits along the
- * bottom edge within thumb reach; at or above it a rail runs down the leading edge instead, so a
+ * Below [AppNavigationRailBreakpoint] the window is phone-shaped and navigation floats over the
+ * bottom of the content within thumb reach; at or above it a rail runs down the leading edge, so a
  * desktop or browser window no longer stretches four items across its full width. The decision is
  * made from the measured width rather than the platform, because the same host can be either size.
  */
@@ -153,6 +183,20 @@ internal fun AppNavigationScaffold(
     BoxWithConstraints(modifier.fillMaxSize()) {
         val windowSizeClass = AppLayout.windowSizeClassFor(maxWidth)
         val usesRail = windowSizeClass.isAtLeastMedium
+        val ownsCompactNavigation = showsNavigation && !usesRail
+        val compactNavigationVisible = ownsCompactNavigation && showsBottomNavigation
+        val navigationOverlayInfo = AppNavigationOverlayInfo(
+            clearance = if (ownsCompactNavigation) AppLayout.CompactNavigationClearance else 0.dp,
+            isVisible = compactNavigationVisible,
+        )
+        val snackbarBottomPadding by animateDpAsState(
+            targetValue = if (compactNavigationVisible) {
+                AppLayout.CompactNavigationClearance
+            } else {
+                0.dp
+            },
+            animationSpec = AppMotion.effectSpec(),
+        )
         // This is already the one place that measures the window, so it is also where the content
         // margin is decided; screens read it from the composition local rather than each deciding
         // for itself or re-measuring.
@@ -166,55 +210,100 @@ internal fun AppNavigationScaffold(
                     color = MaterialTheme.colorScheme.outlineVariant,
                 )
             }
-            Scaffold(
-                modifier = Modifier.fillMaxSize(),
-                containerColor = MaterialTheme.colorScheme.background,
-                // The window's top edge is deliberately left out of the content padding: screens
-                // start with their own TopAppBar, which pads for the status bar and paints its
-                // container behind it. Padding the content here as well would push every bar a
-                // status bar's height down the screen. Bottom and horizontal insets stay, so a
-                // screen shown without the navigation bar still clears the gesture bar and a
-                // landscape display cutout.
-                contentWindowInsets = WindowInsets.safeDrawing
-                    .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
-                // Inside the Scaffold rather than over the whole window, so a message clears the
-                // navigation bar instead of covering it.
-                snackbarHost = { SnackbarHost(snackbarHostState) },
-                bottomBar = {
-                    if (showsBottomNavigation && !usesRail) {
-                        // Above `AppNavigationBar` rather than within it: the bar pads itself for
-                        // the gesture inset, and a rule inside that padding would sit below the
-                        // edge it is meant to draw rather than on it.
-                        Column {
-                            HorizontalDivider(
-                                modifier = Modifier.testTag(AppNavigationBarDividerTag),
-                                color = MaterialTheme.colorScheme.outlineVariant,
-                            )
-                            AppNavigationBar(
-                                selected = selected,
-                                onSelect = onSelect,
-                                badges = badges,
-                            )
-                        }
+            Box(Modifier.fillMaxSize()) {
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    containerColor = MaterialTheme.colorScheme.background,
+                    // Screens own the top safe area through their app bars. Bottom and horizontal
+                    // insets still have one owner, while compact navigation floats inside them.
+                    contentWindowInsets = WindowInsets.safeDrawing
+                        .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
+                    snackbarHost = {
+                        SnackbarHost(
+                            hostState = snackbarHostState,
+                            modifier = Modifier.padding(bottom = snackbarBottomPadding),
+                        )
+                    },
+                ) { scaffoldPadding ->
+                    CompositionLocalProvider(
+                        LocalAppContentMargin provides contentMargin,
+                        LocalAppWindowSizeClass provides windowSizeClass,
+                        LocalAppNavigationOverlay provides navigationOverlayInfo,
+                        LocalAppSnackbarHostState provides snackbarHostState,
+                    ) {
+                        content(scaffoldPadding)
                     }
-                },
-            ) { scaffoldPadding ->
-                CompositionLocalProvider(
-                    LocalAppContentMargin provides contentMargin,
-                    LocalAppWindowSizeClass provides windowSizeClass,
-                    LocalAppSnackbarHostState provides snackbarHostState,
-                ) {
-                    // No width cap here. The shell used to centre everything below it inside a
-                    // single 840dp box, which stopped a phone layout stretching across a desktop
-                    // window but could not tell a Lesson from a dashboard, and capped each
-                    // screen's own `TopAppBar` along with its content — so on a wide window the
-                    // bar stopped short of both window edges and floated in the middle of the
-                    // page. Each screen now states which measure its content wants, with
-                    // `AppContentPane`; the shell states the window class and the margin, which
-                    // are facts about the window rather than about what is in it.
-                    content(scaffoldPadding)
+                }
+
+                if (!usesRail) {
+                    CompactNavigationOverlay(
+                        visible = compactNavigationVisible,
+                        selected = selected,
+                        onSelect = onSelect,
+                        badges = badges,
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
                 }
             }
         }
     }
 }
+
+@Composable
+private fun CompactNavigationOverlay(
+    visible: Boolean,
+    selected: AppTopLevelDestination,
+    onSelect: (AppTopLevelDestination) -> Unit,
+    badges: AppNavigationBadges,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        modifier = modifier,
+        enter = slideInVertically(
+            animationSpec = tween(
+                durationMillis = AppMotion.StateChangeDurationMillis,
+                easing = AppMotion.EmphasizedDecelerateEasing,
+            ),
+            initialOffsetY = { it },
+        ) + fadeIn(
+            tween(
+                durationMillis = AppMotion.StateChangeDurationMillis,
+                easing = AppMotion.EmphasizedDecelerateEasing,
+            ),
+        ),
+        exit = slideOutVertically(
+            animationSpec = tween(
+                durationMillis = AppMotion.StateChangeDurationMillis,
+                easing = AppMotion.EmphasizedAccelerateEasing,
+            ),
+            targetOffsetY = { it },
+        ) + fadeOut(
+            tween(
+                durationMillis = AppMotion.StateChangeDurationMillis / 2,
+                easing = AppMotion.EmphasizedAccelerateEasing,
+            ),
+        ),
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
+                .padding(
+                    horizontal = AppSpacing.Comfortable,
+                    vertical = AppLayout.CompactNavigationBottomGap,
+                ),
+        ) {
+            AppNavigationBar(
+                selected = selected,
+                onSelect = onSelect,
+                modifier = Modifier.fillMaxWidth(),
+                badges = badges,
+            )
+        }
+    }
+}
+
+private const val NavigationContainerAlpha = 0.94f
+private val NavigationContainerElevation: Dp = 3.dp
+private val NavigationIconSize: Dp = 20.dp

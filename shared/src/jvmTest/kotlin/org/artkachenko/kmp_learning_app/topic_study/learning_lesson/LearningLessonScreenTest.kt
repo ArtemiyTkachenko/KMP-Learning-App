@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -28,6 +29,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -40,6 +43,9 @@ import org.artkachenko.kmp_learning_app.curriculum.learning.LearningCalloutKind
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningDepth
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningSection
 import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressUiState
+import org.artkachenko.kmp_learning_app.ui.theme.AppLayout
+import org.artkachenko.kmp_learning_app.ui.theme.AppNavigationOverlayInfo
+import org.artkachenko.kmp_learning_app.ui.theme.LocalAppNavigationOverlay
 
 /**
  * The Lesson reader as a learner meets it: every authored block variant, the depth layers, the
@@ -130,13 +136,70 @@ internal class LearningLessonScreenTest {
             onBottomNavigationVisibilityChange = navigationRequests::add,
         )
 
-        onNodeWithTag(LearningLessonScrollToEndTag).assertIsDisplayed().performClick()
+        val fab = onNodeWithTag(LearningLessonScrollToEndTag).assertIsDisplayed()
+        val fabBounds = fab.fetchSemanticsNode().boundsInRoot
+        assertEquals(fabBounds.width, fabBounds.height, absoluteTolerance = 0.5f)
+        fab.performClick()
         waitForIdle()
 
         onNodeWithTag(LearningLessonScrollToEndTag).assertDoesNotExist()
         onNodeWithTag(LearningLessonPracticeButtonTag).assertIsDisplayed()
         assertTrue(false in navigationRequests, "Scrolling down should request the bar to hide.")
         assertEquals(true, navigationRequests.last())
+    }
+
+    @Test
+    fun scrollToEndFabReturnsAfterScrollingUpFromTheBottom() = runComposeUiTest {
+        setContentWith(
+            sections = List(12) { section(LearningBlock.Paragraph("Body paragraph $it.")) },
+            height = ShortHeight,
+        )
+
+        onNodeWithTag(LearningLessonScrollToEndTag).performClick()
+        waitForIdle()
+        onNodeWithTag(LearningLessonScrollToEndTag).assertDoesNotExist()
+
+        onNodeWithTag(LearningLessonReadingColumnTag).performTouchInput { swipeDown() }
+        waitForIdle()
+        onNodeWithTag(LearningLessonScrollToEndTag).assertIsDisplayed()
+    }
+
+    @Test
+    fun fabMovesDownWhenCompactNavigationHides() = runComposeUiTest {
+        var navigationVisible by mutableStateOf(true)
+        setContent {
+            MaterialTheme {
+                CompositionLocalProvider(
+                    LocalAppNavigationOverlay provides AppNavigationOverlayInfo(
+                        clearance = AppLayout.CompactNavigationClearance,
+                        isVisible = navigationVisible,
+                    ),
+                ) {
+                    Box(Modifier.size(NarrowWidth, ShortHeight)) {
+                        LearningLessonScreen(
+                            state = content(
+                                sections = List(12) {
+                                    section(LearningBlock.Paragraph("Body paragraph $it."))
+                                },
+                            ),
+                            onBack = {},
+                            onRetry = {},
+                            onNavigateLesson = {},
+                            onPracticeUnit = {},
+                            onOpenSource = {},
+                        )
+                    }
+                }
+            }
+        }
+
+        val visibleBottom = onNodeWithTag(LearningLessonScrollToEndTag)
+            .fetchSemanticsNode().boundsInRoot.bottom
+        runOnIdle { navigationVisible = false }
+        waitForIdle()
+        val hiddenBottom = onNodeWithTag(LearningLessonScrollToEndTag)
+            .fetchSemanticsNode().boundsInRoot.bottom
+        assertTrue(hiddenBottom > visibleBottom)
     }
 
     @Test

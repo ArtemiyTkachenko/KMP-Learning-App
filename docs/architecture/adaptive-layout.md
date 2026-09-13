@@ -11,12 +11,13 @@ narrow.
 ## The one measurement
 
 `AppNavigationScaffold` is the only composable in the app that measures the window. It
-publishes two things into composition and nothing else reads a `Dp` of window width:
+publishes three things into composition and nothing else reads a `Dp` of window width:
 
 | Composition local | What it carries |
 | --- | --- |
 | `LocalAppWindowSizeClass` | `Compact`, `Medium`, or `Expanded` |
 | `LocalAppContentMargin` | 16dp compact, 24dp from medium upward |
+| `LocalAppNavigationOverlay` | Compact trailing clearance and requested visibility; zero with a rail or in focus mode |
 
 **A screen must not measure the window.** It reads the class and composes accordingly.
 Every screen measuring for itself is how a codebase ends up with four breakpoints that
@@ -28,7 +29,7 @@ invent its own.
 
 | Class | Width | What it means |
 | --- | --- | --- |
-| `Compact` | `< 600dp` | Phone-shaped. One column, navigation along the bottom edge. |
+| `Compact` | `< 600dp` | Phone-shaped. One column, navigation floating over the bottom. |
 | `Medium` | `600dp –<1040dp` | Tablet, split-screen desktop, narrow browser. One column, navigation rail beside it. |
 | `Expanded` | `>= 1040dp` | Desktop or full-width tablet. A screen whose content genuinely divides may compose two panes. |
 
@@ -42,6 +43,18 @@ taken out.
 
 **`Expanded` does not mean "must be two panes."** The Lesson reader is a single centred
 column at every width, because prose does not become more readable by being split in half.
+
+### Compact navigation overlay
+
+Compact navigation is not a `Scaffold.bottomBar`. It is a 64dp floating surface inset from the
+window and drawn over the same full-height viewport as the current screen. Its slide/fade
+visibility transition therefore cannot remeasure or move screen content.
+
+`LocalAppNavigationOverlay.clearance` is added only to the trailing padding of shared scrolling
+primitives. That extra range lets the final meaningful item move above navigation at maximum
+scroll, while intermediate content remains free to pass behind the translucent surface. A route
+that owns compact navigation keeps the clearance while a Lesson temporarily hides the surface;
+rail layouts and assessment focus mode publish zero.
 
 ## The three content widths
 

@@ -2,7 +2,6 @@ package org.artkachenko.kmp_learning_app
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.DividerDefaults
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.test.ComposeUiTest
@@ -109,12 +108,8 @@ internal class TopicDiscoveryIntegrationTest {
         val viewport = onNodeWithTag(TopicBrowserViewportTag).fetchSemanticsNode().boundsInRoot
         val topicsItem = navigationItemBounds(AppTopLevelDestination.TOPICS)
         assertTrue(
-            topicsItem.top >= viewport.bottom - 0.5f && topicsItem.left < viewport.right,
-            "a compact window should put navigation below the content, not beside it",
-        )
-        assertTrue(
-            topicsItem.top - viewport.bottom < with(density) { NoBandTolerance.toPx() },
-            "no background band should remain between the topic list and the navigation bar",
+            topicsItem.top < viewport.bottom && topicsItem.left < viewport.right,
+            "compact navigation should overlay the full-height content viewport",
         )
 
         // Search: a Topic match is the same Topic, so it keeps the browsing marker, and the
@@ -602,7 +597,6 @@ private val HeaderSpacing = 12.dp
  * so it is expected space: measured at density 1 the content ends exactly where the rule begins,
  * and the whole gap is the rule's own thickness.
  */
-private val NoBandTolerance = 1.dp + DividerDefaults.Thickness
 
 private const val UiTopicId = "android_ui"
 

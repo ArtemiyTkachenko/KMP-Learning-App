@@ -26,8 +26,8 @@ import androidx.compose.ui.unit.dp
  */
 internal object AppLayout {
 
-    /** Material's compact navigation-bar container height. */
-    val CompactNavigationHeight: Dp = 64.dp
+    /** Visual height of the floating compact navigation surface, excluding the system inset. */
+    val CompactNavigationHeight: Dp = 68.dp
 
     /** Space between the floating compact navigation container and the system gesture region. */
     val CompactNavigationBottomGap: Dp = AppSpacing.Grouped

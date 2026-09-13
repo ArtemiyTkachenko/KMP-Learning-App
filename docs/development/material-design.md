@@ -32,7 +32,7 @@ Quote a token by name when a value needs justifying, so a reviewer can re-derive
 | `ListTokens.DividerLeadingSpace` / `DividerTrailingSpace` | 16dp |
 | `PrimaryNavigationTabTokens.ContainerHeight` | 48dp |
 | `PrimaryNavigationTabTokens.ActiveIndicatorHeight` | 3dp |
-| `NavigationBarTokens.ContainerHeight` / `ElevationTokens.Level2` | 64dp / 3dp |
+| Compact floating navigation height / `ElevationTokens.Level2` | 68dp / 3dp |
 | `InteractiveComponentSize` minimum touch target | 48dp |
 | Window margins: compact / medium and up | 16dp / 24dp, breakpoint 600dp |
 | Window class breakpoints: compact / medium / expanded | 600dp / 1040dp (see below) |
@@ -168,7 +168,7 @@ than drifted into.
 | Flat list rows use 16dp vertical padding, not the 10dp `ItemTopSpace`/`ItemBottomSpace` | The token describes a dense one-line item. These rows are three-line content blocks already past the 88dp three-line container height, where 10dp reads as cramped. |
 | `AppShapes` departs from the Material baseline corner scale | Argued in `AppShapes.kt`: `medium` at 12dp made every content surface in the product the most generic shape Material can produce. |
 | `AppMotion` states spring constants literally rather than reading `MotionScheme` | `MotionScheme` is `@Composable`-scoped and several call sites are not. The numbers are Material's own. |
-| Compact area navigation uses a translucent floating container and 20dp icons | The standard full-width container reserved viewport space and made reading chrome jump. The custom surface retains Material's 64dp `NavigationBarTokens.ContainerHeight`, selection indicator, semantics, and 48dp targets while allowing content to move behind it. |
+| Compact area navigation uses a translucent floating container, 24dp icons, and a whole-destination selected pill | The standard full-width container reserved viewport space, while `NavigationBarItem` imposed an icon-only indicator and excess internal layout. The custom 68dp surface keeps Material selection semantics and 48dp targets while centring each icon-label pair in one fixed 60dp-high destination. |
 
 ## Empty and early states
 

@@ -46,7 +46,7 @@ column at every width, because prose does not become more readable by being spli
 
 ### Compact navigation overlay
 
-Compact navigation is not a `Scaffold.bottomBar`. It is a 64dp floating surface inset from the
+Compact navigation is not a `Scaffold.bottomBar`. It is a 68dp floating surface inset from the
 window and drawn over the same full-height viewport as the current screen. Its slide/fade
 visibility transition therefore cannot remeasure or move screen content.
 

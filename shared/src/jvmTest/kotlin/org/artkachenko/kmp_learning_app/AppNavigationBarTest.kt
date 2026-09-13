@@ -25,6 +25,7 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserItemUiModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserScreen
@@ -62,6 +63,98 @@ internal class AppNavigationBarTest {
         assertEquals(AppLayout.CompactNavigationHeight.value, bounds.height)
         assertEquals(16f, bounds.left)
         assertEquals(384f, bounds.right)
+    }
+
+    @Test
+    fun compactDestinationsKeepEqualCentredSlotsAtPhoneWidths() = runComposeUiTest {
+        var width by mutableStateOf(CompactWidths.first().dp)
+        setContent {
+            AppTheme {
+                Box(Modifier.size(width, 800.dp)) {
+                    AppNavigationScaffold(
+                        selected = AppTopLevelDestination.TOPICS,
+                        onSelect = {},
+                        showsNavigation = true,
+                    ) { }
+                }
+            }
+        }
+
+        CompactWidths.forEach { compactWidth ->
+            runOnIdle { width = compactWidth.dp }
+            waitForIdle()
+
+            val itemBounds = AppTopLevelDestination.entries.associateWith {
+                onNodeWithTag(appNavigationBarItemTag(it)).fetchSemanticsNode().boundsInRoot
+            }
+            val firstWidth = itemBounds.getValue(AppTopLevelDestination.TOPICS).width
+            itemBounds.forEach { (destination, bounds) ->
+                assertEquals(firstWidth, bounds.width, LayoutTolerancePx, "$destination slot width")
+                val iconBounds = onNodeWithTag(
+                    appNavigationBarIconTag(destination),
+                    useUnmergedTree = true,
+                ).fetchSemanticsNode().boundsInRoot
+                val labelBounds = navigationLabelBounds(destination)
+                assertEquals(bounds.center.x, iconBounds.center.x, LayoutTolerancePx)
+                assertEquals(iconBounds.center.x, labelBounds.center.x, LayoutTolerancePx)
+                onNodeWithText(destination.labelText, useUnmergedTree = true).assertIsDisplayed()
+            }
+        }
+    }
+
+    @Test
+    fun selectionWrapsIconAndLabelWithoutChangingDestinationGeometry() = runComposeUiTest {
+        var selected by mutableStateOf(AppTopLevelDestination.TOPICS)
+        setContent {
+            AppTheme {
+                Box(Modifier.size(390.dp, 800.dp)) {
+                    AppNavigationScaffold(
+                        selected = selected,
+                        onSelect = {},
+                        showsNavigation = true,
+                    ) { }
+                }
+            }
+        }
+
+        val itemBoundsBefore = destinationBounds()
+        val iconBoundsBefore = destinationIconBounds()
+        val labelBoundsBefore = destinationLabelBounds()
+        assertSelectedPillContains(AppTopLevelDestination.TOPICS)
+        onNodeWithTag(
+            appNavigationBarSelectedPillTag(AppTopLevelDestination.INTERVIEW),
+            useUnmergedTree = true,
+        ).assertDoesNotExist()
+
+        runOnIdle { selected = AppTopLevelDestination.INTERVIEW }
+        waitForIdle()
+
+        assertEquals(itemBoundsBefore, destinationBounds())
+        assertEquals(iconBoundsBefore, destinationIconBounds())
+        assertEquals(labelBoundsBefore, destinationLabelBounds())
+        assertSelectedPillContains(AppTopLevelDestination.INTERVIEW)
+    }
+
+    @Test
+    fun mistakesBadgeDoesNotMoveOrResizeItsIcon() = runComposeUiTest {
+        var badges by mutableStateOf<AppNavigationBadges>(emptyMap())
+        setContent {
+            AppTheme {
+                AppNavigationBar(
+                    selected = AppTopLevelDestination.TOPICS,
+                    onSelect = {},
+                    badges = badges,
+                    modifier = Modifier.size(360.dp, AppLayout.CompactNavigationHeight),
+                )
+            }
+        }
+
+        val iconWithoutBadge = navigationIconBounds(AppTopLevelDestination.MISTAKES)
+        runOnIdle { badges = mapOf(AppTopLevelDestination.MISTAKES to 7) }
+        waitForIdle()
+
+        assertEquals(iconWithoutBadge, navigationIconBounds(AppTopLevelDestination.MISTAKES))
+        onNodeWithText("7", useUnmergedTree = true).assertIsDisplayed()
     }
 
     @Test
@@ -251,8 +344,64 @@ internal class AppNavigationBarTest {
 
     private fun androidx.compose.ui.test.ComposeUiTest.contentBounds(): Rect =
         onNodeWithTag(ScaffoldContentTag).fetchSemanticsNode().boundsInRoot
+
+    private fun androidx.compose.ui.test.ComposeUiTest.destinationBounds():
+        Map<AppTopLevelDestination, Rect> = AppTopLevelDestination.entries.associateWith {
+            onNodeWithTag(appNavigationBarItemTag(it)).fetchSemanticsNode().boundsInRoot
+        }
+
+    private fun androidx.compose.ui.test.ComposeUiTest.destinationIconBounds():
+        Map<AppTopLevelDestination, Rect> = AppTopLevelDestination.entries.associateWith {
+            navigationIconBounds(it)
+        }
+
+    private fun androidx.compose.ui.test.ComposeUiTest.destinationLabelBounds():
+        Map<AppTopLevelDestination, Rect> = AppTopLevelDestination.entries.associateWith {
+            navigationLabelBounds(it)
+        }
+
+    private fun androidx.compose.ui.test.ComposeUiTest.navigationIconBounds(
+        destination: AppTopLevelDestination,
+    ): Rect = onNodeWithTag(
+        appNavigationBarIconTag(destination),
+        useUnmergedTree = true,
+    ).fetchSemanticsNode().boundsInRoot
+
+    private fun androidx.compose.ui.test.ComposeUiTest.navigationLabelBounds(
+        destination: AppTopLevelDestination,
+    ): Rect = onNodeWithText(
+        destination.labelText,
+        useUnmergedTree = true,
+    ).fetchSemanticsNode().boundsInRoot
+
+    private fun androidx.compose.ui.test.ComposeUiTest.assertSelectedPillContains(
+        destination: AppTopLevelDestination,
+    ) {
+        val pill = onNodeWithTag(
+            appNavigationBarSelectedPillTag(destination),
+            useUnmergedTree = true,
+        ).fetchSemanticsNode().boundsInRoot
+        val icon = navigationIconBounds(destination)
+        val label = navigationLabelBounds(destination)
+
+        assertTrue(pill.left <= icon.left && pill.right >= icon.right)
+        assertTrue(pill.top <= icon.top && pill.bottom >= icon.bottom)
+        assertTrue(pill.left <= label.left && pill.right >= label.right)
+        assertTrue(pill.top <= label.top && pill.bottom >= label.bottom)
+        assertFalse(pill == icon, "the selected treatment must not be the icon-only indicator")
+    }
 }
+
+private val AppTopLevelDestination.labelText: String
+    get() = when (this) {
+        AppTopLevelDestination.TOPICS -> "Learn"
+        AppTopLevelDestination.INTERVIEW -> "Interview"
+        AppTopLevelDestination.PROGRESS -> "Progress"
+        AppTopLevelDestination.MISTAKES -> "Mistakes"
+    }
 
 private const val ScaffoldContentTag = "scaffold_content"
 private const val SnackbarMessage = "Copied"
 private const val MinimumTouchTargetPx = 48f
+private const val LayoutTolerancePx = 1f
+private val CompactWidths = listOf(360, 390, 412, 599)

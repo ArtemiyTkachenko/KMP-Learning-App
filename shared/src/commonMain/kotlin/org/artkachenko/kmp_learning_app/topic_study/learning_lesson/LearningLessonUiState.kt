@@ -82,15 +82,7 @@ internal data class LessonPlacementUiModel(
     val unitTitle: String,
     val position: Int,
     val lessonCount: Int,
-) {
-    /**
-     * Whether the position is worth printing. "Lesson 1 of 1" states that there is no sequence,
-     * which the absence of the phrase says more quietly; the Unit title is still shown, because
-     * knowing which Unit you are reading is useful however many Lessons it holds.
-     */
-    val hasSequence: Boolean
-        get() = lessonCount > 1
-}
+)
 
 /**
  * A sibling Lesson as its navigation control needs it.

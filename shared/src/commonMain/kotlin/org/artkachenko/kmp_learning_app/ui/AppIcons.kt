@@ -24,6 +24,14 @@ internal object AppIcons {
         }
     }
 
+    val ArrowDownward: ImageVector by lazy {
+        icon("ArrowDownward") {
+            moveTo(11f, 4f); horizontalLineTo(13f); verticalLineTo(16.17f)
+            lineTo(18.59f, 10.59f); lineTo(20f, 12f); lineTo(12f, 20f); lineTo(4f, 12f)
+            lineTo(5.41f, 10.59f); lineTo(11f, 16.17f); close()
+        }
+    }
+
     val ChevronRight: ImageVector by lazy {
         icon("ChevronRight", autoMirror = true) {
             moveTo(10f, 6f); lineTo(8.59f, 7.41f); lineTo(13.17f, 12f); lineTo(8.59f, 16.59f)

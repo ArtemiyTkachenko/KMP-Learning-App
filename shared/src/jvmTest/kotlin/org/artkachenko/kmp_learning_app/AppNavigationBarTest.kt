@@ -96,6 +96,44 @@ internal class AppNavigationBarTest {
         assertEquals(0.dp, padding.calculateBottomPadding())
     }
 
+    @Test
+    fun aBottomBarVisibilityRequestDoesNotHideTheWideNavigationRail() = runComposeUiTest {
+        setContent {
+            AppTheme {
+                Box(Modifier.size(AppNavigationRailBreakpoint, 800.dp)) {
+                    AppNavigationScaffold(
+                        selected = AppTopLevelDestination.TOPICS,
+                        onSelect = {},
+                        showsNavigation = true,
+                        showsBottomNavigation = false,
+                    ) { Box(Modifier.fillMaxSize()) }
+                }
+            }
+        }
+
+        onNodeWithTag(AppNavigationRailDividerTag).assertIsDisplayed()
+        onNodeWithTag(AppNavigationBarDividerTag).assertDoesNotExist()
+    }
+
+    @Test
+    fun aCompactLayoutHonorsTheBottomBarVisibilityRequest() = runComposeUiTest {
+        setContent {
+            AppTheme {
+                Box(Modifier.size(AppNavigationRailBreakpoint - 1.dp, 800.dp)) {
+                    AppNavigationScaffold(
+                        selected = AppTopLevelDestination.TOPICS,
+                        onSelect = {},
+                        showsNavigation = true,
+                        showsBottomNavigation = false,
+                    ) { Box(Modifier.fillMaxSize()) }
+                }
+            }
+        }
+
+        onNodeWithTag(AppNavigationBarDividerTag).assertDoesNotExist()
+        onNodeWithTag(AppNavigationRailDividerTag).assertDoesNotExist()
+    }
+
     /**
      * The end of a scrolling screen must be reachable, not merely rendered.
      *

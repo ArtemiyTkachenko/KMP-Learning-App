@@ -4,7 +4,6 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlinx.coroutines.CompletableDeferred
@@ -204,11 +203,10 @@ internal class LearningLessonViewModelTest {
 
         assertNull(state.previousLesson)
         assertNull(state.nextLesson)
-        // The Unit is still worth naming; the position within a sequence of one is not, and the
-        // reader drops it rather than printing "Lesson 1 of 1".
         val placement = assertNotNull(state.placement)
         assertEquals("Title of unit_a", placement.unitTitle)
-        assertFalse(placement.hasSequence)
+        assertEquals(1, placement.position)
+        assertEquals(1, placement.lessonCount)
     }
 
     @Test

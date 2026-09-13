@@ -33,6 +33,7 @@ internal fun LearningLessonDestination(
     onBack: () -> Unit,
     onNavigateLesson: (String) -> Unit,
     onPracticeUnit: () -> Unit,
+    onBottomNavigationVisibilityChange: (Boolean) -> Unit,
     viewModel: LearningLessonViewModel = koinViewModel { parametersOf(unitId, lessonId) },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -58,5 +59,6 @@ internal fun LearningLessonDestination(
         // the ViewModel, which already knows which Lesson the route is showing, so no Lesson
         // identity travels out of the screen to be marked.
         onToggleStudied = viewModel::toggleStudied,
+        onBottomNavigationVisibilityChange = onBottomNavigationVisibilityChange,
     )
 }

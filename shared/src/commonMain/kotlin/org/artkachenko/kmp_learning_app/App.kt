@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
@@ -54,6 +57,9 @@ private fun AppShell(
 
     val currentRoute = navigator.currentRoute
     val showsNavigation = currentRoute?.showsAreaNavigation() ?: true
+    var lessonShowsBottomNavigation by remember(currentRoute) { mutableStateOf(true) }
+    val showsBottomNavigation = showsNavigation &&
+        (currentRoute !is AppRoute.LearningLesson || lessonShowsBottomNavigation)
 
     val shellViewModel: AppShellViewModel = koinViewModel()
     // Derived from the shared history cache, so it follows an assessment completing rather than
@@ -81,6 +87,7 @@ private fun AppShell(
         selected = navigator.area,
         onSelect = navigator::select,
         showsNavigation = showsNavigation,
+        showsBottomNavigation = showsBottomNavigation,
         modifier = modifier,
         badges = badges,
     ) { contentPadding ->
@@ -325,6 +332,9 @@ private fun AppShell(
                                 navigator.push(
                                     AppRoute.PracticeBuilderLearningUnit(unitId = route.unitId),
                                 )
+                            },
+                            onBottomNavigationVisibilityChange = {
+                                lessonShowsBottomNavigation = it
                             },
                         )
                     }

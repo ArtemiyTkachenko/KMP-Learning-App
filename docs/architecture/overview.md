@@ -66,10 +66,12 @@ appear/disappear behaviour the rule exists to remove.
 
 `AppNavigationScaffold` places that control adaptively: below
 `AppNavigationRailBreakpoint` (600.dp, the Material compact/medium boundary) a
-`NavigationBar` runs along the bottom edge; at or above it a `NavigationRail` runs down
-the leading edge. The decision is made from the measured window width rather than from
-the platform, because the same host can be either size — a desktop or browser window can
-be dragged narrow.
+compact navigation surface floats over the bottom of the content; at or above it a
+`NavigationRail` runs down the leading edge. The compact surface is an overlay, so hiding it
+never changes the content viewport. Shared scroll padding adds trailing clearance instead:
+ordinary content can pass behind the surface, while the final item can still move fully above it.
+The decision is made from measured window width rather than platform, because the same host can
+be either size — a desktop or browser window can be dragged narrow.
 
 `AppShellViewModel` supplies the one piece of state the control itself needs: the
 unresolved mistake count, badged onto the Mistakes item. The Progress dashboard reports the

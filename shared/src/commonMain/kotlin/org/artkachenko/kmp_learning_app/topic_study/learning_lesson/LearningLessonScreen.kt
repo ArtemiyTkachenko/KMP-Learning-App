@@ -1,9 +1,13 @@
 package org.artkachenko.kmp_learning_app.topic_study.learning_lesson
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +34,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -88,7 +93,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
@@ -104,6 +108,7 @@ import org.artkachenko.kmp_learning_app.curriculum.learning.LearningDepth
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningSection
 import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
+import org.artkachenko.kmp_learning_app.ui.theme.LocalAppNavigationOverlay
 import org.artkachenko.kmp_learning_app.ui.theme.maxWidth
 import org.jetbrains.compose.resources.StringResource
 
@@ -174,31 +179,33 @@ internal fun LearningLessonScreen(
     }
     var scrollUiState by remember(lessonId) { mutableStateOf(InitialLessonScrollUiState) }
     val currentVisibilityCallback by rememberUpdatedState(onBottomNavigationVisibilityChange)
+    val showsScrollToEnd by remember(scrollState) {
+        derivedStateOf { scrollState.canScrollForward }
+    }
 
     DisposableEffect(Unit) {
         onDispose { currentVisibilityCallback(true) }
     }
     LaunchedEffect(scrollState, scrollReducer) {
-        var previousBottom = false
         var lastNavigationRequest: Boolean? = null
-        snapshotFlow { scrollState.value to scrollState.maxValue }.collect { (position, maximum) ->
-            val next = scrollReducer.update(position, maximum)
+        snapshotFlow {
+            LessonScrollSnapshot(
+                position = scrollState.value,
+                isScrollInProgress = scrollState.isScrollInProgress,
+                isAtTop = !scrollState.canScrollBackward,
+                isAtBottom = !scrollState.canScrollForward,
+            )
+        }.collect { snapshot ->
+            val next = scrollReducer.update(
+                position = snapshot.position,
+                isScrollInProgress = snapshot.isScrollInProgress,
+                isAtTop = snapshot.isAtTop,
+                isAtBottom = snapshot.isAtBottom,
+            )
             scrollUiState = next
             if (next.showsBottomNavigation != lastNavigationRequest) {
                 currentVisibilityCallback(next.showsBottomNavigation)
                 lastNavigationRequest = next.showsBottomNavigation
-            }
-
-            val reachedBottom = next.isAtBottom && !previousBottom && maximum > 0
-            previousBottom = next.isAtBottom
-            if (reachedBottom) {
-                // Showing the reserved bottom bar shortens the viewport. Stay anchored to the end
-                // after remeasurement unless the reader has already moved upward.
-                val reachedPosition = position
-                withFrameNanos { }
-                if (scrollState.value >= reachedPosition) {
-                    scrollState.scrollTo(scrollState.maxValue)
-                }
             }
         }
     }
@@ -251,7 +258,7 @@ internal fun LearningLessonScreen(
                 onOpenSource = onOpenSource,
                 onToggleStudied = onToggleStudied,
                 failedSourceUrl = failedSourceUrl,
-                showsScrollToEnd = scrollUiState.hasContentBelow,
+                showsScrollToEnd = showsScrollToEnd,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -368,6 +375,15 @@ private fun LearningLessonContent(
     val sectionOffsets = remember(state.lessonId) { mutableStateMapOf<Int, Int>() }
     var columnTop by remember(state.lessonId) { mutableStateOf(0f) }
     val scope = rememberCoroutineScope()
+    val navigationOverlay = LocalAppNavigationOverlay.current
+    val fabBottomPadding by animateDpAsState(
+        targetValue = if (navigationOverlay.isVisible) {
+            navigationOverlay.clearance + AppSpacing.Related
+        } else {
+            AppSpacing.Comfortable
+        },
+        animationSpec = AppMotion.spatialSpec(),
+    )
 
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         Row(
@@ -458,13 +474,22 @@ private fun LearningLessonContent(
             visible = showsScrollToEnd,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(AppSpacing.Comfortable),
-            enter = fadeIn(AppMotion.effectSpec()),
-            exit = fadeOut(AppMotion.effectSpec(AppMotion.StateChangeDurationMillis / 2)),
+                .padding(end = AppSpacing.Comfortable, bottom = fabBottomPadding),
+            enter = fadeIn(AppMotion.effectSpec()) + scaleIn(
+                animationSpec = AppMotion.spatialSpec(),
+                initialScale = FabHiddenScale,
+            ),
+            exit = fadeOut(
+                AppMotion.effectSpec(AppMotion.StateChangeDurationMillis / 2),
+            ) + scaleOut(
+                animationSpec = AppMotion.spatialSpec(),
+                targetScale = FabHiddenScale,
+            ),
         ) {
             SmallFloatingActionButton(
                 onClick = { scope.launch { scrollState.animateToLessonEnd() } },
                 modifier = Modifier.testTag(LearningLessonScrollToEndTag),
+                shape = CircleShape,
             ) {
                 Icon(
                     imageVector = AppIcons.ArrowDownward,
@@ -476,15 +501,18 @@ private fun LearningLessonContent(
 }
 
 private suspend fun ScrollState.animateToLessonEnd() {
-    repeat(MaxEndScrollPasses) {
-        val target = maxValue
-        if (target <= 0 || target == Int.MAX_VALUE) return
-        animateScrollTo(target)
-        withFrameNanos { }
-        if (!canScrollForward || maxValue == target) return
-    }
-    animateScrollTo(maxValue)
+    val target = maxValue
+    if (target <= 0 || target == Int.MAX_VALUE) return
+    animateScrollTo(target)
 }
+
+@Immutable
+private data class LessonScrollSnapshot(
+    val position: Int,
+    val isScrollInProgress: Boolean,
+    val isAtTop: Boolean,
+    val isAtBottom: Boolean,
+)
 
 /**
  * The widest the Lesson layout may become.
@@ -974,4 +1002,4 @@ private val StudiedIconSize = 18.dp
  */
 private val ReadingProgressHeight = 3.dp
 
-private const val MaxEndScrollPasses = 3
+private const val FabHiddenScale = 0.9f

@@ -30,8 +30,10 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.runSkikoComposeUiTest
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.room3.Room
@@ -582,6 +584,9 @@ private val LearnAreaTag: String = appNavigationBarItemTag(AppTopLevelDestinatio
 private fun ComposeUiTest.scrollToLearningUnit(unitId: String) {
     onNodeWithTag(TopicStudyListTag)
         .performScrollToNode(hasTestTag(learningUnitCardTag(unitId)))
+        // Minimal scroll-to-visible placement may leave the row underneath floating navigation.
+        // A reader can move it through that overlay; do the same before synthesising the tap.
+        .performTouchInput { swipeUp() }
 }
 
 /**

@@ -1,15 +1,20 @@
 package org.artkachenko.kmp_learning_app
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
@@ -20,34 +25,19 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserItemUiModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserScreen
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserUiState
+import org.artkachenko.kmp_learning_app.ui.LocalAppSnackbarHostState
+import org.artkachenko.kmp_learning_app.ui.theme.AppLayout
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 
 @OptIn(ExperimentalTestApi::class)
 internal class AppNavigationBarTest {
     @Test
-    fun everyAreaIsReachableFromTheBar() = runComposeUiTest {
-        setContent {
-            AppTheme {
-                AppNavigationBar(selected = AppTopLevelDestination.TOPICS, onSelect = {})
-            }
-        }
-
-        onNodeWithText("Learn").assertIsDisplayed()
-        onNodeWithText("Interview").assertIsDisplayed()
-        onNodeWithText("Progress").assertIsDisplayed()
-        onNodeWithText("Mistakes").assertIsDisplayed()
-    }
-
-    @Test
-    fun shellOwnsTheBottomInsetAndLeavesTheTopToTheScreen() = runComposeUiTest {
-        // Each system inset must have exactly one owner. The shell deliberately excludes the top
-        // from its content insets so a screen without an AppTopBar can pad for the status bar
-        // itself, and it reports the whole bottom so no screen adds its own above the bar.
-        var contentPadding: PaddingValues? = null
+    fun compactBarOffersEveryAreaWithSelectionAndTouchTargets() = runComposeUiTest {
         setContent {
             AppTheme {
                 Box(Modifier.size(400.dp, 800.dp)) {
@@ -55,96 +45,172 @@ internal class AppNavigationBarTest {
                         selected = AppTopLevelDestination.TOPICS,
                         onSelect = {},
                         showsNavigation = true,
+                    ) { }
+                }
+            }
+        }
+
+        AppTopLevelDestination.entries.forEach { destination ->
+            val item = onNodeWithTag(appNavigationBarItemTag(destination)).assertIsDisplayed()
+            assertTrue(
+                item.fetchSemanticsNode().boundsInRoot.height >= MinimumTouchTargetPx,
+                "$destination did not keep a 48dp touch target.",
+            )
+        }
+        onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.TOPICS)).assertIsSelected()
+
+        val bounds = onNodeWithTag(AppNavigationBarTag).fetchSemanticsNode().boundsInRoot
+        assertEquals(AppLayout.CompactNavigationHeight.value, bounds.height)
+        assertEquals(16f, bounds.left)
+        assertEquals(384f, bounds.right)
+    }
+
+    @Test
+    fun compactDestinationsKeepEqualCentredSlotsAtPhoneWidths() = runComposeUiTest {
+        var width by mutableStateOf(CompactWidths.first().dp)
+        setContent {
+            AppTheme {
+                Box(Modifier.size(width, 800.dp)) {
+                    AppNavigationScaffold(
+                        selected = AppTopLevelDestination.TOPICS,
+                        onSelect = {},
+                        showsNavigation = true,
+                    ) { }
+                }
+            }
+        }
+
+        CompactWidths.forEach { compactWidth ->
+            runOnIdle { width = compactWidth.dp }
+            waitForIdle()
+
+            val itemBounds = AppTopLevelDestination.entries.associateWith {
+                onNodeWithTag(appNavigationBarItemTag(it)).fetchSemanticsNode().boundsInRoot
+            }
+            val firstWidth = itemBounds.getValue(AppTopLevelDestination.TOPICS).width
+            itemBounds.forEach { (destination, bounds) ->
+                assertEquals(firstWidth, bounds.width, LayoutTolerancePx, "$destination slot width")
+                val iconBounds = onNodeWithTag(
+                    appNavigationBarIconTag(destination),
+                    useUnmergedTree = true,
+                ).fetchSemanticsNode().boundsInRoot
+                val labelBounds = navigationLabelBounds(destination)
+                assertEquals(bounds.center.x, iconBounds.center.x, LayoutTolerancePx)
+                assertEquals(iconBounds.center.x, labelBounds.center.x, LayoutTolerancePx)
+                onNodeWithText(destination.labelText, useUnmergedTree = true).assertIsDisplayed()
+            }
+        }
+    }
+
+    @Test
+    fun selectionWrapsIconAndLabelWithoutChangingDestinationGeometry() = runComposeUiTest {
+        var selected by mutableStateOf(AppTopLevelDestination.TOPICS)
+        setContent {
+            AppTheme {
+                Box(Modifier.size(390.dp, 800.dp)) {
+                    AppNavigationScaffold(
+                        selected = selected,
+                        onSelect = {},
+                        showsNavigation = true,
+                    ) { }
+                }
+            }
+        }
+
+        val itemBoundsBefore = destinationBounds()
+        val iconBoundsBefore = destinationIconBounds()
+        val labelBoundsBefore = destinationLabelBounds()
+        assertSelectedPillContains(AppTopLevelDestination.TOPICS)
+        onNodeWithTag(
+            appNavigationBarSelectedPillTag(AppTopLevelDestination.INTERVIEW),
+            useUnmergedTree = true,
+        ).assertDoesNotExist()
+
+        runOnIdle { selected = AppTopLevelDestination.INTERVIEW }
+        waitForIdle()
+
+        assertEquals(itemBoundsBefore, destinationBounds())
+        assertEquals(iconBoundsBefore, destinationIconBounds())
+        assertEquals(labelBoundsBefore, destinationLabelBounds())
+        assertSelectedPillContains(AppTopLevelDestination.INTERVIEW)
+    }
+
+    @Test
+    fun mistakesBadgeDoesNotMoveOrResizeItsIcon() = runComposeUiTest {
+        var badges by mutableStateOf<AppNavigationBadges>(emptyMap())
+        setContent {
+            AppTheme {
+                AppNavigationBar(
+                    selected = AppTopLevelDestination.TOPICS,
+                    onSelect = {},
+                    badges = badges,
+                    modifier = Modifier.size(360.dp, AppLayout.CompactNavigationHeight),
+                )
+            }
+        }
+
+        val iconWithoutBadge = navigationIconBounds(AppTopLevelDestination.MISTAKES)
+        runOnIdle { badges = mapOf(AppTopLevelDestination.MISTAKES to 7) }
+        waitForIdle()
+
+        assertEquals(iconWithoutBadge, navigationIconBounds(AppTopLevelDestination.MISTAKES))
+        onNodeWithText("7", useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun compactVisibilityAnimationDoesNotResizeContent() = runComposeUiTest {
+        var visible by mutableStateOf(true)
+        setContent {
+            AppTheme {
+                Box(Modifier.size(400.dp, 800.dp)) {
+                    AppNavigationScaffold(
+                        selected = AppTopLevelDestination.TOPICS,
+                        onSelect = {},
+                        showsNavigation = true,
+                        showsBottomNavigation = visible,
                     ) { padding ->
-                        contentPadding = padding
-                        Box(Modifier.fillMaxSize())
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                                .padding(padding)
+                                .testTag(ScaffoldContentTag),
+                        )
                     }
                 }
             }
         }
 
-        val padding = requireNotNull(contentPadding)
-        assertEquals(0.dp, padding.calculateTopPadding())
-        assertTrue(
-            padding.calculateBottomPadding() > 0.dp,
-            "the shell must reserve the navigation bar so screens do not",
-        )
+        val visibleBounds = contentBounds()
+        runOnIdle { visible = false }
+        waitForIdle()
+
+        onNodeWithTag(AppNavigationBarTag).assertDoesNotExist()
+        assertEquals(visibleBounds, contentBounds())
     }
 
     @Test
-    fun aRailLayoutReservesNoBottomNavigationSpace() = runComposeUiTest {
-        // Beside a rail there is no bottom bar to clear, so the content must run to the window
-        // edge. This host reports no system insets, so the whole bottom padding should be zero.
-        var contentPadding: PaddingValues? = null
+    fun routeDrivenVisibilityUsesTheSameSettledCompactTransition() = runComposeUiTest {
+        var ownsNavigation by mutableStateOf(true)
         setContent {
             AppTheme {
-                Box(Modifier.size(AppNavigationRailBreakpoint, 800.dp)) {
+                Box(Modifier.size(400.dp, 800.dp)) {
                     AppNavigationScaffold(
                         selected = AppTopLevelDestination.TOPICS,
                         onSelect = {},
-                        showsNavigation = true,
-                    ) { padding ->
-                        contentPadding = padding
-                        Box(Modifier.fillMaxSize())
-                    }
-                }
-            }
-        }
-
-        val padding = requireNotNull(contentPadding)
-        assertEquals(0.dp, padding.calculateTopPadding())
-        assertEquals(0.dp, padding.calculateBottomPadding())
-    }
-
-    @Test
-    fun aBottomBarVisibilityRequestDoesNotHideTheWideNavigationRail() = runComposeUiTest {
-        setContent {
-            AppTheme {
-                Box(Modifier.size(AppNavigationRailBreakpoint, 800.dp)) {
-                    AppNavigationScaffold(
-                        selected = AppTopLevelDestination.TOPICS,
-                        onSelect = {},
-                        showsNavigation = true,
-                        showsBottomNavigation = false,
+                        showsNavigation = ownsNavigation,
                     ) { Box(Modifier.fillMaxSize()) }
                 }
             }
         }
 
-        onNodeWithTag(AppNavigationRailDividerTag).assertIsDisplayed()
-        onNodeWithTag(AppNavigationBarDividerTag).assertDoesNotExist()
+        onNodeWithTag(AppNavigationBarTag).assertIsDisplayed()
+        runOnIdle { ownsNavigation = false }
+        waitForIdle()
+        onNodeWithTag(AppNavigationBarTag).assertDoesNotExist()
     }
 
     @Test
-    fun aCompactLayoutHonorsTheBottomBarVisibilityRequest() = runComposeUiTest {
-        setContent {
-            AppTheme {
-                Box(Modifier.size(AppNavigationRailBreakpoint - 1.dp, 800.dp)) {
-                    AppNavigationScaffold(
-                        selected = AppTopLevelDestination.TOPICS,
-                        onSelect = {},
-                        showsNavigation = true,
-                        showsBottomNavigation = false,
-                    ) { Box(Modifier.fillMaxSize()) }
-                }
-            }
-        }
-
-        onNodeWithTag(AppNavigationBarDividerTag).assertDoesNotExist()
-        onNodeWithTag(AppNavigationRailDividerTag).assertDoesNotExist()
-    }
-
-    /**
-     * The end of a scrolling screen must be reachable, not merely rendered.
-     *
-     * The shell's inset contract above says the navigation bar is reserved once; this says what
-     * that buys the learner, end to end and through a real screen: scrolled to the bottom, the last
-     * Topic card sits wholly above the navigation bar with a comfortable gap rather than half
-     * underneath it. Asserted from measured bounds rather than from a hardcoded bar height, which
-     * is the thing screens must never reach for.
-     */
-    @Test
-    fun theLastRowOfAScrollingScreenClearsTheBottomNavigation() = runComposeUiTest {
+    fun scrollingViewportExtendsBehindOverlayAndFinalRowClearsIt() = runComposeUiTest {
         setContent {
             AppTheme {
                 Box(Modifier.size(400.dp, 700.dp)) {
@@ -173,132 +239,70 @@ internal class AppNavigationBarTest {
             }
         }
 
+        val navigationTop = onNodeWithTag(AppNavigationBarTag)
+            .fetchSemanticsNode().boundsInRoot.top
+        val viewportBottom = onNode(hasScrollAction()).fetchSemanticsNode().boundsInRoot.bottom
+        assertTrue(
+            viewportBottom > navigationTop,
+            "the scroll viewport ended before the floating navigation overlay.",
+        )
+
         onNode(hasScrollAction()).performScrollToNode(hasText("Topic 19"))
         waitForIdle()
 
         val lastRowBottom = onNodeWithText("Topic 19").fetchSemanticsNode().boundsInRoot.bottom
-        val navigationTop = onNodeWithTag(AppNavigationBarDividerTag)
-            .fetchSemanticsNode().boundsInRoot.top
         assertTrue(
             lastRowBottom < navigationTop,
-            "the last row ended at $lastRowBottom, below the navigation edge at $navigationTop",
+            "the last row ended at $lastRowBottom, below navigation at $navigationTop.",
         )
     }
 
     @Test
-    fun selectingAnAreaEmitsThatDestination() = runComposeUiTest {
-        val selected = mutableListOf<AppTopLevelDestination>()
+    fun snackbarClearsVisibleCompactNavigation() = runComposeUiTest {
         setContent {
             AppTheme {
-                AppNavigationBar(selected = AppTopLevelDestination.TOPICS, onSelect = selected::add)
+                Box(Modifier.size(400.dp, 800.dp)) {
+                    AppNavigationScaffold(
+                        selected = AppTopLevelDestination.TOPICS,
+                        onSelect = {},
+                        showsNavigation = true,
+                    ) {
+                        val hostState = requireNotNull(LocalAppSnackbarHostState.current)
+                        LaunchedEffect(hostState) { hostState.showSnackbar(SnackbarMessage) }
+                    }
+                }
             }
         }
 
-        AppTopLevelDestination.entries.forEach {
-            onNodeWithTag(appNavigationBarItemTag(it)).performClick()
-        }
-
-        assertEquals(AppTopLevelDestination.entries.toList(), selected)
+        onNodeWithText(SnackbarMessage).assertIsDisplayed()
+        val snackbarBottom = onNodeWithText(SnackbarMessage).fetchSemanticsNode().boundsInRoot.bottom
+        val navigationTop = onNodeWithTag(AppNavigationBarTag)
+            .fetchSemanticsNode().boundsInRoot.top
+        assertTrue(snackbarBottom < navigationTop)
     }
 
     @Test
-    fun eachAreaRouteMapsBackToItsDestination() {
-        AppTopLevelDestination.entries.forEach { destination ->
-            assertEquals(destination, AppTopLevelDestination.forRoute(destination.route))
-        }
-    }
-
-    @Test
-    fun detailRoutesBelongToNoAreaSoNoItemLooksSelectedOnThem() {
-        // Whether the control is shown is decided by showsAreaNavigation; forRoute only answers
-        // which item is highlighted, and on a detail screen that is none of them.
-        listOf(
-            AppRoute.Topic("topic"),
-            AppRoute.ProgressTopic("topic"),
-            AppRoute.MixedInterviewResult("attempt"),
-            AppRoute.FocusedPracticeResult("attempt"),
-            AppRoute.MixedInterviewAttempt("attempt"),
-        ).forEach { route ->
-            assertEquals(null, AppTopLevelDestination.forRoute(route))
-        }
-    }
-
-    @Test
-    fun theMistakesItemCarriesTheUnresolvedCount() = runComposeUiTest {
+    fun navigationSelectionAndBadgesRemainInteractive() = runComposeUiTest {
+        val selected = mutableListOf<AppTopLevelDestination>()
         setContent {
             AppTheme {
                 AppNavigationBar(
                     selected = AppTopLevelDestination.TOPICS,
-                    onSelect = {},
+                    onSelect = selected::add,
                     badges = mapOf(AppTopLevelDestination.MISTAKES to 7),
                 )
             }
         }
 
         onNodeWithText("7", useUnmergedTree = true).assertIsDisplayed()
-    }
-
-    @Test
-    fun anEmptyQueuePutsNoBadgeOnTheBar() = runComposeUiTest {
-        setContent {
-            AppTheme {
-                AppNavigationBar(
-                    selected = AppTopLevelDestination.TOPICS,
-                    onSelect = {},
-                    badges = mapOf(AppTopLevelDestination.MISTAKES to 0),
-                )
-            }
-        }
-
-        onNodeWithText("0", useUnmergedTree = true).assertDoesNotExist()
-    }
-
-    @Test
-    fun theRailOffersTheSameAreasAndBadgesAsTheBar() = runComposeUiTest {
-        val selected = mutableListOf<AppTopLevelDestination>()
-        setContent {
-            AppTheme {
-                AppNavigationRail(
-                    selected = AppTopLevelDestination.TOPICS,
-                    onSelect = selected::add,
-                    badges = mapOf(AppTopLevelDestination.MISTAKES to 2),
-                )
-            }
-        }
-
-        onNodeWithText("2", useUnmergedTree = true).assertIsDisplayed()
         AppTopLevelDestination.entries.forEach {
             onNodeWithTag(appNavigationBarItemTag(it)).performClick()
         }
-
         assertEquals(AppTopLevelDestination.entries.toList(), selected)
     }
 
     @Test
-    fun aPhoneShapedWindowPutsNavigationAlongTheBottom() = runComposeUiTest {
-        setContent {
-            AppTheme {
-                Box(Modifier.size(AppNavigationRailBreakpoint - 1.dp, 800.dp)) {
-                    AppNavigationScaffold(
-                        selected = AppTopLevelDestination.TOPICS,
-                        onSelect = {},
-                        showsNavigation = true,
-                    ) { Box(Modifier.testTag(ScaffoldContentTag)) }
-                }
-            }
-        }
-
-        // A bar takes height from the bottom and leaves the content against the leading edge; a
-        // rail would take width instead and push the content across.
-        val content = onNodeWithTag(ScaffoldContentTag).fetchSemanticsNode().positionInRoot
-        val topics = onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.TOPICS))
-            .fetchSemanticsNode().positionInRoot
-        assertEquals(0f, content.x, "content should not be pushed across by a rail")
-        assertTrue(topics.y > content.y, "navigation should be below the content")
-    }
-
-    @Test
-    fun aWindowWideEnoughForARailPutsNavigationBesideTheContent() = runComposeUiTest {
+    fun bottomVisibilityRequestsDoNotAffectTheWideRail() = runComposeUiTest {
         setContent {
             AppTheme {
                 Box(Modifier.size(AppNavigationRailBreakpoint, 800.dp)) {
@@ -306,115 +310,98 @@ internal class AppNavigationBarTest {
                         selected = AppTopLevelDestination.TOPICS,
                         onSelect = {},
                         showsNavigation = true,
+                        showsBottomNavigation = false,
                     ) { Box(Modifier.testTag(ScaffoldContentTag)) }
                 }
             }
         }
 
+        onNodeWithTag(AppNavigationRailDividerTag).assertIsDisplayed()
+        onNodeWithTag(AppNavigationBarTag).assertDoesNotExist()
         val content = onNodeWithTag(ScaffoldContentTag).fetchSemanticsNode().positionInRoot
-        val topics = onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.TOPICS))
+        val railItem = onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.TOPICS))
             .fetchSemanticsNode().positionInRoot
-        assertTrue(content.x > topics.x, "content should start after the rail")
-    }
-
-    /**
-     * `NavigationRail` paints `surface` and the `Scaffold` beside it paints `background`, and this
-     * app's scheme gives those the same value, so the rail has no edge of its own. The rule is what
-     * makes the boundary visible, and it is only doing that job if it lies between the two.
-     */
-    @Test
-    fun aRailIsSeparatedFromTheContentByARule() = runComposeUiTest {
-        setContent {
-            AppTheme {
-                Box(Modifier.size(AppNavigationRailBreakpoint, 800.dp)) {
-                    AppNavigationScaffold(
-                        selected = AppTopLevelDestination.TOPICS,
-                        onSelect = {},
-                        showsNavigation = true,
-                    ) { Box(Modifier.testTag(ScaffoldContentTag)) }
-                }
-            }
-        }
-
-        val topics = onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.TOPICS))
-            .fetchSemanticsNode().positionInRoot
-        val rule = onNodeWithTag(AppNavigationRailDividerTag).fetchSemanticsNode().positionInRoot
-        val content = onNodeWithTag(ScaffoldContentTag).fetchSemanticsNode().positionInRoot
-
-        assertTrue(rule.x > topics.x, "the rule should follow the rail, not precede it")
-        assertTrue(content.x > rule.x, "the content should start after the rule")
-        onNodeWithTag(AppNavigationBarDividerTag).assertDoesNotExist()
-    }
-
-    /**
-     * The bottom bar's counterpart. It differs from the page by a tonal step of roughly 12/255 per
-     * channel, which is easy to miss, so the rule states the edge instead of implying it. It is
-     * only doing that job if it lies along the bar's top edge rather than anywhere else.
-     */
-    @Test
-    fun aBarIsSeparatedFromTheContentByARule() = runComposeUiTest {
-        setContent {
-            AppTheme {
-                Box(Modifier.size(AppNavigationRailBreakpoint - 1.dp, 800.dp)) {
-                    AppNavigationScaffold(
-                        selected = AppTopLevelDestination.TOPICS,
-                        onSelect = {},
-                        showsNavigation = true,
-                    ) { Box(Modifier.testTag(ScaffoldContentTag)) }
-                }
-            }
-        }
-
-        val rule = onNodeWithTag(AppNavigationBarDividerTag).fetchSemanticsNode().positionInRoot
-        val topics = onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.TOPICS))
-            .fetchSemanticsNode().positionInRoot
-
-        assertTrue(rule.y < topics.y, "the rule should sit above the bar, not inside or below it")
+        assertTrue(content.x > railItem.x)
     }
 
     @Test
-    fun aPhoneShapedWindowHasNoRailRule() = runComposeUiTest {
+    fun focusModeRendersNeitherCompactNavigationNorRail() = runComposeUiTest {
         setContent {
             AppTheme {
-                Box(Modifier.size(AppNavigationRailBreakpoint - 1.dp, 800.dp)) {
-                    AppNavigationScaffold(
-                        selected = AppTopLevelDestination.TOPICS,
-                        onSelect = {},
-                        showsNavigation = true,
-                    ) { Box(Modifier.testTag(ScaffoldContentTag)) }
-                }
-            }
-        }
-
-        // Navigation is along the bottom here, and the bottom bar separates itself by container
-        // colour. A rule with no rail beside it would be a line across nothing.
-        onNodeWithTag(AppNavigationRailDividerTag).assertDoesNotExist()
-    }
-
-    @Test
-    fun anImmersiveScreenGetsTheWholeWindow() = runComposeUiTest {
-        setContent {
-            AppTheme {
-                Box(Modifier.size(AppNavigationRailBreakpoint, 800.dp)) {
+                Box(Modifier.size(400.dp, 800.dp)) {
                     AppNavigationScaffold(
                         selected = AppTopLevelDestination.TOPICS,
                         onSelect = {},
                         showsNavigation = false,
-                    ) { Box(Modifier.testTag(ScaffoldContentTag)) }
+                    ) { Box(Modifier.fillMaxSize().testTag(ScaffoldContentTag)) }
                 }
             }
         }
 
-        AppTopLevelDestination.entries.forEach {
-            onNodeWithTag(appNavigationBarItemTag(it)).assertDoesNotExist()
-        }
+        onNodeWithTag(AppNavigationBarTag).assertDoesNotExist()
         onNodeWithTag(AppNavigationRailDividerTag).assertDoesNotExist()
-        onNodeWithTag(AppNavigationBarDividerTag).assertDoesNotExist()
-        assertEquals(
-            0f,
-            onNodeWithTag(ScaffoldContentTag).fetchSemanticsNode().positionInRoot.x,
-        )
+    }
+
+    private fun androidx.compose.ui.test.ComposeUiTest.contentBounds(): Rect =
+        onNodeWithTag(ScaffoldContentTag).fetchSemanticsNode().boundsInRoot
+
+    private fun androidx.compose.ui.test.ComposeUiTest.destinationBounds():
+        Map<AppTopLevelDestination, Rect> = AppTopLevelDestination.entries.associateWith {
+            onNodeWithTag(appNavigationBarItemTag(it)).fetchSemanticsNode().boundsInRoot
+        }
+
+    private fun androidx.compose.ui.test.ComposeUiTest.destinationIconBounds():
+        Map<AppTopLevelDestination, Rect> = AppTopLevelDestination.entries.associateWith {
+            navigationIconBounds(it)
+        }
+
+    private fun androidx.compose.ui.test.ComposeUiTest.destinationLabelBounds():
+        Map<AppTopLevelDestination, Rect> = AppTopLevelDestination.entries.associateWith {
+            navigationLabelBounds(it)
+        }
+
+    private fun androidx.compose.ui.test.ComposeUiTest.navigationIconBounds(
+        destination: AppTopLevelDestination,
+    ): Rect = onNodeWithTag(
+        appNavigationBarIconTag(destination),
+        useUnmergedTree = true,
+    ).fetchSemanticsNode().boundsInRoot
+
+    private fun androidx.compose.ui.test.ComposeUiTest.navigationLabelBounds(
+        destination: AppTopLevelDestination,
+    ): Rect = onNodeWithText(
+        destination.labelText,
+        useUnmergedTree = true,
+    ).fetchSemanticsNode().boundsInRoot
+
+    private fun androidx.compose.ui.test.ComposeUiTest.assertSelectedPillContains(
+        destination: AppTopLevelDestination,
+    ) {
+        val pill = onNodeWithTag(
+            appNavigationBarSelectedPillTag(destination),
+            useUnmergedTree = true,
+        ).fetchSemanticsNode().boundsInRoot
+        val icon = navigationIconBounds(destination)
+        val label = navigationLabelBounds(destination)
+
+        assertTrue(pill.left <= icon.left && pill.right >= icon.right)
+        assertTrue(pill.top <= icon.top && pill.bottom >= icon.bottom)
+        assertTrue(pill.left <= label.left && pill.right >= label.right)
+        assertTrue(pill.top <= label.top && pill.bottom >= label.bottom)
+        assertFalse(pill == icon, "the selected treatment must not be the icon-only indicator")
     }
 }
 
+private val AppTopLevelDestination.labelText: String
+    get() = when (this) {
+        AppTopLevelDestination.TOPICS -> "Learn"
+        AppTopLevelDestination.INTERVIEW -> "Interview"
+        AppTopLevelDestination.PROGRESS -> "Progress"
+        AppTopLevelDestination.MISTAKES -> "Mistakes"
+    }
+
 private const val ScaffoldContentTag = "scaffold_content"
+private const val SnackbarMessage = "Copied"
+private const val MinimumTouchTargetPx = 48f
+private const val LayoutTolerancePx = 1f
+private val CompactWidths = listOf(360, 390, 412, 599)

@@ -1,10 +1,6 @@
 package org.artkachenko.kmp_learning_app.topic_study.learning_lesson
 
 internal data class LessonScrollUiState(
-    val isAtTop: Boolean,
-    val isAtBottom: Boolean,
-    val hasScrollableContent: Boolean,
-    val hasContentBelow: Boolean,
     val showsToolbarSubtitle: Boolean,
     val showsBottomNavigation: Boolean,
 )
@@ -17,41 +13,36 @@ internal class LessonScrollStateReducer(
     private var accumulatedDistance = 0
     private var showsToolbarSubtitle = true
     private var showsBottomNavigation = true
-    private var isEndAnchored = false
 
     init {
         require(directionThresholdPx > 0) { "directionThresholdPx must be positive." }
     }
 
-    fun update(position: Int, maxPosition: Int): LessonScrollUiState {
-        val isMeasured = maxPosition != Int.MAX_VALUE
-        val hasScrollableContent = isMeasured && maxPosition > 0
-        val isAtTop = position <= 0
-        val reachedPhysicalBottom = isMeasured && position >= maxPosition
+    fun update(
+        position: Int,
+        isScrollInProgress: Boolean,
+        isAtTop: Boolean,
+        isAtBottom: Boolean,
+    ): LessonScrollUiState {
         val delta = lastPosition?.let { position - it } ?: 0
         lastPosition = position
-
-        if (delta < 0) isEndAnchored = false
-        if (reachedPhysicalBottom) isEndAnchored = true
 
         if (isAtTop) {
             showsToolbarSubtitle = true
             showsBottomNavigation = true
             accumulatedDistance = 0
-        } else {
-            accumulate(delta)
-        }
-
-        if (isEndAnchored) {
+        } else if (isAtBottom) {
             showsBottomNavigation = true
+            accumulatedDistance = 0
+        } else if (isScrollInProgress) {
+            accumulate(delta)
+        } else {
+            // A remeasurement can move or clamp the position without a gesture or animation.
+            // Keep it as the next comparison baseline, but never count it as reading direction.
             accumulatedDistance = 0
         }
 
         return LessonScrollUiState(
-            isAtTop = isAtTop,
-            isAtBottom = isEndAnchored,
-            hasScrollableContent = hasScrollableContent,
-            hasContentBelow = hasScrollableContent && position < maxPosition && !isEndAnchored,
             showsToolbarSubtitle = showsToolbarSubtitle,
             showsBottomNavigation = showsBottomNavigation,
         )
@@ -88,10 +79,6 @@ internal class LessonScrollStateReducer(
 }
 
 internal val InitialLessonScrollUiState = LessonScrollUiState(
-    isAtTop = true,
-    isAtBottom = false,
-    hasScrollableContent = false,
-    hasContentBelow = false,
     showsToolbarSubtitle = true,
     showsBottomNavigation = true,
 )

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
@@ -24,6 +25,16 @@ import androidx.compose.ui.unit.dp
  * measured width rather than to the platform.
  */
 internal object AppLayout {
+
+    /** Visual height of the floating compact navigation surface, excluding the system inset. */
+    val CompactNavigationHeight: Dp = 68.dp
+
+    /** Space between the floating compact navigation container and the system gesture region. */
+    val CompactNavigationBottomGap: Dp = AppSpacing.Grouped
+
+    /** Trailing room a scroller needs to move its final content above compact navigation. */
+    val CompactNavigationClearance: Dp =
+        CompactNavigationHeight + CompactNavigationBottomGap
 
     /**
      * The Material compact/medium boundary.
@@ -160,6 +171,16 @@ internal val LocalAppWindowSizeClass =
  */
 internal val LocalAppContentMargin = staticCompositionLocalOf { AppSpacing.Comfortable }
 
+/** Compact navigation facts shared with content without making screens measure shell chrome. */
+@Immutable
+internal data class AppNavigationOverlayInfo(
+    val clearance: Dp = 0.dp,
+    val isVisible: Boolean = false,
+)
+
+/** Zero by default for previews, isolated tests, rail layouts, and focus-mode routes. */
+internal val LocalAppNavigationOverlay = staticCompositionLocalOf { AppNavigationOverlayInfo() }
+
 /**
  * How wide a screen's content is allowed to grow before it stops using the window.
  *
@@ -257,7 +278,12 @@ internal fun appScreenContentPadding(
     bottom: Dp = AppSpacing.Comfortable,
 ): PaddingValues {
     val margin = LocalAppContentMargin.current
-    return PaddingValues(start = margin, end = margin, top = top, bottom = bottom)
+    return PaddingValues(
+        start = margin,
+        end = margin,
+        top = top,
+        bottom = bottom + LocalAppNavigationOverlay.current.clearance,
+    )
 }
 
 /**
@@ -282,4 +308,7 @@ internal fun appScreenContentPadding(
 internal fun appListContentPadding(
     top: Dp = AppSpacing.Comfortable,
     bottom: Dp = AppSpacing.Comfortable,
-): PaddingValues = PaddingValues(top = top, bottom = bottom)
+): PaddingValues = PaddingValues(
+    top = top,
+    bottom = bottom + LocalAppNavigationOverlay.current.clearance,
+)

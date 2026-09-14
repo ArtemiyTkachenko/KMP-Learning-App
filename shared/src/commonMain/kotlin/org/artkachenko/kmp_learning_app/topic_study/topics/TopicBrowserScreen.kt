@@ -3,7 +3,6 @@ package org.artkachenko.kmp_learning_app.topic_study.topics
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -107,6 +106,7 @@ import org.artkachenko.kmp_learning_app.ui.ScreenAction
 import org.artkachenko.kmp_learning_app.ui.theme.AppContentPane
 import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
+import org.artkachenko.kmp_learning_app.ui.theme.appListContentPadding
 
 internal const val TopicBrowserLoadingTag = "topic_browser_loading"
 internal const val TopicBrowserHeaderTag = "topic_browser_header"
@@ -402,7 +402,7 @@ private fun TopicList(
                         .weight(GuidancePaneWeight)
                         .fillMaxHeight()
                         .testTag(TopicBrowserGuidancePaneTag),
-                    contentPadding = PaddingValues(
+                    contentPadding = appListContentPadding(
                         top = AppSpacing.Tight,
                         bottom = AppListBottomPadding,
                     ),
@@ -419,7 +419,7 @@ private fun TopicList(
                     // The catalogue keeps the list state, because it is the list a learner
                     // scrolls and the one a restored position belongs to.
                     state = listState,
-                    contentPadding = PaddingValues(
+                    contentPadding = appListContentPadding(
                         top = AppSpacing.Tight,
                         bottom = AppListBottomPadding,
                     ),
@@ -437,7 +437,7 @@ private fun TopicList(
         // Top padding as well as bottom: the first row must rest clear of the pinned search field
         // above it, so that what appears under that field while scrolling reads as content passing
         // behind a header rather than as a card cut off by it.
-        contentPadding = PaddingValues(
+        contentPadding = appListContentPadding(
             top = AppSpacing.Tight,
             bottom = AppListBottomPadding,
         ),
@@ -1096,7 +1096,7 @@ private fun TopicSearchResults(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = listState,
-        contentPadding = PaddingValues(
+        contentPadding = appListContentPadding(
             top = AppSpacing.Tight,
             bottom = AppListBottomPadding,
         ),

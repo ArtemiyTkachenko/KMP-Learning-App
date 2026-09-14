@@ -5278,6 +5278,385 @@
       "status": "ACTIVE"
     },
     {
+      "id": "unit_latest_values_and_event_driven_work",
+      "topicId": "android_ui",
+      "title": "Latest-Value Effects and Event-Driven Coroutine Work",
+      "summary": "Some changing values should be visible to work that is already running without ending that work, while some suspend work should begin only when a user event asks for it. This unit separates those two ownership problems: rememberUpdatedState preserves an effect lifetime while exposing a current value, and rememberCoroutineScope gives callbacks a composition-bounded scope without launching anything by itself. The final lesson chooses between composition-driven and event-driven work from who owns the trigger.",
+      "lessons": [
+        {
+          "id": "lesson_remember_updated_state",
+          "title": "Reading the Current Value Without Restarting",
+          "summary": "A value can matter to long-lived work without defining that work's lifetime. rememberUpdatedState keeps a remembered State holder current across recompositions so an existing effect can read the latest value when it needs it, while keying the effect remains correct when a changed value should cancel and replace the work.",
+          "primarySubtopicIds": [
+            "compose_side_effects"
+          ],
+          "supportingSubtopicIds": [
+            "compose_state",
+            "compose_recomposition",
+            "kotlin_lambdas"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Unit 9 gave effect keys a lifetime meaning: put a value in the key list when its change should end the current effect and begin replacement work. That leaves an important case. What if a changing value matters, but the current effect is still exactly the right work? Restarting would throw away valid progress, while capturing the launch-time value naively can leave the running coroutine with stale data."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun TimedQuestion(\n    onTimeout: () -> Unit,\n) {\n    LaunchedEffect(Unit) {\n        delay(30_000)\n        onTimeout()\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Suppose this call site's contract is one 30-second timer for as long as this question remains in the Composition. The constant key is justified because the timer is intentionally tied to that whole composition lifetime; it is not shorthand for \"run once\". If recomposition supplies a different `onTimeout`, the existing coroutine does not restart, and the lambda captured when the effect launched may no longer be the callback the screen currently intends."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun TimedQuestion(\n    onTimeout: () -> Unit,\n) {\n    val currentOnTimeout by rememberUpdatedState(onTimeout)\n\n    LaunchedEffect(Unit) {\n        delay(30_000)\n        currentOnTimeout()\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`rememberUpdatedState` answers the value problem without changing the timer's lifetime. Compose remembers a `State` holder and updates its current value when this call recomposes with a new value. The coroutine itself is not updated or relaunched. When the already-running coroutine reaches `currentOnTimeout()`, it reads the holder then and obtains the callback current at that read."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Keep two decisions separate: keys decide when the current work ends; rememberUpdatedState decides which current value that still-valid work reads."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Reading time matters. If the coroutine first copies `val captured = currentOnTimeout`, then delays and invokes `captured()`, that local still refers to the callback read before the delay. If it delays first and then invokes `currentOnTimeout()`, the State read happens after the delay and can observe a callback supplied by a later recomposition. State makes a current value available when read; it does not retroactively rewrite ordinary local variables."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Requirement",
+                    "Correct shape",
+                    "Lifetime consequence"
+                  ],
+                  "rows": [
+                    [
+                      "A changed callback makes the old timer obsolete",
+                      "LaunchedEffect(onTimeout) { delay(...); onTimeout() }",
+                      "The old timer is cancelled and a full new timer starts"
+                    ],
+                    [
+                      "The original timer remains valid, but completion must use the current callback",
+                      "rememberUpdatedState(onTimeout) plus LaunchedEffect(Unit)",
+                      "The timer continues; its later State read obtains the current callback"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The keyed alternative is not inferior. Use `LaunchedEffect(onTimeout)` when a changed callback really means that all work based on the previous callback is obsolete. It cancels the in-flight delay and begins the whole block again whenever the key stops comparing equal. Use the current-value pattern only when that restart would violate the intended lifetime or discard work that remains valid."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "rememberUpdatedState does not prevent, reduce or optimize recomposition. It is Compose State. If composable code reads the returned State during composition, ordinary state-read invalidation rules apply. The timer survives here because the changing callback is read inside the running coroutine and is not a changing effect key."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The public runtime contract describes a remembered State whose value is updated on recomposition so a long-lived lambda, object or operation can persist without cancellation and restart. In the resolved Compose runtime 1.11.2 source, the implementation is equivalent to `remember { mutableStateOf(newValue) }.apply { value = newValue }`. That implementation confirms the model, but the public purpose is the durable lesson: preserve the long-lived operation and change what it reads currently."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Callback syntax does not settle the choice. Unit 9 explains how equality and current compiler memoization affect whether a callback used as a key actually changes. This decision begins one level earlier: even if the callback would compare differently and restart the keyed effect, should that change end this work? If the answer is no, separate value currency from lifetime."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Explain both valid models. Key on a value when its change makes old work obsolete. Use rememberUpdatedState when old work remains valid and only the value read later must be current. Neither choice is a recomposition optimization."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_launched_effect",
+            "lesson_effect_keys_as_dependencies"
+          ],
+          "sources": [
+            {
+              "title": "Side-effects in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/side-effects"
+            },
+            {
+              "title": "Compose runtime SnapshotState source",
+              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotState.kt"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_remember_coroutine_scope",
+          "title": "`rememberCoroutineScope`: Launching From an Event",
+          "summary": "rememberCoroutineScope returns a remembered CoroutineScope and starts no work. A click or other callback chooses whether and when to call launch, while the Composition still owns the scope's lifetime and cancels it when the call leaves Composition.",
+          "primarySubtopicIds": [
+            "compose_side_effects"
+          ],
+          "supportingSubtopicIds": [
+            "coroutine_scope",
+            "coroutine_builders",
+            "structured_concurrency"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Some suspend UI work belongs to a screen but should not begin merely because that screen is being composed. Showing a snackbar after a save tap, scrolling after a button press, or driving a transient animation begins when an event occurs. Composition can provide the lifetime, while the event owns the trigger."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun QuestionContent(\n    snackbarHostState: SnackbarHostState,\n) {\n    val scope = rememberCoroutineScope()\n\n    Button(\n        onClick = {\n            scope.launch {\n                snackbarHostState.showSnackbar(\"Answer saved\")\n            }\n        },\n    ) {\n        Text(\"Save answer\")\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`rememberCoroutineScope()` launches nothing. It returns the same remembered scope across recompositions of that call site. Only when `onClick` calls `scope.launch` does a coroutine start. The caller therefore owns whether work starts, when it starts, and whether another click launches another coroutine. The builder and returned `Job` mechanics are covered by `lesson_coroutine_builders`."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Moment",
+                    "Owner"
+                  ],
+                  "rows": [
+                    [
+                      "Composition creates and remembers the scope",
+                      "Composition owns the scope lifetime"
+                    ],
+                    [
+                      "The user taps Save and the callback calls launch",
+                      "The event/caller owns the trigger"
+                    ],
+                    [
+                      "The call site leaves Composition",
+                      "Composition cancels the remembered scope"
+                    ]
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Trigger owner and lifetime owner are separate axes: the event starts this coroutine, while the Composition bounds the scope in which it runs."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Suppose the user taps Save and `showSnackbar` is still suspended when navigation removes this screen. The call that remembered the scope has left Composition, so Compose cancels the scope and cancellation propagates to work launched in it. Cancellation remains cooperative: cancellation-aware suspending work unwinds normally, while arbitrary blocking code is not forcibly stopped at the exact line the UI disappears."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun QuestionContent(...) {\n    val scope = rememberCoroutineScope()\n\n    scope.launch {\n        snackbarHostState.showSnackbar(\"Answer saved\")\n    } // Wrong: composable execution is being used as the trigger.\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A remembered scope does not make direct body launching controlled. The composable body may execute repeatedly, be skipped, or take part in an abandoned composition, so calling `launch` there recreates the uncontrolled-body-work defect from Unit 9. Put event-driven launch inside the event callback. Use a composition-triggered effect when entering or changing composition state really should start the work."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Calling `scope.launch` returns a `Job`. The event handler may retain that handle when a real requirement calls for manual cancellation or coordination, but another click is otherwise free to start another child. This lesson does not prescribe a concurrency policy; `lesson_coroutine_scope_ownership` and the structured-concurrency material own the deeper Job rules."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "rememberCoroutineScope fixes the coroutine's lifetime owner. It does not turn the composable body into an event callback, start a coroutine automatically, or give launched work a lifetime beyond the screen."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The resolved runtime 1.11.2 KDoc says the scope is bound to this composition point, uses the Recomposer's applying dispatcher when no dispatcher is supplied, and is cancelled when the call leaves Composition. The optional supplied context may not contain a parent `Job`, because this scope is already a child of the Composition. That stable restriction is usually all application code needs."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The same KDoc says a violated context precondition does not throw directly from the composable call. In the resolved implementation, the returned scope instead contains a failed `Job` and cannot launch children. This is a diagnostic detail, not a reason to customize the scope's parent: ownership should remain with the Composition."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Describe the sequence precisely: composition remembers a scope; an event calls launch; a child coroutine starts; leaving that composition point cancels the scope and requests cooperative cancellation of its children."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_coroutine_scope_ownership",
+            "lesson_coroutine_builders"
+          ],
+          "sources": [
+            {
+              "title": "Side-effects in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/side-effects"
+            },
+            {
+              "title": "Compose runtime Effects source",
+              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
+            },
+            {
+              "title": "Cancellation and timeouts",
+              "url": "https://kotlinlang.org/docs/cancellation-and-timeouts.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_who_owns_the_trigger",
+          "title": "Composition-Driven or Event-Driven?",
+          "summary": "Choose coroutine work from who owns its trigger. LaunchedEffect starts when a composition state enters or changes and composition owns both trigger and lifetime; rememberCoroutineScope lets an event choose launch time while composition still bounds the lifetime. Work required to outlive the screen belongs to neither.",
+          "primarySubtopicIds": [
+            "compose_side_effects"
+          ],
+          "supportingSubtopicIds": [
+            "coroutine_scope",
+            "viewmodel_lifecycle",
+            "lifecycle_coroutines",
+            "coroutine_cancellation"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Two coroutines can have the same composition-bounded lifetime and still need different triggers. Ask what occurrence should begin the work. If the answer is \"this composition now represents a particular state or identity\", Composition owns the trigger. If the answer is \"the user clicked\" or \"this callback fired\", the event owns the trigger."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Mechanism",
+                    "Trigger owner",
+                    "Lifetime owner"
+                  ],
+                  "rows": [
+                    [
+                      "LaunchedEffect",
+                      "Composition state entering or changing",
+                      "Composition"
+                    ],
+                    [
+                      "rememberCoroutineScope plus launch",
+                      "Event or callback",
+                      "Composition"
+                    ]
+                  ]
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun ActiveQuestion(\n    questionId: String,\n    onHintReady: () -> Unit,\n) {\n    LaunchedEffect(questionId) {\n        delay(10_000)\n        onHintReady()\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The timer is genuinely composition-driven: when this composition starts representing `questionId`, the question-specific delay should begin; when the id changes, the old question's timer is obsolete and should be replaced. No click is required. Implementing this requirement only in a click callback could mean it never starts when the active question appears, because the trigger would be attached to the wrong occurrence."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Use LaunchedEffect when entering or changing a particular composition state should start or restart work. Use rememberCoroutineScope when an event should decide whether and when work starts."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Now apply the distinction to one screen requirement: when the user taps Save, show a confirmation snackbar. In the incorrect version below, `showSavedMessage` is persistent rendered state. While it remains true, the UI describes that a saved message is current; it does not represent one consumable tap. If this branch leaves and later re-enters Composition while the flag is still true, the effect enters again and the transient snackbar can fire again."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun QuestionEditor(\n    showSavedMessage: Boolean,\n    snackbarHostState: SnackbarHostState,\n) {\n    if (showSavedMessage) {\n        LaunchedEffect(showSavedMessage) {\n            snackbarHostState.showSnackbar(\"Answer saved\")\n        }\n    }\n\n    Button(onClick = ::saveAnswer) {\n        Text(\"Save\")\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The correct direct UI-mechanics version lets the click own the trigger. The screen remembers a composition-owned scope, and that particular callback invocation launches the suspend snackbar work. This comparison is deliberately bounded: it does not define an application-wide transient-event delivery architecture or guarantees for times when no UI is present."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun QuestionEditor(\n    snackbarHostState: SnackbarHostState,\n) {\n    val scope = rememberCoroutineScope()\n\n    Button(\n        onClick = {\n            saveAnswer()\n            scope.launch {\n                snackbarHostState.showSnackbar(\"Answer saved\")\n            }\n        },\n    ) {\n        Text(\"Save\")\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Do not reduce the rule to \"LaunchedEffect is automatic and rememberCoroutineScope is manual\". Name the occurrence that owns the start. A rendered condition and a user occurrence carry different meaning even when both eventually call the same suspend function."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Both mechanisms are wrong when the requirement says the operation must continue after this screen leaves Composition. A committed upload, durable save, payment submission or background synchronization cannot take its required lifetime from a composition-owned effect or remembered scope. Move it to an owner whose lifetime actually matches the requirement. Choosing and designing that owner belongs to later architecture curriculum; this unit does not turn `viewModelScope`, a repository, a queue or background-work API into a default escape hatch."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For work that is correctly composition-owned, leaving or rekeying requests normal coroutine cancellation. Cancellation-aware suspension unwinds cooperatively; blocking or non-cooperative work is not magically preempted; and an external action that already completed is not rolled back. Trigger choice changes when work begins, not these coroutine guarantees."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Latest-value handling is another independent decision. `rememberUpdatedState` solves which value a still-valid long-lived object or effect reads. `rememberCoroutineScope` solves who decides when a new coroutine begins. A design may eventually need both responsibilities, but one API is not a substitute for the other and current values are not event delivery."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Give a three-part answer: name the trigger owner, name the lifetime owner, and test whether that lifetime is long enough. Composition state can trigger LaunchedEffect; an event can launch into a remembered scope; work that must survive the screen needs a different owner."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_launched_effect",
+            "lesson_coroutine_scope_ownership",
+            "lesson_structured_concurrency"
+          ],
+          "sources": [
+            {
+              "title": "Side-effects in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/side-effects"
+            },
+            {
+              "title": "Compose runtime Effects source",
+              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
+            },
+            {
+              "title": "Cancellation and timeouts",
+              "url": "https://kotlinlang.org/docs/cancellation-and-timeouts.html"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
       "id": "unit_coroutines_and_structured_concurrency",
       "topicId": "async_reactive",
       "title": "Coroutine Fundamentals and Structured Concurrency",

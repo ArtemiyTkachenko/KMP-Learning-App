@@ -1671,3 +1671,133 @@ the snapshot current; `cd tools && python3 -m unittest test_learning_question_co
 from 29 to 33 Lessons; and `./gradlew :shared:allTests` passed Android host, JVM, iOS simulator, JS
 and Wasm targets. `./gradlew :shared:check` and `git diff --check` were also run successfully after
 the final authoring change. No `iosArm64` device-target test or external CI run is claimed.
+
+### E25-05 — Unit 10
+
+`unit_latest_values_and_event_driven_work`, **Latest-Value Effects and Event-Driven Coroutine
+Work**, shipped under `android_ui` immediately after `unit_effect_lifecycle_and_launched_effect`.
+Its three planned Lessons shipped in their original order and with unchanged identities:
+`lesson_remember_updated_state`, **Reading the Current Value Without Restarting**;
+`lesson_remember_coroutine_scope`, **`rememberCoroutineScope`: Launching From an Event**; and
+`lesson_who_owns_the_trigger`, **Composition-Driven or Event-Driven?** No Question, taxonomy entry,
+Unit 11 API, transient-delivery architecture, state-holder architecture, or E25-06 content was
+added.
+
+All three Lessons keep `compose_side_effects` as their sole primary Subtopic. L10.1 supports it with
+`compose_state`, `compose_recomposition`, and `kotlin_lambdas`; L10.2 with `coroutine_scope`,
+`coroutine_builders`, and `structured_concurrency`; and L10.3 with `coroutine_scope`,
+`viewmodel_lifecycle`, `lifecycle_coroutines`, and `coroutine_cancellation`. Those supporting
+concepts remain excluded from Unit practice. The mapping is deliberately honest despite the shared
+pool limitation.
+
+L10.1 starts from Unit 9's question: should this changing value end the current work? Its timed
+question keeps one realistic 30-second composition-lifetime timer while recomposition can supply a
+new `onTimeout`. The Lesson compares `LaunchedEffect(onTimeout)` directly with
+`rememberUpdatedState(onTimeout)` plus `LaunchedEffect(Unit)`. Keying on the callback is correct when
+the old timer is obsolete, but it cancels the in-flight delay and starts the full timer again when
+the callback key stops comparing equal. The latest-value shape is correct when the original timer
+remains valid and only the callback read at completion must be current. The constant key is applied
+as a call-site composition-lifetime claim, not renamed to "run once".
+
+The exact current-value model is explicit. Compose remembers a `State` holder, recomposition updates
+its value, and the still-running coroutine reads that holder when execution reaches the read. A
+value copied into a local before a delay does not change retroactively. The Lesson also states that
+`rememberUpdatedState` neither prevents nor reduces recomposition: reading the returned State in
+composable code participates in ordinary state-read invalidation. Here the effect stays alive
+because the value is read inside its existing coroutine rather than supplied as a changing key.
+
+The source-sensitive findings were rechecked on 2026-09-14. Kotlin and the Compose compiler remain
+2.4.10, Compose Multiplatform remains declared at 1.11.1, and Gradle dependency insight still
+resolves `androidx.compose.runtime:runtime:1.11.2` on the JVM. The resolved 1.11.2
+`SnapshotState.kt` KDoc still describes updating a value across recompositions without recreating a
+long-lived lambda/object or restarting an operation, and its implementation remains
+`remember { mutableStateOf(newValue) }.apply { value = newValue }`. The current official side-effect
+guide still gives the same long-lived timeout case, current callback, constant-key caution, and
+keyed alternative. The public/KDoc purpose is taught as the contract; the implementation confirms
+the State model rather than replacing that contract.
+
+No new latest-value probe was run for E25-05. The resolved source and public documentation settle
+the authored claims, and E25-01's still-current throwaway JVM measurement already observed one
+`LaunchedEffect(Unit)` start while the existing coroutine read `[0, 1, 2]`. That earlier measurement
+remains labelled current-toolchain evidence rather than an additional API guarantee, and no probe
+file exists in the final diff.
+
+L10.2 uses a Save-answer click that launches only transient snackbar UI work. The sequence is
+explicit: composition creates/remembers the scope; the event calls `scope.launch`; only then does a
+coroutine start. `rememberCoroutineScope` therefore launches nothing on its own. The caller chooses
+whether and when to launch, another callback may launch another child, and a retained `Job` is
+mentioned only as an optional handle when real cancellation or coordination is required.
+
+The resolved 1.11.2 `Effects.kt` KDoc and source remain unchanged for the lifetime claims. The same
+scope instance is remembered across recompositions; the scope is bound to that composition point;
+it is cancelled on forgotten or abandoned; its default dispatcher is the Recomposer's applying
+dispatcher when none is supplied; and the supplied context may not contain a parent `Job`. The
+Lesson includes the stable restriction and, at Senior depth, the current failure behavior: the
+composable call does not throw directly, while the returned scope contains a failed `Job` and
+cannot launch children. It also preserves the KDoc's warning that jobs must not be launched from a
+composable body as a side effect of composition itself.
+
+Leaving Composition while the snackbar coroutine is suspended cancels the remembered scope and
+propagates cancellation to its children. Cancellation is described with E24 precision: it is a
+cooperative request observed by cancellation-aware work, not an immediate preemption of arbitrary
+blocking code, and it cannot roll back external work that already completed. L10.2 links to
+`lesson_coroutine_scope_ownership` and `lesson_coroutine_builders` instead of reteaching their Job
+and hierarchy mechanics.
+
+L10.3 states the final decision as ownership. Use `LaunchedEffect` when entering or changing a
+particular composition state should start or restart the work: Composition owns both trigger and
+lifetime. Use `rememberCoroutineScope` plus `launch` when a click or callback should decide when
+work starts: the event owns the trigger while Composition still owns the scope lifetime. A
+question-specific hint timer keyed by `questionId` is the valid composition-triggered case.
+
+The same-screen worked comparison uses a Question editor whose requirement is "when the user taps
+Save, show confirmation." The incorrect version derives a `LaunchedEffect` from a persistent
+`showSavedMessage` rendering condition; leaving and re-entering that branch while the condition
+remains true can fire the transient snackbar again. The correct version remembers a scope and
+calls `scope.launch` from the Save callback, so that click owns the trigger. The example is kept at
+direct Compose/UI-mechanics depth and does not generalize into Unit 12's transient-delivery
+architecture.
+
+Work that must continue after the screen leaves Composition is explicitly assigned to neither
+mechanism. Committed uploads, durable saves, payment submission, and background synchronization are
+used only to reveal the lifetime mismatch; the Lesson stops at "move the work to an owner whose
+lifetime matches the requirement." It does not teach `viewModelScope`, WorkManager, repositories,
+queues, MVVM, or MVI. L10.3 links backward to `lesson_launched_effect`,
+`lesson_coroutine_scope_ownership`, and `lesson_structured_concurrency`. L10.1 links to
+`lesson_launched_effect` and `lesson_effect_keys_as_dependencies`. No forward links were added.
+
+The two ACTIVE Questions reachable through `compose_side_effects` were re-solved from their stems
+and options and checked against their answer keys, explanations, Sources, and levels; no
+DEPRECATED Question is currently mapped to this primary Subtopic. `compose_launched_effect_key_restart`
+remains correct, correctly mapped, and correctly levelled FOUNDATION coverage for the Unit 9
+restart direction. `compose_side_effects_001` remains correct and well-sourced at FOUNDATION: its
+`rememberCoroutineScope` distractor and explanation are now answerable after Unit 10, but the
+Question still spans Units 9-11 through its `DisposableEffect` and `SideEffect` clauses. Neither
+Question was edited, and no Question wording was copied into a Lesson.
+
+Generated coverage now reports Unit 10 as three Lessons, one distinct primary concept, and two
+reachable FOUNDATION Questions. That is structural reach through `compose_side_effects`, not
+semantic adequacy. Units 9-12 still share an identical practice pool, so Unit 10 can receive Unit
+9/11 material and any future `rememberUpdatedState` Question on this Subtopic would also appear
+after Unit 9. No dishonest primary mapping or invented Subtopic was used to hide that limitation;
+E25-08 retains the deliberate assessment decision.
+
+GAP-U10-A, GAP-U10-B, and GAP-U10-C all remain open for E25-08. The shipped Lessons now teach the
+stale/current callback problem and keyed restart cost, trigger ownership as a decision, and
+remembered-scope cancellation plus the longer-lived-work boundary respectively; authored teaching
+does not create semantic Question coverage. No additional distinct Unit 10 gap was exposed.
+E25-06 may assume that learners can distinguish a composition-owned trigger from an event-owned
+trigger and can distinguish restarting an effect from keeping its lifetime while reading a current
+value.
+
+Validation run during authoring: `jq empty` accepted the production document;
+`./gradlew :shared:dependencyInsight --configuration jvmRuntimeClasspath --dependency
+androidx.compose.runtime:runtime` resolved 1.11.2; the initial focused four-suite run found one
+legitimate stale lesson-count expectation, and the same command passed after it was updated;
+`python3 tools/learning_question_coverage.py --write` regenerated the snapshot and its `--check`
+mode reported it current; `cd tools && python3 -m unittest test_learning_question_coverage.py`
+passed 21 tests (with the existing sandbox warning from RVM's `ps` call); `./gradlew
+:shared:jvmTest` passed the full common/JVM suite after the Android UI journey grew from 33 to 36
+Lessons; and `./gradlew :shared:allTests` passed Android host, JVM, iOS simulator, JS, and Wasm
+targets. `./gradlew :shared:check` and `git diff --check` also passed after the final authoring
+change. No `iosArm64` device-target test, external CI run, or new runtime probe is claimed.

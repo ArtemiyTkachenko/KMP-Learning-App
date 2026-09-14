@@ -41,6 +41,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_snapshot_fundamentals",
                 "unit_production_screen_state_and_udf",
                 "unit_observable_state_collection",
+                "unit_effect_lifecycle_and_launched_effect",
                 "unit_coroutines_and_structured_concurrency",
                 "unit_context_dispatchers_and_concurrency",
                 "unit_cancellation_failure_and_coordination",
@@ -61,6 +62,7 @@ internal class BundledLearningCurriculumTest {
                 "Snapshot Fundamentals",
                 "Production Screen State and Unidirectional Data Flow",
                 "Observable State Collection and Lifecycle",
+                "Effect Lifecycle and LaunchedEffect",
                 "Coroutine Fundamentals and Structured Concurrency",
                 "Coroutine Context, Dispatchers and Concurrent Work",
                 "Cancellation, Failure and Coordination",
@@ -75,6 +77,7 @@ internal class BundledLearningCurriculumTest {
         // rather than as one value: the document now spans two home Topics.
         assertEquals(
             listOf(
+                "android_ui",
                 "android_ui",
                 "android_ui",
                 "android_ui",
@@ -175,6 +178,16 @@ internal class BundledLearningCurriculumTest {
                 "lesson_lifecycle_aware_collection",
             ),
             unit("unit_observable_state_collection").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "lesson_why_effects_are_controlled",
+                "lesson_launched_effect",
+                "lesson_effect_keys_as_dependencies",
+                "lesson_effect_key_failures",
+            ),
+            unit("unit_effect_lifecycle_and_launched_effect").lessons.map { it.id },
         )
 
         // The coroutines Unit reads as one argument, so its order is the argument:
@@ -400,6 +413,14 @@ internal class BundledLearningCurriculumTest {
             unit("unit_observable_state_collection").lessons.map { it.primarySubtopicIds },
         )
 
+        // Unit 9 is one ownership-and-lifetime argument at four depths. Only the effect
+        // concept becomes practice; its Compose, Kotlin and coroutine prerequisites stay
+        // supporting until the Units that own them are practised.
+        assertEquals(
+            List(4) { listOf("compose_side_effects") },
+            unit("unit_effect_lifecycle_and_launched_effect").lessons.map { it.primarySubtopicIds },
+        )
+
         // Unlike the Compose Units, every Lesson here owns a different concept, and each of
         // the five is a distinct `async_reactive` Subtopic. Unit practice is exactly these
         // five: the cross-Topic bridges the Lessons lean on stay supporting.
@@ -541,6 +562,52 @@ internal class BundledLearningCurriculumTest {
                 ),
             ),
             unit("unit_observable_state_collection").lessons.map { it.supportingSubtopicIds },
+        )
+    }
+
+    @Test
+    fun effectLifecycleUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        assertEquals(
+            listOf(
+                listOf("compose_fundamentals", "compose_recomposition"),
+                listOf(
+                    "coroutine_scope",
+                    "coroutine_cancellation",
+                    "structured_concurrency",
+                    "compose_identity_keys",
+                ),
+                listOf("compose_derived_state", "kotlin_equality", "compose_stability"),
+                listOf("compose_identity_keys", "coroutine_cancellation", "kotlin_lambdas"),
+            ),
+            unit("unit_effect_lifecycle_and_launched_effect").lessons.map {
+                it.supportingSubtopicIds
+            },
+        )
+    }
+
+    @Test
+    fun effectLifecycleUnitLinksBackToItsComposeAndCoroutinePrerequisites() = runTest {
+        val lessons = unit("unit_effect_lifecycle_and_launched_effect").lessons.associateBy { it.id }
+
+        assertEquals(
+            listOf("lesson_composable_execution", "lesson_composition_and_recomposition"),
+            lessons.getValue("lesson_why_effects_are_controlled").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_composable_identity",
+                "lesson_coroutine_scope_ownership",
+                "lesson_cooperative_cancellation",
+            ),
+            lessons.getValue("lesson_launched_effect").relatedLessonIds,
+        )
+        assertEquals(
+            listOf("lesson_remember_key_memoization", "lesson_stability_and_skipping"),
+            lessons.getValue("lesson_effect_keys_as_dependencies").relatedLessonIds,
+        )
+        assertEquals(
+            listOf("lesson_remember_key_memoization"),
+            lessons.getValue("lesson_effect_key_failures").relatedLessonIds,
         )
     }
 

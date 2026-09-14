@@ -42,6 +42,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_production_screen_state_and_udf",
                 "unit_observable_state_collection",
                 "unit_effect_lifecycle_and_launched_effect",
+                "unit_latest_values_and_event_driven_work",
                 "unit_coroutines_and_structured_concurrency",
                 "unit_context_dispatchers_and_concurrency",
                 "unit_cancellation_failure_and_coordination",
@@ -63,6 +64,7 @@ internal class BundledLearningCurriculumTest {
                 "Production Screen State and Unidirectional Data Flow",
                 "Observable State Collection and Lifecycle",
                 "Effect Lifecycle and LaunchedEffect",
+                "Latest-Value Effects and Event-Driven Coroutine Work",
                 "Coroutine Fundamentals and Structured Concurrency",
                 "Coroutine Context, Dispatchers and Concurrent Work",
                 "Cancellation, Failure and Coordination",
@@ -77,6 +79,7 @@ internal class BundledLearningCurriculumTest {
         // rather than as one value: the document now spans two home Topics.
         assertEquals(
             listOf(
+                "android_ui",
                 "android_ui",
                 "android_ui",
                 "android_ui",
@@ -188,6 +191,15 @@ internal class BundledLearningCurriculumTest {
                 "lesson_effect_key_failures",
             ),
             unit("unit_effect_lifecycle_and_launched_effect").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "lesson_remember_updated_state",
+                "lesson_remember_coroutine_scope",
+                "lesson_who_owns_the_trigger",
+            ),
+            unit("unit_latest_values_and_event_driven_work").lessons.map { it.id },
         )
 
         // The coroutines Unit reads as one argument, so its order is the argument:
@@ -421,6 +433,16 @@ internal class BundledLearningCurriculumTest {
             unit("unit_effect_lifecycle_and_launched_effect").lessons.map { it.primarySubtopicIds },
         )
 
+        // Unit 10 separates latest-value and trigger ownership, but both are still depths
+        // of the one effect concept the taxonomy provides. Its coroutine and lifecycle
+        // prerequisites remain supporting, so Unit practice stays on the shared pool.
+        assertEquals(
+            List(3) { listOf("compose_side_effects") },
+            unit("unit_latest_values_and_event_driven_work").lessons.map {
+                it.primarySubtopicIds
+            },
+        )
+
         // Unlike the Compose Units, every Lesson here owns a different concept, and each of
         // the five is a distinct `async_reactive` Subtopic. Unit practice is exactly these
         // five: the cross-Topic bridges the Lessons lean on stay supporting.
@@ -608,6 +630,47 @@ internal class BundledLearningCurriculumTest {
         assertEquals(
             listOf("lesson_remember_key_memoization"),
             lessons.getValue("lesson_effect_key_failures").relatedLessonIds,
+        )
+    }
+
+    @Test
+    fun latestValueAndEventDrivenUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        assertEquals(
+            listOf(
+                listOf("compose_state", "compose_recomposition", "kotlin_lambdas"),
+                listOf("coroutine_scope", "coroutine_builders", "structured_concurrency"),
+                listOf(
+                    "coroutine_scope",
+                    "viewmodel_lifecycle",
+                    "lifecycle_coroutines",
+                    "coroutine_cancellation",
+                ),
+            ),
+            unit("unit_latest_values_and_event_driven_work").lessons.map {
+                it.supportingSubtopicIds
+            },
+        )
+    }
+
+    @Test
+    fun latestValueAndEventDrivenUnitLinksBackToItsEffectAndCoroutinePrerequisites() = runTest {
+        val lessons = unit("unit_latest_values_and_event_driven_work").lessons.associateBy { it.id }
+
+        assertEquals(
+            listOf("lesson_launched_effect", "lesson_effect_keys_as_dependencies"),
+            lessons.getValue("lesson_remember_updated_state").relatedLessonIds,
+        )
+        assertEquals(
+            listOf("lesson_coroutine_scope_ownership", "lesson_coroutine_builders"),
+            lessons.getValue("lesson_remember_coroutine_scope").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_launched_effect",
+                "lesson_coroutine_scope_ownership",
+                "lesson_structured_concurrency",
+            ),
+            lessons.getValue("lesson_who_owns_the_trigger").relatedLessonIds,
         )
     }
 

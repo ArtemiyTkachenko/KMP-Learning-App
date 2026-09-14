@@ -582,11 +582,17 @@ private val LearnAreaTag: String = appNavigationBarItemTag(AppTopLevelDestinatio
 /** Brings one Unit's row into view on the Topic's Study tab, whatever its position in the list. */
 @OptIn(ExperimentalTestApi::class)
 private fun ComposeUiTest.scrollToLearningUnit(unitId: String) {
-    onNodeWithTag(TopicStudyListTag)
+    val topicId = ShippedUnits.single { it.id == unitId }.topicId
+    val topicUnits = ShippedUnits.filter { it.topicId == topicId }
+    val list = onNodeWithTag(TopicStudyListTag)
         .performScrollToNode(hasTestTag(learningUnitCardTag(unitId)))
-        // Minimal scroll-to-visible placement may leave the row underneath floating navigation.
-        // A reader can move it through that overlay; do the same before synthesising the tap.
-        .performTouchInput { swipeUp() }
+
+    // Minimal scroll-to-visible placement may leave a lower row underneath floating navigation.
+    // The first row is already clear of it; an extra swipe there can move that row off-screen once
+    // the Topic contains enough Units to scroll.
+    if (topicUnits.first().id != unitId) {
+        list.performTouchInput { swipeUp() }
+    }
 }
 
 /**

@@ -1449,5 +1449,66 @@ shape, Units 10 and 11 assume Unit 9's key model, and Unit 12 is a synthesis of 
 
 Each authoring issue appends its outcomes here, following the precedent of
 `compose-units-2-6-plan.md` and `coroutines-flow-units-1-6-plan.md`: what it kept, what it
-changed, what it measured, and what the next issue must know. **Nothing has been authored
-yet — E25-01 is planning only.**
+changed, what it measured, and what the next issue must know. E25-01 was planning only; the
+production outcomes begin below.
+
+### E25-02 — Unit 7
+
+`unit_production_screen_state_and_udf` shipped under `android_ui` with all four planned
+identities, titles, mappings and authored order unchanged:
+`lesson_classes_of_screen_state`, `lesson_stateless_screen_content`,
+`lesson_screen_state_and_ui_events`, and `lesson_screen_state_owner_boundary`. The four use
+one question-library screen whose difficulty-menu expansion stays local, whose selected
+difficulty is coordinated by a Compose parent, and whose loaded questions, saved markers and
+load failure come from a screen-level owner. No Question, taxonomy entry, effect API, observable
+state collection, or E26 architecture material was added.
+
+The shipped argument preserves the E23 boundary. L7.1 applies the three existing ownership
+tests to several values on one screen and makes over-hoisting concrete through an inflated
+screen value, local-interaction callbacks, enlarged parameter lists, implementation coupling,
+a wider update surface, and unnecessarily extended lifetime. L7.2 establishes the wiring-screen
+against stateless-content boundary through reuse, previews, isolated verification and one place
+to inspect wiring. L7.3 replaces writable state and owner references with one immutable current
+screen value and intent callbacks, while stating explicitly that local UI-element state can still
+coexist behind that boundary. L7.4 makes owner lifetime — not merely placement outside the
+Composition — decide survival.
+
+The repository-specific lifetime example was rechecked against `App.kt`,
+`docs/architecture/overview.md`, and the current official Navigation 3 state and entry-decorator
+documentation. The configured `NavDisplay` still installs saveable-state and ViewModel-store
+entry decorators; a relevant back-stack entry retains its own `ViewModelStore`, and removing the
+entry clears it. Android configuration recreation is labelled as Android-specific, while the
+general multiplatform claim remains that the host supplies the owner's lifetime. Current Android
+state-hoisting and Compose architecture guidance still supports keeping simple UI-element state
+local, exposing immutable state with events, and using the lowest common owner. Current Compose
+Multiplatform ViewModel guidance still makes host ownership, rather than the class name alone,
+the relevant lifetime boundary.
+
+The intended backward graph shipped. L7.1 and L7.4 link to `lesson_state_hoisting` and
+`lesson_state_down_events_up`; L7.3 links to `lesson_stability_and_skipping`; L7.4 also links to
+`lesson_remember_saveable` and `lesson_work_outside_composition`. The shipped
+`lesson_state_hoisting` and `lesson_remember_saveable` pointers now name this Unit's bounded
+Compose-side screen-owner treatment, explicitly leave detailed state-holder architecture to later
+curriculum, and reciprocally link to `lesson_screen_state_owner_boundary`. No other shipped Lesson
+was edited.
+
+The semantic Question verdicts are unchanged after reading the finished Lessons.
+`compose_state_hoisting_001` remains correct and eligible but assesses E23's one-value hoisting
+foundation rather than Unit 7's whole-screen reasoning. `compose_udf_event_direction` directly
+supports L7.3 because it requires a callback instead of shared writable state or a ViewModel
+reference. GAP-U7-A, GAP-U7-B and GAP-U7-C therefore remain open for E25-08: the Lessons now teach
+all three targets, but teaching does not create assessment coverage. Generated coverage reports
+four Lessons, two distinct primary concepts, and exactly the two eligible Questions above;
+supporting concepts remain excluded from Unit practice. Related-Lesson links are not part of the
+coverage report format and are instead validated by the bundled-content tests.
+
+Validation run during authoring: `python3 tools/learning_question_coverage.py --write` regenerated
+the snapshot; `python3 tools/learning_question_coverage.py --check` reported it current;
+`cd tools && python3 -m unittest test_learning_question_coverage.py` passed 21 tests;
+`./gradlew :shared:jvmTest` passed 1,372 tests after the production catalogue and journey
+expectations were expanded from 21 to 25 `android_ui` Lessons; and
+`./gradlew :shared:allTests` passed Android host, JVM, iOS simulator, JS and Wasm targets;
+`./gradlew :shared:check` also completed successfully. The existing learner's three published
+Lesson identities remained unchanged. E25-03 may assume the screen/content split and immutable
+value-plus-callback contract, but still owns every mechanism that converts an outside observable
+value into Compose state.

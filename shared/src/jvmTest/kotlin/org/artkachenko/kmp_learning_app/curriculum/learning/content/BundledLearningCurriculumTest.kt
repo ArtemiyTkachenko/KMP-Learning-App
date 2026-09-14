@@ -39,6 +39,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_identity_keys_and_stability",
                 "unit_derived_state_and_expensive_work",
                 "unit_snapshot_fundamentals",
+                "unit_production_screen_state_and_udf",
                 "unit_coroutines_and_structured_concurrency",
                 "unit_context_dispatchers_and_concurrency",
                 "unit_cancellation_failure_and_coordination",
@@ -57,6 +58,7 @@ internal class BundledLearningCurriculumTest {
                 "Identity, Keys, Stability and Immutability",
                 "Derived State and Expensive Work",
                 "Snapshot Fundamentals",
+                "Production Screen State and Unidirectional Data Flow",
                 "Coroutine Fundamentals and Structured Concurrency",
                 "Coroutine Context, Dispatchers and Concurrent Work",
                 "Cancellation, Failure and Coordination",
@@ -71,6 +73,7 @@ internal class BundledLearningCurriculumTest {
         // rather than as one value: the document now spans two home Topics.
         assertEquals(
             listOf(
+                "android_ui",
                 "android_ui",
                 "android_ui",
                 "android_ui",
@@ -149,6 +152,16 @@ internal class BundledLearningCurriculumTest {
                 "lesson_snapshot_flow",
             ),
             unit("unit_snapshot_fundamentals").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "lesson_classes_of_screen_state",
+                "lesson_stateless_screen_content",
+                "lesson_screen_state_and_ui_events",
+                "lesson_screen_state_owner_boundary",
+            ),
+            unit("unit_production_screen_state_and_udf").lessons.map { it.id },
         )
 
         // The coroutines Unit reads as one argument, so its order is the argument:
@@ -356,6 +369,16 @@ internal class BundledLearningCurriculumTest {
             unit("unit_snapshot_fundamentals").lessons.map { it.primarySubtopicIds },
         )
 
+        assertEquals(
+            listOf(
+                listOf("compose_state_hoisting"),
+                listOf("compose_udf"),
+                listOf("compose_udf"),
+                listOf("compose_state_hoisting"),
+            ),
+            unit("unit_production_screen_state_and_udf").lessons.map { it.primarySubtopicIds },
+        )
+
         // Unlike the Compose Units, every Lesson here owns a different concept, and each of
         // the five is a distinct `async_reactive` Subtopic. Unit practice is exactly these
         // five: the cross-Topic bridges the Lessons lean on stay supporting.
@@ -451,6 +474,46 @@ internal class BundledLearningCurriculumTest {
                 listOf("coroutine_builders", "structured_concurrency", "coroutine_dispatchers"),
             ),
             unit("unit_context_dispatchers_and_concurrency").lessons.map { it.supportingSubtopicIds },
+        )
+    }
+
+    @Test
+    fun productionScreenStateUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        assertEquals(
+            listOf(
+                listOf("compose_state", "state_ownership", "viewmodel_lifecycle"),
+                listOf("compose_state_hoisting", "compose_previews", "compose_fundamentals"),
+                listOf(
+                    "compose_state",
+                    "unidirectional_data_flow",
+                    "kotlin_data_classes",
+                    "compose_stability",
+                ),
+                listOf(
+                    "state_ownership",
+                    "viewmodel_lifecycle",
+                    "kmp_lifecycle_viewmodel",
+                    "configuration_changes",
+                ),
+            ),
+            unit("unit_production_screen_state_and_udf").lessons.map { it.supportingSubtopicIds },
+        )
+    }
+
+    @Test
+    fun productionScreenOwnerBoundaryCompletesTheTwoShippedForwardPointers() = runTest {
+        val ownerBoundaryId = "lesson_screen_state_owner_boundary"
+        val stateOwnershipUnit = unit("unit_state_and_state_ownership")
+
+        assertTrue(
+            ownerBoundaryId in stateOwnershipUnit.lessons
+                .single { it.id == "lesson_state_hoisting" }
+                .relatedLessonIds,
+        )
+        assertTrue(
+            ownerBoundaryId in stateOwnershipUnit.lessons
+                .single { it.id == "lesson_remember_saveable" }
+                .relatedLessonIds,
         )
     }
 

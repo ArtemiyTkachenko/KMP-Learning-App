@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `0731aa3a43cbdb9254aab3061b2d09a0b2d27ea8a483dd3730d4f04db85fee8c` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `b196caa512342110cf16762cd4209d95317e7a321491069aa7ef00063cc98bb7` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `32abef988f97199c1767cb5ce9af604064ca46ebf9fe061432d5eb54c09661ad` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,10 +68,10 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 12 |
-| Active lessons in those units | 50 |
+| Active learning units | 13 |
+| Active lessons in those units | 54 |
 | Distinct primary subtopics | 31 |
-| Distinct supporting subtopics | 61 |
+| Distinct supporting subtopics | 63 |
 | Unique active questions reached through primary mappings | 77 |
 | Primary subtopics with at least one active question | 31 |
 | Primary subtopics with no active question | 0 |
@@ -97,6 +97,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Identity, Keys, Stability and Immutability (`unit_identity_keys_and_stability`) | 5 | 2 | 1 | 4 | 1 | 6 |
 | Derived State and Expensive Work (`unit_derived_state_and_expensive_work`) | 3 | 1 | 0 | 3 | 0 | 3 |
 | Snapshot Fundamentals (`unit_snapshot_fundamentals`) | 2 | 1 | 2 | 1 | 1 | 4 |
+| Production Screen State and Unidirectional Data Flow (`unit_production_screen_state_and_udf`) | 4 | 2 | 1 | 1 | 0 | 2 |
 | Coroutine Fundamentals and Structured Concurrency (`unit_coroutines_and_structured_concurrency`) | 5 | 5 | 2 | 6 | 0 | 8 |
 | Coroutine Context, Dispatchers and Concurrent Work (`unit_context_dispatchers_and_concurrency`) | 4 | 4 | 1 | 6 | 2 | 9 |
 | Cancellation, Failure and Coordination (`unit_cancellation_failure_and_coordination`) | 5 | 4 | 2 | 6 | 4 | 12 |
@@ -512,6 +513,85 @@ Supporting context — not primary coverage:
 | `flow_fundamentals` — Flow fundamentals | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `hot_vs_cold_streams` — Hot vs cold streams | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `compose_side_effects` — Compose side-effect APIs | 2 | `android_ui` — UI — Views & Jetpack Compose |
+
+### Production Screen State and Unidirectional Data Flow (`unit_production_screen_state_and_udf`)
+
+Home topic: `android_ui` — UI — Views & Jetpack Compose.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 1 | `compose_state_hoisting_001` |
+| APPLIED | 1 | `compose_udf_event_direction` |
+| ADVANCED | 0 | — |
+
+#### Three Classes of State on One Screen (`lesson_classes_of_screen_state`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_state_hoisting` — State hoisting | 1 | 0 | 0 | 1 | `compose_state_hoisting_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `compose_state` — Compose state | 3 | `android_ui` — UI — Views & Jetpack Compose |
+| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+| `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+
+#### The Stateless Content Boundary (`lesson_stateless_screen_content`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_udf` — Unidirectional data flow in Compose | 0 | 1 | 0 | 1 | `compose_udf_event_direction` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `compose_state_hoisting` — State hoisting | 1 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_previews` — Compose previews | 0 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_fundamentals` — Compose fundamentals | 1 | `android_ui` — UI — Views & Jetpack Compose |
+
+#### One Screen State Value, Events Back Up (`lesson_screen_state_and_ui_events`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_udf` — Unidirectional data flow in Compose | 0 | 1 | 0 | 1 | `compose_udf_event_direction` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `compose_state` — Compose state | 3 | `android_ui` — UI — Views & Jetpack Compose |
+| `unidirectional_data_flow` — Unidirectional data flow | 1 | `architecture` — Application Architecture & Design Principles |
+| `kotlin_data_classes` — Data classes | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `compose_stability` — Stability and skippability | 4 | `android_ui` — UI — Views & Jetpack Compose |
+
+#### The Screen-Level Owner as a Bounded Bridge (`lesson_screen_state_owner_boundary`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_state_hoisting` — State hoisting | 1 | 0 | 0 | 1 | `compose_state_hoisting_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+| `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `kmp_lifecycle_viewmodel` — Multiplatform Lifecycle/ViewModel | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
+| `configuration_changes` — Configuration changes | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 
 ### Coroutine Fundamentals and Structured Concurrency (`unit_coroutines_and_structured_concurrency`)
 

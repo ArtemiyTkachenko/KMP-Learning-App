@@ -914,7 +914,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "A realistic screen therefore uses several at once. The article list's scroll position is saved UI state; the identifier of the article being read is a small key in `SavedStateHandle`; the article itself is reloaded from the repository, which reads it from the database. Nothing here is a fallback for anything else. How screen-level state is owned and produced is the subject of the ViewModel unit later in this path; what this lesson fixes is the habit of asking \"what does this have to survive?\" before reaching for an API."
+                  "text": "A realistic screen therefore uses several at once. The article list's scroll position is saved UI state; the identifier of the article being read is a small key in `SavedStateHandle`; the article itself is reloaded from the repository, which reads it from the database. Nothing here is a fallback for anything else. The Production Screen State and Unidirectional Data Flow unit later in this path covers the bounded Compose-side screen-owner boundary; detailed state-holder architecture remains later curriculum. What this lesson fixes is the habit of asking \"what does this have to survive?\" before reaching for an API."
                 },
                 {
                   "type": "callout",
@@ -926,7 +926,8 @@
           ],
           "relatedLessonIds": [
             "lesson_remember_composition_memory",
-            "lesson_observable_state"
+            "lesson_observable_state",
+            "lesson_screen_state_owner_boundary"
           ],
           "sources": [
             {
@@ -1030,7 +1031,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Note the `private set` and the intent-named functions: the class is hoisted state with one write path, not a mutable bag. Because it lives in the Composition it follows the composable's lifecycle, which is what lets it hold Compose-owned types such as a `LazyListState`. What it must not hold is business logic or application data — that is where a screen-level owner takes over, and the `ViewModel` unit later in this path covers it."
+                  "text": "Note the `private set` and the intent-named functions: the class is hoisted state with one write path, not a mutable bag. Because it lives in the Composition it follows the composable's lifecycle, which is what lets it hold Compose-owned types such as a `LazyListState`. What it must not hold is business logic or application data — that is where a screen-level owner may take over. The Production Screen State and Unidirectional Data Flow unit covers that Compose-side boundary without turning it into application architecture; detailed state-holder design remains later curriculum."
                 },
                 {
                   "type": "callout",
@@ -1076,7 +1077,8 @@
           ],
           "relatedLessonIds": [
             "lesson_state_down_events_up",
-            "lesson_remember_composition_memory"
+            "lesson_remember_composition_memory",
+            "lesson_screen_state_owner_boundary"
           ],
           "sources": [
             {
@@ -3690,6 +3692,533 @@
             {
               "title": "Compose runtime source: SnapshotStateList.kt",
               "url": "https://raw.githubusercontent.com/androidx/androidx/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/snapshots/SnapshotStateList.kt"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "unit_production_screen_state_and_udf",
+      "topicId": "android_ui",
+      "title": "Production Screen State and Unidirectional Data Flow",
+      "summary": "A production screen contains several kinds of state at once, and correctness depends on giving each one the owner whose readers, writers and lifetime require it. This unit applies the earlier state-hoisting and state-down/events-up foundations to one complete question-library screen: local element state, state coordinated inside a Compose subtree, one immutable screen value from an outside owner, a stateless rendering boundary, intent callbacks, and the precise lifetime that an outside owner does and does not provide.",
+      "lessons": [
+        {
+          "id": "lesson_classes_of_screen_state",
+          "title": "Three Classes of State on One Screen",
+          "summary": "A realistic question-library screen needs local menu state, a filter shared by sibling composables, and question data supplied by a screen-level owner at the same time. Place each value by applying the reader, writer and lifetime tests, then make the costs of putting it one level too low or several levels too high concrete.",
+          "primarySubtopicIds": [
+            "compose_state_hoisting"
+          ],
+          "supportingSubtopicIds": [
+            "compose_state",
+            "state_ownership",
+            "viewmodel_lifecycle"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The earlier state-hoisting lesson asks where one value should live. A production screen asks a larger question: what happens when several values with different responsibilities share the same screen? Treating the whole screen as one ownership problem is how teams end up with either a child that cannot coordinate with its siblings or a screen-level owner that contains every open menu and visual toggle. The right result usually has more than one owner."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Use the three tests you already know: who reads this value, who writes it, and how long must it live? They are applied here, not derived again; `lesson_state_hoisting` contains the full ownership argument. Consider a question-library screen with a difficulty menu, a result count, a list of interview questions, saved-question markers, and retry when loading fails. Three pieces of state on that one screen have three different answers."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "State on the question-library screen",
+                    "Readers and writers",
+                    "Required lifetime",
+                    "Lowest sensible owner"
+                  ],
+                  "rows": [
+                    [
+                      "Whether the difficulty menu is expanded",
+                      "Only `DifficultyMenu` reads it and its button and dismissal callback write it",
+                      "Only while that menu is composed; closing or recreating it may reset the detail",
+                      "Local to `DifficultyMenu`"
+                    ],
+                    [
+                      "The selected difficulty filter",
+                      "The filter control writes it; the result count and question list both read it",
+                      "While this screen's Compose subtree remains the owner; no application rule depends on it",
+                      "Hoisted to the lowest composable above those siblings"
+                    ],
+                    [
+                      "Loaded questions, saved markers and load failure",
+                      "The whole screen reads them; retry and save intents start changes whose source is outside the UI",
+                      "For the lifetime promised by the screen-level owner, including times when this destination is retained but not composed",
+                      "A screen-level owner outside the Composition"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The first row is meaningful state even though it stays local. It changes what the user sees and accepts input, but no sibling coordinates through it and no longer-lived owner needs it. Production Compose does not mean moving every value into a ViewModel or another state holder. It means making each lifetime and write path deliberate."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun QuestionLibraryScreen(\n    ownerState: QuestionLibraryOwnerState,\n    onRetry: () -> Unit,\n    onToggleSaved: (QuestionId) -> Unit,\n) {\n    var selectedLevel by remember { mutableStateOf(QuestionLevel.All) }\n\n    Column {\n        QuestionFilters(\n            selectedLevel = selectedLevel,\n            onLevelSelected = { selectedLevel = it },\n        )\n        ResultCount(\n            count = ownerState.questions.count { it.matches(selectedLevel) },\n        )\n        QuestionList(\n            questions = ownerState.questions.filter { it.matches(selectedLevel) },\n            savedIds = ownerState.savedIds,\n            onRetry = onRetry,\n            onToggleSaved = onToggleSaved,\n        )\n    }\n}\n\n@Composable\nprivate fun DifficultyMenu(/* current value and selection callback */) {\n    var expanded by remember { mutableStateOf(false) }\n    // Only this element opens and dismisses its menu.\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A production screen can correctly have all three at once: local UI-element state, state hoisted only far enough to coordinate a subtree, and screen state supplied by an owner outside the Composition. `ViewModel` is not a synonym for production, and upward is not the goal. The goal is the lowest sensible owner that satisfies reads, writes, coordination and required lifetime."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A value placed too low fails visibly. If `DifficultyMenu` owns the selected filter as well as its expanded flag, the result count and list cannot read the same selection. Copying the selection into each child creates several truths; threading it sideways creates hidden coordination. The selected filter must move to their common Compose parent because several siblings read it and one of them writes it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The opposite failure is quieter. Suppose every UI detail is pushed into the outside owner because the screen is considered important enough to deserve one. Its state and event surface might become this:"
+                },
+                {
+                  "type": "code",
+                  "code": "data class QuestionLibraryState(\n    val questions: List<QuestionItem>,\n    val savedIds: Set<QuestionId>,\n    val selectedLevel: QuestionLevel,\n    val isDifficultyMenuExpanded: Boolean,\n    val isHelpTextExpanded: Boolean,\n    val pressedQuestionId: QuestionId?,\n)\n\n@Composable\nfun DifficultyMenu(\n    selectedLevel: QuestionLevel,\n    expanded: Boolean,\n    onExpandedChange: (Boolean) -> Unit,\n    onLevelSelected: (QuestionLevel) -> Unit,\n) { /* ... */ }",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "The screen state is inflated with menu, help-text and press details that have nothing to do with producing question data.",
+                    "Purely local interactions require owner methods and callbacks, so the parameter list grows with implementation details rather than screen intent.",
+                    "Changing the menu implementation now changes the outside owner's contract and every caller that wires it.",
+                    "Updates to unrelated local details travel through the screen-level state and its consumers instead of staying inside the smallest affected subtree.",
+                    "Those details inherit the owner's longer lifetime even though their readers and writers disappear with one element."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Return `isDifficultyMenuExpanded`, `isHelpTextExpanded` and press interaction state to the elements that use them. Keep `selectedLevel` at the common Compose parent unless a real product rule or required lifetime makes the outside owner a reader or writer. Keep loaded questions and saved markers at screen level because the UI does not produce those values by itself. This is a concrete reduction in coupling, ownership surface and lifetime, not merely less boilerplate."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"Hoist state as high as possible\" turns a direction into a policy and loses the stopping condition. Moving a value upward is justified only until all necessary readers and writers share one owner and the required lifetime is met. Past that point, every extra level is additional coupling."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The difficult cases are not decided by whether a value looks visual. The selected difficulty is visual in this example, so the Compose subtree can own it. If selecting a difficulty starts a server query, changes a persisted preference, or must be restored after this subtree is removed, the readers, writers or lifetime have changed and screen-level ownership may become correct. The same field can have a different owner under a different requirement."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is also why ownership should be justified from the requirement rather than from a type name. A `Boolean` can represent a local menu expansion or a business decision; a data class can be local UI logic or screen-level state. The owner follows coordination and lifetime, not apparent complexity."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Given several values on one screen, classify each independently. State what breaks if it stays below a required reader, what becomes coupled if it rises above every required reader and writer, and which lifetime the chosen owner actually provides. A strong answer should leave at least one meaningful production value local when its requirements say local."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_state_hoisting",
+            "lesson_state_down_events_up"
+          ],
+          "sources": [
+            {
+              "title": "Where to hoist state",
+              "url": "https://developer.android.com/develop/ui/compose/state-hoisting"
+            },
+            {
+              "title": "State and Jetpack Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_stateless_screen_content",
+          "title": "The Stateless Content Boundary",
+          "summary": "Separate a production screen's owner and state wiring from the composable that renders ordinary values and reports intent. The split is useful because content can then be rendered with arbitrary states, reused with another owner, and reasoned about without constructing the real application boundary.",
+          "primarySubtopicIds": [
+            "compose_udf"
+          ],
+          "supportingSubtopicIds": [
+            "compose_state_hoisting",
+            "compose_previews",
+            "compose_fundamentals"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Once a screen has several owners, it needs one place where their values and events meet. That place is the screen composable. Its job is wiring: obtain the current screen-level value, keep any Compose-owned coordination state at the level chosen in the previous lesson, and connect UI events to the owner that handles each one. The content composable has a different job: render the supplied value and report what the user asks to do."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun QuestionLibraryScreen(\n    owner: QuestionLibraryOwner,\n) {\n    // Adapt the owner's current value at this boundary.\n    // Observable-state conversion is the next unit's subject.\n    val ownerState = currentOwnerState(owner)\n    var selectedLevel by remember { mutableStateOf(QuestionLevel.All) }\n\n    QuestionLibraryContent(\n        state = QuestionLibraryScreenState(\n            questions = ownerState.questions,\n            savedIds = ownerState.savedIds,\n            loadFailed = ownerState.loadFailed,\n            selectedLevel = selectedLevel,\n        ),\n        onLevelSelected = { selectedLevel = it },\n        onRetry = owner::retry,\n        onToggleSaved = owner::toggleSaved,\n    )\n}\n\n@Composable\nfun QuestionLibraryContent(\n    state: QuestionLibraryScreenState,\n    onLevelSelected: (QuestionLevel) -> Unit,\n    onRetry: () -> Unit,\n    onToggleSaved: (QuestionId) -> Unit,\n) {\n    // Render state and report UI intent.\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`QuestionLibraryScreen` is stateful even though not every value it uses is stored in the Composition. It knows the outside owner and it owns the selected filter for its subtree. `QuestionLibraryContent` is stateless in the useful API sense: its signature contains only an immutable current value and callbacks. It does not know whether those inputs came from a ViewModel, a remembered plain state holder, a preview, or a test."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is a screen boundary, not the stateful/stateless overload pair from the earlier hoisting lesson. There is no promise that both functions are interchangeable convenience overloads. The screen function is the application-facing wiring point; the content function is the rendering surface. Their different responsibilities are the reason for two names."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Screen composable means wiring boundary. Content composable means rendering plus reporting intent. Keeping that distinction visible gives the screen one obvious place where owners, current values and event handlers are connected."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The benefits are easiest to see as consequences of the signature rather than as adjectives. A preview can call `QuestionLibraryContent` with an empty state, a long list, an error state or an unusual saved selection. It does not need to construct the production owner, start dependency injection, or wait for data. Preview tooling is not the subject here; the important fact is that ordinary parameters make arbitrary states directly renderable."
+                },
+                {
+                  "type": "code",
+                  "code": "@Preview\n@Composable\nprivate fun QuestionLibraryErrorPreview() {\n    QuestionLibraryContent(\n        state = QuestionLibraryScreenState(\n            questions = emptyList(),\n            savedIds = emptySet(),\n            loadFailed = true,\n            selectedLevel = QuestionLevel.All,\n        ),\n        onLevelSelected = {},\n        onRetry = {},\n        onToggleSaved = {},\n    )\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The same property enables isolated UI tests: the caller supplies a state and records which callback an interaction invokes. That explains testability without teaching a testing framework. It also enables reuse. A demo host, another platform shell, or a future owner can render the same content because none must pretend to be the original owner type."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The split also limits wiring drift. Without it, a descendant may obtain the owner for retry, another may mutate the selected filter, and a third may read a separate saved-state source. The screen no longer has a single place where the rendered value is assembled. With the boundary, replacing the outside owner or changing how the selected filter is retained changes `QuestionLibraryScreen`; the rendering tree keeps the same value-and-callback contract."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Signature clue",
+                    "Consequence"
+                  ],
+                  "rows": [
+                    [
+                      "Content accepts ordinary immutable values and callbacks",
+                      "Any caller can render a chosen state and decide what each event means"
+                    ],
+                    [
+                      "Content accepts the production owner",
+                      "Rendering now requires that owner and inherits its construction, lifetime and dependencies"
+                    ],
+                    [
+                      "Descendants obtain their own owners or state sources",
+                      "There is no single boundary where the screen's current inputs and event routes can be inspected"
+                    ]
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "When reviewing a screen, inspect the content signature. If independently rendering it requires a production owner, dependency graph or live data source, the rendering boundary still owns wiring. A stateless content boundary makes reuse, preview and isolated verification possible because those dependencies have already been translated into values and callbacks."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [],
+          "sources": [
+            {
+              "title": "Compose UI Architecture",
+              "url": "https://developer.android.com/develop/ui/compose/architecture"
+            },
+            {
+              "title": "State and Jetpack Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state"
+            },
+            {
+              "title": "Preview your UI with composable previews",
+              "url": "https://developer.android.com/develop/ui/compose/tooling/previews"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_screen_state_and_ui_events",
+          "title": "One Screen State Value, Events Back Up",
+          "summary": "Make the content boundary a value-based contract: one immutable current screen value travels down, while callbacks describing retry, selection and save intent travel up. Passing writable state or an owner reference downward creates extra write paths, hides ownership and couples rendering to a particular mechanism.",
+          "primarySubtopicIds": [
+            "compose_udf"
+          ],
+          "supportingSubtopicIds": [
+            "compose_state",
+            "unidirectional_data_flow",
+            "kotlin_data_classes",
+            "compose_stability"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The content boundary becomes easiest to understand when it receives one answer to one question: what does the screen render now? For the question library, a small immutable data class can carry the current questions, saved markers, load result and selected filter together. The type is an example that makes the contract visible, not a prescription for modelling every application's loading and error states. Detailed state modelling belongs to later architecture curriculum."
+                },
+                {
+                  "type": "code",
+                  "code": "data class QuestionLibraryScreenState(\n    val questions: List<QuestionItem>,\n    val savedIds: Set<QuestionId>,\n    val loadFailed: Boolean,\n    val selectedLevel: QuestionLevel,\n)\n\n@Composable\nfun QuestionLibraryContent(\n    state: QuestionLibraryScreenState,\n    onLevelSelected: (QuestionLevel) -> Unit,\n    onRetry: () -> Unit,\n    onToggleSaved: (QuestionId) -> Unit,\n) {\n    // Everything rendered at the screen boundary comes from `state`.\n    // Every interaction is reported through an intent-named callback.\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One screen state value does not outlaw local UI-element state. The difficulty menu can still own whether its popup is expanded. The claim is bounded to the screen contract: the values crossing from screen wiring into content form one immutable current snapshot rather than a collection of writable channels. The wiring layer may assemble that snapshot from an outside owner's state and Compose-owned coordination state."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The callbacks describe user intent, not storage operations. `onLevelSelected(level)` says what the user selected; `onRetry()` says they asked to retry; `onToggleSaved(id)` says which question they acted on. The caller decides whether each event changes Compose-owned state, asks the screen owner to do work, or is ignored because the current state no longer permits it. This is state down and events up applied to the complete screen contract, not a new definition of UDF."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "The content renders one immutable current screen value and reports intent upward. It neither owns a second writable copy nor chooses the mechanism that will handle an event."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A writable parameter can look convenient because it removes a callback, but it removes the ownership boundary with it. This version gives the content two direct mutation mechanisms: a `MutableState` for the filter and the production owner for everything else."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun QuestionLibraryContent(\n    owner: QuestionLibraryOwner,\n    selectedLevel: MutableState<QuestionLevel>,\n) {\n    DifficultyMenu(\n        selectedLevel = selectedLevel.value,\n        onLevelSelected = { selectedLevel.value = it },\n    )\n    RetryButton(onClick = owner::retry)\n    QuestionList(\n        questions = owner.currentQuestions,\n        onToggleSaved = owner::toggleSaved,\n    )\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Another write path now exists lower in the tree: any descendant that receives `selectedLevel` can assign it, whether or not that component should make the decision.",
+                    "Ownership is no longer visible in the signature. The reader cannot tell which layer validates a selection or coordinates it with the rest of the screen.",
+                    "The child is coupled to `MutableState` and to the particular production owner instead of to the value it renders and the intents it emits.",
+                    "Preview and reuse require constructing or faking those mechanisms rather than supplying an arbitrary screen value and callbacks.",
+                    "The content can no longer be reasoned about as rendering a supplied snapshot because it reaches through the owner for some values and can mutate another in place."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The rewrite is the value-and-callback signature above. The wiring screen reads the current values once, assembles `QuestionLibraryScreenState`, maps `onLevelSelected` to its Compose-owned filter, and maps retry and save intents to the outside owner. All writes pass back through the layer that owns the affected value. Content remains unaware that those events have different destinations."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Replacing `MutableState<T>` with a mutable holder interface does not fix the direction if the child can still call arbitrary setters. The important boundary is capability: give content the immutable value it must render and only the intent callbacks it is allowed to report."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "An immutable state value is also an understandable observation point. A log, preview or failing test can name the exact snapshot the content received. If fields are mutated behind the same object, neither a reader nor Compose's change detection has a trustworthy boundary at which one screen value became another. Replacing the value makes the transition explicit."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This connects to `lesson_stability_and_skipping` without re-teaching stability. Equality-based reasoning only helps when the value's contract and implementation agree: an immutable snapshot can be compared as a value, while a mutable object whose contents change behind the same reference defeats that reasoning. This lesson needs no `@Stable` or `@Immutable` annotation to make the point."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "UDF is the architecture-side name for the direction, but this unit stops at the Compose boundary. It does not require reducers, action types, state machines or MVI. One current value and constrained callbacks are enough to make ownership inspectable; how an application produces that value is a later design problem."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "When a child receives writable state, name the concrete damage rather than saying only that it violates UDF: an extra write path, unclear ownership, coupling to a state mechanism, harder isolated rendering, and loss of a single supplied snapshot. Then rewrite the contract as immutable state down and intent callbacks up."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_stability_and_skipping"
+          ],
+          "sources": [
+            {
+              "title": "Compose UI Architecture",
+              "url": "https://developer.android.com/develop/ui/compose/architecture"
+            },
+            {
+              "title": "Where to hoist state",
+              "url": "https://developer.android.com/develop/ui/compose/state-hoisting"
+            },
+            {
+              "title": "Stability in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/performance/stability"
+            },
+            {
+              "title": "Data classes",
+              "url": "https://kotlinlang.org/docs/data-classes.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_screen_state_owner_boundary",
+          "title": "The Screen-Level Owner as a Bounded Bridge",
+          "summary": "Moving screen state outside the Composition changes who owns it; it does not itself make the state persistent. Determine what survives from the new owner's actual lifetime, using this app's entry-scoped ViewModels as one concrete multiplatform Navigation 3 example, and stop before application architecture begins.",
+          "primarySubtopicIds": [
+            "compose_state_hoisting"
+          ],
+          "supportingSubtopicIds": [
+            "state_ownership",
+            "viewmodel_lifecycle",
+            "kmp_lifecycle_viewmodel",
+            "configuration_changes"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The question-library data in this unit belongs to a screen-level owner outside the Composition. That sentence tells you who no longer owns it: a composable call site does not. It does not tell you how long the new owner lives. Moving a value across the boundary changes its owner; it grants no persistence by itself."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A ViewModel is a familiar example because a host supplies it from a `ViewModelStoreOwner`, but the same reasoning applies to any outside owner. State survives exactly the events that leave that owner and its storage alive. If the host retains the owner while a composable re-executes or temporarily leaves composition, the value survives. If the host destroys the owner, being outside the Composition offers no further protection."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "What happens to the screen",
+                    "Does entry-scoped owner state survive in this app?",
+                    "What decides"
+                  ],
+                  "rows": [
+                    [
+                      "The composable recomposes or its body executes repeatedly",
+                      "Yes",
+                      "The back-stack entry and its owner are unchanged; recomposition is not the owner's lifetime"
+                    ],
+                    [
+                      "The destination is composed again while the same entry remains",
+                      "Yes",
+                      "The existing entry still supplies the same owner"
+                    ],
+                    [
+                      "Android recreates the UI for a configuration change",
+                      "Yes for a retained ViewModel owner; this is an Android-specific guarantee, not a universal meaning of outside Composition",
+                      "Android retains the relevant `ViewModelStore`, not the fact that the value was moved from a composable"
+                    ],
+                    [
+                      "The learner navigates forward and this destination remains on its back stack",
+                      "Yes",
+                      "The Navigation 3 entry remains, so its entry-scoped `ViewModelStore` remains"
+                    ],
+                    [
+                      "The destination is popped and its entry is removed",
+                      "No",
+                      "The entry's `ViewModelStore` is cleared, which ends that owner's lifetime"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Process recreation is a separate rung. A ViewModel does not survive process death on its own, and an outside owner is not durable storage. Small restorable keys and durable application data use other mechanisms, introduced in their owning curricula. The earlier `lesson_remember_saveable` provides the lifetime ladder; this lesson applies its central question to a screen-level owner."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "\"Outside the Composition\" tells you who no longer owns the state. It does not by itself tell you how long the new owner lives. Ask which host owns it, when that host releases it, and whether a different persistence mechanism is required."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "This repository supplies a concrete example in shared Compose code. Its `NavDisplay` installs a saveable-state entry decorator followed by the lifecycle ViewModel entry decorator. Each relevant Navigation 3 back-stack entry therefore receives its own `ViewModelStore`. Screen ViewModels are resolved at that destination boundary, remain while their entry remains on the area's back stack, and are cleared when the entry is removed."
+                },
+                {
+                  "type": "code",
+                  "code": "NavDisplay(\n    backStack = backStack,\n    entryDecorators = listOf(\n        rememberSaveableStateHolderNavEntryDecorator(),\n        rememberViewModelStoreNavEntryDecorator(),\n    ),\n    entryProvider = entryProvider {\n        entry<QuestionLibraryRoute> {\n            QuestionLibraryDestination()\n        }\n    },\n)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The snippet is evidence about ownership, not a Navigation lesson. The important chain is entry exists, therefore its store exists, therefore the ViewModel and its in-memory state exist. Pop the entry and the chain ends. Navigating forward without removing it is different from popping it even if both actions make the question-library content leave the visible Composition."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Compose Multiplatform provides lifecycle and ViewModel APIs in common code, but the host still supplies the ownership lifetime. Android configuration recreation is one platform-specific case. Desktop, iOS and web hosts do not acquire an Android rotation guarantee merely because the shared owner class is called `ViewModel`; reason from the owner supplied by the actual host."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The screen/content contract does not change when the owner changes. `QuestionLibraryContent` still receives an immutable current value and sends retry, selection and save intent upward. Only `QuestionLibraryScreen` knows how the owner is reached and how its current value enters Compose. Converting an outside observable value into Compose state is the next unit's subject, so no collection mechanism belongs here."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Saying \"the ViewModel survives\" without naming the event and the owner is incomplete. It may survive a particular Android recreation and remain while a navigation entry is retained, yet be cleared on pop and lost with the process. The owner-lifetime chain, not the class name, is the explanation."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "An outside owner is justified when coordination or lifetime crosses the Composition boundary, not when a screen merely looks production-sized. The selected filter in this unit still belongs to a Compose parent because its readers, writers and lifetime stop there. A remembered plain state holder could encapsulate more complicated filter UI logic without moving that state outside the Composition."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Conversely, screen data does not become durable when a ViewModel owns it. The ViewModel can coordinate production and hold the current in-memory value for its scope; persistence requires a mechanism designed for the event to be survived. That distinction prevents three concepts from collapsing into one: ownership says who may change the state, lifetime says when that owner disappears, and persistence says how a value can be reconstructed after it does."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is where the Compose curriculum deliberately stops. How to construct the owner, divide responsibilities among repositories and use cases, model complete UI states, select MVVM or MVI, inject dependencies, or launch owner-scoped work are application-architecture and dependency-injection decisions. The bounded bridge here is only the contract at the Composition edge."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "For each event, trace the real lifetime: recomposition leaves the outside owner untouched; Android configuration recreation can retain a ViewModel through its store; a retained back-stack entry retains its entry owner; removing that entry clears it; process death destroys in-memory state unless another mechanism reconstructs it. Then state which fact is general and which belongs to the current host."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_state_hoisting",
+            "lesson_state_down_events_up",
+            "lesson_remember_saveable",
+            "lesson_work_outside_composition"
+          ],
+          "sources": [
+            {
+              "title": "Where to hoist state",
+              "url": "https://developer.android.com/develop/ui/compose/state-hoisting"
+            },
+            {
+              "title": "Multiplatform ViewModel",
+              "url": "https://kotlinlang.org/docs/multiplatform/compose-viewmodel.html"
+            },
+            {
+              "title": "Save and manage navigation state",
+              "url": "https://developer.android.com/guide/navigation/navigation-3/save-state"
+            },
+            {
+              "title": "Apply logic or wrappers to destinations",
+              "url": "https://developer.android.com/guide/navigation/navigation-3/naventrydecorators"
             }
           ],
           "status": "ACTIVE"

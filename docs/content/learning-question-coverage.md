@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `b196caa512342110cf16762cd4209d95317e7a321491069aa7ef00063cc98bb7` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `c192b05b45d42568948c37861e4c848e1cb827dc1890a16c1a2df33f98e5b5be` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `32abef988f97199c1767cb5ce9af604064ca46ebf9fe061432d5eb54c09661ad` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,10 +68,10 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 13 |
-| Active lessons in those units | 54 |
+| Active learning units | 14 |
+| Active lessons in those units | 58 |
 | Distinct primary subtopics | 31 |
-| Distinct supporting subtopics | 63 |
+| Distinct supporting subtopics | 65 |
 | Unique active questions reached through primary mappings | 77 |
 | Primary subtopics with at least one active question | 31 |
 | Primary subtopics with no active question | 0 |
@@ -98,6 +98,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Derived State and Expensive Work (`unit_derived_state_and_expensive_work`) | 3 | 1 | 0 | 3 | 0 | 3 |
 | Snapshot Fundamentals (`unit_snapshot_fundamentals`) | 2 | 1 | 2 | 1 | 1 | 4 |
 | Production Screen State and Unidirectional Data Flow (`unit_production_screen_state_and_udf`) | 4 | 2 | 1 | 1 | 0 | 2 |
+| Observable State Collection and Lifecycle (`unit_observable_state_collection`) | 4 | 1 | 1 | 2 | 0 | 3 |
 | Coroutine Fundamentals and Structured Concurrency (`unit_coroutines_and_structured_concurrency`) | 5 | 5 | 2 | 6 | 0 | 8 |
 | Coroutine Context, Dispatchers and Concurrent Work (`unit_context_dispatchers_and_concurrency`) | 4 | 4 | 1 | 6 | 2 | 9 |
 | Cancellation, Failure and Coordination (`unit_cancellation_failure_and_coordination`) | 5 | 4 | 2 | 6 | 4 | 12 |
@@ -592,6 +593,85 @@ Supporting context — not primary coverage:
 | `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 | `kmp_lifecycle_viewmodel` — Multiplatform Lifecycle/ViewModel | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
 | `configuration_changes` — Configuration changes | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+
+### Observable State Collection and Lifecycle (`unit_observable_state_collection`)
+
+Home topic: `android_ui` — UI — Views & Jetpack Compose.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 1 | `remember_vs_remember_saveable` |
+| APPLIED | 2 | `compose_state_collection_mutation`, `compose_unremembered_observable_state` |
+| ADVANCED | 0 | — |
+
+#### What a Composable Can and Cannot Observe (`lesson_external_state_in_compose`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_state` — Compose state | 1 | 2 | 0 | 3 | `compose_state_collection_mutation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `stateflow` — StateFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `hot_vs_cold_streams` — Hot vs cold streams | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `compose_snapshot_system` — Compose snapshot-system fundamentals | 4 | `android_ui` — UI — Views & Jetpack Compose |
+
+#### `collectAsState`: Converting a Stream into Compose State (`lesson_collect_as_state`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_state` — Compose state | 1 | 2 | 0 | 3 | `compose_state_collection_mutation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `flow_collection` — Flow collection | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `stateflow` — StateFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `compose_recomposition` — Composition and recomposition | 3 | `android_ui` — UI — Views & Jetpack Compose |
+
+#### Collection Has a Lifetime and a Cost (`lesson_collection_lifetime_and_cost`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_state` — Compose state | 1 | 2 | 0 | 3 | `compose_state_collection_mutation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `flow_collection` — Flow collection | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_sharing` — stateIn, shareIn, and sharing policies | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_cancellation` — Cancellation | 5 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `lifecycle_coroutines` — Lifecycle-aware coroutine scopes | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+
+#### Lifecycle-Aware Collection and the Lifecycle a Screen Actually Has (`lesson_lifecycle_aware_collection`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_state` — Compose state | 1 | 2 | 0 | 3 | `compose_state_collection_mutation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `lifecycle_aware_apis` — Lifecycle-aware APIs | 1 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `kmp_lifecycle_viewmodel` — Multiplatform Lifecycle/ViewModel | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
+| `compose_multiplatform` — Compose Multiplatform fundamentals | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
+| `flow_sharing` — stateIn, shareIn, and sharing policies | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
 ### Coroutine Fundamentals and Structured Concurrency (`unit_coroutines_and_structured_concurrency`)
 

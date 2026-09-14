@@ -1512,3 +1512,61 @@ expectations were expanded from 21 to 25 `android_ui` Lessons; and
 Lesson identities remained unchanged. E25-03 may assume the screen/content split and immutable
 value-plus-callback contract, but still owns every mechanism that converts an outside observable
 value into Compose state.
+
+### E25-03 — Unit 8
+
+`unit_observable_state_collection` shipped under `android_ui` with all four planned identities,
+titles, mappings and authored order unchanged: `lesson_external_state_in_compose`,
+`lesson_collect_as_state`, `lesson_collection_lifetime_and_cost`, and
+`lesson_lifecycle_aware_collection`. Every Lesson keeps `compose_state` as its sole primary
+Subtopic, so Unit practice is derived from that concept only. Flow, coroutine, lifecycle and KMP
+concepts remain supporting context. No Question, taxonomy entry, effect curriculum, Fragment
+collection guidance, Flow testing material, or E26 state-holder architecture was added.
+
+The shipped progression keeps the four planned questions separate. L8.1 shows that reading
+`StateFlow.value` does not connect a later stream update to Compose invalidation, while preserving
+the possibility that an unrelated recomposition reads the newer value. L8.2 presents collection as
+the bridge into snapshot-observed `State`, contrasts the current value supplied by `StateFlow` with
+the explicit initial value required by plain `Flow`, and treats stream identity and `context` only
+as far as the API contract requires. L8.3 makes composition-owned collection, cancellation cost,
+and the independent lifetime of a shared producer concrete. L8.4 then adds lifecycle activity as a
+second gate instead of presenting `collectAsStateWithLifecycle` as an unconditional upgrade.
+Manual `LaunchedEffect` collection is named only as the wrong default abstraction for continuous
+renderable state; E25-04 still owns effect mechanics.
+
+The freshness-sensitive API evidence was rechecked before authoring. Compose Multiplatform remains
+declared at 1.11.1 and resolves AndroidX Compose runtime 1.11.2; the resolved `collectAsState`
+source still gives the `StateFlow` overload its initial `value`, requires `initial` for a plain
+`Flow`, keys the producer by the stream and coroutine context, and applies a non-empty `context` to
+collection. JetBrains lifecycle remains `2.11.0-beta01` in `commonMain`; its resolved source still
+provides the four planned `StateFlow`/`Flow` plus `LifecycleOwner`/`Lifecycle` overloads, defaults to
+`LocalLifecycleOwner.current` and `STARTED`, rejects `INITIALIZED`, and composes `produceState` with
+`repeatOnLifecycle`. Production still calls `collectAsStateWithLifecycle` from `commonMain`.
+
+The platform reasoning was also rechecked against the current configured source and official
+documentation. Android uses its relevant host owner. Desktop maps visible focused windows to
+`RESUMED`, visible unfocused windows to `STARTED`, and minimized or detached windows below the
+default threshold; its shell still supplies `kotlinx-coroutines-swing`. iOS keeps an
+inactive-but-foreground scene at `STARTED` and drops a background or non-appeared scene below it.
+On web, blur alone pauses to `STARTED`, while hiding the page drops below the threshold; the Lesson
+also records the documented normal-host limitations around `CREATED` and `DESTROYED`. These are
+presented as target mappings to one common threshold, not as identical platform lifecycles.
+
+The semantic Question verdicts remain unchanged after reading the finished Lessons.
+`remember_vs_remember_saveable`, `compose_unremembered_observable_state`, and
+`compose_state_collection_mutation` form the three-Question `compose_state` practice pool, but all
+assess E23 material. GAP-U8-A, GAP-U8-B and GAP-U8-C therefore remain open for E25-08: conversion
+and initial state, the plain-versus-lifecycle-aware lifetime decision, and the distinction between
+stopping a UI collector and stopping upstream production are now taught but still unassessed.
+`lifecycle_repeat_on_lifecycle` remains supporting context and was not made Unit practice.
+
+Validation run during authoring: `jq empty` accepted the production document;
+`python3 tools/learning_question_coverage.py --write` regenerated the snapshot;
+`python3 tools/learning_question_coverage.py --check` reported it current;
+`cd tools && python3 -m unittest test_learning_question_coverage.py` passed 21 tests;
+`./gradlew :shared:jvmTest` passed 1,373 tests after the production catalogue, practice and journey
+expectations were expanded from 25 to 29 `android_ui` Lessons; `./gradlew :shared:allTests` passed
+the configured Android host, JVM, iOS simulator, JS and Wasm targets; and
+`./gradlew :shared:check` completed successfully. `iosArm64` was not compiled locally, so no device
+target compile is claimed. E25-04 may assume the external-stream-to-Compose-state and two-gate
+lifetime model, but still owns side effects, `LaunchedEffect`, and effect keys in full.

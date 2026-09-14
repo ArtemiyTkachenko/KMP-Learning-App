@@ -1570,3 +1570,104 @@ the configured Android host, JVM, iOS simulator, JS and Wasm targets; and
 `./gradlew :shared:check` completed successfully. `iosArm64` was not compiled locally, so no device
 target compile is claimed. E25-04 may assume the external-stream-to-Compose-state and two-gate
 lifetime model, but still owns side effects, `LaunchedEffect`, and effect keys in full.
+
+### E25-04 — Unit 9
+
+`unit_effect_lifecycle_and_launched_effect` shipped under `android_ui` immediately after
+`unit_observable_state_collection`, with all four planned identities, titles, mappings and authored
+order unchanged: `lesson_why_effects_are_controlled`, `lesson_launched_effect`,
+`lesson_effect_keys_as_dependencies`, and `lesson_effect_key_failures`. Every Lesson keeps
+`compose_side_effects` as its sole primary Subtopic, so Unit practice is based only on that concept.
+The planned Compose, Kotlin and coroutine concepts remain supporting. No Question, taxonomy entry,
+later effect API, transient-event architecture, state-holder architecture, or E25-05 material was
+added.
+
+The shipped progression is one ownership-and-lifetime argument. L9.1 starts with analytics and
+question work launched directly from a composable body, then makes repeated execution, skipping and
+an abandoned composition expose three different failures in treating body execution as an event or
+lifecycle callback. It corrects "a composable runs once" without replacing it with "a composable
+always runs repeatedly": the runtime owns whether and when the body executes. L9.2 gives
+composition-owned suspend work a precise lifetime and traces entry, ordinary recomposition with
+equal keys, key change, leaving and re-entry. It states that ordinary recomposition does not restart
+the effect, and that key change cancels in-flight old work before launching its replacement.
+
+Cancellation is kept at E24 bridge depth. Compose establishes the owner and lifetime; ordinary
+coroutine cancellation supplies the mechanism. Leaving composition or replacing an effect requests
+cooperative cancellation, which cannot forcibly preempt arbitrary blocking or non-cooperative code.
+Cancellation bounds continued work and does not roll back an external mutation that already
+completed. The context statement is likewise bounded to the resolved public contract: the effect
+uses the Composition's applying coroutine context, with no universal Android-main-thread claim.
+
+The source-sensitive findings were rechecked on 2026-09-14. Compose Multiplatform remains declared
+at 1.11.1, Kotlin and the Compose compiler remain 2.4.10, and Gradle dependency insight still
+resolves `androidx.compose.runtime:runtime:1.11.2` on the JVM. The resolved 1.11.2 `Effects.kt`
+still implements `LaunchedEffect(key1)` as `remember(key1) { LaunchedEffectImpl(...) }`; its KDoc
+still specifies launch on entering Composition, cancellation and relaunch for a different key,
+cancellation on leaving, and points callback-triggered ongoing work to a later mechanism. The
+implementation launches on `onRemembered` and cancels on `onForgotten` and `onAbandoned` through
+ordinary coroutine cancellation.
+
+The exact key conclusion is unchanged. Resolved `Composables.kt` says `remember(key)` retains its
+value when the key compares equal with `==`, and delegates the decision to `Composer.changed`;
+`Composer` documents `changed` in terms of `equals` and exposes `changedInstance` as the separate
+`===` operation. Therefore effect keys use remember-key equality. Strong-skipping parameter
+comparison is a different decision: current official guidance states that stable parameters use
+object equality while unstable parameters use instance equality. The Lessons teach the two
+decisions, not runtime implementation classes.
+
+A bounded throwaway JVM Compose probe was rerun against the configured compiler and resolved
+runtime and then deleted. Across four composition passes it observed starts of **1** for a fresh
+structurally equal data-class key, **4** for a fresh default/identity-equality key, **1** for a
+non-capturing lambda, **1** for a lambda capturing unchanged data, **1** for an explicitly
+remembered lambda, **4** for a lambda capturing changing data, and **1** for `Unit`. Equality is the
+API/runtime contract. The exact lambda results are measured current-toolchain behavior explained by
+compiler memoization, not a timeless promise. The two side-by-side object examples make the other
+conclusion explicit: fresh allocation does not restart an effect unless the supplied key stops
+comparing equal.
+
+L9.3 turns keys into the question "what change should end this lifetime?" rather than a list of
+everything the block reads. It preserves the official used-values heuristic as a useful way to
+find missed invalidating inputs, then establishes its boundary: some long-lived work should remain
+alive while a value becomes current. It names that unresolved requirement without teaching the
+solution E25-05 owns. `LaunchedEffect(Unit)` is taught as the declaration that only this call site
+leaving Composition ends the effect, not as "run once". L9.4 diagnoses both false declarations: a
+constant-key hint sequence remains tied to a stale `questionId`, while a freshly recreated
+identity-equality wrapper repeatedly cancels and replaces still-valid work. It makes discarded
+progress, reset timers, repeated requests and non-rollback of completed external effects concrete.
+
+The intended backward graph shipped unchanged. L9.1 links to `lesson_composable_execution` and
+`lesson_composition_and_recomposition`; L9.2 links to `lesson_composable_identity`,
+`lesson_coroutine_scope_ownership` and `lesson_cooperative_cancellation`; L9.3 links to
+`lesson_remember_key_memoization` and `lesson_stability_and_skipping`; and L9.4 links to
+`lesson_remember_key_memoization`. No forward `relatedLessonIds` were added.
+
+The two ACTIVE Questions were re-solved and checked against their options, explanations and current
+official side-effects source; neither was edited. `compose_launched_effect_key_restart` remains
+correct, correctly mapped and correctly levelled FOUNDATION coverage for the cancel-and-relaunch
+slice of Unit 9. `compose_side_effects_001` remains correct and well-sourced, but its
+`rememberCoroutineScope`, `DisposableEffect` and `SideEffect` reasoning spans Units 10 and 11.
+Generated coverage now reports four Lessons, one distinct primary concept, and two reachable
+FOUNDATION Questions. That is structural reach, not semantic adequacy: Unit 9 learners can still
+receive later material because Units 9–12 share the `compose_side_effects` pool. The limitation is
+accepted for this issue and remains an explicit E25-08 decision rather than being hidden by a false
+mapping or invented taxonomy id.
+
+GAP-U9-A through GAP-U9-D all remain open for E25-08. The finished Lessons now teach uncontrolled
+body work, equality plus needless restart behavior, too-few-key stale work, and the constant key as
+a lifetime claim respectively; shipping teaching does not create assessment coverage. No new
+distinct Unit 9 gap was found. E25-05 may assume that learners can distinguish recomposition from
+effect restart and can decide whether a value should end an effect lifetime. It inherits the clean
+problem that a long-lived effect may need a changing value currently without a restart; E25-05
+still owns the mechanism and event-triggered work in full.
+
+Validation run during authoring: `jq empty` accepted the production document;
+`./gradlew :shared:dependencyInsight --configuration jvmRuntimeClasspath --dependency
+androidx.compose.runtime:runtime` resolved 1.11.2; the throwaway probe passed with
+`./gradlew :shared:jvmTest --tests 'org.artkachenko.kmp_learning_app.E25KeyProbeTempTest'` and was
+removed; the four focused production suites passed together; `python3
+tools/learning_question_coverage.py --write` regenerated the snapshot; its `--check` mode reported
+the snapshot current; `cd tools && python3 -m unittest test_learning_question_coverage.py` passed
+21 tests; `./gradlew :shared:jvmTest` passed the common/JVM suite after the Android UI journey grew
+from 29 to 33 Lessons; and `./gradlew :shared:allTests` passed Android host, JVM, iOS simulator, JS
+and Wasm targets. `./gradlew :shared:check` and `git diff --check` were also run successfully after
+the final authoring change. No `iosArm64` device-target test or external CI run is claimed.

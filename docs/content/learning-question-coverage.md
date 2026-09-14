@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `c192b05b45d42568948c37861e4c848e1cb827dc1890a16c1a2df33f98e5b5be` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `9445308434d29957eac8ea605e00cf7883095b91cb0d42598edf2c51a2f26fc3` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `32abef988f97199c1767cb5ce9af604064ca46ebf9fe061432d5eb54c09661ad` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,12 +68,12 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 14 |
-| Active lessons in those units | 58 |
-| Distinct primary subtopics | 31 |
-| Distinct supporting subtopics | 65 |
-| Unique active questions reached through primary mappings | 77 |
-| Primary subtopics with at least one active question | 31 |
+| Active learning units | 15 |
+| Active lessons in those units | 62 |
+| Distinct primary subtopics | 32 |
+| Distinct supporting subtopics | 66 |
+| Unique active questions reached through primary mappings | 79 |
+| Primary subtopics with at least one active question | 32 |
 | Primary subtopics with no active question | 0 |
 | Active questions in the bank | 389 |
 | Deprecated questions excluded from this report | 41 |
@@ -99,6 +99,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Snapshot Fundamentals (`unit_snapshot_fundamentals`) | 2 | 1 | 2 | 1 | 1 | 4 |
 | Production Screen State and Unidirectional Data Flow (`unit_production_screen_state_and_udf`) | 4 | 2 | 1 | 1 | 0 | 2 |
 | Observable State Collection and Lifecycle (`unit_observable_state_collection`) | 4 | 1 | 1 | 2 | 0 | 3 |
+| Effect Lifecycle and LaunchedEffect (`unit_effect_lifecycle_and_launched_effect`) | 4 | 1 | 2 | 0 | 0 | 2 |
 | Coroutine Fundamentals and Structured Concurrency (`unit_coroutines_and_structured_concurrency`) | 5 | 5 | 2 | 6 | 0 | 8 |
 | Coroutine Context, Dispatchers and Concurrent Work (`unit_context_dispatchers_and_concurrency`) | 4 | 4 | 1 | 6 | 2 | 9 |
 | Cancellation, Failure and Coordination (`unit_cancellation_failure_and_coordination`) | 5 | 4 | 2 | 6 | 4 | 12 |
@@ -672,6 +673,83 @@ Supporting context — not primary coverage:
 | `kmp_lifecycle_viewmodel` — Multiplatform Lifecycle/ViewModel | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
 | `compose_multiplatform` — Compose Multiplatform fundamentals | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
 | `flow_sharing` — stateIn, shareIn, and sharing policies | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+
+### Effect Lifecycle and LaunchedEffect (`unit_effect_lifecycle_and_launched_effect`)
+
+Home topic: `android_ui` — UI — Views & Jetpack Compose.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
+| APPLIED | 0 | — |
+| ADVANCED | 0 | — |
+
+#### Why Compose Needs an Effect API (`lesson_why_effects_are_controlled`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_side_effects` — Compose side-effect APIs | 2 | 0 | 0 | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `compose_fundamentals` — Compose fundamentals | 1 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_recomposition` — Composition and recomposition | 3 | `android_ui` — UI — Views & Jetpack Compose |
+
+#### `LaunchedEffect`: Work a Composition Owns (`lesson_launched_effect`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_side_effects` — Compose side-effect APIs | 2 | 0 | 0 | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `coroutine_scope` — CoroutineScope | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_cancellation` — Cancellation | 5 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `structured_concurrency` — Structured concurrency | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `compose_identity_keys` — Identity and keys | 2 | `android_ui` — UI — Views & Jetpack Compose |
+
+#### What an Effect's Keys Declare (`lesson_effect_keys_as_dependencies`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_side_effects` — Compose side-effect APIs | 2 | 0 | 0 | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `compose_derived_state` — derivedStateOf and derived state | 3 | `android_ui` — UI — Views & Jetpack Compose |
+| `kotlin_equality` — Structural vs referential equality | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `compose_stability` — Stability and skippability | 4 | `android_ui` — UI — Views & Jetpack Compose |
+
+#### Two Ways to Get Effect Keys Wrong (`lesson_effect_key_failures`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_side_effects` — Compose side-effect APIs | 2 | 0 | 0 | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `compose_identity_keys` — Identity and keys | 2 | `android_ui` — UI — Views & Jetpack Compose |
+| `coroutine_cancellation` — Cancellation | 5 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `kotlin_lambdas` — Lambdas and higher-order functions | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 
 ### Coroutine Fundamentals and Structured Concurrency (`unit_coroutines_and_structured_concurrency`)
 

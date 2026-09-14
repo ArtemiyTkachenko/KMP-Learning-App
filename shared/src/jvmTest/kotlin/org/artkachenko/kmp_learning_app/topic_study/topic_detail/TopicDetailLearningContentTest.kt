@@ -35,6 +35,7 @@ internal class TopicDetailLearningContentTest {
                 "unit_snapshot_fundamentals",
                 "unit_production_screen_state_and_udf",
                 "unit_observable_state_collection",
+                "unit_effect_lifecycle_and_launched_effect",
             ),
             items.map { it.unitId },
         )
@@ -48,10 +49,11 @@ internal class TopicDetailLearningContentTest {
                 "Snapshot Fundamentals",
                 "Production Screen State and Unidirectional Data Flow",
                 "Observable State Collection and Lifecycle",
+                "Effect Lifecycle and LaunchedEffect",
             ),
             items.map { it.title },
         )
-        assertEquals(listOf(3, 5, 3, 5, 3, 2, 4, 4), items.map { it.activeLessonCount })
+        assertEquals(listOf(3, 5, 3, 5, 3, 2, 4, 4, 4), items.map { it.activeLessonCount })
         // A discovery row without prose would be a title and a number, so the summary has to survive
         // the mapping rather than merely being present in the document.
         assertTrue(items.all { it.summary.isNotBlank() })

@@ -4750,6 +4750,534 @@
       "status": "ACTIVE"
     },
     {
+      "id": "unit_effect_lifecycle_and_launched_effect",
+      "topicId": "android_ui",
+      "title": "Effect Lifecycle and LaunchedEffect",
+      "summary": "A composable body describes UI; it does not give arbitrary imperative work a reliable owner or lifetime. This unit starts from that missing contract, then uses LaunchedEffect to tie suspend work to one place in the Composition. It traces entry, ordinary recomposition, key change, removal and re-entry, and treats keys as declarations of what should end one effect lifetime and begin another.",
+      "lessons": [
+        {
+          "id": "lesson_why_effects_are_controlled",
+          "title": "Why Compose Needs an Effect API",
+          "summary": "Starting imperative work directly while a composable executes leaves its start count, owner, cancellation and cleanup disconnected from the UI lifetime the programmer intended. Repeated execution, skipping and abandoned recomposition expose different parts of that defect and motivate controlled effect mechanisms.",
+          "primarySubtopicIds": [
+            "compose_side_effects"
+          ],
+          "supportingSubtopicIds": [
+            "compose_fundamentals",
+            "compose_recomposition"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A composable body describes the UI for its current inputs. It is not an imperative lifecycle callback around everything written between its braces. In particular, a composable is not an `onCreate` callback. The equally simple replacement, \"a composable runs many times\", is not a useful guarantee either. The runtime owns whether and when the body executes; application code must not derive an imperative lifetime from one execution of that body."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun QuestionScreen(questionId: String) {\n    analytics.screenOpened(questionId)\n    questionWork.start(questionId)\n\n    QuestionContent(questionId)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Inspect those two imperative statements before asking which API should replace them. How often do they run? Who decides when `questionWork` stops? What happens if the composition attempt that executed them is abandoned? What cancels or cleans up what they started? What happens if this body executes again? The code answers none of those questions. Its defect is deeper than \"recomposition might call it twice\": arbitrary work started from the body has no controlled lifecycle matching the Composition."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The execution rules themselves belong to `lesson_composable_execution` and `lesson_composition_and_recomposition`. This unit applies them. A body may execute repeatedly, may be skipped, may execute in an order its caller must not depend on, and may participate in an optimistic composition whose result is discarded. This contract does not claim that Compose currently executes composables in parallel. It says that application code does not own their timing or count."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "The missing abstraction is ownership. Work needs a start condition, an end condition and a cleanup or cancellation path that agree with the UI lifetime it serves. A raw statement in a composable body has execution timing, not that lifecycle contract."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Repeated execution makes the first failure visible. If the body executes again, `screenOpened` records another opening and `questionWork.start` starts another operation. That can duplicate analytics, registrations or requests and leave several operations claiming to represent one screen. This is conditional wording on purpose: not every recomposition executes every composable. The precise rule is that whenever this body does execute, its ordinary imperative statements execute with it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Skipping exposes a different mistaken assumption. Suppose correctness depends on \"this function body will run now because this logical screen event happened\". The code is using composition as an event dispatcher, but Compose may decide that this composable does not need re-execution. Skipping is not a bug; it is evidence that body execution is the wrong contract for an action that application code expects once per conceptual event."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "An abandoned composition exposes the external-state hazard. Compose may begin calculating an updated UI and discard that result before it becomes the successfully applied UI. The UI described by that pass never takes effect, while an analytics mutation, request or registration performed during body execution cannot necessarily be unhappened. Successful composition and controlled effect execution matter because external work must not escape from a UI result that was never committed."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Execution possibility",
+                    "What direct body work gets wrong"
+                  ],
+                  "rows": [
+                    [
+                      "The body executes again",
+                      "The statement runs again even when the logical work should still have one owner"
+                    ],
+                    [
+                      "The body is skipped",
+                      "The statement cannot stand for a guaranteed application event"
+                    ],
+                    [
+                      "The composition attempt is abandoned",
+                      "External mutation may survive even though the calculated UI is discarded"
+                    ]
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Do not fix this by inventing a `Boolean` that says the body has already run. That flag still needs an owner, a lifetime and a rule for re-entry. The problem is not syntax for suppressing a second call; it is defining what owns the work and what ends it."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The Compose effect family exists because different work needs different ownership answers. Suspend work may belong to a place in the Composition. An external registration may require paired cleanup. A user event may start work at a time chosen by the callback rather than by composition. Long-lived work may need a current value without ending its lifetime. These are four motivating problems, not four APIs to memorize; later units provide the remaining mechanisms."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The right review question is therefore not merely \"is there a side effect in this function?\" It is: which event should begin this work, which owner should bound it, and which event should cancel or clean it up? If the work must continue after this UI position leaves the Composition, a composition-owned effect is the wrong owner. Choosing the longer-lived owner is architecture material outside this unit."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Given work started directly in a composable, explain all three failure dimensions: repeated execution can duplicate it, skipping makes body execution an unreliable event signal, and abandoned composition can discard the UI without rolling back arbitrary external mutation. Then identify the missing owner and lifetime rather than stopping at \"use an effect\"."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_composable_execution",
+            "lesson_composition_and_recomposition"
+          ],
+          "sources": [
+            {
+              "title": "Thinking in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/mental-model"
+            },
+            {
+              "title": "Side-effects in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/side-effects"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_launched_effect",
+          "title": "`LaunchedEffect`: Work a Composition Owns",
+          "summary": "LaunchedEffect launches suspend work when its remembered position enters the Composition and bounds that coroutine by the position's lifetime. Equal keys preserve the running effect across ordinary recomposition; a changed key cancels and replaces it; removal cancels it; re-entry begins a new lifetime.",
+          "primarySubtopicIds": [
+            "compose_side_effects"
+          ],
+          "supportingSubtopicIds": [
+            "coroutine_scope",
+            "coroutine_cancellation",
+            "structured_concurrency",
+            "compose_identity_keys"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "`LaunchedEffect` supplies the ownership contract missing from direct body work. When the effect enters the Composition, Compose launches its block in a coroutine. The effect belongs to its remembered position and call-site identity in the Composition, not merely to the fact that a composable function happened to be called. Compose establishes the owner and lifetime; coroutine cancellation supplies the mechanism."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun QuestionPreview(questionId: String) {\n    LaunchedEffect(questionId) {\n        previewCache.prefetchExplanation(questionId)\n    }\n\n    PreviewContent(questionId)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "What happens to the call site",
+                    "What happens to the effect coroutine"
+                  ],
+                  "rows": [
+                    [
+                      "It enters Composition",
+                      "The block is launched and one effect lifetime begins"
+                    ],
+                    [
+                      "The body executes again and `questionId` still compares equal",
+                      "The existing coroutine keeps running; ordinary recomposition does not restart it"
+                    ],
+                    [
+                      "`questionId` changes according to key comparison",
+                      "The old coroutine is cancelled and a replacement is launched for the new id"
+                    ],
+                    [
+                      "The call site leaves Composition",
+                      "Its coroutine is cancelled"
+                    ],
+                    [
+                      "The call site later re-enters Composition",
+                      "A new effect instance and coroutine lifetime begin"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two events that are often collapsed are now separate: the composable body executes again, and the effect coroutine restarts. The first can happen without the second. If the effect remains at the same composition identity and every key continues to compare equal, recomposition preserves the current effect. A restart is a lifecycle transition caused by a changed key or by leaving and later re-entering, not a synonym for recomposition."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Say \"the effect enters Composition\", not \"the composable was called\". LaunchedEffect owns one coroutine lifetime at one remembered position. Ordinary re-execution with equal keys keeps that lifetime; changed identity or keys end it."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Key change matters most while work is in flight. If `questionId` changes from `q1` to `q2`, Compose cancels the `q1` coroutine and launches the block for `q2`. Cancellation is not an update to the old coroutine's captured variable, and both operations are not intentionally kept alive. Old work is asked to stop; new work starts with the new key."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That stop uses the ordinary coroutine model from `lesson_coroutine_scope_ownership` and `lesson_cooperative_cancellation`. Cancellation is cooperative. A suspending operation that cooperates observes it and unwinds; arbitrary blocking or CPU-bound code that neither suspends nor checks cannot be forcibly preempted by Compose. Therefore \"leaving Composition cancels the effect\" describes the ownership request and coroutine protocol, not an immediate kill switch."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun OptionalQuestion(question: Question?) {\n    if (question != null) {\n        LaunchedEffect(question.id) {\n            hintPulse.playFor(question.id)\n        }\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "When `question` becomes null, that branch and its `LaunchedEffect` call site leave the Composition, so the pulse coroutine is cancelled even if the surrounding screen remains. If a question later becomes non-null, the call site enters again and launches a new effect. `lesson_composable_identity` contains the full identity model; here it explains exactly which UI lifetime owns the work."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Do not say \"recomposition reruns LaunchedEffect\". Recomposition can execute the call again while the remembered effect and its coroutine continue unchanged. Ask whether the position remained in Composition and whether its keys still compare equal."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The resolved Compose runtime 1.11.2 contract says the coroutine context comes from the Composition's applying context, and the runtime launches and cancels the remembered effect through that context. That is enough context detail for this unit. It is not a universal promise that every Compose Multiplatform effect runs on the Android main thread, and dispatcher selection remains coroutine curriculum."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Cancellation also does not provide transaction rollback. If an effect has already sent analytics, written a remote record or otherwise completed an external side effect, cancelling the coroutine cannot unhappen it. Cancellation bounds continued work. Code still needs idempotency or an application-level consistency design when completed external mutations matter."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Trace five moments precisely: entry launches; recomposition with equal keys preserves; key change cancels and replaces; removal cancels cooperatively; re-entry launches a new lifetime. Then state which call-site identity owns the effect and why body execution is not itself a restart event."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_composable_identity",
+            "lesson_coroutine_scope_ownership",
+            "lesson_cooperative_cancellation"
+          ],
+          "sources": [
+            {
+              "title": "Side-effects in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/side-effects"
+            },
+            {
+              "title": "Lifecycle of composables",
+              "url": "https://developer.android.com/develop/ui/compose/lifecycle"
+            },
+            {
+              "title": "Compose runtime Effects source",
+              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
+            },
+            {
+              "title": "Cancellation and timeouts",
+              "url": "https://kotlinlang.org/docs/cancellation-and-timeouts.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_effect_keys_as_dependencies",
+          "title": "What an Effect's Keys Declare",
+          "summary": "An effect key declares a lifetime dependency: a change means the current work is no longer the right work and should end. Keys use the same equality comparison as remember keys, not the instance comparison used for unstable parameters in strong-skipping decisions, and a constant key claims the call site's whole composition lifetime.",
+          "primarySubtopicIds": [
+            "compose_side_effects"
+          ],
+          "supportingSubtopicIds": [
+            "compose_derived_state",
+            "kotlin_equality",
+            "compose_stability"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A key list is a declaration about lifetime. For every candidate value, ask: if this value changes, is the current effect instance no longer the right work? If yes, that value probably participates in the lifetime and belongs in the key declaration. If no, cancelling valid work solely because the value changed may be incorrect. This is stronger than the mechanical rule \"put every value read by the block in the key list\"."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun QuestionHint(questionId: String) {\n    LaunchedEffect(questionId) {\n        hintSequence.play(questionId)\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Here a changed `questionId` means the current hint sequence describes the wrong question, so it should end and a new sequence should begin. `questionId` is a lifetime dependency. By contrast, a changing value that the same long-lived work merely needs to read currently does not automatically deserve to end that work. A later unit solves that latest-value problem; this unit stops at recognizing it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Current Android guidance gives a useful heuristic: variables used by an effect generally belong among its keys. That catches captured inputs whose changes really should invalidate the work. The heuristic is a review prompt, not the final mental model, because some captured values should become current without redefining the effect's lifetime. Always return to the question: what should end this lifetime?"
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Keys do not declare everything the block can read. They declare which changes mean \"the current work is no longer the right work; cancel it and begin again.\""
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "In the resolved AndroidX Compose runtime 1.11.2, this comparison is exact: `LaunchedEffect(key)` is built with `remember(key)`, and `remember` retains its value when the new key compares equal with `==`/`equals`. Effect keys are therefore compared like remember keys. This is the runtime/API contract, not merely an analogy. `lesson_remember_key_memoization` owns the memoization half of the model."
+                },
+                {
+                  "type": "code",
+                  "code": "data class QuestionKey(val id: String)\n\n@Composable\nfun Hint(questionId: String) {\n    LaunchedEffect(QuestionKey(questionId)) {\n        hintSequence.play(questionId)\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Each body execution can allocate a fresh `QuestionKey(\"same\")`. Fresh allocation alone does not restart the effect: two data-class values with the same `id` compare equal, so the remembered key is unchanged. A newly allocated value restarts an effect only when the supplied key stops comparing equal to the previous key."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Decision",
+                    "Comparison used in this project"
+                  ],
+                  "rows": [
+                    [
+                      "Should this effect restart?",
+                      "Effect/remember-key equality: `==` / `equals`"
+                    ],
+                    [
+                      "Can this composable invocation be skipped under strong skipping?",
+                      "Stable parameters use object equality; unstable parameters use instance equality `===`"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Those are different runtime/compiler decisions. A fresh structurally equal object can preserve an effect key while, if its type is unstable, the same fresh instance may prevent a composable invocation from being skipped. `lesson_stability_and_skipping` owns stability and strong skipping; the point here is to keep its parameter comparison out of the effect-key decision."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Lambda keys obey the same equality contract, but source syntax does not tell you whether the instance supplied on a later pass is equal. A probe against this repository's Kotlin/Compose compiler 2.4.10 and runtime 1.11.2 observed one effect start for a non-capturing lambda, one for a lambda capturing unchanged data, and one for an explicitly remembered lambda. A lambda capturing changing data produced a changed instance and four starts across four passes."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The equality comparison is the durable API/runtime contract. The exact lambda instances above are current-toolchain measured behavior: strong skipping memoizes lambdas from their captures, and compiler transformations can evolve. Therefore \"a fresh lambda always restarts an effect\" is not a sound rule. Establish whether the supplied key actually stopped comparing equal, then decide whether it should have been a lifetime dependency at all."
+                },
+                {
+                  "type": "code",
+                  "code": "LaunchedEffect(Unit) {\n    hintPulse.playUntilThisCallSiteLeaves()\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A constant key does not mean \"run once\". It declares that no changing value should restart this effect: the lifetime depends only on this call site remaining in the Composition. That can be exactly right for work intended to last for the call site's whole composition lifetime. It can also hide a missing dependency behind an imperative one-time assumption, so ask explicitly whether that whole lifetime is the requirement."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "For each key candidate, answer two independent questions: does it compare equal to the previous supplied key, and should a real change end the current work? Comparison predicts what Compose does; the lifetime requirement decides whether the declaration is correct."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_remember_key_memoization",
+            "lesson_stability_and_skipping"
+          ],
+          "sources": [
+            {
+              "title": "Side-effects in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/side-effects"
+            },
+            {
+              "title": "Compose runtime Composables source",
+              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Composables.kt"
+            },
+            {
+              "title": "Compose runtime Effects source",
+              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
+            },
+            {
+              "title": "Strong skipping mode",
+              "url": "https://developer.android.com/develop/ui/compose/performance/stability/strongskipping"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_effect_key_failures",
+          "title": "Two Ways to Get Effect Keys Wrong",
+          "summary": "Too few lifetime dependencies let stale work continue after it should have ended. Keys that needlessly stop comparing equal cancel and replace still-valid work, discarding progress and possibly repeating completed external actions. Diagnose both directions from behavior rather than from key-list style.",
+          "primarySubtopicIds": [
+            "compose_side_effects"
+          ],
+          "supportingSubtopicIds": [
+            "compose_identity_keys",
+            "coroutine_cancellation",
+            "kotlin_lambdas"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Wrong keys fail in opposite directions. Too few lifetime dependencies preserve work that has become stale. Keys that stop comparing equal more often than the logical lifetime changes cancel useful work and replace it. Both bugs come from a false declaration about ownership and lifetime, so counting keys or copying every captured value cannot diagnose them."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun QuestionDetails(questionId: String) {\n    LaunchedEffect(Unit) {\n        hintSequence.play(questionId)\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "If this call site remains in the Composition while `questionId` changes, `Unit` still compares equal. The effect does not restart, so the old hint sequence may continue using the previous ID while the screen now shows another question. The diagnosis is not merely \"forgot a key\". The false declaration is that `questionId` does not define this work's lifetime, when in fact a changed question makes the current sequence the wrong work."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The repair follows from the requirement: use `questionId` as the lifetime dependency so a changed question cancels the stale sequence and launches the right one. A constant key was not inherently wrong; it was wrong for this lifetime."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Too few keys produce a lifetime that is too long: stale work continues after the value that made it correct has changed. Name the omitted lifetime dependency, not just the missing argument."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "code",
+                  "code": "data class ValueKey(val id: String)\nclass IdentityKey(val id: String)\n\n@Composable\nfun PulsingHint(questionId: String) {\n    LaunchedEffect(ValueKey(questionId)) {\n        hintPulse.play(questionId)\n    }\n\n    LaunchedEffect(IdentityKey(questionId)) {\n        hintPulse.play(questionId)\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The two fresh keys do not behave alike. `ValueKey` is a data class, so a new value with the same `id` is structurally equal and does not restart its effect. `IdentityKey` inherits default identity equality, so recreating it supplies a value unequal to the previous instance. If the body executes again while `questionId` is unchanged, the second effect is cancelled and replaced even though its logical work is still valid."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A needless restart is not another ordinary function call. `LaunchedEffect` cancels the current coroutine before launching the replacement. A delay or timer resets; animation progress can be discarded; partial UI work can be abandoned; a request can be issued again. If the key keeps becoming unequal on successive passes, the work may never get far enough to finish."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Observed symptom",
+                    "Lifetime diagnosis"
+                  ],
+                  "rows": [
+                    [
+                      "The screen changes item but work continues for the previous id",
+                      "Too few dependencies: a change that should end the effect was omitted"
+                    ],
+                    [
+                      "Valid progress repeatedly resets while the logical item is unchanged",
+                      "A supplied key keeps becoming unequal even though it should not define a new lifetime"
+                    ],
+                    [
+                      "The composable executes again and the effect keeps running",
+                      "Not a bug by itself: equal keys correctly preserve the current effect"
+                    ]
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Do not report \"a new object caused the restart\" until you inspect equality. Fresh, structurally equal data-class keys preserve the effect. The restart requires a supplied key that actually stops comparing equal, such as a newly created identity-equality wrapper."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Lambda keys need the same evidence. With this repository's current compiler, a non-capturing lambda and a lambda whose captures stayed unchanged were memoized in the measured cases; neither restarted the effect. A lambda capturing changing data supplied a different instance and restarted on every measured pass. These observations explain a possible restart storm, but the lasting review rule remains equality plus lifetime intent, not lambda syntax."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Cancellation limits future cooperative work; it does not roll back an external action that already completed. If an effect sent an analytics event before a needless restart, cancelling it cannot retract the event, and the replacement may send another. Key correctness therefore affects both wasted in-flight work and non-transactional external consequences."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Sometimes a long-lived effect should keep running while a value it reads changes. Adding that value as a key may create exactly the restart cost described here, while omitting it naïvely may leave a stale capture. Unit 10 starts from that tension and supplies the appropriate mechanism. This lesson establishes the problem and stops before teaching the solution."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "A composable can recompose without restarting its effect, and an effect restarts because a key changed, not because \"recomposition reruns side effects\". Diagnose stale work as a lifetime that is too long and restart storms as lifetimes that are too short."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_remember_key_memoization"
+          ],
+          "sources": [
+            {
+              "title": "Side-effects in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/side-effects"
+            },
+            {
+              "title": "Compose runtime Composables source",
+              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Composables.kt"
+            },
+            {
+              "title": "Compose runtime Effects source",
+              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
+            },
+            {
+              "title": "Strong skipping mode",
+              "url": "https://developer.android.com/develop/ui/compose/performance/stability/strongskipping"
+            },
+            {
+              "title": "Cancellation and timeouts",
+              "url": "https://kotlinlang.org/docs/cancellation-and-timeouts.html"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
       "id": "unit_coroutines_and_structured_concurrency",
       "topicId": "async_reactive",
       "title": "Coroutine Fundamentals and Structured Concurrency",

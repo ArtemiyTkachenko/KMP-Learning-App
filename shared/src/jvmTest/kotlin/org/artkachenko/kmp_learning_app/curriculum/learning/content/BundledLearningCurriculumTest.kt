@@ -40,6 +40,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_derived_state_and_expensive_work",
                 "unit_snapshot_fundamentals",
                 "unit_production_screen_state_and_udf",
+                "unit_observable_state_collection",
                 "unit_coroutines_and_structured_concurrency",
                 "unit_context_dispatchers_and_concurrency",
                 "unit_cancellation_failure_and_coordination",
@@ -59,6 +60,7 @@ internal class BundledLearningCurriculumTest {
                 "Derived State and Expensive Work",
                 "Snapshot Fundamentals",
                 "Production Screen State and Unidirectional Data Flow",
+                "Observable State Collection and Lifecycle",
                 "Coroutine Fundamentals and Structured Concurrency",
                 "Coroutine Context, Dispatchers and Concurrent Work",
                 "Cancellation, Failure and Coordination",
@@ -73,6 +75,7 @@ internal class BundledLearningCurriculumTest {
         // rather than as one value: the document now spans two home Topics.
         assertEquals(
             listOf(
+                "android_ui",
                 "android_ui",
                 "android_ui",
                 "android_ui",
@@ -162,6 +165,16 @@ internal class BundledLearningCurriculumTest {
                 "lesson_screen_state_owner_boundary",
             ),
             unit("unit_production_screen_state_and_udf").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "lesson_external_state_in_compose",
+                "lesson_collect_as_state",
+                "lesson_collection_lifetime_and_cost",
+                "lesson_lifecycle_aware_collection",
+            ),
+            unit("unit_observable_state_collection").lessons.map { it.id },
         )
 
         // The coroutines Unit reads as one argument, so its order is the argument:
@@ -379,6 +392,14 @@ internal class BundledLearningCurriculumTest {
             unit("unit_production_screen_state_and_udf").lessons.map { it.primarySubtopicIds },
         )
 
+        // Unit 8 applies one Compose concept at four depths. Flow, lifecycle and KMP
+        // concepts are prerequisites and platform context, so Unit practice remains
+        // exactly `compose_state` until E25-08 authors its missing Questions.
+        assertEquals(
+            List(4) { listOf("compose_state") },
+            unit("unit_observable_state_collection").lessons.map { it.primarySubtopicIds },
+        )
+
         // Unlike the Compose Units, every Lesson here owns a different concept, and each of
         // the five is a distinct `async_reactive` Subtopic. Unit practice is exactly these
         // five: the cross-Topic bridges the Lessons lean on stay supporting.
@@ -497,6 +518,29 @@ internal class BundledLearningCurriculumTest {
                 ),
             ),
             unit("unit_production_screen_state_and_udf").lessons.map { it.supportingSubtopicIds },
+        )
+    }
+
+    @Test
+    fun observableStateCollectionUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        assertEquals(
+            listOf(
+                listOf("stateflow", "hot_vs_cold_streams", "compose_snapshot_system"),
+                listOf("flow_collection", "stateflow", "compose_recomposition"),
+                listOf(
+                    "flow_collection",
+                    "flow_sharing",
+                    "coroutine_cancellation",
+                    "lifecycle_coroutines",
+                ),
+                listOf(
+                    "lifecycle_aware_apis",
+                    "kmp_lifecycle_viewmodel",
+                    "compose_multiplatform",
+                    "flow_sharing",
+                ),
+            ),
+            unit("unit_observable_state_collection").lessons.map { it.supportingSubtopicIds },
         )
     }
 

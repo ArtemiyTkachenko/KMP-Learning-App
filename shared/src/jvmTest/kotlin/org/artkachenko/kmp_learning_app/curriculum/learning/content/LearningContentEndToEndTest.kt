@@ -57,6 +57,7 @@ internal class LearningContentEndToEndTest {
                 "unit_derived_state_and_expensive_work",
                 "unit_snapshot_fundamentals",
                 "unit_production_screen_state_and_udf",
+                "unit_observable_state_collection",
             ),
             units.map { it.id },
         )

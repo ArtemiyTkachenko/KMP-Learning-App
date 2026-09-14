@@ -9,6 +9,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteraction
@@ -29,11 +31,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
-import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.runSkikoComposeUiTest
-import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.room3.Room
@@ -134,8 +134,12 @@ internal class LearningProductionContentJourneyTest {
             onNodeWithTag(TopicStudyListTag).performScrollToNode(hasTestTag(TopicStudyProgressTag))
             waitForText("1 of $topicLessonCount lessons studied")
             scrollToLearningUnit(unit.id)
-            onNodeWithTag(learningUnitCardTag(unit.id)).performClick()
-            waitUntil(timeoutMillis = JourneyTimeoutMillis) {
+            onNodeWithTag(learningUnitCardTag(unit.id))
+                .performSemanticsAction(SemanticsActions.OnClick)
+            waitUntil(
+                conditionDescription = "Unit ${unit.id} reopens after its progress update",
+                timeoutMillis = JourneyTimeoutMillis,
+            ) {
                 onAllNodesWithTag(TopicStudyListTag, useUnmergedTree = true)
                     .fetchSemanticsNodes().isEmpty() &&
                     onAllNodesWithText(unit.title).fetchSemanticsNodes().isNotEmpty()
@@ -582,17 +586,8 @@ private val LearnAreaTag: String = appNavigationBarItemTag(AppTopLevelDestinatio
 /** Brings one Unit's row into view on the Topic's Study tab, whatever its position in the list. */
 @OptIn(ExperimentalTestApi::class)
 private fun ComposeUiTest.scrollToLearningUnit(unitId: String) {
-    val topicId = ShippedUnits.single { it.id == unitId }.topicId
-    val topicUnits = ShippedUnits.filter { it.topicId == topicId }
-    val list = onNodeWithTag(TopicStudyListTag)
+    onNodeWithTag(TopicStudyListTag)
         .performScrollToNode(hasTestTag(learningUnitCardTag(unitId)))
-
-    // Minimal scroll-to-visible placement may leave a lower row underneath floating navigation.
-    // The first row is already clear of it; an extra swipe there can move that row off-screen once
-    // the Topic contains enough Units to scroll.
-    if (topicUnits.first().id != unitId) {
-        list.performTouchInput { swipeUp() }
-    }
 }
 
 /**
@@ -654,10 +649,17 @@ private suspend fun ComposeUiTest.openShippedUnit(unit: LearningUnit = ShippedUn
         }
         // A late progress refresh can replace the lazy list and reset its scroll position.
         scrollToLearningUnit(unit.id)
-        onNodeWithTag(learningUnitCardTag(unit.id)).performClick()
+        // Invoke the row's click contract after scrolling it into the lazy semantics tree. A
+        // coordinate click can land on the floating navigation when scroll-to-visible places a
+        // final row beneath it, and an extra swipe can evict an early row from a longer list.
+        onNodeWithTag(learningUnitCardTag(unit.id))
+            .performSemanticsAction(SemanticsActions.OnClick)
         waitForIdle()
     }
-    waitUntil(timeoutMillis = JourneyTimeoutMillis) {
+    waitUntil(
+        conditionDescription = "Unit ${unit.id} opens from the Topic Study list",
+        timeoutMillis = JourneyTimeoutMillis,
+    ) {
         onAllNodesWithTag(TopicStudyListTag, useUnmergedTree = true)
             .fetchSemanticsNodes().isEmpty() &&
             onAllNodesWithText(unit.title).fetchSemanticsNodes().isNotEmpty()

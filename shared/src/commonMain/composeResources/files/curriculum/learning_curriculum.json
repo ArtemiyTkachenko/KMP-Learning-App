@@ -4227,6 +4227,529 @@
       "status": "ACTIVE"
     },
     {
+      "id": "unit_observable_state_collection",
+      "topicId": "android_ui",
+      "title": "Observable State Collection and Lifecycle",
+      "summary": "A screen-level owner can expose a perfectly useful Flow or StateFlow and still not give Compose anything it can observe directly. This unit follows that outside value across the boundary: collection converts it into Compose State, the returned state drives ordinary recomposition, the collection has a composition-owned lifetime and real cost, and lifecycle-aware collection adds a second gate whose meaning is supplied by each Android, desktop, iOS or web host.",
+      "lessons": [
+        {
+          "id": "lesson_external_state_in_compose",
+          "title": "What a Composable Can and Cannot Observe",
+          "summary": "Reading a StateFlow's current value gives a composable data, but it does not connect later stream updates to Compose invalidation. Trace the two separate observation systems and see why collection into Compose State is a real bridge rather than ceremonial syntax.",
+          "primarySubtopicIds": [
+            "compose_state"
+          ],
+          "supportingSubtopicIds": [
+            "stateflow",
+            "hot_vs_cold_streams",
+            "compose_snapshot_system"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Unit 7 ended with a screen-level owner outside the Composition. Suppose that owner exposes `val state: StateFlow<QuestionScreenState>`. The value is observable, but observable to whom? `StateFlow` notifies collectors. Compose invalidates a composition when state from its own snapshot-aware state system that the composition read changes. Those are two observation systems with no automatic connection between them."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun QuestionScreen(owner: QuestionScreenOwner) {\n    val screenState = owner.state.value\n\n    QuestionContent(\n        state = screenState,\n        onRetry = owner::retry,\n    )\n}\n\ninterface QuestionScreenOwner {\n    val state: StateFlow<QuestionScreenState>\n    fun retry()\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "At this execution, `owner.state.value` returns the StateFlow's current value and `QuestionContent` can render it. If the StateFlow later emits another value, however, that update does not itself invalidate this composition. The body did not read a Compose `State.value`; it performed an ordinary Kotlin property read on a type whose notification mechanism is collection."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Do not overstate the defect as \"the UI can never show a newer value\". If some unrelated observed state change causes `QuestionScreen` to recompose, the body can execute again and read the newer `StateFlow.value`. The precise defect is that the stream update itself is not connected to Compose invalidation, so rendering depends accidentally on some other cause of recomposition."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The missing operation is a bridge: collect the external stream, write each collected value into Compose `State<T>`, then read that state while rendering. The path is external observable stream -> collection -> Compose State -> snapshot-observed read -> rendering. Once the value crosses that boundary, the snapshot observation model from `lesson_snapshot_observation` applies normally."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A value can be observable without being observable to Compose. StateFlow owns a collector protocol; Compose owns a snapshot-state protocol. Reliable rendering requires an explicit conversion that connects the first protocol to the second."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "This is the same question-library boundary as Unit 7, one step later. The owner still owns loaded questions, saved markers and load failure. The content still receives one immutable current screen value and callbacks. Nothing about ownership is being reconsidered. Only the wiring composable gains the responsibility to adapt the owner's observable state into the kind of state its rendering system observes."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Read in the composable",
+                    "Who tracks it",
+                    "What a later change does"
+                  ],
+                  "rows": [
+                    [
+                      "`composeState.value`",
+                      "Compose snapshot observation records the read",
+                      "A recorded state change invalidates the reading composition"
+                    ],
+                    [
+                      "`stateFlow.value`",
+                      "No StateFlow collector is established by this property read",
+                      "A later StateFlow update does not itself invalidate the composition"
+                    ],
+                    [
+                      "An arbitrary mutable Kotlin property",
+                      "No observation mechanism unless its type supplies one and the caller subscribes",
+                      "Assignment alone gives Compose no notification"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "StateFlow's retained current value still matters: it gives the conversion a synchronous value to expose immediately. That contract belongs to `lesson_state_flow`; this lesson does not re-teach hot streams, replay or conflation. Likewise, `snapshotFlow` travels in the opposite direction - Compose snapshot State into a Flow - and remains the subject of `lesson_snapshot_flow`."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The conversion belongs at the stateful screen wiring boundary. `QuestionContent` should not know about Flow or the owner. It continues to accept the current `QuestionScreenState`, which preserves the previewable, reusable contract Unit 7 established. The next lesson names the purpose-built conversion API."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "When asked why reading `StateFlow.value` is insufficient in a composable, identify the missing notification path. The read can return useful data now, but it neither starts collection nor records a snapshot-state dependency. A later emission therefore has no direct route to invalidate the composition."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_observable_state",
+            "lesson_snapshot_observation",
+            "lesson_state_flow"
+          ],
+          "sources": [
+            {
+              "title": "State and Jetpack Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state"
+            },
+            {
+              "title": "StateFlow",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-state-flow/"
+            },
+            {
+              "title": "Compose runtime SnapshotState source",
+              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotState.kt"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_collect_as_state",
+          "title": "`collectAsState`: Converting a Stream into Compose State",
+          "summary": "Use collectAsState as the purpose-built bridge from Flow to renderable Compose State. Compare the StateFlow and plain Flow overloads, distinguish a supplied initial value from upstream retention, trace the recomposition path, and treat stream identity as part of collection lifetime.",
+          "primarySubtopicIds": [
+            "compose_state"
+          ],
+          "supportingSubtopicIds": [
+            "flow_collection",
+            "stateflow",
+            "compose_recomposition"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "When the requirement is \"turn this observable stream into the current state this composition renders\", Compose provides `collectAsState`. It starts collection for the conversion, returns `State<T>`, and updates that state as values arrive. Reading the returned state's `value` - directly or through `by` delegation - establishes the Compose-observed dependency the previous lesson was missing."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun QuestionScreen(owner: QuestionScreenOwner) {\n    val screenState by owner.state.collectAsState()\n\n    QuestionContent(\n        state = screenState,\n        onRetry = owner::retry,\n    )\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For `StateFlow<T>`, the resolved Compose runtime's overload is `StateFlow<T>.collectAsState(context)`. It uses `StateFlow.value` as the returned Compose State's initial value. The screen therefore has the owner's real current state on first composition; the caller does not invent a loading placeholder merely to start collection. Why StateFlow can supply that value is already taught in `lesson_state_flow`."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A plain `Flow<T>` has a different overload: `Flow<T>.collectAsState(initial, context)`. It requires an explicit initial value because an arbitrary Flow does not necessarily expose a current value synchronously before collection begins. The supplied value is simply what the returned Compose State exposes until collection supplies another value. It is not a hidden cache in the Flow, SharedFlow replay, StateFlow retention, saved state or durable persistence."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun SearchStatus(results: Flow<SearchResult>) {\n    val result by results.collectAsState(\n        initial = SearchResult.Loading,\n    )\n\n    SearchResultContent(result)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The complete path is now visible: Flow emission -> the collector writes the returned State -> Compose observes that State change -> the composition that read it is invalidated -> recomposition reads the new value. This is ordinary state-driven recomposition, not a special rendering mode for Flow. `lesson_composition_and_recomposition` owns the deeper recomposition model."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "`collectAsState` is state conversion. StateFlow supplies its own current value as the initial Compose value; plain Flow requires the caller to supply what should be rendered until the first collected value arrives."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A common near-miss is to build the stream inline. In this example, `observeQuestions()` may return a stable stream, but `map` creates a new Flow object whenever `QuestionScreen` executes. The resolved runtime keys its state producer on the initial value, Flow instance and context. When the supplied Flow instance changes, the previous conversion is replaced and a new collection starts."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun QuestionScreen(repository: QuestionRepository) {\n    val state by repository.observeQuestions()\n        .map { questions -> QuestionScreenState(questions) }\n        .collectAsState(initial = QuestionScreenState.Loading)\n\n    QuestionContent(state = state)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Do not turn that into \"Flow operators in composables are always slow\". The issue is identity and intended lifetime: changing the stream supplied to the conversion means replacing the collection. That is correct when an input such as a question id deliberately selects a different stream. It is wasteful or behaviourally surprising when recomposition accidentally constructs an equivalent stream and restarts cold upstream work. Give the stream a stable owner or memoize the derived stream against the inputs that should actually replace it. Operator semantics remain E24's subject."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The optional `context` parameter controls the coroutine context used for collection. With the default empty context, collection uses the state producer's existing context; with a supplied context, the resolved implementation collects inside that context. This is not a general dispatcher lesson and it does not replace `flowOn`: the Flow curriculum owns context preservation and dispatcher placement."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Do not make a remembered `MutableState`, launch an effect, collect the Flow by hand and assign every value merely to render ongoing state. Such code can be made to work, but it hides the requirement behind a general effect mechanism. `collectAsState` states the job directly. Manual collection belongs where receiving values performs an effect rather than exposes current renderable state; later units make that distinction precise."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The verified Compose runtime 1.11.2 source implements the Flow overload through `produceState(initial, this, context)`. That source relationship proves why stream identity and context participate in replacement and why equal assignments are conflated by the returned State. It is evidence for the public contract, not the mental model learners should lead with: Unit 11 teaches `produceState` as its own mechanism."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Initial-value choice is part of UI correctness. A fabricated empty state can briefly claim \"there are no questions\" while a cold Flow has not emitted; an explicit loading state says what is actually known. StateFlow avoids that invented gap only because its contract already includes a current value. The API removes a placeholder requirement, not the need to model honest screen states."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "A strong explanation names both overloads, then follows one emission all the way to invalidation. It also treats the Flow object supplied to the composable as a lifetime input: a deliberately changed stream should replace collection; an accidentally fresh equivalent stream should not."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_observable_state",
+            "lesson_snapshot_observation",
+            "lesson_state_flow",
+            "lesson_composition_and_recomposition"
+          ],
+          "sources": [
+            {
+              "title": "State and Jetpack Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state"
+            },
+            {
+              "title": "Compose runtime SnapshotFlow source",
+              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotFlow.kt"
+            },
+            {
+              "title": "Flow context",
+              "url": "https://kotlinlang.org/docs/flow.html#flow-context"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_collection_lifetime_and_cost",
+          "title": "Collection Has a Lifetime and a Cost",
+          "summary": "Ordinary collectAsState keeps a collector active while its state producer remains in Composition. Make that lifetime concrete through database observation and transformation work, then keep UI collector cancellation separate from ownership of a cold or shared upstream producer.",
+          "primarySubtopicIds": [
+            "compose_state"
+          ],
+          "supportingSubtopicIds": [
+            "flow_collection",
+            "flow_sharing",
+            "coroutine_cancellation",
+            "lifecycle_coroutines"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Conversion is active work. Ordinary `collectAsState` owns a collection for as long as that state producer's composable call site remains in Composition. Recomposition by itself does not mean \"start another collector\" when the relevant inputs are unchanged. When the call site actually leaves Composition, the composition-owned producer is cancelled and its collection ends."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That statement is deliberately about Composition, not about an informal idea of a visible screen. A navigation system can remove destination content from Composition, retain it, or keep related host structures alive according to its own design. The precise claim is: when this destination's collection call actually leaves Composition, ordinary `collectAsState` cancels that conversion. Whether a destination is visible is a separate fact."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Event",
+                    "Ordinary collectAsState collection"
+                  ],
+                  "rows": [
+                    [
+                      "The composable recomposes with the same Flow, initial value and context",
+                      "The existing conversion remains; recomposition alone does not create a second collector"
+                    ],
+                    [
+                      "The Flow instance supplied to the call changes",
+                      "The previous producer is cancelled and collection restarts for the replacement stream"
+                    ],
+                    [
+                      "The call site actually leaves Composition",
+                      "Its producer is cancelled and this UI collection ends"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Cancellation is ordinary cooperative coroutine cancellation. Compose does not \"kill the Flow\", and cancellation cannot instantly interrupt arbitrary blocking or CPU-bound work. `lesson_flow_collection_lifetime` and `lesson_cooperative_cancellation` own those mechanics; here they explain what ending the composition-owned collector requests."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Ask two separate lifetime questions: is this conversion still in Composition, and does the exact Flow identity supplied to it still represent the same source? Those facts decide whether ordinary collection remains active or is replaced."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Imagine the question library observes a Room query, maps database rows into display models, combines saved markers, and records the latest result in screen state. Keeping the UI collector active can mean four concrete things: a collector coroutine remains alive; every emission is still processed; database observation or another upstream subscription may remain active; and the conversion keeps producing Compose-state updates for UI the user is not currently looking at. A different source might poll a service or keep a socket subscription, making the resource consequence larger."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "The collector itself occupies a coroutine and remains ready for values.",
+                    "Mapping, combining, filtering or other upstream work may still execute for each value.",
+                    "A cold source collected only here may keep its database observer, polling loop or callback subscription alive.",
+                    "A shared source may stay active because another scope and sharing policy own its production.",
+                    "The conversion can write new UI state even while the host is not active enough for those updates to matter."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "None of this means every Flow is expensive. A quiet in-memory StateFlow may cost very little, and continuous collection may be intentional when the UI must remain current. The defect is a lifetime that exceeds the requirement, especially when upstream work is scarce, battery-sensitive, networked or produces frequent transformations. Cost is a reason to choose a policy, not a reason to fear Flow."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Do not use \"navigated away\" as proof that collection stopped. First establish that this destination's content actually left Composition. If it did, this composition-owned collector ends. If the content remains composed, ordinary `collectAsState` has no host-visibility gate and continues."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Stopping the UI collector does not by itself prove that upstream production stopped. For a cold Flow whose producer runs only in this collecting coroutine, ending collection normally ends that production too, subject to cooperative cancellation. For a hot or shared stream, production can belong to an owner scope that outlives this screen. The upstream owner's lifetime and sharing policy decide whether it continues."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is the whole sharing bridge this unit needs. `lesson_sharing_cold_flows` teaches `stateIn`, `shareIn`, `SharingStarted` and their timers. At the Compose boundary, keep the responsibility split visible: collection policy decides whether this UI subscribes; sharing policy decides what the shared producer does as subscribers appear and disappear. Changing one does not silently rewrite the other."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This distinction also prevents a misleading performance claim. Lifecycle-aware collection can remove one unnecessary subscriber and its downstream processing, yet an eagerly owned shared producer may correctly continue. Conversely, a cold database Flow may release its only observer as soon as the UI collection ends. Measure the real producer and owner rather than inferring resource use from the UI API's name."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Trace both sides of the boundary. First say when the Compose collector ends. Then identify whether the upstream is cold and owned by that collection or hot/shared and owned elsewhere. Only the second answer tells you whether production stopped."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_flow_collection_lifetime",
+            "lesson_sharing_cold_flows",
+            "lesson_cooperative_cancellation"
+          ],
+          "sources": [
+            {
+              "title": "Compose runtime SnapshotFlow source",
+              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotFlow.kt"
+            },
+            {
+              "title": "Flow cancellation checks",
+              "url": "https://kotlinlang.org/docs/flow.html#flow-cancellation-checks"
+            },
+            {
+              "title": "StateFlow and SharedFlow",
+              "url": "https://developer.android.com/kotlin/flow/stateflow-and-sharedflow"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_lifecycle_aware_collection",
+          "title": "Lifecycle-Aware Collection and the Lifecycle a Screen Actually Has",
+          "summary": "A composable can remain in Composition while its host is not active enough to justify upstream collection. Add lifecycle as an independent gate with collectAsStateWithLifecycle, then predict default STARTED behavior from the actual Android, desktop, iOS and web host mappings used by this KMP project.",
+          "primarySubtopicIds": [
+            "compose_state"
+          ],
+          "supportingSubtopicIds": [
+            "lifecycle_aware_apis",
+            "kmp_lifecycle_viewmodel",
+            "compose_multiplatform",
+            "flow_sharing"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Composition lifetime and host lifecycle answer different questions. A conversion may still be in Composition while its host window, scene or page is no longer active enough to justify database observation, polling or repeated transformations. Ordinary `collectAsState` has only the composition gate. Lifecycle-aware conversion adds a policy for pausing upstream collection without requiring the composition itself to disappear."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun QuestionScreen(owner: QuestionScreenOwner) {\n    val screenState by owner.state.collectAsStateWithLifecycle()\n\n    QuestionContent(\n        state = screenState,\n        onRetry = owner::retry,\n    )\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Conversion",
+                    "When upstream is collected"
+                  ],
+                  "rows": [
+                    [
+                      "`collectAsState`",
+                      "While the Compose state producer remains in Composition, subject to replacement when its inputs change"
+                    ],
+                    [
+                      "`collectAsStateWithLifecycle`",
+                      "While the state producer remains in Composition and the relevant lifecycle is at least the configured active state"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "In this repository's configured lifecycle runtime Compose 2.11.0-beta01, `collectAsStateWithLifecycle` defaults to `LocalLifecycleOwner.current` and `minActiveState = Lifecycle.State.STARTED`. At or above that state, it collects upstream. Below it, collection stops; when the lifecycle reaches the threshold again, collection restarts. `INITIALIZED` is not a valid threshold and the API rejects it with `IllegalArgumentException`."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The StateFlow overload uses the stream's current `value` initially. The plain Flow overload requires `initialValue`, just as plain `collectAsState` does. Overloads can also take an explicit `LifecycleOwner` or `Lifecycle`; the default owner is usually the portable screen-level choice because the host provides it through the composition."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Lifecycle-aware collection has two independent gates: is this conversion still in Composition, and is its lifecycle at least the chosen active state? Upstream is collected only when both answers are yes."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "`collectAsStateWithLifecycle` is not Android-only in this project. The dependency `org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:2.11.0-beta01` is declared in `commonMain`, resolves to the AndroidX multiplatform implementation in package `androidx.lifecycle.compose`, and production destination composables already import it from shared code. The API is common; the lifecycle that drives it is supplied by the actual platform host."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Target",
+                    "How the host maps activity",
+                    "Default STARTED result"
+                  ],
+                  "rows": [
+                    [
+                      "Android",
+                      "The relevant Activity, Fragment or navigation-entry LifecycleOwner supplies state",
+                      "Collection is active at STARTED or RESUMED and stops when that owner falls below STARTED"
+                    ],
+                    [
+                      "Desktop",
+                      "Visible and focused maps to RESUMED; visible but unfocused to STARTED; minimized or detached to CREATED; disposal to DESTROYED",
+                      "Losing focus alone keeps collection active; minimizing stops it"
+                    ],
+                    [
+                      "iOS",
+                      "Appeared, foreground and active maps to RESUMED; appeared and foreground but inactive to STARTED; background or not appeared to CREATED",
+                      "An inactive foreground scene keeps collection active; backgrounding stops it"
+                    ],
+                    [
+                      "Web",
+                      "Focus resumes, blur pauses to STARTED, and a hidden page stops; the documented normal host model skips CREATED and does not reach DESTROYED",
+                      "A visible but blurred page keeps collection active; hiding the tab stops it"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The portable model is not to memorize four event tables. `STARTED` expresses one common threshold, but each platform decides how window, scene or page activity maps onto lifecycle states. Therefore common API availability does not imply identical user-action behavior. Given a bug report such as \"collection continues when the desktop window loses focus\", inspect the host mapping before assuming the API failed: an unfocused visible desktop window is still STARTED in the configured Compose Multiplatform 1.11.1 host."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For desktop, JetBrains also notes that lifecycle coroutine scopes rely on `Dispatchers.Main.immediate`, which needs a Main dispatcher implementation. This repository's desktop application already declares `kotlinx-coroutines-swing`; that configuration supports the host contract. It is a platform setup note, not a reason to teach dispatcher selection again."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Do not reduce the decision to \"always use `collectAsStateWithLifecycle` because it is safer\". Continuous collection can be the requirement, and some sources are cheap. Choose lifecycle-aware conversion when upstream should pause below a host-activity threshold; choose plain conversion when composition lifetime is the intended policy."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The resolved source builds lifecycle-aware conversion from `produceState` and `repeatOnLifecycle`. That implementation evidence explains the two gates: Compose owns the returned State and cancels its producer when the call leaves Composition; the lifecycle block starts and stops upstream collection around the active threshold. This lesson uses that relationship to verify behavior, while Unit 11 remains responsible for teaching `produceState` itself and lifecycle curriculum remains responsible for `repeatOnLifecycle` in View hosts."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Pausing the lifecycle-aware collector still does not settle the upstream producer's lifetime. When the lifecycle falls below STARTED, this subscriber is removed and later re-established. A cold source tied only to it normally stops and starts with that collection. A shared source follows the owner scope and sharing policy taught in `lesson_sharing_cold_flows`. Lifecycle policy and sharing policy must be reviewed together when resource use matters."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Version precision matters here because the configured lifecycle artifact is beta. These overloads, defaults and mappings were rechecked against this repository's resolved 2.11.0-beta01 lifecycle sources and its Compose Multiplatform 1.11.1 host sources, with Compose runtime resolving to 1.11.2. A future dependency update should re-read those contracts rather than preserve this table by assumption."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Given a target, current host state and collection API, answer in order: is the call still in Composition; which LifecycleOwner is relevant; what state does this host map the user action to; is that state at least the threshold; and who owns upstream production after this collector stops?"
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_state_flow",
+            "lesson_flow_collection_lifetime",
+            "lesson_sharing_cold_flows"
+          ],
+          "sources": [
+            {
+              "title": "Lifecycle in Compose Multiplatform",
+              "url": "https://kotlinlang.org/docs/compose-lifecycle.html"
+            },
+            {
+              "title": "Lifecycle-aware Flow collection for Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state#flows"
+            },
+            {
+              "title": "Lifecycle runtime Compose Flow extensions source",
+              "url": "https://github.com/androidx/androidx/blob/androidx-main/lifecycle/lifecycle-runtime-compose/src/commonMain/kotlin/androidx/lifecycle/compose/FlowExt.kt"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
       "id": "unit_coroutines_and_structured_concurrency",
       "topicId": "async_reactive",
       "title": "Coroutine Fundamentals and Structured Concurrency",

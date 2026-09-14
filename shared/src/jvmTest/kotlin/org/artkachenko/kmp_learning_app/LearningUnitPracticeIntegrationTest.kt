@@ -109,7 +109,7 @@ internal class LearningUnitPracticeIntegrationTest {
             val originalRecords = studyRepository.getStudiedLessons()
             val units = BundledLearningContentRepository().getActiveUnitsByTopic("android_ui")
             assertEquals(publishedIds, units.first().lessons.map { it.id }.toSet())
-            assertEquals(listOf(5, 3, 5, 3, 2, 4), units.drop(1).map { it.lessons.size })
+            assertEquals(listOf(5, 3, 5, 3, 2, 4, 4), units.drop(1).map { it.lessons.size })
 
             // Keep the real parent ViewModels alive throughout every child mutation.
             val browser = browser()
@@ -119,7 +119,7 @@ internal class LearningUnitPracticeIntegrationTest {
                 topic.uiState.await { state ->
                     state is TopicDetailUiState.Content &&
                         (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
-                        StudyProgressSummary.Progress(count, 25)
+                        StudyProgressSummary.Progress(count, 29)
                 }
             }
             suspend fun awaitNext(unitId: String, lessonId: String) {
@@ -212,7 +212,7 @@ internal class LearningUnitPracticeIntegrationTest {
                 state is TopicBrowserUiState.Content && state.continueLearning == ContinueLearningUiModel.Complete
             }
             // The `android_ui` Topic's own progress is unaffected by Units in another Topic.
-            awaitTopic(25)
+            awaitTopic(29)
             val firstCoroutinesUnit = coroutinesUnits.first()
             val lastLessonInFirstCoroutinesUnit = firstCoroutinesUnit.lessons.last()
             val coroutinesReader = lesson(firstCoroutinesUnit.id, lastLessonInFirstCoroutinesUnit.id)
@@ -244,7 +244,7 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             reader.toggleStudied()
             awaitNext(earlierUnit.id, earlierLesson.id)
-            awaitTopic(24)
+            awaitTopic(28)
             parents.getValue(earlierUnit.id).uiState.await { state ->
                 state is LearningUnitUiState.Content &&
                     (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
@@ -252,9 +252,9 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             val rebuilt = LocalLessonStudyRepository(database)
             assertFalse(rebuilt.isStudied(earlierLesson.id))
-            // 25 `android_ui` Lessons plus 29 in the coroutines and Flow Units, less the
+            // 29 `android_ui` Lessons plus 29 in the coroutines and Flow Units, less the
             // one that was just un-studied.
-            assertEquals(53, rebuilt.getStudiedLessons().size)
+            assertEquals(57, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -269,6 +269,10 @@ internal class LearningUnitPracticeIntegrationTest {
                 "unit_identity_keys_and_stability" to (setOf("compose_identity_keys", "compose_stability") to 6),
                 "unit_derived_state_and_expensive_work" to (setOf("compose_derived_state") to 3),
                 "unit_snapshot_fundamentals" to (setOf("compose_snapshot_system") to 4),
+                // E25-03. All four Lessons apply `compose_state`; Flow, lifecycle and KMP
+                // concepts remain supporting context, so the existing three Compose-state
+                // Questions are deduplicated into one Unit practice pool.
+                "unit_observable_state_collection" to (setOf("compose_state") to 3),
                 // E24-02. Five Lessons, five distinct primary concepts, and the cross-Topic
                 // bridges into lifecycle, performance, Android platform and Kotlin stay out
                 // of the scope entirely — which is what `supportingOnly` below proves.

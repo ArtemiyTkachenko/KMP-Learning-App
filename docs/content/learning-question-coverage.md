@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `b339136deda446637dfd35cd815a63fa3f3d4fb8ae52bdc1d333249e757c0686` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `a98e21e94700fff879fe0fe6fb28a251c8ef3a86e065615cd2247eaf2c1e1419` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `caeeab0b5a3687d822a8a48cd260ecb4bb8bfc02fa9ccc268f57b1ef6550e00a` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,13 +68,13 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 18 |
-| Active lessons in those units | 72 |
-| Distinct primary subtopics | 32 |
-| Distinct supporting subtopics | 68 |
-| Unique active questions reached through primary mappings | 91 |
-| Primary subtopics with at least one active question | 32 |
-| Primary subtopics with no active question | 0 |
+| Active learning units | 19 |
+| Active lessons in those units | 77 |
+| Distinct primary subtopics | 37 |
+| Distinct supporting subtopics | 76 |
+| Unique active questions reached through primary mappings | 96 |
+| Primary subtopics with at least one active question | 36 |
+| Primary subtopics with no active question | 1 |
 | Active questions in the bank | 401 |
 | Deprecated questions excluded from this report | 41 |
 
@@ -109,6 +109,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Flow Fundamentals (`unit_flow_fundamentals`) | 5 | 3 | 5 | 2 | 0 | 7 |
 | Flow Composition, Timing and Failure (`unit_flow_composition_timing_and_failure`) | 5 | 3 | 4 | 7 | 0 | 11 |
 | StateFlow, SharedFlow and Hot Streams (`unit_stateflow_sharedflow_and_hot_streams`) | 5 | 4 | 4 | 3 | 4 | 11 |
+| Architecture as Responsibilities and Boundaries (`unit_architecture_responsibilities_and_boundaries`) | 5 | 5 | 2 | 3 | 0 | 5 |
 
 ## Unit and lesson detail
 
@@ -1516,6 +1517,103 @@ Supporting context — not primary coverage:
 | `flow_sharing` — stateIn, shareIn, and sharing policies | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
 
+### Architecture as Responsibilities and Boundaries (`unit_architecture_responsibilities_and_boundaries`)
+
+Home topic: `architecture` — Application Architecture & Design Principles.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 2 | `dependency_direction_domain_framework_types`, `separation_of_concerns_001` |
+| APPLIED | 3 | `architecture_interface_boundary_ownership`, `architecture_paging_ownership`, `dto_entity_domain_model_boundary` |
+| ADVANCED | 0 | — |
+
+#### What Architecture Actually Decides (`lesson_what_architecture_decides`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `separation_of_concerns` — Separation of concerns | 1 | 0 | 0 | 1 | `separation_of_concerns_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 0 | `architecture` — Application Architecture & Design Principles |
+| `layered_architecture` — Layered architecture | 2 | `architecture` — Application Architecture & Design Principles |
+| `android_modules` — Application/library modules | 1 | `build_delivery` — Build System, Modularization & Delivery |
+
+#### Responsibility, Cohesion and What Changes Together (`lesson_responsibility_and_change`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `separation_of_concerns` — Separation of concerns | 1 | 0 | 0 | 1 | `separation_of_concerns_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `solid` — SOLID principles | 1 | `architecture` — Application Architecture & Design Principles |
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 0 | `architecture` — Application Architecture & Design Principles |
+| `interface_boundaries` — Interface boundaries | 1 | `architecture` — Application Architecture & Design Principles |
+
+#### Which Way May This Dependency Point? (`lesson_dependency_direction_and_boundaries`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `dependency_direction` — Dependency direction and inversion | 1 | 0 | 0 | 1 | `dependency_direction_domain_framework_types` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `interface_boundaries` — Interface boundaries | 1 | `architecture` — Application Architecture & Design Principles |
+| `solid` — SOLID principles | 1 | `architecture` — Application Architecture & Design Principles |
+| `layered_architecture` — Layered architecture | 2 | `architecture` — Application Architecture & Design Principles |
+| `module_dependency_direction` — Module dependency direction | 1 | `build_delivery` — Build System, Modularization & Delivery |
+
+#### When an Interface Is a Boundary, and When It Is Only Indirection (`lesson_when_an_interface_is_a_boundary`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `interface_boundaries` — Interface boundaries | 0 | 1 | 0 | 1 | `architecture_interface_boundary_ownership` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `dependency_direction` — Dependency direction and inversion | 1 | `architecture` — Application Architecture & Design Principles |
+| `solid` — SOLID principles | 1 | `architecture` — Application Architecture & Design Principles |
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 0 | `architecture` — Application Architecture & Design Principles |
+| `test_doubles` — Test doubles | 1 | `testing` — Testing & Testability |
+
+#### Layers as One Answer, and What They Cost (`lesson_layers_and_their_cost`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `layered_architecture` — Layered architecture | 0 | 2 | 0 | 2 | `architecture_paging_ownership`, `dto_entity_domain_model_boundary` |
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 0 | 0 | 0 | 0 | — |
+| **Lesson total (unique)** | 0 | 2 | 0 | 2 | `architecture_paging_ownership`, `dto_entity_domain_model_boundary` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `separation_of_concerns` — Separation of concerns | 1 | `architecture` — Application Architecture & Design Principles |
+| `android_modules` — Application/library modules | 1 | `build_delivery` — Build System, Modularization & Delivery |
+| `modularization_tradeoffs` — Benefits and costs of modularization | 2 | `build_delivery` — Build System, Modularization & Delivery |
+
 ## Primary assessment gaps
 
 Primary concepts of active lessons that currently have no active question.
@@ -1526,7 +1624,9 @@ subtopic taxonomy is deliberately finer-grained than the bank — see
 from subtopics that are empty on purpose. This report surfaces the gap; whether it
 matters is editorial judgement.
 
-Every primary concept of every active lesson has at least one active question.
+| Primary subtopic | Owning topic |
+|---|---|
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | `architecture` — Application Architecture & Design Principles |
 
 ## Semantic review reminder
 

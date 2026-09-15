@@ -984,4 +984,240 @@ Each authoring issue appends its outcomes here, following the precedent of
 review, claims that were executed rather than reasoned about, source decisions, the semantic
 review of the Questions the Unit now reaches, and the cross-links and validation performed.
 
-**No Unit has been authored yet.** E26-02 is the first to append here.
+E26-02 is the first to append here.
+
+---
+
+## Authoring outcomes for Unit 1
+
+Added by E26-02 after the five Lessons were written. Everything below was checked against
+the artifacts this repository resolves, or executed against them; nothing here is recalled.
+
+### What did not change
+
+Every proposed Unit id, Lesson id, title, authored order and primary/supporting mapping for
+Unit 1 in the [identity tables](#identity-conventions-and-proposed-identities) shipped
+verbatim. **No Lesson boundary moved, none was split or merged, and neither planning document
+needed a correction.** The blueprint's `L1.1`–`L1.5` ordering, its Teach/Bridge/Reference/
+Exclude decisions and its misconception targets were followed as written, so the plan and the
+production content say the same thing.
+
+| Shipped identity | Title | Primary | Supporting |
+| --- | --- | --- | --- |
+| `lesson_what_architecture_decides` | What Architecture Actually Decides | `separation_of_concerns` | `architecture_tradeoffs`, `layered_architecture`, `android_modules` |
+| `lesson_responsibility_and_change` | Responsibility, Cohesion and What Changes Together | `separation_of_concerns` | `solid`, `architecture_tradeoffs`, `interface_boundaries` |
+| `lesson_dependency_direction_and_boundaries` | Which Way May This Dependency Point? | `dependency_direction` | `interface_boundaries`, `solid`, `layered_architecture`, `module_dependency_direction` |
+| `lesson_when_an_interface_is_a_boundary` | When an Interface Is a Boundary, and When It Is Only Indirection | `interface_boundaries` | `dependency_direction`, `solid`, `architecture_tradeoffs`, `test_doubles` |
+| `lesson_layers_and_their_cost` | Layers as One Answer, and What They Cost | `layered_architecture`, `architecture_tradeoffs` | `separation_of_concerns`, `android_modules`, `modularization_tradeoffs` |
+
+The Unit is `unit_architecture_responsibilities_and_boundaries`, titled **Architecture as
+Responsibilities and Boundaries**, homed in `architecture`, and **appended after
+`unit_stateflow_sharedflow_and_hot_streams`** — position 19 of 19. List position is the
+ordering contract for a publisher-owned document and is what `ContinueLearningPolicy` walks,
+so a learner studying straight through now reaches the architecture path after the Compose
+path and the coroutines path, which is the same precedent E24-02 set. No existing Unit moved
+and no shipped Lesson was edited.
+
+All five Lessons carry Core, Practical and Senior depth and run 1,584–1,797 words including
+code, inside the 552–2,307 range the 72 previously shipped Lessons occupy.
+
+### Editorial decisions worth recording
+
+1. **One argument, one worked example.** The Unit is built around a single small feature — a
+   list of borrowed items with a due date, an overdue rule and a renewal write — and one
+   recurring requirement change, a three-day grace period. Every Lesson re-poses the same
+   question against it, so the five Lessons read as one argument rather than five articles.
+   The example deliberately uses neutral component names (renderer, policy, formatter, store,
+   loader, gateway), because Unit 1 precedes every named component this curriculum teaches.
+2. **The Unit opens on a changing requirement, and no Lesson opens on a diagram.** No layer
+   stack, no `UI → Domain → Data`, no Clean Architecture and no pattern name appears before
+   L1.5, which is the acceptance-critical ordering decision.
+3. **Backward-only links, used sparingly.** `lesson_state_hoisting` is linked once, from
+   L1.2, where the reader/writer/lifetime ownership test is actually generalised, rather than
+   from all five Lessons. Forward material is prose naming the Unit that owns it.
+4. **Later components are named only to defer them.** `LessonStudyRepository` is named twice
+   as repository *evidence* — once in L1.4 as a one-implementation interface that is still a
+   boundary, once in L1.5 as a logical boundary inside one Gradle module — and both times the
+   Lesson says the repository's own responsibility is a later Unit's subject. No Lesson
+   previews state holders, `ViewModel`, use cases, domain layers, single source of truth,
+   MVP/MVVM/MVI, DI frameworks, testing mechanics or KMP source sets.
+5. **SOLID is named once, in L1.2, as vocabulary**, with an explicit statement that the
+   principles carrying real reasoning are met in L1.4 and in Unit 4. No Lesson walks the five
+   principles.
+6. **Cost is always stated as things, never as "complexity".** L1.4 and L1.5 each list the
+   concrete costs — a name, a file, a navigation hop, a contract to keep in sync, a second
+   representation, mapping code, more change sites — because "abstractions add complexity"
+   was the sentence the blueprint set out to replace.
+
+### Sources used, and the claims they settle
+
+Four sources across the Unit, all primary architectural writing or official Android
+documentation. Every quotation below was read on the page during authoring rather than
+recalled, and each is attached to the specific claim it supports.
+
+| Source | Used by | Claim it settles |
+| --- | --- | --- |
+| [Guide to app architecture](https://developer.android.com/topic/architecture) | L1.1, L1.2, L1.5 | Separation of concerns as "separating your app into methods, classes, files, packages, modules and layers that have clearly defined responsibilities and boundaries"; at least two layers, UI and data, with the domain layer described as an addition rather than a default |
+| [Architecture recommendations](https://developer.android.com/topic/architecture/recommendations) | L1.1, L1.5 | "Treat the recommendations in the document as recommendations and not strict requirements"; UI-layer components "don't interact directly with a data source"; the domain layer "Recommended in big apps" with its stated conditions; small apps may place data-layer types in "a `data` package or module" |
+| [The Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html) | L1.1, L1.3, L1.4, L1.5 | "Independent of Frameworks … does not depend on the existence of some library of feature laden software"; the flow of control against source dependencies in *Crossing boundaries*; testability as a property that follows from the arrangement; and, decisively for L1.5, "The circles are schematic … There's no rule that says you must always have just these four" |
+| [The Single Responsibility Principle](https://blog.cleancoder.com/uncle-bob/2014/05/08/SingleReponsibilityPrinciple.html) | L1.2 | "each software module should have one and only one reason to change"; "Gather together the things that change for the same reasons. Separate those things that change for different reasons"; "This principle is about people" |
+| [InterfaceImplementationPair](https://martinfowler.com/bliki/InterfaceImplementationPair.html) | L1.4 | "Interfaces should be designed around your clients' needs, often these don't match the implementation"; "Using interfaces when you aren't going to have multiple implementations is extra effort to keep everything in sync"; and the published-library exception, where users "don't get that fast feedback" |
+
+Two source-sensitive decisions follow from that reading and are recorded because a later Unit
+could easily contradict them:
+
+- **The Clean Architecture claims Unit 1 makes are bounded to two.** That frameworks are
+  tools rather than architecture, and that the four-circle diagram prescribes no layer count.
+  The dependency rule itself — "source code dependencies can only point inwards" — is named
+  in L1.3 as a rule belonging to a specific architecture and **not taught**; L4.5 owns it, and
+  Unit 1's wording is compatible with the primary-source conclusion E26-01 verified.
+- **The Android guidance is quoted with its conditions attached.** L1.5 states the domain
+  layer's "in big apps" condition and the "recommendations and not strict requirements" note
+  in the same paragraph, because dropping the condition is how the guidance turns into "every
+  app has three layers" — the misconception the Lesson exists to correct.
+
+No MVP/MVVM/MVC definition is asserted anywhere in the Unit. MVVM appears once, inside a
+category-error example ("we use Compose, so our architecture is MVVM"), where the point is
+that the framework decides none of the questions the pattern name is supposed to answer. The
+terminology variance recorded in [Part 9](#mvp-mvvm-and-mvi-terminology-variance) is therefore
+untouched and stays E26-06's to resolve.
+
+### Repository evidence used, and how
+
+Two findings from [Part 7](#part-7--this-repositorys-own-architecture-as-evidence) are used,
+both re-verified against the code during authoring rather than taken from the table:
+
+- `LessonStudyRepository` (in the study feature's package) and `LocalLessonStudyRepository`
+  (under `data/local`), both `internal`, both in `:shared`, with no Room type visible above
+  `data/local`. L1.4 uses it as a one-implementation interface whose contract is still
+  consumer-owned; L1.5 uses it as a logical boundary that needed no Gradle module.
+- `settings.gradle.kts` includes five modules and the whole shared application is one of
+  them, which is what makes the second claim checkable.
+
+Both appearances say what the application does and for what stated reason. Neither presents
+the repository as a model to copy, and **no production architecture code was changed or
+proposed for change.**
+
+### Semantic review of the Questions this Unit now reaches
+
+All five ACTIVE Questions in the Unit's resolved practice pool were re-read in full and
+independently solved against the finished prose. The E26-01 findings in
+[Part 5](#part-5--semantic-assessment-review) **all still hold**; nothing below overturns one.
+
+| Question | Level | Resolved by | Re-read verdict against the shipped Lessons |
+| --- | --- | --- | --- |
+| `separation_of_concerns_001` | FOUNDATION | `separation_of_concerns` (L1.1, L1.2) | Answerable from L1.1's Core alone. Its explanation's second half — that dependencies point toward policy rather than upward to the UI — is also taught, in L1.3. Still definitional: it asks what separation is good for and never makes the reader judge a split, which is GAP-U1-B |
+| `dependency_direction_domain_framework_types` | FOUNDATION | `dependency_direction` (L1.3) | Sound and unchanged. L1.3 teaches enough to answer it — a component inherits the reasons to change of what it names, and the shared-payload example is the same failure one step earlier — but the Question's own framing is a domain use case accepting `android.net.Uri` and returning a Retrofit `Response`, which is L4.3's material. **Level not changed here**, as the issue requires; the FOUNDATION-for-a-design-judgement observation stands as an E26-08 candidate |
+| `architecture_interface_boundary_ownership` | APPLIED | `interface_boundaries` (L1.4) | Sound. L1.4 teaches the property the Question turns on — the consumer owns the abstraction it depends on — but the Question asks **which module** the interface belongs in, and module placement is deliberately L4.4's. A Unit 1 reader can reach the right answer from the ownership property; the full justification arrives in Unit 4. Recorded, not repaired |
+| `architecture_paging_ownership` | APPLIED | `layered_architecture` (L1.5) | Sound, and the weakest fit in the pool. It asks which layer decides when a page is fetched, in data-layer vocabulary (`PagingSource`, `RemoteMediator`, caching) that Unit 1 never introduces. L1.5 gives the reasoning shape — responsibilities group by level and dependency rule — but not the vocabulary. This is exactly the consequence E26-01 predicted and left in place rather than remapping |
+| `dto_entity_domain_model_boundary` | APPLIED | `layered_architecture` (L1.5) | Sound, and the best of the two `layered_architecture` matches. Its argument — layer-specific models let network, storage and domain evolve independently **at the cost of mapping** — is L1.5's central comparison, and the Lesson's diverged `StoredLoan`/`LoanSummary` example teaches both halves. The full model-boundary decision is still L3.5's |
+
+`architecture_solid_dependency_substitution` was re-read as context. It remains sound, it
+remains outside every E26 pool because `solid` is supporting-only, and L1.2's one-paragraph
+SOLID treatment does not attempt to make it answerable. The four DEPRECATED architecture
+Questions were re-read and **not edited**; `architecture_tradeoffs_001` is the one whose
+concept L1.5 now teaches, which strengthens rather than changes the GAP-U1-E recommendation.
+
+**No Question was created, edited, re-mapped, re-levelled or re-statused by this issue.**
+
+### GAP-U1-A to GAP-U1-E after authoring
+
+All five gaps survive the finished prose unchanged; authoring did not prove any gap
+definition wrong, and E26-08 still owns all five.
+
+| Gap | Status after E26-02 | What the finished Lesson changes about it |
+| --- | --- | --- |
+| GAP-U1-A | **Open, unchanged** | L1.1 now teaches the reasoning — two package trees with identical dependencies, `ui`/`domain`/`data` packages with a screen that constructs a store, and two framework category errors — so the gap is now a gap in *assessment* of material that ships, which is the strongest case an E26-08 Question can have |
+| GAP-U1-B | **Open, unchanged** | L1.2's requirement-change table is precisely the reasoning no ACTIVE Question poses: given three behaviours, decide which change independently. `separation_of_concerns_001` remains definitional |
+| GAP-U1-C | **Open, unchanged** | L1.3 teaches direction for two ordinary components and states the cost of reversing it in both directions. The only ACTIVE `dependency_direction` Question remains the domain/framework-types case |
+| GAP-U1-D | **Open, unchanged; still the strongest candidate** | L1.4 ships the exact scenario the gap describes — an interface whose contract mirrors its single implementation, both edited together — together with the condition that would make it a boundary. Nothing assesses it |
+| GAP-U1-E | **Open, unchanged; still the widest gap in the Unit** | L1.5 ships the before/after comparison the gap asks for, and `architecture_tradeoffs` still holds **zero** ACTIVE Questions, so half of L1.5's primary mapping reaches nothing at all |
+
+**One new observation, not a new gap.** L1.3's distinction between source dependency, call
+direction and data flow — the callback that moves control and data without moving the
+dependency — is taught in the Unit and is assessed nowhere in any Topic. It is recorded here
+as a candidate for E26-08 to weigh beside GAP-U1-C rather than as a sixth gap, because it is
+the same Lesson's reasoning at a different angle and a single Question may well cover both.
+
+### Actual practice reach, resolved through the production resolver
+
+Recomputed by running the shipped Unit through `PracticeBuilderViewModel` and the real
+selection path in `LearningUnitPracticeIntegrationTest`, not by reading mappings. The Unit
+configures `AssessmentScope.Subtopics` of exactly its five primary concepts and resolves
+**five** Questions:
+
+| Resolved Question | Level | Reached through | Semantically belongs mainly to |
+| --- | --- | --- | --- |
+| `separation_of_concerns_001` | FOUNDATION | `separation_of_concerns` | Unit 1 |
+| `dependency_direction_domain_framework_types` | FOUNDATION | `dependency_direction` | **Unit 4** (L4.3's policy/framework reasoning) |
+| `architecture_interface_boundary_ownership` | APPLIED | `interface_boundaries` | **Unit 4** (L4.4's inversion and placement reasoning) |
+| `architecture_paging_ownership` | APPLIED | `layered_architecture` | **Unit 3** (data-layer responsibilities) |
+| `dto_entity_domain_model_boundary` | APPLIED | `layered_architecture` | **Unit 3**, with its mapping-cost half genuinely useful in L1.5 |
+
+This matches [Part 6](#part-6--unit-practice-routing-modelled-now)'s modelled pool exactly, so
+no mapping moved during authoring.
+
+Three structural limitations are now facts rather than predictions, and all three are asserted
+in the test suite so they cannot drift silently:
+
+1. **`architecture_tradeoffs` contributes nothing.** It is primary in L1.5 and holds no ACTIVE
+   Question, so the Unit's proportionality reasoning is reachable only through
+   `layered_architecture`, whose two Questions are both data-layer scenarios. The Unit's pool
+   is therefore five Questions drawn from four of its five primary concepts.
+2. **Four of the five Questions are principally later Units' material**, for the honest-mapping
+   reasons above. A learner finishing Unit 1 can make progress on all of them from ownership,
+   direction and cost alone, but only `separation_of_concerns_001` is fully Unit 1's.
+3. **Supporting concepts broaden nothing.** `solid`, `android_modules`,
+   `module_dependency_direction`, `test_doubles` and `modularization_tradeoffs` contribute no
+   Question, and `architecture_solid_dependency_substitution` stays outside the pool — verified
+   by assertion, not by inspection.
+
+### Cross-links
+
+One backward link leaves the Unit: `lesson_responsibility_and_change` →
+`lesson_state_hoisting`. The other links are within-Unit and backward only, following the
+shipped precedent: L1.3 → L1.1, L1.2; L1.4 → L1.2, L1.3; L1.5 → L1.1, L1.3, L1.4; L1.1 links
+to nothing, because it has no prerequisite. **No shipped Lesson was edited**, no forward link
+was invented, and `lesson_screen_state_owner_boundary` and `lesson_transient_effect_delivery`
+were re-read and still read correctly — E26-09 confirms that again at the end of the epic.
+
+### Tests changed, and why
+
+| File | Change | Why production data made it necessary |
+| --- | --- | --- |
+| `BundledLearningCurriculumTest` | Unit id, title and home-Topic lists extended by one; Lesson id/title order and primary mappings for the new Unit added; two new tests — `architectureFoundationsUnitKeepsItsPlannedBridgesOutOfPrimaryPractice` and `architectureFoundationsUnitLinksBackwardsOnlyAndReachesItsOneShippedAnchor` | The document now spans three home Topics, and the supporting mappings are where the `solid` decision would silently erode |
+| `LearningUnitPracticeIntegrationTest` | `existingLearnerTraversesTheExpansionWithLiveParentProgressAndDurableIdentities` extended to walk the architecture Unit before expecting Continue Learning to report Complete, and its final studied-record count raised from 71 to 76; new test `theArchitectureFoundationsUnitPractisesItsPrimaryConceptsAndNothingElse` | Continue Learning walks the whole document, so a third home Topic changes the traversal. The new Unit could not join the shared expectation table, because that table asserts that every primary concept yields at least one Question and `architecture_tradeoffs` yields none — the bespoke test asserts the exact five resolved ids and that gap instead |
+
+No test was added that only re-states schema validation already performed by
+`LearningCurriculumValidatorTest`, and the existing data-driven suites — the reader journey
+over every shipped Unit, Topic Detail's Unit rows, the end-to-end repository path — needed no
+edit because they read the document rather than listing it.
+
+### Validation performed
+
+| Command | Result |
+| --- | --- |
+| `python3 -c` structural pre-check over both bundled JSON documents | Ids unique, every mapping an ACTIVE Subtopic, no primary/supporting overlap, every `relatedLessonIds` target resolvable |
+| `./gradlew :shared:jvmTest --tests "*BundledLearningCurriculumTest*" --tests "*LearningUnitPracticeIntegrationTest*" --tests "*LearningContentEndToEndTest*"` | 48 tests, all passing (first run surfaced two real defects: blank leading comparison headers, rejected by `LearningCurriculumValidator`, and the Continue Learning traversal above) |
+| `./gradlew :shared:jvmTest` | **1,387 tests, 0 failures**, including `LearningProductionContentJourneyTest`, which renders every authored block of the new Unit in the reader, checks the reading column never widens, and opens every authored Source link |
+| `python3 tools/learning_question_coverage.py --write` then `--check` | Snapshot regenerated and reported current |
+| `cd tools && python3 -m unittest test_learning_question_coverage.py` | 21 tests, OK |
+| `./gradlew :androidApp:assembleDebug` | Passed |
+| `./gradlew :shared:check` | Passed |
+| `git diff --check` | Clean |
+
+The regenerated `docs/content/learning-question-coverage.md` now reports **19 active Units and
+77 active Lessons**, one primary Subtopic with no active Question — `architecture_tradeoffs`,
+which is GAP-U1-E — and a Unit pool of five Questions across two levels, with no ADVANCED
+Question, matching the Topic-wide observation in Part 5.
+
+### Not validated
+
+- **`iosArm64` is not compiled locally or on CI**, unchanged from E25 and E26-01.
+- **No CI run is claimed.** Nothing in this issue was observed on GitHub Actions.
+- **Backlog validation could not be run**: `PyYAML` is unavailable in this environment, so
+  `.github/project/backlog.yml` was read as text rather than parsed and validated. Issue #362
+  was read from that file rather than through `gh`, which is still not installed.
+- **The learning content itself is editorial** and no automated check can confirm that a
+  Lesson teaches what it claims; the semantic review above is a judgement, as Rule 10 of the
+  authoring contract requires.

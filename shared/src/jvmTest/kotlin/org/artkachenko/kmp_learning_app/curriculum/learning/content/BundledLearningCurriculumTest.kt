@@ -51,6 +51,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_flow_fundamentals",
                 "unit_flow_composition_timing_and_failure",
                 "unit_stateflow_sharedflow_and_hot_streams",
+                "unit_architecture_responsibilities_and_boundaries",
             ),
             units().map { it.id },
         )
@@ -75,6 +76,7 @@ internal class BundledLearningCurriculumTest {
                 "Flow Fundamentals",
                 "Flow Composition, Timing and Failure",
                 "StateFlow, SharedFlow and Hot Streams",
+                "Architecture as Responsibilities and Boundaries",
             ),
             units().map { it.title },
         )
@@ -101,6 +103,7 @@ internal class BundledLearningCurriculumTest {
                 "async_reactive",
                 "async_reactive",
                 "async_reactive",
+                "architecture",
             ),
             units().map { it.topicId },
         )
@@ -365,6 +368,32 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_stateflow_sharedflow_and_hot_streams").lessons.map { it.title },
         )
+
+        // The architecture Unit's order is the argument it makes: what architecture decides,
+        // then how a responsibility is identified, then which way a dependency may point,
+        // then whether an abstraction is a boundary, and only then layering as one answer.
+        // A layer stack introduced earlier would be a conclusion taught before its reasoning.
+        assertEquals(
+            listOf(
+                "lesson_what_architecture_decides",
+                "lesson_responsibility_and_change",
+                "lesson_dependency_direction_and_boundaries",
+                "lesson_when_an_interface_is_a_boundary",
+                "lesson_layers_and_their_cost",
+            ),
+            unit("unit_architecture_responsibilities_and_boundaries").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "What Architecture Actually Decides",
+                "Responsibility, Cohesion and What Changes Together",
+                "Which Way May This Dependency Point?",
+                "When an Interface Is a Boundary, and When It Is Only Indirection",
+                "Layers as One Answer, and What They Cost",
+            ),
+            unit("unit_architecture_responsibilities_and_boundaries").lessons.map { it.title },
+        )
     }
 
     @Test
@@ -571,6 +600,21 @@ internal class BundledLearningCurriculumTest {
                 listOf("hot_vs_cold_streams"),
             ),
             unit("unit_stateflow_sharedflow_and_hot_streams").lessons.map { it.primarySubtopicIds },
+        )
+
+        // `separation_of_concerns` is primary in the first two Lessons — what architecture
+        // decides, then how a responsibility is identified — and the closing Lesson declares
+        // two primaries because it teaches layering and proportionality together: a layer
+        // that is not weighed against its cost is the misconception the Lesson exists for.
+        assertEquals(
+            listOf(
+                listOf("separation_of_concerns"),
+                listOf("separation_of_concerns"),
+                listOf("dependency_direction"),
+                listOf("interface_boundaries"),
+                listOf("layered_architecture", "architecture_tradeoffs"),
+            ),
+            unit("unit_architecture_responsibilities_and_boundaries").lessons.map { it.primarySubtopicIds },
         )
     }
 
@@ -983,6 +1027,72 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_stateflow_sharedflow_and_hot_streams").lessons.map { it.supportingSubtopicIds },
         )
+    }
+
+    @Test
+    fun architectureFoundationsUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        // `solid` is supporting in three Lessons and never primary, which is the E26-01
+        // decision recorded in `docs/content/architecture-units-1-6-plan.md`: SOLID is
+        // vocabulary here rather than curriculum structure, and promoting it would pull
+        // `architecture_solid_dependency_substitution` into a Unit that teaches inversion
+        // only as a forward pointer. The two build_delivery bridges and `test_doubles` are
+        // named for the same reason — the Unit states a boundary against those curricula and
+        // must not claim their practice.
+        assertEquals(
+            listOf(
+                listOf("architecture_tradeoffs", "layered_architecture", "android_modules"),
+                listOf("solid", "architecture_tradeoffs", "interface_boundaries"),
+                listOf("interface_boundaries", "solid", "layered_architecture", "module_dependency_direction"),
+                listOf("dependency_direction", "solid", "architecture_tradeoffs", "test_doubles"),
+                listOf("separation_of_concerns", "android_modules", "modularization_tradeoffs"),
+            ),
+            unit("unit_architecture_responsibilities_and_boundaries").lessons.map {
+                it.supportingSubtopicIds
+            },
+        )
+    }
+
+    @Test
+    fun architectureFoundationsUnitLinksBackwardsOnlyAndReachesItsOneShippedAnchor() = runTest {
+        val lessons = unit("unit_architecture_responsibilities_and_boundaries").lessons.associateBy { it.id }
+
+        // The opening Lesson has no prerequisite inside or outside the subject, so it links
+        // to nothing rather than manufacturing graph completeness.
+        assertEquals(emptyList(), lessons.getValue("lesson_what_architecture_decides").relatedLessonIds)
+        // `lesson_state_hoisting` is the subject's only meaningful shipped anchor: it already
+        // teaches the reader/writer/lifetime ownership test at composable scale, and this
+        // Lesson generalises it. It is linked once, from the Lesson that uses it, rather than
+        // from all five.
+        assertEquals(
+            listOf("lesson_what_architecture_decides", "lesson_state_hoisting"),
+            lessons.getValue("lesson_responsibility_and_change").relatedLessonIds,
+        )
+        assertEquals(
+            listOf("lesson_what_architecture_decides", "lesson_responsibility_and_change"),
+            lessons.getValue("lesson_dependency_direction_and_boundaries").relatedLessonIds,
+        )
+        assertEquals(
+            listOf("lesson_responsibility_and_change", "lesson_dependency_direction_and_boundaries"),
+            lessons.getValue("lesson_when_an_interface_is_a_boundary").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_what_architecture_decides",
+                "lesson_dependency_direction_and_boundaries",
+                "lesson_when_an_interface_is_a_boundary",
+            ),
+            lessons.getValue("lesson_layers_and_their_cost").relatedLessonIds,
+        )
+
+        val shippedAnchors = setOf("lesson_state_hoisting")
+        val ownIds = lessons.keys
+        // Later E26 Units do not exist yet, so every link either stays inside this Unit or
+        // names one of the shipped Lessons above. A forward link would not resolve at all.
+        lessons.values.forEach { lesson ->
+            lesson.relatedLessonIds.forEach { related ->
+                assertTrue(related in ownIds || related in shippedAnchors, "${lesson.id} -> $related")
+            }
+        }
     }
 
     @Test

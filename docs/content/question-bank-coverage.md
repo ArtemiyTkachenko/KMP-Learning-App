@@ -3,7 +3,7 @@
 ## Purpose
 
 This document records **what the interview question bank currently covers**, so
-that planning the next expansion does not require re-reading all 430 questions.
+that planning the next expansion does not require re-reading all 442 questions.
 A full coverage review is expensive; this is the checkpoint that replaces it.
 
 `docs/content/content-authoring.md` is the editorial contract and
@@ -110,28 +110,32 @@ its current output is reproduced under **Audit baselines** below.
 
 | Metric | Value |
 |---|---:|
-| Total questions | 430 |
-| ACTIVE | 389 |
+| Total questions | 442 |
+| ACTIVE | 401 |
 | DEPRECATED | 41 |
 | Topics | 17 |
 | Subtopics | 361 |
 | Subtopics with ≥1 active question | 283 (78%) |
 | Subtopics with 0 active questions | 78 |
-| SINGLE | 383 |
+| SINGLE | 395 |
 | MULTIPLE | 47 |
 | — of which exactly one correct answer | 3 |
-| Answer options | 1726 (424 questions with 4 options, 6 with 5) |
-| Source references | 532 across 317 unique URLs |
+| Answer options | 1774 (436 questions with 4 options, 6 with 5) |
+| Source references | 563 across 323 unique URLs |
 
-Subtopic depth distribution: **78** subtopics have 0 questions, **210** have 1,
-**50** have 2, **15** have 3, **6** have 4, **2** have 5.
+Subtopic depth distribution: **78** subtopics have 0 questions, **209** have 1,
+**49** have 2, **15** have 3, **6** have 4, **3** have 5, and **1** has 10.
 
 The bank still averages roughly one question per subtopic, and the taxonomy is
 deliberately wider than the content, so most subtopics sitting at 1 is the
-designed steady state rather than a deficiency. The one deliberate exception is
-`async_reactive` at 2.19 per subtopic: E24-08 authored nineteen questions there
-so that the six shipped Coroutines and Flow learning Units practise the
-reasoning they teach.
+designed steady state rather than a deficiency. The two deliberate exceptions
+are `async_reactive` at 2.19 per subtopic, where E24-08 authored nineteen
+questions so that the six shipped Coroutines and Flow learning Units practise
+the reasoning they teach, and `android_ui` at 2.04, where E25-08 did the same
+for the six shipped Compose effects and screen-state Units. The single subtopic
+holding ten questions is `compose_side_effects`, the sole primary concept of
+four of those Units; that concentration is the taxonomy limitation recorded in
+`docs/content/compose-units-7-12-plan.md`, not a density target.
 
 ## Topic coverage
 
@@ -142,8 +146,8 @@ where the next expansion should look first.
 |---|---|---:|---:|---:|---:|---:|
 | Coroutines, Flow & Reactive Programming | `async_reactive` | 57 | 26 | 24 | 2 | 2.19 |
 | Lifecycle, State & Navigation | `lifecycle_navigation` | 23 | 11 | 11 | 0 | 2.09 |
+| UI — Views & Jetpack Compose | `android_ui` | 49 | 24 | 20 | 4 | 2.04 |
 | Android Platform & Application Model | `android_platform` | 16 | 8 | 8 | 0 | 2.00 |
-| UI — Views & Jetpack Compose | `android_ui` | 37 | 24 | 20 | 4 | 1.54 |
 | Application Architecture & Design Principles | `architecture` | 22 | 18 | 16 | 2 | 1.22 |
 | Local Persistence & Offline Data | `local_data` | 21 | 19 | 17 | 2 | 1.11 |
 | Kotlin Language & JVM Fundamentals | `kotlin_language` | 25 | 23 | 19 | 4 | 1.09 |
@@ -157,7 +161,7 @@ where the next expansion should look first.
 | Build System, Modularization & Delivery | `build_delivery` | 17 | 25 | 15 | 10 | 0.68 |
 | Notifications & Push Messaging | `notifications` | 12 | 18 | 11 | 7 | 0.67 |
 | Kotlin Multiplatform & Compose Multiplatform | `kmp` | 16 | 27 | 15 | 12 | 0.59 |
-| **Total** | | **389** | **361** | **283** | **78** | **1.08** |
+| **Total** | | **401** | **361** | **283** | **78** | **1.11** |
 
 Two caveats before acting on this table:
 
@@ -179,23 +183,24 @@ Current output of the `docs/content/question-authoring-playbook.md` Part 3 scrip
 the whole bank:
 
 ```
-correct-longest 160/386 (41%), mean ratio 1.03, over 10% limit: 0
+correct-longest 162/398 (41%), mean ratio 1.03, over 10% limit: 0
 absolutes: distractors 0.22/opt, correct 0.12/opt
-position: {0: 28%, 1: 27%, 2: 26%, 3: 19%, 4: 1%}
+position: {0: 27%, 1: 27%, 2: 26%, 3: 20%, 4: 1%}
 ```
 
-All 317 unique source URLs returned HTTP 200 when E24-08 re-ran the sweep, all 285
-distinct pages behind them rendered a non-empty body, and all 48 `#fragment` citations
-resolved to a real anchor.
+All 323 unique source URLs returned HTTP 200 when E25-08 re-ran the sweep and all 48
+`#fragment` citations resolved to a real anchor. The body-length sweep was last run over
+the whole bank by E24-08; E25-08 opened every page it cited itself rather than re-running
+that script bank-wide.
 
 These are the numbers a new batch must not degrade. In particular: **zero
 questions exceed the 10% correct-answer length limit**, and correct answers do
 use absolute words (0.12/opt against 0.22/opt in distractors), so "the option
 with 'only' in it is wrong" is not a working strategy. Both properties are easy
 to break by accident and are the reason the audit exists. The position row is
-also why E24-08's nineteen new questions do not all key their first option:
-answer identity is by ID, so the batch was reordered after authoring and the
-distribution is unchanged.
+also why neither E24-08's nineteen new questions nor E25-08's twelve all key
+their first option: answer identity is by ID, so each batch was reordered after
+authoring and the distribution is essentially unchanged.
 
 The length and absolutes audits are now also enforced by
 `InitialCurriculumContentQualityTest`, so a batch that degrades either fails the build
@@ -415,7 +420,26 @@ conflated state. These are the reasoning behind the APIs rather than more of the
 API surface, which is why `android_ui` moved from 1.08 to 1.54 questions per
 subtopic without gaining a subtopic.
 
+Added by E25-08, for the learning Units on production screen state and Compose
+effects: placing several values on one screen at the lowest sensible owner · what
+over-hoisting a UI-element detail costs · why reading `StateFlow.value` in a
+composable observes nothing · lifecycle-gated collection against an eagerly shared
+producer · the missing ownership contract of work started in a composable body ·
+effect-key equality and the needless restart it prevents or causes · a constant key
+read as a lifetime claim · reading a current callback without restarting a
+long-lived effect · what a missing `onDispose` accumulates · `produceState`
+keeping its last value across a key change · a required lifetime that exceeds the
+Composition · a durable flag wired to a mechanism that executes. Three of those
+subtopics now hold 5, 3 and 10 questions, which is what took `android_ui` from
+1.54 to 2.04 per subtopic.
+
 Thin: theming, previews, and ViewBinding are untested (deliberately).
+
+**Concentrated, not thin:** `compose_side_effects` alone holds 10 questions
+because it is the sole primary concept of four shipped learning Units. Read
+`docs/content/compose-units-7-12-plan.md` before adding an eleventh — every
+question on that subtopic enters all four Units' practice, including the
+earliest one.
 
 ### Kotlin and JVM
 
@@ -548,7 +572,7 @@ target subtopic here before authoring to avoid a near-duplicate.
 
 ### UI — Views & Jetpack Compose
 
-`android_ui` — **37 active** across 24 subtopics (20 covered, 4 empty)
+`android_ui` — **49 active** across 24 subtopics (20 covered, 4 empty)
 
 | Subtopic | n | Question IDs |
 |---|---:|---|
@@ -561,10 +585,10 @@ target subtopic here before authoring to avoid a near-duplicate.
 | `view_binding` — ViewBinding and DataBinding awareness | 0 | — |
 | `compose_fundamentals` — Compose fundamentals | 1 | `compose_phases_deferred_state_read` |
 | `compose_recomposition` — Composition and recomposition | 3 | `composition_vs_recomposition`, `compose_state_read_recomposition_scope`, `compose_recomposition_count_is_not_a_finding` _(deprecated: `compose_recomposition_001`)_ |
-| `compose_state` — Compose state | 3 | `remember_vs_remember_saveable`, `compose_unremembered_observable_state`, `compose_state_collection_mutation` _(deprecated: `compose_state_001`)_ |
-| `compose_state_hoisting` — State hoisting | 1 | `compose_state_hoisting_001` |
+| `compose_state` — Compose state | 5 | `remember_vs_remember_saveable`, `compose_unremembered_observable_state`, `compose_state_collection_mutation`, `compose_state_flow_value_read_is_not_observation`, `compose_lifecycle_collection_stops_the_collector_not_the_producer` _(deprecated: `compose_state_001`)_ |
+| `compose_state_hoisting` — State hoisting | 3 | `compose_state_hoisting_001`, `compose_screen_state_lowest_sensible_owner`, `compose_over_hoisted_ui_element_state_cost` |
 | `compose_udf` — Unidirectional data flow in Compose | 1 | `compose_udf_event_direction` |
-| `compose_side_effects` — Compose side-effect APIs | 2 | `compose_side_effects_001`, `compose_launched_effect_key_restart` |
+| `compose_side_effects` — Compose side-effect APIs | 10 | `compose_side_effects_001`, `compose_launched_effect_key_restart`, `compose_body_work_has_no_lifecycle_owner`, `compose_effect_key_equality_decides_restart`, `compose_constant_effect_key_is_a_lifetime_claim`, `compose_current_callback_without_restarting_the_effect`, `compose_missing_on_dispose_accumulates_listeners`, `compose_produce_state_key_change_keeps_the_last_value`, `compose_required_lifetime_exceeds_the_composition`, `compose_durable_flag_repeats_a_transient_effect` |
 | `compose_derived_state` — derivedStateOf and derived state | 3 | `compose_derived_state_threshold`, `compose_remember_key_invalidation`, `compose_work_placement_responsibility_vs_thread` |
 | `compose_snapshot_system` — Compose snapshot-system fundamentals | 4 | `compose_snapshot_flow_state`, `compose_snapshot_read_records_dependency`, `compose_snapshot_flow_read_inside_block`, `compose_snapshot_flow_conflated_state` |
 | `compose_layouts_modifiers` — Layouts and Modifiers | 2 | `compose_edge_to_edge_insets`, `compose_modifier_order_padding_click` |

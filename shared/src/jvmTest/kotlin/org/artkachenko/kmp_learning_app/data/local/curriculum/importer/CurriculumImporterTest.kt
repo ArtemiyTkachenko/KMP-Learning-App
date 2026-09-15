@@ -46,7 +46,7 @@ internal class CurriculumImporterTest {
             val dao = database.curriculumDao()
             assertEquals(17, dao.countTopics())
             assertEquals(361, dao.countSubtopics())
-            assertEquals(430, dao.countQuestions())
+            assertEquals(442, dao.countQuestions())
 
             val singleAnswerQuestion = expectedCurriculum.questions.first {
                 it.selectionMode == AnswerSelectionMode.SINGLE

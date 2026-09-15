@@ -2283,3 +2283,323 @@ that shapes all of the Units 9–12 entries is the single shared `compose_side_e
 described above. E25-09 still owns the integration review, the terminology sweep across the six
 Units, and the re-reading of the five shipped forward pointers — of which the `lesson_snapshot_flow`
 one is now fulfilled by L12.1's backward link.
+
+---
+
+## Assessment outcomes for E25-08
+
+Added by E25-08 after the gap table above was re-read against the **finished** Lessons rather
+than against the plan. [Assessment gaps for E25-08](#assessment-gaps-for-e25-08) stays exactly
+as it was written: it is the record of what was found, and this section is the record of what
+was done about it. Every source cited by a new Question was opened, every new Question was
+solved from its stem and options before its key was read, and the two source-sensitive
+behaviours were re-measured on this repository's current toolchain rather than inherited.
+
+### Scope
+
+A semantic assessment review of the **primary** concepts of Units 7–12 and the ACTIVE Questions
+reachable through them — **not** a bank-wide audit. That is three primary Subtopics
+(`compose_state_hoisting`, `compose_udf`, `compose_state`, `compose_side_effects` — four ids
+across two Units plus the shared effect pool), the seven ACTIVE Questions reachable through
+them, the one DEPRECATED Question on those Subtopics (`compose_state_001`), and the fourteen
+supporting-only Questions in `architecture`, `async_reactive`, `lifecycle_navigation`,
+`performance`, `kmp` and elsewhere in `android_ui` that E25-01 and E25-07 named. The last group
+was read for duplication only; none of them was re-mapped and none closes an E25 gap. Twelve
+Questions were authored, **no existing Question was edited, re-mapped, re-levelled or
+deprecated**, and the other 430 questions in `initial_curriculum.json` were not re-reviewed —
+their prior verdicts stand. `docs/content/question-audit-log.yml` records the review under that
+scope.
+
+### Versions and measurements, rechecked on 2026-09-15
+
+`gradle/libs.versions.toml` still declares Kotlin 2.4.10, Compose Multiplatform 1.11.1,
+lifecycle 2.11.0-beta01 and kotlinx.coroutines 1.11.0.
+`./gradlew :shared:dependencyInsight --configuration jvmRuntimeClasspath --dependency
+androidx.compose.runtime:runtime` still resolves **`androidx.compose.runtime:runtime:1.11.2`**,
+and both `androidx.lifecycle:lifecycle-runtime-compose` and its JetBrains alias resolve
+**2.11.0-beta01**. Every contract below was read from those resolved sources jars, not recalled.
+
+- **`produceState`.** `ProduceState.kt` in the resolved 1.11.2 `commonMain` still implements
+  every overload as `remember { mutableStateOf(initialValue) }` plus `LaunchedEffect(keys)`, and
+  the `remember` still carries **no keys**.
+- **Effect keys.** `Composables.kt` still documents `remember(key1)` as retaining its value while
+  the key compares equal with `==`, and `LaunchedEffect(key1)` in `Effects.kt` is still built on
+  it.
+- **`rememberUpdatedState`.** `SnapshotState.kt` still implements it as
+  `remember { mutableStateOf(newValue) }.apply { value = newValue }`, with the KDoc purpose of
+  updating a value for a long-lived lambda or object without recreating or relaunching it.
+- **`rememberCoroutineScope`.** `Effects.kt` KDoc still says the scope "will be cancelled when
+  this call leaves the composition" — the call, not the Composition.
+- **`collectAsState`** still gives the `StateFlow` overload the flow's current `value` and
+  requires `initial` for a plain `Flow`; **`collectAsStateWithLifecycle`** in
+  `lifecycle-runtime-compose` 2.11.0-beta01 `commonMain` still defaults to
+  `LocalLifecycleOwner.current` and `Lifecycle.State.STARTED` and is still implemented as
+  `produceState` over `repeatOnLifecycle`.
+
+**Two bounded JVM Compose probes were written, run, and deleted.** They used a `Recomposer`, a
+`BroadcastFrameClock`, a unit `Applier` and manual frames, and they exist nowhere in the final
+diff (`git status --short` shows no probe file).
+
+1. `produceState(initialValue = "INITIAL", key)` with key `A` produced `A-result`; the key was
+   then changed to `B` with the new producer gated before its first write. The producer start log
+   read `[A, B]` — so the producer **did** restart — while the returned `State` read `A-result`
+   at every observation during that interval, **not** `INITIAL`; releasing the gate produced
+   `B-result`. This reproduces E25-01's PROBE-F and E25-06's re-run exactly, and it is the fact
+   `compose_produce_state_key_change_keeps_the_last_value` turns on.
+2. Across four composition passes of one body, a freshly constructed `data class` key produced
+   **1** effect start and a freshly constructed identity-equality key produced **4**. This
+   reproduces E25-01's PROBE-A and is the fact `compose_effect_key_equality_decides_restart`
+   turns on. The Question deliberately rests on the two **equality contracts** rather than on
+   lambda memoisation, so it does not depend on current compiler behaviour.
+
+### Final disposition of the 20 gap candidates
+
+Twelve Questions close fourteen gaps. Five gaps are deliberately deferred and one is closed by
+Questions that already exist.
+
+| Gap | Disposition | Question |
+| --- | --- | --- |
+| GAP-U7-A | New Question | `compose_screen_state_lowest_sensible_owner` |
+| GAP-U7-B | New Question | `compose_over_hoisted_ui_element_state_cost` |
+| GAP-U7-C | **No longer a substantive gap** — assessed by existing Questions in other Topics | — |
+| GAP-U8-A | New Question | `compose_state_flow_value_read_is_not_observation` |
+| GAP-U8-B | New Question, combined with GAP-U8-C | `compose_lifecycle_collection_stops_the_collector_not_the_producer` |
+| GAP-U8-C | New Question, combined with GAP-U8-B | `compose_lifecycle_collection_stops_the_collector_not_the_producer` |
+| GAP-U9-A | New Question | `compose_body_work_has_no_lifecycle_owner` |
+| GAP-U9-B | New Question | `compose_effect_key_equality_decides_restart` |
+| GAP-U9-C | New Question, combined with GAP-U9-D | `compose_constant_effect_key_is_a_lifetime_claim` |
+| GAP-U9-D | New Question, combined with GAP-U9-C | `compose_constant_effect_key_is_a_lifetime_claim` |
+| GAP-U10-A | New Question | `compose_current_callback_without_restarting_the_effect` |
+| GAP-U10-B | **Deferred** — structural | — |
+| GAP-U10-C | New Question, combined with GAP-U12-A | `compose_required_lifetime_exceeds_the_composition` |
+| GAP-U11-A | New Question | `compose_missing_on_dispose_accumulates_listeners` |
+| GAP-U11-B | **Deferred** — structural | — |
+| GAP-U11-C | New Question | `compose_produce_state_key_change_keeps_the_last_value` |
+| GAP-U11-D | **Deferred** — structural and editorial | — |
+| GAP-U12-A | New Question, combined with GAP-U10-C | `compose_required_lifetime_exceeds_the_composition` |
+| GAP-U12-B | New Question | `compose_durable_flag_repeats_a_transient_effect` |
+| GAP-U12-C | **Deferred** — duplication | — |
+
+### The twelve new Questions
+
+| Question | Subtopic | Level | Assessed responsibility | Gap |
+| --- | --- | --- | --- | --- |
+| `compose_screen_state_lowest_sensible_owner` | `compose_state_hoisting` | Applied | Placing two values of one screen from their own readers, writers and required lifetime, with one correctly staying local | GAP-U7-A |
+| `compose_over_hoisted_ui_element_state_cost` | `compose_state_hoisting` | Applied | Predicting what a UI-element detail costs once it is a field of the screen-level holder | GAP-U7-B |
+| `compose_state_flow_value_read_is_not_observation` | `compose_state` | Applied | Diagnosing a `StateFlow.value` read as neither a collection nor a Compose state read, and naming the conversion | GAP-U8-A |
+| `compose_lifecycle_collection_stops_the_collector_not_the_producer` | `compose_state` | **Advanced** | Predicting a named desktop action against the default lifecycle threshold, and separating the UI collector's lifetime from the shared producer's | GAP-U8-B + GAP-U8-C |
+| `compose_body_work_has_no_lifecycle_owner` | `compose_side_effects` | Applied | Naming the missing ownership and lifetime contract of work started in a composable body, rather than "it runs twice" | GAP-U9-A |
+| `compose_effect_key_equality_decides_restart` | `compose_side_effects` | Applied | Predicting restart from key equality for two key types, and knowing that a restart cancels before it relaunches | GAP-U9-B |
+| `compose_constant_effect_key_is_a_lifetime_claim` | `compose_side_effects` | Applied | Reading a constant key as a lifetime declaration and identifying the omitted lifetime dependency behind stale work | GAP-U9-C + GAP-U9-D |
+| `compose_current_callback_without_restarting_the_effect` | `compose_side_effects` | Applied | Choosing between keying an effect and `rememberUpdatedState`, including when the state is read | GAP-U10-A |
+| `compose_missing_on_dispose_accumulates_listeners` | `compose_side_effects` | Applied | What an empty `onDispose` accumulates across re-entry, and why the stale listeners stay reachable | GAP-U11-A |
+| `compose_produce_state_key_change_keeps_the_last_value` | `compose_side_effects` | **Advanced** | Tracing a keyed producer against an unkeyed holder to predict what the UI shows after a key change | GAP-U11-C |
+| `compose_required_lifetime_exceeds_the_composition` | `compose_side_effects` | **Advanced** | Selecting across the effect family from a stated requirement, and reaching the negative result | GAP-U12-A + GAP-U10-C |
+| `compose_durable_flag_repeats_a_transient_effect` | `compose_side_effects` | Applied | Diagnosing a durable condition wired to a mechanism whose contract is execution | GAP-U12-B |
+
+Six defects were found and fixed before this batch landed, and **none of them was a wrong key
+in the answer set** — four were distractors that were defensible rather than false, and two were
+claims the stem did not actually establish. Two of the six came from PR review, and both are the
+same failure as the other four: a premise the key silently depended on.
+`compose_body_work_has_no_lifecycle_owner`'s key said the started work "has no defined start,
+owner or cleanup", which over-claims, because nothing at that call site rules out `work.start`
+launching something that owns and cleans up after itself; the key is now scoped to what the call
+site establishes. `compose_missing_on_dispose_accumulates_listeners` left the invented
+`QuestionSession`'s registration contract undefined — a set-style API that replaces its listener
+would have made a distractor correct — and asserted a retention the stem never set up; the stem
+now names `addListener`, states that every added listener is notified until `removeListener` is
+called, and says what the listener writes into. The full list is in
+`docs/content/question-audit-log.yml` under this review's `pre_merge_fixes`.
+
+**All twelve are `SINGLE`, and none is `FOUNDATION`.** That is a consequence rather than a
+policy: every gap in the table above names reasoning the descriptive layer already has a
+Question for, which is exactly why it was recorded as a gap. Nine came out Applied and three
+Advanced.
+
+**Answer positions were redistributed after authoring** — twelve Questions all keying the same
+option is a position cue, and answer identity is by id, so reordering costs nothing. The bank's
+distribution is 27/27/26/20/1, and the correct-longest rate held at 41% (162 of 398, against
+160 of 386 before) with the mean ratio unchanged at 1.03 and no Question over the 10% length
+limit.
+
+### The three Advanced levels, justified one at a time
+
+The plan's observation that `android_ui` held one Advanced Question was **not** used as a
+reason. Each level was decided by the minimum-sufficient-reasoning test.
+
+| Question | Why the reasoning is Advanced |
+| --- | --- |
+| `compose_lifecycle_collection_stops_the_collector_not_the_producer` | Three independent facts must combine: the API's default threshold, the desktop host's mapping of *minimise* to `ON_STOP` (and of *lose focus* to a state still at the threshold), and that a shared producer's lifetime belongs to its own scope and policy. Two distractors are each right about one of the three |
+| `compose_produce_state_key_change_keeps_the_last_value` | The answer depends on a split the documentation page does not state — the key belongs to the producer and the holder is an unkeyed `remember` — and two options predict the same value for different reasons, so recognising the outcome is not enough |
+| `compose_required_lifetime_exceeds_the_composition` | Three mechanisms' cancellation contracts must be traced against one requirement, and the correct outcome is a negative one. The `produceState` distractor is the Unit 11 fact applied correctly to the wrong question |
+
+`compose_effect_key_equality_decides_restart` was the strongest remaining Advanced candidate and
+shipped **Applied**: two documented contracts (key equality, cancel-then-relaunch) are applied to
+a scenario without interacting subtly, which is the Applied definition rather than the Advanced
+one.
+
+### The five combinations, and why one Question is enough for each
+
+- **GAP-U8-B + GAP-U8-C.** One scenario requires both and neither half settles it. Predicting
+  that the collector stops needs the host mapping; predicting that the query does not needs the
+  sharing policy. Split, the first would be a platform-table lookup and the second would repeat
+  the sharing reasoning `flow_state_in_while_subscribed` and
+  `hot_sharing_changes_production_not_retention` already assess from the stream side. Together
+  they are the Compose-boundary question the plan asked for, and the "both stop" distractor is
+  exactly the misconception the split would have lost.
+- **GAP-U9-C + GAP-U9-D.** A constant-key stale-identity scenario is one reasoning act, not two:
+  the learner has to restate `Unit` as a lifetime claim *in order to* see which dependency was
+  omitted. Two Questions here would share a stem, a diagnosis and most of their distractors,
+  which is the duplication `Q20` exists to prevent.
+- **GAP-U10-C + GAP-U12-A.** The plan warned that trigger ownership and scope lifetime may be
+  separable responsibilities, and they are — which is why GAP-U10-B was **not** folded in here.
+  What this Question combines instead is Unit 12's selection-from-a-requirement with Unit 10's
+  conclusion that composition-owned work cannot be lent a longer lifetime, because reaching the
+  negative outcome *is* eliminating the whole family on lifetime grounds.
+
+### The five deferrals, each with its reason
+
+Four of the five are structural, and the structure is the shared `compose_side_effects` pool.
+Every Question written for Unit 10, 11 or 12 also enters **Unit 9's** practice, where its
+material has not been taught. The epic's acceptance criterion allows a gap to stay open when
+closing it would create premature practice, and this is that case.
+
+- **GAP-U7-C — no longer a substantive gap.** The reasoning is "moving state outside the
+  Composition changes its owner and grants no persistence; survival follows the new owner's
+  lifetime." Re-read against the finished bank, four ACTIVE Questions already assess it:
+  `viewmodel_store_configuration_retention` (the store is retained, the ViewModel is not
+  serialised), `viewmodel_clear_owner_finish` (a permanently destroyed owner clears it),
+  `viewmodel_destination_scope` (the lifetime follows the retained back-stack entry) and
+  `savedstatehandle_process_recreation` (what a different mechanism is needed for). None of them
+  is Unit 7 practice, which is the honest limitation — but a Compose-side restatement on
+  `compose_state_hoisting` would assess reasoning the bank already holds and would drag
+  lifecycle and E26 material into the shipped E23 state Unit's pool as well. Recorded as closed
+  by existing coverage, not as addressed.
+- **GAP-U10-B — deferred, structural.** L10.3's composition-versus-event trigger decision is
+  taught and remains unassessed as a standalone decision. `compose_side_effects_001` assesses
+  the `rememberCoroutineScope` half at recognition depth, and
+  `compose_required_lifetime_exceeds_the_composition` requires the same distinction as a step in
+  a larger decision. A third Unit-10 Question would be a third piece of Unit-10 reasoning in
+  Unit 9's pool for a decision that is already partly reachable. **Open.**
+- **GAP-U11-B — deferred, structural.** `compose_side_effects_001` is *not* sufficient: one
+  false clause about `SideEffect` running before the composition is applied is recognition, and
+  L11.2 teaches an abandoned attempt publishing nothing, a skipped call scheduling nothing in
+  that pass, and publication after every successful composition. That is a real, substantive
+  gap. It is deferred because Unit 11 already contributes two Questions to a pool that reaches
+  three earlier Units, and of the three Unit-11 candidates this is the one whose misconception
+  is already present in the bank in some form. **Open, and the strongest remaining candidate.**
+- **GAP-U11-D — deferred, structural and editorial.** The Flow-below-the-UI against
+  Compose-local-producer placement decision is taught by L11.4 and unassessed.
+  `callback_flow_await_close_registration` assesses the builder contract, so what is missing is
+  the placement judgement — which is also the softest of the E25 gaps to key defensibly, because
+  both columns of L11.4's table are correct under their own conditions and a Question has to
+  state enough of those conditions to make one option definitively wrong. The plan already
+  ranked it "if capacity allows". **Open.**
+- **GAP-U12-C — deferred, duplication.** `stream_choice_cannot_supply_a_delivery_guarantee`
+  (`async_reactive`/`hot_vs_cold_streams`, Advanced) already poses a requirement that names an
+  absent consumer *and* a process restart, and keys on writing the completion where it outlives
+  the process. That is the conclusion L12.3 reaches. A Compose-side restatement would differ
+  only in which layer asks the question, which is the duplication `Q20` prevents, and it would
+  put a fourth Unit-12 item into Unit 9's pool. **Open only in the sense that no Question is
+  filed under an E25 concept; the reasoning is assessed.**
+
+### The `compose_side_effects` overlap: the decision E25-08 owed
+
+E25-01 named four strategies. The decision is **A for Unit 9's own reasoning, B for the rest,
+and explicitly not C — with D stated rather than engineered around.**
+
+**Strategy C was re-evaluated and rejected, for reasons rather than by default.**
+`compose_side_effects_001` was re-solved from its stem and options against the resolved 1.11.2
+sources: the `LaunchedEffect` and `DisposableEffect` clauses are true, the `SideEffect` and
+`rememberCoroutineScope` clauses are false, its single source still states all four, and
+FOUNDATION is correct for four recognitions. Superseding it would **not** shrink any Unit's pool
+by one item, because narrower replacements land on the same Subtopic and in the same four pools —
+it would move the problem, not solve it. It would also cost historical identity for a Question
+that is answerable end to end after Unit 11 and whose only defect is being early in Unit 9, which
+is a property of the taxonomy rather than of the Question. **Kept unchanged**, and the same
+verdict, for the same kind of reason, applies to `compose_launched_effect_key_restart`: correct,
+correctly mapped, correctly levelled, and Unit 9's own reasoning.
+
+**Strategy D is stated rather than hidden.** No taxonomy id was invented. No Lesson was re-mapped
+to reach a different pool. No Compose-mechanism Question was filed under a coroutine or
+architecture concept for routing, and every E24 and architecture concept the E25 Lessons touch
+stays supporting-only — which
+`expandedUnitsConfigureOnlyTheirPrimaryConceptsAndDeduplicateProductionQuestions` in
+`LearningUnitPracticeIntegrationTest` continues to assert, by selecting each Unit's whole pool
+through the production builder and checking that no supporting-only Subtopic appears in it.
+E25-09 inherits a precise limitation rather than a cosmetically complete count.
+
+### The final practice shape, computed through the production resolver
+
+Read from the regenerated `docs/content/learning-question-coverage.md`, which derives each Unit's
+pool exactly as `PracticeTargetResolver` does — the deduplicated `primarySubtopicIds` of its
+ACTIVE Lessons — and asserted by `LearningUnitPracticeIntegrationTest`.
+
+| Unit | Primary concepts | Reachable ACTIVE Questions | F / A / Adv | Semantic adequacy |
+| --- | --- | --- | --- | --- |
+| 7 | `compose_state_hoisting`, `compose_udf` | 4 | 1 / 3 / 0 | Adequate. Three of the four assess Unit 7's own reasoning; `compose_state_hoisting_001` remains E23's definition-level item |
+| 8 | `compose_state` | 5 | 1 / 3 / 1 | Adequate for the first time. Two of the five assess conversion and collection lifetime; the other three are E23's |
+| 9 | `compose_side_effects` | 10 | 2 / 6 / 2 | Adequate for its own material — 4 of the 10 are Unit 9's reasoning, and `compose_durable_flag_repeats_a_transient_effect` is also answerable from Unit 9's effect-lifetime model. The remaining 5 are later Units' |
+| 10 | `compose_side_effects` | 10 | 2 / 6 / 2 | Adequate. Its own Question is `compose_current_callback_without_restarting_the_effect`; GAP-U10-B stays open |
+| 11 | `compose_side_effects` | 10 | 2 / 6 / 2 | Adequate. Its own Questions are `compose_missing_on_dispose_accumulates_listeners` and `compose_produce_state_key_change_keeps_the_last_value`; GAP-U11-B and GAP-U11-D stay open |
+| 12 | `compose_side_effects` | 10 | 2 / 6 / 2 | Adequate. Its own Questions are `compose_required_lifetime_exceeds_the_composition` and `compose_durable_flag_repeats_a_transient_effect` |
+
+**Units 9, 10, 11 and 12 still receive one identical pool of ten Questions.** That is stated
+here rather than averaged away, and `LearningUnitPracticeIntegrationTest` now asserts the same
+count for all four so that a divergence would fail a test rather than pass quietly.
+
+**The consequence, precisely.** A learner who finishes **Unit 9** and presses "Practice this
+material" draws from ten Questions, of which five assess reasoning Unit 9 has taught
+(`compose_launched_effect_key_restart`, the three new Unit-9 Questions, and the transient-effect
+Question, which turns on Unit 9's effect-lifetime model) and five contain material from Units
+10–12: two clauses of `compose_side_effects_001`, `rememberUpdatedState`, `DisposableEffect`
+disposal, `produceState`'s key-change value, and the cross-family lifetime decision. Before
+E25-08 the same learner drew from two Questions, of which one was already premature. The trade
+made here is deliberate: Units 10, 11 and 12 go from zero Questions assessing their own material
+to one, two and two respectively, and Unit 9's answerable share rises from 1 of 2 to 5 of 10.
+Closing the remaining four gaps would take Unit 9 to 5 of 14, which is the point at which the
+pool stops being Unit 9's practice at all.
+
+**Unit 7 and Unit 8 carry the same issue at smaller scale, and it is not hidden either.** Both
+of Unit 7's Subtopics and Unit 8's single Subtopic are also primary concepts of the shipped E23
+`unit_state_and_state_ownership`, whose pool therefore grows from 4 to 8. The two new hoisting
+Questions apply the reader/writer/lifetime tests that `lesson_state_hoisting` already teaches —
+at screen scale rather than for one value — so they are fair there. The two new collection
+Questions are **not**: an E23 Unit 2 learner has met `remember` and `mutableStateOf` and has not
+met Flow collection. `compose_state` is the nearest honest Subtopic for conversion, which
+[Taxonomy gaps](#taxonomy-gaps) already recorded, so this is unavoidable without a taxonomy
+change that E25 does not make. The integration test carries the same note.
+
+### Every mapping, level and defect candidate E25-01 recorded, disposed of
+
+| Item | Disposition |
+| --- | --- |
+| `compose_side_effects_001` | **Kept unchanged.** Re-solved and re-verified against the resolved 1.11.2 sources; correct, correctly mapped, correctly levelled. Superseding it would move the overlap rather than remove it, at the cost of historical identity — see the strategy decision above |
+| `compose_launched_effect_key_restart` | **Kept unchanged.** Correct FOUNDATION coverage of the restart direction; the finished curriculum exposed no defect |
+| `compose_work_placement_responsibility_vs_thread` | **Left on `compose_derived_state`.** No new evidence; it still closes E23's `lesson_work_outside_composition`. `compose_body_work_has_no_lifecycle_owner` assesses the Compose-side ownership contract instead of duplicating its ViewModel-versus-thread reasoning |
+| `lifecycle_repeat_on_lifecycle` | **Left on `lifecycle_aware_apis`.** Its scenario is a Fragment, it remains supporting-only in E25, and it was not moved to give Unit 8 practice. Unit 8's lifecycle reasoning is now assessed by a Question of its own instead |
+| `compose_state_hoisting_001` | **Left unchanged**, and deliberately not rewritten into Unit 7's whole-screen Question — `compose_screen_state_lowest_sensible_owner` is a new identity because it is a new assessment responsibility |
+| `live_data_vs_state_flow_ui_state` | **Left unchanged**, not cited, and not contradicted: it describes a View host and the new Unit 8 Questions describe the Compose boundary |
+| Lifecycle-platform-assumption defect search | **Re-run on the current bank and still clean.** No ACTIVE or DEPRECATED Question claims that lifecycle-aware collection is Android-only or makes any platform-availability claim about it. The new Question states its target in the stem and keys on the lifecycle threshold and the sharing policy rather than on availability |
+
+### One shipped-content defect found and fixed
+
+Source verification found `lesson_lifecycle_aware_collection` citing
+`https://kotlinlang.org/docs/compose-lifecycle.html`, which returns **404**; the page now lives
+at `https://kotlinlang.org/docs/multiplatform/compose-lifecycle.html`, which is what E25-01's
+source table named. The URL was corrected in place. Lesson identity, title, mappings, depth
+sections and every word of the prose are unchanged, and the page's content — the common
+`LifecycleOwner`, the per-target event tables, the web `CREATED`/`DESTROYED` limits and the
+desktop `Dispatchers.Main.immediate` note — still supports every claim the Lesson makes. This is
+the only edit E25-08 made to shipped learning content. A liveness sweep of all 32 distinct E25 Lesson
+source URLs found no other dead link.
+
+### What E25-09 inherits
+
+- Units 9–12 share one ten-Question pool, and four gaps stay open inside it: **GAP-U10-B**,
+  **GAP-U11-B**, **GAP-U11-D**, **GAP-U12-C**. Each has a reason above; none is an oversight.
+- Whether `compose_side_effects` should be split into finer Subtopics is now the decision that
+  would change the most, and it remains a question-bank-change decision rather than an E25 one.
+  [Taxonomy gaps](#taxonomy-gaps) already names four candidate concepts.
+- The limitations E25-01 carried forward are unchanged except for the second: Unit 8's pool now
+  assesses Unit 8's material, while still including three E23 Questions through `compose_state`.

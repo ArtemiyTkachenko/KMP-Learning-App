@@ -208,6 +208,49 @@ internal class LearningUnitPracticeIntegrationTest {
                     }
                 }
             }
+            // E26-02 added a third home Topic, so the same handover happens again: exhausting
+            // the coroutines Units leads into the architecture Unit rather than to Complete.
+            val architectureUnits = BundledLearningContentRepository().getActiveUnitsByTopic("architecture")
+            assertEquals(
+                listOf("unit_architecture_responsibilities_and_boundaries"),
+                architectureUnits.map { it.id },
+            )
+            assertEquals(listOf(5), architectureUnits.map { it.lessons.size })
+            val architectureTopic = topic("architecture")
+            val architectureParents = architectureUnits.associate { it.id to unit(it.id) }
+            suspend fun awaitArchitectureTopic(count: Int) {
+                architectureTopic.uiState.await { state ->
+                    state is TopicDetailUiState.Content &&
+                        (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
+                        StudyProgressSummary.Progress(count, 5)
+                }
+            }
+            awaitArchitectureTopic(0)
+            var architectureStudiedCount = 0
+            architectureUnits.forEach { architectureUnit ->
+                architectureUnit.lessons.forEachIndexed { index, lesson ->
+                    awaitNext(architectureUnit.id, lesson.id)
+                    val architectureReader = lesson(architectureUnit.id, lesson.id)
+                    architectureReader.uiState.await { state ->
+                        state is LearningLessonUiState.Content &&
+                            (state.studyState as? StudyProgressUiState.Available)?.value?.isStudied == false
+                    }
+                    architectureReader.toggleStudied()
+                    architectureReader.uiState.await { state ->
+                        state is LearningLessonUiState.Content &&
+                            (state.studyState as? StudyProgressUiState.Available)?.value?.let {
+                                it.isStudied && !it.isPending
+                            } == true
+                    }
+                    architectureStudiedCount += 1
+                    awaitArchitectureTopic(architectureStudiedCount)
+                    architectureParents.getValue(architectureUnit.id).uiState.await { state ->
+                        state is LearningUnitUiState.Content &&
+                            (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
+                            StudyProgressSummary.Progress(index + 1, architectureUnit.lessons.size)
+                    }
+                }
+            }
             browser.uiState.await { state ->
                 state is TopicBrowserUiState.Content && state.continueLearning == ContinueLearningUiModel.Complete
             }
@@ -252,9 +295,9 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             val rebuilt = LocalLessonStudyRepository(database)
             assertFalse(rebuilt.isStudied(earlierLesson.id))
-            // 43 `android_ui` Lessons plus 29 in the coroutines and Flow Units, less the
-            // one that was just un-studied.
-            assertEquals(71, rebuilt.getStudiedLessons().size)
+            // 43 `android_ui` Lessons, 29 in the coroutines and Flow Units and 5 in the
+            // architecture Unit, less the one that was just un-studied.
+            assertEquals(76, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -575,6 +618,68 @@ internal class LearningUnitPracticeIntegrationTest {
             assertFalse(questionId in unitSix, "A supporting-only Question reached Unit 6: $questionId")
             assertFalse(questionId in unitOne, "A supporting-only Question reached Unit 1: $questionId")
         }
+        assertEquals(0, attemptCount())
+    }
+
+    /**
+     * E26-02: the first `architecture` Unit, whose pool cannot be stated as a count.
+     *
+     * The expectation table above asserts `concepts == questions.map { it.subtopicId }.toSet()`, and
+     * that identity does not hold here: `architecture_tradeoffs` is a primary concept of the closing
+     * Lesson and holds no ACTIVE Question at all. That is GAP-U1-E in
+     * `docs/content/architecture-units-1-6-plan.md` — the widest gap in the Unit — and it is asserted
+     * rather than hidden, because the honest mapping is the one E26-08 has to see when it closes the
+     * gap. The exact resolved ids are pinned for the same reason: two of the five belong semantically
+     * to the later data-ownership Unit and one to the dependency-direction Unit, which is an accepted
+     * consequence of shared Subtopics, not something a re-mapping may quietly repair.
+     */
+    @Test
+    fun theArchitectureFoundationsUnitPractisesItsPrimaryConceptsAndNothingElse() = runUnitPracticeTest {
+        val unitId = "unit_architecture_responsibilities_and_boundaries"
+        val unit = assertNotNull(BundledLearningContentRepository().getUnitById(unitId))
+        val builder = builder(PracticeBuilderTarget.LearningUnit(unitId))
+        val settled = builder.settled()
+
+        assertEquals(unit.title, settled.scope.name)
+        val available = assertIs<PracticeAvailability.Available>(settled.availability)
+        assertEquals(5, available.eligibleQuestionCount)
+        builder.selectQuestionCount(available.eligibleQuestionCount)
+        builder.settled()
+
+        val config = builder.start()
+        val concepts = setOf(
+            "separation_of_concerns",
+            "dependency_direction",
+            "interface_boundaries",
+            "layered_architecture",
+            "architecture_tradeoffs",
+        )
+        assertEquals(AssessmentScope.Subtopics(concepts), config.scope)
+
+        val questions = selectedQuestions(config)
+        assertEquals(
+            setOf(
+                "separation_of_concerns_001",
+                "dependency_direction_domain_framework_types",
+                "architecture_interface_boundary_ownership",
+                "architecture_paging_ownership",
+                "dto_entity_domain_model_boundary",
+            ),
+            questions.map { it.id }.toSet(),
+        )
+        // The concept with no ACTIVE Question contributes nothing, so the Unit's proportionality
+        // reasoning is reachable only through `layered_architecture`.
+        assertFalse(questions.any { it.subtopicId == "architecture_tradeoffs" })
+
+        // Supporting concepts never broaden a Unit's practice. `solid` is the one that matters:
+        // E26-01 made it supporting-only by design, and its single ACTIVE Question must therefore
+        // reach no E26 Unit even though three Lessons name the acronym.
+        val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
+        assertTrue(questions.none { it.subtopicId in supportingOnly })
+        assertFalse(
+            "architecture_solid_dependency_substitution" in questions.map { it.id }.toSet(),
+            "A supporting-only SOLID Question reached the architecture Unit's practice.",
+        )
         assertEquals(0, attemptCount())
     }
 

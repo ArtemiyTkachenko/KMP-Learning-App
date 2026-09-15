@@ -11954,6 +11954,846 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "unit_architecture_responsibilities_and_boundaries",
+      "topicId": "architecture",
+      "title": "Architecture as Responsibilities and Boundaries",
+      "summary": "Architecture is not the folder tree, the library list or the number of layers: it is the assignment of responsibility, ownership and dependency direction, and it only becomes visible when a requirement changes and something has to change with it. This unit builds the test every later architecture unit applies — what genuinely changes together, which way a dependency may point, when an abstraction is a real boundary rather than another file, and whether a layer earns what it costs — before any named component or layer stack exists to be argued about.",
+      "lessons": [
+        {
+          "id": "lesson_what_architecture_decides",
+          "title": "What Architecture Actually Decides",
+          "summary": "Architecture is not the folder tree, the library list or the diagram in the README. It is the arrangement of responsibility, ownership, dependency direction, lifetime and change propagation — and the only way to see it is to name a requirement that changes and trace what has to change with it.",
+          "primarySubtopicIds": [
+            "separation_of_concerns"
+          ],
+          "supportingSubtopicIds": [
+            "architecture_tradeoffs",
+            "layered_architecture",
+            "android_modules"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A product decision arrives on Monday. A borrowed item should no longer count as overdue the moment its due date passes, because the service now allows a three-day grace period. The rule itself is four lines of arithmetic. Before opening the editor, ask the question this whole subject is built on: which parts of the codebase should have to change for that requirement, and which should be able to ignore it completely?"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That answer is not a matter of taste, and it was not decided on Monday. It was decided by arrangements made long before the requirement arrived, and those arrangements are what the word architecture actually refers to. Architecture is easiest to define by what it decides, and five decisions recur so often that almost every structural argument you will have is about one of them."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Responsibility** — which component is answerable for a piece of behaviour: deciding, formatting, storing, coordinating. In front of code the question is *who owns this decision?*",
+                    "**Ownership** — which component may change a value rather than merely read it. *Who is allowed to write this, and through what path?*",
+                    "**Dependency direction** — which component is allowed to know that another exists. *Who may know about this, and who must be able to change without telling anyone?*",
+                    "**Lifetime** — how long a responsibility and its data must exist, and what ends them. *How long does this need to live?*",
+                    "**Change propagation** — which components a given requirement reaches and which it leaves alone. *What should have to change when this requirement changes?*"
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "None of those five is visible in a directory listing. A codebase at rest is a set of files; the arrangement only becomes observable when something has to change, which is why the recurring device in this unit is a changing requirement rather than a diagram. It is also why two of the most common answers to \"what is your architecture?\" — a folder tree and a list of libraries — describe something real without describing the architecture. Both are examined in turn below, because getting them wrong is not a vocabulary slip: it leads engineers to believe they have made a decision when nothing has been decided."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Architecture is the set of decisions about responsibility, ownership, dependency direction, lifetime and change propagation. A folder tree or a dependency list can express those decisions, or hide the fact that nobody made them; neither creates them. To see the architecture of a codebase, name a plausible requirement change and trace what must change with it."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Two teams are handed the same feature — a list of borrowed items showing a due date, an overdue banner and a way to renew — and both ship the same five types with the same calls between them. They arrange the files differently."
+                },
+                {
+                  "type": "code",
+                  "code": "Team A                          Team B\nloans/                          ui/\n  LoanListScreen.kt               LoanListScreen.kt\n  LoanRenderer.kt                 LoanRenderer.kt\n  OverduePolicy.kt              domain/\n  LoanStore.kt                    OverduePolicy.kt\n  DueDateFormatter.kt           data/\n                                  LoanStore.kt\n                                util/\n                                  DueDateFormatter.kt",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Every dependency is identical. The screen asks the policy, the renderer calls the formatter, only the store writes, and nothing knows about the screen. The trees differ; the architecture does not, because the same components hold the same responsibilities and the same components know about each other. Moving a file between folders is a readability decision and a genuinely useful one — Team B's tree tells a newcomer where to look first — but it is not an architectural change, because no responsibility and no dependency moved. The same is true one level up: extracting `data/` into its own Gradle module changes how the code is built and what the compiler can enforce, and by itself still moves nothing. Build boundaries are the modularization curriculum's subject, and the last lesson in this unit says the one thing about them that belongs here."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now the opposite case, which is far more common: names that claim a structure the code does not have."
+                },
+                {
+                  "type": "code",
+                  "code": "// ui/LoanListScreen.kt\ninternal class LoanListScreen(database: LoanDatabase) {\n    private val store = LoanStore(database)\n\n    fun rows(today: LocalDate): List<LoanRow> =\n        store.loadAll().map { loan ->\n            LoanRow(\n                title = loan.title,\n                due = DueDateFormatter.format(loan.dueOn, today),\n                overdue = loan.dueOn < today,\n            )\n        }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This project has `ui`, `domain` and `data` packages and a three-layer diagram in its README. The screen names `LoanDatabase`, constructs `LoanStore` and compares the dates itself, so the UI depends on storage directly and the `domain` package is not on the path at all. Change the database and the screen changes. Change the overdue rule and you change a screen. The folder names describe an intention that nothing enforces; the import list describes the architecture, and only one of the two is true. Android's own recommendations state the same rule in stronger terms than a folder name can — components in the UI layer \"don't interact directly with a data source\" — but a rule in a document is not a boundary in a codebase either. Only the imports are."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second category error swaps a library for an arrangement. Two versions of it turn up in interviews constantly."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The claim",
+                    "What the technology actually decides",
+                    "What it leaves undecided"
+                  ],
+                  "rows": [
+                    [
+                      "\"We use Koin, so our architecture is dependency injection\"",
+                      "How objects are declared and resolved at run time, and where construction happens rather than being hard-coded",
+                      "Which component owns which responsibility, who may depend on whom, and what each dependency costs. A module can wire a screen straight to a database as easily as to anything else"
+                    ],
+                    [
+                      "\"We use Compose, so our architecture is MVVM\"",
+                      "How UI is described and updated from the current state, and that the UI is not a tree of widgets you mutate",
+                      "Who owns that state, how long it lives, what may know about it, and where the rules that produce it run — the questions a pattern name is supposed to answer"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The general form: a framework or library is a tool that can support architectural decisions, make some of them easy and make others awkward, but it does not make them. This is why the first property Clean Architecture claims for a system is that it is \"independent of frameworks\" — the architecture \"does not depend on the existence of some library of feature laden software\", which \"allows you to use such frameworks as tools, rather than having to cram your system into their limited constraints\". You do not have to adopt that architecture to take the point: whatever the library list says, somebody still decided who owns what."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Answering \"what is your architecture?\" with a stack — Compose, Koin, Room, Retrofit — describes the toolbox rather than the arrangement, and it is the most common weak answer to the question. A strong answer names what the main components are responsible for, says which way the dependencies point and why, and then gives one requirement that changed while you were there and what it touched."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "If architecture is hard to see in a directory listing, what is it judged by? The most useful answer is the cost of change. Two codebases can have the same classes, the same call graph and class diagrams that a reviewer could not tell apart, and still differ completely in what a requirement costs — because a diagram shows which components exist and says nothing about where a decision is made."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Return the grace-period requirement to two such codebases."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Where the overdue rule lives",
+                    "What the grace period changes",
+                    "What it leaves alone"
+                  ],
+                  "rows": [
+                    [
+                      "One policy answers the question; the renderer asks it, and storage keeps dates and nothing derived from them",
+                      "One function and its tests",
+                      "Screen, renderer, formatter, storage, and every test that does not concern the rule"
+                    ],
+                    [
+                      "The renderer compares dates while formatting, storage writes a precomputed `is_overdue` column, and a nightly job recomputes it",
+                      "The renderer, the storage write path, a migration for the stored flag, the job, and every test that fixed a date near the boundary",
+                      "Very little — and the three copies of the rule can now disagree with each other"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is the whole argument. Structure matters because of how it affects change, not because one shape is more elegant than another. It is worth noticing that the second codebase is not obviously bad: precomputing a flag is a reasonable performance decision, formatting and comparing a date in the same place is convenient, and the nightly job was somebody's bug fix. Each step had a local justification. Architecture is the part of those decisions nobody sees until a requirement arrives and asks three places to agree."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Resist turning this into a metric. Counting the files a requirement touches measures nothing on its own. Some changes are genuinely cross-cutting — adding a field the user must see, store and sync touches every component that handles it under any arrangement — and an arrangement that makes one requirement cheap usually makes a different one more expensive. What you are choosing is never \"fewer changes\" in general; it is *which* changes are cheap. That choice is only as good as your sense of which changes are actually coming, which is where the next lesson starts."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "\"Describe the architecture of your last app\" is not a request for a folder tree or a library list. Name what the main components are responsible for, say which way the dependencies point and what each side would inherit if they pointed the other way, then take one requirement that actually changed while you were on the project and trace what it touched. That last part is what separates an answer about a diagram from an answer about a codebase."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [],
+          "sources": [
+            {
+              "title": "Guide to app architecture",
+              "url": "https://developer.android.com/topic/architecture"
+            },
+            {
+              "title": "Architecture recommendations",
+              "url": "https://developer.android.com/topic/architecture/recommendations"
+            },
+            {
+              "title": "The Clean Architecture",
+              "url": "https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_responsibility_and_change",
+          "title": "Responsibility, Cohesion and What Changes Together",
+          "summary": "A responsibility is a reason to change, not a description of what a class does. This lesson makes that usable: work out which behaviours in a component genuinely change for different reasons, which split creates a boundary, and which one only produces one concept spread over two files.",
+          "primarySubtopicIds": [
+            "separation_of_concerns"
+          ],
+          "supportingSubtopicIds": [
+            "solid",
+            "architecture_tradeoffs",
+            "interface_boundaries"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The previous lesson ended on a question it could not answer: which changes should be cheap? Answering it needs a way to say what a component is responsible for, and the most useful definition of a responsibility is not a description of what the code does. It is a statement about why the code would have to change."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is the idea behind the principle you will hear named in interviews as SRP: \"each software module should have one and only one reason to change\". Stated that way it sounds like a rule about size, and it is not. The same author's more usable restatement gives the actual instruction — \"Gather together the things that change for the same reasons. Separate those things that change for different reasons\" — and adds the part that makes it concrete: \"this principle is about people\". A reason to change is somebody asking for something: a product decision about wording, a business rule owned by a different team, an infrastructure migration. It is not a technical category like \"formatting\" or \"database work\"."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two words describe the result and both are worth using precisely. **Cohesion** is how much the things inside a component belong to the same responsibility — how much of one thing it does. **Coupling** is how much one component must know about another, or must change when the other does. Neither is a number you compute, and treating them as metrics is how they stop being useful. They are questions you ask about a specific pair of plausible changes."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Which gives the operative question for the rest of this lesson, and a test you can apply to real code: **under which plausible requirement would these two behaviours have to change independently?** If you can name one, you have found a boundary. If you cannot name one, you have found two names for the same concept, and separating them will cost more than it returns."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Here is a small component from the borrowed-items feature. It is short, it has three public functions, and nothing about it looks careless."
+                },
+                {
+                  "type": "code",
+                  "code": "internal class LoanEntry(\n    private val database: LoanDatabase,\n) {\n    fun dueLabel(loan: Loan, today: LocalDate): String {\n        val days = today.daysUntil(loan.dueOn)\n        return when {\n            days < 0 -> \"Overdue by ${-days} days\"\n            days == 0 -> \"Due today\"\n            else -> \"Due in $days days\"\n        }\n    }\n\n    fun isOverdue(loan: Loan, today: LocalDate): Boolean = loan.dueOn < today\n\n    fun renew(loan: Loan, until: LocalDate) {\n        database.execute(\n            \"UPDATE loans SET due_on = ? WHERE id = ?\",\n            until.toString(),\n            loan.id,\n        )\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Asking \"how many things does this class do?\" produces an argument, because the answer depends on how abstractly you describe it — it manages loans, or it does three things, or it does eight. Asking which requirement changes which part produces an answer."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The requirement changes",
+                    "What has to change",
+                    "What should be able to ignore it"
+                  ],
+                  "rows": [
+                    [
+                      "Due dates are shown as \"12 March\" instead of \"Due in 4 days\", and translated",
+                      "`dueLabel`, and anything else that turns a date into text",
+                      "The overdue rule and the write path"
+                    ],
+                    [
+                      "An item counts as overdue only after a three-day grace period, and never on a weekend",
+                      "`isOverdue`, and every other place that compares a due date with today",
+                      "The wording of the label and the write path"
+                    ],
+                    [
+                      "Loans move from a local table to a store with a different write path",
+                      "`renew`, and everything that names the database",
+                      "The label and the overdue rule"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Three requirements, three disjoint answers, and no reason any of them should wait for another. That is what \"three responsibilities\" means here, and notice how little the size of the class had to do with reaching it. What makes these three separable is that three different people can ask for three changes that do not overlap: a designer, whoever owns the lending rules, and whoever owns storage. Splitting them is then unremarkable — a formatter that turns a date into text, a policy that answers one question about a date, and a gateway that owns the write — and each piece can be read, changed and reasoned about without the other two."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The reverse mistake is easier to make, because it feels like progress. Here the same formatting responsibility has been split in two, for the reason usually given: classes should be small."
+                },
+                {
+                  "type": "code",
+                  "code": "internal class DueDateFormatter(private val strings: Strings) {\n    fun format(loan: Loan, today: LocalDate): String =\n        DueDateTextBuilder(strings).build(today.daysUntil(loan.dueOn))\n}\n\ninternal class DueDateTextBuilder(private val strings: Strings) {\n    fun build(days: Int): String = when {\n        days < 0 -> strings.overdue(-days)\n        days == 0 -> strings.dueToday()\n        else -> strings.dueIn(days)\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Nothing here is wrong and both classes are small. Now apply the test: name the requirement that changes one without the other. Every wording change, every new case, every plural rule and every locale touches both files in the same commit, because there is one reason to change and it reaches both. What the split produced is not two components; it is one concept spread over two files, plus a contract between them that has to be kept in sync and a hop to make while reading. \"Classes should be small\" is a heuristic about readability, and it is not the same claim as \"these are two responsibilities\"."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The opposite failure is a container whose members share nothing except where they are stored."
+                },
+                {
+                  "type": "code",
+                  "code": "internal object Utils {\n    fun formatDueDate(date: LocalDate, today: LocalDate): String =\n        \"Due in ${today.daysUntil(date)} days\"\n\n    fun isValidEmail(value: String): Boolean = value.matches(EmailPattern)\n\n    fun toDatabaseTimestamp(date: LocalDate): Long =\n        date.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds()\n\n    fun shortTitle(title: String): String = title.take(40)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Four behaviours, four unrelated reasons to change, one name that half the codebase imports. Cohesion here is as low as it can be — nothing in `Utils` belongs with anything else in `Utils` — and the coupling it creates is real even though it feels harmless: every consumer now depends on a file that changes for reasons none of them cares about, and the storage format has arrived in a name the screen imports. The deeper cost is that a `Utils` file is where nobody has to decide who owns anything, which is exactly the decision this unit is about."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There is a sharper form of the same question, and the Compose curriculum already asked it at a smaller scale. `lesson_state_hoisting` decided where a value belongs by asking who reads it, who writes it and how long it must live, and the writer is the interesting half: the component allowed to change a value holds a responsibility that components merely reading it do not. That scales up unchanged. When two components can both write the same value, they share a responsibility whether or not anyone decided they should, and every requirement about that value reaches both of them."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"This class does three things, so it should be three classes\" skips the only step that matters. Size is not the test and neither is the number of public functions. Name the requirement that would change one part and leave the others alone. If you cannot, the split adds a file, a contract and a navigation hop while leaving the concept exactly as coupled as it was."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "\"A class should have one responsibility\" is unfalsifiable as usually stated, and it is worth being able to say why. Pick any class and you can describe it as one responsibility (\"it handles loans\") or as six, depending only on how abstractly you talk about it. The statement acquires meaning exactly when the possible reasons to change are named, which is why the original formulation is about people rather than about code shape: two stakeholders who can ask for changes independently are two reasons to change, and code serving both of them has two masters."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That makes a boundary a **prediction**, and it is more honest to treat it as one. When you separate the overdue policy from the formatter you are betting that those two requirements will arrive separately. Evidence beats imagination here: in the example the label wording and the lending rules have each changed twice this year, while the write path has not changed in two. A boundary drawn where change has actually happened is a far better bet than one drawn where change is merely imaginable — and everything is imaginable, which is how codebases acquire abstractions that nothing ever varied behind."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "You will still be wrong sometimes, in both directions, and the two errors do not cost the same. A missing boundary announces itself when a change hurts, and repairing it is usually a mechanical extraction of code you now understand well. A boundary that was never needed is paid for on every read, by everyone, for as long as the code lives, and it is rarely removed because removing it looks like a regression. That asymmetry is the practical case for drawing fewer boundaries than you can imagine needing, and drawing them where the evidence already is."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The name for this idea is the single-responsibility principle, the S of SOLID, and recognising the acronym is worth something in an interview. This curriculum treats SOLID as vocabulary rather than as a structure to teach, because the principles that carry real reasoning for application architecture are better met where an engineer actually encounters them: designing an abstraction around what its consumer needs is the subject of the next two lessons, and inverting a dependency is taken up by the later unit on domain logic and dependency direction. Walking all five principles in order would be a tour of an acronym, not a way to decide anything."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked why you split a class, \"separation of concerns\" and \"it was doing too much\" are the weak answers. The strong one names two requirements: \"the label wording changed three times last quarter and the lending rules are owned by another team, so those two had to stop sharing a file.\" Being able to name a case where you deliberately did *not* split — two functions that always change together — is worth just as much, because it shows the test is a test rather than a preference for more files."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_what_architecture_decides",
+            "lesson_state_hoisting"
+          ],
+          "sources": [
+            {
+              "title": "The Single Responsibility Principle",
+              "url": "https://blog.cleancoder.com/uncle-bob/2014/05/08/SingleReponsibilityPrinciple.html"
+            },
+            {
+              "title": "Guide to app architecture",
+              "url": "https://developer.android.com/topic/architecture"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_dependency_direction_and_boundaries",
+          "title": "Which Way May This Dependency Point?",
+          "summary": "A dependency exists when one component names another, and which way it points is a decision with a price: the depending side inherits the other's reasons to change. Separating that from call direction and data flow is what makes the decision visible.",
+          "primarySubtopicIds": [
+            "dependency_direction"
+          ],
+          "supportingSubtopicIds": [
+            "interface_boundaries",
+            "solid",
+            "layered_architecture",
+            "module_dependency_direction"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A dependency exists when one component names another. If `LoanRenderer` mentions `LoanStore` anywhere — a parameter type, a constructor call, a return type, an import — then `LoanRenderer` depends on `LoanStore`: it cannot be compiled, read or reasoned about without it. Nothing about that implies the reverse. `LoanStore` may know that renderers exist, or may know nothing about them at all, and choosing which is an architectural decision — usually made by whoever typed the import first."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Three different things are routinely collapsed into the phrase \"which way does it point\", and keeping them apart is most of this lesson."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Direction",
+                    "What it describes",
+                    "Where you can see it"
+                  ],
+                  "rows": [
+                    [
+                      "Source dependency",
+                      "Which component names the other, and therefore cannot be compiled, understood or moved without it",
+                      "The imports and the signatures"
+                    ],
+                    [
+                      "Call direction",
+                      "Which component invokes the other while the program runs",
+                      "The call stack"
+                    ],
+                    [
+                      "Data flow",
+                      "Which way values actually travel",
+                      "The arguments and return values, which frequently travel back along a call"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "They often coincide, which is why they are easy to merge into one idea, and the cases where they come apart are exactly the interesting ones. Only the first is the architectural decision: the source dependency is what decides which component can change without the other noticing."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The reason direction matters at all is the consequence: **a component that depends on another inherits some of that component's reasons to change.** Not all of them — a private implementation detail can change freely — but every part of the other component that this one names. So direction matters most exactly where the two sides differ in how often they change. A dependency from something that changes yearly to something that changes weekly imports that weekly change and pays for it forever."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "You may already have heard the rule \"dependencies point inward\". It is a real rule, it belongs to a specific architecture with a specific justification, and the later unit on domain logic and dependency direction takes it seriously. On its own it is not usable, because \"inward\" presumes a set of concentric layers that the codebase in front of you may not have. The general form of the question fits any two components, and it is this lesson's title: which of these two should be allowed to know about the other, and what would the other direction cost?"
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The borrowed-items screen gets its data from a sync service. The shape the service sends is declared once and used everywhere, because doing anything else looked like pointless ceremony."
+                },
+                {
+                  "type": "code",
+                  "code": "@Serializable\ninternal data class LoanPayload(\n    val id: String,\n    val title: String,\n    val due: String,      // ISO-8601, exactly as the service sends it\n    val renewals: Int,\n)\n\ninternal class LoanRenderer {\n    fun row(payload: LoanPayload, today: LocalDate): LoanRow = LoanRow(\n        title = payload.title,\n        due = DueDateFormatter.format(LocalDate.parse(payload.due), today),\n    )\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The saving is real. One type, no mapping code, and a field the service adds is available on the screen the moment it is deserialised. Then the service ships its next version: `due` becomes `dueAt` and carries a time zone, and `renewals` becomes a nested object because a renewal now has its own date. Both changes are legitimate and neither has anything to do with presentation. The renderer changes anyway. So does everything else that read a payload, and so do the tests that built one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Direction is the whole diagnosis. The renderer names a type owned by the sync service, so it inherited the sync service's reasons to change; the rendering requirement did not change, the thing it was allowed to depend on did. The repair is in the same vocabulary: the renderer names a type the presentation side owns, and something on the sync side translates between the two. That translation is not free — it is an extra type, a mapping function and a place where a new field has to be added twice — and whether a given feature should pay for it is this unit's last lesson. What matters here is that the dependency had a direction, that the direction was chosen, and that it was chosen by default, which is how most architectural decisions get made."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A second case is quieter and more common. Two sides use dates, so a helper appears where both can reach it."
+                },
+                {
+                  "type": "code",
+                  "code": "internal object DateHelper {\n    // called by the renderer\n    fun format(date: LocalDate, today: LocalDate): String =\n        \"Due in ${today.daysUntil(date)} days\"\n\n    // called by the store\n    fun toStorageKey(date: LocalDate): Long =\n        date.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds()\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Ask which responsibility it serves and the answer is two: the functions change for different reasons and share only a parameter type. \"Both sides use dates\" is a shared vocabulary word, not a shared concept. Moving the file to `common` or `util` does not answer the ownership question, it makes the question unaskable — the storage key now lives in a package the presentation depends on, so a change to how dates are stored lands on a file everything imports."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The useful version is: does one stable concept exist that both callers genuinely need? Sometimes the answer is yes. A rule about which days count as business days is one concept, and both a renderer and a lending policy may legitimately depend on it; then you name the concept and let both depend on it deliberately. When the answer is no, the honest outcome is two small functions owned by two sides, which looks like duplication and is not. Duplicate code with one reason to change is a problem worth fixing; identical code with two different reasons to change is two things that happen to look alike today."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The third case is the one that shows call direction and dependency direction coming apart. The loader reports progress as batches arrive."
+                },
+                {
+                  "type": "code",
+                  "code": "internal class LoanSyncLoader(private val transport: Transport) {\n    // The loader names a function type. It names no screen.\n    suspend fun load(onBatch: (List<Loan>) -> Unit) {\n        transport.stream { batch -> onBatch(batch.map(::toLoan)) }\n    }\n}\n\ninternal class LoanListScreen(private val loader: LoanSyncLoader) {\n    suspend fun start() {\n        loader.load { loans -> render(loans) }   // control and data arrive here\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Trace the three directions separately. The **source dependency** points one way only: the screen names the loader, and the loader names nothing about screens. **Control** crosses in both directions — the screen calls `load`, and the loader then calls back into code the screen supplied. **Data** travels from the loader to the screen, against the source dependency. Replace the screen with something else entirely and the loader does not notice, because it never knew what was on the other end of `onBatch`."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is the mechanism behind a claim worth being able to state precisely: the flow of control and the source-code dependency can point in different directions. Clean Architecture makes exactly that observation — \"Note the flow of control … Note also the source code dependencies. Each one of them points inwards\" — and then answers the harder question, which is who should *define* the abstraction so the arrow points where you intended even when the calls go the other way. That is dependency inversion, and this curriculum answers it in the unit on domain logic and dependency direction. All this lesson needs is the distinction: a callback moves control and data without moving the dependency."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"The screen calls the loader, so it depends on it; the loader calls back into the screen, so they depend on each other.\" The second half is where the reasoning goes wrong. A callback parameter is a function type: the loader names no screen, imports nothing from one and compiles without one. Cycles in the call graph are ordinary and mostly harmless. A cycle in the source dependencies is the thing that makes two components change together."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A dependency cycle is the most visible direction failure, and it is worth being precise about why it is bad, because the usual reason given is wrong. The compiler only complains when a cycle crosses a build module; inside one module a cycle is legal, and large codebases are full of them. The real cost is that two components with a cycle between them are one component for every purpose that matters: neither can be read, changed, moved or reused without the other, and every requirement that reaches one reaches both. The cycle is the symptom. The shared reason to change is the disease, and it usually arrives long before the cycle does."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Direction is therefore a bet on relative stability: depend in the direction of things that change less often than you do. \"Stable\" here means \"changes rarely\", not \"important\" or \"low-level\". A lending rule that has not changed in three years is more stable than the JSON a partner service ships every quarter, even though the JSON feels closer to the machine — which is why \"the UI depends on the data layer\" is a description of a common arrangement rather than a justification of it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Being able to state what the reverse direction costs is the whole skill. For any pair, the answer has the same shape: the depending side inherits the other's reasons to change, and the price of not depending is the translation you now have to write and maintain at the boundary. In the payload example, refusing the dependency costs a presentation-owned type and a mapping function; accepting it costs a renderer that changes whenever a wire format does. Both are real costs. Which one is worth paying depends on how differently the two sides actually change, and that is the judgement the next two lessons sharpen."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One boundary note, deliberately short. A build module makes a direction enforceable rather than conventional: if the sync module does not depend on the UI module, nobody can add the import, whereas inside one module the same rule is a convention protected by code review. Where to draw build boundaries, and what they cost, is the build and modularization curriculum's subject. The claim this unit makes is only that the logical direction is the decision, and a module is one way to enforce it."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "For any two components, be ready to answer in one breath: which one names the other, what does the depending side inherit, and what would reversing it cost? \"The UI shouldn't know about the database\" is a slogan until you can finish it — because the UI would then change whenever the schema does, for reasons that have nothing to do with what is on screen, and the price of avoiding that is a type and a mapping somebody has to maintain."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_what_architecture_decides",
+            "lesson_responsibility_and_change"
+          ],
+          "sources": [
+            {
+              "title": "The Clean Architecture",
+              "url": "https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html"
+            },
+            {
+              "title": "Guide to app architecture",
+              "url": "https://developer.android.com/topic/architecture"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_when_an_interface_is_a_boundary",
+          "title": "When an Interface Is a Boundary, and When It Is Only Indirection",
+          "summary": "Adding an interface decouples nothing by itself. What makes an abstraction a boundary is that the contract belongs to its consumer and the two sides have genuinely different reasons to change — and when neither is true, the cost is concrete and permanent.",
+          "primarySubtopicIds": [
+            "interface_boundaries"
+          ],
+          "supportingSubtopicIds": [
+            "dependency_direction",
+            "solid",
+            "architecture_tradeoffs",
+            "test_doubles"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A team notices that `LoanListScreen` constructs `LoanStore` directly, agrees that the dependency points the wrong way, and fixes it: `LoanStore` becomes an interface, `FileLoanStore` implements it, and the screen takes the interface. Nothing else changes. Has anything been decoupled?"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "An interface is a language feature. A boundary is a property of an arrangement, and the test for it has nothing to do with the keyword: two components are decoupled when one can change without the other having to be edited. Whether that is true depends on three things the keyword does not decide — which side owns the contract, whether the two sides genuinely change for different reasons, and whether the contract describes what the consumer needs rather than what the implementation happens to do."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The third of those is where most single-implementation interfaces fail, and it has a crisp statement from Martin Fowler: \"Interfaces should be designed around your clients' needs, often these don't match the implementation.\" The same page is equally direct about the cost of the common case — \"Using interfaces when you aren't going to have multiple implementations is extra effort to keep everything in sync.\""
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So the test to apply, before writing the keyword: name a change the implementation could absorb without the consumer being edited, and a change to the consumer's needs that would not dictate the implementation's shape. If both answers are \"none\", what you have is indirection — a second name for the same thing, moving in step with it — and the next section makes the price of that concrete."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Here is the interface that team extracted."
+                },
+                {
+                  "type": "code",
+                  "code": "internal interface LoanStore {\n    fun readAllRows(): List<LoanRow>\n    fun writeRow(row: LoanRow)\n    fun deleteRow(id: String)\n    fun beginTransaction()\n    fun endTransaction()\n}\n\ninternal class FileLoanStore(private val file: Path) : LoanStore {\n    // The only implementation, and the one the interface was copied from.\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read the contract and you can reconstruct the implementation from it: rows, one method per operation the file store happens to support, and a transaction pair that exists because the file store needs one. That is the signature of an interface extracted *from* an implementation rather than designed *for* a consumer, and the consequence shows up in the commit history. Adding a column adds a method to both files. Making writes suspend changes both. And every consumer now knows that storage has transactions, which is a storage detail that has just become part of the screen's vocabulary."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So ask the question directly: what did the interface buy? Architecturally, close to nothing — the screen still changes whenever the file store's shape changes, which is what coupling means. What it definitely bought is a list of costs, and they are worth naming concretely, because \"abstractions add complexity\" is the vaguest sentence in the subject."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Another name in the codebase, which every reader has to learn and keep distinct from the implementation's name.",
+                    "Another file, and a navigation hop on the way to the code that actually does the work — paid on every read, by everyone, forever.",
+                    "A contract that now has to be designed and kept in sync, so most changes touch two files instead of one.",
+                    "A false signal to the next engineer, who will reasonably assume that a second implementation exists or is planned, and will design around a flexibility that is not there."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now change the requirement so that a boundary has something to isolate. The product decides that loans are read from the device when it holds the learner's history and from an exported archive when it does not — two sources with different failure behaviour and different refresh rules — and that the screen must not know which one answered. Suddenly there is a decision to make, and the contract stops mirroring a file."
+                },
+                {
+                  "type": "code",
+                  "code": "internal interface LoanSource {\n    suspend fun loansDueBefore(day: LocalDate): List<Loan>\n    suspend fun renew(id: String, until: LocalDate): RenewalOutcome\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Three things changed, and the `interface` keyword was not one of them. The contract is written in the consumer's vocabulary — loans, a due window, an outcome — instead of the storage's rows and transactions. It is owned by the side that needs it, so it changes when the screen's requirements change and not when a file format does. And there is now a real difference in volatility: the archive's format, the on-device schema and the refresh rules can all move without the screen being edited. A second implementation is a *consequence* of that difference, not the cause of it, which is why counting implementations is a poor test."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The argument you will hear most often deserves a careful answer rather than a dismissal: \"we need the interface so we can test it\". It is true that a substitute is easier to supply through an abstraction, and easier substitution is a genuine benefit. It is also a consequence of a boundary rather than a reason to create one. If the contract is the file store's method list, the substitute you write is a fake file store, and the test proves that the consumer can drive a file store — which is what it could do before. The architectural question has not moved: is there a contract worth substituting? When the answer is yes, testing gets easier for free — which is the ordering Clean Architecture uses when it lists testability as a property that follows from the arrangement, business rules being testable \"without the UI, Database, Web Server, or any other external element\" precisely because nothing about them names one. What to fake, what to exercise for real and how to design the tests themselves belong to the testing curriculum, which is why this lesson deliberately shows no test."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"Adding an interface decouples the code.\" It does not. Two components are decoupled when one can change without the other being edited. An interface with one implementation, a contract extracted from that implementation, and both files changing in the same commit has moved the code into two files and left the coupling exactly where it was — while adding a name, a hop and a contract to keep in sync."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "When there is one implementation, one change rate and no consumer-owned contract, the strongest option is often the one nobody proposes in review: do not add the abstraction yet. That is not an appeal to a slogan, and the trade is worth working out rather than asserting."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "What to weigh",
+                    "Add the abstraction now",
+                    "Add it when the second responsibility appears"
+                  ],
+                  "rows": [
+                    [
+                      "When the cost is paid",
+                      "Immediately, and then on every read for as long as the code lives",
+                      "Once, as a mechanical extraction, at the moment it buys something"
+                    ],
+                    [
+                      "What the contract is designed from",
+                      "One implementation, which is exactly the case where the guess mirrors it",
+                      "Two real needs, which is the first moment you know what the contract should say"
+                    ],
+                    [
+                      "The risk",
+                      "The abstraction is never varied behind, and is never removed because removing it looks like a regression",
+                      "\"Later\" arrives with several consumers already coupled to the concrete type, making the extraction wider than it would have been"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That second risk is real, and it is what decides the cases where adding the abstraction early is right. When the implementation genuinely does not exist yet — another team is writing it, or there will visibly be one per platform — the contract has to be agreed before either side can proceed. When the abstraction is published beyond the codebase, Fowler's own exception applies: a library's users \"don't get that fast feedback\", so a contract they depend on is worth designing up front. Neither exception is \"we might need it later\", which is an argument that can be made about anything."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This repository contains a useful example of the honest middle. `LessonStudyRepository` is an interface with exactly one implementation, `LocalLessonStudyRepository`, and counted alone that pair looks like the anti-pattern above. What makes it a boundary is the contract: it is written in the study feature's vocabulary — mark a Lesson studied, unmark it, ask whether one is studied, read the studied Lessons in a stated order — and it names no database type at all, so the entire storage mechanism can change without a consumer being edited. The point is not that this application is a model to copy; it is that the number of implementations was never the test, and the shape of the contract always was."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One question this lesson deliberately leaves open: *where* should the abstraction live, and which side should declare it, so the dependency arrow actually ends up pointing the way you intended? \"The consumer owns the contract\" appears here as a property to look for when judging an abstraction. Turning it into a technique — dependency inversion, what it costs in a layered application, and which module the interface belongs in — is the subject of the unit on domain logic and dependency direction. Keeping the two questions apart is deliberate: this one is *is this abstraction a boundary at all*, and that one is *how do I place it so the direction comes out right*."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "\"When would you not add an interface?\" is a question that separates people who have a rule from people who have a test. Answer with the condition rather than the count: when the contract would just be the implementation's method list, when both would change in the same commit, and when no consumer needs to state its requirements independently of how they are met. Then say what would change your mind — a second source, a genuinely different change rate, an implementation somebody else is writing, or a contract several consumers must agree on."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_responsibility_and_change",
+            "lesson_dependency_direction_and_boundaries"
+          ],
+          "sources": [
+            {
+              "title": "InterfaceImplementationPair",
+              "url": "https://martinfowler.com/bliki/InterfaceImplementationPair.html"
+            },
+            {
+              "title": "The Clean Architecture",
+              "url": "https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_layers_and_their_cost",
+          "title": "Layers as One Answer, and What They Cost",
+          "summary": "A layer is a group of responsibilities sharing one dependency rule — one possible answer to the boundary question rather than the definition of architecture. Every layer is a boundary and every boundary costs, so the only question worth asking about a proposed layer is what independent change it isolates and whether that is worth the mapping, forwarding and navigation it adds.",
+          "primarySubtopicIds": [
+            "layered_architecture",
+            "architecture_tradeoffs"
+          ],
+          "supportingSubtopicIds": [
+            "separation_of_concerns",
+            "android_modules",
+            "modularization_tradeoffs"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Only now is layering worth introducing, because a layer is an answer and the four previous lessons were the question. A **layer** is a group of components that share a level of responsibility and one dependency rule: everything in the presentation layer may know about the data layer, and nothing in the data layer may know about presentation. That is the whole definition, and its appeal is real — one rule covers many components, it can be stated in a sentence, and it can be checked without reading every file."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two things follow, and the second is the one that usually gets left out. Layering is **one possible answer** to the boundary question, not the definition of architecture: an application can be well arranged with two layers, with boundaries that are not stacked at all, or with a strict stack that nobody respects. And **every layer is a boundary**, so every layer costs what a boundary costs. Each one therefore has to earn its existence separately."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Which disposes of the claim this lesson exists to correct. \"More layers means better architecture\" inverts the reasoning: it treats the boundary as the benefit, when the benefit is the independent change the boundary isolates. A layer that isolates no independent change has added a boundary's cost and none of a boundary's return — and the cost is not hypothetical, as the next section shows."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "It is worth reading the official guidance carefully here, because it is more conditional than its reputation. Android's guide recommends designing each application with at least two layers, UI and data, and describes the domain layer as optional, recommended \"in big apps\" where business logic is reused across several consumers or one consumer has grown too complex. The recommendations page opens by saying to \"treat the recommendations in the document as recommendations and not strict requirements\" and to adapt them. The conditions are part of the advice; dropping them is how \"add a domain layer when it earns its place\" becomes \"every app has three layers\"."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Start with the cost, stated as things rather than as the word \"complexity\". Introducing a layer between two existing ones typically adds:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "a second representation of the same concept, and the mapping code that translates between them;",
+                    "forwarding methods that exist only to pass a call through;",
+                    "another name for something the codebase already had, and a vocabulary a new engineer must learn before reading one screen;",
+                    "more files to open to follow one feature end to end, and more places a single change lands;",
+                    "a contract that has to be agreed, documented and kept honest."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Here is that cost with nothing bought for it. A data layer has been introduced between the borrowed-items screen and its source, with a presentation model of its own."
+                },
+                {
+                  "type": "code",
+                  "code": "// Data layer: a gateway that forwards.\ninternal class LoanGateway(private val source: LoanSource) {\n    suspend fun loansDueBefore(day: LocalDate): List<Loan> =\n        source.loansDueBefore(day)\n}\n\n// Presentation model: one field per Loan field.\ninternal data class LoanSummary(\n    val id: String,\n    val title: String,\n    val dueOn: LocalDate,\n    val renewals: Int,\n)\n\ninternal fun Loan.toSummary() = LoanSummary(id, title, dueOn, renewals)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Trace one requirement through it. The card should show how many renewals remain, so the service starts sending a renewal limit. `Loan` gains a field, `LoanSummary` gains the same field, `toSummary` gains a line, and the card reads it — four edits across three files, and the question to ask is what independent change the boundary absorbed. None. `LoanSummary` is `Loan` with a different name, and `LoanGateway` forwards. Every change to either side passes straight through, because the two sides have one reason to change between them. The layer is not isolating a difference; it is transcribing one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now let the two sides diverge for real reasons, which is what changes the verdict. Storage acquires sync bookkeeping — a row version, a soft-delete flag, a server id, and a due date kept as epoch milliseconds because that is what the sync protocol compares — while the card's needs move the other way, towards a due state that already accounts for the grace period and a renewals-remaining number derived from two fields."
+                },
+                {
+                  "type": "code",
+                  "code": "internal data class StoredLoan(\n    val id: String,\n    val serverId: String?,\n    val title: String,\n    val dueAtMillis: Long,\n    val renewals: Int,\n    val renewalLimit: Int,\n    val rowVersion: Long,\n    val deleted: Boolean,\n)\n\ninternal data class LoanSummary(\n    val id: String,\n    val title: String,\n    val due: DueState,          // Upcoming, DueToday or Overdue(days)\n    val renewalsRemaining: Int,\n)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The same two types and the same mapping function, and now the mapping is where a real difference is absorbed. A sync field added to `StoredLoan` does not reach the card at all. The grace period changes how `DueState` is computed and no storage code is edited. Soft deletion never becomes something a screen has to remember to filter. The boundary earns its cost because something genuinely different lives on each side of it — and note that nothing about the *number* of layers changed between the two versions. The same layer was worthless in one and valuable in the other, which is exactly why the count was never the thing to ask about."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The mapping layer, judged by",
+                    "When the two shapes are the same",
+                    "When the two shapes diverge"
+                  ],
+                  "rows": [
+                    [
+                      "What the boundary isolates",
+                      "Nothing — every field is transcribed unchanged",
+                      "Storage bookkeeping from display state, in both directions"
+                    ],
+                    [
+                      "What it costs",
+                      "A type, a mapper, a forwarding class, a navigation hop",
+                      "The same type, mapper and hop"
+                    ],
+                    [
+                      "What a new field costs",
+                      "Two declarations and a mapping line, for no isolation",
+                      "One declaration, on the side that owns it"
+                    ],
+                    [
+                      "Verdict",
+                      "Indirection with a layer's price tag",
+                      "A boundary that pays for itself"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Testability deserves one careful paragraph here, because it is the argument most often used to justify a layer and it works in only one direction. A well-chosen boundary usually does make code easier to exercise on its own, and the reason is precise: fewer unrelated details cross the boundary, so less has to be constructed to run one side of it. In the second version the due-state rules can be exercised without a file, a schema or a sync protocol, because none of those appears in the types that cross. That is a consequence of the boundary being in the right place. It does not run backwards — adding a layer does not make code testable, and \"so we can unit test it\" is not by itself a reason for one. If the two sides still change together, you have added a boundary to test across rather than a smaller thing to test."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"We have four layers, so the architecture is good.\" A layer count says nothing on its own, and a layer that only forwards is worse than not having it: it costs exactly what a boundary costs, isolates nothing, and teaches everyone reading the codebase that boundaries here are a formality to pass through rather than a decision to respect. The question is never how many layers there are; it is what each one isolates and what it charges for that."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The confusion worth clearing last is between a layer and a module, because they answer different questions. A layer is a **logical** statement about responsibility and a dependency rule. A Gradle module is a **physical** build unit: a compilation boundary with its own dependency list, whose rules the compiler enforces and whose granularity affects build times. Aligning them buys enforcement — the rule stops being a convention that code review has to protect. They do not have to be aligned, and neither one implies the other."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This repository is a direct example. `LessonStudyRepository` sits beside the study feature that consumes it, `LocalLessonStudyRepository` sits under `data/local`, no Room type is visible above that package, and both compile in the same `:shared` module. The boundary is real, has a direction, and the module count is one. Android's own guidance points the same way when it says small apps may place data-layer types in \"a `data` package or module\", and the modularization guide is blunt about the other direction: \"It doesn't always make sense to modularize your project\", and every module \"brings a certain amount of overhead in the form of increased build complexity and boilerplate code\". So: not every layer needs a module, not every feature needs one, and more modules is not better architecture any more than more layers is. When and how to draw build boundaries is the build and modularization curriculum's subject, and this unit stops here."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One more claim to keep honest, because it is quoted far more often than it is read. The familiar concentric diagram is not a prescription of four layers; the article it comes from says so in as many words — \"The circles are schematic. You may find that you need more than just these four. There's no rule that says you must always have just these four.\" What that article is actually about is the direction of source-code dependencies, which is a different claim from a layer count and one this curriculum takes up properly in the unit on domain logic and dependency direction."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The transfer, storage and display split used above is the clearest available example of mapping cost, and it is used here only as an example. Deciding which representations a real feature should have, where the translation belongs, and how failure crosses those boundaries is a design problem of its own, and the unit on data ownership owns it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That closes the unit's argument. A requirement changes, and what should have to change with it is decided by arrangements made earlier; behaviours belong together when they change for the same reasons; a dependency direction decides which reasons to change a component inherits; an abstraction is a boundary only when the contract belongs to its consumer and the two sides genuinely differ; and a layer is a boundary applied wholesale, priced accordingly. What this unit has deliberately not done is name any of the components an Android application is actually built from. That starts next: the screen-level owner the Compose curriculum stopped at, the ownership of data behind it, and the question of whether another layer of domain logic earns its place — each of them judged by the test this unit just built."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "\"Why would you add this layer?\" has a five-part answer, and \"separation of concerns\" is none of them: name the responsibility being isolated, name the independent change that motivates the boundary, say which way the dependency points, list what the boundary costs in types, mapping and navigation, and say why that trade is worth it for this requirement. The same five parts, with the last one negative, are how you justify *not* adding a layer — which is the answer interviewers hear least often and remember most."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_what_architecture_decides",
+            "lesson_dependency_direction_and_boundaries",
+            "lesson_when_an_interface_is_a_boundary"
+          ],
+          "sources": [
+            {
+              "title": "Guide to app architecture",
+              "url": "https://developer.android.com/topic/architecture"
+            },
+            {
+              "title": "Architecture recommendations",
+              "url": "https://developer.android.com/topic/architecture/recommendations"
+            },
+            {
+              "title": "Guide to Android app modularization",
+              "url": "https://developer.android.com/topic/modularization"
+            },
+            {
+              "title": "The Clean Architecture",
+              "url": "https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
     }
   ]
 }

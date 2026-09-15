@@ -5657,6 +5657,634 @@
       "status": "ACTIVE"
     },
     {
+      "id": "unit_cleanup_synchronization_and_producers",
+      "topicId": "android_ui",
+      "title": "Cleanup, External Synchronization and State Producers",
+      "summary": "A screen touches a world Compose does not manage, and each direction across that boundary is a different ownership problem. This unit separates them: a registration the Composition acquires and must release, a value that must be published outward only after a composition has succeeded, and an asynchronous or callback-based source that must become Compose State the UI can read. The last lesson decides where an adapter for such a source belongs, from ownership and reuse rather than API preference.",
+      "lessons": [
+        {
+          "id": "lesson_disposable_effect",
+          "title": "Registration and Release as One Decision",
+          "summary": "Some work a screen needs is not a coroutine but a registration with an object outside Compose that must be given back. DisposableEffect owns that registration for one key, releases it when the key changes and when the call site leaves the Composition, and pairs acquire with release in a single place so neither can be written without the other.",
+          "primarySubtopicIds": [
+            "compose_side_effects"
+          ],
+          "supportingSubtopicIds": [
+            "lifecycle_aware_apis",
+            "memory_leaks",
+            "lifecycle_leaks"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Unit 9 and Unit 10 asked who owns a coroutine. A screen also touches objects that Compose does not manage at all: a session that accepts listeners, a lifecycle that accepts observers, a platform service that accepts callbacks. Handing one of those a reference is not work that finishes; it is a registration. Something outside the Composition now holds something the Composition created, and it will keep holding it until it is told not to."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is a resource ownership problem, and it has a different shape from \"run this suspend work while this screen is here\". The question is not when the work completes. The question is which composition lifetime is responsible for giving the registration back, and at which exact moment."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun QuestionSessionStatus(\n    session: QuestionSession,\n) {\n    var lastResult by remember { mutableStateOf<AnswerResult?>(null) }\n\n    DisposableEffect(session) {\n        val listener = QuestionListener { result ->\n            lastResult = result\n        }\n\n        session.addListener(listener)\n\n        onDispose {\n            session.removeListener(listener)\n        }\n    }\n\n    ResultBanner(lastResult)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`DisposableEffect` is the mechanism whose shape matches that problem. Its block runs when the effect enters the Composition for a given key, and it must end with an `onDispose` clause. The block acquires; `onDispose` releases. The resolved Compose runtime 1.11.2 states the guarantee plainly: there is one call to `onDispose` for every call to the effect block, and both run on the composition's apply dispatcher."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The ownership model is worth stating as a sequence, because every later question in this lesson is answered from it: the effect enters with key K, the block acquires or registers something for K, that registration is owned for as long as this effect lifetime lasts, and when K changes or the call site leaves the Composition, that exact registration is released."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Registration and release are one decision, not two. The API forces them into one call precisely because a registration written without its release is not half-finished code — it is a defect that only shows up later, somewhere else."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Delete the `onDispose` body from the example above and say concretely what happens. A learner opens a session and moves through three questions, and each question composes `QuestionSessionStatus` at a new call site that leaves when the next one arrives. The session now holds three listeners. When the next answer is graded, the session delivers it three times. Two of those deliveries belong to screens that are no longer composed, and each of them writes into a `MutableState` that nothing renders. Meanwhile every one of those listeners closes over the screen's state, so none of it can be collected while the session is alive: the session outlives the screens, and it is holding them."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is what a missing release actually costs — duplicated observer work, callbacks delivered to a screen that no longer owns them, and retained references. It is not \"this could cause problems\"; it is a specific number of stale listeners that grows every time the call site re-enters."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "What happens at the call site",
+                    "What happens to the registration"
+                  ],
+                  "rows": [
+                    [
+                      "The effect enters the Composition with key K",
+                      "The block runs once and registers for K"
+                    ],
+                    [
+                      "The body executes again and K still compares equal",
+                      "Nothing. The existing registration stays; the block does not run again"
+                    ],
+                    [
+                      "K changes to L",
+                      "`onDispose` for K runs first, then the block runs and registers for L"
+                    ],
+                    [
+                      "The call site leaves the Composition",
+                      "`onDispose` for the current key runs and the registration is released"
+                    ],
+                    [
+                      "The composition attempt is abandoned before it is applied",
+                      "The effect was never remembered, so nothing was registered and nothing is disposed"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Keep the third and fourth rows distinct. A key change disposes and re-establishes; leaving the Composition disposes and does not re-establish. Ordinary recomposition with equal keys is neither — it does not dispose, and it does not re-register. The Compose documentation describes the key-change path as disposing the current effect and resetting by calling the effect again, performing cleanup for the old operation before initializing the new, so the obsolete registration is released before the replacement exists. On the configured runtime this was observed directly: a key change produced setup for A, then dispose for A, then setup for B, in that order. The two registrations never coexist."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Setup and cleanup necessarily share one key declaration because they are literally one call. The `onDispose` clause is created by the same execution of the block that performed the registration, so it closes over exactly the listener and exactly the session that execution used. Release therefore cannot drift onto a different object than the one acquired — which is why the real key failure is not an asymmetric cleanup but a key list that does not name what the registration depends on."
+                },
+                {
+                  "type": "code",
+                  "code": "// Wrong: the registration depends on `session`, but the key does not say so.\nDisposableEffect(Unit) {\n    val listener = QuestionListener { result ->\n        lastResult = result\n    }\n\n    session.addListener(listener)\n\n    onDispose {\n        session.removeListener(listener)\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "With a constant key the effect claims the whole composition lifetime of this call site. When `session` changes, nothing disposes and nothing re-registers: the screen keeps listening to the session it no longer displays, and the session it does display has no listener at all. The eventual `onDispose` is still correct for what was registered — it removes the first session's listener — but the screen was wrong for the entire interval in between. `lesson_effect_keys_as_dependencies` owns the key-comparison rules; this is what getting them wrong does to a registration."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "An `onDispose { }` with an empty body is not a way to satisfy the compiler. It is a claim that this effect acquired nothing that needs releasing — and if that claim is true, `DisposableEffect` is the wrong mechanism. Ask what the block acquired. If the answer is nothing, the work is either a publication, which is the next lesson's subject, or a coroutine, which is Unit 9's."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The difference between `DisposableEffect` and `LaunchedEffect` is not that one has cleanup. A `LaunchedEffect` can perfectly well release something in a `finally` block, and `lesson_cancellation_cleanup_and_timeouts` already covers how a cancelled coroutine unwinds. The difference is what kind of lifetime the Composition is holding."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "What the Composition owns",
+                    "Mechanism",
+                    "How the lifetime ends"
+                  ],
+                  "rows": [
+                    [
+                      "A suspend operation that should run while this position is composed",
+                      "`LaunchedEffect`",
+                      "Cooperative cancellation of the coroutine; any release happens as the coroutine unwinds"
+                    ],
+                    [
+                      "A registration or resource held by an object outside Compose",
+                      "`DisposableEffect`",
+                      "A synchronous `onDispose` call at a defined moment on the apply dispatcher"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read the two rows as two questions. Is the thing being owned an in-flight computation whose end condition is \"stop running\"? Then cancellation is the end mechanism and a coroutine is the right owner. Is the thing being owned a reference some other object is holding on the Composition's behalf, whose end condition is \"hand it back\"? Then there is a specific call that must happen, and it must happen even though no coroutine is involved."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One combination is worth naming because it comes up whenever a registration invokes a caller-supplied callback. The registration's identity may be perfectly stable while the callback it should invoke changes with recomposition. Keying the effect on the callback would tear down and re-register the external observer for a reason the external world does not care about, discarding a valid subscription. Unit 10's `rememberUpdatedState` solves the value half without touching the lifetime half."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun QuestionSessionStatus(\n    session: QuestionSession,\n    onResult: (AnswerResult) -> Unit,\n) {\n    val currentOnResult by rememberUpdatedState(onResult)\n\n    DisposableEffect(session) {\n        val listener = QuestionListener { result ->\n            currentOnResult(result)\n        }\n\n        session.addListener(listener)\n\n        onDispose {\n            session.removeListener(listener)\n        }\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The rule this expresses is narrow and must not be over-applied: do not re-register an external observer merely because a callback changed, as long as the registration itself remains valid. If changing a value genuinely means the registration belongs somewhere else — a different session, a different lifecycle owner — then that value decides the registration and belongs in the key list. `session` is in the key list here for exactly that reason."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Say what `DisposableEffect` is for before describing what it does: the Composition is taking ownership of a registration that some object outside Compose will otherwise hold forever. Then give both release paths — key change and leaving the Composition — and one concrete consequence of omitting the release, such as three listeners on one session delivering every result three times."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_effect_keys_as_dependencies",
+            "lesson_remember_updated_state",
+            "lesson_cancellation_cleanup_and_timeouts",
+            "lesson_flow_collection_lifetime"
+          ],
+          "sources": [
+            {
+              "title": "Side-effects in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/side-effects"
+            },
+            {
+              "title": "DisposableEffect reference",
+              "url": "https://developer.android.com/reference/kotlin/androidx/compose/runtime/package-summary#DisposableEffect(kotlin.Any,kotlin.Function1)"
+            },
+            {
+              "title": "Compose runtime Effects source",
+              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_side_effect_publication",
+          "title": "`SideEffect`: Publishing to Non-Compose Code",
+          "summary": "An object Compose does not manage sometimes has to hold the value the UI is currently built from. SideEffect schedules that publication to run when a composition completes successfully and applies its changes, which is what separates it from the same assignment written directly in a composable body.",
+          "primarySubtopicIds": [
+            "compose_side_effects"
+          ],
+          "supportingSubtopicIds": [
+            "compose_recomposition",
+            "compose_fundamentals",
+            "compose_state"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Some objects a screen talks to are not part of the Compose world at all. An analytics client holds properties that are attached to every event it later records. A logging context holds the identifier of whatever the user is looking at. None of them is snapshot-backed, none of them participates in composition, and none of them can observe Compose state. They simply hold a value until something assigns a new one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The requirement is therefore narrow and specific: a non-Compose object must be given the value that corresponds to the state Compose has actually settled on. Not a value from an intermediate calculation, and not a value from a composition that was discarded — the value the composed UI was built from."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun QuestionScreen(\n    analytics: Analytics,\n    userType: UserType,\n) {\n    SideEffect {\n        analytics.userType = userType\n    }\n\n    QuestionContent(userType)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`SideEffect` schedules its block rather than running it. The resolved Compose runtime 1.11.2 describes it as scheduling the effect to run when the current composition completes successfully and applies changes, so that objects managed outside the Composition are not left in an inconsistent state if the composition operation fails. The block runs on the composition's apply dispatcher and always after `RememberObserver` callbacks, and the documentation states the resulting guarantee as executing after every successful recomposition."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Compare it with the same assignment written in the body. That version publishes while the composable is executing — which is before anything has decided whether this composition attempt will become the applied UI."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun QuestionScreen(\n    analytics: Analytics,\n    userType: UserType,\n) {\n    analytics.userType = userType\n\n    QuestionContent(userType)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "`SideEffect` exists to tie a publication to a successful composition. A plain property assignment on an object Compose does not manage cannot be rolled back, so the moment it happens is the whole point."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Unit 9 established that Compose may calculate an updated UI and discard the result before it becomes the applied UI. That is the case the direct assignment gets wrong. If the attempt is abandoned rather than applied, the UI it described never takes effect — but `analytics.userType` was already overwritten, and the analytics client now reports a state the user was never shown. A `SideEffect` scheduled by that same abandoned attempt is not run, so it publishes nothing: the recorded effect never reaches the apply step it was recorded for."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Skipping is a different situation and needs different words. If the composable containing a `SideEffect` is skipped in a pass, its body is not executed for that pass, so that pass schedules no `SideEffect` from that call. Whatever was published last simply remains published, which is correct, because a skipped composable is one whose inputs have not changed."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "What happened to this composition pass",
+                    "What the publication does"
+                  ],
+                  "rows": [
+                    [
+                      "The call executed and the composition was applied successfully",
+                      "The scheduled block runs on the apply dispatcher, after remember callbacks"
+                    ],
+                    [
+                      "The composable was skipped in this pass",
+                      "This call scheduled nothing in that pass; the previously published value still stands"
+                    ],
+                    [
+                      "The composition attempt was abandoned instead of applied",
+                      "Nothing that attempt scheduled publishes the state it attempted"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "On the configured runtime this was observed directly. A parent that recomposed twice published twice, while a child composable whose parameter had not changed was skipped on the second pass and published once. Note carefully what that does and does not say."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Do not compress the skipping row into \"SideEffect only runs when state changes\". The contract is about successful composition passes in which this call participates, not about which state changed. A pass that executes this call and is applied publishes, whatever caused the pass."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The most expensive misreading of `SideEffect` is treating it as a general place to make something happen. It is not an event handler."
+                },
+                {
+                  "type": "code",
+                  "code": "// Wrong: this is not an event, and there is no \"once\" here.\nSideEffect {\n    submitPayment()\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A publication point runs after every successful composition it participates in, and nothing in the API tells you how many of those there will be. A payment submitted from here is submitted again on the next successful recomposition. The defect is not that the code is ugly; it is that the API's contract is a frequency the caller does not control, which is the wrong contract for anything that must happen a specific number of times."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The bridge back is a question about the trigger, which Unit 10 already made the deciding one. If a click should start suspend work, the click owns the trigger and a remembered scope launches it. If entering or changing a composition state should start work, `LaunchedEffect` owns it. If an object outside Compose must be handed something back later, `DisposableEffect` owns it. `SideEffect` answers only the remaining case: composed state must be pushed synchronously into a non-Compose object once that composition has succeeded."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two further limits follow from where the block runs. It is not a coroutine scope and cannot suspend, so it is not somewhere to launch work from. And because it runs on the composition's apply dispatcher, and appliers are never run concurrently with applying changes to the composition tree, expensive work placed here delays the application of the frame it belongs to. Keep it to assignment-shaped publication."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "State the contract as timing, not as purpose: the block is scheduled and runs when the composition completes successfully and applies its changes. Then explain why that matters — an external assignment performed during an abandoned attempt cannot be unhappened — and finish by saying what `SideEffect` is not: not a callback, not a coroutine launcher, and not a general post-recomposition hook."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_composable_execution",
+            "lesson_why_effects_are_controlled",
+            "lesson_who_owns_the_trigger"
+          ],
+          "sources": [
+            {
+              "title": "Side-effects in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/side-effects"
+            },
+            {
+              "title": "Compose runtime Effects source",
+              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_produce_state",
+          "title": "`produceState`: a Composition-Scoped Producer",
+          "summary": "produceState turns an asynchronous or external source into a Compose State the UI can read, with a producer the Composition launches on entry, cancels on exit and restarts on a key change. Its returned State is remembered independently of those keys, which decides what the screen displays in the interval after a key change and before the new producer writes.",
+          "primarySubtopicIds": [
+            "compose_side_effects"
+          ],
+          "supportingSubtopicIds": [
+            "compose_state",
+            "flow_collection",
+            "coroutine_cancellation"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Unit 8 answered one half of the observation problem: when a screen already has a `Flow`, `collectAsState` converts it into renderable Compose `State`. The other half is a source that is not a stream yet. A one-shot suspend load, or a platform object that pushes values through a callback, produces data the UI needs but exposes nothing a composable can read."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`produceState` is the composition-scoped answer: a producer whose output is a Compose `State<T>`. The composable gets something it can read; the producer gets a lifetime the Composition owns."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun rememberQuestionPreview(\n    questionId: String,\n): State<QuestionPreview?> =\n    produceState<QuestionPreview?>(initialValue = null, questionId) {\n        value = loadPreview(questionId)\n    }",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The contract has four parts, and all four come from Unit 9's effect model rather than from anything new. The producer is launched when `produceState` enters the Composition. It is cancelled when `produceState` leaves the Composition. If a key changes, a running producer is cancelled and re-launched for the new source, using the same key comparison every effect uses. The producer writes results by assigning `value`, and the returned `State` is what Compose reads."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`initialValue` deserves a precise reading, because it is the part most often assumed to do more than it does. It establishes the value the returned `State` holds when that state producer is first created, and it holds it until the producer writes something else. It is not a loading marker Compose reapplies later, it is not persisted, it is not a replay of anything, and it is not a cache."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "`produceState` is a producer with a composition lifetime and a `State` output. Everything about when it starts, stops and restarts is the effect-lifetime model you already have; what is new is that the result is a value the UI can read."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Now answer the question this Lesson exists for. `questionId` changes from `q1` to `q2`. The `q1` producer is cancelled and a `q2` producer is launched, but loading takes time. What does the returned `State` hold in that interval?"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "It holds the last value produced under `q1`. It does not revert to `initialValue`. This is measurable and it matters, because the screen is now showing the previous question's preview under the new question's id."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The reason is visible in the resolved Compose runtime 1.11.2 implementation, and it is not stated on the documentation page. `produceState` is a `remember { mutableStateOf(initialValue) }` plus a `LaunchedEffect(key)` over that state. The `remember` has no keys. The key belongs to the producer, not to the holder, so a key change replaces the producer and leaves the holder — and its current value — exactly as it was. On the configured toolchain a probe confirmed it: key `A` produced `A-result`, changing the key to `B` restarted the producer while the returned `State` still read `A-result`, and only the `B` producer's own write changed it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "If the requirement is \"show Loading whenever the question changes\", the producer has to say so. Writing the loading value as the first statement of each producer lifetime is the fix, because that statement does run again when the producer restarts."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun rememberQuestionPreview(\n    questionId: String,\n): State<PreviewState> =\n    produceState<PreviewState>(initialValue = PreviewState.Loading, questionId) {\n        value = PreviewState.Loading\n        value = PreviewState.Loaded(loadPreview(questionId))\n    }",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The returned `State` also conflates. The runtime states it directly: no change is observable if a value equal to the current one is assigned, and observers may only see the latest value if several values are set in rapid succession. A probe on the configured runtime matched that — a producer that assigned the same loaded value three times produced exactly one observable change, and the reading composable executed twice in total, once for the initial value and once for the loaded one."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"The key changed, so the state resets to `initialValue`\" is false on this runtime, and it is the assumption behind a real production defect: the previous item's data displayed under the new item's key while the new load is in flight. Predict the value from the implementation, not from the parameter name."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Because the runtime describes `produceState` in terms of a remembered state and a launched producer, it is worth writing both forms side by side. The second is the packaged version of the first."
+                },
+                {
+                  "type": "code",
+                  "code": "var preview by remember { mutableStateOf<PreviewState>(PreviewState.Loading) }\n\nLaunchedEffect(questionId) {\n    preview = PreviewState.Loaded(loadPreview(questionId))\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "code",
+                  "code": "val preview by produceState<PreviewState>(\n    initialValue = PreviewState.Loading,\n    questionId,\n) {\n    value = PreviewState.Loaded(loadPreview(questionId))\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "These two behave the same way on a key change, including the part that surprises people — the hand-written `remember` has no keys either, so it keeps the old value too. That equivalence is the useful part of knowing the implementation: it lets you reason about `produceState` with a model you already have instead of memorising a special case."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The equivalence is not universal, though, and the difference is instructive. Writing `remember(questionId) { mutableStateOf(PreviewState.Loading) }` in the hand-rolled version would reset the holder on every key change, because a keyed `remember` recreates its value. `produceState` offers no such option: its holder is unkeyed by construction. So the two forms are the same only for the unkeyed holder, and the choice of which behaviour a screen needs remains the author's."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One boundary keeps this from being over-applied. `produceState` is not a replacement for ordinary stream collection. If the source is already a `Flow` and the requirement is simply to render its current collected value, the purpose-built conversion is Unit 8's — `collectAsState`, or the lifecycle-aware variant where the target's lifecycle should stop collection. Wrapping a collect call inside `produceState` is mechanically possible and is not the clearest abstraction for a source that is already a stream. Choose from what the source contract actually is, which is the next Lesson's subject."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Three claims separate recognition from understanding. The producer is composition-scoped, so it restarts on a key change and is cancelled on exit. The returned `State` is remembered independently of those keys, so a key change does not reapply `initialValue`. And the `State` conflates: it is a current value with equality-based change semantics, not a queue of everything assigned."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_launched_effect",
+            "lesson_collect_as_state",
+            "lesson_snapshot_flow"
+          ],
+          "sources": [
+            {
+              "title": "Side-effects in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/side-effects"
+            },
+            {
+              "title": "produceState reference",
+              "url": "https://developer.android.com/reference/kotlin/androidx/compose/runtime/package-summary#produceState(kotlin.Any,kotlin.coroutines.SuspendFunction1)"
+            },
+            {
+              "title": "Compose runtime ProduceState source",
+              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/ProduceState.kt"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_flow_adapter_or_compose_producer",
+          "title": "A Flow Below the UI, or a Producer at the Boundary?",
+          "summary": "A callback-based source can be adapted into a reusable Flow below the UI or into a Compose-local state producer at the boundary. awaitDispose is what keeps a non-suspending subscription alive inside produceState and unregisters it on disposal, and the placement decision itself is answered from ownership and reuse rather than from API preference.",
+          "primarySubtopicIds": [
+            "compose_side_effects"
+          ],
+          "supportingSubtopicIds": [
+            "flow_fundamentals",
+            "hot_vs_cold_streams",
+            "separation_of_concerns"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The previous Lesson's producer suspended: it called a suspend function and assigned the result. A callback-based source does not suspend. Registering a listener returns immediately, and a producer block that returns has finished — nothing is keeping the subscription's lifetime open, and nothing has been told to unregister when the producer is disposed."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`awaitDispose` is the suspension point that fills that gap. It never resumes normally — its return type is `Nothing` — and it always runs the supplied cleanup before the producer's coroutine completes, whether the producer left the Composition, a key changed, or an error occurred."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun rememberConnectionState(\n    monitor: ConnectionMonitor,\n): State<ConnectionState> =\n    produceState(initialValue = monitor.currentState, monitor) {\n        val listener = ConnectionListener { newState ->\n            value = newState\n        }\n\n        monitor.addListener(listener)\n\n        awaitDispose {\n            monitor.removeListener(listener)\n        }\n    }",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read the block as four steps in order: register the callback; remain alive for as long as the Composition owns this producer; assign `value` as callbacks arrive so the UI re-reads; and unregister when the producer is disposed. It is the state-producer form of owning a callback subscription, and it is available in the common source set of the Compose runtime, so it is not an Android-only mechanism."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "`awaitDispose` is needed exactly when the source registers instead of suspending. It gives a non-suspending subscription both a lifetime and one place for its unregistration."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "This looks like the first Lesson's `DisposableEffect`, and it is not the same decision. Both register a callback and both release it, so \"one is for callbacks\" explains nothing. Separate them by what the composable needs as output."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "What the composable needs",
+                    "Mechanism",
+                    "What the cleanup closes"
+                  ],
+                  "rows": [
+                    [
+                      "An external object must be told something and later told to stop; no Compose value is required",
+                      "`DisposableEffect`",
+                      "The registration itself"
+                    ],
+                    [
+                      "A callback source must become a `State<T>` the UI reads",
+                      "`produceState` with `awaitDispose`",
+                      "The subscription that was feeding `value`"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A useful check: if a `DisposableEffect` exists only to write into a `remember { mutableStateOf(...) }` next to it, the producer shape is what that code actually wanted, and `produceState` states the intent in one call. If the registration produces no value the UI reads — a lifecycle observer that reports to analytics, a service that must be told a screen is visible — then no producer is required and `DisposableEffect` is the honest mechanism."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Unit 10's trigger distinction still applies and must not blur into this one. A listener registration is owned by a composition lifetime: it begins because the screen is composed and ends because the screen is gone. A button click that shows a snackbar is owned by an event: it begins because the user acted. Both are imperative, and that shared quality is not a reason to reach for the same API. Decide from the owner, the lifetime, the trigger, and whether a release is required."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Registering a listener inside a `produceState` block and letting the block end is a silent leak: the producer completes, but the source still holds the listener. The producer has to stay suspended for the subscription to have a lifetime at all."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "There is one more question, and it is the one that separates a senior answer. The same callback source could be adapted one layer lower, as a `Flow` built with `callbackFlow`, whose `awaitClose` plays the same role for the same reason. So which side of the UI boundary should the adapter live on?"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Prefer a Flow below the UI when",
+                    "Prefer a Compose-local producer when"
+                  ],
+                  "rows": [
+                    [
+                      "More than one consumer needs the source",
+                      "The adaptation exists specifically for this Compose boundary"
+                    ],
+                    [
+                      "The adaptation is meaningful outside Compose",
+                      "Composition should own the subscription's lifetime"
+                    ],
+                    [
+                      "Stream operators and composition are part of the source contract",
+                      "The required output is specifically Compose `State`"
+                    ],
+                    [
+                      "The producer's lifetime belongs below the UI",
+                      "Extracting a reusable stream would add an abstraction nothing reuses"
+                    ],
+                    [
+                      "A platform or domain layer should expose the observation API",
+                      "The value is read by one screen and has no meaning elsewhere"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Notice that neither column is about which API is better written. Both columns are about ownership and reuse. A connection monitor that three features observe, that the data layer wants to combine with a retry policy, and whose lifetime is the application's belongs below the UI, and `lesson_flow_builders_and_callback_adapters` already covers how to build that adapter — this Lesson does not repeat it. A monitor observed by exactly one screen, whose values exist only to be rendered by that screen, is adapted at the boundary, and extracting a general stream for it produces a layer with one caller."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The reverse mistake is just as common: keeping everything below the UI on principle, so a value that is only ever rendered by one composable travels through a repository, a mapper and a state holder that add no behaviour. Fictional reusability is still an abstraction cost."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Note also that the two answers are not symmetric in what they output. A Flow below the UI still has to reach the UI, and Unit 8's collection is what does that. Choosing the Flow does not remove the Compose-side step; it moves the adaptation and gives it other possible consumers. The full comparison of every Compose mechanism against a stated requirement is the subject of a later unit in this path."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Answer the placement question with ownership and reuse, and give a concrete threshold: more than one consumer, or meaning outside Compose, or a lifetime that is not a composition's, argues for a Flow below the UI. One screen, a Compose-only lifetime and a `State` output argue for the producer at the boundary. Then name `awaitDispose` and `awaitClose` as the same registration-and-cleanup idea on the two sides of that line."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_flow_builders_and_callback_adapters",
+            "lesson_collect_as_state",
+            "lesson_snapshot_flow"
+          ],
+          "sources": [
+            {
+              "title": "Side-effects in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/side-effects"
+            },
+            {
+              "title": "ProduceStateScope.awaitDispose reference",
+              "url": "https://developer.android.com/reference/kotlin/androidx/compose/runtime/ProduceStateScope#awaitDispose(kotlin.Function0)"
+            },
+            {
+              "title": "Compose runtime ProduceState source",
+              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/ProduceState.kt"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
       "id": "unit_coroutines_and_structured_concurrency",
       "topicId": "async_reactive",
       "title": "Coroutine Fundamentals and Structured Concurrency",

@@ -1801,3 +1801,219 @@ passed 21 tests (with the existing sandbox warning from RVM's `ps` call); `./gra
 Lessons; and `./gradlew :shared:allTests` passed Android host, JVM, iOS simulator, JS, and Wasm
 targets. `./gradlew :shared:check` and `git diff --check` also passed after the final authoring
 change. No `iosArm64` device-target test, external CI run, or new runtime probe is claimed.
+
+### E25-06 — Unit 11
+
+`unit_cleanup_synchronization_and_producers`, **Cleanup, External Synchronization and State
+Producers**, shipped under `android_ui` immediately after
+`unit_latest_values_and_event_driven_work`. Its four planned Lessons shipped in the planned
+order with unchanged identities and titles: `lesson_disposable_effect`, **Registration and
+Release as One Decision**; `lesson_side_effect_publication`, **`SideEffect`: Publishing to
+Non-Compose Code**; `lesson_produce_state`, **`produceState`: a Composition-Scoped Producer**;
+and `lesson_flow_adapter_or_compose_producer`, **A Flow Below the UI, or a Producer at the
+Boundary?** No Question, taxonomy entry, mechanism-selection decision tree, transient-effect
+material, Flow or `callbackFlow` curriculum, or E25-07 content was added.
+
+All four Lessons keep `compose_side_effects` as their sole primary Subtopic and the plan's
+supporting mappings unchanged: L11.1 with `lifecycle_aware_apis`, `memory_leaks` and
+`lifecycle_leaks`; L11.2 with `compose_recomposition`, `compose_fundamentals` and
+`compose_state`; L11.3 with `compose_state`, `flow_collection` and `coroutine_cancellation`;
+L11.4 with `flow_fundamentals`, `hot_vs_cold_streams` and `separation_of_concerns`. No Lesson
+lists a Subtopic as both primary and supporting, and every supporting concept stays out of Unit
+practice.
+
+**Versions rechecked on 2026-09-14.** `gradle/libs.versions.toml` still declares Kotlin 2.4.10,
+Compose Multiplatform 1.11.1, Material 3 1.11.0-alpha07, lifecycle 2.11.0-beta01,
+kotlinx.coroutines 1.11.0 and AGP 9.0.1. `./gradlew :shared:dependencyInsight --configuration
+jvmRuntimeClasspath --dependency androidx.compose.runtime:runtime` still resolves
+**`androidx.compose.runtime:runtime:1.11.2`** on the JVM, and that artifact's `commonMain`
+sources are what every source-sensitive claim below was read from.
+
+**`DisposableEffect` findings.** The resolved 1.11.2 `Effects.kt` implements
+`DisposableEffect(key1) { … }` as `remember(key1) { DisposableEffectImpl(effect) }`, where the
+impl is a `RememberObserver`: `onRemembered` runs the effect block and keeps the returned
+`DisposableEffectResult`, `onForgotten` disposes it, and `onAbandoned` does nothing because
+`onRemembered` was never called. The KDoc states that the `onDispose` clause **must** be the
+final statement, that there is guaranteed to be one `onDispose` call for every call to the
+effect block, and that both run on the composition's apply dispatcher. The no-key overload
+remains a `DeprecationLevel.ERROR` shadow. The KDoc also directs work that needs no disposal to
+`SideEffect` or `LaunchedEffect` instead, which is the basis for the Lesson's rejection of an
+empty `onDispose`. The public documentation page adds the key-change wording used in the
+Lesson: dispose the current effect and reset by calling the effect again, performing cleanup for
+the old operation before initializing the new.
+
+**`SideEffect` findings.** The resolved 1.11.2 KDoc: the effect is *scheduled* to run when the
+current composition completes successfully and applies changes, so objects managed outside the
+Composition are not left inconsistent if the composition operation fails; effects always run on
+the composition's apply dispatcher, never concurrently with applying changes to the tree, and
+always after `RememberObserver` callbacks; and a `SideEffect` runs after every recomposition.
+The implementation is `currentComposer.recordSideEffect(effect)`, which the composer records
+into the change list to be run when composition changes are applied — the mechanical reason an
+abandoned attempt publishes nothing. The documentation page supplies the contrast the Lesson
+needs verbatim: it is incorrect to perform an effect before a successful recomposition is
+guaranteed, which is the case when writing the effect directly in a composable.
+
+**`produceState` findings.** The resolved 1.11.2 `ProduceState.kt` implements every overload as
+`remember { mutableStateOf(initialValue) }` plus `LaunchedEffect(keys) { … }`. The `remember`
+carries **no keys**. The KDoc states that the producer is launched on entering the Composition
+and cancelled on leaving it, that a key change cancels and re-launches a running producer, and
+that the returned `State` conflates values — no change is observable when a value equal to the
+old one is set, and observers may only see the latest value if several are set in rapid
+succession.
+
+**Exact key-change versus `initialValue` result.** E25-01's PROBE-F was re-run on the current
+toolchain with a throwaway JVM Compose probe (`Recomposer`, `BroadcastFrameClock`, a unit
+`Applier`, manual frames). Scenario and result: `produceState(initialValue = "INITIAL", key)`
+with key `"A"` produced `"A-result"`; the key was changed to `"B"` with the new producer held
+before its first write; the producer start log read `[A, B]`, so the producer did restart,
+while the returned `State` read `"A-result"` at every observation during that interval — **not**
+`"INITIAL"`; releasing the gate produced `"B-result"`. A key change therefore restarts the
+producer and does **not** reapply `initialValue`, exactly as E25-01 measured and exactly as the
+unkeyed `remember` predicts. This is not stated on the documentation page, and L11.3 teaches it
+with the explicit product consequence and the explicit fix — write the loading value as the
+first statement of each producer lifetime.
+
+**Conflation wording.** The KDoc settles it, so the authored prose follows the KDoc rather than
+a measurement: the returned `State` conflates, an equal write is not an observable change, and
+rapid writes may only be seen as the latest value. A confirming probe on the same run had a
+producer assign the same loaded value three times; the reading composable executed **twice** in
+total — once for `"INITIAL"` and once for `"LOADED"` — reproducing E25-01's PROBE-G. The Lesson
+deliberately does not equate this with Flow `conflate()`, `StateFlow`'s contract or
+`collectLatest`; it is Compose `State` with current-value, equality-based change semantics.
+
+**Skipping and successful-composition measurements.** The same probe run measured the two
+`SideEffect` claims rather than asserting them from inference. A root that recomposed twice
+published twice; a child composable whose parameter did not change was skipped on the second
+pass and published **once**. L11.2 states only what that supports — a skipped execution
+schedules no publication in that pass — and explicitly refuses the broader "SideEffect only runs
+when state changes" reading. The abandoned-composition claim is taught from the KDoc and the
+`recordSideEffect` mechanism, not from a synthetic abandoned-composition test. The same run also
+logged `DisposableEffect` ordering on a key change as `setup:A`, `dispose:A`, `setup:B`, and
+`dispose:B` on `composition.dispose()`, confirming that the obsolete registration is released
+before the replacement is established.
+
+**`awaitDispose` findings.** `ProduceStateScope.awaitDispose(onDispose)` is declared in the
+Compose runtime's `commonMain`, so it is available on every target this project builds. It
+returns `Nothing` and is implemented as `suspendCancellableCoroutine<Nothing> {}` inside a
+`try`/`finally` that always runs `onDispose`. Its KDoc purpose is awaiting the disposal of the
+producer whether it left the composition, the source changed, or an error occurred, and it is
+documented for configuring callback-based state producers that do not suspend. L11.4 teaches
+that purpose and the four-step subscription shape; it does not teach `suspendCancellableCoroutine`
+or `callbackFlow` internals.
+
+**Probes were deleted.** Both probe files lived only under
+`shared/src/jvmTest/.../probe/` during authoring and were removed before the final diff;
+`git status --short` shows no probe file.
+
+**Flow-versus-Compose-local producer boundary.** L11.4 answers the placement question from
+ownership and reuse in a two-column table — more than one consumer, meaning outside Compose,
+stream operators as part of the source contract, a lifetime below the UI, or a platform/domain
+layer that should expose the observation API argue for a Flow below the UI; an adaptation that
+exists for this Compose boundary, a composition-owned lifetime, a required `State` output, or a
+reusable stream nothing would reuse argue for the Compose-local producer. `callbackFlow` and
+`awaitClose` are named once as the same registration-and-cleanup idea one layer down, with the
+link to `lesson_flow_builders_and_callback_adapters`. The Lesson also records the reverse
+mistake — routing a single-screen value through layers that add no behaviour — and notes that
+choosing the Flow does not remove the Compose-side collection step.
+
+**Distinctions the Unit holds.** `DisposableEffect` is separated from `LaunchedEffect` by what
+kind of lifetime the Composition owns — an in-flight suspend operation ended by cooperative
+cancellation, against a registration held by an external object and ended by a synchronous
+release — not by "one has cleanup"; `lesson_cancellation_cleanup_and_timeouts` keeps coroutine
+cleanup. `SideEffect` is taught only as publication after successful composition and explicitly
+rejected as an event handler, a coroutine launcher and a place for expensive work, with the
+trigger question handed back to Unit 10. `produceState` + `awaitDispose` is separated from
+`DisposableEffect` by the output requirement rather than by "callbacks", and L11.4 keeps Unit
+10's composition-owned versus event-owned trigger distinction explicit. No mechanism-selection
+decision tree was authored: Unit 12 still owns the synthesis, and the only forward reference is
+one prose sentence naming a later unit.
+
+**`rememberUpdatedState` interaction.** L11.1's Senior section combines a stable registration
+keyed on the external object with a current callback read through `rememberUpdatedState`, and
+states the bounded rule — do not tear down and re-register an external observer merely because a
+callback changed, but do key on a value when changing it means the registration belongs
+elsewhere. Unit 10's mechanics are linked, not retaught.
+
+**Cross-links.** All links are backward. L11.1 →
+`lesson_effect_keys_as_dependencies`, `lesson_remember_updated_state`,
+`lesson_cancellation_cleanup_and_timeouts`, `lesson_flow_collection_lifetime`. L11.2 →
+`lesson_composable_execution`, `lesson_why_effects_are_controlled`,
+`lesson_who_owns_the_trigger`. L11.3 → `lesson_launched_effect`, `lesson_collect_as_state`,
+`lesson_snapshot_flow`. L11.4 → `lesson_flow_builders_and_callback_adapters`,
+`lesson_collect_as_state`, `lesson_snapshot_flow`. One deviation from the intended-graph table
+is recorded deliberately: that table pairs L11.3 and L11.4 jointly with
+`lesson_flow_builders_and_callback_adapters` and `lesson_snapshot_flow`, and the callback-adapter
+link was placed only on L11.4, because L11.4 is the Lesson whose prose names `callbackFlow` and
+L11.3 does not. No shipped Lesson was edited, and no forward link to Unit 12 was added.
+
+**Semantic Question review.** The two ACTIVE Questions reachable through `compose_side_effects`
+were re-read in full and re-solved against the finished Lessons; there is still no DEPRECATED
+Question on this Subtopic, so the pool is unchanged from E25-05 in membership.
+`compose_side_effects_001` (FOUNDATION, MULTIPLE) remains correct, correctly mapped and
+correctly levelled: the key set is the `LaunchedEffect` composition-scope clause and the
+`DisposableEffect` cleanup clause, and the distractors — `SideEffect` running before the
+composition is applied, and `rememberCoroutineScope` launching on entry — are both false against
+the resolved 1.11.2 source. After Unit 11 its `DisposableEffect` and `SideEffect` clauses are
+answerable from taught material for the first time, so the Question is now answerable end to
+end by a learner who has finished Units 9, 10 and 11. `compose_launched_effect_key_restart`
+remains correct, correctly mapped and correctly levelled; its reasoning is still Unit 9's, and
+Unit 11 receives it only structurally through the shared primary concept. Neither Question was
+edited and no Question wording was copied into a Lesson.
+
+**Shared practice-pool limitation, unchanged and still recorded.** `compose_side_effects` is the
+sole primary concept of Units 9, 10, 11 and future 12, so all of them receive one identical
+pool. Unit 11 therefore receives Unit 9's restart Question, Units 9 and 10 receive the
+`DisposableEffect` and `SideEffect` clauses Unit 11 now teaches, and any future Unit 11-specific
+Question written on this Subtopic will appear in Unit 9's practice too. No dishonest primary
+mapping and no invented Subtopic was used to hide this; E25-08 still owns the deliberate
+assessment response, and E25-01's four recommendations stand.
+
+**GAP-U11-* status.** All four remain **open** for E25-08, and authored teaching does not create
+semantic Question coverage. GAP-U11-A (a missing `onDispose` in a Compose screen and what
+accumulates) — L11.1 now teaches the concrete failure, three listeners on one session delivering
+every result three times plus the retained references, and nothing assesses it. GAP-U11-B
+(`SideEffect` timing as a decision, and what an abandoned or skipped composition means) — L11.2
+now teaches it; it is still present in the bank only as a one-clause distractor. GAP-U11-C
+(`produceState` at all: restart keys, conflation, and the State not resetting on a key change) —
+L11.3 now teaches it with a measured result; still unassessed, and still the strongest ADVANCED
+candidate in the epic. GAP-U11-D (choosing between a Flow below the UI and a Compose-local
+producer) — L11.4 now teaches the decision; `callback_flow_await_close_registration` still
+assesses only the builder contract in `async_reactive`. **No new gap id was created.** Finished
+authoring exposed no distinct unrecorded reasoning gap: the `awaitDispose` subscription shape
+belongs to GAP-U11-D's Lesson and the `DisposableEffect`-versus-producer choice is the same
+placement reasoning, so adding an id for either would be duplication rather than a finding.
+
+**Generated coverage.** `python3 tools/learning_question_coverage.py --write` reports 17 active
+Units and 69 active Lessons, and lists Unit 11 as four Lessons, one distinct primary concept and
+two reachable FOUNDATION Questions with no APPLIED or ADVANCED coverage. That is structural
+reach through `compose_side_effects` only. Semantically, neither reachable Question assesses
+registration ownership, cleanup on a key change, publication timing, producer lifetime, the
+key-change value, conflation, `awaitDispose` or the placement decision, which is what the
+GAP-U11-* entries above record.
+
+**Validation run during authoring.** `python3 -c "import json…"` round-tripped the production
+document and confirmed the change is a pure insertion — one added Unit, zero existing Units
+altered; `./gradlew :shared:dependencyInsight --configuration jvmRuntimeClasspath --dependency
+androidx.compose.runtime:runtime` resolved 1.11.2; the two throwaway JVM Compose probes ran
+under `./gradlew :shared:jvmTest --tests …` and were then deleted; the focused suite
+`./gradlew :shared:jvmTest --tests "…curriculum.learning.content.*" --tests
+"…TopicDetailLearningContentTest" --tests "…LearningUnitPracticeIntegrationTest"` passed after
+the count expectations were updated rather than weakened; `python3
+tools/learning_question_coverage.py --write` then `--check` reported the snapshot current;
+`cd tools && python3 -m unittest test_learning_question_coverage.py` passed 21 tests;
+`./gradlew :shared:jvmTest` passed the full common/JVM suite with the `android_ui` journey grown
+from 36 to 40 Lessons; `./gradlew :shared:allTests` passed Android host, JVM, iOS simulator, JS
+and Wasm targets; and `./gradlew :shared:check` plus `git diff --check` passed on the final
+diff. No `iosArm64` device-target run and no external CI run is claimed.
+
+**What E25-07 and Unit 12 may assume.** The learner has now met every E25 mechanism
+individually: hoisted screen state and a stateless content boundary (Unit 7), conversion of an
+observable stream into Compose `State` and its lifetime (Unit 8), composition-owned suspend work
+and effect keys (Unit 9), a current value read without restarting and an event-owned trigger
+(Unit 10), and a registration with paired release, an outward publication tied to successful
+composition, a composition-scoped state producer and a callback subscription inside one (Unit
+11). Every outcome Unit 12's decision Lesson must reach therefore has a Lesson that owns it, and
+Unit 12 may link backwards to all of them. Unit 12 still owns: the mechanism-selection decision
+itself, transient UI effects, and the delivery question. Two facts Unit 12 should not re-derive
+are the `produceState` key-change value and the `SideEffect` successful-composition contract;
+both are established here and should be cited rather than restated.

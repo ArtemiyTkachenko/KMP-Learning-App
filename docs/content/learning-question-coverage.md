@@ -53,7 +53,7 @@ invalidate the snapshot, but changing what it says does.
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
 | Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `b339136deda446637dfd35cd815a63fa3f3d4fb8ae52bdc1d333249e757c0686` |
-| Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `d38cf11ae5f33b3efb81f859e9503b18f432f84bbb6403127633c60e71ce5ac9` |
+| Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `caeeab0b5a3687d822a8a48cd260ecb4bb8bfc02fa9ccc268f57b1ef6550e00a` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
 because editing lesson content can change whether the material still teaches an

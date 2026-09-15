@@ -18831,7 +18831,7 @@
         },
         {
           "id": "compose_body_work_has_no_lifecycle_owner_b",
-          "text": "Body execution is not an event or a lifecycle callback, so the work has no defined start, owner or cleanup."
+          "text": "Body execution is not a lifecycle callback, so nothing here says how often the work starts, what owns it, or what ends it."
         },
         {
           "id": "compose_body_work_has_no_lifecycle_owner_c",
@@ -18847,7 +18847,7 @@
       "correctAnswerIds": [
         "compose_body_work_has_no_lifecycle_owner_b"
       ],
-      "explanation": "A composable body describes UI for its current inputs; it is not a callback that marks a point in a screen's life. The guidance puts it as a rule about timing: it is incorrect to perform an effect before a successful composition is guaranteed, which is exactly the case when the effect is written directly in a composable. The body may execute again, may be skipped because its inputs did not change, and may take part in a composition that is discarded rather than applied — so nothing here answers how often the work runs, what owns it, what cancels it, or what cleans it up, and an analytics call or a started operation cannot be taken back when the composition it belonged to is abandoned. The other statements are not true of this code. Execution is not once per screen; that is the assumption the effect APIs exist to replace. An abandoned composition discards the UI it calculated and rolls nothing else back — an analytics event already recorded stays recorded, which is why the guidance states the rule in terms of a successful composition. And a composable body being expected to be side-effect free is advice to its author, not an enforcement: nothing in the runtime inspects these calls or suppresses a later one.",
+      "explanation": "A composable body describes UI for its current inputs; it is not a callback that marks a point in a screen's life. The guidance puts it as a rule about timing: it is incorrect to perform an effect before a successful composition is guaranteed, which is exactly the case when the effect is written directly in a composable. The body may execute again, may be skipped because its inputs did not change, and may take part in a composition that is discarded rather than applied. What `work` does internally is not visible from here and is not the point: this call site states no start condition, no owner and no end condition for what it starts, so whether the operation is duplicated, orphaned or left running is decided somewhere the reader cannot see. The effect APIs exist to make that contract explicit at the call site. The other statements are not true of this code. Execution is not once per screen; that is the assumption the effect APIs exist to replace. An abandoned composition discards the UI it calculated and rolls nothing else back — an analytics event already recorded stays recorded, which is why the guidance states the rule in terms of a successful composition. And a composable body being expected to be side-effect free is advice to its author, not an enforcement: nothing in the runtime inspects these calls or suppresses a later one.",
       "sources": [
         {
           "title": "Side-effects in Compose",
@@ -18995,23 +18995,23 @@
       "id": "compose_missing_on_dispose_accumulates_listeners",
       "topicId": "android_ui",
       "subtopicId": "compose_side_effects",
-      "text": "A composable registers a result listener on a long-lived `QuestionSession` inside `DisposableEffect(session)` and ends the block with an empty `onDispose { }`. The learner works through three questions, and each one enters the Composition after the previous one has left it. What happens when the session grades the next answer?",
+      "text": "A composable calls `session.addListener(listener)` inside `DisposableEffect(session)` and ends the block with an empty `onDispose { }`. `QuestionSession` outlives the screen and notifies every listener added to it until `removeListener` is called, and `listener` writes each result into state the screen remembers. The learner works through three questions, and each one enters the Composition after the previous one has left it. What happens when the session grades the next answer?",
       "answers": [
         {
           "id": "compose_missing_on_dispose_accumulates_listeners_a",
-          "text": "It delivers the result three times, and each listener keeps the screen that created it reachable."
+          "text": "It delivers the result three times, and each listener keeps the screen state it writes into reachable."
         },
         {
-          "id": "compose_missing_on_dispose_accumulates_listeners_b",
-          "text": "It delivers the result once, because a session keeps only the most recently registered listener."
+          "id": "compose_missing_on_dispose_accumulates_listeners_e",
+          "text": "It delivers the result once, because an unchanged `session` key makes the effect re-use the earlier registration."
         },
         {
           "id": "compose_missing_on_dispose_accumulates_listeners_c",
           "text": "It delivers the result once, because leaving the Composition releases the registration even with an empty `onDispose`."
         },
         {
-          "id": "compose_missing_on_dispose_accumulates_listeners_d",
-          "text": "It delivers the result three times, but the two stale listeners are collected as soon as their screens are unreachable."
+          "id": "compose_missing_on_dispose_accumulates_listeners_f",
+          "text": "It delivers the result three times, but the two stale listeners are collected once their screens have left the Composition."
         }
       ],
       "selectionMode": "SINGLE",
@@ -19019,7 +19019,7 @@
       "correctAnswerIds": [
         "compose_missing_on_dispose_accumulates_listeners_a"
       ],
-      "explanation": "A registration is not work that finishes; it is something an object outside Compose now holds until it is told to let go. `DisposableEffect` exists to pair the acquisition with its release: there is one `onDispose` call for every call to the effect block, and the documented release points are the key changing and the effect leaving the Composition. An empty `onDispose` satisfies the compiler and releases nothing, so each of the three entries adds a listener the session never drops. The next graded answer therefore reaches all three, two of which belong to screens that are no longer composed. The other consequences named here do not follow. A session that accepts listeners keeps the ones it was given; nothing replaces a registration because the same call site made it. Compose has no knowledge of the registration at all — the only cleanup it performs is the one the effect supplied. And the stale listeners are not collectable: the session is alive and holds each of them, and through them the state they close over. Android's own leak-hunting guidance names this shape directly — forgetting to clean up listeners or observers in a `DisposableEffect`'s `onDispose`, and the Compose state objects and lambdas they retain — which is what a missing release costs beyond the duplicated deliveries.",
+      "explanation": "A registration is not work that finishes; it is something an object outside Compose now holds until it is told to let go. `DisposableEffect` exists to pair the acquisition with its release: there is one `onDispose` call for every call to the effect block, and the documented release points are the key changing and the effect leaving the Composition. An empty `onDispose` satisfies the compiler and releases nothing, so each of the three entries adds a listener the session never removes. The next graded answer therefore reaches all three, two of which belong to screens that are no longer composed, and each of those listeners holds the screen state it writes into. An unchanged key does not save this: a key decides whether a *running* effect is disposed and re-established, while a call site that leaves the Composition ends its effect instance outright and a later entry is a new one, which runs the block again. Compose has no knowledge of the registration either — the only cleanup it performs is the one the effect supplied. And the stale listeners are not collectable, because the session is alive and holds each of them: Android's leak-hunting guidance names exactly this shape, forgetting to clean up listeners or observers in a `DisposableEffect`'s `onDispose` and the Compose state objects and lambdas they retain.",
       "sources": [
         {
           "title": "Side-effects in Compose",

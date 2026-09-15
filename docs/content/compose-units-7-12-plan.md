@@ -2397,6 +2397,20 @@ Questions that already exist.
 | `compose_required_lifetime_exceeds_the_composition` | `compose_side_effects` | **Advanced** | Selecting across the effect family from a stated requirement, and reaching the negative result | GAP-U12-A + GAP-U10-C |
 | `compose_durable_flag_repeats_a_transient_effect` | `compose_side_effects` | Applied | Diagnosing a durable condition wired to a mechanism whose contract is execution | GAP-U12-B |
 
+Six defects were found and fixed before this batch landed, and **none of them was a wrong key
+in the answer set** — four were distractors that were defensible rather than false, and two were
+claims the stem did not actually establish. Two of the six came from PR review, and both are the
+same failure as the other four: a premise the key silently depended on.
+`compose_body_work_has_no_lifecycle_owner`'s key said the started work "has no defined start,
+owner or cleanup", which over-claims, because nothing at that call site rules out `work.start`
+launching something that owns and cleans up after itself; the key is now scoped to what the call
+site establishes. `compose_missing_on_dispose_accumulates_listeners` left the invented
+`QuestionSession`'s registration contract undefined — a set-style API that replaces its listener
+would have made a distractor correct — and asserted a retention the stem never set up; the stem
+now names `addListener`, states that every added listener is notified until `removeListener` is
+called, and says what the listener writes into. The full list is in
+`docs/content/question-audit-log.yml` under this review's `pre_merge_fixes`.
+
 **All twelve are `SINGLE`, and none is `FOUNDATION`.** That is a consequence rather than a
 policy: every gap in the table above names reasoning the descriptive layer already has a
 Question for, which is exactly why it was recorded as a gap. Nine came out Applied and three

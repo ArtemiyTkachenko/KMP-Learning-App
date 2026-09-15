@@ -113,6 +113,8 @@ does not cover: [CI](docs/workflows/ci.md).
 [Compose Units 7-12 plan](docs/content/compose-units-7-12-plan.md) ·
 [Coroutines and Flow blueprint](docs/content/coroutines-flow-learning-blueprint.md) ·
 [Coroutines and Flow Units 1-6 plan](docs/content/coroutines-flow-units-1-6-plan.md) ·
+[Architecture learning blueprint](docs/content/architecture-learning-blueprint.md) ·
+[Architecture Units 1-6 plan](docs/content/architecture-units-1-6-plan.md) ·
 [learning-to-question coverage](docs/content/learning-question-coverage.md)
 
 ## Skills

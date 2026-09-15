@@ -5084,3 +5084,485 @@ epics:
         priority: "P1"
         size: "M"
         initial_status: "Backlog"
+
+  - key: E26
+    github_title: "EPIC-26 Application Architecture and State Ownership"
+
+    goal: >
+      Build a senior-level application-architecture curriculum that connects the
+      production Compose screen boundary to the rest of an application. Teach
+      responsibility and dependency boundaries, screen-level state holders and
+      the ViewModel, immutable current UI state and application-level
+      unidirectional data flow, repositories and single sources of truth,
+      optional domain and use-case layers, MVP, MVVM and MVI as responsibility
+      models, and state against transient occurrence across lifecycle
+      boundaries. Deliver the curriculum through the existing production
+      learning-content system, with reviewed assessment coverage and verified
+      integration into the existing learning experience. Teach architecture as
+      the assignment of responsibility, ownership and dependency direction, and
+      make choosing the smallest architecture that satisfies ownership,
+      lifetime, reuse, testability and change-boundary requirements the
+      recurring decision rather than applying layers or patterns by default.
+      Dependency injection, detailed persistence and networking implementations,
+      navigation mechanics, background work, modularization and build
+      architecture, comprehensive testing, detailed Kotlin Multiplatform
+      platform boundaries, new learning UI, database changes, production
+      architecture refactoring, and unrelated product changes remain outside
+      this epic.
+
+    issues:
+      - key: E26-01
+        title: "Confirm the application architecture and state ownership curriculum scope and assessment coverage"
+
+        issue: >
+          The architecture Topic already has a broad Subtopic vocabulary and a
+          meaningful question bank, but no learning blueprint, and the Compose
+          effects epic deliberately handed forward a list of responsibilities it
+          refused to design. The Units this epic delivers therefore need a
+          reconciled map, identities, prerequisites, source and terminology
+          expectations, and a semantic assessment review before production
+          authoring begins.
+
+        approach: >
+          Inspect what already exists rather than assuming: every `architecture`
+          Subtopic and its current status, the ACTIVE and relevant DEPRECATED
+          Questions mapped to them, the shipped Compose state and execution
+          Units, the Coroutines and Flow Units, the Compose effects and
+          production screen state Units, and every deferral their planning
+          documents recorded for this epic, together with the
+          `lifecycle_navigation`, `async_reactive`, `android_ui`,
+          `dependency_injection` and `kmp` Subtopics this subject touches,
+          searching conceptually rather than only for literal pattern names.
+          Inspect this repository's own screen-level state holders, repository
+          and data packages as real evidence of the tradeoffs and of current
+          Kotlin Multiplatform ViewModel and lifecycle behavior, treating the
+          current implementation as an example to explain rather than as a model
+          to imitate or rewrite. Then produce the blueprint the learning-content
+          authoring contract requires for a major subject, together with the
+          confirmed authoring plan: the Unit and Lesson blueprint for this epic,
+          stable Unit and Lesson identities following existing conventions,
+          primary and supporting mappings using real IDs,
+          Teach/Bridge/Reference/Exclude decisions, prerequisites that are
+          already taught or need bounded bridging, the misconception targets the
+          Lessons must correct, the source-sensitive and terminology-sensitive
+          claims with the authoritative sources that must settle them, and a
+          semantic review of existing Questions. Record it in canonical
+          documentation under `docs/content/` following the precedent of the
+          earlier blueprints and planning documents, and register it in the
+          documentation map. The backlog assumes six instructional Units; adjust
+          that only with a documented pedagogical reason. Keep this issue
+          planning-only: do not add production Lessons or Questions.
+
+        acceptance_criteria:
+          - "Every architecture Subtopic is inventoried with its current status, and the ones this epic teaches, bridges, references, or leaves unmapped are named."
+          - "Existing ACTIVE and relevant DEPRECATED architecture Questions receive a semantic review with gaps and mismatches recorded, rather than being assumed adequate because a mapping exists or a count looks healthy."
+          - "Each responsibility the Compose effects epic deferred to this epic is accounted for concept by concept, with the Unit that owns it or a documented reason it stays out."
+          - "An architecture learning blueprint exists under `docs/content/`, is registered in the documentation map, and defines each Unit's Lessons, objectives, and boundaries."
+          - "Any departure from six instructional Units is justified pedagogically rather than by taxonomy shape or Question availability."
+          - "Unit and Lesson identities are defined using existing conventions and are stable for the authoring issues."
+          - "Primary and supporting mappings use valid IDs, and concepts with no exact Subtopic are documented, not given invented IDs."
+          - "Prerequisites are already taught, included earlier in the sequence, or explicitly bridged."
+          - "The misconceptions the epic exists to correct are recorded as reasoning targets rather than as pattern or API checklists."
+          - "Authoritative sources are identified for architecture claims, and the plan states where MVP, MVVM and MVI terminology varies between sources so correctness is not built on one definition."
+          - "Claims about this repository's own architecture, and about Kotlin Multiplatform ViewModel and lifecycle behavior, are settled against the configured libraries and the code rather than inferred from Android-only documentation."
+          - "Boundaries with the Compose state, Coroutines and Flow, and Compose effects Units are stated concept by concept, so this epic applies their mechanics rather than reteaching them."
+          - "Boundaries with the dependency-injection, build and modularization, testing, Kotlin Multiplatform, persistence, and networking curricula are stated concept by concept."
+          - "The repository's current implementation is treated as evidence rather than as prescription, and no production architecture change is proposed as part of this epic."
+          - "This issue introduces no production Lessons or Questions."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Ready"
+
+      - key: E26-02
+        title: "Author Architecture as Responsibilities and Boundaries"
+
+        issue: >
+          Learners meet architecture as a set of named layers and folder trees,
+          which leaves them unable to justify any boundary they draw or defend
+          one they refuse to draw.
+
+        approach: >
+          After E26-01, author the planned foundations Unit in the production
+          learning-content format, covering the planned territory: what problem
+          application architecture actually solves, separation of concerns,
+          assigning responsibility, ownership, dependency direction, change
+          boundaries, coupling and cohesion, testability as a consequence rather
+          than a layer-count target, layered architecture as one answer among
+          others, the difference between architecture and package or folder
+          structure, the difference between architecture and framework choice,
+          and the cost of abstraction that earns nothing. Build the Unit around
+          the decisions an engineer actually makes — who may know about this
+          dependency, who owns this state, which direction may dependencies
+          point, and which component changes when this requirement changes —
+          rather than opening with a named layer stack. Follow the
+          learning-content authoring contract, preserve the plan's pedagogical
+          order and stable identities, and use clear objectives, substantive
+          Core explanations, practical examples, and Senior-depth reasoning
+          where useful. Explain supporting concepts only as far as this Unit
+          needs them. Use valid taxonomy IDs, distinguish primary from
+          supporting mappings, verify claims against specific authoritative
+          sources, and semantically review associated Questions against what the
+          Lessons actually teach. Keep the planning and generated
+          learning-to-question coverage documents current, then run and honestly
+          report the relevant existing content validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "Boundaries are motivated before any named layer stack is introduced."
+          - "Responsibility, ownership, and dependency direction are taught as decisions with stated consequences, each worked through a concrete requirement change."
+          - "The claim that more layers mean better architecture is addressed directly and shown to be wrong."
+          - "Architecture is distinguished from package or folder structure, and from framework or library choice."
+          - "An interface is shown not to decouple anything by itself, with the condition that makes it a real boundary stated."
+          - "The cost of an abstraction that earns nothing is demonstrated rather than asserted."
+          - "Testability is presented as a consequence of good boundaries rather than as a reason to maximise abstraction."
+          - "Layered architecture is presented as one answer to the boundary question, with the requirements that make it a good or poor fit."
+          - "A logical boundary is not equated with a Gradle module, and modularization is left to the build curriculum."
+          - "Unit practice mappings contain only primary concepts."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E26-03
+        title: "Author Screen State Holders, ViewModel and UiState"
+
+        issue: >
+          The Compose curriculum stops at a screen-level owner it deliberately
+          refuses to design, so learners can name the boundary but cannot say
+          what the thing behind it owns, how its state should be modelled, or
+          how long it lives.
+
+        approach: >
+          After E26-02, author the planned state-holder Unit in the production
+          learning-content format, covering the planned territory: why a
+          screen-level owner exists at all, the responsibility of a screen state
+          holder, the ViewModel as one platform-provided implementation of that
+          responsibility rather than as the definition of it, state ownership,
+          an immutable current UI state exposed read-only with controlled write
+          paths, turning data-layer and domain results into screen state,
+          application-level state down and events up, handling intentions from
+          the UI, lifetime as distinct from persistence, and a scope tied to the
+          owner's lifetime for work whose lifetime matches it. Give UI state
+          modelling substantial treatment — a data class against a sealed
+          hierarchy, loading, content and error, partial and optional state, and
+          representable-but-impossible combinations — as a tradeoff rather than
+          prescribing one universal shape. Apply rather than reteach the Compose
+          boundary, collection, and coroutine scope material the earlier epics
+          own, cross-linking instead of duplicating. Follow the learning-content
+          authoring contract, preserve the plan's pedagogical order and stable
+          identities, and use clear objectives, substantive Core explanations,
+          practical examples, and Senior-depth reasoning where useful. Explain
+          supporting concepts only as far as this Unit needs them. Use valid
+          taxonomy IDs, distinguish primary from supporting mappings, verify
+          ViewModel lifetime, retention and scope claims against specific
+          authoritative sources and the configured libraries with extra care for
+          multiplatform behavior, and semantically review associated Questions
+          against what the Lessons actually teach. Keep the planning and
+          generated learning-to-question coverage documents current, then run
+          and honestly report the relevant existing content validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "The existence of a screen-level owner is justified from responsibility and lifetime rather than from surviving rotation."
+          - "The state holder's responsibility is separated from the ViewModel as one implementation of it, and a state holder that is not a ViewModel is shown."
+          - "An immutable current state exposed read-only with controlled write paths is taught, with the failures of exposing a mutable holder made concrete."
+          - "UI state modelling is taught as a tradeoff, comparing at least a single data class and a sealed hierarchy on the same screen, including partial and error states."
+          - "No single universal UI state shape is prescribed, and the conditions that favour each are stated."
+          - "Representable-but-impossible state combinations are demonstrated, with the cost of eliminating them acknowledged."
+          - "Application-level unidirectional data flow is taught as state outward and intentions inward, distinct from data flow inside a composable tree."
+          - "The claim that every piece of production state belongs in a ViewModel is addressed directly and shown to be wrong."
+          - "ViewModel lifetime is distinguished from persistence, and the ViewModel is not presented as a persistence mechanism."
+          - "Saved-state and configuration-change material stays bounded supporting context, with lifecycle mechanics left to the lifecycle and navigation curriculum."
+          - "Compose collection and effect APIs are applied and cross-linked rather than retaught."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E26-04
+        title: "Author Repositories, Data Ownership and Single Source of Truth"
+
+        issue: >
+          Learners repeat that a repository abstracts a data source and that the
+          database is the single source of truth, without being able to say who
+          owns the data, what a consumer may know about its origin, or which
+          copy is authoritative when two disagree.
+
+        approach: >
+          After E26-03, author the planned data-ownership Unit in the production
+          learning-content format, covering the planned territory: what a
+          repository is responsible for, a repository against a data source,
+          coordinating local and remote sources, a domain-facing API shaped by
+          its consumers rather than by its storage, exposing data as something
+          observable, single source of truth, an authoritative source against a
+          cache, read and write paths, model boundaries where they earn their
+          cost, and keeping persistence and network types below the boundary.
+          Teach the source of truth as a decision that follows from the
+          application's requirement — authority, synchronization, conflicting
+          copies, staleness and offline behavior — rather than as a default
+          answer naming one technology. Keep storage and networking
+          implementation detail out: this Unit teaches contracts, ownership and
+          coordination. Follow the learning-content authoring contract, preserve
+          the plan's pedagogical order and stable identities, and use clear
+          objectives, substantive Core explanations, practical examples, and
+          Senior-depth reasoning where useful. Explain supporting concepts only
+          as far as this Unit needs them. Use valid taxonomy IDs, distinguish
+          primary from supporting mappings, verify claims against specific
+          authoritative sources, and semantically review associated Questions
+          against what the Lessons actually teach. Keep the planning and
+          generated learning-to-question coverage documents current, then run
+          and honestly report the relevant existing content validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "A repository's responsibility is derived from ownership and coordination, and the claim that it is a wrapper around an API or a DAO is addressed directly and shown to be insufficient."
+          - "A repository and a data source are distinguished on the same feature, including the case where the extra type is not worth adding."
+          - "Local and remote coordination is worked through concretely, including what a consumer is and is not told about origin, freshness, and failure."
+          - "An observable data API is compared with a one-shot API on the same requirement, with the consequences for consumers stated."
+          - "Single source of truth is taught as choosing an authoritative source for a requirement, and is not reduced to naming a database."
+          - "Conflicting copies, staleness, and offline behavior are reasoned about at architecture depth, with the resolution decision stated rather than implied."
+          - "Model boundaries between transfer, storage, and domain or UI models are presented as a tradeoff with their mapping cost acknowledged, not as a mandatory triple."
+          - "Persistence and network types are shown not leaking upward, with the coupling that results made concrete."
+          - "The claim that every repository needs an interface is addressed directly, with the conditions that justify one stated."
+          - "Room, SQL, HTTP client, serialization, caching, and paging implementation detail stays outside this Unit and is cross-linked rather than taught."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E26-05
+        title: "Author Domain Logic, Use Cases and Dependency Direction"
+
+        issue: >
+          Learners are taught Clean Architecture as a mandatory template, which
+          produces pass-through use cases and mapping ceremony they cannot
+          justify and cannot argue against in an interview.
+
+        approach: >
+          After E26-04, author the planned domain Unit in the production
+          learning-content format, covering the planned territory: what a domain
+          layer is for, use cases and interactors, orchestration across
+          repositories, reusable business operations, policy against framework
+          and detail, dependency direction and inversion, the Clean Architecture
+          dependency rule, domain model boundaries, business logic kept free of
+          framework types, the cost of mapping and indirection, and how the
+          answer differs between a simple and a complex application. Teach the
+          domain layer as optional and make the Unit's central question when
+          another layer earns its existence, with reuse, business-policy
+          isolation, orchestration, and meaningful abstraction as the conditions
+          that earn it. Follow the learning-content authoring contract, preserve
+          the plan's pedagogical order and stable identities, and use clear
+          objectives, substantive Core explanations, practical examples, and
+          Senior-depth reasoning where useful. Explain supporting concepts only
+          as far as this Unit needs them. Use valid taxonomy IDs, distinguish
+          primary from supporting mappings, verify claims against specific
+          authoritative sources, and semantically review associated Questions
+          against what the Lessons actually teach. Keep the planning and
+          generated learning-to-question coverage documents current, then run
+          and honestly report the relevant existing content validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "The domain layer is taught as optional, with the requirements that make it worth adding stated explicitly."
+          - "The claim that every repository method needs a matching use case is addressed directly and shown to be wrong."
+          - "A pass-through use case is shown with its cost, beside a use case that earns its place through reuse, orchestration, or policy isolation."
+          - "Dependency direction and inversion are taught as a decision about who may depend on whom, with the consequence of reversing it shown."
+          - "The Clean Architecture dependency rule is explained from its intent, and Clean Architecture is not presented as a mandatory Android template or a fixed number of layers."
+          - "Business policy is distinguished from framework and infrastructure detail, with an example of policy that leaked into the wrong place."
+          - "Mapping and indirection costs are made visible, and a simple feature is compared with a complex one on the same question."
+          - "Testability arguments name the boundary that makes the difference rather than the layer count."
+          - "Dependency injection frameworks, containers, and graph configuration stay outside this Unit and are cross-linked rather than taught."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E26-06
+        title: "Author MVP, MVVM and MVI Responsibility Models"
+
+        issue: >
+          Pattern names are argued about more than they are understood, and a
+          learner who can only recite diagrams cannot say where state lives, who
+          may mutate it, or what any of these patterns costs.
+
+        approach: >
+          After E26-05, author the planned patterns Unit in the production
+          learning-content format, built around one hypothetical screen carried
+          through every pattern rather than around class diagrams or history.
+          Cover the planned territory: for MVP, the presenter and its explicit
+          view contract, push-style UI updates, attach, detach and lifetime
+          implications, why it fit the View era, and what it costs; for MVVM, a
+          UI that observes state, a state owner that holds no reference to the
+          view, intentions inward and state outward, and its modern Compose
+          reading; for MVI, one current state, intents or actions, reduction as
+          a concept, explicit transitions, unidirectional data flow, the
+          distinction between state and one-off effects, and its ceremony. Teach
+          the commonality — where state lives, who may mutate it, and how the UI
+          and the behavior owner communicate — before the labels, and show that
+          modern Android implementations routinely borrow immutable state from
+          one and ownership from another without becoming a textbook pattern.
+          Follow the learning-content authoring contract, preserve the plan's
+          pedagogical order and stable identities, and use clear objectives,
+          substantive Core explanations, practical examples, and Senior-depth
+          reasoning where useful. Explain supporting concepts only as far as
+          this Unit needs them. Use valid taxonomy IDs, distinguish primary from
+          supporting mappings, verify claims against specific authoritative
+          sources, state where pattern terminology varies between sources rather
+          than adopting one definition as correct, and semantically review
+          associated Questions against what the Lessons actually teach. Keep the
+          planning and generated learning-to-question coverage documents
+          current, then run and honestly report the relevant existing content
+          validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "Each pattern is presented through where state lives, who may mutate it, how the UI communicates with the behavior owner, and what lifetime each part has."
+          - "The same hypothetical screen is carried through the patterns so the comparison is about responsibilities rather than vocabulary."
+          - "MVP is taught as a working responsibility model with real strengths, not dismissed as obsolete, and its view contract and attach and detach lifetime costs are concrete."
+          - "MVVM is taught as an observing UI with a state owner that does not hold the view, and is not reduced to a file or folder structure."
+          - "MVI is taught through intent, reduction, one current state, and explicit transitions, with its ceremony and cost stated."
+          - "The claim that MVVM means many state streams and MVI means one is addressed directly and shown to be an insufficient distinction."
+          - "The claim that MVI is MVVM plus sealed intent classes is addressed directly and shown to be wrong."
+          - "No claim is made that any pattern guarantees fewer recompositions or better performance by itself."
+          - "Hybrid modern implementations are shown borrowing from more than one pattern, with the responsibilities still classifiable."
+          - "Where pattern terminology varies between sources, the Lessons say so and reason from responsibility, dependency, state flow, mutation path, and lifetime instead."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E26-07
+        title: "Author State, Events, Lifetime and Architecture Selection"
+
+        issue: >
+          The Compose curriculum reached the negative result that a one-off UI
+          effect cannot provide a delivery guarantee and deliberately stopped
+          there, and learners still need to decide what must be state, who owns
+          it, how long it must survive, and how much architecture the feature
+          actually needs.
+
+        approach: >
+          After E26-06, author the planned synthesis Unit in the production
+          learning-content format, working through realistic requirements rather
+          than introducing another catalogue. Cover the planned territory:
+          current and durable state, transient UI effects, application-level
+          occurrences, delivery while no UI is present, acknowledgement and
+          consumption where a requirement demands it, state reconstruction,
+          process recreation and durability, when an occurrence should be
+          recorded as state instead, when losing it is acceptable, choosing an
+          owner from the lifetime the requirement needs, and choosing a pattern
+          and a layer count from the complexity actually present. Start every
+          decision from the guarantee the requirement needs, and keep the
+          treatment proportional: reason about producer against UI lifetime,
+          whether a later consumer must still act, whether repetition is safe,
+          whether acknowledgement is needed, and whether the fact should be
+          durable, without building an event-bus or durable-messaging
+          curriculum. Synthesize the five earlier Units, applying rather than
+          reteaching them. Follow the learning-content authoring contract,
+          preserve the plan's pedagogical order and stable identities, and use
+          clear objectives, substantive Core explanations, practical examples,
+          and Senior-depth reasoning where useful. Explain supporting concepts
+          only as far as this Unit needs them. Use valid taxonomy IDs,
+          distinguish primary from supporting mappings, verify claims against
+          specific authoritative sources, and semantically review associated
+          Questions against what the Lessons actually teach. Keep the planning
+          and generated learning-to-question coverage documents current, then
+          run and honestly report the relevant existing content validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "The Unit synthesizes the earlier Units through stated requirements rather than introducing a new catalogue of mechanisms."
+          - "Current state, durable state, and a transient occurrence are distinguished, with worked cases where the same fact is modelled differently for different requirements."
+          - "Each decision starts from the guarantee the requirement needs — whether a later consumer must act, whether repetition is safe, whether acknowledgement is required, whether the fact must survive process recreation."
+          - "The slogan that one stream type is for state and another for events is not taught, consistent with the Coroutines and Flow and Compose effects Units."
+          - "An owner is chosen from the lifetime the requirement needs, including cases where the screen-level owner is the wrong lifetime."
+          - "Work and occurrences that must outlive a composition are placed with an owner whose lifetime matches, with background-work scheduling left to its own curriculum."
+          - "Cases where losing a transient occurrence is acceptable are treated as legitimate outcomes rather than defects."
+          - "The amount of architecture is chosen from the complexity actually present, including a worked case where the smallest structure is correct."
+          - "No event bus, durable messaging infrastructure, or general-purpose queueing architecture is taught."
+          - "Navigation APIs, persistence APIs, and dependency injection remain outside this Unit and are cross-linked rather than taught."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E26-08
+        title: "Address assessment gaps for the Application Architecture Units"
+
+        issue: >
+          The architecture bank already holds substantive Questions, so this
+          epic is not greenfield assessment authoring, and structural mappings
+          between Lessons and Questions do not establish that the new Units'
+          reasoning is actually assessed.
+
+        approach: >
+          After E26-02 through E26-07, revisit E26-01's semantic coverage
+          analysis against the finished Lessons. Add or correct Questions only
+          for substantive conceptual gaps using the existing question-authoring
+          and validation workflows, giving particular attention to the
+          misconceptions the Units exist to correct and to scenarios that
+          require choosing an owner, a boundary, or an amount of architecture
+          from a stated requirement. Re-examine the existing architecture
+          Questions against what the Lessons now teach, including DEPRECATED
+          ones where the reasoning is worth restoring. Preserve Question
+          identities and lifecycle conventions, independently solve every
+          changed or added Question, verify its Sources, and keep the generated
+          coverage reports current.
+
+        acceptance_criteria:
+          - "Each Unit's primary concepts receive a documented semantic coverage review against the finished Lessons."
+          - "Existing architecture Questions are re-examined against what the Lessons teach rather than assumed adequate, and coverage is never inferred from Question counts."
+          - "Material gaps are addressed or explicitly justified as deferred."
+          - "Questions assess reasoning rather than copied Lesson wording, pattern-name recall, or the existence of a layer."
+          - "Misconception and decision-from-requirement scenarios are represented where the Lessons teach the reasoning they require."
+          - "Questions that would depend on one source's pattern terminology rather than on responsibilities are not added."
+          - "Difficulty matches required reasoning without per-Lesson or per-level quotas."
+          - "Every changed or added Question is independently solved and its Sources verified."
+          - "Supporting-only mappings do not broaden practice eligibility."
+          - "Question identity and lifecycle conventions are preserved."
+          - "Affected coverage reports are regenerated."
+          - "Every new Unit has meaningful practice or a reviewed explanation for its absence."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E26-09
+        title: "Verify the Application Architecture learning experience and close E26"
+
+        issue: >
+          The new Units must work as one coherent learning sequence, sit
+          correctly behind the shipped Compose and Coroutines and Flow Units,
+          and integrate with study progress, Continue Learning, and Unit practice
+          without changing unrelated product behavior.
+
+        approach: >
+          After E26-08, review the Units as one learning sequence and verify
+          their integration using existing tooling and focused production-content
+          checks, including how the sequence sits behind the Compose effects and
+          production screen state Units, whether the deferrals those Units
+          recorded are now answered, and whether the cross-links between them
+          resolve in both directions. Add tests only for concrete gaps and
+          accurately report content, build, and platform verification results.
+
+        acceptance_criteria:
+          - "Every authored Unit and Lesson appears in the intended authored order."
+          - "Cross-Unit review checks prerequisites, contradictions, duplication, and terminology consistency."
+          - "Terminology for responsibility, ownership, dependency direction, state, intention, occurrence, lifetime, and delivery is consistent across Units and with existing content."
+          - "Each responsibility the Compose effects epic deferred to this epic is answered by a shipped Lesson or recorded as still deferred with its reason."
+          - "Cross-links to the Compose state and execution, Coroutines and Flow, and Compose effects Units resolve and do not duplicate what they reference."
+          - "The Units apply rather than reteach Compose state mechanics, coroutine and Flow mechanics, and the Compose effect APIs."
+          - "Structured content, code examples, and Sources render correctly."
+          - "Mark and unmark update Unit and Topic study progress correctly."
+          - "Continue Learning traverses the expanded content and handles completion correctly."
+          - "Unit practice uses intended primary concepts through the existing assessment flow."
+          - "Content and coverage validation passes with current reports."
+          - "New tests address concrete gaps rather than duplicating existing checks."
+          - "Required build and platform checks are reported accurately."
+          - "Remaining limitations and any material deferred to the dependency-injection, build and modularization, testing, or Kotlin Multiplatform curriculum are recorded."
+          - "No unrelated product behavior changes."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"

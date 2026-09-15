@@ -109,7 +109,7 @@ internal class LearningUnitPracticeIntegrationTest {
             val originalRecords = studyRepository.getStudiedLessons()
             val units = BundledLearningContentRepository().getActiveUnitsByTopic("android_ui")
             assertEquals(publishedIds, units.first().lessons.map { it.id }.toSet())
-            assertEquals(listOf(5, 3, 5, 3, 2, 4, 4, 4, 3, 4), units.drop(1).map { it.lessons.size })
+            assertEquals(listOf(5, 3, 5, 3, 2, 4, 4, 4, 3, 4, 3), units.drop(1).map { it.lessons.size })
 
             // Keep the real parent ViewModels alive throughout every child mutation.
             val browser = browser()
@@ -119,7 +119,7 @@ internal class LearningUnitPracticeIntegrationTest {
                 topic.uiState.await { state ->
                     state is TopicDetailUiState.Content &&
                         (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
-                        StudyProgressSummary.Progress(count, 40)
+                        StudyProgressSummary.Progress(count, 43)
                 }
             }
             suspend fun awaitNext(unitId: String, lessonId: String) {
@@ -212,7 +212,7 @@ internal class LearningUnitPracticeIntegrationTest {
                 state is TopicBrowserUiState.Content && state.continueLearning == ContinueLearningUiModel.Complete
             }
             // The `android_ui` Topic's own progress is unaffected by Units in another Topic.
-            awaitTopic(40)
+            awaitTopic(43)
             val firstCoroutinesUnit = coroutinesUnits.first()
             val lastLessonInFirstCoroutinesUnit = firstCoroutinesUnit.lessons.last()
             val coroutinesReader = lesson(firstCoroutinesUnit.id, lastLessonInFirstCoroutinesUnit.id)
@@ -244,7 +244,7 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             reader.toggleStudied()
             awaitNext(earlierUnit.id, earlierLesson.id)
-            awaitTopic(39)
+            awaitTopic(42)
             parents.getValue(earlierUnit.id).uiState.await { state ->
                 state is LearningUnitUiState.Content &&
                     (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
@@ -252,9 +252,9 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             val rebuilt = LocalLessonStudyRepository(database)
             assertFalse(rebuilt.isStudied(earlierLesson.id))
-            // 40 `android_ui` Lessons plus 29 in the coroutines and Flow Units, less the
+            // 43 `android_ui` Lessons plus 29 in the coroutines and Flow Units, less the
             // one that was just un-studied.
-            assertEquals(68, rebuilt.getStudiedLessons().size)
+            assertEquals(71, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -290,6 +290,13 @@ internal class LearningUnitPracticeIntegrationTest {
                 // practice therefore stays the same two shared Questions; E25-08 owns the
                 // GAP-U11-* coverage.
                 "unit_cleanup_synchronization_and_producers" to (
+                    setOf("compose_side_effects") to 2
+                ),
+                // E25-07. The synthesis Unit takes the same sole primary concept, so all
+                // four effect Units now receive one identical pool. That is the structural
+                // limitation E25-01 recorded rather than something this issue may route
+                // around by re-mapping a Lesson; E25-08 owns the GAP-U12-* response.
+                "unit_production_ui_effects_and_selection" to (
                     setOf("compose_side_effects") to 2
                 ),
                 // E24-02. Five Lessons, five distinct primary concepts, and the cross-Topic

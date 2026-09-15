@@ -6285,6 +6285,657 @@
       "status": "ACTIVE"
     },
     {
+      "id": "unit_production_ui_effects_and_selection",
+      "topicId": "android_ui",
+      "title": "Production UI Effects and Mechanism Selection",
+      "summary": "Every mechanism in this path has now been met on its own, and production asks a different question: given a requirement, which of them does it actually need? This unit answers that from ownership, trigger, lifetime and cleanup, and takes the smallest mechanism that satisfies all four. It then separates what a screen currently is from what the UI should do once, and ends on the question a Compose effect cannot answer by itself — what must happen to a one-off occurrence when no UI is present to run it.",
+      "lessons": [
+        {
+          "id": "lesson_choosing_a_compose_mechanism",
+          "title": "Choosing the Smallest Sufficient Mechanism",
+          "summary": "A requirement chooses a mechanism, not familiarity or power. Work the decision in a fixed order — is there state to render, who owns it, what starts the work, what lifetime it needs, what has to be released — and take the smallest mechanism that satisfies the answer, including the answer that no composition-owned mechanism does.",
+          "primarySubtopicIds": [
+            "compose_side_effects"
+          ],
+          "supportingSubtopicIds": [
+            "compose_state",
+            "compose_state_hoisting",
+            "compose_udf"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Five units have introduced these mechanisms one problem at a time, and every one of them was the right answer to the problem it arrived with. Production does not arrive in that order. It arrives as a requirement — this screen has to show something, remember something, start something, register something, or hand something outward — and the engineer has to say which mechanism that requirement needs and why. That decision is this lesson, and it introduces no new API."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The failure it replaces is rarely ignorance of the APIs. It is reaching for the most powerful mechanism that could work rather than the smallest one that does. An unnecessary effect is not free: it is another lifetime to reason about, another key list to get right, and another thing every future reader of the screen has to check before changing anything. Often the correct answer is that no mechanism is needed at all."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Four facts decide every scenario below, and a scenario is not decided until each one has an answer:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Who owns the state — nobody, because nothing needs remembering; this composable; the closest common ancestor of the composables that use it; or an owner that lives outside the Composition.",
+                    "Who owns the trigger — whether there is any work to start, and if there is, whether entering or changing a composition state starts it or an event does.",
+                    "What lifetime the requirement needs — one composition, one value of one key, the screen, or longer than the screen.",
+                    "What has to be released — nothing; a coroutine that ends by cancellation; or a registration that has to be handed back to an object Compose does not manage."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "With those four in hand the decision is a short sequence of questions, asked in order and stopped at the first one the requirement actually answers."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Is there state to render? If there is none, do not invent some so that an effect has something to watch. If there is, ask who should own it — an ordinary parameter, local Compose state, hoisted state, or the screen's one current value.",
+                    "Is an external observable value driving what is rendered? Then it has to become Compose `State` before a composable can render it, by collection — plainly, or lifecycle-aware where the host's activity should also gate the upstream.",
+                    "What starts imperative or suspend work? If entering or changing a composition state starts it, the Composition owns the trigger and `LaunchedEffect` is the mechanism. If a click or another callback starts it, the event owns the trigger and a remembered scope is.",
+                    "Does long-lived work need the current value of something that should not end it? That is `rememberUpdatedState`, and it is not a key question.",
+                    "Does the Composition acquire something that has to be given back? A registration paired with its release is `DisposableEffect`.",
+                    "Does code outside Compose need the value the composed UI was actually built from? That is `SideEffect`.",
+                    "Does an external producer have to become Compose `State`? Decide from ownership and reuse — a stream that already exists below the UI is simply collected, a source worth reusing is adapted into a Flow there, and a source that exists only for this boundary can be a Compose-local `produceState`, with `awaitDispose` when its subscription does not suspend.",
+                    "Must the work continue after this screen's Composition ends? Then none of the mechanisms above is the answer, and that is a result rather than a dead end."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Name the four facts before naming a mechanism. Owner, trigger, lifetime and cleanup decide the answer; the API is only what that answer is called. The smallest mechanism that satisfies all four is the right one, and sometimes that is no mechanism."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Three screens from this app's own practice flow, each worked through the four facts. The first is the one most often over-engineered, because it contains nothing to run."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun QuestionExplanation(explanation: String) {\n    var expanded by remember { mutableStateOf(false) }\n\n    TextButton(onClick = { expanded = !expanded }) {\n        Text(if (expanded) \"Hide explanation\" else \"Show explanation\")\n    }\n    if (expanded) {\n        Text(explanation)\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "State owner: this composable, because nothing else reads `expanded` and nothing else writes it. Trigger owner: there is no trigger, because there is no work — a tap changes a value, and describing the UI from the new value is not work that needs starting. Lifetime: this composition, and a panel that reopens collapsed after the screen is rebuilt is acceptable here; if it were not, that is a saved-state question and not an effect question. Cleanup: nothing. The smallest sufficient mechanism is a local `remember`, and the `explanation` parameter beside it needs even less — it is rendered directly, and turning it into state would add an owner for a value nobody changes."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second screen does start work, and the interesting part is that it needs two mechanisms for two different reasons."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun QuestionCountdown(\n    questionId: String,\n    onTimeout: () -> Unit,\n) {\n    val currentOnTimeout by rememberUpdatedState(onTimeout)\n\n    LaunchedEffect(questionId) {\n        delay(QuestionTimeLimitMillis)\n        currentOnTimeout()\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "State owner: none of this is screen state — which question is active belongs to the screen's current value, and the countdown holds nothing of its own. Trigger owner: the Composition, because the countdown should begin when this composition starts representing a question and no user action is involved. Lifetime: one value of `questionId`, because a different question makes the running countdown obsolete. Cleanup: the coroutine ends by cancellation on a key change or on leaving; nothing is handed back. That gives `LaunchedEffect(questionId)`. The callback is a separate fact: it must be current when the countdown fires, and it must not decide when the countdown ends. Adding `onTimeout` as a second key would answer the value question by restarting the timer, which is the wrong answer to a question nobody asked."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The third screen starts work too, and the trigger belongs to somebody else."
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun PracticeActions(\n    listState: LazyListState,\n    snackbarHostState: SnackbarHostState,\n    hintIndex: Int,\n) {\n    val scope = rememberCoroutineScope()\n\n    Button(\n        onClick = {\n            scope.launch {\n                listState.animateScrollToItem(hintIndex)\n                snackbarHostState.showSnackbar(\"Hint revealed\")\n            }\n        },\n    ) {\n        Text(\"Show hint\")\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "State owner: none. Trigger owner: the tap. Lifetime: the screen — if the learner navigates away mid-scroll, the work should stop with the screen. Cleanup: cancellation of the launched coroutine, which the remembered scope already provides. The smallest sufficient mechanism is `rememberCoroutineScope` and a `launch` from the callback, and the shape worth noticing is what is absent: no remembered flag, and nothing for an effect to observe."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Converting a click into a `Boolean` so that a `LaunchedEffect` has something to key on. The click is already the trigger. The flag adds state nobody renders, a second thing that has to be reset, and a lifetime that no longer matches the occurrence it was meant to represent."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The same four columns answer the rest of the screens this path has built towards. Every outcome in the table is a mechanism an earlier unit owns, and the last row is an outcome with no mechanism in it at all."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Requirement",
+                    "State owner",
+                    "Trigger owner",
+                    "Required lifetime",
+                    "What is released",
+                    "Smallest sufficient mechanism"
+                  ],
+                  "rows": [
+                    [
+                      "Show the stem of the question the screen is currently on",
+                      "The screen's current value; nothing new",
+                      "No work starts",
+                      "The composition",
+                      "Nothing",
+                      "Ordinary rendering — no mechanism"
+                    ],
+                    [
+                      "Expand and collapse an explanation panel",
+                      "This composable",
+                      "No work starts",
+                      "The composition",
+                      "Nothing",
+                      "`remember { mutableStateOf(…) }`"
+                    ],
+                    [
+                      "A difficulty filter read by a chip row and by the result list beside it",
+                      "Their closest common ancestor",
+                      "No work starts",
+                      "That ancestor's composition",
+                      "Nothing",
+                      "Hoisted Compose state"
+                    ],
+                    [
+                      "Render the screen state an owner outside the Composition exposes as a stream",
+                      "The screen-level owner",
+                      "No work starts; the stream is already producing",
+                      "While the reading composable is in Composition",
+                      "The UI collector, by cancellation",
+                      "`collectAsState`"
+                    ],
+                    [
+                      "The same, where an expensive upstream should also stop while the host is not active",
+                      "The screen-level owner",
+                      "No work starts",
+                      "In Composition, and only while the host is active",
+                      "The UI collector, on every inactive period",
+                      "`collectAsStateWithLifecycle`"
+                    ],
+                    [
+                      "Start a countdown for whichever question the screen now represents",
+                      "Not state — the id is part of the current screen value",
+                      "The Composition",
+                      "One value of `questionId`",
+                      "The coroutine, by cancellation",
+                      "`LaunchedEffect(questionId)`"
+                    ],
+                    [
+                      "That countdown must call the caller's current `onTimeout`",
+                      "A remembered holder for the callback",
+                      "Unchanged — this is not a trigger question",
+                      "The countdown's, unchanged",
+                      "Nothing",
+                      "`rememberUpdatedState`"
+                    ],
+                    [
+                      "Scroll to the hint and confirm it when the learner taps Show hint",
+                      "None",
+                      "The tap",
+                      "The screen",
+                      "The coroutine, by cancellation",
+                      "`rememberCoroutineScope` and `launch`"
+                    ],
+                    [
+                      "Observe an assessment session object for progress callbacks while its screen shows it",
+                      "None — the session is external",
+                      "The Composition, on the session identity",
+                      "One value of `session`",
+                      "The registration, by an explicit release",
+                      "`DisposableEffect(session)`"
+                    ],
+                    [
+                      "An analytics client must carry the question id the UI is actually showing",
+                      "None new",
+                      "A successful composition",
+                      "Every successful composition this call takes part in",
+                      "Nothing",
+                      "`SideEffect`"
+                    ],
+                    [
+                      "A callback-based source used only by this screen has to become a value the UI reads",
+                      "A Compose-local producer",
+                      "The Composition",
+                      "The composition, restarted per key",
+                      "The subscription, on disposal",
+                      "`produceState` with `awaitDispose`"
+                    ],
+                    [
+                      "The same source is also needed by a second screen and by code below the UI",
+                      "The layer that owns the source",
+                      "The collector",
+                      "That layer's scope",
+                      "The subscription, when collection ends",
+                      "A Flow below the UI, then ordinary collection"
+                    ],
+                    [
+                      "A submitted assessment must finish uploading even if the learner leaves the screen",
+                      "Not the screen's",
+                      "The submit tap",
+                      "Longer than the screen",
+                      "Decided by whichever owner is chosen",
+                      "None of these — the owner is outside the Composition"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read the table as output rather than as a lookup. Two rows can be the same screen: the sixth and seventh are one countdown, separated because they answer different facts. The twelfth row is the eleventh with one fact changed, and what moved the adapter was ownership rather than anything about callbacks. A row can only be reached by having answered the four columns to its left, which is the part a table cannot do for you."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "\"Smallest\" has a precise meaning here: the mechanism that satisfies the four facts and claims nothing beyond them. Each substitution below is one engineers really make, and each claims more than the requirement asked for."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Writing a value the screen already has into state from inside a `LaunchedEffect`. If rendering the value is sufficient, there is nothing to run and nothing to keep consistent.",
+                    "Introducing a screen-level owner for a value one composable reads and writes. Hoisting has a lowest sensible position, and the top of the screen is not automatically it.",
+                    "Collecting a stream by hand in a `LaunchedEffect` and assigning into a `mutableStateOf`. That is an ongoing conversion written as an effect, and the conversion already has mechanisms with the right contract.",
+                    "Turning an event into persistent state so an effect can observe it. The event owns the trigger; giving the trigger to the Composition changes when the work starts and how often.",
+                    "Reaching for `produceState` because a callback is involved. Its purpose is producing a `State`; a listener whose job is to notify something else produces none, and the registration mechanism is the smaller answer.",
+                    "Adding a key to keep a value current. A key says \"end the current work when this changes\", so using one to refresh a value buys correctness in the value at the cost of a lifetime the requirement never asked to shorten."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Treating the mechanisms as a power ranking with `LaunchedEffect` at the top. They answer different questions, so \"more powerful\" is not a property any of them has. The side-effects documentation makes the same point from the other direction: because effects open up so many possibilities, they are easily overused, and the work done in one should be UI-related and should not break unidirectional data flow."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The last question in the sequence is the one worth practising, because its answer is a negative result and negative results feel like failures. A committed submission, a durable save, an upload already in flight, a payment: each names a lifetime the screen does not have, and no composition-owned mechanism can lend it one. A remembered scope is cancelled when the call leaves the Composition, and an effect is cancelled when its position leaves — that is what they are for, and it is exactly wrong for work that must not stop. Answering \"none of these\" is therefore a correct outcome of the decision, and it is reached by asking about lifetime rather than by trying mechanisms until one seems to fit."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What happens next is deliberately not this unit's decision. The work needs an owner whose lifetime matches the requirement; which owner that is, how it is built and where it lives belong to the architecture curriculum. This unit's contribution is the diagnosis and the vocabulary to state it precisely: the required lifetime exceeds the Composition's, so the Composition cannot be the owner."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "When asked which effect API you would use, name the facts before the API: who owns the state, who owns the trigger, how long the work must live, and what has to be released. Then name the smallest mechanism those facts allow — and be willing to answer that the requirement needs no mechanism, or that it needs an owner the Composition cannot provide."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_classes_of_screen_state",
+            "lesson_stateless_screen_content",
+            "lesson_screen_state_and_ui_events",
+            "lesson_screen_state_owner_boundary",
+            "lesson_external_state_in_compose",
+            "lesson_collect_as_state",
+            "lesson_collection_lifetime_and_cost",
+            "lesson_lifecycle_aware_collection",
+            "lesson_why_effects_are_controlled",
+            "lesson_launched_effect",
+            "lesson_effect_keys_as_dependencies",
+            "lesson_effect_key_failures",
+            "lesson_remember_updated_state",
+            "lesson_remember_coroutine_scope",
+            "lesson_who_owns_the_trigger",
+            "lesson_disposable_effect",
+            "lesson_side_effect_publication",
+            "lesson_produce_state",
+            "lesson_flow_adapter_or_compose_producer",
+            "lesson_work_outside_composition",
+            "lesson_snapshot_flow"
+          ],
+          "sources": [
+            {
+              "title": "Side-effects in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/side-effects"
+            },
+            {
+              "title": "State and Jetpack Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state"
+            },
+            {
+              "title": "Where to hoist state",
+              "url": "https://developer.android.com/develop/ui/compose/state-hoisting"
+            },
+            {
+              "title": "Lifecycle-aware Flow collection for Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state#flows"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_transient_ui_effects",
+          "title": "Rendering State and Running a Transient Effect",
+          "summary": "A screen renders what it currently is, and sometimes it also has to do something once. Those are different contracts: rendering a condition again changes nothing, while executing an occurrence again is visible to the user — which is why a screen that models an occurrence as a durable flag can perform it twice.",
+          "primarySubtopicIds": [
+            "compose_side_effects"
+          ],
+          "supportingSubtopicIds": [
+            "coroutine_scope",
+            "compose_state",
+            "sharedflow"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Two requirements on one screen can read almost identically and behave nothing alike. \"The save button is disabled while a save is in flight\" describes what the screen currently is. \"Confirm the save with a snackbar\" describes something the UI should do once. The first is rendered, as often as Compose needs to, and rendering it again changes nothing anybody can see. The second is executed, and executing it again is immediately visible."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Current state is the ordinary case and needs no effect at all. The question that is selected, whether the screen is loading, a validation message that should stay on screen while the input is still invalid, the active filter: each of these is true until something makes it false, and a composition that describes it again is doing exactly its job. This is why the previous lesson's decision starts with rendering — most of a production screen is this, and none of it needs a mechanism."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A transient occurrence is not a value the UI shows. It is work the UI performs: show a snackbar, move focus into a field, animate or scroll to something, raise a request to go somewhere else. Performing it needs a coroutine or effect lifetime that actually runs it, which is why it belongs to the effect mechanisms rather than to rendering. The distinction is not decoration versus content; it is description versus execution."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The tempting shortcut is to sort requirements by widget, and dialogs are the clearest evidence that this does not work. \"The unsaved-changes dialog is visible while an unsaved edit exists\" is a condition, and modelling it as state is right — it should still be there after the screen is rebuilt. \"Open the image chooser once, because the learner just asked for it\" is an occurrence. Same component, different requirement, different answer. Decide from what the requirement says must be true, never from the type of UI involved."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "\"This condition is currently true\" and \"this occurrence happened once\" are different contracts. Rendering a condition repeats harmlessly by design; executing an occurrence does not, and no value carries the difference unless the requirement put it there."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The failure worth seeing in full is an occurrence given the contract of a condition. Here is a screen state carrying a flag for a completed save."
+                },
+                {
+                  "type": "code",
+                  "code": "data class EditorScreenState(\n    val draft: String,\n    val saved: Boolean,\n)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "code",
+                  "code": "@Composable\nfun AnswerEditorScreen(\n    state: EditorScreenState,\n    snackbarHostState: SnackbarHostState,\n) {\n    if (state.saved) {\n        LaunchedEffect(state.saved) {\n            snackbarHostState.showSnackbar(\"Answer saved\")\n        }\n    }\n\n    AnswerEditorContent(state.draft)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read the field before reading the effect. `saved` says that a save succeeded, and nothing in the type says it stops being true afterwards; it is a condition, and the screen's owner keeps it as part of the current value. Now read the effect. It starts when that branch enters the Composition with `saved == true`, and it starts again every later time the branch enters with the same value — after the screen is rebuilt and collects the current state again, after the learner returns while the flag still stands, or simply after the branch left and came back. Each of those is a new effect lifetime, and each runs the snackbar, although the learner saved once."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The defect is not the API and not the key. `LaunchedEffect(state.saved)` behaves precisely as the effect unit described: equal keys keep an effect running across recomposition, and a new lifetime starts a new effect. The defect is that a durable condition was handed to a mechanism whose job is execution. The value answers \"is a successful save currently recorded?\" while the requirement asked \"did a save just happen?\", and no key list can express a difference the value does not carry."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "What the value says",
+                    "What repeating it means",
+                    "What the screen should do with it"
+                  ],
+                  "rows": [
+                    [
+                      "A save is currently in flight",
+                      "The same disabled button is described again — nothing changes for the user",
+                      "Render it"
+                    ],
+                    [
+                      "A validation message is currently set",
+                      "The same message is described again — nothing changes for the user",
+                      "Render it"
+                    ],
+                    [
+                      "A save succeeded at some point",
+                      "The snackbar runs again — the user sees a second confirmation of one save",
+                      "Establish what the occurrence actually requires before rendering or executing it"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is a different question from the one the trigger lesson asked about a similar shape. There the choice was between a composition-owned trigger and an event-owned one, and letting the tap launch the snackbar was the fix. Here the prior question is what contract the value has at all — because a screen whose state genuinely carries a durable fact is not repaired by moving the trigger, and a fact the requirement says must survive the screen's absence is not repaired by deleting it either."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Once a requirement really is an occurrence, the trigger still decides which mechanism runs it. A tap that should scroll, move focus or confirm is event-owned, and a remembered scope launches it from the callback. A composition state that genuinely means \"this screen now represents something that should be announced\" is composition-owned, and an effect keyed on whatever identifies that occurrence runs it. Neither is a default."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Compressing this into \"transient effects use `LaunchedEffect`\" or \"transient effects use `rememberCoroutineScope`\". Both rules build the wrong screen about half the time. The occurrence that owns the start is still what decides, and this lesson only changes what you ask before you get there."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A navigation request deserves naming because it is the transient action most often got wrong, and because it changes none of the reasoning. From here, \"ask to show the result screen\" is one more piece of UI work that should happen once: it has a trigger, it executes, and performing it twice is visible as a duplicated destination. How destinations, routes and the back stack work is the navigation curriculum's subject, and nothing in this decision depends on it."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The correction here is easy to over-apply into \"one-off things must never be state\", which is wrong in the opposite direction. Some occurrences have to be recorded precisely because they must survive being missed. A completed payment is not made transient by having happened once: if the screen must show it correctly after the app is reopened, the durable fact is the requirement, and rendering it is the right treatment. The mistake in the editor screen above was not that a fact was stored — it was that a stored fact was wired to a mechanism that executes."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So the useful habit is a question rather than a rule. Before turning an occurrence into transient UI execution, ask what has to be true if nobody is there to execute it. A Compose effect can only run what the UI receives while the UI is present, and whether that is acceptable is a property of the requirement rather than of the API. That question is the next lesson, and it is where the Compose boundary turns out to have an edge."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Where this stops is deliberate. Whether such an occurrence is carried in the screen's state, recorded somewhere as handled, or delivered in some other way is an application-architecture decision with real trade-offs, and the architecture curriculum owns it. What belongs here is the Compose-side diagnosis and the ability to state it exactly: an execution mechanism was given a value whose contract does not say \"once\", and no effect key repairs that."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "State the two contracts in one sentence each — a condition is rendered and repeats harmlessly, an occurrence is executed and repeating it is a user-visible defect. Then show the failure concretely: a durable flag re-entering composition starts a new effect lifetime and runs the one-off work again. Finish by saying what you would ask next, which is what the occurrence requires when no UI is present."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_screen_state_and_ui_events",
+            "lesson_launched_effect",
+            "lesson_remember_coroutine_scope",
+            "lesson_who_owns_the_trigger"
+          ],
+          "sources": [
+            {
+              "title": "Side-effects in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/side-effects"
+            },
+            {
+              "title": "Lifecycle of composables",
+              "url": "https://developer.android.com/develop/ui/compose/lifecycle"
+            },
+            {
+              "title": "State and Jetpack Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_transient_effect_delivery",
+          "title": "What Delivery Guarantee Does This Occurrence Need?",
+          "summary": "Before choosing how a one-off occurrence reaches the UI, state what must happen when no UI is there to receive it. May it be dropped, may a later screen see it, may it be seen twice, must anything record that it was handled — those answers decide whether a transient mechanism is sufficient, and frequently they show that the problem has left the Compose boundary.",
+          "primarySubtopicIds": [
+            "compose_side_effects"
+          ],
+          "supportingSubtopicIds": [
+            "sharedflow",
+            "hot_vs_cold_streams",
+            "state_ownership",
+            "stateflow"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The previous lesson ended with an occurrence that has to be executed and a screen that may or may not be present to execute it. That gap is the subject here, and the order of reasoning is the whole point: state the requirement first, choose the mechanism second. Picking a shared flow, a channel, a state holder, a remembered flag or a particular Compose effect before the requirement is stated is how a screen ends up with a delivery guarantee nobody asked for, or without one nobody noticed was missing."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Make the absence concrete. A learner starts a practice session, backgrounds the app and goes to do something else, so the screen that would react is not composed at all. Somewhere below the UI, work finishes — a sync completes, a purchase is confirmed, a session is scored — and produces the occurrence \"show the result\". Some time later the screen appears."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Six questions about that moment decide everything that follows:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Must the occurrence still happen when a screen finally appears, or was it only meaningful while somebody was watching?",
+                    "May it simply be discarded because nobody was there?",
+                    "May a screen that arrives later observe it?",
+                    "May more than one observer act on it?",
+                    "Is repeating it harmful, or merely untidy?",
+                    "Does anything have to record that it was handled?"
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "None of those is a question about a type. Each is a property of the product requirement, and together they state what any mechanism would have to provide. Asking them in this order also exposes the usual shortcut: \"events are being lost, so add replay\" answers only the third question, and quietly changes the answer to the fifth."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Answer the UI-absent case before choosing anything. Whether an occurrence may be dropped, may be seen later, may be seen twice, and must be acknowledged are four independent answers, and a mechanism has to satisfy all of them, not the one that made it look suitable."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The coroutines and Flow path already settled the emitter's half of this, and the job here is to apply it rather than rebuild it. One conclusion carries most of the weight: a producer accepting a value and the intended UI handling the occurrence are different facts."
+                },
+                {
+                  "type": "code",
+                  "code": "// Accepted by the flow under its current configuration — and nothing more than that.\nval accepted = events.tryEmit(ShowSessionResult(sessionId))",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "On an unbuffered shared flow with no subscriber, that call returns `true` and the value is gone at once: `true` records that the flow took the call, and with nobody to hand the value to and no replay cache to hold it, nothing remains. The stream lesson measured exactly that on this project's toolchain, so this lesson cites it rather than re-deriving it. At the Compose boundary the consequence is blunt — a UI effect cannot execute something the UI never received, and a log line written from a `true` result is evidence about the producer, not about the screen."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The reflex repair is a replay window, and it is a real mechanism with a real cost. Replay changes what a subscriber arriving later can still recover. It does not make an occurrence delivered, and it certainly does not make it delivered once. A recreated screen is a new collector, and a new collector reads what was retained — so an occurrence kept for the screen that was absent is equally available to the screen that already acted on it. \"Must not be lost\" and \"must happen exactly once\" are two different requirements, and retention answers at most the first of them."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Reading \"the event was lost\" as \"set a replay of one\". That is a decision about retention being used to answer a question about handling, and it trades one failure for another: a missed confirmation becomes a repeated one. Which trade is acceptable depends entirely on what repeating the occurrence does, and a repeated charge or a repeated destination is far worse than a missed toast."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Answering the six questions sorts requirements into three broad classes, and the class — not the type — is what says whether the Compose side can finish the job."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "What the requirement says about the UI being absent",
+                    "What that makes the occurrence",
+                    "Where the answer lives"
+                  ],
+                  "rows": [
+                    [
+                      "If no relevant UI exists, nothing needs to happen",
+                      "An ephemeral, UI-only occurrence",
+                      "The Compose side is sufficient: whichever screen is present executes it"
+                    ],
+                    [
+                      "A screen arriving later must be able to see that this is currently true",
+                      "A fact about current state, not an occurrence at all",
+                      "A current value that somebody owns — the shape the stream curriculum calls current-value semantics"
+                    ],
+                    [
+                      "It must not disappear merely because nobody was watching, and somebody must have handled it",
+                      "A delivery requirement no transient in-memory mechanism satisfies",
+                      "Outside the Compose boundary, with an owner whose lifetime and record match the requirement"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The first class is real, and choosing it is not a compromise. A brief animation when a score changes, a non-essential confirmation, a focus request on the field the learner is currently in: each of them is meaningless with no UI, and answering \"nothing needs to happen\" is a decision rather than an oversight. These are exactly the occurrences the previous lesson's mechanisms execute, and nothing further is warranted."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second class is the one most often mis-filed. \"There is an unfinished practice session\" or \"the last submission failed\" sound like events because they became true at a particular moment, but the requirement is that a screen opening afterwards knows the current position. That is a state requirement, and recognising it is the correction — the stream curriculum already establishes what current-value semantics provide, and which holder should own that value is an architecture decision this unit does not make."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The third class is where the Compose boundary ends. If the requirement names persistence, acknowledgement, queueing, retries, a durable record or guaranteed later handling, then no configuration of a transient in-memory stream and no Compose effect satisfies it, because each of them lives and dies with the objects holding it. The Android architecture guidance states the same limit from the producer's side: when the producer outlives the consumer, these solutions do not guarantee the delivery and processing of those events. Say that plainly, then choose an owner whose lifetime and guarantees actually match — and stop, because designing that owner is the architecture curriculum's work and not this unit's."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Two slogans get in the way of all of this, and both should be retired. \"One stream type is for state and another is for events\" is half right in a way that makes the wrong half dangerous: current-value semantics really are what state needs, but the event half promises a delivery guarantee no broadcast stream provides. Replacing it with \"a channel is for events\" repeats the mistake with a different type, because single-receiver delivery decides which receiver gets an element, not that the work on it ever completes. Neither slogan is improved by treating a broadcast stream as the standard answer for one-off UI events; that is the same claim with the reasoning removed."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The general form is worth being able to state. A stream type describes delivery; a requirement describes handling; and no description of delivery answers a question about handling. The dimensions that actually decide were established by the stream curriculum — whether a current value is obligatory, whether observers are present at production time, what is retained for a late one, whether delivery is broadcast or single-receiver, whether duplication or loss is acceptable, and whether anything records that the occurrence was dealt with. This lesson contributes only the consumer's half of the question, and it is the half a stream cannot see."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That contrast is the reason this lesson exists beside the stream material rather than repeating it. The stream lessons ask what a given abstraction delivers. This one asks whether that delivery contract satisfies the requirement, given that this particular UI exists for only part of the time — a fact about the screen's lifetime that no configuration of the producer knows about."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The endpoint of the decision is therefore not an architecture; it is a sentence. Choose an owner whose lifetime and delivery guarantees actually match the requirement. Which owner that is, how the occurrence is recorded, how handling is marked and how the UI consumes it are genuine design questions with genuine trade-offs, and the architecture curriculum answers them. Recognising that you have arrived at them, and being able to say precisely which guarantee is missing, is what this unit is for."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Answer a one-off-event question by stating the requirement before the type: what must happen if no UI is collecting, whether a later screen may see it, whether it may be seen twice, and whether anything must record that it was handled. Then give the three consequences — a successful emission is not a delivery, retention is not exactly-once, and a requirement naming persistence or acknowledgement has left the UI layer."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_transient_ui_effects",
+            "lesson_lifecycle_aware_collection",
+            "lesson_shared_flow",
+            "lesson_choosing_a_stream_abstraction"
+          ],
+          "sources": [
+            {
+              "title": "kotlinx.coroutines: SharedFlow",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-shared-flow/"
+            },
+            {
+              "title": "kotlinx.coroutines: MutableSharedFlow.tryEmit",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-mutable-shared-flow/try-emit.html"
+            },
+            {
+              "title": "UI events",
+              "url": "https://developer.android.com/topic/architecture/ui-layer/events"
+            },
+            {
+              "title": "Side-effects in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/side-effects"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
       "id": "unit_coroutines_and_structured_concurrency",
       "topicId": "async_reactive",
       "title": "Coroutine Fundamentals and Structured Concurrency",

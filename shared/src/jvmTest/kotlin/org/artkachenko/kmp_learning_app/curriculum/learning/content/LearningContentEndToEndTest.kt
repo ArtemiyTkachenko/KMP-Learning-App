@@ -60,6 +60,7 @@ internal class LearningContentEndToEndTest {
                 "unit_observable_state_collection",
                 "unit_effect_lifecycle_and_launched_effect",
                 "unit_latest_values_and_event_driven_work",
+                "unit_cleanup_synchronization_and_producers",
             ),
             units.map { it.id },
         )

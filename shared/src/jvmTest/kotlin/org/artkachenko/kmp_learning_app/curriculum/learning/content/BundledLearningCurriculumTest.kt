@@ -43,6 +43,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_observable_state_collection",
                 "unit_effect_lifecycle_and_launched_effect",
                 "unit_latest_values_and_event_driven_work",
+                "unit_cleanup_synchronization_and_producers",
                 "unit_coroutines_and_structured_concurrency",
                 "unit_context_dispatchers_and_concurrency",
                 "unit_cancellation_failure_and_coordination",
@@ -65,6 +66,7 @@ internal class BundledLearningCurriculumTest {
                 "Observable State Collection and Lifecycle",
                 "Effect Lifecycle and LaunchedEffect",
                 "Latest-Value Effects and Event-Driven Coroutine Work",
+                "Cleanup, External Synchronization and State Producers",
                 "Coroutine Fundamentals and Structured Concurrency",
                 "Coroutine Context, Dispatchers and Concurrent Work",
                 "Cancellation, Failure and Coordination",
@@ -79,6 +81,7 @@ internal class BundledLearningCurriculumTest {
         // rather than as one value: the document now spans two home Topics.
         assertEquals(
             listOf(
+                "android_ui",
                 "android_ui",
                 "android_ui",
                 "android_ui",
@@ -200,6 +203,18 @@ internal class BundledLearningCurriculumTest {
                 "lesson_who_owns_the_trigger",
             ),
             unit("unit_latest_values_and_event_driven_work").lessons.map { it.id },
+        )
+
+        // Unit 11 is ordered by problem rather than by API: release what was registered,
+        // publish outward, produce inward, then decide where the adapter belongs.
+        assertEquals(
+            listOf(
+                "lesson_disposable_effect",
+                "lesson_side_effect_publication",
+                "lesson_produce_state",
+                "lesson_flow_adapter_or_compose_producer",
+            ),
+            unit("unit_cleanup_synchronization_and_producers").lessons.map { it.id },
         )
 
         // The coroutines Unit reads as one argument, so its order is the argument:
@@ -443,6 +458,16 @@ internal class BundledLearningCurriculumTest {
             },
         )
 
+        // Unit 11 crosses the Compose boundary in three directions and then chooses where
+        // an adapter belongs, but the taxonomy still offers one effect concept for all four.
+        // The lifecycle, performance, Flow and architecture bridges stay supporting.
+        assertEquals(
+            List(4) { listOf("compose_side_effects") },
+            unit("unit_cleanup_synchronization_and_producers").lessons.map {
+                it.primarySubtopicIds
+            },
+        )
+
         // Unlike the Compose Units, every Lesson here owns a different concept, and each of
         // the five is a distinct `async_reactive` Subtopic. Unit practice is exactly these
         // five: the cross-Topic bridges the Lessons lean on stay supporting.
@@ -671,6 +696,56 @@ internal class BundledLearningCurriculumTest {
                 "lesson_structured_concurrency",
             ),
             lessons.getValue("lesson_who_owns_the_trigger").relatedLessonIds,
+        )
+    }
+
+    @Test
+    fun cleanupAndProducerUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        assertEquals(
+            listOf(
+                listOf("lifecycle_aware_apis", "memory_leaks", "lifecycle_leaks"),
+                listOf("compose_recomposition", "compose_fundamentals", "compose_state"),
+                listOf("compose_state", "flow_collection", "coroutine_cancellation"),
+                listOf("flow_fundamentals", "hot_vs_cold_streams", "separation_of_concerns"),
+            ),
+            unit("unit_cleanup_synchronization_and_producers").lessons.map {
+                it.supportingSubtopicIds
+            },
+        )
+    }
+
+    @Test
+    fun cleanupAndProducerUnitLinksBackToItsEffectStateAndFlowPrerequisites() = runTest {
+        val lessons = unit("unit_cleanup_synchronization_and_producers").lessons.associateBy { it.id }
+
+        assertEquals(
+            listOf(
+                "lesson_effect_keys_as_dependencies",
+                "lesson_remember_updated_state",
+                "lesson_cancellation_cleanup_and_timeouts",
+                "lesson_flow_collection_lifetime",
+            ),
+            lessons.getValue("lesson_disposable_effect").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_composable_execution",
+                "lesson_why_effects_are_controlled",
+                "lesson_who_owns_the_trigger",
+            ),
+            lessons.getValue("lesson_side_effect_publication").relatedLessonIds,
+        )
+        assertEquals(
+            listOf("lesson_launched_effect", "lesson_collect_as_state", "lesson_snapshot_flow"),
+            lessons.getValue("lesson_produce_state").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_flow_builders_and_callback_adapters",
+                "lesson_collect_as_state",
+                "lesson_snapshot_flow",
+            ),
+            lessons.getValue("lesson_flow_adapter_or_compose_producer").relatedLessonIds,
         )
     }
 

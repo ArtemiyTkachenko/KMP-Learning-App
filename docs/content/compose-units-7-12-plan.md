@@ -2603,3 +2603,310 @@ source URLs found no other dead link.
   [Taxonomy gaps](#taxonomy-gaps) already names four candidate concepts.
 - The limitations E25-01 carried forward are unchanged except for the second: Unit 8's pool now
   assesses Unit 8's material, while still including three E23 Questions through `compose_state`.
+
+---
+
+## Verification outcomes for E25-09
+
+Verified on 2026-09-15 against the final production bundles after E25-01 through E25-08. Every
+figure below was derived from `learning_curriculum.json`, `initial_curriculum.json` and the
+production resolvers rather than carried forward from the sections above.
+
+### Production sequence
+
+The `android_ui` Topic contains **12 Units / 43 Lessons**. E23 ships the first six Units and 21
+Lessons; E25 ships the last six Units and **22 Lessons**, in this production order:
+
+1. `unit_production_screen_state_and_udf` — 4 Lessons
+2. `unit_observable_state_collection` — 4 Lessons
+3. `unit_effect_lifecycle_and_launched_effect` — 4 Lessons
+4. `unit_latest_values_and_event_driven_work` — 3 Lessons
+5. `unit_cleanup_synchronization_and_producers` — 4 Lessons
+6. `unit_production_ui_effects_and_selection` — 3 Lessons
+
+Every Unit and Lesson identity matches the ones this plan reserved, all 43 `android_ui` Lesson IDs
+are unique, all 72 Lesson IDs in the document are unique, and every Unit and Lesson is ACTIVE. No
+Lesson is missing and none is duplicated.
+
+### Cross-Unit and cross-epic review
+
+All 22 Lessons were read in learner order as one sequence rather than as six proofreading passes.
+The prerequisite progression holds at every boundary and no boundary was found to contradict,
+duplicate or leak.
+
+- **E23 → Unit 7.** `lesson_state_hoisting` was read immediately before
+  `lesson_classes_of_screen_state`, which is the duplication risk this epic carried. Unit 7 applies
+  the reader/writer/lifetime tests to a whole screen and says so explicitly — "They are applied
+  here, not derived again; `lesson_state_hoisting` contains the full ownership argument" — and
+  deliberately leaves one production value local. It is an application, not a second hoisting
+  curriculum. No correction was needed.
+- **Unit 7 → Unit 8.** Unit 7 reaches the screen-level owner, the stateless content boundary, one
+  immutable screen value and intent callbacks, and names no collection API; L7.2 defers conversion
+  in a comment ("Observable-state conversion is the next unit's subject") and L7.4 repeats the
+  deferral. Unit 8 re-opens neither owner selection nor state-holder design.
+- **Unit 8 → Unit 9.** Unit 8 keeps collection a purpose-built state conversion, and L8.2's
+  common-mistake callout forbids exactly the misreading this boundary risks: assembling a
+  `MutableState`, launching an effect and collecting by hand to render ongoing state. Unit 9 starts
+  from composition-owned suspend work, not from "Flow is asynchronous".
+- **Unit 9 → Unit 10.** L9.4 states the tension and stops ("Unit 10 starts from that tension and
+  supplies the appropriate mechanism. This lesson establishes the problem and stops before teaching
+  the solution"), and L10.1 opens from it. `rememberCoroutineScope` is introduced as a scope that
+  launches nothing, with trigger ownership and lifetime ownership kept on separate axes.
+- **Unit 10 → Unit 11.** Registration/release, publication after successful composition and
+  producer adaptation stay three distinct ownership shapes; L11.4 explicitly refuses the collapse
+  ("Both are imperative, and that shared quality is not a reason to reach for the same API").
+- **Unit 11 → Unit 12.** L12.1 introduces no API, cites the 19 earlier E25 Lessons as prerequisites
+  and works every scenario through owner, trigger, lifetime and cleanup. It re-proves no key
+  equality, no lifecycle collection behaviour, no `SideEffect` timing, no `produceState` key
+  behaviour and no `SharedFlow` mechanics.
+- **Unit 12 → E26.** L12.3 reaches the negative result and stops at it. It names persistence,
+  acknowledgement, queueing, retries and durable records as the point where the Compose boundary
+  ends, and teaches no ViewModel event channel, event wrapper, MVI effect channel, repository queue
+  or acknowledgement design.
+
+### Terminology
+
+The distinctions this epic depends on survive the finished prose. Ownership stays separate from
+lifetime (L7.4: moving a value outside the Composition changes its owner and grants no
+persistence); recomposition stays separate from effect restart (L9.2 and L9.4); trigger ownership
+stays separate from lifetime ownership (L10.2 and L10.3); a current condition stays separate from a
+transient occurrence (L12.2); a stream accepting a value stays separate from the UI handling it
+(L12.3); and retention stays separate from exactly-once handling (L12.3). State, owner, local,
+hoisted, screen-level, collection, composition, effect, key, restart, cancellation, registration,
+release, publication, producer, delivery and replay are used consistently with E23 and E24.
+
+### The five shipped forward pointers
+
+All five now read correctly in the finished curriculum and **none needed an edit**.
+
+- `lesson_state_hoisting` no longer promises a ViewModel unit; it separates hoisting from choosing a
+  `ViewModel`, and its related links include `lesson_screen_state_owner_boundary`.
+- `lesson_remember_saveable` names "The Production Screen State and Unidirectional Data Flow unit
+  later in this path" for the bounded screen-owner boundary and leaves state-holder architecture to
+  later curriculum. That Unit exists under that title.
+- `lesson_composable_execution` and `lesson_composition_and_recomposition` each promise the effect
+  APIs "their own unit later in this path", which Unit 9 now fulfils.
+- `lesson_snapshot_flow` promises "the effect APIs as a family, and how to choose between them" as
+  a later unit's subject; L12.1 fulfils it and links back to `lesson_snapshot_flow`, so the
+  relationship resolves in both directions.
+
+### Related-Lesson graph
+
+All 77 E25 `relatedLessonIds` resolve. No E25 Lesson links forward to a later Lesson **within
+`android_ui`**; the only forward-in-document links are the 19 cross-Topic bridges into the
+`async_reactive` Units, which are conceptual prerequisites authored earlier and positioned later in
+document order — the same pre-existing property `lesson_snapshot_flow` already has. L12.1 carries
+exactly 21 links: all 19 earlier E25 Lessons plus `lesson_work_outside_composition` and
+`lesson_snapshot_flow`, which is what E25-07 recorded. L12.3's two E24 links,
+`lesson_shared_flow` and `lesson_choosing_a_stream_abstraction`, remain appropriate: E24 measures
+what a stream delivers and L12.3 cites that measurement rather than re-deriving it, asking instead
+whether the delivery contract satisfies a requirement given that the UI is present only part of the
+time. Links play no part in practice routing, so no E24 Question is pulled into E25 practice. No
+link was added for graph completeness.
+
+### Code examples and source-sensitive claims
+
+All 44 Kotlin blocks were read against their surrounding prose. Syntax, API names, effect and
+lifecycle semantics and platform labels are correct, and no example teaches a mechanism its Lesson
+says not to use. Four claims about *this repository* were re-checked against the code rather than
+trusted: `App.kt` really installs `rememberSaveableStateHolderNavEntryDecorator()` followed by
+`rememberViewModelStoreNavEntryDecorator()` in shared `commonMain` (L7.4);
+`lifecycle-runtime-compose` really is a `commonMain` dependency and
+`androidx.lifecycle.compose.collectAsStateWithLifecycle` really is imported by shared destination
+composables (L8.4); and `desktopApp` really declares `kotlinx-coroutines-swing` (L8.4).
+
+`gradle/libs.versions.toml` still declares Kotlin 2.4.10, Compose Multiplatform 1.11.1, lifecycle
+2.11.0-beta01 and kotlinx.coroutines 1.11.0, so **E25-08's same-day measurements stand and no probe
+was re-run**. Four contracts were re-read directly from the resolved 1.11.2 sources jar where the
+finished prose quotes them, and all four match verbatim: `collectAsState` really is declared in
+`SnapshotFlow.kt` and the Flow overload really is `produceState(initial, this, context)`;
+`produceState`'s holder really is an unkeyed `remember { mutableStateOf(initialValue) }`;
+`SideEffect`'s KDoc really says "when the current composition completes successfully and applies
+changes" and "always run after `RememberObserver` event callbacks"; and `DisposableEffect`'s really
+says "one call to `dispose` for every call to `effect`" on the apply dispatcher. No throwaway probe
+was written, so none had to be deleted.
+
+### Misconception sweep
+
+A phrase sweep across all 345 E25 blocks for "all state", "always", "run once", "every value should
+be a key", "prevents recomposition", "automatically launches", "outlives", "exactly once",
+"guaranteed" and "never" found **no claim that regressed into a misconception**. Every occurrence is
+either a refutation — "'Hoist state as high as possible' turns a direction into a policy and loses
+the stopping condition", "A constant key does not mean 'run once'", "rememberUpdatedState does not
+prevent, reduce or optimize recomposition", "Do not reduce the decision to 'always use
+`collectAsStateWithLifecycle`'", "'Must not be lost' and 'must happen exactly once' are two
+different requirements" — or a precisely scoped factual claim. L11.2 is the sharpest case: the
+runtime KDoc says a `SideEffect` "runs after **every** recomposition", and the Lesson reports it as
+every *successful* composition pass the call takes part in, which is the correct reading of the same
+KDoc's first paragraph.
+
+### Reader, Sources and progress
+
+The production reader journey derives every active Unit from the bundle, so it already traverses
+E25. In a 400 × 900 phone-shaped window it exercised all 18 shipped Units / 72 Lessons, including
+every one of E25's 345 authored blocks — 207 paragraphs, 65 callouts, 44 code blocks, 22
+comparisons and 7 bullet lists. Reading-column containment held, genuinely wide code scrolled
+internally, and all 70 of E25's Source references rendered as operable titles and passed their exact
+authored URLs to the app's URI boundary. The 32 distinct E25 URLs carry no title drift, and
+`lesson_lifecycle_aware_collection` still cites the corrected
+`kotlinlang.org/docs/multiplatform/compose-lifecycle.html`. **The URLs were not fetched again**:
+E25-09 changed no Source, and E25-08's same-day sweep of all 32 already verified them.
+
+One gap in that coverage was real and is now closed. A comparison renders as the compact stack below
+a 520dp container and as a horizontally scrolling table above it, and the journey's 400dp window
+only ever met the compact renderer — so E25's widest decision table, L12.1's six-column,
+thirteen-row mechanism-selection table, had never been seen in the table form it takes on a
+desktop window. The
+journey now takes a window size, and a new case reads the document's widest authored comparison at
+1100 × 1000. It is asserted as a table rather than a stack, its content scrolls inside its own box,
+and the reading column does not widen. The case fails at 400dp, which is how it is known to be
+checking the table path rather than passing on the compact one.
+
+Mark and unmark were verified at Lesson, Unit and Topic level against production data and the real
+study repository, in the shell and through the production ViewModels. Every E25 Unit was marked and
+unmarked through the running reader, with its Unit counter moving to `1 of n` and back to `0 of n`
+and the `android_ui` Topic counter moving with it. Through the ViewModels, all 43 `android_ui`
+Lessons were studied one at a time with the Topic total reaching 43/43 and returning to 42/43 when
+an earlier Lesson was unstudied.
+
+### Continue Learning
+
+Verified against production order through the production resolver. Continue Learning advances within
+each E25 Unit, crosses **all five** E25 Unit boundaries, and crosses **E23 → E25** from
+`unit_snapshot_fundamentals`'s last Lesson into `unit_production_screen_state_and_udf`'s first —
+which is what proves E25 extends the Compose path rather than replacing it. After the 43rd
+`android_ui` Lesson it hands the learner to `unit_coroutines_and_structured_concurrency`, because
+the resolver walks the whole authored document rather than one Topic, and it produces `Complete`
+only once all 72 authored Lessons are studied. That is the same whole-document contract E24-09
+established, verified again rather than assumed. Unstudying an earlier Lesson returns Continue
+Learning to it.
+
+### Unit practice
+
+Resolved through the production `PracticeTargetResolver` and the production Practice Builder, not
+compared against generated documentation. Final reach, with levels:
+
+| Unit | Primary concepts | Reach | F / A / Adv |
+| --- | --- | --- | --- |
+| 7 | `compose_state_hoisting`, `compose_udf` | 4 | 1 / 3 / 0 |
+| 8 | `compose_state` | 5 | 1 / 3 / 1 |
+| 9 | `compose_side_effects` | 10 | 2 / 6 / 2 |
+| 10 | `compose_side_effects` | 10 | 2 / 6 / 2 |
+| 11 | `compose_side_effects` | 10 | 2 / 6 / 2 |
+| 12 | `compose_side_effects` | 10 | 2 / 6 / 2 |
+
+All six Unit actions enter the existing Practice Builder with the derived availability count, only
+primary concepts configure the scope, supporting mappings contribute nothing, repeated Questions are
+deduplicated, and DEPRECATED Questions are excluded — `compose_state_001` reaches none of the pools
+its Subtopic would otherwise open.
+
+Semantic routing was inspected rather than counted. Unit 7 carries both new whole-screen ownership
+Questions alongside E23's `compose_state_hoisting_001` and `compose_udf_event_direction`; Unit 8
+carries both new collection Questions alongside the three older E23 `compose_state` Questions; and
+**Units 9–12 resolve one pool whose ten Question IDs are exactly equal**, compared as sets rather
+than as counts. The premature-practice consequence E25-08 recorded is unchanged: a learner finishing
+Unit 9 draws from ten Questions of which five contain Unit 10–12 material.
+
+### Assessment integration
+
+The bank holds **401 ACTIVE / 41 DEPRECATED** Questions, and **91** unique ACTIVE Questions are
+reachable through the 32 primary concepts the production learning document maps. All twelve E25-08
+Questions load, parse and integrate: each is `SINGLE` with four uniquely identified answers and
+exactly one key, each carries a valid level and ACTIVE status and a resolvable Subtopic, each
+renders through the Practice Builder, and each reaches the Unit whose material it assesses. None is
+excluded from its expected pool and no supporting-only mapping has expanded any Unit's practice. No
+Question was rewritten, re-mapped, re-levelled or deprecated by E25-09, and
+`docs/content/question-audit-log.yml` remains consistent with the bank.
+
+### Generated coverage and content validation
+
+- `python3 -m unittest discover -s tools -p 'test_*.py'` — 21 tool tests passed.
+- `python3 tools/learning_question_coverage.py --check` — the snapshot is current; nothing was
+  regenerated and nothing was hand-edited.
+- Curriculum schema and codec parsing, Unit/Lesson identity uniqueness, Question and AnswerOption
+  identity uniqueness, taxonomy references, primary/supporting mapping validity, related-Lesson
+  resolution, lifecycle/status validation, and Lesson and Question content and Source validation all
+  passed through the repository's own validator and end-to-end suites.
+
+### Builds and platform checks
+
+Run sequentially rather than as one parallel invocation, which matters here — see the flake note
+below.
+
+- `./gradlew :shared:jvmTest` (forced rerun) — 1384 tests, 0 failures.
+- `./gradlew :shared:testAndroidHostTest`, `:shared:iosSimulatorArm64Test`, `:shared:jsBrowserTest`,
+  `:shared:wasmJsBrowserTest` (each forced) — 448 tests each, 0 failures.
+- `./gradlew :shared:check` — passed.
+- `./gradlew :androidApp:assembleDebug :desktopApp:assemble :webApp:assemble` — passed. Webpack's
+  existing bundle-size warnings remain, and so does the pre-existing `runSkikoComposeUiTest`
+  deprecation warning.
+- `.github/project/validate_backlog.py` **could not run**: the environment has no `PyYAML`
+  (`ModuleNotFoundError: No module named 'yaml'`). The backlog file was not changed.
+- **Not performed:** `iosArm64` device validation, and any external CI run. Neither is claimed.
+
+One flake was observed and is recorded rather than hidden. The first attempt ran
+`:androidApp:assembleDebug :desktopApp:assemble :webApp:assemble :shared:check` as a single
+invocation, and `FocusedLearningJourneyIntegrationTest`'s
+`appDrivesTopicPracticeCompletionAndOneDurableRetake` failed one `assertIsDisplayed` on a fixture
+Question while the JS, Wasm and Native toolchains were
+competing for the machine. It did not reproduce in isolation, on a forced full `:shared:jvmTest`
+rerun, or in the sequential runs above. It is a timing-sensitive assertion in a fixture journey
+unrelated to E25 content, and it is an environment-contention flake rather than a code failure —
+which is the case [validation](../development/validation.md) already warns about.
+
+### Corrections made in E25-09
+
+**No content correction was required.** No factual contradiction, stale Source, broken
+`relatedLessonId`, incorrect code sample, rendering failure, progress bug, Continue Learning bug,
+Unit-practice routing bug or stale generated artifact was found. The only defect found was in test
+coverage, and it is fixed by the two tests below.
+
+### Tests added
+
+| Test | The regression it makes impossible |
+| --- | --- |
+| `LearningProductionContentJourneyTest.theWidestAuthoredComparisonStaysInsideTheReadingColumnAsATable` | The document's widest authored comparison could overflow the reading column in the table renderer and nothing would fail, because the journey only ever read at a width where comparisons stack. The Lesson is derived from the bundle, so this follows the widest table the document actually has |
+| `LearningUnitPracticeIntegrationTest.theFourEffectUnitsResolveOneIdenticalPoolAndExcludeRetiredQuestions` | Equal counts were asserted for Units 9–12 where the claim is one *identical* pool; the E25-08 Questions' routing was asserted nowhere; and no production-level assertion excluded a DEPRECATED Question from Unit practice |
+
+Nothing else was added. Continue Learning across every E25 Unit boundary, Topic progress at 43,
+mark/unmark at all three levels, and the render of every authored E25 block were all already
+traversed by the existing data-driven production journeys, and duplicating them would have been the
+padding this epic's test philosophy rules out.
+
+### Final limitations, classified
+
+**Accepted structural limitation.** Units 9–12 all take `compose_side_effects` as their sole primary
+concept and therefore receive one identical ten-Question pool. A learner finishing Unit 9 practises
+five Questions whose material Units 10–12 have not yet taught. Solving this cleanly requires a
+taxonomy split, which is a question-bank-change decision rather than an E25 one, and
+`theFourEffectUnitsResolveOneIdenticalPoolAndExcludeRetiredQuestions` now asserts the limitation so
+it cannot drift silently.
+
+**Accepted structural limitation.** Unit 8's two new `compose_state` collection Questions also enter
+the shipped E23 `unit_state_and_state_ownership`, which does not teach Flow collection. Unit 7's two
+new `compose_state_hoisting` Questions reach the same E23 Unit and remain fair there, because they
+apply ownership reasoning E23 already teaches at screen scale. Both are asserted rather than
+described.
+
+**Deferred assessment work.** **GAP-U10-B** (composition-triggered versus event-triggered as a
+standalone decision), **GAP-U11-B** (`SideEffect` successful/abandoned/skipped timing as full
+reasoning, and the strongest remaining candidate) and **GAP-U11-D** (Flow below the UI versus a
+Compose-local producer) each remain semantically real and each stays open for the routing and
+editorial reasons E25-08 recorded. None is an oversight and none was closed here.
+
+**Covered elsewhere.** **GAP-U12-C** has no E25-mapped Question because
+`stream_choice_cannot_supply_a_delivery_guarantee` already assesses the same delivery conclusion
+from the stream side. A Compose-labelled duplicate was deliberately not created.
+
+**Intentional boundary.** GAP-U7-C is assessed by four lifecycle and architecture Questions in their
+owning Topics rather than duplicated under a Compose concept.
+
+**Platform limitation.** The `iosArm64` device target is not part of local or CI verification.
+
+**Version sensitivity.** `lifecycle` remains at `2.11.0-beta01`, and the resolved Compose runtime
+(1.11.2) remains ahead of the declared JetBrains Compose Multiplatform version (1.11.1). A
+dependency update should re-read the contracts in L8.4, L9.3, L11.1, L11.2 and L11.3 rather than
+preserve them by assumption.
+
+No item above is an unresolved defect or a release blocker. E25-09 satisfies its acceptance criteria
+and **E25 is ready to close** after review and merge.

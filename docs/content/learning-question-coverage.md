@@ -52,8 +52,8 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `39323b3b02197e982606fb6339f88702ba175ef90315f7b87604166cc3554c71` |
-| Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `32abef988f97199c1767cb5ce9af604064ca46ebf9fe061432d5eb54c09661ad` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `b339136deda446637dfd35cd815a63fa3f3d4fb8ae52bdc1d333249e757c0686` |
+| Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `d38cf11ae5f33b3efb81f859e9503b18f432f84bbb6403127633c60e71ce5ac9` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
 because editing lesson content can change whether the material still teaches an
@@ -72,10 +72,10 @@ Deprecated units, lessons and questions are excluded throughout.
 | Active lessons in those units | 72 |
 | Distinct primary subtopics | 32 |
 | Distinct supporting subtopics | 68 |
-| Unique active questions reached through primary mappings | 79 |
+| Unique active questions reached through primary mappings | 91 |
 | Primary subtopics with at least one active question | 32 |
 | Primary subtopics with no active question | 0 |
-| Active questions in the bank | 389 |
+| Active questions in the bank | 401 |
 | Deprecated questions excluded from this report | 41 |
 
 The two bank-size rows are context, not a target. The learning curriculum is
@@ -92,17 +92,17 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Unit | Lessons | Primary subtopics | Foundation | Applied | Advanced | Unique active questions |
 |---|---:|---:|---:|---:|---:|---:|
 | Thinking in Compose (`unit_thinking_in_compose`) | 3 | 2 | 0 | 2 | 0 | 2 |
-| State and State Ownership (`unit_state_and_state_ownership`) | 5 | 2 | 2 | 2 | 0 | 4 |
+| State and State Ownership (`unit_state_and_state_ownership`) | 5 | 2 | 2 | 5 | 1 | 8 |
 | Recomposition (`unit_recomposition`) | 3 | 1 | 2 | 1 | 0 | 3 |
 | Identity, Keys, Stability and Immutability (`unit_identity_keys_and_stability`) | 5 | 2 | 1 | 4 | 1 | 6 |
 | Derived State and Expensive Work (`unit_derived_state_and_expensive_work`) | 3 | 1 | 0 | 3 | 0 | 3 |
 | Snapshot Fundamentals (`unit_snapshot_fundamentals`) | 2 | 1 | 2 | 1 | 1 | 4 |
-| Production Screen State and Unidirectional Data Flow (`unit_production_screen_state_and_udf`) | 4 | 2 | 1 | 1 | 0 | 2 |
-| Observable State Collection and Lifecycle (`unit_observable_state_collection`) | 4 | 1 | 1 | 2 | 0 | 3 |
-| Effect Lifecycle and LaunchedEffect (`unit_effect_lifecycle_and_launched_effect`) | 4 | 1 | 2 | 0 | 0 | 2 |
-| Latest-Value Effects and Event-Driven Coroutine Work (`unit_latest_values_and_event_driven_work`) | 3 | 1 | 2 | 0 | 0 | 2 |
-| Cleanup, External Synchronization and State Producers (`unit_cleanup_synchronization_and_producers`) | 4 | 1 | 2 | 0 | 0 | 2 |
-| Production UI Effects and Mechanism Selection (`unit_production_ui_effects_and_selection`) | 3 | 1 | 2 | 0 | 0 | 2 |
+| Production Screen State and Unidirectional Data Flow (`unit_production_screen_state_and_udf`) | 4 | 2 | 1 | 3 | 0 | 4 |
+| Observable State Collection and Lifecycle (`unit_observable_state_collection`) | 4 | 1 | 1 | 3 | 1 | 5 |
+| Effect Lifecycle and LaunchedEffect (`unit_effect_lifecycle_and_launched_effect`) | 4 | 1 | 2 | 6 | 2 | 10 |
+| Latest-Value Effects and Event-Driven Coroutine Work (`unit_latest_values_and_event_driven_work`) | 3 | 1 | 2 | 6 | 2 | 10 |
+| Cleanup, External Synchronization and State Producers (`unit_cleanup_synchronization_and_producers`) | 4 | 1 | 2 | 6 | 2 | 10 |
+| Production UI Effects and Mechanism Selection (`unit_production_ui_effects_and_selection`) | 3 | 1 | 2 | 6 | 2 | 10 |
 | Coroutine Fundamentals and Structured Concurrency (`unit_coroutines_and_structured_concurrency`) | 5 | 5 | 2 | 6 | 0 | 8 |
 | Coroutine Context, Dispatchers and Concurrent Work (`unit_context_dispatchers_and_concurrency`) | 4 | 4 | 1 | 6 | 2 | 9 |
 | Cancellation, Failure and Coordination (`unit_cancellation_failure_and_coordination`) | 5 | 4 | 2 | 6 | 4 | 12 |
@@ -179,7 +179,7 @@ Supporting context — not primary coverage:
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `unidirectional_data_flow` — Unidirectional data flow | 1 | `architecture` — Application Architecture & Design Principles |
-| `compose_state_hoisting` — State hoisting | 1 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state_hoisting` — State hoisting | 3 | `android_ui` — UI — Views & Jetpack Compose |
 
 ### State and State Ownership (`unit_state_and_state_ownership`)
 
@@ -191,8 +191,8 @@ once each however many lessons share the concept.
 | Level | Count | Question IDs |
 |---|---:|---|
 | FOUNDATION | 2 | `compose_state_hoisting_001`, `remember_vs_remember_saveable` |
-| APPLIED | 2 | `compose_state_collection_mutation`, `compose_unremembered_observable_state` |
-| ADVANCED | 0 | — |
+| APPLIED | 5 | `compose_over_hoisted_ui_element_state_cost`, `compose_screen_state_lowest_sensible_owner`, `compose_state_collection_mutation`, `compose_state_flow_value_read_is_not_observation`, `compose_unremembered_observable_state` |
+| ADVANCED | 1 | `compose_lifecycle_collection_stops_the_collector_not_the_producer` |
 
 #### Observable State: `mutableStateOf` and `State<T>` (`lesson_observable_state`)
 
@@ -200,7 +200,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_state` — Compose state | 1 | 2 | 0 | 3 | `compose_state_collection_mutation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
+| `compose_state` — Compose state | 1 | 3 | 1 | 5 | `compose_lifecycle_collection_stops_the_collector_not_the_producer`, `compose_state_collection_mutation`, `compose_state_flow_value_read_is_not_observation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
 
 Supporting context — not primary coverage:
 
@@ -215,7 +215,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_state` — Compose state | 1 | 2 | 0 | 3 | `compose_state_collection_mutation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
+| `compose_state` — Compose state | 1 | 3 | 1 | 5 | `compose_lifecycle_collection_stops_the_collector_not_the_producer`, `compose_state_collection_mutation`, `compose_state_flow_value_read_is_not_observation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
 
 Supporting context — not primary coverage:
 
@@ -230,7 +230,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_state` — Compose state | 1 | 2 | 0 | 3 | `compose_state_collection_mutation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
+| `compose_state` — Compose state | 1 | 3 | 1 | 5 | `compose_lifecycle_collection_stops_the_collector_not_the_producer`, `compose_state_collection_mutation`, `compose_state_flow_value_read_is_not_observation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
 
 Supporting context — not primary coverage:
 
@@ -246,7 +246,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_state_hoisting` — State hoisting | 1 | 0 | 0 | 1 | `compose_state_hoisting_001` |
+| `compose_state_hoisting` — State hoisting | 1 | 2 | 0 | 3 | `compose_over_hoisted_ui_element_state_cost`, `compose_screen_state_lowest_sensible_owner`, `compose_state_hoisting_001` |
 
 Supporting context — not primary coverage:
 
@@ -261,7 +261,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_state` — Compose state | 1 | 2 | 0 | 3 | `compose_state_collection_mutation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
+| `compose_state` — Compose state | 1 | 3 | 1 | 5 | `compose_lifecycle_collection_stops_the_collector_not_the_producer`, `compose_state_collection_mutation`, `compose_state_flow_value_read_is_not_observation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
 
 Supporting context — not primary coverage:
 
@@ -297,7 +297,7 @@ Supporting context — not primary coverage:
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `compose_fundamentals` — Compose fundamentals | 1 | `android_ui` — UI — Views & Jetpack Compose |
-| `compose_state` — Compose state | 3 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state` — Compose state | 5 | `android_ui` — UI — Views & Jetpack Compose |
 
 #### Recomposition Scopes and Selective Execution (`lesson_recomposition_scopes`)
 
@@ -312,7 +312,7 @@ Supporting context — not primary coverage:
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `compose_snapshot_system` — Compose snapshot-system fundamentals | 4 | `android_ui` — UI — Views & Jetpack Compose |
-| `compose_state` — Compose state | 3 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state` — Compose state | 5 | `android_ui` — UI — Views & Jetpack Compose |
 
 #### Recomposition Is Not the Problem (`lesson_recomposition_cost`)
 
@@ -354,7 +354,7 @@ Supporting context — not primary coverage:
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `compose_recomposition` — Composition and recomposition | 3 | `android_ui` — UI — Views & Jetpack Compose |
-| `compose_state` — Compose state | 3 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state` — Compose state | 5 | `android_ui` — UI — Views & Jetpack Compose |
 
 #### key and Keys in Lazy Lists (`lesson_keys_and_identity_in_lists`)
 
@@ -441,7 +441,7 @@ Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `compose_state` — Compose state | 3 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state` — Compose state | 5 | `android_ui` — UI — Views & Jetpack Compose |
 | `compose_recomposition` — Composition and recomposition | 3 | `android_ui` — UI — Views & Jetpack Compose |
 
 #### `derivedStateOf` (`lesson_derived_state`)
@@ -500,7 +500,7 @@ Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `compose_state` — Compose state | 3 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state` — Compose state | 5 | `android_ui` — UI — Views & Jetpack Compose |
 | `compose_recomposition` — Composition and recomposition | 3 | `android_ui` — UI — Views & Jetpack Compose |
 
 #### `snapshotFlow` and Crossing Into Flow (`lesson_snapshot_flow`)
@@ -517,7 +517,7 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `flow_fundamentals` — Flow fundamentals | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `hot_vs_cold_streams` — Hot vs cold streams | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `compose_side_effects` — Compose side-effect APIs | 2 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_side_effects` — Compose side-effect APIs | 10 | `android_ui` — UI — Views & Jetpack Compose |
 
 ### Production Screen State and Unidirectional Data Flow (`unit_production_screen_state_and_udf`)
 
@@ -529,7 +529,7 @@ once each however many lessons share the concept.
 | Level | Count | Question IDs |
 |---|---:|---|
 | FOUNDATION | 1 | `compose_state_hoisting_001` |
-| APPLIED | 1 | `compose_udf_event_direction` |
+| APPLIED | 3 | `compose_over_hoisted_ui_element_state_cost`, `compose_screen_state_lowest_sensible_owner`, `compose_udf_event_direction` |
 | ADVANCED | 0 | — |
 
 #### Three Classes of State on One Screen (`lesson_classes_of_screen_state`)
@@ -538,13 +538,13 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_state_hoisting` — State hoisting | 1 | 0 | 0 | 1 | `compose_state_hoisting_001` |
+| `compose_state_hoisting` — State hoisting | 1 | 2 | 0 | 3 | `compose_over_hoisted_ui_element_state_cost`, `compose_screen_state_lowest_sensible_owner`, `compose_state_hoisting_001` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `compose_state` — Compose state | 3 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state` — Compose state | 5 | `android_ui` — UI — Views & Jetpack Compose |
 | `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
 | `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 
@@ -560,7 +560,7 @@ Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `compose_state_hoisting` — State hoisting | 1 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state_hoisting` — State hoisting | 3 | `android_ui` — UI — Views & Jetpack Compose |
 | `compose_previews` — Compose previews | 0 | `android_ui` — UI — Views & Jetpack Compose |
 | `compose_fundamentals` — Compose fundamentals | 1 | `android_ui` — UI — Views & Jetpack Compose |
 
@@ -576,7 +576,7 @@ Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `compose_state` — Compose state | 3 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state` — Compose state | 5 | `android_ui` — UI — Views & Jetpack Compose |
 | `unidirectional_data_flow` — Unidirectional data flow | 1 | `architecture` — Application Architecture & Design Principles |
 | `kotlin_data_classes` — Data classes | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 | `compose_stability` — Stability and skippability | 4 | `android_ui` — UI — Views & Jetpack Compose |
@@ -587,7 +587,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_state_hoisting` — State hoisting | 1 | 0 | 0 | 1 | `compose_state_hoisting_001` |
+| `compose_state_hoisting` — State hoisting | 1 | 2 | 0 | 3 | `compose_over_hoisted_ui_element_state_cost`, `compose_screen_state_lowest_sensible_owner`, `compose_state_hoisting_001` |
 
 Supporting context — not primary coverage:
 
@@ -608,8 +608,8 @@ once each however many lessons share the concept.
 | Level | Count | Question IDs |
 |---|---:|---|
 | FOUNDATION | 1 | `remember_vs_remember_saveable` |
-| APPLIED | 2 | `compose_state_collection_mutation`, `compose_unremembered_observable_state` |
-| ADVANCED | 0 | — |
+| APPLIED | 3 | `compose_state_collection_mutation`, `compose_state_flow_value_read_is_not_observation`, `compose_unremembered_observable_state` |
+| ADVANCED | 1 | `compose_lifecycle_collection_stops_the_collector_not_the_producer` |
 
 #### What a Composable Can and Cannot Observe (`lesson_external_state_in_compose`)
 
@@ -617,7 +617,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_state` — Compose state | 1 | 2 | 0 | 3 | `compose_state_collection_mutation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
+| `compose_state` — Compose state | 1 | 3 | 1 | 5 | `compose_lifecycle_collection_stops_the_collector_not_the_producer`, `compose_state_collection_mutation`, `compose_state_flow_value_read_is_not_observation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
 
 Supporting context — not primary coverage:
 
@@ -633,7 +633,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_state` — Compose state | 1 | 2 | 0 | 3 | `compose_state_collection_mutation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
+| `compose_state` — Compose state | 1 | 3 | 1 | 5 | `compose_lifecycle_collection_stops_the_collector_not_the_producer`, `compose_state_collection_mutation`, `compose_state_flow_value_read_is_not_observation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
 
 Supporting context — not primary coverage:
 
@@ -649,7 +649,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_state` — Compose state | 1 | 2 | 0 | 3 | `compose_state_collection_mutation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
+| `compose_state` — Compose state | 1 | 3 | 1 | 5 | `compose_lifecycle_collection_stops_the_collector_not_the_producer`, `compose_state_collection_mutation`, `compose_state_flow_value_read_is_not_observation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
 
 Supporting context — not primary coverage:
 
@@ -666,7 +666,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_state` — Compose state | 1 | 2 | 0 | 3 | `compose_state_collection_mutation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
+| `compose_state` — Compose state | 1 | 3 | 1 | 5 | `compose_lifecycle_collection_stops_the_collector_not_the_producer`, `compose_state_collection_mutation`, `compose_state_flow_value_read_is_not_observation`, `compose_unremembered_observable_state`, `remember_vs_remember_saveable` |
 
 Supporting context — not primary coverage:
 
@@ -687,8 +687,8 @@ once each however many lessons share the concept.
 | Level | Count | Question IDs |
 |---|---:|---|
 | FOUNDATION | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
-| APPLIED | 0 | — |
-| ADVANCED | 0 | — |
+| APPLIED | 6 | `compose_body_work_has_no_lifecycle_owner`, `compose_constant_effect_key_is_a_lifetime_claim`, `compose_current_callback_without_restarting_the_effect`, `compose_durable_flag_repeats_a_transient_effect`, `compose_effect_key_equality_decides_restart`, `compose_missing_on_dispose_accumulates_listeners` |
+| ADVANCED | 2 | `compose_produce_state_key_change_keeps_the_last_value`, `compose_required_lifetime_exceeds_the_composition` |
 
 #### Why Compose Needs an Effect API (`lesson_why_effects_are_controlled`)
 
@@ -696,7 +696,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_side_effects` — Compose side-effect APIs | 2 | 0 | 0 | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
+| `compose_side_effects` — Compose side-effect APIs | 2 | 6 | 2 | 10 | `compose_body_work_has_no_lifecycle_owner`, `compose_constant_effect_key_is_a_lifetime_claim`, `compose_current_callback_without_restarting_the_effect`, `compose_durable_flag_repeats_a_transient_effect`, `compose_effect_key_equality_decides_restart`, `compose_launched_effect_key_restart`, `compose_missing_on_dispose_accumulates_listeners`, `compose_produce_state_key_change_keeps_the_last_value`, `compose_required_lifetime_exceeds_the_composition`, `compose_side_effects_001` |
 
 Supporting context — not primary coverage:
 
@@ -711,7 +711,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_side_effects` — Compose side-effect APIs | 2 | 0 | 0 | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
+| `compose_side_effects` — Compose side-effect APIs | 2 | 6 | 2 | 10 | `compose_body_work_has_no_lifecycle_owner`, `compose_constant_effect_key_is_a_lifetime_claim`, `compose_current_callback_without_restarting_the_effect`, `compose_durable_flag_repeats_a_transient_effect`, `compose_effect_key_equality_decides_restart`, `compose_launched_effect_key_restart`, `compose_missing_on_dispose_accumulates_listeners`, `compose_produce_state_key_change_keeps_the_last_value`, `compose_required_lifetime_exceeds_the_composition`, `compose_side_effects_001` |
 
 Supporting context — not primary coverage:
 
@@ -728,7 +728,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_side_effects` — Compose side-effect APIs | 2 | 0 | 0 | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
+| `compose_side_effects` — Compose side-effect APIs | 2 | 6 | 2 | 10 | `compose_body_work_has_no_lifecycle_owner`, `compose_constant_effect_key_is_a_lifetime_claim`, `compose_current_callback_without_restarting_the_effect`, `compose_durable_flag_repeats_a_transient_effect`, `compose_effect_key_equality_decides_restart`, `compose_launched_effect_key_restart`, `compose_missing_on_dispose_accumulates_listeners`, `compose_produce_state_key_change_keeps_the_last_value`, `compose_required_lifetime_exceeds_the_composition`, `compose_side_effects_001` |
 
 Supporting context — not primary coverage:
 
@@ -744,7 +744,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_side_effects` — Compose side-effect APIs | 2 | 0 | 0 | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
+| `compose_side_effects` — Compose side-effect APIs | 2 | 6 | 2 | 10 | `compose_body_work_has_no_lifecycle_owner`, `compose_constant_effect_key_is_a_lifetime_claim`, `compose_current_callback_without_restarting_the_effect`, `compose_durable_flag_repeats_a_transient_effect`, `compose_effect_key_equality_decides_restart`, `compose_launched_effect_key_restart`, `compose_missing_on_dispose_accumulates_listeners`, `compose_produce_state_key_change_keeps_the_last_value`, `compose_required_lifetime_exceeds_the_composition`, `compose_side_effects_001` |
 
 Supporting context — not primary coverage:
 
@@ -764,8 +764,8 @@ once each however many lessons share the concept.
 | Level | Count | Question IDs |
 |---|---:|---|
 | FOUNDATION | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
-| APPLIED | 0 | — |
-| ADVANCED | 0 | — |
+| APPLIED | 6 | `compose_body_work_has_no_lifecycle_owner`, `compose_constant_effect_key_is_a_lifetime_claim`, `compose_current_callback_without_restarting_the_effect`, `compose_durable_flag_repeats_a_transient_effect`, `compose_effect_key_equality_decides_restart`, `compose_missing_on_dispose_accumulates_listeners` |
+| ADVANCED | 2 | `compose_produce_state_key_change_keeps_the_last_value`, `compose_required_lifetime_exceeds_the_composition` |
 
 #### Reading the Current Value Without Restarting (`lesson_remember_updated_state`)
 
@@ -773,13 +773,13 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_side_effects` — Compose side-effect APIs | 2 | 0 | 0 | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
+| `compose_side_effects` — Compose side-effect APIs | 2 | 6 | 2 | 10 | `compose_body_work_has_no_lifecycle_owner`, `compose_constant_effect_key_is_a_lifetime_claim`, `compose_current_callback_without_restarting_the_effect`, `compose_durable_flag_repeats_a_transient_effect`, `compose_effect_key_equality_decides_restart`, `compose_launched_effect_key_restart`, `compose_missing_on_dispose_accumulates_listeners`, `compose_produce_state_key_change_keeps_the_last_value`, `compose_required_lifetime_exceeds_the_composition`, `compose_side_effects_001` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `compose_state` — Compose state | 3 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state` — Compose state | 5 | `android_ui` — UI — Views & Jetpack Compose |
 | `compose_recomposition` — Composition and recomposition | 3 | `android_ui` — UI — Views & Jetpack Compose |
 | `kotlin_lambdas` — Lambdas and higher-order functions | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 
@@ -789,7 +789,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_side_effects` — Compose side-effect APIs | 2 | 0 | 0 | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
+| `compose_side_effects` — Compose side-effect APIs | 2 | 6 | 2 | 10 | `compose_body_work_has_no_lifecycle_owner`, `compose_constant_effect_key_is_a_lifetime_claim`, `compose_current_callback_without_restarting_the_effect`, `compose_durable_flag_repeats_a_transient_effect`, `compose_effect_key_equality_decides_restart`, `compose_launched_effect_key_restart`, `compose_missing_on_dispose_accumulates_listeners`, `compose_produce_state_key_change_keeps_the_last_value`, `compose_required_lifetime_exceeds_the_composition`, `compose_side_effects_001` |
 
 Supporting context — not primary coverage:
 
@@ -805,7 +805,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_side_effects` — Compose side-effect APIs | 2 | 0 | 0 | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
+| `compose_side_effects` — Compose side-effect APIs | 2 | 6 | 2 | 10 | `compose_body_work_has_no_lifecycle_owner`, `compose_constant_effect_key_is_a_lifetime_claim`, `compose_current_callback_without_restarting_the_effect`, `compose_durable_flag_repeats_a_transient_effect`, `compose_effect_key_equality_decides_restart`, `compose_launched_effect_key_restart`, `compose_missing_on_dispose_accumulates_listeners`, `compose_produce_state_key_change_keeps_the_last_value`, `compose_required_lifetime_exceeds_the_composition`, `compose_side_effects_001` |
 
 Supporting context — not primary coverage:
 
@@ -826,8 +826,8 @@ once each however many lessons share the concept.
 | Level | Count | Question IDs |
 |---|---:|---|
 | FOUNDATION | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
-| APPLIED | 0 | — |
-| ADVANCED | 0 | — |
+| APPLIED | 6 | `compose_body_work_has_no_lifecycle_owner`, `compose_constant_effect_key_is_a_lifetime_claim`, `compose_current_callback_without_restarting_the_effect`, `compose_durable_flag_repeats_a_transient_effect`, `compose_effect_key_equality_decides_restart`, `compose_missing_on_dispose_accumulates_listeners` |
+| ADVANCED | 2 | `compose_produce_state_key_change_keeps_the_last_value`, `compose_required_lifetime_exceeds_the_composition` |
 
 #### Registration and Release as One Decision (`lesson_disposable_effect`)
 
@@ -835,7 +835,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_side_effects` — Compose side-effect APIs | 2 | 0 | 0 | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
+| `compose_side_effects` — Compose side-effect APIs | 2 | 6 | 2 | 10 | `compose_body_work_has_no_lifecycle_owner`, `compose_constant_effect_key_is_a_lifetime_claim`, `compose_current_callback_without_restarting_the_effect`, `compose_durable_flag_repeats_a_transient_effect`, `compose_effect_key_equality_decides_restart`, `compose_launched_effect_key_restart`, `compose_missing_on_dispose_accumulates_listeners`, `compose_produce_state_key_change_keeps_the_last_value`, `compose_required_lifetime_exceeds_the_composition`, `compose_side_effects_001` |
 
 Supporting context — not primary coverage:
 
@@ -851,7 +851,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_side_effects` — Compose side-effect APIs | 2 | 0 | 0 | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
+| `compose_side_effects` — Compose side-effect APIs | 2 | 6 | 2 | 10 | `compose_body_work_has_no_lifecycle_owner`, `compose_constant_effect_key_is_a_lifetime_claim`, `compose_current_callback_without_restarting_the_effect`, `compose_durable_flag_repeats_a_transient_effect`, `compose_effect_key_equality_decides_restart`, `compose_launched_effect_key_restart`, `compose_missing_on_dispose_accumulates_listeners`, `compose_produce_state_key_change_keeps_the_last_value`, `compose_required_lifetime_exceeds_the_composition`, `compose_side_effects_001` |
 
 Supporting context — not primary coverage:
 
@@ -859,7 +859,7 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `compose_recomposition` — Composition and recomposition | 3 | `android_ui` — UI — Views & Jetpack Compose |
 | `compose_fundamentals` — Compose fundamentals | 1 | `android_ui` — UI — Views & Jetpack Compose |
-| `compose_state` — Compose state | 3 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state` — Compose state | 5 | `android_ui` — UI — Views & Jetpack Compose |
 
 #### `produceState`: a Composition-Scoped Producer (`lesson_produce_state`)
 
@@ -867,13 +867,13 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_side_effects` — Compose side-effect APIs | 2 | 0 | 0 | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
+| `compose_side_effects` — Compose side-effect APIs | 2 | 6 | 2 | 10 | `compose_body_work_has_no_lifecycle_owner`, `compose_constant_effect_key_is_a_lifetime_claim`, `compose_current_callback_without_restarting_the_effect`, `compose_durable_flag_repeats_a_transient_effect`, `compose_effect_key_equality_decides_restart`, `compose_launched_effect_key_restart`, `compose_missing_on_dispose_accumulates_listeners`, `compose_produce_state_key_change_keeps_the_last_value`, `compose_required_lifetime_exceeds_the_composition`, `compose_side_effects_001` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `compose_state` — Compose state | 3 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state` — Compose state | 5 | `android_ui` — UI — Views & Jetpack Compose |
 | `flow_collection` — Flow collection | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `coroutine_cancellation` — Cancellation | 5 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
@@ -883,7 +883,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_side_effects` — Compose side-effect APIs | 2 | 0 | 0 | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
+| `compose_side_effects` — Compose side-effect APIs | 2 | 6 | 2 | 10 | `compose_body_work_has_no_lifecycle_owner`, `compose_constant_effect_key_is_a_lifetime_claim`, `compose_current_callback_without_restarting_the_effect`, `compose_durable_flag_repeats_a_transient_effect`, `compose_effect_key_equality_decides_restart`, `compose_launched_effect_key_restart`, `compose_missing_on_dispose_accumulates_listeners`, `compose_produce_state_key_change_keeps_the_last_value`, `compose_required_lifetime_exceeds_the_composition`, `compose_side_effects_001` |
 
 Supporting context — not primary coverage:
 
@@ -903,8 +903,8 @@ once each however many lessons share the concept.
 | Level | Count | Question IDs |
 |---|---:|---|
 | FOUNDATION | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
-| APPLIED | 0 | — |
-| ADVANCED | 0 | — |
+| APPLIED | 6 | `compose_body_work_has_no_lifecycle_owner`, `compose_constant_effect_key_is_a_lifetime_claim`, `compose_current_callback_without_restarting_the_effect`, `compose_durable_flag_repeats_a_transient_effect`, `compose_effect_key_equality_decides_restart`, `compose_missing_on_dispose_accumulates_listeners` |
+| ADVANCED | 2 | `compose_produce_state_key_change_keeps_the_last_value`, `compose_required_lifetime_exceeds_the_composition` |
 
 #### Choosing the Smallest Sufficient Mechanism (`lesson_choosing_a_compose_mechanism`)
 
@@ -912,14 +912,14 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_side_effects` — Compose side-effect APIs | 2 | 0 | 0 | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
+| `compose_side_effects` — Compose side-effect APIs | 2 | 6 | 2 | 10 | `compose_body_work_has_no_lifecycle_owner`, `compose_constant_effect_key_is_a_lifetime_claim`, `compose_current_callback_without_restarting_the_effect`, `compose_durable_flag_repeats_a_transient_effect`, `compose_effect_key_equality_decides_restart`, `compose_launched_effect_key_restart`, `compose_missing_on_dispose_accumulates_listeners`, `compose_produce_state_key_change_keeps_the_last_value`, `compose_required_lifetime_exceeds_the_composition`, `compose_side_effects_001` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `compose_state` — Compose state | 3 | `android_ui` — UI — Views & Jetpack Compose |
-| `compose_state_hoisting` — State hoisting | 1 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state` — Compose state | 5 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state_hoisting` — State hoisting | 3 | `android_ui` — UI — Views & Jetpack Compose |
 | `compose_udf` — Unidirectional data flow in Compose | 1 | `android_ui` — UI — Views & Jetpack Compose |
 
 #### Rendering State and Running a Transient Effect (`lesson_transient_ui_effects`)
@@ -928,14 +928,14 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_side_effects` — Compose side-effect APIs | 2 | 0 | 0 | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
+| `compose_side_effects` — Compose side-effect APIs | 2 | 6 | 2 | 10 | `compose_body_work_has_no_lifecycle_owner`, `compose_constant_effect_key_is_a_lifetime_claim`, `compose_current_callback_without_restarting_the_effect`, `compose_durable_flag_repeats_a_transient_effect`, `compose_effect_key_equality_decides_restart`, `compose_launched_effect_key_restart`, `compose_missing_on_dispose_accumulates_listeners`, `compose_produce_state_key_change_keeps_the_last_value`, `compose_required_lifetime_exceeds_the_composition`, `compose_side_effects_001` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `coroutine_scope` — CoroutineScope | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `compose_state` — Compose state | 3 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state` — Compose state | 5 | `android_ui` — UI — Views & Jetpack Compose |
 | `sharedflow` — SharedFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
 #### What Delivery Guarantee Does This Occurrence Need? (`lesson_transient_effect_delivery`)
@@ -944,7 +944,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `compose_side_effects` — Compose side-effect APIs | 2 | 0 | 0 | 2 | `compose_launched_effect_key_restart`, `compose_side_effects_001` |
+| `compose_side_effects` — Compose side-effect APIs | 2 | 6 | 2 | 10 | `compose_body_work_has_no_lifecycle_owner`, `compose_constant_effect_key_is_a_lifetime_claim`, `compose_current_callback_without_restarting_the_effect`, `compose_durable_flag_repeats_a_transient_effect`, `compose_effect_key_equality_decides_restart`, `compose_launched_effect_key_restart`, `compose_missing_on_dispose_accumulates_listeners`, `compose_produce_state_key_change_keeps_the_last_value`, `compose_required_lifetime_exceeds_the_composition`, `compose_side_effects_001` |
 
 Supporting context — not primary coverage:
 

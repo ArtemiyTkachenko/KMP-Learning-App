@@ -60,7 +60,7 @@ internal class CurriculumLocalDataPathTest {
             assertEquals(listOf("activity_lifecycle_001_b"), question.correctAnswerIds)
             assertEquals(1, question.sources.size)
             assertEquals("The Activity Lifecycle", question.sources.first().title)
-            assertEquals(430, database.curriculumDao().countQuestions())
+            assertEquals(442, database.curriculumDao().countQuestions())
         }
     }
 
@@ -99,10 +99,10 @@ internal class CurriculumLocalDataPathTest {
                 RowCounts(
                     topics = 17,
                     subtopics = 361,
-                    questions = 430,
-                    answerOptions = 1_726,
-                    correctAnswers = 480,
-                    questionSources = 532,
+                    questions = 442,
+                    answerOptions = 1_774,
+                    correctAnswers = 492,
+                    questionSources = 563,
                 ),
                 database.curriculumDao().countRows(),
             )

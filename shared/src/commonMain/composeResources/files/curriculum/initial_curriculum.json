@@ -18646,6 +18646,526 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "compose_screen_state_lowest_sensible_owner",
+      "topicId": "android_ui",
+      "subtopicId": "compose_state_hoisting",
+      "text": "On a question-library screen a difficulty filter is written by a chip row and read by both the result count and the question list; no business logic reads or writes it and it need not outlive the screen. A difficulty menu's expanded flag is read and written only inside that menu. Where do those two values belong?",
+      "answers": [
+        {
+          "id": "compose_screen_state_lowest_sensible_owner_a",
+          "text": "The filter in the closest composable above the count and the list; the flag inside the menu."
+        },
+        {
+          "id": "compose_screen_state_lowest_sensible_owner_b",
+          "text": "Both in the state holder outside the Composition, so one value describes the whole screen."
+        },
+        {
+          "id": "compose_screen_state_lowest_sensible_owner_c",
+          "text": "Both in the composables that write them, because a value belongs where it is written."
+        },
+        {
+          "id": "compose_screen_state_lowest_sensible_owner_d",
+          "text": "The filter in the state holder outside the Composition because two composables read it; the flag inside the menu."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "compose_screen_state_lowest_sensible_owner_a"
+      ],
+      "explanation": "Each value is placed from its own readers, writers and required lifetime. The filter is read by the result count and the question list and written by the chip row, so its lowest common ancestor is the closest composable above those three; the guidance is to hoist to the lowest common ancestor of the composables that read and write the state and to keep state closest to where it is consumed. Nothing outside the UI reads or writes it and no longer lifetime is required, so the ancestor is inside the Composition. The expanded flag has one reader and one writer, and keeping UI element state internal to a composable is explicitly acceptable when the logic is simple and no other part of the hierarchy needs it. That rules the other options out in three different ways: putting the flag in the outside holder hoists a value no business logic needs, which the guidance says should instead stay closer to the composable that uses it; putting the filter in the chip row leaves the count and the list unable to read the selection they render; and moving the filter outside the Composition is a level further than its readers, writers and lifetime require, which buys coupling rather than correctness.",
+      "sources": [
+        {
+          "title": "Where to hoist state",
+          "url": "https://developer.android.com/develop/ui/compose/state-hoisting"
+        },
+        {
+          "title": "State and Jetpack Compose",
+          "url": "https://developer.android.com/develop/ui/compose/state"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_over_hoisted_ui_element_state_cost",
+      "topicId": "android_ui",
+      "subtopicId": "compose_state_hoisting",
+      "text": "A screen-level state holder's state class has grown to hold the loaded questions, the selected filter, whether a difficulty menu is expanded, and which row is currently pressed. The last two are read and written by one composable each and are needed by no business logic. What does keeping them in the holder cost?",
+      "answers": [
+        {
+          "id": "compose_over_hoisted_ui_element_state_cost_a",
+          "text": "Nothing: one immutable value per screen is the recommended shape, so extra fields make it more consistent."
+        },
+        {
+          "id": "compose_over_hoisted_ui_element_state_cost_b",
+          "text": "The menu can no longer be rendered in isolation, because drawing it now requires the production holder."
+        },
+        {
+          "id": "compose_over_hoisted_ui_element_state_cost_c",
+          "text": "One element's implementation detail becomes part of the holder's contract and inherits its lifetime."
+        },
+        {
+          "id": "compose_over_hoisted_ui_element_state_cost_d",
+          "text": "The expanded flag now survives process death, so the menu can reopen expanded after a restart."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "compose_over_hoisted_ui_element_state_cost_c"
+      ],
+      "explanation": "Hoisting has a stopping condition. The guidance is to hoist to the lowest common ancestor of the composables that read and write a value, and it says directly that a variable not needed for business logic should not be hoisted to the screen-level state holder but defined closer to the composable that needs it. Past that point the value's shape becomes part of the holder's published contract, so changing how the menu is implemented changes the holder and everything that builds its state, and the detail also takes on the holder's lifetime although its only reader and writer disappear with one element. The other options each name something that does not follow. One current value at the content boundary is about what the rendering surface receives, not a licence to give every value the same owner. Isolated rendering is unaffected: the menu still takes a Boolean and a callback, so a caller can still supply any state it likes. And an in-memory holder outside the Composition is not durable storage; it does not survive process death, so the flag gains no restart behaviour from the move.",
+      "sources": [
+        {
+          "title": "Where to hoist state",
+          "url": "https://developer.android.com/develop/ui/compose/state-hoisting"
+        },
+        {
+          "title": "State and Jetpack Compose",
+          "url": "https://developer.android.com/develop/ui/compose/state"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_state_flow_value_read_is_not_observation",
+      "topicId": "android_ui",
+      "subtopicId": "compose_state",
+      "text": "A screen composable reads `val screen = owner.state.value` from a `StateFlow<ScreenState>` and renders it. The first frame is correct, and later emissions sometimes appear on screen and sometimes do not. Which explanation and fix are correct?",
+      "answers": [
+        {
+          "id": "compose_state_flow_value_read_is_not_observation_a",
+          "text": "`StateFlow` conflates equal values, so the collector that `.value` started drops most updates before the screen reads them."
+        },
+        {
+          "id": "compose_state_flow_value_read_is_not_observation_b",
+          "text": "A composable cannot observe a value it does not own, so hoisting the flow to the caller and passing the value down makes updates visible."
+        },
+        {
+          "id": "compose_state_flow_value_read_is_not_observation_c",
+          "text": "The read needs composition memory before it can be observed, so `remember { owner.state.value }` is what makes the screen update."
+        },
+        {
+          "id": "compose_state_flow_value_read_is_not_observation_d",
+          "text": "Reading `.value` neither starts collection nor records a Compose state read; `collectAsState` does both, starting from the current value."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "compose_state_flow_value_read_is_not_observation_d"
+      ],
+      "explanation": "Two observation systems are involved and the code connects neither. Compose recomposes from reading `State` objects, so another observable type has to be converted into `State` before it is read in a composable; `owner.state.value` is an ordinary property read on a `StateFlow`, whose own notification mechanism is collection. Nothing subscribes and nothing is recorded, which is why a later emission reaches the screen only when some unrelated state change happens to recompose this body and the newer current value is read again. `collectAsState` is the conversion: the resolved runtime's `StateFlow` overload starts a collection and uses the flow's current `value` as the returned state's initial value. The other explanations misplace the defect. No collector exists to conflate anything, and conflation drops values equal to the current one rather than arbitrary updates. Hoisting changes who owns the flow and not whether a read is observed. And `remember` supplies memory, not observability — remembering `.value` would freeze the first value read instead of tracking the stream.",
+      "sources": [
+        {
+          "title": "State and Jetpack Compose",
+          "url": "https://developer.android.com/develop/ui/compose/state"
+        },
+        {
+          "title": "Compose runtime SnapshotFlow source",
+          "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotFlow.kt"
+        },
+        {
+          "title": "StateFlow",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-state-flow/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_lifecycle_collection_stops_the_collector_not_the_producer",
+      "topicId": "android_ui",
+      "subtopicId": "compose_state",
+      "text": "A Compose Multiplatform desktop screen renders a `StateFlow` its owner built with `stateIn(ownerScope, SharingStarted.Eagerly, Loading)` over a database query, collecting it with `collectAsStateWithLifecycle()` at the default `minActiveState`. The learner minimises the window. What happens?",
+      "answers": [
+        {
+          "id": "compose_lifecycle_collection_stops_the_collector_not_the_producer_a",
+          "text": "The UI collection stops, while the shared query keeps producing under its own scope and sharing policy."
+        },
+        {
+          "id": "compose_lifecycle_collection_stops_the_collector_not_the_producer_b",
+          "text": "Neither stops, because a minimised window is still at the default threshold; only losing focus drops below it."
+        },
+        {
+          "id": "compose_lifecycle_collection_stops_the_collector_not_the_producer_c",
+          "text": "Both stop, because cancelling a collector cancels the flow that it was collecting."
+        },
+        {
+          "id": "compose_lifecycle_collection_stops_the_collector_not_the_producer_d",
+          "text": "Both stop, because a shared flow's upstream is started and stopped by its subscriber count."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "ADVANCED",
+      "correctAnswerIds": [
+        "compose_lifecycle_collection_stops_the_collector_not_the_producer_a"
+      ],
+      "explanation": "Two lifetimes are being decided by two different owners. `collectAsStateWithLifecycle` defaults to `minActiveState = Lifecycle.State.STARTED`, and its contract is that the upstream is collected while the lifecycle is at least that state and that collection stops when the lifecycle falls below it. On the desktop host, minimising the window is the `windowIconified` callback, which is `ON_STOP` and moves the lifecycle from `STARTED` to `CREATED` — below the threshold — so this collection ends. Losing focus is the other direction: it is `ON_PAUSE`, `RESUMED` to `STARTED`, which is still at the threshold, so it stops nothing. What the upstream does is a separate decision made by whoever shares it: `SharingStarted.Eagerly` starts sharing immediately and never stops, independently of subscribers, so the query keeps running in `ownerScope` after the last UI collector goes away. That is also why cancelling the collector cannot cancel the flow here — the producer is running in another scope — and why subscriber count is not the rule: it would be under `WhileSubscribed`, which is a different policy from the one this owner chose.",
+      "sources": [
+        {
+          "title": "Lifecycle in Compose Multiplatform",
+          "url": "https://kotlinlang.org/docs/multiplatform/compose-lifecycle.html"
+        },
+        {
+          "title": "Lifecycle runtime Compose Flow extensions source",
+          "url": "https://github.com/androidx/androidx/blob/androidx-main/lifecycle/lifecycle-runtime-compose/src/commonMain/kotlin/androidx/lifecycle/compose/FlowExt.kt"
+        },
+        {
+          "title": "SharingStarted.Eagerly",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-sharing-started/-companion/-eagerly.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_body_work_has_no_lifecycle_owner",
+      "topicId": "android_ui",
+      "subtopicId": "compose_side_effects",
+      "text": "A screen composable's body calls `analytics.screenOpened(questionId)` and then `work.start(questionId)` before it describes any UI. Which statement about that code is correct?",
+      "answers": [
+        {
+          "id": "compose_body_work_has_no_lifecycle_owner_a",
+          "text": "The calls run once for each screen, so returning to the screen later records nothing and starts nothing."
+        },
+        {
+          "id": "compose_body_work_has_no_lifecycle_owner_b",
+          "text": "Body execution is not an event or a lifecycle callback, so the work has no defined start, owner or cleanup."
+        },
+        {
+          "id": "compose_body_work_has_no_lifecycle_owner_c",
+          "text": "The calls are fine as written, because an abandoned composition rolls back everything it did before it was discarded."
+        },
+        {
+          "id": "compose_body_work_has_no_lifecycle_owner_d",
+          "text": "Compose suppresses the second and later calls, because a composable body is required to be side-effect free."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "compose_body_work_has_no_lifecycle_owner_b"
+      ],
+      "explanation": "A composable body describes UI for its current inputs; it is not a callback that marks a point in a screen's life. The guidance puts it as a rule about timing: it is incorrect to perform an effect before a successful composition is guaranteed, which is exactly the case when the effect is written directly in a composable. The body may execute again, may be skipped because its inputs did not change, and may take part in a composition that is discarded rather than applied — so nothing here answers how often the work runs, what owns it, what cancels it, or what cleans it up, and an analytics call or a started operation cannot be taken back when the composition it belonged to is abandoned. The other statements are not true of this code. Execution is not once per screen; that is the assumption the effect APIs exist to replace. An abandoned composition discards the UI it calculated and rolls nothing else back — an analytics event already recorded stays recorded, which is why the guidance states the rule in terms of a successful composition. And a composable body being expected to be side-effect free is advice to its author, not an enforcement: nothing in the runtime inspects these calls or suppresses a later one.",
+      "sources": [
+        {
+          "title": "Side-effects in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/side-effects"
+        },
+        {
+          "title": "Lifecycle of composables",
+          "url": "https://developer.android.com/develop/ui/compose/lifecycle"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_effect_key_equality_decides_restart",
+      "topicId": "android_ui",
+      "subtopicId": "compose_side_effects",
+      "text": "One composable holds two effects: `LaunchedEffect(QuestionKey(id)) { hints.play(id) }`, where `QuestionKey` is a `data class`, and `LaunchedEffect(HintKey(id)) { hints.play(id) }`, where `HintKey` is an ordinary class with no `equals` override. Both keys are constructed on every execution of the body, and the body executes four times while `id` never changes. What happens?",
+      "answers": [
+        {
+          "id": "compose_effect_key_equality_decides_restart_a",
+          "text": "Both blocks run once, because a freshly built key holding the same data is still an equal key."
+        },
+        {
+          "id": "compose_effect_key_equality_decides_restart_b",
+          "text": "The first block runs once; the second accumulates, leaving four coroutines playing hints at once."
+        },
+        {
+          "id": "compose_effect_key_equality_decides_restart_c",
+          "text": "Both blocks are cancelled and relaunched every time, because a newly allocated key is a changed key."
+        },
+        {
+          "id": "compose_effect_key_equality_decides_restart_d",
+          "text": "The first block runs once; the second is cancelled and relaunched on each of the last three executions."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "compose_effect_key_equality_decides_restart_d"
+      ],
+      "explanation": "An effect's keys are `remember` keys: `LaunchedEffect(key1)` is built on `remember(key1)`, which keeps its value while the new key compares equal with `==`. `QuestionKey` is a data class, so a fresh instance carrying the same `id` is equal and the first effect is preserved across all four executions. `HintKey` inherits identity equality, so each freshly constructed instance is a different key, and the documented consequence of a changed key is that the existing coroutine is cancelled and the block is launched again in a new one. Measured on this project's configured toolchain across four executions, the data-class key produced one effect start and the identity-equality key produced four. That rules out the alternatives: the two keys do not behave alike, so neither \"both run once\" nor \"both restart\" is right, and fresh allocation on its own is not a changed key. Nor do the restarts accumulate — cancellation happens before the replacement is launched, so there is one coroutine at a time and what is lost is the progress the cancelled one had made.",
+      "sources": [
+        {
+          "title": "Side-effects in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/side-effects"
+        },
+        {
+          "title": "Compose runtime Composables source",
+          "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Composables.kt"
+        },
+        {
+          "title": "Compose runtime Effects source",
+          "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_constant_effect_key_is_a_lifetime_claim",
+      "topicId": "android_ui",
+      "subtopicId": "compose_side_effects",
+      "text": "A details screen runs `LaunchedEffect(Unit) { hints.play(questionId) }`. The learner moves to the next question, so `questionId` changes while this call site stays in the Composition, and the previous question's hints keep playing. Which reading of the code is correct?",
+      "answers": [
+        {
+          "id": "compose_constant_effect_key_is_a_lifetime_claim_a",
+          "text": "`Unit` declares that the block runs exactly once for the life of the process, so the stale sequence has to be stopped by hand."
+        },
+        {
+          "id": "compose_constant_effect_key_is_a_lifetime_claim_b",
+          "text": "The key list is complete, because `questionId` is read inside the block and Compose therefore already treats it as a dependency."
+        },
+        {
+          "id": "compose_constant_effect_key_is_a_lifetime_claim_c",
+          "text": "`Unit` declares that only this call site leaving the Composition ends the effect, so `questionId` is an omitted lifetime dependency."
+        },
+        {
+          "id": "compose_constant_effect_key_is_a_lifetime_claim_d",
+          "text": "The key list is complete, because a `LaunchedEffect` is cancelled only when the whole screen leaves the Composition, and this screen has not."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "compose_constant_effect_key_is_a_lifetime_claim_c"
+      ],
+      "explanation": "A key list is a statement about lifetime: it names the changes that should end the current work and start replacement work. `Unit` never stops comparing equal, so the only remaining end condition is this call site leaving the Composition — which is a legitimate claim when the work really should last for that whole lifetime, and a false one here, because a different question makes the running sequence the wrong work. The repair follows from the requirement rather than from style: make `questionId` a key, so a changed question cancels the stale sequence and launches the right one. The other readings each misstate a contract. A constant key is not a promise to run once for the life of the process; the effect is cancelled whenever its position leaves the Composition and launched again if that position returns. Nothing is added to a key list automatically — the keys are the arguments that were supplied, not the values the block happens to read. And cancellation follows the effect's own call site, so a branch or a child leaving the Composition ends its effect even while the surrounding screen stays.",
+      "sources": [
+        {
+          "title": "Side-effects in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/side-effects"
+        },
+        {
+          "title": "Compose runtime Effects source",
+          "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
+        },
+        {
+          "title": "Lifecycle of composables",
+          "url": "https://developer.android.com/develop/ui/compose/lifecycle"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_current_callback_without_restarting_the_effect",
+      "topicId": "android_ui",
+      "subtopicId": "compose_side_effects",
+      "text": "A question screen needs one 30-second timer for as long as the question is displayed, and it must call the caller's current `onTimeout` when the timer elapses. Recomposition can supply a different `onTimeout` while the timer is still running, and that must not restart it. Which implementation satisfies both requirements?",
+      "answers": [
+        {
+          "id": "compose_current_callback_without_restarting_the_effect_a",
+          "text": "Pass `onTimeout` as the key of the `LaunchedEffect`, so the block always closes over the callback the screen currently has."
+        },
+        {
+          "id": "compose_current_callback_without_restarting_the_effect_b",
+          "text": "Store `onTimeout` in a plain `remember` and call the stored value after `delay(30_000)` inside `LaunchedEffect(Unit)`."
+        },
+        {
+          "id": "compose_current_callback_without_restarting_the_effect_c",
+          "text": "Copy `onTimeout` into a local at the start of the `LaunchedEffect(Unit)` block and call that local after `delay(30_000)`."
+        },
+        {
+          "id": "compose_current_callback_without_restarting_the_effect_d",
+          "text": "Wrap `onTimeout` with `rememberUpdatedState` and call the wrapped value after `delay(30_000)` inside `LaunchedEffect(Unit)`."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "compose_current_callback_without_restarting_the_effect_d"
+      ],
+      "explanation": "The requirement separates two decisions that are easy to merge. The timer's lifetime is the composition lifetime of this call site, so the key list should contain nothing that changes; the callback, on the other hand, must be current when the timer elapses. `rememberUpdatedState` is the documented answer to exactly that pairing: it creates a reference to a value that can be captured by a long-lived effect and updated by recomposition without restarting the effect, and in the resolved runtime it is a remembered `MutableState` whose value is reassigned on every recomposition. Because the coroutine reads that state after the delay, it observes whatever the latest recomposition wrote. The alternatives each fail one requirement. Keying the effect on `onTimeout` restarts it whenever the callback stops comparing equal, which cancels the in-flight delay and begins a fresh 30 seconds. A plain `remember` keeps the first callback for ever, so a later one is never called. And copying the callback into a local before the delay captures the value as it was at that moment; a state read has to happen after the delay to observe a later value.",
+      "sources": [
+        {
+          "title": "Side-effects in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/side-effects"
+        },
+        {
+          "title": "Compose runtime SnapshotState source",
+          "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotState.kt"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_missing_on_dispose_accumulates_listeners",
+      "topicId": "android_ui",
+      "subtopicId": "compose_side_effects",
+      "text": "A composable registers a result listener on a long-lived `QuestionSession` inside `DisposableEffect(session)` and ends the block with an empty `onDispose { }`. The learner works through three questions, and each one enters the Composition after the previous one has left it. What happens when the session grades the next answer?",
+      "answers": [
+        {
+          "id": "compose_missing_on_dispose_accumulates_listeners_a",
+          "text": "It delivers the result three times, and each listener keeps the screen that created it reachable."
+        },
+        {
+          "id": "compose_missing_on_dispose_accumulates_listeners_b",
+          "text": "It delivers the result once, because a session keeps only the most recently registered listener."
+        },
+        {
+          "id": "compose_missing_on_dispose_accumulates_listeners_c",
+          "text": "It delivers the result once, because leaving the Composition releases the registration even with an empty `onDispose`."
+        },
+        {
+          "id": "compose_missing_on_dispose_accumulates_listeners_d",
+          "text": "It delivers the result three times, but the two stale listeners are collected as soon as their screens are unreachable."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "compose_missing_on_dispose_accumulates_listeners_a"
+      ],
+      "explanation": "A registration is not work that finishes; it is something an object outside Compose now holds until it is told to let go. `DisposableEffect` exists to pair the acquisition with its release: there is one `onDispose` call for every call to the effect block, and the documented release points are the key changing and the effect leaving the Composition. An empty `onDispose` satisfies the compiler and releases nothing, so each of the three entries adds a listener the session never drops. The next graded answer therefore reaches all three, two of which belong to screens that are no longer composed. The other consequences named here do not follow. A session that accepts listeners keeps the ones it was given; nothing replaces a registration because the same call site made it. Compose has no knowledge of the registration at all — the only cleanup it performs is the one the effect supplied. And the stale listeners are not collectable: the session is alive and holds each of them, and through them the state they close over. Android's own leak-hunting guidance names this shape directly — forgetting to clean up listeners or observers in a `DisposableEffect`'s `onDispose`, and the Compose state objects and lambdas they retain — which is what a missing release costs beyond the duplicated deliveries.",
+      "sources": [
+        {
+          "title": "Side-effects in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/side-effects"
+        },
+        {
+          "title": "Compose runtime Effects source",
+          "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
+        },
+        {
+          "title": "Capture a heap dump",
+          "url": "https://developer.android.com/studio/profile/capture-heap-dump"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_produce_state_key_change_keeps_the_last_value",
+      "topicId": "android_ui",
+      "subtopicId": "compose_side_effects",
+      "text": "A composable holds `val preview by produceState(initialValue = Preview.Loading, questionId) { value = Preview.Loaded(load(questionId)) }`. `questionId` changes from `q1` to `q2` once `q1`'s preview has loaded, and loading `q2` takes a second. What does the screen render during that second?",
+      "answers": [
+        {
+          "id": "compose_produce_state_key_change_keeps_the_last_value_a",
+          "text": "`Preview.Loading`, because a key change re-creates the producer together with its `State`, so `initialValue` applies again."
+        },
+        {
+          "id": "compose_produce_state_key_change_keeps_the_last_value_b",
+          "text": "`q1`'s preview, because the `q2` producer starts only once the cancelled `q1` producer has finished unwinding."
+        },
+        {
+          "id": "compose_produce_state_key_change_keeps_the_last_value_c",
+          "text": "`Preview.Loading`, because cancelling the `q1` producer clears the `State` that it was writing into."
+        },
+        {
+          "id": "compose_produce_state_key_change_keeps_the_last_value_d",
+          "text": "`q1`'s preview, because the producer is keyed while the `State` it writes into is remembered without keys."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "ADVANCED",
+      "correctAnswerIds": [
+        "compose_produce_state_key_change_keeps_the_last_value_d"
+      ],
+      "explanation": "The key belongs to the producer and not to the holder. In the resolved Compose runtime `produceState` is `remember { mutableStateOf(initialValue) }` plus `LaunchedEffect(key1)` over that state, and the `remember` is given no keys at all. A key change therefore does what the documentation says — the running producer is cancelled and re-launched with the new input — while the state it was writing into is the same object it was before, still holding the last value written to it. Measured on this project's configured toolchain, the producer log read `[A, B]` after the key changed while the returned state still read the value produced under `A`, and only the new producer's own write changed it. `initialValue` establishes what the state holds when the holder is first created and is not reapplied afterwards, so the screen shows the previous question's preview under the new question's id until the new load writes. Nor is the restart deferred: the replacement producer is launched as part of the same key change rather than waiting for the cancelled one. A screen that must show a loading state again has to write it as the first statement of each producer lifetime.",
+      "sources": [
+        {
+          "title": "Compose runtime ProduceState source",
+          "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/ProduceState.kt"
+        },
+        {
+          "title": "Side-effects in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/side-effects"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_required_lifetime_exceeds_the_composition",
+      "topicId": "android_ui",
+      "subtopicId": "compose_side_effects",
+      "text": "When the learner taps Submit, an assessment upload must complete even if they navigate away immediately, and a confirmation should appear if the screen is still composed. Which of these gives the upload the lifetime that the requirement names?",
+      "answers": [
+        {
+          "id": "compose_required_lifetime_exceeds_the_composition_a",
+          "text": "`rememberCoroutineScope` with `launch` from the tap, because that scope is cancelled only once the whole Composition is disposed."
+        },
+        {
+          "id": "compose_required_lifetime_exceeds_the_composition_b",
+          "text": "None of them, because each ends with its call site, so the upload needs an owner that outlives the Composition."
+        },
+        {
+          "id": "compose_required_lifetime_exceeds_the_composition_c",
+          "text": "`LaunchedEffect` keyed on a `submitted` flag, because an effect always runs to completion once its block has started."
+        },
+        {
+          "id": "compose_required_lifetime_exceeds_the_composition_d",
+          "text": "`produceState` keyed on the submission, because its `State` is remembered independently of the keys that restart it."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "ADVANCED",
+      "correctAnswerIds": [
+        "compose_required_lifetime_exceeds_the_composition_b"
+      ],
+      "explanation": "Answer the lifetime question before naming a mechanism, and this requirement rules out the whole composition-owned family. A remembered scope is documented as cancelled when the call leaves the Composition — not when the Composition as a whole is disposed — so navigating away cancels the upload it launched. `LaunchedEffect` is the same boundary from the other side: its coroutine is cancelled when its position leaves the Composition, and a key change cancels the running coroutine before launching the new one, so nothing about an effect promises completion. `produceState` does keep its remembered `State` across a key change, but the producer is a `LaunchedEffect` with the same composition lifetime, and a retained value is not a running upload. Each of these mechanisms is cancelled by the screen going away, which is precisely what they are for and precisely wrong for work that must not stop. The correct outcome is therefore a negative one: the upload belongs to an owner whose lifetime matches the requirement, and only the confirmation — which is meaningful only while a screen is there to show it — stays with the Composition.",
+      "sources": [
+        {
+          "title": "Side-effects in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/side-effects"
+        },
+        {
+          "title": "Compose runtime Effects source",
+          "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
+        },
+        {
+          "title": "Compose runtime ProduceState source",
+          "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/ProduceState.kt"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "compose_durable_flag_repeats_a_transient_effect",
+      "topicId": "android_ui",
+      "subtopicId": "compose_side_effects",
+      "text": "A screen's state carries `saved: Boolean`, which stays true once a save succeeds, and the screen renders `if (state.saved) { LaunchedEffect(state.saved) { snackbar.showSnackbar(\"Answer saved\") } }`. The learner saves once, leaves the screen and returns while the flag still stands, and sees the confirmation a second time. What is the defect?",
+      "answers": [
+        {
+          "id": "compose_durable_flag_repeats_a_transient_effect_a",
+          "text": "The key is too coarse, and keying the effect on a unique identifier for the save would prevent the second lifetime."
+        },
+        {
+          "id": "compose_durable_flag_repeats_a_transient_effect_b",
+          "text": "The effect sits inside the `if`, so the branch re-evaluates its condition, and hoisting the effect above the branch fixes it."
+        },
+        {
+          "id": "compose_durable_flag_repeats_a_transient_effect_c",
+          "text": "A value recording a durable condition was given to a mechanism that executes, and re-entry starts a new effect lifetime."
+        },
+        {
+          "id": "compose_durable_flag_repeats_a_transient_effect_d",
+          "text": "`LaunchedEffect` restarts whenever its composable recomposes, so the confirmation repeats on every recomposition."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "compose_durable_flag_repeats_a_transient_effect_c"
+      ],
+      "explanation": "Rendering a condition again is harmless by design; executing an occurrence again is visible to the user. `saved` answers \"is a successful save currently recorded?\", and nothing in it stops being true, so the screen's owner keeps handing it back. The effect asks a different question — it runs when its position enters the Composition — and the branch enters again every time the screen is rebuilt or returned to while the flag stands, which is a new effect lifetime and another snackbar. The mechanism behaved exactly as documented; the mismatch is that a durable value was wired to something whose contract is execution. No key list repairs that, which is why a unique save identifier does not help: a call site entering the Composition launches whatever key it currently has, and a fresh entry is not a recomposition. Hoisting the effect above the branch changes only when it enters, not how often. And recomposition is not a restart at all: equal keys keep an effect running across recomposition, which is why the second confirmation follows re-entry rather than every frame.",
+      "sources": [
+        {
+          "title": "Side-effects in Compose",
+          "url": "https://developer.android.com/develop/ui/compose/side-effects"
+        },
+        {
+          "title": "Lifecycle of composables",
+          "url": "https://developer.android.com/develop/ui/compose/lifecycle"
+        },
+        {
+          "title": "Compose UI Architecture",
+          "url": "https://developer.android.com/develop/ui/compose/architecture"
+        }
+      ],
+      "status": "ACTIVE"
     }
   ]
 }

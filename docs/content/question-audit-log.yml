@@ -23,6 +23,170 @@
 # records are reserved for questions that were changed or flagged.
 
 audits:
+  - review: Compose effects and screen state Units 7-12 assessment gaps (E25-08)
+    date: 2026-09-15
+    scope: >-
+      A semantic assessment review of the four primary Subtopics of learning Units 7-12 of the
+      Compose curriculum - compose_state_hoisting, compose_udf, compose_state and
+      compose_side_effects - and the seven ACTIVE Questions reached through them, plus the one
+      DEPRECATED Question on those Subtopics (compose_state_001) and the fourteen supporting-only
+      Questions in architecture, async_reactive, lifecycle_navigation, performance, kmp and
+      elsewhere in android_ui that E25-01 and E25-07 named and that were read for duplication
+      review only. NOT a bank-wide audit. Twelve Questions were authored and no existing Question
+      was edited, re-mapped, re-levelled or deprecated; the other 430 questions in
+      shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json were not
+      re-reviewed and their prior verdicts stand.
+    reviewed: 19
+    active: 19
+    retired: 0
+    deterministic_checks: PASS
+    method: |
+      The 20 assessment gap candidates recorded in docs/content/compose-units-7-12-plan.md were
+      re-read against all 22 finished E25 Lessons rather than against the plan, together with
+      every ACTIVE Question already on the relevant primary concept, the DEPRECATED
+      compose_state_001, and the Questions in other Topics that assess adjacent reasoning. Each
+      new Question was then solved from its stem and options alone before correctAnswerIds was
+      consulted, every option was tested for defensibility under the stem as written, and each of
+      the 15 pages the batch cites was opened and the supporting sentence located rather than
+      trusted to a 200. The seven pages cited by the seven existing Questions were opened as well,
+      which is what their source_verified roll-up below records.
+
+      Behavioural claims were executed rather than argued. Two throwaway JVM Compose probes,
+      deleted afterwards, measured against the resolved androidx.compose.runtime:runtime:1.11.2
+      using a Recomposer, a BroadcastFrameClock, a unit Applier and manual frames: that
+      produceState keyed on a changing key restarts its producer (start log [A, B]) while the
+      returned State keeps the value produced under the old key rather than reverting to
+      initialValue, and only the new producer's own write changes it; and that across four
+      composition passes a freshly constructed data-class key produces one effect start while a
+      freshly constructed identity-equality key produces four.
+
+      Contracts were read from the resolved sources jars rather than recalled: ProduceState.kt
+      (an unkeyed remember plus a keyed LaunchedEffect), Composables.kt and Effects.kt (remember
+      key equality, LaunchedEffect built on remember, rememberCoroutineScope cancelled when the
+      call leaves the composition), SnapshotState.kt (rememberUpdatedState and collectAsState),
+      and lifecycle-runtime-compose 2.11.0-beta01 commonMain FlowExt.kt (the STARTED default and
+      the produceState-over-repeatOnLifecycle implementation).
+
+      The playbook's Part 3 anti-cue audit was run over the whole bank and the batch's answer
+      options were reordered afterwards so that twelve new Questions did not key one position.
+      Two of the Part 7 source scripts were run over the whole bank: 323 unique URLs returned
+      HTTP 200 and all 48 fragment citations resolved to a real anchor. The body-length script
+      was not re-run bank-wide; every page this review cited was opened directly instead.
+
+    summary:
+      status:
+        PASS: 19
+        PASS_WITH_MINOR_CHANGES: 0
+        FIXED: 0
+        REVIEW_REQUIRED: 0
+        REPLACE: 0
+      severity:
+        BLOCKER: 0
+        MAJOR: 0
+        MINOR: 0
+      source_verification:
+        VERIFIED: 19
+        PARTIALLY_VERIFIED: 0
+        UNVERIFIED: 0
+        INVALID: 0
+
+    findings: []
+
+    new_questions:
+      note: >-
+        Twelve Questions authored against the 20 gap candidates in
+        docs/content/compose-units-7-12-plan.md. Five gap pairs are one Question each because one
+        scenario requires both halves: GAP-U8-B with GAP-U8-C, GAP-U9-C with GAP-U9-D, and
+        GAP-U10-C with GAP-U12-A. GAP-U7-C was found already assessed by four existing Questions
+        in lifecycle_navigation, and GAP-U10-B, GAP-U11-B, GAP-U11-D and GAP-U12-C are
+        deliberately deferred - the first three because every Question on compose_side_effects
+        also enters Unit 9's practice, where their material is not yet taught, and the fourth
+        because stream_choice_cannot_supply_a_delivery_guarantee already assesses the same
+        conclusion. No gap was split. Each Question was solved independently before its key was
+        read, and the two stem defects that pass found were fixed before the batch landed. Final
+        dispositions are recorded in that document under "Assessment outcomes for E25-08".
+      items:
+        - { n: 431, id: compose_screen_state_lowest_sensible_owner, gap: GAP-U7-A, level: APPLIED }
+        - { n: 432, id: compose_over_hoisted_ui_element_state_cost, gap: GAP-U7-B, level: APPLIED }
+        - { n: 433, id: compose_state_flow_value_read_is_not_observation, gap: GAP-U8-A, level: APPLIED }
+        - { n: 434, id: compose_lifecycle_collection_stops_the_collector_not_the_producer, gap: GAP-U8-B + GAP-U8-C, level: ADVANCED }
+        - { n: 435, id: compose_body_work_has_no_lifecycle_owner, gap: GAP-U9-A, level: APPLIED }
+        - { n: 436, id: compose_effect_key_equality_decides_restart, gap: GAP-U9-B, level: APPLIED }
+        - { n: 437, id: compose_constant_effect_key_is_a_lifetime_claim, gap: GAP-U9-C + GAP-U9-D, level: APPLIED }
+        - { n: 438, id: compose_current_callback_without_restarting_the_effect, gap: GAP-U10-A, level: APPLIED }
+        - { n: 439, id: compose_missing_on_dispose_accumulates_listeners, gap: GAP-U11-A, level: APPLIED }
+        - { n: 440, id: compose_produce_state_key_change_keeps_the_last_value, gap: GAP-U11-C, level: ADVANCED }
+        - { n: 441, id: compose_required_lifetime_exceeds_the_composition, gap: GAP-U12-A + GAP-U10-C, level: ADVANCED }
+        - { n: 442, id: compose_durable_flag_repeats_a_transient_effect, gap: GAP-U12-B, level: APPLIED }
+      pre_merge_fixes: |
+        Two defects were found by solving each finished Question independently, and both were in
+        a distractor rather than in the key.
+
+        compose_body_work_has_no_lifecycle_owner - a first draft used "Compose executes composable
+        bodies in parallel" as a distractor, which the Thinking in Compose page states as a
+        property composables may have, so a reader could defend it from the documentation. A
+        second draft distractor said the body's calls run on the composition's apply dispatcher
+        and delay the frame; composition does precede apply in a frame, so slow body work does
+        delay it and the claim is arguably true in effect. Both were replaced with claims that are
+        checkable and false: that an abandoned composition rolls back what it did, and that
+        Compose suppresses later calls because a body is required to be side-effect free.
+
+        compose_constant_effect_key_is_a_lifetime_claim - a draft distractor proposed wrapping the
+        call site in key(questionId) { } as the repair. That would actually work, because changing
+        the call site's identity makes the effect leave and re-enter, so the option was keyed
+        wrong rather than merely weak. It was replaced with the "a LaunchedEffect is cancelled
+        only when the whole screen leaves the Composition" misreading, which is definitively
+        false.
+
+        A third was caught before authoring rather than after. A draft of
+        compose_lifecycle_collection_stops_the_collector_not_the_producer used "lifecycle-aware
+        collection only gates upstream on Android" as a distractor. The current State and Jetpack
+        Compose page says collectAsStateWithLifecycle "is Android-only", which is true of Google's
+        own distribution context and not of the multiplatform artifact this repository resolves,
+        so the distractor would have been defensible from an authoritative page. The shipped
+        Question keys on the desktop lifecycle mapping and the sharing policy instead, and makes
+        no availability claim at all.
+
+    passed:
+      note: >-
+        The seven ACTIVE Questions reachable through Units 7-12's primary concepts were re-solved
+        against the finished Lessons and none was edited. compose_side_effects_001 and
+        compose_launched_effect_key_restart were re-verified clause by clause against the resolved
+        1.11.2 sources; superseding the first was considered under E25-01's Strategy C and
+        rejected, because narrower replacements land on the same Subtopic and in the same four
+        practice pools, so the change would move the overlap rather than remove it while costing
+        historical identity. Every mapping candidate E25-01 recorded was left in place with a
+        stated reason, and the search for a Question falsely claiming lifecycle-aware collection
+        is Android-only was re-run on the current bank and is still clean.
+      source_verified:
+        - { n: 27, id: compose_state_hoisting_001 }
+        - { n: 28, id: compose_side_effects_001 }
+        - { n: 206, id: compose_launched_effect_key_restart }
+        - { n: 211, id: compose_udf_event_direction }
+        - { n: 225, id: remember_vs_remember_saveable }
+        - { n: 400, id: compose_unremembered_observable_state }
+        - { n: 401, id: compose_state_collection_mutation }
+
+    systemic:
+      - >-
+        Taxonomy, not authoring, is the binding constraint on this Topic now. compose_side_effects
+        is the sole primary concept of fifteen Lessons across four learning Units, so every
+        Question written for any of them lands in all four practice pools, including the earliest.
+        That is why four real gaps are deferred rather than closed: the limit is not what can be
+        written well, it is how much later material Unit 9's practice can absorb.
+      - >-
+        A vendor page can be authoritative and still be wrong for this repository. The State and
+        Jetpack Compose page calls collectAsStateWithLifecycle Android-only while this project
+        resolves a multiplatform artifact that declares it in commonMain and uses it from shared
+        code in fourteen files. Where the two disagree, the resolved artifact settles what is true
+        here - and a Question should avoid keying on the disagreement at all.
+      - >-
+        Learning-content sources decay on the same clock as question sources and are checked far
+        less often. lesson_lifecycle_aware_collection was citing a kotlinlang.org page that now
+        returns 404; the Part 7 liveness script covers only initial_curriculum.json, so nothing
+        would have caught it. Running the same sweep over learning_curriculum.json is cheap and
+        is worth doing whenever learning content is touched.
+
   - review: Coroutines and Flow Units 1-6 assessment gaps (E24-08)
     date: 2026-09-11
     scope: >-

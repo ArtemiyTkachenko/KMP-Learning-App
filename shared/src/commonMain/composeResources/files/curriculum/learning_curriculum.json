@@ -4733,7 +4733,7 @@
           "sources": [
             {
               "title": "Lifecycle in Compose Multiplatform",
-              "url": "https://kotlinlang.org/docs/compose-lifecycle.html"
+              "url": "https://kotlinlang.org/docs/multiplatform/compose-lifecycle.html"
             },
             {
               "title": "Lifecycle-aware Flow collection for Compose",

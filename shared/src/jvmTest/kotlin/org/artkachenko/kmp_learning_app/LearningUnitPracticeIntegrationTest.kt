@@ -264,40 +264,50 @@ internal class LearningUnitPracticeIntegrationTest {
     fun expandedUnitsConfigureOnlyTheirPrimaryConceptsAndDeduplicateProductionQuestions() =
         runUnitPracticeTest {
             val expected = linkedMapOf(
-                "unit_state_and_state_ownership" to (setOf("compose_state", "compose_state_hoisting") to 4),
+                // E25-08 added two Compose-state Questions for Unit 8's collection reasoning and
+                // two `compose_state_hoisting` Questions for Unit 7's screen-scale ownership
+                // reasoning. Both Subtopics are also this shipped E23 Unit's, so its pool grows
+                // from 4 to 8. The two hoisting Questions apply the tests this Unit already
+                // teaches; the two collection Questions are premature here and are recorded as a
+                // documented consequence of the shared Subtopic in the E25 plan.
+                "unit_state_and_state_ownership" to (setOf("compose_state", "compose_state_hoisting") to 8),
                 "unit_recomposition" to (setOf("compose_recomposition") to 3),
                 "unit_identity_keys_and_stability" to (setOf("compose_identity_keys", "compose_stability") to 6),
                 "unit_derived_state_and_expensive_work" to (setOf("compose_derived_state") to 3),
                 "unit_snapshot_fundamentals" to (setOf("compose_snapshot_system") to 4),
-                // E25-03. All four Lessons apply `compose_state`; Flow, lifecycle and KMP
-                // concepts remain supporting context, so the existing three Compose-state
-                // Questions are deduplicated into one Unit practice pool.
-                "unit_observable_state_collection" to (setOf("compose_state") to 3),
-                // E25-04. The four Lessons share one effect concept, so Unit practice is
-                // exactly the two current `compose_side_effects` Questions. The known
-                // cross-Unit semantic overlap is recorded in the E25 plan for E25-08.
+                // E25-03, then E25-08. All four Lessons apply `compose_state`; Flow, lifecycle
+                // and KMP concepts remain supporting context. E25-08 closed GAP-U8-A and the
+                // combined GAP-U8-B/GAP-U8-C, so the three E23 Compose-state Questions are now
+                // joined by two that assess this Unit's own conversion and lifetime reasoning.
+                "unit_observable_state_collection" to (setOf("compose_state") to 5),
+                // E25-04, then E25-08. The four Lessons share one effect concept, so Unit
+                // practice is the whole `compose_side_effects` pool. E25-08 raised that pool
+                // from 2 to 10; three of the new Questions assess this Unit's own reasoning and
+                // the rest belong to Units 10-12, which is the shared-pool consequence the E25
+                // plan records rather than a mapping that may be routed around.
                 "unit_effect_lifecycle_and_launched_effect" to (
-                    setOf("compose_side_effects") to 2
+                    setOf("compose_side_effects") to 10
                 ),
-                // E25-05. Latest-value reading and event-owned triggering remain one
-                // `compose_side_effects` practice scope. Supporting coroutine and lifecycle
-                // mappings must not expand it; E25-08 owns the semantic coverage gap.
+                // E25-05, then E25-08. Latest-value reading and event-owned triggering remain
+                // one `compose_side_effects` practice scope; supporting coroutine and lifecycle
+                // mappings must not expand it. GAP-U10-A now has a Question, and GAP-U10-C is
+                // closed together with GAP-U12-A by the required-lifetime Question.
                 "unit_latest_values_and_event_driven_work" to (
-                    setOf("compose_side_effects") to 2
+                    setOf("compose_side_effects") to 10
                 ),
-                // E25-06. Registration ownership, outward publication, state producers and
-                // the adapter-placement decision are four problems, one Subtopic. Unit
-                // practice therefore stays the same two shared Questions; E25-08 owns the
-                // GAP-U11-* coverage.
+                // E25-06, then E25-08. Registration ownership, outward publication, state
+                // producers and the adapter-placement decision are four problems, one Subtopic,
+                // so Unit practice stays the shared pool. GAP-U11-A and GAP-U11-C now have
+                // Questions; GAP-U11-B and GAP-U11-D are deferred in the E25 plan.
                 "unit_cleanup_synchronization_and_producers" to (
-                    setOf("compose_side_effects") to 2
+                    setOf("compose_side_effects") to 10
                 ),
-                // E25-07. The synthesis Unit takes the same sole primary concept, so all
-                // four effect Units now receive one identical pool. That is the structural
-                // limitation E25-01 recorded rather than something this issue may route
-                // around by re-mapping a Lesson; E25-08 owns the GAP-U12-* response.
+                // E25-07, then E25-08. The synthesis Unit takes the same sole primary concept,
+                // so all four effect Units still receive one identical pool. Equal counts here
+                // are the assertion that the pool really is identical, which is the structural
+                // limitation E25-01 recorded rather than something a re-mapping may hide.
                 "unit_production_ui_effects_and_selection" to (
-                    setOf("compose_side_effects") to 2
+                    setOf("compose_side_effects") to 10
                 ),
                 // E24-02. Five Lessons, five distinct primary concepts, and the cross-Topic
                 // bridges into lifecycle, performance, Android platform and Kotlin stay out

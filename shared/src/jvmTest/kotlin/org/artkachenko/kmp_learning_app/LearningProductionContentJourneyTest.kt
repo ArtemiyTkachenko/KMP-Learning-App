@@ -266,6 +266,57 @@ internal class LearningProductionContentJourneyTest {
     }
 
     /**
+     * The widest authored comparison, read at a desktop-shaped window rather than a phone-shaped one.
+     *
+     * [everyShippedUnitsAuthoredBlocksRenderInTheReader] reads the whole document at 400dp, where
+     * every comparison renders as the stacked compact form. The table form is a different renderer:
+     * it lays every column out at a fixed width inside a horizontal scroll, so the wider the
+     * authored table, the further its content exceeds the reading measure. Nothing exercised that
+     * path over authored content, and the Units that ship the widest decision tables are the newest
+     * ones — a six-column selection table is over 1200dp of content inside a 600dp column.
+     *
+     * The Lesson is derived rather than named, so this follows the widest table the document
+     * actually has. The assertions are what separates the two renderers: the compact form drops the
+     * first header and never scrolls horizontally, so a visible first header plus a genuine scroll
+     * range is the proof that the table form was taken and contained.
+     */
+    @Test
+    fun theWidestAuthoredComparisonStaysInsideTheReadingColumnAsATable() =
+        runProductionJourneyTest(windowWidth = WideWindowWidth, windowHeight = WideWindowHeight) {
+            val (unit, lesson, widest) = ShippedUnits
+                .flatMap { shipped -> shipped.lessons.map { shipped to it } }
+                .flatMap { (shipped, authored) ->
+                    authored.blocks().filterIsInstance<LearningBlock.Comparison>()
+                        .map { Triple(shipped, authored, it) }
+                }
+                .maxByOrNull { it.third.headers.size }
+                ?: error("The learning document authors no comparison blocks.")
+            assertTrue(
+                widest.headers.size >= WideComparisonColumns,
+                "The widest authored comparison has ${widest.headers.size} columns, " +
+                    "so this journey no longer meets a table wider than the reading column.",
+            )
+
+            openShippedLesson(unit, lesson)
+
+            // The table form renders every header, including the first, which the compact form
+            // consumes as each row's heading instead.
+            widest.headers.forEach { assertReadable(it) }
+            widest.rows.flatten().forEach { assertReadable(it) }
+
+            val rootWidth = onNodeWithTag(WindowTag).fetchSemanticsNode().boundsInRoot.width
+            assertWithin(LearningLessonReadingColumnTag, rootWidth)
+            assertTrue(
+                assertOverflowScrollsInternally(LearningLessonComparisonTag, rootWidth),
+                "No comparison on ${lesson.id} overflowed its container, so the table form was " +
+                    "either not taken or never met content wider than the reading column.",
+            )
+            // Code blocks are the other renderer that may legitimately exceed the measure, and the
+            // wider window must not have let one of them widen the page either.
+            assertOverflowScrollsInternally(LearningLessonCodeBlockTag, rootWidth)
+        }
+
+    /**
      * A Source the shipped Lesson really carries, opened the way the app really opens it.
      *
      * The URL is never compared against a literal: it is read from the bundle, so re-pointing an
@@ -489,6 +540,8 @@ private fun ComposeUiTest.assertOverflowScrollsInternally(tag: String, rootWidth
  */
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 private fun runProductionJourneyTest(
+    windowWidth: Dp = WindowWidth,
+    windowHeight: Dp = WindowHeight,
     block: suspend ComposeUiTest.(openedUris: List<String>) -> Unit,
 ) {
     synchronized(appIntegrationMainDispatcherLock) {
@@ -496,7 +549,7 @@ private fun runProductionJourneyTest(
         Dispatchers.setMain(Dispatchers.Unconfined)
         var database: CurriculumDatabase? = null
         try {
-            runSkikoComposeUiTest(size = Size(WindowWidth.value, WindowHeight.value)) {
+            runSkikoComposeUiTest(size = Size(windowWidth.value, windowHeight.value)) {
                 val db = Room.inMemoryDatabaseBuilder<CurriculumDatabase>()
                     .setDriver(BundledSQLiteDriver())
                     .build()
@@ -529,7 +582,7 @@ private fun runProductionJourneyTest(
                             CompositionLocalProvider(
                                 LocalUriHandler provides RecordingUriHandler(openedUris),
                             ) {
-                                Box(Modifier.size(WindowWidth, WindowHeight).testTag(WindowTag)) {
+                                Box(Modifier.size(windowWidth, windowHeight).testTag(WindowTag)) {
                                     App()
                                 }
                             }
@@ -669,6 +722,15 @@ private suspend fun ComposeUiTest.openShippedUnit(unit: LearningUnit = ShippedUn
     waitForTag(learningLessonRowTag(unit.lessons.first().id))
 }
 
+/** Learn -> the Topic -> a Unit -> one named Lesson, wherever it sits in the Unit's list. */
+@OptIn(ExperimentalTestApi::class)
+private suspend fun ComposeUiTest.openShippedLesson(unit: LearningUnit, lesson: LearningLesson) {
+    openShippedUnit(unit)
+    onNode(hasScrollAction()).performScrollToNode(hasTestTag(learningLessonRowTag(lesson.id)))
+    onNodeWithTag(learningLessonRowTag(lesson.id)).performClick()
+    waitForText(lesson.title)
+}
+
 @OptIn(ExperimentalTestApi::class)
 private suspend fun ComposeUiTest.openFirstShippedLesson(unit: LearningUnit = ShippedUnit) {
     openShippedUnit(unit)
@@ -706,6 +768,16 @@ private const val TextSnippetLength = 40
 private const val WindowTag = "learning_journey_window"
 private val WindowWidth: Dp = 400.dp
 private val WindowHeight: Dp = 900.dp
+
+/**
+ * A desktop-shaped window, which is where the reading column is wide enough for a comparison to
+ * render as a table rather than as the compact stack, and where this project is actually run.
+ */
+private val WideWindowWidth: Dp = 1100.dp
+private val WideWindowHeight: Dp = 1000.dp
+
+/** Enough columns that the table form cannot fit the reading measure at any supported width. */
+private const val WideComparisonColumns = 4
 
 /** Shipped identities, not fixtures: see the class comment. */
 private const val ShippedUnitId = "unit_thinking_in_compose"

@@ -416,6 +416,98 @@ internal class LearningUnitPracticeIntegrationTest {
         }
 
     /**
+     * E25-09: the four effect Units resolve one pool, and it is the *same* pool.
+     *
+     * The expectation table above states a count of ten for each of Units 9-12, and equal counts
+     * are not the claim the E25 plan actually makes. Four Units whose Lessons all take
+     * `compose_side_effects` as their sole primary concept receive one identical set of Questions,
+     * and a learner finishing Unit 9 is therefore handed material Units 10-12 have not taught yet.
+     * That is an accepted structural limitation of the taxonomy's granularity rather than a defect,
+     * and the way to keep an accepted limitation honest is to assert it: if a later change splits
+     * the concept, re-maps a Lesson or files a Question elsewhere, the identity below fails and the
+     * limitation has to be re-stated rather than quietly drifting.
+     *
+     * The same pass states the two things a count cannot: that each of E25-08's twelve Questions
+     * reaches the Unit whose material it assesses, and that the one DEPRECATED Question sitting on
+     * an E25 primary concept reaches none of them.
+     */
+    @Test
+    fun theFourEffectUnitsResolveOneIdenticalPoolAndExcludeRetiredQuestions() = runUnitPracticeTest {
+        suspend fun reach(unitId: String): Set<String> {
+            val builder = builder(PracticeBuilderTarget.LearningUnit(unitId))
+            builder.settled()
+            builder.selectQuestionCount(
+                assertIs<PracticeAvailability.Available>(builder.uiState.value.availability)
+                    .eligibleQuestionCount,
+            )
+            builder.settled()
+            return selectedQuestions(builder.start()).map { it.id }.toSet()
+        }
+
+        val effectUnits = listOf(
+            "unit_effect_lifecycle_and_launched_effect",
+            "unit_latest_values_and_event_driven_work",
+            "unit_cleanup_synchronization_and_producers",
+            "unit_production_ui_effects_and_selection",
+        )
+        val pools = effectUnits.associateWith { reach(it) }
+        val shared = pools.getValue(effectUnits.first())
+        pools.forEach { (unitId, pool) ->
+            assertEquals(
+                shared,
+                pool,
+                "$unitId no longer receives the same pool as ${effectUnits.first()}.",
+            )
+        }
+        // Without this the equality above would hold just as well for four empty pools.
+        assertTrue(shared.size > 1, "The shared effect pool reached at most one Question.")
+
+        // Each of E25-08's twelve Questions, in the Unit whose reasoning it assesses. The effect
+        // Questions are asserted against the shared pool because that is what all four receive.
+        listOf(
+            "compose_body_work_has_no_lifecycle_owner",
+            "compose_effect_key_equality_decides_restart",
+            "compose_constant_effect_key_is_a_lifetime_claim",
+            "compose_current_callback_without_restarting_the_effect",
+            "compose_missing_on_dispose_accumulates_listeners",
+            "compose_produce_state_key_change_keeps_the_last_value",
+            "compose_required_lifetime_exceeds_the_composition",
+            "compose_durable_flag_repeats_a_transient_effect",
+        ).forEach { assertContains(shared, it) }
+
+        val screenState = reach("unit_production_screen_state_and_udf")
+        listOf(
+            "compose_screen_state_lowest_sensible_owner",
+            "compose_over_hoisted_ui_element_state_cost",
+        ).forEach { assertContains(screenState, it) }
+
+        val collection = reach("unit_observable_state_collection")
+        listOf(
+            "compose_state_flow_value_read_is_not_observation",
+            "compose_lifecycle_collection_stops_the_collector_not_the_producer",
+        ).forEach { assertContains(collection, it) }
+
+        // The same two collection Questions also enter the shipped E23 state Unit, because
+        // `compose_state` is that Unit's primary concept too and E25 invented no new Subtopic to
+        // route around it. E23 does not teach Flow collection, so this is the second accepted
+        // structural limitation the plan records — asserted here so it cannot be lost silently.
+        val e23State = reach("unit_state_and_state_ownership")
+        listOf(
+            "compose_state_flow_value_read_is_not_observation",
+            "compose_lifecycle_collection_stops_the_collector_not_the_producer",
+        ).forEach { assertContains(e23State, it) }
+
+        // A DEPRECATED Question stays out of every pool its Subtopic would otherwise reach.
+        listOf(screenState, collection, e23State, shared).forEach { pool ->
+            assertFalse(
+                "compose_state_001" in pool,
+                "A DEPRECATED Question reached Unit practice.",
+            )
+        }
+        assertEquals(0, attemptCount())
+    }
+
+    /**
      * E24-08: the three mapping corrections, asserted as routing rather than as metadata.
      *
      * A Subtopic mapping is only visible to a learner through which Unit's practice a Question

@@ -44,6 +44,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_effect_lifecycle_and_launched_effect",
                 "unit_latest_values_and_event_driven_work",
                 "unit_cleanup_synchronization_and_producers",
+                "unit_production_ui_effects_and_selection",
                 "unit_coroutines_and_structured_concurrency",
                 "unit_context_dispatchers_and_concurrency",
                 "unit_cancellation_failure_and_coordination",
@@ -67,6 +68,7 @@ internal class BundledLearningCurriculumTest {
                 "Effect Lifecycle and LaunchedEffect",
                 "Latest-Value Effects and Event-Driven Coroutine Work",
                 "Cleanup, External Synchronization and State Producers",
+                "Production UI Effects and Mechanism Selection",
                 "Coroutine Fundamentals and Structured Concurrency",
                 "Coroutine Context, Dispatchers and Concurrent Work",
                 "Cancellation, Failure and Coordination",
@@ -81,6 +83,7 @@ internal class BundledLearningCurriculumTest {
         // rather than as one value: the document now spans two home Topics.
         assertEquals(
             listOf(
+                "android_ui",
                 "android_ui",
                 "android_ui",
                 "android_ui",
@@ -215,6 +218,18 @@ internal class BundledLearningCurriculumTest {
                 "lesson_flow_adapter_or_compose_producer",
             ),
             unit("unit_cleanup_synchronization_and_producers").lessons.map { it.id },
+        )
+
+        // Unit 12 is the synthesis: the decision first, then the state-versus-occurrence
+        // distinction it exposes, then the delivery question the Compose boundary cannot
+        // answer on its own.
+        assertEquals(
+            listOf(
+                "lesson_choosing_a_compose_mechanism",
+                "lesson_transient_ui_effects",
+                "lesson_transient_effect_delivery",
+            ),
+            unit("unit_production_ui_effects_and_selection").lessons.map { it.id },
         )
 
         // The coroutines Unit reads as one argument, so its order is the argument:
@@ -464,6 +479,17 @@ internal class BundledLearningCurriculumTest {
         assertEquals(
             List(4) { listOf("compose_side_effects") },
             unit("unit_cleanup_synchronization_and_producers").lessons.map {
+                it.primarySubtopicIds
+            },
+        )
+
+        // Unit 12 decides between the mechanisms rather than teaching another one, and the
+        // taxonomy still offers exactly one concept for that. Mapping the delivery Lesson
+        // primarily to a stream concept would route E24's Questions into an E25 Unit, so
+        // the shared pool stays shared and E25-08 answers it as assessment work.
+        assertEquals(
+            List(3) { listOf("compose_side_effects") },
+            unit("unit_production_ui_effects_and_selection").lessons.map {
                 it.primarySubtopicIds
             },
         )
@@ -746,6 +772,69 @@ internal class BundledLearningCurriculumTest {
                 "lesson_snapshot_flow",
             ),
             lessons.getValue("lesson_flow_adapter_or_compose_producer").relatedLessonIds,
+        )
+    }
+
+    @Test
+    fun mechanismSelectionUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        assertEquals(
+            listOf(
+                listOf("compose_state", "compose_state_hoisting", "compose_udf"),
+                listOf("coroutine_scope", "compose_state", "sharedflow"),
+                listOf("sharedflow", "hot_vs_cold_streams", "state_ownership", "stateflow"),
+            ),
+            unit("unit_production_ui_effects_and_selection").lessons.map {
+                it.supportingSubtopicIds
+            },
+        )
+    }
+
+    @Test
+    fun theSynthesisLessonLinksBackToEveryLessonItSynthesises() = runTest {
+        // The one place in the document where a broad related-Lesson list is intentional:
+        // L12.1 is the decision across all five earlier Units of this epic, so every one of
+        // their Lessons is a place the mechanics live. Omitting one silently would leave a
+        // mechanism the decision reaches with nowhere to read it.
+        val expected = listOf(
+            "unit_production_screen_state_and_udf",
+            "unit_observable_state_collection",
+            "unit_effect_lifecycle_and_launched_effect",
+            "unit_latest_values_and_event_driven_work",
+            "unit_cleanup_synchronization_and_producers",
+        ).flatMap { unitId -> unit(unitId).lessons.map { it.id } } +
+            listOf("lesson_work_outside_composition", "lesson_snapshot_flow")
+
+        assertEquals(
+            expected,
+            unit("unit_production_ui_effects_and_selection").lessons
+                .single { it.id == "lesson_choosing_a_compose_mechanism" }
+                .relatedLessonIds,
+        )
+    }
+
+    @Test
+    fun theDeliveryLessonLinksBackToTheStreamArgumentsItApplies() = runTest {
+        val lessons = unit("unit_production_ui_effects_and_selection").lessons.associateBy { it.id }
+
+        assertEquals(
+            listOf(
+                "lesson_screen_state_and_ui_events",
+                "lesson_launched_effect",
+                "lesson_remember_coroutine_scope",
+                "lesson_who_owns_the_trigger",
+            ),
+            lessons.getValue("lesson_transient_ui_effects").relatedLessonIds,
+        )
+        // The delivery argument is E24's, and this Lesson applies it at the Compose boundary
+        // rather than restating it, so the two stream Lessons are links instead of prose.
+        assertEquals(
+            listOf(
+                "lesson_transient_ui_effects",
+                "lesson_lifecycle_aware_collection",
+                "lesson_shared_flow",
+                "lesson_choosing_a_stream_abstraction",
+            ),
+            lessons.getValue("lesson_transient_effect_delivery").relatedLessonIds,
         )
     }
 

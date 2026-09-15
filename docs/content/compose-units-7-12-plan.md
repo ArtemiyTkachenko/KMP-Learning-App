@@ -2017,3 +2017,269 @@ Unit 12 may link backwards to all of them. Unit 12 still owns: the mechanism-sel
 itself, transient UI effects, and the delivery question. Two facts Unit 12 should not re-derive
 are the `produceState` key-change value and the `SideEffect` successful-composition contract;
 both are established here and should be cited rather than restated.
+
+### E25-07 — Unit 12
+
+`unit_production_ui_effects_and_selection`, **Production UI Effects and Mechanism Selection**,
+shipped under `android_ui` immediately after `unit_cleanup_synchronization_and_producers`, which
+completes this epic's six-Unit instructional sequence. Its three planned Lessons shipped in the
+planned order with unchanged identities and titles: `lesson_choosing_a_compose_mechanism`,
+**Choosing the Smallest Sufficient Mechanism**; `lesson_transient_ui_effects`, **Rendering State
+and Running a Transient Effect**; and `lesson_transient_effect_delivery`, **What Delivery
+Guarantee Does This Occurrence Need?** No Question, taxonomy entry, new effect API, Flow or
+`Channel` curriculum, event-wrapper or ViewModel event pattern, navigation API, DI or testing
+material was added, and no E25-08 work was begun.
+
+**Mappings.** All three Lessons keep `compose_side_effects` as their sole primary Subtopic, with
+the plan's supporting mappings unchanged: L12.1 with `compose_state`, `compose_state_hoisting`
+and `compose_udf`; L12.2 with `coroutine_scope`, `compose_state` and `sharedflow`; L12.3 with
+`sharedflow`, `hot_vs_cold_streams`, `state_ownership` and `stateflow`. No Lesson lists a
+Subtopic as both primary and supporting, and every E24 and architecture concept stays supporting
+so that no E25 Unit imports another Topic's practice.
+
+**Versions rechecked on 2026-09-15.** `gradle/libs.versions.toml` still declares Kotlin 2.4.10,
+Compose Multiplatform 1.11.1, Material 3 1.11.0-alpha07, lifecycle 2.11.0-beta01,
+kotlinx.coroutines 1.11.0 and AGP 9.0.1, and `./gradlew :shared:dependencyInsight --configuration
+jvmRuntimeClasspath --dependency androidx.compose.runtime:runtime` still resolves
+**`androidx.compose.runtime:runtime:1.11.2`**. Nothing changed since E25-06, so no dependency
+investigation was repeated.
+
+**Sources.** Unit 12 required far less new research than Units 8–11 because almost every claim is
+inherited. The two external pages the wording actually depends on were re-read on 2026-09-15.
+*Side-effects in Compose* supplies the over-use caution L12.1's Senior section quotes — effects
+are easily overused, and the work done in one should be UI-related and should not break
+unidirectional data flow — and its framing of a one-off event such as showing a snackbar or
+navigating given a state condition. *UI events* supplies the one delivery claim L12.3 takes from
+Android guidance rather than from E24: when the producer outlives the consumer, these solutions
+do not guarantee the delivery and processing of those events. The `SharedFlow` and
+`MutableSharedFlow.tryEmit` reference pages are cited for the `tryEmit` result contract. **No
+runtime probe was run**, because the Unit introduces no new behavioural claim: the `SideEffect`
+successful-composition contract and the `produceState` key-change value are cited from E25-06,
+and the `tryEmit`-with-no-subscriber and no-replay results are cited from E24's measurements
+rather than re-measured.
+
+**L12.1 — the decision.** The Lesson is built from requirements rather than from an API
+catalogue. Core states the four decision facts — who owns the state, who owns the trigger, what
+lifetime is required, what has to be released — and then an ordered sequence of eight questions
+stopped at the first one a requirement answers: is there state to render and who owns it; is an
+external observable value driving rendering; what starts imperative or suspend work; does
+long-lived work need a current value without a new lifetime; does the Composition acquire
+something that must be given back; does non-Compose code need the successfully composed value;
+does an external producer have to become Compose `State`; and must the work outlive this
+Composition. Practical works three screens from this app's own practice flow in full prose with
+code and all four facts each — an explanation panel that needs only local `remember` and a
+directly rendered parameter, a countdown that needs `LaunchedEffect(questionId)` *and*
+`rememberUpdatedState` for two separate reasons, and a Show-hint tap that needs only a remembered
+scope — and then a thirteen-row table whose columns are Requirement, State owner, Trigger owner,
+Required lifetime, What is released, Smallest sufficient mechanism.
+
+**Every required outcome is reachable, and each is a table row plus a fact-by-fact derivation:**
+ordinary rendering (row 1), local state (row 2), hoisted state (row 3), `collectAsState` (row 4),
+`collectAsStateWithLifecycle` (row 5), `LaunchedEffect` (row 6), `rememberUpdatedState` (row 7),
+`rememberCoroutineScope` (row 8), `DisposableEffect` (row 9), `SideEffect` (row 10), `produceState`
+with `awaitDispose` (row 11), a reusable Flow below the UI followed by ordinary collection (row
+12), and "none of these — the owner is outside the Composition" (row 13). Rows 6 and 7 are
+deliberately the same screen split across two facts, and row 12 is row 11 with the ownership fact
+changed, which is the Lesson's argument that the table is output rather than a lookup.
+
+**Smallest-sufficient treatment.** The principle is stated in Core ("an unnecessary effect is not
+free"), demonstrated in Practical by two screens whose correct answer contains no effect at all,
+and enumerated in Senior as six real over-reaches: writing an already-available value into state
+from an effect; introducing a screen-level owner for a value one composable owns; collecting a
+stream by hand in a `LaunchedEffect`; turning an event into persistent state so an effect can
+watch it; reaching for `produceState` because a callback is involved when the registration
+produces no `State`; and adding a key to keep a value current. A `COMMON_MISTAKE` callout rejects
+the power-ranking reading of the mechanisms outright.
+
+**The negative result.** Senior treats "must the work outlive the screen" as a correct outcome
+rather than a dead end, names the committed-submission, durable-save, in-flight-upload and
+payment cases, and explains it from the mechanism contracts — a remembered scope is cancelled
+when the call leaves the Composition and an effect when its position does, which is exactly wrong
+for work that must not stop. It then stops: the owner's identity, construction and placement are
+named as the architecture curriculum's decision.
+
+**L12.2 — state against occurrence.** Core separates a condition, which is rendered and repeats
+harmlessly, from an occurrence, which is executed and does not; lists current-state examples
+(selected question, loading, a validation message that should stay visible, the active filter)
+and occurrence examples (snackbar, focus, scroll or animation, a navigation request); and refuses
+to classify from widget type, using a dialog that is a condition in one requirement and an
+occurrence in another. **The duplicate-fire scenario** is the issue's shape rather than Unit 10's:
+`EditorScreenState(draft, saved)` with `if (state.saved) { LaunchedEffect(state.saved) { … } }`.
+The concrete behaviour taught is that the branch entering the Composition with `saved == true`
+starts an effect lifetime, and every later entry with the same value — a rebuilt screen collecting
+the current state again, a return while the flag still stands, the branch leaving and re-entering
+— starts another one and runs the snackbar again, although the learner saved once. The Lesson
+states explicitly that this is not a defect in the API or the key: the value answers "is a
+successful save currently recorded?" while the requirement asked "did a save just happen?", and no
+key list expresses a difference the value does not carry. A three-row table contrasts repeating
+`isSaving`, repeating `errorMessage` and repeating `saved`.
+
+**Transient mechanisms and why.** L12.2 refuses both slogans: a `COMMON_MISTAKE` callout rejects
+"transient effects use `LaunchedEffect`" and "transient effects use `rememberCoroutineScope`"
+together, and the trigger question from Unit 10 remains the decider — a tap that scrolls, focuses
+or confirms is event-owned and launched from a remembered scope, while a composition state that
+genuinely means "this screen now represents something that should be announced" is
+composition-owned and keyed. **Navigation** appears as exactly one paragraph: a navigation request
+is one more piece of UI work that happens once, whose duplication is visible as a duplicated
+destination, and destinations, routes and the back stack are named as the navigation curriculum's
+subject with nothing in the reasoning depending on them.
+
+**No overcorrection, and the handoff.** Senior rejects "one-off things must never be state" using
+a completed payment that must render correctly after the app is reopened, and identifies the
+editor screen's actual defect as a stored fact wired to a mechanism that executes. It then hands
+off: before turning an occurrence into transient UI execution, ask what has to be true if nobody
+is there to execute it.
+
+**Architecture boundary in L12.2.** `architecture_ui_event_consumption` was read in full before
+authoring. L12.2 demonstrates the same class of failure from the Compose consumer side and
+deliberately does not reproduce that Question's modelling solution: it names the requirement
+("something has to decide what the occurrence requires") without prescribing event-as-UI-state,
+consumption marking, or any holder. The ownership boundary is stated in prose — whether the
+occurrence is carried in screen state, recorded as handled, or delivered another way is an
+application-architecture decision the architecture curriculum owns.
+
+**L12.3 — the delivery question.** Core insists on the order (requirement first, mechanism
+second), makes the absence concrete with a backgrounded practice session whose result is produced
+while no screen is composed, and asks the six requirement questions: must it still happen, may it
+be discarded, may a later screen observe it, may more than one observer act on it, is repeating it
+harmful, and does anything have to record that it was handled. It notes that "events are being
+lost, so add replay" answers only the third and quietly changes the answer to the fifth.
+
+**Exact E24 facts applied without reteaching.** Two, both cited rather than re-derived. First,
+`tryEmit` returning `true` on an unbuffered shared flow with no subscriber means the flow accepted
+the call and the value is gone at once — E24 measured it on this project's toolchain, and L12.3
+adds only the Compose-side consequence that a UI effect cannot execute what the UI never received,
+so a log line written from a `true` result is evidence about the producer and not about the
+screen. Second, retention: replay changes what a later subscriber can recover and does not make an
+occurrence delivered or delivered once, because a recreated screen is a new collector that reads
+what was retained. **Replay is explicitly not taught as the fix for a lost event**; a
+`COMMON_MISTAKE` callout names the trade (a missed confirmation becomes a repeated one) and says a
+repeated charge or destination is worse than a missed toast. No API matrix, no buffer taxonomy and
+no second `SharedFlow` lesson was written.
+
+**Three outcome classes.** A table maps the UI-absent requirement to what the occurrence is and
+where the answer lives, followed by one paragraph each. *Ephemeral UI-only* — a score animation, a
+non-essential confirmation, a focus request — where "nothing needs to happen" is a decision, and
+the previous Lesson's mechanisms suffice. *Current truth* — "there is an unfinished practice
+session", "the last submission failed" — reclassified as state, with the stream curriculum's
+current-value reasoning named and **no holder prescribed**. *Must survive absence* — persistence,
+acknowledgement, queueing, retries, a durable record or guaranteed later handling — declared
+outside the Compose boundary, supported by the Android UI-events statement that solutions of this
+shape do not guarantee delivery and processing when the producer outlives the consumer, and then
+stopped.
+
+**Slogan corrections.** Senior retires "one stream type is for state and another for events" by
+saying which half is right and why the other half promises a guarantee no broadcast stream
+provides, retires "a channel is for events" as the same mistake with a different type, and rejects
+treating a broadcast stream as the standard one-off-event mechanism as the same claim with the
+reasoning removed. It then states the general form — a stream type describes delivery, a
+requirement describes handling, and no description of delivery answers a question about handling —
+and lists the deciding dimensions as E24's, not this Unit's. **The consumer-side distinction is
+explicit**: the stream Lessons ask what an abstraction delivers, and L12.3 asks whether that
+delivery satisfies the requirement given that this UI exists for only part of the time.
+
+**E26 endpoint.** L12.3 ends on a sentence rather than an architecture — choose an owner whose
+lifetime and delivery guarantees actually match the requirement — and names which owner, how the
+occurrence is recorded, how handling is marked and how the UI consumes it as the architecture
+curriculum's questions. No event wrapper, consumable-event class, MVI effect channel, ViewModel
+`Channel` pattern, event bus, persistent queue, repository event store, acknowledgement design,
+durable event schema or reducer appears anywhere in the Unit.
+
+**Cross-links.** All links are backward. **L12.1 links to all nineteen earlier E25 Lessons** in
+production order — the four of Unit 7, the four of Unit 8, the four of Unit 9, the three of Unit
+10 and the four of Unit 11 — plus `lesson_work_outside_composition`, which the intended-graph
+table requires. One addition beyond that table is recorded deliberately: `lesson_snapshot_flow` is
+appended as the twenty-first link, because that shipped Lesson's forward pointer says the effect
+APIs as a family and how to choose between them are a later unit's subject, and L12.1 is the
+Lesson that fulfils it. `lesson_snapshot_flow` itself was **not** edited, as E25-01 directed. L12.2
+links to `lesson_screen_state_and_ui_events`, `lesson_launched_effect`,
+`lesson_remember_coroutine_scope` and `lesson_who_owns_the_trigger`. L12.3 links to
+`lesson_transient_ui_effects`, `lesson_lifecycle_aware_collection`, `lesson_shared_flow` and
+`lesson_choosing_a_stream_abstraction` — the two E24 arguments the plan requires, plus the two E25
+Lessons whose reasoning the delivery question actually uses, and nothing more, so
+`relatedLessonIds` does not become a bibliography. No shipped Lesson was edited by this issue.
+
+**Semantic Question review.** The two ACTIVE Questions reachable through `compose_side_effects`
+were re-read in full and re-solved against the finished Lessons, and the pool is still exactly
+`compose_side_effects_001` and `compose_launched_effect_key_restart` — current `main` added
+nothing to this Subtopic and there is still no DEPRECATED Question on it.
+`compose_side_effects_001` (FOUNDATION, MULTIPLE) remains correct, correctly mapped and correctly
+levelled; Unit 12 teaches none of its four clauses as new material and receives it structurally
+through the shared primary concept. `compose_launched_effect_key_restart` (FOUNDATION) remains
+correct and is still Unit 9's reasoning. **Neither assesses anything Unit 12 teaches**: neither
+requires choosing between mechanisms, distinguishing a rendered condition from an executed
+occurrence, or reasoning about delivery when the UI is absent. The five adjacent Questions the
+issue named were also re-read and none is Unit 12 practice — `durable_state_vs_one_off_event`
+(`architecture`/`state_ownership`) owns the durable-versus-consumable modelling decision;
+`architecture_ui_event_consumption` (`architecture`/`mvi`) owns the replayed-navigation
+consumption failure; `shared_flow_try_emit_true_is_not_delivery` and
+`shared_flow_replay_late_subscriber` (`async_reactive`/`sharedflow`) own the emitter-side
+`tryEmit` and replay contracts; and `stream_choice_cannot_supply_a_delivery_guarantee`
+(`async_reactive`/`hot_vs_cold_streams`) owns the "write it where it outlives the process"
+conclusion. Unit 12 bridges to all five and duplicates none of their reasoning; **no Question was
+edited**, and no Question's wording was copied into a Lesson.
+
+**GAP-U12-* status. All three remain open for E25-08**, because teaching a concept does not create
+assessment. GAP-U12-A (choosing a mechanism from a stated requirement across the whole family) —
+L12.1 now teaches it with thirteen reachable outcomes and the four decision facts, and nothing
+assesses it; still the highest-priority Unit 12 gap. GAP-U12-B (the Compose-side distinction
+between rendering current state and executing a transient effect) — L12.2 now teaches it with a
+concrete duplicate-fire behaviour, and the adjacent architecture Questions remain supporting-only,
+so they create no Unit practice. GAP-U12-C (what a transient occurrence requires when the UI is
+absent, posed from the Compose side) — L12.3 now teaches it as a decision, and E24 still assesses
+only the emitter's half. **No new gap id was created.** Finished authoring exposed no distinct
+unrecorded reasoning: the smallest-sufficient principle and the "no composition-owned mechanism"
+outcome are both part of GAP-U12-A's decision, and the emission-is-not-delivery and replay
+corrections are both part of GAP-U12-C's, so adding ids for them would be duplication rather than
+a finding.
+
+**Final Units 9–12 shared-pool shape, now fully realised.** `compose_side_effects` is the sole
+primary concept of fifteen Lessons across four Units — 4 in Unit 9, 3 in Unit 10, 4 in Unit 11 and
+3 in Unit 12 — so **all four Units receive one identical two-Question practice pool**, and any
+Question written on this Subtopic for any of them lands in all four. Unit 12's own reasoning is
+the sharpest case in the epic, because mechanism selection across the family is by construction
+unanswerable from Unit 9 alone and yet appears in Unit 9's practice. **This is not a defect
+E25-07 may fix**: no taxonomy id was invented, L12.3 was not re-mapped primarily to `sharedflow`,
+L12.1 was not re-mapped to an earlier Compose primary, and no Question was moved for routing.
+E25-01's four recommendations stand unchanged and E25-08 owns the deliberate response.
+
+**E25 instructional total verified against production, not against this plan.** The shipped
+document now holds **18 active Units and 72 active Lessons**, of which E25's six Units hold
+**22 Lessons**: Unit 7 four, Unit 8 four, Unit 9 four, Unit 10 three, Unit 11 four, Unit 12 three.
+That matches the count E25-01 fixed. The `android_ui` production order is Units 1–6 unchanged,
+then `unit_production_screen_state_and_udf`, `unit_observable_state_collection`,
+`unit_effect_lifecycle_and_launched_effect`, `unit_latest_values_and_event_driven_work`,
+`unit_cleanup_synchronization_and_producers`, `unit_production_ui_effects_and_selection`. No
+earlier Unit was reordered, no Lesson id is duplicated, and the JSON change is a pure insertion:
+one added Unit, zero existing Units altered, verified by comparing the parsed `units` list before
+and after with the new entry removed.
+
+**Generated coverage.** `python3 tools/learning_question_coverage.py --write` reports **18 active
+Units and 72 active Lessons**, and lists Unit 12 as three Lessons, one distinct primary concept,
+and two reachable FOUNDATION Questions with no APPLIED or ADVANCED coverage. The full E25 sequence
+appears in the report in production order. That is structural reach through `compose_side_effects`
+only; semantically neither reachable Question assesses mechanism selection, the state-versus-
+occurrence distinction, or the delivery requirement, which is what the GAP-U12-* entries record.
+Nothing in the snapshot was hand-edited.
+
+**Validation run during authoring.** A `python3` round-trip of the production document confirmed
+the pure insertion described above; `./gradlew :shared:dependencyInsight --configuration
+jvmRuntimeClasspath --dependency androidx.compose.runtime:runtime` resolved 1.11.2; the focused
+suite `./gradlew :shared:jvmTest --tests "…curriculum.learning.content.*" --tests
+"…TopicDetailLearningContentTest" --tests "…LearningUnitPracticeIntegrationTest"` passed after the
+count expectations were updated rather than weakened; `python3 tools/learning_question_coverage.py
+--write` then `--check` reported the snapshot current; `cd tools && python3 -m unittest
+test_learning_question_coverage.py` passed 21 tests; `./gradlew :shared:jvmTest` passed 1382 tests
+with the `android_ui` journey grown from 40 to 43 Lessons and the learner-journey totals from 68
+to 71; `./gradlew :shared:allTests` passed Android host, JVM, iOS simulator, JS and Wasm targets
+(448 tests on each non-JVM target, with `iosSimulatorArm64Test` re-run explicitly rather than
+accepted as up to date); and `./gradlew :shared:check` plus `git diff --check` passed on the final
+diff. **No `iosArm64` device-target run and no external CI run is claimed.**
+
+**What E25-08 inherits.** Every E25 Lesson now ships, so the assessment pass can be read against
+finished prose rather than against a plan. The open gaps are GAP-U7-A/B/C, GAP-U8-A/B/C,
+GAP-U9-A/B/C/D, GAP-U10-A/B/C, GAP-U11-A/B/C/D and GAP-U12-A/B/C, and the structural constraint
+that shapes all of the Units 9–12 entries is the single shared `compose_side_effects` pool
+described above. E25-09 still owns the integration review, the terminology sweep across the six
+Units, and the re-reading of the five shipped forward pointers — of which the `lesson_snapshot_flow`
+one is now fulfilled by L12.1's backward link.

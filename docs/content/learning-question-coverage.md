@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `a98e21e94700fff879fe0fe6fb28a251c8ef3a86e065615cd2247eaf2c1e1419` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `f9eb6feb8de44ab0b2898fe8f571622665f6d0259c4ffe94cf944167346d4360` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `caeeab0b5a3687d822a8a48cd260ecb4bb8bfc02fa9ccc268f57b1ef6550e00a` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,12 +68,12 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 19 |
-| Active lessons in those units | 77 |
-| Distinct primary subtopics | 37 |
-| Distinct supporting subtopics | 76 |
-| Unique active questions reached through primary mappings | 96 |
-| Primary subtopics with at least one active question | 36 |
+| Active learning units | 20 |
+| Active lessons in those units | 82 |
+| Distinct primary subtopics | 39 |
+| Distinct supporting subtopics | 78 |
+| Unique active questions reached through primary mappings | 101 |
+| Primary subtopics with at least one active question | 38 |
 | Primary subtopics with no active question | 1 |
 | Active questions in the bank | 401 |
 | Deprecated questions excluded from this report | 41 |
@@ -110,6 +110,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Flow Composition, Timing and Failure (`unit_flow_composition_timing_and_failure`) | 5 | 3 | 4 | 7 | 0 | 11 |
 | StateFlow, SharedFlow and Hot Streams (`unit_stateflow_sharedflow_and_hot_streams`) | 5 | 4 | 4 | 3 | 4 | 11 |
 | Architecture as Responsibilities and Boundaries (`unit_architecture_responsibilities_and_boundaries`) | 5 | 5 | 2 | 3 | 0 | 5 |
+| Screen State Holders, ViewModel and UI State (`unit_screen_state_holders_and_ui_state`) | 5 | 2 | 3 | 2 | 0 | 5 |
 
 ## Unit and lesson detail
 
@@ -1613,6 +1614,104 @@ Supporting context — not primary coverage:
 | `separation_of_concerns` — Separation of concerns | 1 | `architecture` — Application Architecture & Design Principles |
 | `android_modules` — Application/library modules | 1 | `build_delivery` — Build System, Modularization & Delivery |
 | `modularization_tradeoffs` — Benefits and costs of modularization | 2 | `build_delivery` — Build System, Modularization & Delivery |
+
+### Screen State Holders, ViewModel and UI State (`unit_screen_state_holders_and_ui_state`)
+
+Home topic: `architecture` — Application Architecture & Design Principles.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 3 | `state_ownership_001`, `unidirectional_data_flow_001`, `viewmodel_activity_reference_lifetime` |
+| APPLIED | 2 | `architecture_state_holder_taxonomy`, `durable_state_vs_one_off_event` |
+| ADVANCED | 0 | — |
+
+#### What a Screen State Holder Is Responsible For (`lesson_state_holder_responsibility`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `state_ownership` — State ownership | 2 | 2 | 0 | 4 | `architecture_state_holder_taxonomy`, `durable_state_vs_one_off_event`, `state_ownership_001`, `viewmodel_activity_reference_lifetime` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `compose_state_hoisting` — State hoisting | 3 | `android_ui` — UI — Views & Jetpack Compose |
+| `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `kmp_lifecycle_viewmodel` — Multiplatform Lifecycle/ViewModel | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
+| `separation_of_concerns` — Separation of concerns | 1 | `architecture` — Application Architecture & Design Principles |
+
+#### The ViewModel Owner: Lifetime Is Not Persistence (`lesson_viewmodel_lifetime_and_persistence`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `state_ownership` — State ownership | 2 | 2 | 0 | 4 | `architecture_state_holder_taxonomy`, `durable_state_vs_one_off_event`, `state_ownership_001`, `viewmodel_activity_reference_lifetime` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `configuration_changes` — Configuration changes | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `process_death` — Process death and recreation | 1 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `saved_state` — Saved-state mechanisms | 4 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `kmp_lifecycle_viewmodel` — Multiplatform Lifecycle/ViewModel | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
+
+#### Modelling the Current UI State (`lesson_modelling_ui_state`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `state_ownership` — State ownership | 2 | 2 | 0 | 4 | `architecture_state_holder_taxonomy`, `durable_state_vs_one_off_event`, `state_ownership_001`, `viewmodel_activity_reference_lifetime` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `kotlin_sealed_types` — Sealed classes and interfaces | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `error_modeling` — Error representation/modeling | 2 | `architecture` — Application Architecture & Design Principles |
+| `compose_stability` — Stability and skippability | 4 | `android_ui` — UI — Views & Jetpack Compose |
+| `compose_state` — Compose state | 5 | `android_ui` — UI — Views & Jetpack Compose |
+
+#### State Out, Intentions In (`lesson_state_out_intentions_in`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `unidirectional_data_flow` — Unidirectional data flow | 1 | 0 | 0 | 1 | `unidirectional_data_flow_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+| `compose_udf` — Unidirectional data flow in Compose | 1 | `android_ui` — UI — Views & Jetpack Compose |
+| `stateflow` — StateFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+
+#### Work Whose Lifetime Is the Owner's (`lesson_owner_scoped_work`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `state_ownership` — State ownership | 2 | 2 | 0 | 4 | `architecture_state_holder_taxonomy`, `durable_state_vs_one_off_event`, `state_ownership_001`, `viewmodel_activity_reference_lifetime` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `lifecycle_coroutines` — Lifecycle-aware coroutine scopes | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_scope` — CoroutineScope | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `background_api_selection` — Choosing the appropriate background API | 1 | `background_work` — Background Work & OS Constraints |
 
 ## Primary assessment gaps
 

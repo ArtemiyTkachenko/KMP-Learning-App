@@ -14718,6 +14718,1019 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "unit_domain_logic_and_dependency_direction",
+      "topicId": "architecture",
+      "title": "Domain Logic, Use Cases and Dependency Direction",
+      "summary": "The previous unit gave this feature a repository and a data boundary. This one asks whether anything belongs between that boundary and the screen's state owner — and the honest answer is often no. A domain layer is optional: it earns its existence only when reuse, orchestration, isolable business policy or genuine complexity gives it something to own, and the same test applies one level down to a single use-case type. The unit separates those two decisions, distinguishes business policy from framework and infrastructure detail, traces a real source dependency to find out who actually owns an abstraction, and closes on what Clean Architecture's dependency rule requires: a direction, not a diagram and not a number of layers.",
+      "lessons": [
+        {
+          "id": "lesson_when_a_domain_layer_earns_its_place",
+          "title": "When Does Another Layer Earn Its Existence?",
+          "summary": "A domain layer is optional. It sits between the UI layer and the data layer and earns its existence only when there is independent responsibility to put there: reuse across callers, orchestration across repositories, business policy that belongs to neither neighbour, or enough decision-making to deserve one authoritative home. This lesson makes “add it when you need it” actionable by saying what need looks like — on a feature that has none of it, a feature that has all of it, and an honest middle case.",
+          "primarySubtopicIds": [
+            "use_cases"
+          ],
+          "supportingSubtopicIds": [
+            "layered_architecture",
+            "architecture_tradeoffs",
+            "separation_of_concerns"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The previous unit left the borrowed-items feature with a repository. `LoanRepository` decides which source answers a read, when a refresh is attempted and what contract its callers see, and the screen's state owner reads from it. That is two owners with one boundary between them, and every decision so far has been about that boundary. This unit asks a different question, and it is the first one in this subject whose honest answer is often no: does a third owner belong in the middle?"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The candidate has a name. A **domain layer** is an optional layer between the UI layer and the data layer, holding the application's own operations and rules — the behaviour that is neither presentation nor storage. Android's own guidance is unusually direct about the optionality, and the direct sentence is the one most often quoted without its second half: the domain layer \"is an _optional_ layer that sits between the UI layer and the data layer\", and \"You should only use it when needed—for example, to handle complexity or favor reusability.\" The condition is part of the advice. Dropping it is how an optional layer becomes a folder every feature is expected to have."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So the foundations unit's test applies here unchanged, and it is the only test this lesson needs: **a boundary earns its cost when there is independent responsibility on the other side of it.** For a domain layer, that means asking what would live there that does not already belong to the screen's owner or to the data layer. Four answers are worth recognising, because each one is a responsibility that has nowhere better to go."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Reuse across callers.** More than one screen, feature or background owner needs the same operation or the same rule, and there is currently no single place that owns it.",
+                    "**Orchestration.** One application operation coordinates several repositories or several responsibilities, and somebody has to decide the order, what a partial failure means, and what the operation amounts to as a whole.",
+                    "**Business policy worth isolating.** A rule belongs to the application rather than to what a screen is currently rendering or to how a source stores rows, and it changes for its own reasons and on its own schedule.",
+                    "**Meaningful complexity.** The behaviour contains enough decision-making that it deserves one authoritative home instead of being re-derived correctly, or incorrectly, wherever it is needed."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Those are evidence rather than a quota. One of them can be sufficient on its own — a rule that genuinely belongs to the business earns a home even when only one screen currently asks for it — and they frequently arrive together, because an operation that coordinates three repositories usually has a rule attached to the coordination. What none of them supports is any of the three claims that travel with this subject. \"Every production application needs a domain layer\" contradicts the word optional. \"Clean Architecture requires a domain layer\" attributes to that argument a structure it does not prescribe, which the last lesson of this unit takes up properly. And \"there is business logic in this feature, so create a domain package\" answers a question about *where a responsibility belongs* with a question about *whether one exists*: logic that only one screen will ever need, and that changes exactly when that screen's requirements change, has already found its owner."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A domain layer is optional and sits between the UI layer and the data layer. It earns its existence when reuse across callers, orchestration across repositories, isolable business policy, or enough decision-making to need one authoritative home gives it something to own. One condition can be enough; none of them is a quota; and “there is logic somewhere in this feature” is not one of them."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Take a feature with none of the four. The reminder-time preference from the data-ownership unit is one screen, one state holder and one repository over a single trivial source: the reader picks a time of day, it is stored, the screen reads it back. No rule beyond the value being a time, nothing to coordinate, nobody else asking for it. Introduce the layer anyway and the feature looks like this."
+                },
+                {
+                  "type": "code",
+                  "code": "reminder/\n  ReminderSettingsViewModel     the screen owner\n  domain/\n    GetReminderTime             calls the repository, returns what it returned\n    SetReminderTime             calls the repository, returns what it returned\n  ReminderPreferenceRepository  the data boundary",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Ask what the middle layer bought and the honest answer is: architecturally, nothing yet. Every requirement that reaches one side passes straight through to the other, exactly as the mapping layer in the foundations unit did, because the two sides have one reason to change between them. And the cost is not the word complexity; it is a list of things:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "two more types, and two more files to open when reading the feature end to end;",
+                    "two more names to invent, keep distinct from the repository's, and keep accurate when the repository's change;",
+                    "one more navigation hop between the screen owner and the code that does the work, paid on every read by everyone, permanently;",
+                    "one more boundary that has to stay consistent, so a signature change now lands in three places rather than two;",
+                    "a directory named for a responsibility the feature does not have, which tells the next engineer that this feature has business rules somewhere."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The last of those is the only cost that grows: a layer whose name promises policy and contains forwarding teaches everyone reading the codebase that the promise is decorative, which is exactly how the next real rule ends up somewhere else. None of this makes the arrangement \"bad Clean Architecture\", and calling it that would borrow authority the argument does not need. It is a boundary whose cost currently exceeds its benefit under this feature's requirements, and that verdict is allowed to change the day the requirements do."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So change the requirements rather than the code. The library decides that a reader may renew a loan, and renewal turns out to be a real operation: it needs the loan and its current term, the borrower's standing and any unpaid fines, a rule about how many renewals a title allows and how far a due date may be pushed, and then a write consistent with all of it. Three surfaces perform it — the borrowed-items list, the loan detail screen, and the action attached to the due-soon reminder — and a fourth only asks whether it is currently possible, so it can enable or disable a control."
+                },
+                {
+                  "type": "code",
+                  "code": "renewals/\n  RenewLoan              orchestrates the operation, applies the policy, performs the write\n  RenewalEligibility     the rule: may this loan be renewed, and until when\n  RenewalOutcome         what the operation can result in, in the application's own terms\n        │\n        ├── LoanRepository       the loan and its term\n        └── BorrowerRepository   standing and outstanding fines",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This time there is something to own, and all four conditions are visible: three callers reuse the operation, it orchestrates two repositories, the eligibility rule belongs to the library rather than to any screen or either store, and the combination of term, standing, fines and renewal count is enough decision-making to want one authoritative answer. Put the same behaviour in the borrowed-items state holder instead and the loan detail screen either reaches into another screen's owner or re-implements the rule; put it in `LoanRepository` and the data layer acquires a policy about borrowers it has no reason to own."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The question to ask",
+                    "The reminder time",
+                    "Renewals"
+                  ],
+                  "rows": [
+                    [
+                      "What the middle layer would own",
+                      "Nothing the repository does not already own",
+                      "An eligibility rule, the orchestration of two repositories, and the meaning of the operation"
+                    ],
+                    [
+                      "How many callers need it",
+                      "One screen",
+                      "Three that perform it and one that only asks whether it is possible"
+                    ],
+                    [
+                      "What changes it independently",
+                      "Nothing — the store and the screen change together",
+                      "Library lending policy, which changes without either store or any screen changing"
+                    ],
+                    [
+                      "What the layer costs",
+                      "Two forwarding types, two names, one hop, a third place a change lands",
+                      "The same, and they are bought rather than paid"
+                    ],
+                    [
+                      "Verdict",
+                      "Not yet. The repository is already the boundary this feature needs",
+                      "Yes. There is responsibility here that belongs to neither neighbour"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Notice what decided it: not the size of the feature, not its file count, and not whether the word \"business\" appears in a requirement. Renewals earned the layer because a responsibility exists that both neighbours would have to distort themselves to hold."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Most real decisions are less obliging than either of those. Consider a third case in the same application: the borrowed-items list should show loans in the order the reader should act on them — overdue first, then loans inside the grace period, then loans whose renewal window is about to close, with an unpaid fine pushing an item up because it blocks renewal. That is one moderately complex rule, exactly one screen needs it today, and a second caller is easy to imagine — a weekly summary notification would want the same ordering — but nobody has asked for one, and an imagined feature is not a requirement."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The useful question there is not \"will we need it later\", because the answer to that is always maybe and it costs nothing to say. It is: **what evidence would make me extract it?** For this rule the answers are concrete, and each one is observable rather than predicted."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "a second caller genuinely appears, and the choice becomes one home or two copies;",
+                    "the state holder's own code becomes mostly this rule, so reading the screen's logic means reading the library's policy;",
+                    "the rule starts changing for reasons the screen never changes for — a lending-policy change with no visual consequence;",
+                    "the rule needs to hold in a context the screen cannot reach, such as work that runs while no screen is open."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Until one of those is true, the rule lives with its single consumer, and that is a decision rather than an omission. This is the foundations unit's cost model applied to a layer instead of to an interface: speculative future flexibility is not free justification, because it can be offered for any structure at all and therefore distinguishes nothing."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "“There is business logic in this feature, so it needs a domain layer.” The presence of logic says nothing about where it belongs; only its reasons to change do. Logic that changes exactly when one screen's requirements change has already found its owner, and moving it one layer down buys a file and a hop. Ask instead which of reuse, orchestration, independent policy or genuine complexity is present — and if the answer is none of them, say so."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "\"Add a domain layer when you need one\" is the advice everyone gives and it is almost useless as stated, because it hands the entire decision to an undefined word. The four conditions are that definition, and the test of whether you hold it is not whether you can add the layer confidently — it is whether you can decline to add it and defend the decision in the same vocabulary. Both of these are strong answers, and they have the same shape. \"We don't need one here yet: one caller, one repository, no rule the library owns, nothing to coordinate, so a middle layer would forward and nothing else — and here is the requirement that would change my answer.\" And: \"This feature does need one, because the eligibility rule changes on the library's schedule rather than on any screen's, three callers perform the same operation, and it spans two repositories, so leaving it in a state holder means the rule has no owner and two callers get a copy.\" The weak answer is the one that names no condition in either direction, and it is weak whichever way it lands."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Keep the layer and the build separate while you are at it. A domain layer is a **logical** statement about responsibility and dependency direction; a Gradle module is a **physical** build unit, and neither implies the other. A domain layer can live in packages beside the code that uses it, a `:domain` module can contain a directory of forwarding functions, and code shared across platforms in a multiplatform project is shared code rather than automatically a domain layer. When and how to draw build boundaries belongs to the build and modularization curriculum."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This repository is a small piece of evidence for the same separation. It has no package named `domain` and no layer named one, and it does have application behaviour that is neither presentation nor storage — services that orchestrate, policies that decide, derivations that compute — all of it sitting in the feature packages that consume it rather than in a layer created to receive it. The next lesson reads those types closely. Here they show only that the behaviour and the layer are separate decisions, which is evidence about placement rather than a design to copy or a claim that a larger application would be wrong to create the layer."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two boundaries, named so neither looks like an omission. \"Domain\" in this curriculum means application and business policy responsibility; it does not mean domain-driven design, and this unit teaches no aggregates, value objects or bounded contexts, because none of that changes the decision this lesson is about. And the decision this lesson made is not the only one in the unit: it asked whether a *feature* earns another layer, while the next asks whether an *individual operation* earns its own use-case type. They come apart in both directions — a feature can hold one genuinely useful operation without an elaborate layer around it, and a feature can accumulate several policy types that amount to a real domain layer without anyone deciding to create one. Collapsing the two is how the most durable misconception in this subject is manufactured."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked whether an app should have a domain layer, refuse the yes-or-no and answer with the condition. Name the four things that would live there — reuse across callers, orchestration across repositories, policy with its own reasons to change, or complexity that needs one authoritative home — then apply them to a feature in both directions: this one has none, so the repository is already the boundary it needs; that one has three, so the layer is bought rather than paid for. Being able to say “not yet, and here is what would change my mind” is the half of the answer most candidates never give."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_layers_and_their_cost",
+            "lesson_what_a_repository_owns"
+          ],
+          "sources": [
+            {
+              "title": "Domain layer",
+              "url": "https://developer.android.com/topic/architecture/domain-layer"
+            },
+            {
+              "title": "Architecture recommendations",
+              "url": "https://developer.android.com/topic/architecture/recommendations"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_use_cases_and_pass_through_cost",
+          "title": "Use Cases That Earn Their Place, and Pass-Through Cost",
+          "summary": "A use case represents one application operation. It earns a type of its own when it owns something — a rule, an orchestration, a behaviour several callers share — and not when it forwards a single repository call. This lesson puts the two side by side in the same shape, names exactly what the forwarding one costs, and treats the team convention of routing every data call through a use case honestly: as a uniformity decision rather than an architectural one.",
+          "primarySubtopicIds": [
+            "use_cases"
+          ],
+          "supportingSubtopicIds": [
+            "repository_pattern",
+            "architecture_tradeoffs",
+            "state_ownership"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The previous lesson decided whether a feature earns another layer. This one drops a level and asks the question that actually produces code: does *this operation* deserve a type of its own?"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A **use case** represents one application operation — renew a loan, submit a return, sign the reader out. It may coordinate repositories, apply a rule, compose other operations, or offer one reusable behaviour to several callers. It normally has no lifecycle of its own: Android's guidance puts it plainly, in that use cases \"don't have their own lifecycle. Instead, they're scoped to the class that uses them\", which is why a use case is an ordinary object that a state holder, a service or another use case can hold and call."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two words for the same thing, and the variation is worth knowing once rather than arguing about. **Interactor** is the older term, and some sources reserve it for the layer's outermost operation while others use it as an exact synonym for use case. This curriculum treats them as equivalent and says so here, because no source supports building an architectural distinction on the difference, and an interview answer that invents one is defending a position nobody holds."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What a use case is *not* is the part that matters, because all four of the usual definitions describe an idiom rather than a responsibility."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "It is not a class-name suffix. A type called `RenewLoanUseCase` that forwards owns nothing; a type called `RenewLoan`, or `RenewalService`, that orchestrates two repositories and applies a rule owns an operation.",
+                    "It is not `operator fun invoke`. Making an instance callable is a Kotlin convenience the guidance itself offers as an option, and it changes nothing about what the type is responsible for.",
+                    "It is not inheritance from a `UseCase` base class or a shared `Result` wrapper. A base class is a decision about consistency and cross-cutting behaviour, not about whether this operation exists.",
+                    "It is not a folder. Code placed in `domain/` acquires a location and no responsibility."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So the test is the one this unit has used throughout, asked of a single type: what does this operation own that its caller should not own itself? The rest of the lesson is that question applied twice, to two types deliberately given the same shape."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A use case is one application operation, identified by the responsibility it owns rather than by a suffix, an `invoke` operator, a base class or a directory. “Use case” and “interactor” are treated here as the same idea under two names. The question that decides whether one should exist is what it owns that its caller should not — orchestration, a rule, or a behaviour more than one caller needs."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Here is the type this lesson exists to argue about. The borrowed-items screen needs the reader's loans, and a use case is introduced to fetch them."
+                },
+                {
+                  "type": "code",
+                  "code": "internal class GetLoansUseCase(\n    private val repository: LoanRepository,\n) {\n    suspend operator fun invoke(): List<Loan> =\n        repository.loans()\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read what is there: one caller, no rule, no orchestration, nothing translated, and no reason for this class ever to change except when `LoanRepository.loans()` changes. It owns nothing, and the honest way to say so is not \"it is boilerplate\" — that word ends the conversation without pricing anything. Name what the engineer pays instead."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "One more type, one more file, and one more name that has to stay meaningful and stay in step with the repository method behind it.",
+                    "One more hop between the screen owner and the code that answers, on every read of this feature by every engineer, permanently.",
+                    "One more abstraction to explain in review and in documentation, whose explanation is that it forwards.",
+                    "A precedent priced per operation: applied consistently, it is one class for every repository method, so a repository with six functions becomes six more types.",
+                    "A directory whose name claims business responsibility and whose contents are forwarding functions — which is what eventually makes engineers stop reading it."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now the same shape with something inside it. `RenewLoan` is the operation the previous lesson used to earn the layer, written out."
+                },
+                {
+                  "type": "code",
+                  "code": "internal class RenewLoan(\n    private val loans: LoanRepository,\n    private val borrowers: BorrowerRepository,\n    private val eligibility: RenewalEligibility,\n) {\n    suspend operator fun invoke(loanId: LoanId): RenewalOutcome {\n        val loan = loans.byId(loanId) ?: return RenewalOutcome.NoSuchLoan\n        val borrower = borrowers.standing(loan.borrowerId)\n\n        return when (val decision = eligibility.decide(loan, borrower)) {\n            is RenewalDecision.Refused -> RenewalOutcome.Refused(decision.reason)\n            is RenewalDecision.Allowed -> {\n                loans.renew(loanId, until = decision.newDueOn)\n                RenewalOutcome.Renewed(decision.newDueOn)\n            }\n        }\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Structurally the two types are twins: a class, some constructor parameters, one function. The difference is not aesthetic and not length. `RenewLoan` loads two inputs that live in different repositories, applies a rule neither of them owns, decides what the operation means when the rule refuses, and performs the write only on the branch where refusal did not happen. Delete it and that sequence has to exist somewhere; delete `GetLoansUseCase` and one call moves one line."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Read the type and ask",
+                    "`GetLoansUseCase`",
+                    "`RenewLoan`"
+                  ],
+                  "rows": [
+                    [
+                      "What does it own?",
+                      "Nothing — one call, forwarded unchanged",
+                      "The order of two reads, a policy decision, the write, and the operation's outcome vocabulary"
+                    ],
+                    [
+                      "What makes it change?",
+                      "Only a change to the repository method behind it",
+                      "A change to lending policy, or to what the operation must mean when it is refused"
+                    ],
+                    [
+                      "What happens if it is deleted?",
+                      "One caller calls the repository directly, and nothing else moves",
+                      "Every caller acquires the sequence, and the rule has as many homes as there are callers"
+                    ],
+                    [
+                      "Who needs it?",
+                      "One state holder",
+                      "Three callers that perform it and one that only asks whether it is currently possible"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two symmetrical mistakes follow from reading that table too quickly. The first is \"a use case exists only when two screens call it\", which makes reuse the sole criterion and is wrong in both directions: a single caller can justify one when the operation owns substantial policy or coordinates responsibilities that have no business being inside a state holder, and two callers can sometimes share a small function without anything resembling a layer appearing. The second is the reverse habit of extracting anything that appears twice. Reason from responsibility — what does this own, and what changes it — and the count becomes evidence rather than the rule."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There is one more possibility, and it is not an architectural argument at all. A team may decide that **all** access to data crosses use cases, including the forwarding ones, and that decision can be entirely legitimate. Android's own guidance describes exactly this choice and both of its sides: restricting direct data-layer access stops the UI bypassing domain logic, but \"the **potentially significant disadvantage** is that it forces you to add use cases even when they are just simple function calls to the data layer, which can add complexity for little benefit.\" The same page lands on a proportional rule — \"A good approach is to add use cases only when required. If you find that your UI layer is accessing data through use cases almost exclusively, it may make sense to _only_ access data this way.\""
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Read the two arguments apart",
+                    "Architectural justification",
+                    "Team convention"
+                  ],
+                  "rows": [
+                    [
+                      "The claim being made",
+                      "This operation owns responsibility its callers should not",
+                      "Every operation is reached the same way, whatever it owns"
+                    ],
+                    [
+                      "What it is derived from",
+                      "This feature's requirements and reasons to change",
+                      "A decision about consistency across the whole codebase"
+                    ],
+                    [
+                      "What it buys",
+                      "One home for a rule, an orchestration or a shared behaviour",
+                      "Predictable placement, one convention, and fewer case-by-case arguments"
+                    ],
+                    [
+                      "What it costs",
+                      "The ordinary cost of one type",
+                      "Forwarding types priced per repository method, and a layer whose name overstates what is in it"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Take the convention seriously rather than caricaturing it, because the reasons teams adopt it are real ones. Every call has one obvious place to go, so nobody argues about it in review. There is a known point at which behaviour can later be inserted without editing call sites. New engineers learn one path through the codebase instead of a judgement. And a team that pays indirection to remove a recurring judgement call has made a trade, not a mistake. What it costs is equally real, and the honest position names both: forwarding classes that grow with the data layer, a navigation hop on every read, boundaries that isolate nothing, and a structure that implies business responsibility where none exists. The failure mode is not choosing the convention; it is choosing it and then describing it as architecture, because that is the version nobody can argue with and nobody can revisit."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "“Every repository method needs a matching use case.” This is a convention presented as a rule, and the two answer different questions. Ask what the class owns: if it is one forwarded call with no rule, no orchestration and no second caller, it owns nothing, and the cost is a type, a file, a hop and a precedent priced per repository method. A team may still choose uniformity — deliberately, with the cost named. What it may not do is call that choice a requirement of the architecture."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "This repository is useful evidence here precisely because it did not adopt the convention. **There is no class named `UseCase` or `Interactor` anywhere in it**, and no base class or `invoke` idiom standing in for one. What it does have is application behaviour with several different names, chosen by what each type owns."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Services that orchestrate.** `MistakeReviewService` reads completed attempt history through `AssessmentRepository`, applies `UnresolvedMistakeDerivation`, and rebuilds review content through a loader — two collaborators and a rule, called from the app shell, the progress state holder, the mistake-review state holder and the recommendation resolver. `StudyProgressService`, `LearningProgressService` and `AssessmentRetakeService` have the same shape.",
+                    "**Policies that decide and nothing else.** `ContinueLearningPolicy` answers which lesson to read next from current content plus studied identities, with no clock, no repository and no history, and its own documentation says so as a constraint rather than as a description. `LearningRecommendationPolicy`, `LearningProgressPolicy` and `RecentPerformancePolicy` are the same kind of type.",
+                    "**Derivations that compute.** `StudyProgressDerivation`, `UnresolvedMistakeDerivation` and `LearningPerformanceDerivation` turn stored facts into the shape a consumer needs, and own nothing beyond that transformation — no reads, no writes, no clock."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read carefully, that is one observation and not a recommendation: **the responsibility earned the class, and the suffix recorded what it was.** A service here is an orchestration, a policy is a decision, a derivation is a computation, and an engineer can predict what is in each without opening it. The application therefore contains domain behaviour with neither a mandatory domain layer nor a use-case naming convention, which is evidence that the two are separate decisions — not evidence that this arrangement is preferable, and not an argument that a codebase using `UseCase` consistently has done anything wrong. It is also a small, local-first application, so the absence of a layer here is weak evidence about what a large one needs."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "It is tempting to relabel those types as \"really use cases\", and the comparison is fair only as far as the responsibilities go. `MistakeReviewService` coordinates repositories and applies a rule for several callers, which is exactly the responsibility this lesson says earns an operation a type; `ContinueLearningPolicy` is a rule with one caller that still deserves its own home, which is the single-caller case the reuse-only test gets wrong. Those are useful illustrations. What they are not is a claim about the code's identity: nothing in this repository is named a use case, and calling it one would be reading the lesson back into the codebase rather than reading the codebase."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Where a use case ends and a state holder begins is the boundary most often blurred in practice, and the screen-state unit already drew it. A state holder owns what a screen is currently rendering and the intentions that change it; a use case owns an application operation that would still make sense if this screen did not exist. Put the renewal rule in the state holder and the second caller either duplicates it or reaches into another screen's owner — which is the failure the next lesson opens with."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked what a use case is, define it by responsibility — one application operation that may coordinate repositories, apply policy or serve several callers — and say outright that the suffix, the `invoke` operator and the folder are idioms rather than the definition. Then show both directions in one breath: this operation owns a rule and an orchestration that three callers share, so it earns a type; that one forwards a single repository call, so it costs a file, a name, a hop and a precedent priced per method. Finish by naming the third possibility honestly — a team can pay that cost deliberately for uniformity, which is a decision about consistency and not a claim about the architecture."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_when_a_domain_layer_earns_its_place",
+            "lesson_what_a_repository_owns",
+            "lesson_state_holder_responsibility"
+          ],
+          "sources": [
+            {
+              "title": "Domain layer",
+              "url": "https://developer.android.com/topic/architecture/domain-layer"
+            },
+            {
+              "title": "Architecture recommendations",
+              "url": "https://developer.android.com/topic/architecture/recommendations"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_policy_and_framework_detail",
+          "title": "Policy, Framework and Detail",
+          "summary": "Policy is a rule the application would still need if the UI toolkit, the storage and the transport were all replaced. Detail is how this particular program happens to implement something. The line between them is drawn by reasons to change, not by purity, and this lesson traces what it costs when policy is stated in a framework's vocabulary or ends up owned by a screen that was never responsible for it.",
+          "primarySubtopicIds": [
+            "dependency_direction"
+          ],
+          "supportingSubtopicIds": [
+            "clean_architecture",
+            "layered_architecture",
+            "kmp_architecture"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The previous two lessons decided where an operation belongs. This one asks what it may be allowed to say, and the whole lesson rests on one distinction that the word \"layer\" tends to hide."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Policy** is a rule the application or the business would still need if this program were rewritten. The library allows two renewals per title unless a fine is outstanding; a loan inside its grace period is not yet overdue; a reader may not renew a title somebody else has reserved. None of those sentences mentions a screen, a database or a network, because none of them is caused by one. **Detail** is how this particular program happens to implement something: the platform API it calls, the HTTP client it uses, the database or object mapper it stores rows with, the serialization format its transfer types carry, the UI toolkit it renders with."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The line between them is drawn by **reasons to change**, which is the same instrument the foundations unit used for responsibilities and for dependency direction. Policy changes when the library changes its lending rules. Detail changes when the team swaps a client, upgrades a storage library, adds a platform or redesigns a screen. Two pieces of code that change for those two different reasons should not be the same piece of code, and the direction of any dependency between them should point from the detail toward the policy rather than the other way around — which is exactly the claim Clean Architecture makes when it says that source code dependencies point inward and that an inner circle must not name anything declared in an outer one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two shortcuts are worth refusing immediately, because both replace the criterion with something easier to see and neither survives contact with real code. Policy is **not** a synonym for \"pure function\", and detail is not a synonym for \"code that performs input and output\". A renewal rule that reads the current date is policy with a dependency; a function that formats a wire date string with no side effects at all is detail, because it exists only because a particular service sends that format. And writing something in plain Kotlin does not make it policy either: a forwarding class with no framework imports is still a forwarding class. Plain Kotlin is one way of *avoiding* framework coupling, not evidence that a responsibility exists."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Policy is what the application would still need if the program were rewritten; detail is how this program happens to implement something. The test is which of the two a change belongs to — a lending rule changing is policy, a transport, storage or toolkit changing is detail. It is not a test about purity, and it is not passed by writing plain Kotlin."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The first failure is easy to see once you know to look at signatures rather than at bodies. The library wants readers to be able to return a book by photographing the drop-box receipt, and the operation that does it is written as part of the application's own behaviour."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "// Intended as application policy: what returning an item means.\ninternal class SubmitReturn(private val transport: ReturnApi) {\n    suspend fun submitReceipt(\n        loanId: String,\n        photo: android.net.Uri,\n    ): Response<ReturnReceiptDto> = transport.upload(loanId, photo)\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Nothing here is broken, and that is why this design survives review so often. It compiles, it works, and it is testable with the right infrastructure. What it has done is state an application operation in two other components' vocabularies, and the consequences are specific rather than aesthetic."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**A transport change becomes a policy change.** `Response` is the HTTP client's type. Replace the client, or move this call behind a cache that answers locally, and every caller of `submitReturn` is edited — for a reason that has nothing to do with what returning an item means.",
+                    "**A platform type restricts where the rule can live.** `android.net.Uri` requires the Android SDK, so this operation cannot be compiled for a desktop or iOS target of the same application even though the rule itself — a return needs a receipt and a loan identifier — has no platform in it.",
+                    "**The rule is now written in somebody else's words.** A caller reading the signature learns about URIs and HTTP responses, and learns nothing about what outcomes a return can have. The application has no vocabulary of its own for one of its own operations."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Redrawing the boundary is not a rewrite; it is a change of vocabulary plus one adapter on the outside."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "// Policy: stated in the application's own terms.\ninternal class SubmitReturn(private val returns: ReturnRepository) {\n    suspend fun submitReceipt(\n        loanId: LoanId,\n        receipt: ReceiptImage,\n    ): ReturnOutcome = returns.submit(loanId, receipt)\n}\n\n// Detail: the only place that knows there is a URI and an HTTP client.\ninternal class RemoteReturnRepository(\n    private val transport: ReturnApi,\n    private val images: ImageLoader,\n) : ReturnRepository {\n    override suspend fun submit(loanId: LoanId, receipt: ReceiptImage): ReturnOutcome =\n        transport.upload(loanId.value, images.read(receipt)).toOutcome()\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`ReceiptImage` and `ReturnOutcome` are types the application owns, so the operation now says what it means, and the two consequences above reverse: the client can change behind `RemoteReturnRepository` without the policy being edited, and the policy names nothing that ties it to one platform. The data-ownership unit already priced this move — it is the model and error boundary applied to an operation's signature rather than to a repository's return type — and its warning applies here too: the translation is real work, and it is worth doing exactly where the two sides change for different reasons."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second failure has no framework type in it at all, which is why it is the more interesting one. Renewal eligibility is calculated directly inside the borrowed-items screen's state holder, because that is the screen that needed it first."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "internal class BorrowedItemsViewModel(\n    private val loans: LoanRepository,\n    private val borrowers: BorrowerRepository,\n) : ViewModel() {\n    private fun canRenew(loan: Loan, borrower: BorrowerStanding): Boolean =\n        loan.renewals < loan.renewalLimit &&\n            !borrower.hasOutstandingFine &&\n            !loan.isReserved\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Then the loan detail screen has to show the same thing, and the reserved-title rule changes, and it changes in one of the two places. It is tempting to diagnose this as duplication, and the diagnosis stops one step short. The rule was duplicated *because its responsibility was broader than the component holding it*: it belongs to the library's lending policy, which has nothing to do with which screen happens to be open. A screen owner is responsible for what its screen is currently rendering and for the intentions that change it, and this rule outlived both."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Note what the fix is not. \"Business logic does not belong in a ViewModel\" is a slogan that overcorrects into a different mistake: deciding that a control is disabled while a request is in flight, that an error banner is dismissed on the next successful load, or that a list shows an empty state rather than a spinner are all decisions, all logic, and all genuinely the screen owner's. The question is never whether a rule is logic. It is what the rule is *about* and who else would need it to be true."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Ask about the rule",
+                    "Belongs to the screen owner",
+                    "Belongs to policy with its own home"
+                  ],
+                  "rows": [
+                    [
+                      "What is it about?",
+                      "What this screen is currently showing",
+                      "What the application or the business is"
+                    ],
+                    [
+                      "Who else needs it?",
+                      "Nobody — another screen showing the same data would legitimately decide differently",
+                      "Any caller performing the same operation, screen or not"
+                    ],
+                    [
+                      "What changes it?",
+                      "A design or interaction change to this screen",
+                      "A change in the library's lending rules, with no visual consequence"
+                    ],
+                    [
+                      "Example",
+                      "Disable the renew control while a request is in flight",
+                      "Whether this loan may be renewed at all, and until when"
+                    ]
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "“If it is a plain Kotlin class, it is domain logic.” Plain Kotlin is a way of avoiding framework coupling, not a responsibility. A forwarding class with no imports at all owns exactly as much as a forwarding class with them, and a rule sitting in a screen's state holder is misplaced policy even though the state holder is ordinary Kotlin too. Ask what the code is about and what changes it, then check the signature for vocabulary that belongs to somebody else."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Testability is the argument this subject most often gets backwards, and the epic's own rule is that a testability claim has to name the boundary rather than the layer count. The precise statement is this: **policy that does not name Android, a database or an HTTP client can be exercised without those things.** That is a fact about what the code depends on. It is not a fact about how many layers the application has — a codebase with five layers whose innermost types still import framework classes has gained nothing, and a codebase with two layers and one well-placed boundary may have all of it. Clean Architecture lists testability as something that *follows* from the arrangement, and the ordering matters: the dependency boundary is the cause, the ease of exercising one side is the consequence, and no number of layers substitutes for it. How to write those tests, what to substitute and what to exercise for real is the testing curriculum's subject, which is why this lesson shows none."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The same reasoning explains why this split is unusually visible in a multiplatform codebase, and it is worth exactly one bounded statement. Framework-independent policy is the strongest candidate for shared code, because it is the part that names nothing platform-specific — Kotlin's own multiplatform guidance describes the common source set as being for \"sharing the common business logic that applies to all platforms\". The direction of that sentence is the important part. Sharing is a *consequence* of the policy and detail split rather than a reason to perform it, and the reverse claim — that everything in a domain layer belongs in common code — does not follow: what can be shared is decided by the dependencies a piece of code actually has and by what the product requires on each target. How sharing is implemented, what an expected declaration is, how source sets are arranged and how platform integration works belong entirely to the Kotlin Multiplatform curriculum."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This repository supplies one small piece of local evidence, and its limits are worth stating with it. `ContinueLearningPolicy` decides which lesson a reader should study next from current content and the reader's studied identities and — as its own documentation insists — from nothing else: no clock, no repository, no navigation history, no persistence. That constraint is what makes it the same answer everywhere it is asked, and it names no platform type, so nothing about where it can run depends on a framework. It is a genuine example of a rule stated in the application's own vocabulary. It is not evidence about a business domain: this application's \"policy\" is about a curriculum rather than about lending, and the renewal scenario above is a worked design rather than something lifted from this codebase."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The last thing worth holding on to is that this lesson never asked where a type lives. It asked what a type names. Two operations in the same package can be on opposite sides of this line, and moving a file changes neither its vocabulary nor its reasons to change. Which brings up the question the lesson has deliberately left open: when the policy does need an abstraction to reach a detail, which side should define it, so the dependency actually ends up pointing the way the design intended? That is the next lesson, and it is the one the foundations unit promised."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked to spot a leak, read the signature before the body: a parameter or return type belonging to a platform, a transport library or a storage library inside something meant to be policy is the whole diagnosis. Then give the three consequences — the policy changes when that library does, it can only run where that library can, and the rule is stated in somebody else's vocabulary — and fix it by naming the operation in application types with the adapter outside. Keep the testability claim precise: it is the dependency boundary that makes policy exercisable without infrastructure, never the number of layers."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_dependency_direction_and_boundaries",
+            "lesson_state_holder_responsibility",
+            "lesson_model_and_error_boundaries"
+          ],
+          "sources": [
+            {
+              "title": "The Clean Architecture",
+              "url": "https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html"
+            },
+            {
+              "title": "Domain layer",
+              "url": "https://developer.android.com/topic/architecture/domain-layer"
+            },
+            {
+              "title": "Share code on platforms",
+              "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-share-on-platforms.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_dependency_inversion_in_practice",
+          "title": "Who Defines the Abstraction?",
+          "summary": "Adding an interface does not invert a dependency. What inverts it is the consumer defining the contract it needs, so the implementation depends on the consumer's requirement rather than the other way around. This lesson arranges the same three types twice, traces the source dependency in each, and separates dependency inversion — an architecture decision about who owns the contract — from dependency injection, which is about how an implementation is supplied.",
+          "primarySubtopicIds": [
+            "dependency_direction",
+            "interface_boundaries"
+          ],
+          "supportingSubtopicIds": [
+            "solid",
+            "clean_architecture",
+            "repository_pattern",
+            "service_locator_vs_di"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Two earlier lessons stopped deliberately at this question. The foundations unit taught dependency *direction* and named inversion without teaching it; the lesson on interfaces established when an abstraction is a boundary at all and left open which side should declare it; and the data-ownership unit deferred the same question about repository interfaces to this unit. Here is the answer."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Start with the claim to be dismantled, because almost everyone arrives holding it: \"we extracted an interface, so the dependency is inverted.\" It is not, and the reason is the one the earlier lesson already established — an interface is a language feature, and inversion is a property of an arrangement. The single question that decides it is this: **who defines the abstraction?**"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Inversion is the case where the *consumer* declares the contract it needs, in its own vocabulary, and the implementation depends on that declaration in order to satisfy it. The detail then points toward the policy, which is what \"the dependency was inverted\" means — inverted relative to the call, which still runs from the consumer outward to the implementation at run time."
+                },
+                {
+                  "type": "code",
+                  "language": "text",
+                  "code": "consumer / policy          declares what it needs\n        ↑\n  abstraction              the contract, owned by the consumer's side\n        ↑\nimplementation / detail    depends on the contract in order to satisfy it"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two things are deliberately absent from that picture. It says nothing about packages or modules, because ownership of a contract is a responsibility rather than a directory; physical placement should *express* the responsibility, and this lesson comes back to what happens when it does not. And it says nothing about how the implementation reaches the consumer at run time, which is a separate decision the last section separates explicitly."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The way to check any real codebase is therefore not to count interfaces. It is to open the files and read the imports, because the source dependency is the thing being decided and the import list is where it is visible."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "An interface does not invert anything by existing. Inversion is the arrangement in which the consumer defines the contract in its own vocabulary and the implementation depends on that contract. The check is mechanical: read the imports and ask which side names the other, then ask which side the contract was designed for."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Take the same three conceptual types twice: the renewal operation, a loan repository contract, and a local implementation of it. Nothing is added or removed between the two arrangements — only who owns the middle one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Arrangement A — the abstraction lives with the implementation.** The data side declares the interface, because the data side is where the loans actually are, and the renewal operation takes it as a constructor parameter."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "// data/loans/LoanRepository.kt — declared by the data side\npackage com.example.data.loans\n\ninternal interface LoanRepository {\n    suspend fun loanRow(id: String): LoanRow?\n    suspend fun updateDueDate(id: String, dueAtMillis: Long)\n}\n\n// renewals/RenewLoan.kt — the consumer\npackage com.example.renewals\n\nimport com.example.data.loans.LoanRepository   // ← the policy names the data side\n\ninternal class RenewLoan(private val loans: LoanRepository)"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Trace it. The source dependency points from `renewals` to `data.loans`: the policy cannot be compiled, read or moved without the data package, and the arrow is exactly where it was before the interface existed. Something did improve — a second implementation can now be substituted at run time, which is a real benefit and is why this arrangement feels like progress. But ownership did not move, and the contract shows it: it speaks of rows and epoch milliseconds because it was written by the side that has rows and epoch milliseconds. When storage changes shape, the contract changes, and the policy that imports it changes with it. That is the reverse of what the design was for."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Arrangement B — the abstraction is owned by the consumer.** The renewal side declares what it needs, in the vocabulary of renewals, and the local implementation depends on that declaration."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "// renewals/LoanRepository.kt — declared by the side that needs it\npackage com.example.renewals\n\ninternal interface LoanRepository {\n    suspend fun byId(id: LoanId): Loan?\n    suspend fun renew(id: LoanId, until: LocalDate)\n}\n\ninternal class RenewLoan(private val loans: LoanRepository)   // no data import at all\n\n// data/loans/LocalLoanRepository.kt — the implementation\npackage com.example.data.loans\n\nimport com.example.renewals.Loan\nimport com.example.renewals.LoanRepository   // ← the detail names the policy\n\ninternal class LocalLoanRepository(private val database: LoanDatabase) : LoanRepository"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Traced property",
+                    "Arrangement A",
+                    "Arrangement B"
+                  ],
+                  "rows": [
+                    [
+                      "Which side names the other",
+                      "`renewals` imports `data.loans`",
+                      "`data.loans` imports `renewals`"
+                    ],
+                    [
+                      "Who the contract was designed for",
+                      "The store — rows, identifiers as strings, epoch milliseconds",
+                      "The operation — loans, `LoanId`, a due date"
+                    ],
+                    [
+                      "What a storage change costs",
+                      "The contract changes, so the policy changes",
+                      "The implementation absorbs it; the contract is untouched"
+                    ],
+                    [
+                      "What a policy change costs",
+                      "The contract changes, and the implementation follows",
+                      "The same — the contract belongs to the side that changed"
+                    ],
+                    [
+                      "Who can vary without the other",
+                      "Only the implementation, behind a contract it also owns",
+                      "The implementation freely; and the policy can restate its needs and force the implementation to follow"
+                    ],
+                    [
+                      "Was anything inverted?",
+                      "No. Substitution improved; ownership did not move",
+                      "Yes. The detail now depends on the requirement"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The row that decides it is what a storage change costs. In A, a change to how loans are stored reaches the renewal rule; in B it cannot, because the renewal rule names nothing that knows about storage. That is the entire practical payoff, and it is visible in the import lists rather than in a diagram."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This repository is a worked instance of arrangement B, and it is worth checking rather than assuming, because package names prove nothing on their own. `LessonStudyRepository` is declared in `lesson_study/repository`, beside the study feature that consumes it, and its contract is written in that feature's vocabulary — mark a lesson studied, unmark it, ask whether one is studied, read the studied lessons in a stated order — with no database type in it. `LocalLessonStudyRepository` sits under `data/local/lesson_study/repository` and imports `lesson_study.StudiedLesson` and `lesson_study.repository.LessonStudyRepository` in order to implement it. Searching the shared module for imports of `data.local` from anywhere outside `data/local` returns nothing at all: the detail names the policy, and the policy names no detail. All five of the application's repository interfaces are arranged that way, and all of it compiles inside one Gradle module — which is the cleanest available refutation of the idea that inverting a dependency requires a separate build unit."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "“We added an interface, so the dependency is inverted.” Open the two files and read the imports. If the consumer still names the package that declares the contract, and the contract is written in the implementation's vocabulary, nothing has been inverted — substitution got easier and the arrow did not move. Inversion is the consumer declaring what it needs and the implementation depending on that declaration."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "\"The consumer owns the abstraction\" is a statement about responsibility, and it degrades badly if it is turned into a rule about file placement. The architecture property is that the contract is defined by the needs of the consumer; where the file sits should *express* that, which is why the pattern has a name — Martin Fowler's Separated Interface \"Defines an interface in a separate package from its implementation\", so \"a client that needs the dependency to the interface can be completely unaware of the implementation\". A neutral shared location passes the compile-time test and can still obscure the question: nobody depends on anybody, and nobody owns the contract either, so it drifts toward whichever side edits it most and ends up designed by the implementation anyway. The placement is the visible form of an answer that has to be given first."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The distinction that most often decides an interview answer is the next one, and it has to be explicit. **Dependency inversion** is an architecture decision about source code: which side owns the contract, and therefore which direction the compile-time dependency points. **Dependency injection** is a construction technique: which implementation is supplied to a consumer that already depends on a contract, and who assembles it. Fowler's article on injection says exactly where that concern sits — \"The important issue in all of this is to ensure that the configuration of services is separated from their use. Indeed this is a fundamental design principle that sits *with* the separation of interfaces from implementation\" — which is the relationship in one sentence: they are neighbours, not the same decision."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Told apart by",
+                    "Dependency inversion",
+                    "Dependency injection"
+                  ],
+                  "rows": [
+                    [
+                      "The question it answers",
+                      "Which side defines the contract, and which way does the source dependency point",
+                      "Which implementation does this consumer get, and who constructs it"
+                    ],
+                    [
+                      "When it is settled",
+                      "At compile time, by what the code names",
+                      "At assembly or run time, by whoever wires the application"
+                    ],
+                    [
+                      "Where you can see it",
+                      "In the imports and in who the contract was written for",
+                      "In the wiring — a container, a factory, or a constructor call in a main function"
+                    ],
+                    [
+                      "Can you have it without the other?",
+                      "Yes — a dependency constructed by hand in one place is inverted just as fully",
+                      "Yes — a container can supply a concrete type nobody abstracted"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The consequence is worth stating plainly because it surprises people: a codebase can use a dependency-injection framework in every feature and have inverted nothing. The container decides which object is handed over; it does not change a single import, and imports are what the architecture decision is made of. The reverse is just as true — arrangement B above is fully inverted whether the implementation is supplied by a container or constructed by hand in one place. Which container, how it is configured, what a module or a binding or a scope or a qualifier is, and how a graph is assembled belong entirely to the dependency-injection curriculum; this lesson shows constructor parameters because dependencies have to be visible, and says nothing about how they are supplied."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "It is also worth naming the acronym once and moving on. This is the D of SOLID, and the useful half of the principle is the sentence rather than the letter: depend on abstractions that the depending side owns. The interview value of the name is recognition. The interview value of the reasoning is being able to trace two imports and say which side would have to change."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Finally, keep this lesson's question separate from the one the foundations unit answered. That lesson asked *whether an abstraction earns its existence at all* — and its answer was often no, when the contract is the implementation's method list and both change in the same commit. This lesson assumes the abstraction is justified and asks *which side should own it*. In order: is there a boundary here worth having, and if so, who defines it. Reversing those two questions is how codebases acquire carefully inverted interfaces around types nothing ever varies."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked about dependency inversion, answer with ownership and then prove it by tracing an import. Say that the consumer declares the contract in its own vocabulary and the implementation depends on the declaration, that placing the interface beside its implementation leaves the arrow pointing outward however many interfaces exist, and that a neutral shared location removes the coupling without answering who owns the contract. Then separate it from injection in one sentence: the container decides which implementation arrives, and changes no source dependency, so a codebase can inject everything and have inverted nothing."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_dependency_direction_and_boundaries",
+            "lesson_when_an_interface_is_a_boundary",
+            "lesson_what_a_repository_owns"
+          ],
+          "sources": [
+            {
+              "title": "The Clean Architecture",
+              "url": "https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html"
+            },
+            {
+              "title": "Separated Interface",
+              "url": "https://martinfowler.com/eaaCatalog/separatedInterface.html"
+            },
+            {
+              "title": "Inversion of Control Containers and the Dependency Injection pattern",
+              "url": "https://martinfowler.com/articles/injection.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_clean_architecture_intent",
+          "title": "Clean Architecture: the Dependency Rule, Not the Diagram",
+          "summary": "Clean Architecture requires one thing: source code dependencies point inward, toward policy, and nothing inner may name anything outer. It does not require three layers, a use case per repository method, a module per layer, or the four circles in the picture — the article itself says the circles are schematic. This lesson states the rule from its intent, shows a two-layer design and a four-layer design that both satisfy it, and separates the rule from the Android template it inspired.",
+          "primarySubtopicIds": [
+            "clean_architecture"
+          ],
+          "supportingSubtopicIds": [
+            "layered_architecture",
+            "use_cases",
+            "dependency_direction",
+            "android_modules"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "This unit has now made four decisions — whether a feature earns a layer, whether an operation earns a type, what counts as policy and what counts as detail, and who owns an abstraction — without naming the architecture those decisions are usually attributed to. That order was deliberate. Meeting the name first is how a set of reasons becomes a template, and the template is the part that gets copied."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The rule itself is one sentence. Clean Architecture's central claim is the **Dependency Rule**: \"source code dependencies can only point inwards\", inward meaning toward policy, and nothing declared in an outer circle may be named by code in an inner one. That is it. Everything else in the argument — the circles, their names, the number of them — is a way of drawing that rule, and the article says so in as many words: the circles are schematic, you may find you need more than the four shown, and there is no rule that says you must always have just those four."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two things follow immediately, and both are worth stating before any picture appears."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**The rule is about direction, not about count.** Any number of concentric groupings can satisfy it, including two. Any number can violate it, including four.",
+                    "**Inward means toward policy, not toward the bottom of a diagram.** As you move inward, detail gives way to rules — which is the same policy-and-detail distinction the previous lesson drew, expressed as a direction."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Four claims are routinely made in the rule's name and none of them is in it. **\"Clean Architecture means presentation, domain and data.\"** That is one application structure compatible with the rule, and a popular one on Android; it is not the rule. **\"Clean Architecture means exactly three layers\"** — or four — contradicts the article's own statement about the circles. **\"Every repository method needs a use case because Clean Architecture.\"** The rule says nothing about how many types an operation needs; the previous lessons in this unit are where that decision is actually made. **\"Each layer must be a Gradle module.\"** The rule constrains source dependencies; a module is a build unit, and the last section separates the two."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Clean Architecture requires that source code dependencies point inward toward policy, and that nothing inner names anything outer. The number of layers is not part of the rule — the article calls its circles schematic and denies that there must be exactly four — and neither is a use case per repository method, nor a module per layer. Judge a design by tracing its dependencies, not by counting its boxes."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Start with the diagram everyone draws, and label it accurately."
+                },
+                {
+                  "type": "code",
+                  "language": "text",
+                  "code": "UI\n ↓\nDomain\n ↓\nData"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is **one possible application structure, compatible with some Clean Architecture principles**. It is not Clean Architecture, and the difference is not pedantry: the picture has three boxes and one arrow convention, and it silently answers questions the rule leaves open — how many layers there are, that there is a domain layer at all, and that dependencies run downward, which is exactly backwards for the data end unless the contracts are owned by the consumer. Android's own guidance is more careful than the picture: it recommends designing each application \"with at least two layers\", UI and data, and describes the domain layer as \"an optional layer between the UI and data layers\" to be used \"only when needed\", with its recommendations page adding that they are \"recommendations and not strict requirements\"."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So take the rule at its word and build the smallest thing that satisfies it. Two layers, for a feature that needs nothing more."
+                },
+                {
+                  "type": "code",
+                  "language": "text",
+                  "code": "ReminderSettingsViewModel  ── owns the screen's state, and declares what it needs\n        ↑                     ReminderPreferenceRepository (the contract)\n        │\nLocalReminderPreferences  ─── implements the contract; names the store, the platform, the types"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Trace the dependencies and the rule holds. The state holder names the contract it owns and nothing else; the implementation names the contract and the storage library; nothing inner names anything outer. There is no domain layer, no use case, and no mapping, because there is no policy to isolate — and the rule never asked for any of them. A design does not become non-compliant by being small."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now the other end, for a feature that has the responsibilities to justify it."
+                },
+                {
+                  "type": "code",
+                  "language": "text",
+                  "code": "                    RenewalEligibility       the lending rule; names only its own types\n                            ↑\n                        RenewLoan            the operation; names the rule and the\n                        ↗       ↖                  contracts it declares for itself\n   BorrowedItemsViewModel     LocalLoanRepository\n   screen state; names        detail; names RenewLoan's contract\n   the operation              in order to satisfy it"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Four conceptual groupings, and the same rule, satisfied for the same reason: every arrow points toward policy. The eligibility rule is innermost because it is what the library would still need if the program were rewritten; the implementation is outermost because it exists to serve a contract it did not define. Note that the screen owner and the implementation are both outer, and neither names the other — the picture is not a stack."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The check to apply",
+                    "Two layers",
+                    "Four groupings"
+                  ],
+                  "rows": [
+                    [
+                      "Does every source dependency point toward policy?",
+                      "Yes",
+                      "Yes"
+                    ],
+                    [
+                      "Layers",
+                      "Two",
+                      "Four"
+                    ],
+                    [
+                      "Is there a domain layer?",
+                      "No — nothing earns one",
+                      "Yes — an operation and a rule with their own reasons to change"
+                    ],
+                    [
+                      "Mapping between representations",
+                      "None; one type, because both sides change together",
+                      "At the data boundary only, where the stored shape and the application's diverge"
+                    ],
+                    [
+                      "Compliant with the dependency rule?",
+                      "Yes",
+                      "Yes"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The vocabulary is the last obstacle, and pretending it is settled does a reader more harm than admitting it is not. Clean Architecture's own circles are named entities, use cases, interface adapters and frameworks-and-drivers, with entities meaning enterprise-wide business rules and use cases meaning application-specific ones. Android's guidance names its layers UI, domain and data, and uses \"use case\" for the types in the optional middle. Other sources say interactor, or application layer, or infrastructure, and they do not all mean the same thing by them. This curriculum therefore teaches the roles rather than the words — **policy**, **detail**, and the **direction** between them — and treats the vocabulary as something to translate on arrival at a codebase rather than something to be right about. In an interview, asking what the interviewer means by \"domain\" is a stronger move than assuming."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "“Clean Architecture means three layers, so a compliant app has presentation, domain and data — and a use case per repository method.” The rule constrains the direction of source dependencies and says nothing about a count; the article explicitly calls its circles schematic and denies that there must be exactly four. A two-layer design whose dependencies all point toward policy satisfies it, and a four-layer design whose innermost types import framework classes does not."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "What the rule buys is specific and worth being able to list, because a vague benefit is what lets a structure be adopted without measurement. If inner policy names no outer detail, then the HTTP client can be replaced without the policy being edited; the storage implementation can be replaced without the policy being edited; the UI toolkit can be replaced without the policy being edited; and the policy can be reused or shared wherever the product requires, because nothing in it ties it to one of those. Each of those is the same sentence about a different detail, which is a sign that the rule is doing one thing rather than four."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What it does not buy is the more useful half of the answer. Following the dependency rule does not produce fewer files, faster builds, fewer mappings, simpler code, fewer modules or better runtime performance, and it frequently produces *more* of the first and the third. Every representation that may not cross a boundary has to be translated at it, and every contract owned by a consumer is a type somebody maintains. That is the foundations unit's cost model, carried all the way to the end of this unit rather than abandoned once a famous name appeared: the rule tells you which way to point a dependency, and it never claims the pointing is free."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Testability deserves the same precision here that the policy lesson insisted on. \"Clean Architecture is testable because it has layers\" is not a claim the argument supports. The supportable claim is that policy whose dependencies point only toward other policy can be exercised without the outer details, because it names none of them — which is a property of the dependency direction, and is available to a two-layer design that gets the direction right and unavailable to a five-layer one that does not. The cause is the boundary; the layer count is a description of the drawing."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Modules are the last thing to keep separate. An architectural boundary may be expressed inside one build unit or across several, and the dependency rule is about source dependencies either way. Aligning a layer with a Gradle module makes the direction enforceable rather than conventional, and costs build complexity and configuration; this repository holds five consumer-owned repository contracts with implementations depending inward, and compiles all of them in one module. The module graph, convention plugins, build performance and whether to organise modules by feature or by layer belong to the build and modularization curriculum, which this unit names once and leaves alone."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That closes the unit, and its argument was a sequence of decisions rather than a structure. A domain layer is optional and earns its place from reuse, orchestration, isolable policy or genuine complexity. One operation earns a type of its own from what it owns, and a team may pay for uniformity instead, knowingly. Policy is what the application would still need if the program were rewritten, and detail is how this program happens to implement it. Whoever defines an abstraction decides which way the dependency points. And Clean Architecture's rule is the direction, not the picture. What this unit has deliberately not done is give any of it a pattern name — MVP, MVVM and MVI describe the same reasoning in three competing vocabularies, and reading a real codebase against all three is the next unit's subject."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked what Clean Architecture is, lead with the dependency rule — source dependencies point inward toward policy, and nothing inner names anything outer — and say immediately that the layer count is not part of it, because the article calls its circles schematic. Then show you can apply it: a two-layer feature can satisfy the rule and a four-layer one can break it, so judge by tracing dependencies. Finish with the cost: the rule buys independence from frameworks, storage and transport, and buys nothing at all about build speed, file count or how many mappings a feature needs."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_layers_and_their_cost",
+            "lesson_when_a_domain_layer_earns_its_place",
+            "lesson_policy_and_framework_detail"
+          ],
+          "sources": [
+            {
+              "title": "The Clean Architecture",
+              "url": "https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html"
+            },
+            {
+              "title": "Guide to app architecture",
+              "url": "https://developer.android.com/topic/architecture"
+            },
+            {
+              "title": "Architecture recommendations",
+              "url": "https://developer.android.com/topic/architecture/recommendations"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
     }
   ]
 }

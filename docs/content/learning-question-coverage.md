@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `7e251b7a16e6d29cbe1e0f80efde173da2fa768ad8f0ddd9d86620c1bfd98ce6` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `2139727f548879aa5e1b10930b3cd7d1ad80b0df1aba4a1d61fcb95ae650d4b7` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `caeeab0b5a3687d822a8a48cd260ecb4bb8bfc02fa9ccc268f57b1ef6550e00a` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,12 +68,12 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 21 |
-| Active lessons in those units | 87 |
-| Distinct primary subtopics | 42 |
-| Distinct supporting subtopics | 83 |
-| Unique active questions reached through primary mappings | 105 |
-| Primary subtopics with at least one active question | 41 |
+| Active learning units | 22 |
+| Active lessons in those units | 92 |
+| Distinct primary subtopics | 44 |
+| Distinct supporting subtopics | 86 |
+| Unique active questions reached through primary mappings | 108 |
+| Primary subtopics with at least one active question | 43 |
 | Primary subtopics with no active question | 1 |
 | Active questions in the bank | 401 |
 | Deprecated questions excluded from this report | 41 |
@@ -112,6 +112,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Architecture as Responsibilities and Boundaries (`unit_architecture_responsibilities_and_boundaries`) | 5 | 5 | 2 | 3 | 0 | 5 |
 | Screen State Holders, ViewModel and UI State (`unit_screen_state_holders_and_ui_state`) | 5 | 2 | 3 | 2 | 0 | 5 |
 | Repositories, Data Ownership and Single Source of Truth (`unit_repositories_and_data_ownership`) | 5 | 4 | 1 | 5 | 0 | 6 |
+| Domain Logic, Use Cases and Dependency Direction (`unit_domain_logic_and_dependency_direction`) | 5 | 4 | 1 | 4 | 0 | 5 |
 
 ## Unit and lesson detail
 
@@ -1811,6 +1812,103 @@ Supporting context — not primary coverage:
 | `kotlin_sealed_types` — Sealed classes and interfaces | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 | `room_dao` — Room DAOs and queries | 1 | `local_data` — Local Persistence & Offline Data |
 | `retrofit` — Retrofit | 1 | `networking` — Networking & Serialization |
+
+### Domain Logic, Use Cases and Dependency Direction (`unit_domain_logic_and_dependency_direction`)
+
+Home topic: `architecture` — Application Architecture & Design Principles.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 1 | `dependency_direction_domain_framework_types` |
+| APPLIED | 4 | `architecture_interface_boundary_ownership`, `architecture_use_case_reuse`, `clean_architecture_dependency_rule_tradeoff`, `domain_layer_passthrough_cost` |
+| ADVANCED | 0 | — |
+
+#### When Does Another Layer Earn Its Existence? (`lesson_when_a_domain_layer_earns_its_place`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `use_cases` — Use cases and when to introduce them | 0 | 2 | 0 | 2 | `architecture_use_case_reuse`, `domain_layer_passthrough_cost` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `layered_architecture` — Layered architecture | 2 | `architecture` — Application Architecture & Design Principles |
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 0 | `architecture` — Application Architecture & Design Principles |
+| `separation_of_concerns` — Separation of concerns | 1 | `architecture` — Application Architecture & Design Principles |
+
+#### Use Cases That Earn Their Place, and Pass-Through Cost (`lesson_use_cases_and_pass_through_cost`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `use_cases` — Use cases and when to introduce them | 0 | 2 | 0 | 2 | `architecture_use_case_reuse`, `domain_layer_passthrough_cost` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `repository_pattern` — Repository pattern | 1 | `architecture` — Application Architecture & Design Principles |
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 0 | `architecture` — Application Architecture & Design Principles |
+| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+
+#### Policy, Framework and Detail (`lesson_policy_and_framework_detail`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `dependency_direction` — Dependency direction and inversion | 1 | 0 | 0 | 1 | `dependency_direction_domain_framework_types` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `clean_architecture` — Clean Architecture | 1 | `architecture` — Application Architecture & Design Principles |
+| `layered_architecture` — Layered architecture | 2 | `architecture` — Application Architecture & Design Principles |
+| `kmp_architecture` — KMP architecture | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
+
+#### Who Defines the Abstraction? (`lesson_dependency_inversion_in_practice`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `dependency_direction` — Dependency direction and inversion | 1 | 0 | 0 | 1 | `dependency_direction_domain_framework_types` |
+| `interface_boundaries` — Interface boundaries | 0 | 1 | 0 | 1 | `architecture_interface_boundary_ownership` |
+| **Lesson total (unique)** | 1 | 1 | 0 | 2 | `architecture_interface_boundary_ownership`, `dependency_direction_domain_framework_types` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `solid` — SOLID principles | 1 | `architecture` — Application Architecture & Design Principles |
+| `clean_architecture` — Clean Architecture | 1 | `architecture` — Application Architecture & Design Principles |
+| `repository_pattern` — Repository pattern | 1 | `architecture` — Application Architecture & Design Principles |
+| `service_locator_vs_di` — Service locator vs dependency injection | 1 | `dependency_injection` — Dependency Injection |
+
+#### Clean Architecture: the Dependency Rule, Not the Diagram (`lesson_clean_architecture_intent`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `clean_architecture` — Clean Architecture | 0 | 1 | 0 | 1 | `clean_architecture_dependency_rule_tradeoff` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `layered_architecture` — Layered architecture | 2 | `architecture` — Application Architecture & Design Principles |
+| `use_cases` — Use cases and when to introduce them | 2 | `architecture` — Application Architecture & Design Principles |
+| `dependency_direction` — Dependency direction and inversion | 1 | `architecture` — Application Architecture & Design Principles |
+| `android_modules` — Application/library modules | 1 | `build_delivery` — Build System, Modularization & Delivery |
 
 ## Primary assessment gaps
 

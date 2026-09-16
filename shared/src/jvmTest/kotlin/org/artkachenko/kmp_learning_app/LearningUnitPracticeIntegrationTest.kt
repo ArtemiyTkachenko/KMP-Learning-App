@@ -216,10 +216,11 @@ internal class LearningUnitPracticeIntegrationTest {
                     "unit_architecture_responsibilities_and_boundaries",
                     "unit_screen_state_holders_and_ui_state",
                     "unit_repositories_and_data_ownership",
+                    "unit_domain_logic_and_dependency_direction",
                 ),
                 architectureUnits.map { it.id },
             )
-            assertEquals(listOf(5, 5, 5), architectureUnits.map { it.lessons.size })
+            assertEquals(listOf(5, 5, 5, 5), architectureUnits.map { it.lessons.size })
             val architectureTopic = topic("architecture")
             val architectureParents = architectureUnits.associate { it.id to unit(it.id) }
             val architectureLessonCount = architectureUnits.sumOf { it.lessons.size }
@@ -302,7 +303,7 @@ internal class LearningUnitPracticeIntegrationTest {
             assertFalse(rebuilt.isStudied(earlierLesson.id))
             // 43 `android_ui` Lessons, 29 in the coroutines and Flow Units and 15 in the
             // three architecture Units, less the one that was just un-studied.
-            assertEquals(86, rebuilt.getStudiedLessons().size)
+            assertEquals(91, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -453,6 +454,18 @@ internal class LearningUnitPracticeIntegrationTest {
                         "layered_architecture",
                         "error_modeling",
                     ) to 6
+                ),
+                // E26-05. `use_cases` is primary in two Lessons and `dependency_direction` in
+                // two, and the inversion Lesson declares two primaries, so five Lessons
+                // practise four concepts. All four hold ACTIVE Questions. The two shared with
+                // the foundations Unit are pinned by the bespoke test below.
+                "unit_domain_logic_and_dependency_direction" to (
+                    setOf(
+                        "use_cases",
+                        "clean_architecture",
+                        "dependency_direction",
+                        "interface_boundaries",
+                    ) to 5
                 ),
             )
             val content = BundledLearningContentRepository()
@@ -847,6 +860,101 @@ internal class LearningUnitPracticeIntegrationTest {
             )
             assertTrue(questions.none { it.subtopicId in supportingOnly })
             assertFalse("flow_one_shot_result_vs_observable_stream" in questions.map { it.id }.toSet())
+            assertEquals(0, attemptCount())
+        }
+
+    /**
+     * E26-05: the domain Unit's pool, the two Questions it shares with Unit 1, and the one
+     * architecture Question that still reaches no Unit at all.
+     *
+     * Three separate claims the expectation table cannot make. First, *which* five Questions
+     * arrive — E26-01 predicted this pool exactly, and it is asserted rather than trusted.
+     * Second, the Unit 1 intersection: `dependency_direction` and `interface_boundaries` are
+     * primary in the foundations Unit's third and fourth Lessons and in this Unit's, so
+     * `dependency_direction_domain_framework_types` and `architecture_interface_boundary_ownership`
+     * appear in both pools. Both semantically belong here — this is the Unit that completes
+     * their reasoning — and `docs/content/architecture-units-1-6-plan.md` records the overlap
+     * as calculated rather than discovered. Third, `architecture_solid_dependency_substitution`
+     * stays outside: `solid` is supporting-only across the whole epic by design, and dependency
+     * inversion is taught under the concept where the decision is actually made. Asserting all
+     * three means a later re-map has to re-state the consequence rather than quietly repair it.
+     */
+    @Test
+    fun theDomainLogicUnitPractisesItsPrimaryConceptsIncludingTwoSharedWithUnitOne() =
+        runUnitPracticeTest {
+            val unitId = "unit_domain_logic_and_dependency_direction"
+            val unit = assertNotNull(BundledLearningContentRepository().getUnitById(unitId))
+            val builder = builder(PracticeBuilderTarget.LearningUnit(unitId))
+            val settled = builder.settled()
+
+            assertEquals(unit.title, settled.scope.name)
+            val available = assertIs<PracticeAvailability.Available>(settled.availability)
+            assertEquals(5, available.eligibleQuestionCount)
+            builder.selectQuestionCount(available.eligibleQuestionCount)
+            builder.settled()
+
+            val config = builder.start()
+            val concepts = setOf(
+                "use_cases",
+                "clean_architecture",
+                "dependency_direction",
+                "interface_boundaries",
+            )
+            assertEquals(AssessmentScope.Subtopics(concepts), config.scope)
+
+            val questions = selectedQuestions(config)
+            val questionIds = questions.map { it.id }.toSet()
+            assertEquals(
+                setOf(
+                    "architecture_use_case_reuse",
+                    "domain_layer_passthrough_cost",
+                    "clean_architecture_dependency_rule_tradeoff",
+                    "dependency_direction_domain_framework_types",
+                    "architecture_interface_boundary_ownership",
+                ),
+                questionIds,
+            )
+
+            // The recorded overlap with the foundations Unit, through the two concepts both
+            // Units take as primary.
+            val foundationsBuilder =
+                builder(PracticeBuilderTarget.LearningUnit("unit_architecture_responsibilities_and_boundaries"))
+            foundationsBuilder.settled()
+            foundationsBuilder.selectQuestionCount(
+                assertIs<PracticeAvailability.Available>(foundationsBuilder.uiState.value.availability)
+                    .eligibleQuestionCount,
+            )
+            foundationsBuilder.settled()
+            val foundations = selectedQuestions(foundationsBuilder.start()).map { it.id }.toSet()
+            assertEquals(
+                setOf(
+                    "dependency_direction_domain_framework_types",
+                    "architecture_interface_boundary_ownership",
+                ),
+                foundations intersect questionIds,
+            )
+
+            // Nine supporting-only concepts, holding ACTIVE Questions of their own, broaden
+            // nothing. `solid` is the one that matters: it is supporting-only across every
+            // E26 Unit, so its Question reaches no Unit's practice at all, which is intended
+            // rather than an oversight.
+            val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
+            assertTrue(
+                setOf(
+                    "solid",
+                    "service_locator_vs_di",
+                    "android_modules",
+                    "kmp_architecture",
+                    "repository_pattern",
+                    "layered_architecture",
+                    "architecture_tradeoffs",
+                    "state_ownership",
+                    "separation_of_concerns",
+                ).all { it in supportingOnly },
+            )
+            assertTrue(questions.none { it.subtopicId in supportingOnly })
+            assertFalse("architecture_solid_dependency_substitution" in questionIds)
+            assertFalse("architecture_solid_dependency_substitution" in foundations)
             assertEquals(0, attemptCount())
         }
 

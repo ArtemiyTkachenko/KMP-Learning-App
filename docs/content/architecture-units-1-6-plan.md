@@ -2678,8 +2678,9 @@ a consumer observing part-way through a multi-field change) and attributes it to
 rather than to the pattern. The section closes on the strongest available evidence: Android's own
 UI-layer page describes the whole arrangement, including UDF by name, without using any of the
 three acronyms. Senior depth derives every other MVVM characteristic from the absent view
-reference, carries the Presentation Model variance, and keeps dependency direction and lifetime
-separate.
+reference — while bounding how much that inversion forces, since an owner with no view reference
+can still publish one-off instructions — carries the Presentation Model variance, and keeps
+dependency direction and lifetime separate.
 
 **L5.4 — MVI.** No new requirement is added. The two ideas are introduced separately — input as a
 value from a closed set, and one current state with an explicit transition — and the sealed
@@ -2711,6 +2712,25 @@ because an MVP presenter filed under `viewmodel/` still reads as MVVM in the pro
 depth carries the repository evidence, the two boundaries (presentation-only, and orthogonal to
 Clean Architecture), and the interview answer — given in full and immediately qualified as
 something to be able to produce rather than to memorise.
+
+### Corrections made during review
+
+Three defects were found by re-reading the finished Unit against its own later claims, and all
+three are recorded because they share one failure mode: **an absolute stated where the Unit's own
+material supports only a narrower claim.** A unit whose subject is that labels overclaim is
+exactly the place for an author to overclaim, and two of the three contradicted content this
+repository already ships.
+
+| Where | Defect | Correction |
+| --- | --- | --- |
+| L5.1, Core and Practical | The five questions were said to produce "a complete description of its architecture", and the practical half claimed that "every question that can be asked about how this screen behaves under a requirement change" is answerable from the six lines — with "where a new rule goes" as one of its examples. **L5.5's Senior section says the opposite in as many words**: these are presentation responsibility models and they decide nothing about the repository, the domain layer, dependency supply, navigation or modularization. The illustrative clause was the clearest error, since where a rule belongs is Unit 4's question | Scoped to what the five questions actually settle — completely describing *how a screen's UI and its behaviour owner relate*, which is the whole of what these four names are about. The practical half now names what the six lines settle, and then names what they deliberately do not: whether there is a repository, which source is authoritative, whether a rule earns a domain layer, how dependencies are supplied. The orthogonality argument now opens the Unit as well as closing it |
+| L5.2, Practical | One value describing the whole screen was said to be an arrangement in which an inconsistent combination "cannot be expressed at all". **This contradicts shipped Unit 2 material**: `lesson_modelling_ui_state` teaches that a data class of independent fields can represent combinations the product forbids, and treats it as a real defect. A state value holding the selection beside a separate `canStart` can be copied with one updated and the other stale. It also overstated `architecture_mvi_single_state`, whose own explanation grounds the benefit in a consumer observing part-way through a multi-field change | Replaced with the distinction the sources actually support: one value does not by itself make the bad combination unthinkable, and the representable-but-impossible problem is named and pointed back at Unit 2. What one value changes is that the two facts travel together, so no consumer observes the screen mid-update — and making the combination genuinely impossible is then one further step available to it, by deriving the flag or modelling the pair so it cannot disagree, which the call-sequence arrangement has nowhere to take |
+| L5.3, Senior | "Once the owner cannot call the UI, output *must* be something the UI reads, which **forces state rather than instructions**." Removing the reference forces output to be *read* rather than *pushed*; it does not force every output to be current state. **The Unit refutes this itself two Lessons later**, citing `PracticeBuilderViewModel` — an owner with no UI reference publishing a one-off `StartPractice` instruction through a channel — and L5.4 spends a paragraph on side outputs precisely because they are not state | Rewritten as the push-to-read inversion, with the limit stated immediately: consumer-read output becomes the only channel and current state is the overwhelmingly common form of it, but an owner holding no view reference can still publish one-off instructions, which the following two Lessons take up. The dependency chain that follows — the owner need not know whether anyone is looking, therefore it is safe for the UI to be absent — is unchanged, because it rests on the inversion rather than on the output being state |
+
+The parallel overclaim in L5.3's many-against-one paragraph ("forbids combinations the owner
+never intended") was narrowed in the same pass, to keep the one-value guarantee stated
+identically wherever the Unit makes it. **None of the four changed an identity, a mapping, a
+source, a cross-link or a Lesson boundary**, and none changed the resolved practice pool.
 
 ### Repository evidence used, and its limits
 

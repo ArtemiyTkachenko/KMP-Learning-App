@@ -3512,3 +3512,291 @@ generated confirmation that the closing Lesson of the epic reaches no practice a
 - **The learning content itself is editorial** and no automated check can confirm that a Lesson teaches
   what it claims; the semantic review above is a judgement, as Rule 10 of the authoring contract
   requires.
+
+---
+
+## Assessment outcomes for E26-08
+
+The epic's semantic assessment pass, run after all six instructional Units shipped. It repeats
+[Part 5](#part-5--semantic-assessment-review)'s review against the finished 29 Lessons rather than
+against the plan, decides the mapping and level candidates, disposes of all 21 gap candidates, and
+records the practice shape the learner actually meets. It changed the question bank, this document,
+the audit log, the generated coverage snapshot and two test files. **It changed no Lesson, no Unit
+identity, no Lesson mapping and no taxonomy entry** — no Lesson factual defect was found while
+validating against the shipped prose, and the routing limitations this issue ran into are recorded
+below rather than repaired with a Subtopic split this epic was not authorised to make.
+
+### Scope, and the baseline it started from
+
+Re-derived from the bundled JSON rather than trusted to the prompt or to Part 5.
+
+| Measure | Before E26-08 | After E26-08 |
+| --- | ---: | ---: |
+| Questions in the bank | 442 | 460 |
+| ACTIVE | 401 | 419 |
+| DEPRECATED | 41 | 41 |
+| `architecture` Questions | 26 | 44 |
+| `architecture` ACTIVE | 22 | 40 |
+| `architecture` DEPRECATED | 4 | 4 |
+| `architecture` Subtopics | 18 | 18 |
+| `architecture` ACTIVE by level | 8 F / 14 A / 0 Adv | 7 F / 31 A / 2 Adv |
+| `architecture` ACTIVE Subtopics with no Question | 2 (`mvc`, `architecture_tradeoffs`) | **0** |
+| Unique Questions reachable through the six E26 Units | 21 | 39 |
+
+Eighteen Questions were authored, two were re-mapped, one was re-levelled. **No Question was edited
+for content, deprecated, restored or had an `AnswerOption` id reissued.** Every changed Question kept
+its `Question.id`, all of its `AnswerOption` ids, its key, its status and its explanation.
+
+### The mapping and level candidates, decided first
+
+Decided before anything was authored, because a re-map changes which gaps remain. That ordering is
+what turned GAP-U6-A from an authoring problem into mostly a routing one, and what made GAP-U5-B and
+GAP-U5-C obligatory rather than optional.
+
+| Question | Before | After | Reason | Practice consequence |
+| --- | --- | --- | --- | --- |
+| `architecture_ui_event_consumption` | `mvi` | **`state_ownership`** | Its reasoning is replay, consumption and acknowledgement — that a replay cache re-delivers to a late collector because the stream records no consumption, so handling once requires the consumption to be recorded where it survives the collector. That is L6.2 line for line, and it is not MVI's transition model. Three independent reviews (E26-01, E26-06, E26-07) reached the same conclusion, the last of them against the finished prose | Leaves Unit 5 and enters Unit 6 — and **also Unit 2**, because the two Units share `state_ownership` as a primary concept. `mvi` became empty, which made GAP-U5-C obligatory |
+| `viewmodel_vs_repository_responsibility` | `mvvm` | **`repository_pattern`** | Three of its four options turn on what the data layer owns — no stored entity may cross the boundary, cache and retry policy belongs inside — which L3.1 and L3.2 own; L5.3 teaches none of it. `repository_pattern` was chosen over the `state_ownership` alternative because it keeps the Question out of Unit 6, which teaches no repository material, and puts it in a Unit whose readers have met the state-holder half already, where a Unit 2 reader would not yet have met the repository half | Leaves Unit 5 and enters **Unit 3 only**. `mvvm` became empty, which made GAP-U5-B obligatory |
+| `architecture_paging_ownership` | `layered_architecture` | **keep** | Re-checked against the finished L1.5 and L3.5 and the recommendation stands. It is a strong fit in Unit 3 and a weak one in Unit 1, and no honest alternative mapping is better: the reasoning genuinely is which layer owns pagination. The real fix is a taxonomy split, which this epic does not make | Unchanged: still reaches Units 1 and 3. The Unit 1 weakness is an accepted structural limitation, recorded since E26-01 and re-recorded here |
+| `dependency_direction_domain_framework_types` | `FOUNDATION` | **`APPLIED`** | Set from the difficulty rubric, not from the Topic's level shape. The reader must read a signature, recognise two different kinds of framework coupling in it and name the consequence, while eliminating three plausible mechanical consequences that are each false for a different reason. That is known behaviour applied to a realistic scenario rather than one documented contract recalled. **Not ADVANCED**: no two mechanisms interact and no trade-off is weighed | None. Its Subtopic is unchanged, so it still reaches Units 1 and 4; only the level a learner sees changed |
+
+### Final disposition of the 21 gap candidates
+
+Eighteen Questions close nineteen gaps; two gaps are closed without one. **No gap disappeared
+silently.**
+
+| Gap | Disposition | Question(s), or the reason there is none |
+| --- | --- | --- |
+| GAP-U1-A | **Closed by new Question** | `architecture_package_move_changes_nothing` (APPLIED, `separation_of_concerns`). A package reorganisation that changes no import, and the reader has to say what it changed. Deliberately a concrete change rather than "which of these is architecture?" |
+| GAP-U1-B | **Closed by new Question** | `separation_of_concerns_reason_to_change_test` (APPLIED, `separation_of_concerns`). A proposed split that is **not** justified, keyed on one reason to change reaching both halves. Kept distinct from U1-D and U1-E by scale: this is cohesion inside one component, not what an abstraction buys or what a layer costs |
+| GAP-U1-C | **Closed by new Question** | `dependency_direction_callback_does_not_reverse_it` (APPLIED, `dependency_direction`). Keyed on what a source dependency is and what the depending side inherits, using L1.3's callback case. Deliberately **not** an inversion Question, and deliberately not a second framework-leak Question, so it does not duplicate `dependency_direction_domain_framework_types` |
+| GAP-U1-D | **Closed by new Question** | `interface_with_one_implementation_is_not_a_boundary` (APPLIED, `interface_boundaries`). Asks *whether* the abstraction earns existence; `architecture_interface_boundary_ownership` asks *where* it belongs. The two responsibilities are kept apart, as the gap required |
+| GAP-U1-E | **Closed by new Question** | `added_layer_must_isolate_an_independent_change` (APPLIED, `architecture_tradeoffs`). Evaluates **one boundary**. Kept distinct from GAP-U6-C, which evaluates a whole feature; one Question was deliberately not stretched across both |
+| GAP-U2-A | **Covered sufficiently elsewhere; no new Question** | The lifetime-against-persistence fact is assessed four times in `lifecycle_navigation` and once in `kmp`, and its architecture-side form — that moving state to a longer-lived owner changes the owner and grants no durability — is now assessed by `owner_chosen_from_the_required_lifetime`, whose third requirement names an ending no in-memory owner has. A further architecture Question would have duplicated five existing ones and added a sixth Unit-6-flavoured Question to Unit 2's pool. **E25's GAP-U7-C, handed forward to this epic, is closed here on the same reasoning** |
+| GAP-U2-B | **Closed by new Question** | `ui_state_shape_from_the_screens_requirements` (APPLIED, `state_ownership`). Two stated constraints decide it — a region that fails independently, and a combination the product forbids — so the reader chooses a shape from requirements rather than preferring a construct. The epic's widest gap, and nothing in any Topic assessed it |
+| GAP-U2-C | **Closed by new Question** | `exposed_mutable_state_costs_a_second_write_path` (APPLIED, `unidirectional_data_flow`). Keyed on the three architectural costs, with the `MutableStateFlow` thread-safety claim as a distractor precisely so the Question is not about stream-type trivia. Unit 2 only, so it adds nothing to the Unit 6 overlap |
+| GAP-U2-D | **Covered sufficiently elsewhere; no new Question** | `viewmodel_scope_cleared_cancellation` in `async_reactive` assesses exactly this reasoning including the upload conclusion, and the ownership decision the gap wanted — *does this work belong to this owner?* — is now posed by `owner_chosen_from_the_required_lifetime`'s third requirement. E26-01 and E26-03 both recorded this as the lowest-priority gap in the Unit, and the duplication would have been paid for twice: once in the bank and once in Unit 2's pool |
+| GAP-U3-A | **Closed by new Question** | `repository_boundary_needs_a_decision_to_own` (APPLIED, `repository_pattern`). Asks which requirement would give a forwarding repository a decision of its own, with the uniform-entry-point recommendation as a distractor that is real but is not a decision. **Neither retired wording is reproduced**, and the retired Questions' framing — what a repository *is* — is deliberately not the question asked |
+| GAP-U3-B | **Closed by new Question** | `repository_contract_carries_meaning_not_origin` (APPLIED, `repository_pattern`). Keyed on the application-meaning against implementation-origin distinction that E26-04 named as L3.2's sharpest testable idea. Not combined with U3-A: one asks whether the boundary owns anything, the other asks what its contract may expose |
+| GAP-U3-C | **Closed by new Question** | `authoritative_owner_is_chosen_per_fact` (APPLIED, `single_source_of_truth`). Three facts, three different owners, one of which is not a database and one of which is not stored at all. The offline-first recommendation appears as a distractor quoted without its condition, which is how the misconception is actually formed |
+| GAP-U4-A | **Closed by new Question** | `domain_layer_is_earned_by_the_feature` (APPLIED, `use_cases`). Posed at the **layer** level, where the two existing `use_cases` Questions work at the class level. E26-05's team-uniformity observation is carried in the explanation rather than as a second decision, and `architecture_tradeoffs_001` was used as input rather than restored. **Not** folded into GAP-U6-C: that Question is `architecture_tradeoffs` and would reach Units 1 and 6, never Unit 4, so folding would have left Unit 4 with nothing at the layer level |
+| GAP-U4-B | **Closed by new Question** | `dependency_rule_constrains_direction_not_layer_count` (APPLIED, `clean_architecture`). Three designs — two layers compliant, four groupings compliant, three layers non-compliant — exactly as the gap specified, and not a terminology quiz |
+| GAP-U5-A | **Closed by new Question, shared with GAP-U5-D** | `classify_a_screen_by_its_responsibilities` (APPLIED, `mvc`). Fills the Subtopic that held zero ACTIVE Questions through six issues. The assessed skill is responsibility-based classification, and no pattern definition is asserted, so its correctness does not depend on one author's taxonomy |
+| GAP-U5-B | **Closed by new Question** | `observed_state_arrangement_is_not_a_class_or_a_folder` (APPLIED, `mvvm`). Obligatory once `viewmodel_vs_repository_responsibility` moved. Keyed on the change that actually establishes the arrangement, with the class-name and folder-name definitions as distractors; the arrangement is stated in the stem rather than deduced from the label |
+| GAP-U5-C | **Closed by new Question** | `explicit_transition_is_not_the_input_spelling` (APPLIED, `mvi`). Obligatory once `architecture_ui_event_consumption` moved. Assesses the transition model with the "MVI is MVVM plus sealed intents" misconception as the central discrimination and the purity over-claim as a fourth option. **Nothing about `SharedFlow`, `Channel` or occurrence delivery**, which was the mapping error being corrected |
+| GAP-U5-D | **Closed by the GAP-U5-A Question** | The design `classify_a_screen_by_its_responsibilities` presents is a hybrid — a lifecycle-owned holder from one tradition, one immutable state value from another, callbacks from a third — and its three distractors each differ on exactly one property, which is the classification skill the gap describes. A separate hybrid Question would have given Unit 5 one Question per Lesson, which is the quota this issue was told not to author |
+| GAP-U6-A | **Mostly closed by the re-map; the remainder closed by one new Question** | The re-map delivers `architecture_ui_event_consumption` to Unit 6. `occurrence_guarantee_before_mechanism` (ADVANCED, `state_ownership`) closes what E26-07 said the re-map would leave: an occurrence whose correct answer is **acceptable loss**, where a durable mechanism would be over-architecture, with process survival as the eligibility test that removes in-memory owners and the recorded-handling against side-effect-execution distinction as a distractor. **No second replay Question was written**, as the issue required |
+| GAP-U6-B | **Closed by new Question** | `owner_chosen_from_the_required_lifetime` (APPLIED, `state_ownership`). Three rungs of the ladder from three stated ending events, with the application-scoped owner as the tempting longer-lived answer that fails on process death. Also carries the architecture-side half of GAP-U2-A and GAP-U2-D |
+| GAP-U6-C | **Closed by new Question** | `smallest_structure_that_satisfies_the_requirements` (ADVANCED, `architecture_tradeoffs`). The epic's synthesis Question: one feature's requirements, four designs, with under-architecture, over-architecture and pattern-first as the three wrong answers. Distinct from GAP-U1-E, whose Question judges one boundary |
+
+**No gap was left open**, and no new gap was created. One observation E26-04 recorded was weighed and
+deliberately not promoted: *nothing assesses the model-separation trade-off in the direction that
+favours one shared type.* It is not authored, because `dto_entity_domain_model_boundary`'s own key
+names the mapping cost and its explanation says the split "may be unnecessary for very small
+features", and because a new `layered_architecture` Question would also enter Unit 1, where the data
+layer is not yet taught. Two further observations — E26-05's dependency-inversion-against-injection
+distinction, and E26-06's orthogonality claim — are left to E27 and to whichever issue owns the
+cross-epic view, exactly as those issues recommended; both are now touched by distractors in
+`interface_with_one_implementation_is_not_a_boundary` and `classify_a_screen_by_its_responsibilities`
+respectively, which is coverage of the misconception without a Question claiming the whole idea.
+
+### The two ADVANCED levels, justified one at a time
+
+The Topic held **zero** ACTIVE ADVANCED Questions before this issue and now holds two. Neither was
+levelled to fix that, and sixteen of the eighteen new Questions are APPLIED.
+
+- **`occurrence_guarantee_before_mechanism`.** Two occurrences have to be answered against five
+  independent guarantee questions in the right order; the process-survival answer eliminates a whole
+  class of owners before any mechanism is considered; the correct answer requires recognising that a
+  durable design is *wrong* for one of them; and one distractor is right about the structure and wrong
+  about what the structure guarantees. Several constraints interact and a superficially safer answer
+  is invalidated by one of them.
+- **`smallest_structure_that_satisfies_the_requirements`.** Six stated requirements each earn or fail
+  to earn a structural element, and the three wrong answers fail in three different directions —
+  missing owners, boundaries with no independent change behind them, and a mechanism chosen before the
+  questions were asked. Judging it needs every condition the previous five Units established, applied
+  at once.
+
+Both are long, and length is not why they are ADVANCED: `classify_a_screen_by_its_responsibilities`
+has the longest options in the batch and is APPLIED, because its four readings are settled by reading
+the described design carefully rather than by combining anything.
+
+### Practice routing after every change, through the production resolver
+
+Recomputed by running each shipped Unit through `PracticeBuilderViewModel` and the real selection path
+in `LearningUnitPracticeIntegrationTest`, not derived from Subtopic membership. Every pool below is
+asserted by id in that test.
+
+| Unit | Pool | Levels | Questions |
+| --- | ---: | --- | --- |
+| 1 | **11** | 1 F / 9 A / 1 Adv | `separation_of_concerns_001`, `architecture_package_move_changes_nothing`, `separation_of_concerns_reason_to_change_test`, `dependency_direction_domain_framework_types`, `dependency_direction_callback_does_not_reverse_it`, `architecture_interface_boundary_ownership`, `interface_with_one_implementation_is_not_a_boundary`, `architecture_paging_ownership`, `dto_entity_domain_model_boundary`, `added_layer_must_isolate_an_independent_change`, `smallest_structure_that_satisfies_the_requirements` |
+| 2 | **10** | 3 F / 6 A / 1 Adv | `state_ownership_001`, `architecture_state_holder_taxonomy`, `durable_state_vs_one_off_event`, `viewmodel_activity_reference_lifetime`, `ui_state_shape_from_the_screens_requirements`, `architecture_ui_event_consumption`, `occurrence_guarantee_before_mechanism`, `owner_chosen_from_the_required_lifetime`, `unidirectional_data_flow_001`, `exposed_mutable_state_costs_a_second_write_path` |
+| 3 | **10** | 1 F / 9 A / 0 Adv | `repository_observable_api_shape`, `repository_boundary_needs_a_decision_to_own`, `repository_contract_carries_meaning_not_origin`, `viewmodel_vs_repository_responsibility`, `single_source_of_truth_001`, `authoritative_owner_is_chosen_per_fact`, `architecture_paging_ownership`, `dto_entity_domain_model_boundary`, `architecture_error_mapping_boundary`, `architecture_error_modeling_result_type` |
+| 4 | **9** | 0 F / 9 A / 0 Adv | `architecture_use_case_reuse`, `domain_layer_passthrough_cost`, `domain_layer_is_earned_by_the_feature`, `clean_architecture_dependency_rule_tradeoff`, `dependency_rule_constrains_direction_not_layer_count`, `dependency_direction_domain_framework_types`, `dependency_direction_callback_does_not_reverse_it`, `architecture_interface_boundary_ownership`, `interface_with_one_implementation_is_not_a_boundary` |
+| 5 | **5** | 1 F / 4 A / 0 Adv | `classify_a_screen_by_its_responsibilities`, `mvp_vs_mvvm_view_contract`, `observed_state_arrangement_is_not_a_class_or_a_folder`, `explicit_transition_is_not_the_input_spelling`, `architecture_mvi_single_state` |
+| 6 | **10** | 2 F / 6 A / 2 Adv | `state_ownership_001`, `architecture_state_holder_taxonomy`, `durable_state_vs_one_off_event`, `viewmodel_activity_reference_lifetime`, `ui_state_shape_from_the_screens_requirements`, `architecture_ui_event_consumption`, `occurrence_guarantee_before_mechanism`, `owner_chosen_from_the_required_lifetime`, `added_layer_must_isolate_an_independent_change`, `smallest_structure_that_satisfies_the_requirements` |
+
+**Union: 39 of the 40 ACTIVE architecture Questions.** The one outside every pool is still
+`architecture_solid_dependency_substitution`, because `solid` is supporting-only by design, and the
+exclusion is asserted by id. **Every primary concept of every Unit now reaches at least one Question**,
+so the identity between a Unit's concepts and its resolved Subtopics holds for all six Units for the
+first time, and the three tests that previously asserted an *absence* now assert that identity.
+
+### Routing consequences, recorded rather than repaired
+
+| Overlap | Size | Verdict |
+| --- | ---: | --- |
+| Unit 1 ∩ Unit 4 | **4** | `dependency_direction_domain_framework_types` and `architecture_interface_boundary_ownership` complete their reasoning in Unit 4 and were already shared. The two new ones, `dependency_direction_callback_does_not_reverse_it` and `interface_with_one_implementation_is_not_a_boundary`, are Unit 1's own reasoning and were written deliberately simpler than the inversion Questions, so the shared pool is now fair in **both** directions rather than only one. This is an improvement on the pre-E26-08 shape and is the reason neither concept was demoted |
+| Unit 1 ∩ Unit 3 | **2** | Unchanged: `architecture_paging_ownership` and `dto_entity_domain_model_boundary` through `layered_architecture`. No new Question was authored under that shared concept, precisely to avoid widening it |
+| Unit 1 ∩ Unit 6 | **2** | New, and the predicted cost of filling `architecture_tradeoffs`. `added_layer_must_isolate_an_independent_change` is fair after Unit 1 and useful to Unit 6 as prerequisite reasoning. `smallest_structure_that_satisfies_the_requirements` is **not fair after Unit 1** — it is the epic's synthesis Question and needs all six Units. The two gaps were kept as two Questions rather than forced into one, which is what the plan required; the premature Unit 1 reach is an accepted structural limitation that only splitting `architecture_tradeoffs` would remove |
+| Unit 2 ∩ Unit 6 | **8** | The epic's largest limitation, and it grew. All eight `state_ownership` Questions reach both Units, and **four of them require Unit 6 material a Unit 2 reader has not met**: `durable_state_vs_one_off_event` (already recorded), the re-mapped `architecture_ui_event_consumption`, and the two new GAP-U6-A and GAP-U6-B Questions. That was accepted deliberately: the alternative was leaving the Unit the epic closes on with one semantically matched Question, and the issue's instruction is not to weaken Unit 6 so that Unit 2 stays pure. It is also why GAP-U2-A and GAP-U2-D were **not** given duplicate Questions — each would have added a ninth and tenth to this overlap for reasoning already assessed elsewhere |
+| Unit 5 ∩ anything | **0** | Still zero, and now for a better reason. Before this issue Unit 5's five concepts resolved four Questions of which two belonged elsewhere; now they resolve five, one per concept, every one of them assessing what the Unit teaches |
+
+**No shipped Unit outside this epic changed.** No non-`architecture` Subtopic was touched, no Lesson
+mapping moved, and the eighteen new Questions are all in the `architecture` Topic, so the Compose and
+Coroutines Units' pools are byte-identical.
+
+### Cross-topic duplication review
+
+Every adjacent Question E26-01 named was re-read before authoring, and none was re-mapped into
+`architecture`. The guards that actually constrained authoring:
+
+- **`viewmodel_scope_cleared_cancellation`, `coroutine_scope_outlives_its_consumer`,
+  `coroutine_scope_job_ownership`** (`async_reactive`) — the reason GAP-U2-D received no Question, and
+  the reason `owner_chosen_from_the_required_lifetime` is posed as an owner-selection decision across
+  three rungs rather than as a fact about when a scope is cancelled.
+- **`stream_choice_cannot_supply_a_delivery_guarantee`, `shared_flow_try_emit_true_is_not_delivery`**
+  (`async_reactive`, both ADVANCED) — the reason `occurrence_guarantee_before_mechanism` names no
+  stream type at all and keys on the acceptable-loss case, which neither of them poses.
+- **`viewmodel_store_configuration_retention`, `viewmodel_clear_owner_finish`,
+  `viewmodel_destination_scope`, `configuration_change_vs_process_recreation`, the four `saved_state`
+  Questions, `kmp_shared_viewmodel_owner_platform`** — together the reason GAP-U2-A received no
+  Question.
+- **`flow_one_shot_result_vs_observable_stream`** (`async_reactive`) — re-weighed as E26-04 asked. No
+  architecture-side duplicate was authored: `repository_observable_api_shape` already assesses the
+  API-shape decision from this side, and the residual idea, that exposing a mutable stream from the
+  data layer hands every caller a second write path, is assessed by
+  `exposed_mutable_state_costs_a_second_write_path` at the owner boundary where L2.4 teaches it.
+- **`compose_screen_state_lowest_sensible_owner`, `compose_over_hoisted_ui_element_state_cost`,
+  `compose_udf_event_direction`** (`android_ui`) — the reason the new UDF and owner-selection Questions
+  are posed at the application boundary, with a repository, a process and a scheduler in scope, rather
+  than inside a composable tree.
+- **`offline_first_001`, `cache_invalidation_staleness_policy`, `room_dao_001`** (`local_data`) — the
+  reason `authoritative_owner_is_chosen_per_fact` makes the learner *choose* owners for three facts
+  instead of restating the offline-first recommendation, which `offline_first_001` already covers.
+- **`background_api_selection_criteria`** (`background_work`) — the reason
+  `owner_chosen_from_the_required_lifetime`'s fourth rung is "a mechanism whose contract outlives the
+  process" rather than a named scheduler. The Question stops exactly where L6.3 stops.
+- **`kotlin_sealed_types_001`** (`kotlin_language`) — the reason
+  `ui_state_shape_from_the_screens_requirements` asks about representable combinations and never about
+  the language mechanism.
+- **`over_modularization_tiny_module_cost` and the `build_delivery` module Questions** — the reason the
+  Gradle-module option in `added_layer_must_isolate_an_independent_change` is a distractor about
+  enforcement rather than a claim about modularization, which E29 owns.
+- **`service_locator_vs_di_001`, `di_hilt_viewmodel_scope`** (`dependency_injection`) — the reason
+  injection appears only as a distractor in `interface_with_one_implementation_is_not_a_boundary` and
+  no Question was authored on inversion against injection, which E26-05 recommended leaving to E27.
+
+### Source verification
+
+Fifteen pages were fetched and the supporting sentence located in the rendered text; none was trusted
+to an HTTP 200. `developer.android.com` supplied the architecture overview, recommendations, UI layer,
+state holders, UI events, data layer, offline-first, domain layer, ViewModel and background-work pages;
+`kotlinlang.org` supplied the `StateFlow` thread-safety contract and the visibility-modifier rule that
+makes the package-boundary distractor false; `blog.cleancoder.com` supplied the Dependency Rule's exact
+wording and the schematic-circles statement, and the single-responsibility restatement.
+
+**`blog.cleancoder.com` was added to `APPROVED_SOURCE_HOSTS`** in
+`InitialCurriculumContentQualityTest`, which is the first non-vendor host in that list. It is the
+primary source for the two claims it is cited for, no secondary page is authoritative for either, and
+this plan's own Part 9 and the shipped Lessons already cite the same two articles for the same claims.
+The test carries a comment saying it is not a precedent for citing practitioner blogs generally.
+
+Seventeen of the eighteen new Questions are `VERIFIED`. **`explicit_transition_is_not_the_input_spelling`
+is `PARTIALLY_VERIFIED`**, recorded honestly rather than rounded up: the UI-layer page settles the UDF
+cycle the Question is built on, but no vendor page states the transition-explicitness property its key
+turns on, and no source is normative for MVI. The stem therefore defines the property it is asking
+about rather than resting on a pattern definition, which is the epic's own source contract applied
+rather than a workaround for a missing citation.
+
+### Independent solving
+
+Every one of the eighteen new Questions was solved from its stem and options alone before
+`correctAnswerIds` was read, then every option was tested for defensibility under the stem as written.
+That pass changed two Questions before they shipped, both in a distractor rather than in a key:
+
+- **`dependency_direction_callback_does_not_reverse_it`** — the "a dependency cycle does not build"
+  distractor is false inside one compilation unit and true across build modules, and the first stem
+  named no module, so the option was defensible under one reasonable reading. The shipped stem states
+  that both classes are ordinary classes in the same module.
+- **`occurrence_guarantee_before_mechanism`** — a draft distractor named the same structure as the key
+  and differed only in what it claimed about it, so two options described one design. It was replaced
+  with a genuinely different design — a durable record the screen writes *after* acting — which is
+  wrong for a concrete reason L6.2 teaches.
+
+The three re-mapped and re-levelled Questions were re-solved unchanged and needed no edit; the other
+nineteen ACTIVE architecture Questions were re-read whole and re-solved against the shipped prose, and
+none was found defective. The playbook's length audit was run over the batch, two keys were trimmed and
+one distractor lengthened so no key exceeds its longest distractor by more than 10%, and the eighteen
+keys land on four different option positions.
+
+### Tests changed, and why
+
+| File | Change |
+| --- | --- |
+| `InitialCurriculumSmokeTest` | The pinned bank shape: 460 questions, 419 ACTIVE, 413 SINGLE, the global and per-Topic level distributions, and `architecture` from 22 to 40 ACTIVE. These are the counts a batch must not change silently |
+| `InitialCurriculumContentQualityTest` | `blog.cleancoder.com` added to `APPROVED_SOURCE_HOSTS`, with the reason and the limit of the precedent in a comment. The duplicate-stem, length, absolute-word and `MULTIPLE`-prompt gates are unchanged and pass over the new Questions |
+| `LearningUnitPracticeIntegrationTest` | All six architecture Unit pools re-pinned by exact id, the three counts in the shared expectation table updated, and the three tests that asserted an *absence* — `mvc` empty, `architecture_tradeoffs` empty in two Units — rewritten to assert the concepts-to-Subtopics identity instead. The Unit 1 ∩ Unit 4, Unit 1 ∩ Unit 6 and Unit 2 ∩ Unit 6 overlaps are asserted as sets, and both re-mapped Questions are asserted present in their new Units and absent from Unit 5 |
+| `CurriculumLocalDataPathTest` and `CurriculumImporterTest` | The imported row counts, which are a second independent pin on the same bundle: 460 questions, 1,846 answer options, 510 correct answers and 604 question sources. They are listed separately because they are what proves the new Questions survive the import path rather than only the parser |
+
+No test was written whose only purpose is to preserve something this issue fixed, and the assertions
+that recorded the old mismatches were deleted rather than inverted-and-kept: a future re-map still
+fails a pinned pool and still has to re-state its consequence.
+
+### Validation performed
+
+| Command | Result |
+| --- | --- |
+| `./gradlew :shared:jvmTest --tests '*InitialCurriculum*' --tests '*CurriculumValidator*'` | Passed — structural validation and every bundled-bank content gate |
+| `./gradlew :shared:jvmTest --tests '*LearningUnitPracticeIntegrationTest*' --tests '*LearningCurriculumValidatorTest*' --tests '*BundledLearningCurriculumTest*'` | Passed |
+| `python3 tools/learning_question_coverage.py --write` | Rewrote `docs/content/learning-question-coverage.md`, 2126 lines |
+| `python3 tools/learning_question_coverage.py --check` | Snapshot current |
+| `cd tools && python3 -m unittest test_learning_question_coverage` | 21 tests, OK |
+| `./gradlew :shared:jvmTest` | Passed |
+| `./gradlew :shared:check` | Passed — jvm, Android host, JS and wasmJs test targets included |
+| `./gradlew :androidApp:assembleDebug` | Passed |
+| `git status --short` and `git diff --check` | Nine files changed — the bundled question bank, five jvm test files, this plan, the audit log and the generated coverage snapshot — with no build or cache output and no whitespace defects |
+
+The regenerated `docs/content/learning-question-coverage.md` reports **24 active Units, 101 active
+Lessons, 419 ACTIVE questions and 41 DEPRECATED**, with **130 unique active questions reachable
+through primary mappings** and — for the first time in the project — **zero primary Subtopics with no
+active question**, across the whole learning curriculum rather than only this epic.
+
+### Not validated
+
+- **`iosArm64` is not compiled locally or on CI**, unchanged from E25 and from every E26 issue. This
+  issue changes shared JSON data and JVM test sources only and introduces no target-specific code, so
+  no platform-specific claim is made about it; the limitation is reported because it is still true of
+  the epic.
+- **No CI run is claimed.** Nothing here was observed on GitHub Actions, and no merge is claimed.
+- **Backlog validation could not be run**: `PyYAML` is unavailable in this environment, so
+  `.github/project/backlog.yml` and `docs/content/question-audit-log.yml` were read and edited as text
+  rather than parsed. The audit log's structure was checked by inspection against the eight existing
+  entries, and no historical entry was rewritten. Issue #368 was read through the GitHub REST API with
+  `curl`, because `gh` is not installed.
+- **Source liveness was verified by fetching and reading each cited page during this session**, which
+  is stronger than the playbook's liveness loop, but the loop itself was not re-run over the whole
+  bank and no fragment-anchor sweep was performed — none of the eighteen new citations uses a
+  `#fragment`.
+- **Whether each Question is genuinely answerable from the shipped prose is a judgement**, not an
+  automated result. The semantic review above records it as one, and the routing tests prove only
+  which Questions a learner reaches, never that a Lesson teaches enough to answer them.
+
+### What E26-09 inherits
+
+An assessment layer that is finished. Every Unit has meaningful practice, every primary concept
+reaches a Question, and the three limitations that remain are structural rather than editorial: the
+Unit 2 ∩ Unit 6 containment, the premature Unit 1 reach of the synthesis Question, and
+`architecture_paging_ownership` in Unit 1. All three would be removed by splitting `state_ownership`
+and `architecture_tradeoffs`, which is a question-bank taxonomy change and belongs to whichever issue
+is authorised to make one. **E26-09 is not started by this issue.**

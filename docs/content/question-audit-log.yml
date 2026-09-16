@@ -23,6 +23,296 @@
 # records are reserved for questions that were changed or flagged.
 
 audits:
+  - review: Application architecture Units 1-6 assessment gaps (E26-08)
+    date: 2026-09-16
+    scope: >-
+      A semantic assessment review of the 13 primary Subtopics of learning Units 1-6 of the
+      Application Architecture curriculum - separation_of_concerns, dependency_direction,
+      interface_boundaries, layered_architecture, architecture_tradeoffs, state_ownership,
+      unidirectional_data_flow, repository_pattern, single_source_of_truth, error_modeling,
+      use_cases, clean_architecture, mvc, mvp, mvvm, mvi and mvvm_vs_mvi - together with all
+      22 ACTIVE and all 4 DEPRECATED Questions in the architecture Topic and the roughly forty
+      supporting-only Questions in async_reactive, lifecycle_navigation, android_ui, local_data,
+      kmp, background_work, mobile_system_design, dependency_injection, build_delivery, testing
+      and kotlin_language that E26-01 named and that were read for duplication review only.
+      NOT a bank-wide audit. Eighteen Questions were authored, two were re-mapped and one had
+      its level raised; no Question was edited for content, deprecated or restored, and the
+      other 419 questions in
+      shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json were not
+      re-reviewed and their prior verdicts stand.
+    reviewed: 44
+    active: 40
+    retired: 4
+    deterministic_checks: PASS
+    method: |
+      The 21 assessment gap candidates recorded in
+      docs/content/architecture-units-1-6-plan.md were re-read against all 29 finished E26
+      Lessons in full rather than against the plan, and the plan's own per-Unit authoring
+      outcomes from E26-02 through E26-07 were read as the record of what each gap had become.
+      Every ACTIVE architecture Question was re-read whole - stem, options, key, explanation and
+      Sources - and re-solved against the shipped prose, and all four DEPRECATED ones were read
+      as context. The three mapping candidates and the one level candidate the plan recorded
+      were decided BEFORE any Question was authored, because a re-map changes which gaps remain:
+      that ordering is what turned GAP-U6-A from an authoring problem into mostly a routing one
+      and made GAP-U5-B and GAP-U5-C obligatory.
+
+      Each new Question was then solved from its stem and options alone before correctAnswerIds
+      was consulted, and every option was tested for defensibility under the stem as written.
+      That pass changed two Questions before they landed and is recorded under pre_merge_fixes.
+      Each of the 15 pages this batch cites was fetched and the supporting sentence located in
+      the rendered text rather than trusted to a 200, including the two blog.cleancoder.com
+      articles whose exact wording the Clean Architecture and single-responsibility Questions
+      turn on.
+
+      The playbook's Part 3 length audit was run over the batch and two keyed answers were
+      trimmed, and one distractor lengthened, so that no key exceeds its longest distractor by
+      more than the 10% limit; the 18 keys land on four different option positions. Practice
+      routing was recomputed for all six Units through the production resolver in
+      LearningUnitPracticeIntegrationTest rather than derived from Subtopic membership, and the
+      generated coverage snapshot was rewritten and then re-checked.
+
+    summary:
+      status:
+        PASS: 40
+        PASS_WITH_MINOR_CHANGES: 0
+        FIXED: 3
+        REVIEW_REQUIRED: 0
+        REPLACE: 0
+      severity:
+        BLOCKER: 0
+        MAJOR: 0
+        MINOR: 3
+      source_verification:
+        VERIFIED: 43
+        PARTIALLY_VERIFIED: 1
+        UNVERIFIED: 0
+        INVALID: 0
+
+    findings:
+      - id: architecture_ui_event_consumption
+        n: 72
+        status: FIXED
+        severity: MINOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: []
+        issues:
+          - >-
+            Mapped to mvi while it assesses replay, consumption and acknowledgement - that a
+            replay cache re-delivers to a late collector because the stream records no
+            consumption, so handling once requires the consumption to be recorded where it
+            survives the collector. That is lesson_delivery_guarantees in Unit 6, and it is not
+            MVI's transition model. E26-01, E26-06 and E26-07 each reached this conclusion
+            independently against the finished prose: Unit 5 does not teach enough to answer it,
+            and Unit 6 taught it and reached no Question at all.
+        changes:
+          - >-
+            Re-mapped to state_ownership. Question.id, all four AnswerOption ids, the key, the
+            level, the status and the explanation are unchanged; a Subtopic is where a Question
+            is filed, not what it asserts.
+          - >-
+            Practice consequence, recorded rather than repaired. The Question leaves Unit 5 and
+            enters Unit 6, and also enters Unit 2, because those two Units share state_ownership
+            as a primary concept and the taxonomy has no finer concept for occurrence
+            acknowledgement. Leaving mvi empty made GAP-U5-C obligatory, which is why
+            explicit_transition_is_not_the_input_spelling was authored in the same pass.
+      - id: viewmodel_vs_repository_responsibility
+        n: 85
+        status: FIXED
+        severity: MINOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: []
+        issues:
+          - >-
+            Mapped to mvvm while it assesses the repository/state-holder responsibility split,
+            the placement of cache and retry policy, and why a state holder must not hold a
+            Context to format state. Three of its four options turn on the data-layer contract
+            rather than on any property of MVVM, and lesson_mvvm_observed_state teaches none of
+            that reasoning. MVVM as a responsibility model was left unassessed as a result.
+        changes:
+          - >-
+            Re-mapped to repository_pattern rather than to state_ownership, which E26-01 offered
+            as the alternative. The discriminating reasoning in the three distractors is what the
+            data layer owns - no entity may cross the boundary, cache and retry policy belongs
+            inside - which lesson_what_a_repository_owns and lesson_coordinating_sources own. It
+            also keeps the Question out of Unit 6, which teaches no repository material, and puts
+            it in a Unit whose readers have already met the state-holder half in sequence, where
+            a Unit 2 reader would not yet have met the repository half.
+          - >-
+            Question.id, all four AnswerOption ids, the key, the level, the status and the
+            explanation are unchanged.
+          - >-
+            Practice consequence: the Question leaves Unit 5 and enters Unit 3 only. Leaving mvvm
+            empty made GAP-U5-B obligatory, which is why
+            observed_state_arrangement_is_not_a_class_or_a_folder was authored in the same pass.
+      - id: dependency_direction_domain_framework_types
+        n: 101
+        status: FIXED
+        severity: MINOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: []
+        issues:
+          - >-
+            Levelled FOUNDATION for reasoning that is a design judgement rather than a documented
+            contract. The reader must read a signature, recognise two different kinds of
+            framework coupling in it, and name the consequence, while eliminating three plausible
+            mechanical consequences that are each false for a different reason - that a DI
+            container cannot bind framework classes, that the function stops being suspendable,
+            and that a compile-time cycle breaks the build. E26-01 recorded the observation and
+            E26-05 confirmed it against lesson_policy_and_framework_detail, whose Practical
+            section is the depth the Question needs.
+        changes:
+          - >-
+            Raised to APPLIED. Not ADVANCED: no two mechanisms interact, the trade-off is not
+            weighed, and the dependency rule that settles it is one documented contract applied
+            to a scenario. The level was set from the repository's difficulty rubric and not to
+            give the Topic ADVANCED coverage - the two Questions that carry ADVANCED in this
+            batch earned it on their own reasoning.
+          - >-
+            Question.id, all four AnswerOption ids, the key, the Subtopic, the status and the
+            explanation are unchanged.
+
+    new_questions:
+      note: >-
+        Eighteen Questions authored against the 21 gap candidates in
+        docs/content/architecture-units-1-6-plan.md. GAP-U5-A and GAP-U5-D are one Question,
+        because classifying an unlabelled hybrid by its responsibilities is the same skill the
+        two gaps describe at two depths, and a second Question would have been a per-Lesson
+        quota rather than a distinction. GAP-U2-A and GAP-U2-D received no new Question and are
+        not deferred silently: the lifetime-against-persistence inference is assessed five times
+        in lifecycle_navigation and kmp and its architecture-side form is now carried by
+        owner_chosen_from_the_required_lifetime, and the owner-scoped-work decision is assessed
+        by viewmodel_scope_cleared_cancellation in async_reactive and by the same new Question,
+        so an architecture duplicate would have worsened the Unit 2 / Unit 6 overlap for no new
+        reasoning. No gap was split. Final dispositions are recorded in that document under
+        "Assessment outcomes for E26-08".
+      items:
+        - { n: 443, id: architecture_package_move_changes_nothing, gap: GAP-U1-A, level: APPLIED }
+        - { n: 444, id: separation_of_concerns_reason_to_change_test, gap: GAP-U1-B, level: APPLIED }
+        - { n: 445, id: dependency_direction_callback_does_not_reverse_it, gap: GAP-U1-C, level: APPLIED }
+        - { n: 446, id: interface_with_one_implementation_is_not_a_boundary, gap: GAP-U1-D, level: APPLIED }
+        - { n: 447, id: added_layer_must_isolate_an_independent_change, gap: GAP-U1-E, level: APPLIED }
+        - { n: 448, id: ui_state_shape_from_the_screens_requirements, gap: GAP-U2-B, level: APPLIED }
+        - { n: 449, id: exposed_mutable_state_costs_a_second_write_path, gap: GAP-U2-C, level: APPLIED }
+        - { n: 450, id: repository_boundary_needs_a_decision_to_own, gap: GAP-U3-A, level: APPLIED }
+        - { n: 451, id: repository_contract_carries_meaning_not_origin, gap: GAP-U3-B, level: APPLIED }
+        - { n: 452, id: authoritative_owner_is_chosen_per_fact, gap: GAP-U3-C, level: APPLIED }
+        - { n: 453, id: domain_layer_is_earned_by_the_feature, gap: GAP-U4-A, level: APPLIED }
+        - { n: 454, id: dependency_rule_constrains_direction_not_layer_count, gap: GAP-U4-B, level: APPLIED }
+        - { n: 455, id: classify_a_screen_by_its_responsibilities, gap: GAP-U5-A + GAP-U5-D, level: APPLIED }
+        - { n: 456, id: observed_state_arrangement_is_not_a_class_or_a_folder, gap: GAP-U5-B, level: APPLIED }
+        - { n: 457, id: explicit_transition_is_not_the_input_spelling, gap: GAP-U5-C, level: APPLIED }
+        - { n: 458, id: occurrence_guarantee_before_mechanism, gap: GAP-U6-A, level: ADVANCED }
+        - { n: 459, id: owner_chosen_from_the_required_lifetime, gap: GAP-U6-B, level: APPLIED }
+        - { n: 460, id: smallest_structure_that_satisfies_the_requirements, gap: GAP-U6-C, level: ADVANCED }
+      pre_merge_fixes: |
+        Two defects were found by solving each finished Question independently, and both were in
+        a distractor rather than in the key.
+
+        dependency_direction_callback_does_not_reverse_it - one distractor asserts that the
+        compiler would reject the change because a dependency cycle does not build. That is false
+        inside one compilation unit and true across build modules, and the first draft's stem
+        named no module at all, so the distractor was defensible under one reasonable reading of
+        the scenario. The shipped stem states that both classes are ordinary classes in the same
+        module, which settles it without weakening the misconception the option is there to
+        catch.
+
+        occurrence_guarantee_before_mechanism - a draft distractor proposed a durable record and
+        then claimed it guaranteed exactly-once handling. As written it named the same structure
+        as the key and differed only in what it claimed about it, so two options described one
+        design and the discrimination was about a sentence rather than about a design. It was
+        replaced with a distinct design - a durable record the screen writes after acting on the
+        confirmation - which is definitively wrong for a concrete reason the lesson teaches: a
+        process ending between the action and the write leaves the obligation reading as
+        outstanding, so the action repeats.
+
+        No fix was needed in any key, and no new AnswerOption id was issued outside the batch,
+        because both Questions were still unshipped when they were changed.
+
+    passed:
+      note: >-
+        All 22 pre-existing ACTIVE architecture Questions were re-solved against the finished
+        Lessons and none was edited for content. Three were changed structurally and are recorded
+        under findings above - two re-mapped, one re-levelled - and the other nineteen were left
+        exactly as they were. No factual defect was found in any Question read, and no Lesson
+        factual defect was found while validating against the shipped prose, so no learning
+        content was touched.
+
+        The four DEPRECATED architecture Questions were re-read and none was restored.
+        repository_pattern_001 and repository_vs_data_source_responsibility held the repository's
+        responsibility and the repository-against-data-source split; both concepts are now taught
+        in full by lesson_what_a_repository_owns, and the two new repository Questions ask what
+        the type owns and what its contract may expose rather than re-asking either retired
+        wording. dependency_direction_001 is superseded by
+        architecture_interface_boundary_ownership. architecture_tradeoffs_001 was a use-case-level
+        Question filed under architecture_tradeoffs, so restoring it would have put a use-case
+        answer into Unit 1 and Unit 6 practice and not into Unit 4, which is the opposite of what
+        GAP-U4-A needed; its reasoning was used as input to domain_layer_is_earned_by_the_feature
+        at the layer level instead. No DEPRECATED id was recycled.
+
+        architecture_solid_dependency_substitution was re-read and left where it is. solid is
+        supporting-only across the whole epic by design, so it reaches no E26 Unit's practice,
+        which the routing test asserts by id.
+      source_verified:
+        - { n: 69, id: separation_of_concerns_001 }
+        - { n: 70, id: unidirectional_data_flow_001 }
+        - { n: 72, id: architecture_ui_event_consumption }
+        - { n: 73, id: single_source_of_truth_001 }
+        - { n: 74, id: state_ownership_001 }
+        - { n: 76, id: architecture_paging_ownership }
+        - { n: 78, id: architecture_error_mapping_boundary }
+        - { n: 79, id: architecture_error_modeling_result_type }
+        - { n: 80, id: architecture_mvi_single_state }
+        - { n: 81, id: architecture_use_case_reuse }
+        - { n: 82, id: architecture_interface_boundary_ownership }
+        - { n: 83, id: architecture_solid_dependency_substitution }
+        - { n: 85, id: viewmodel_vs_repository_responsibility }
+        - { n: 99, id: dto_entity_domain_model_boundary }
+        - { n: 100, id: clean_architecture_dependency_rule_tradeoff }
+        - { n: 101, id: dependency_direction_domain_framework_types }
+      source_partially_verified:
+        # Page opened and it settles the frame the question is built on - the UDF cycle in which
+        # the owner handles the action and the updated state is fed back - but no vendor page
+        # states the transition-explicitness property the key turns on. The stem defines that
+        # property rather than relying on a pattern definition, which is deliberate: the
+        # terminology varies by source and the epic's contract forbids resting on one author's
+        # taxonomy.
+        - { n: 457, id: explicit_transition_is_not_the_input_spelling }
+
+    systemic:
+      - >-
+        Routing, not authoring, was the binding constraint on this Topic, and two of the three
+        widest gaps were closed without writing anything. state_ownership is primary across seven
+        Lessons of two different Units, so every Question written for the synthesis Unit also
+        lands in the state-holder Unit's practice: four of Unit 2's ten Questions now require
+        Unit 6 material. That was accepted deliberately rather than relieved by a mapping, since
+        the alternative was leaving the Unit the epic ends on with one semantically matched
+        Question. Splitting state_ownership would remove it and is a taxonomy change this epic
+        was not authorised to make.
+      - >-
+        A Subtopic holding zero ACTIVE Questions is a stronger signal than a low count, and it
+        survived six authoring issues here. mvc and architecture_tradeoffs were empty from E26-01
+        to E26-07 while being primary in four Lessons between them, including the Lesson the
+        whole epic closes on, and every intervening issue recorded the emptiness and correctly
+        refused to fix it by re-mapping something adjacent. Every primary Subtopic in the entire
+        learning curriculum now reaches at least one ACTIVE Question, for the first time.
+      - >-
+        Architecture questions fail differently from API questions, and the failure is in the
+        distractors rather than in the sources. Every option in this batch had to be a claim
+        somebody actually makes - counting implementations, adding an interface for testability,
+        a shared common package, application scope as an escape from cancellation, a database as
+        the source of truth, a folder tree as a pattern - and each had to be false for a stated
+        reason rather than merely unfashionable. Two rounds of self-solving found both defects in
+        distractors, and neither was a sourcing problem.
+      - >-
+        blog.cleancoder.com was added to the approved source hosts and is the first non-vendor
+        host in that list. It is the primary source for the two claims it is cited for, the
+        Dependency Rule's wording and the statement that the circles are schematic, and the
+        learning curriculum already cited the same two articles for the same claims. It is not a
+        precedent for citing practitioner blogs generally, and the test comment says so.
+
   - review: Compose effects and screen state Units 7-12 assessment gaps (E25-08)
     date: 2026-09-15
     scope: >-

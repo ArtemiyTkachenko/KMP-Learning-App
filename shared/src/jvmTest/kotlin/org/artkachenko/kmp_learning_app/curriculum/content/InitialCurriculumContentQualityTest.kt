@@ -120,10 +120,18 @@ internal class InitialCurriculumContentQualityTest {
         /**
          * The source hierarchy from `docs/content/content-authoring.md`: official platform,
          * language, and library documentation only. Never SEO interview sites, blogs, or forums.
+         *
+         * `blog.cleancoder.com` is the one entry that is not vendor documentation, added by E26-08.
+         * It is the primary source for the two claims the architecture bank cites it for: the
+         * Dependency Rule's own wording, and the statement that the four circles are schematic, for
+         * which no secondary page is authoritative. The learning curriculum already cites the same
+         * two articles for the same claims. It is not a licence to cite practitioner blogs
+         * generally, and no other blog host belongs here.
          */
         val APPROVED_SOURCE_HOSTS = setOf(
             "developer.android.com",
             "kotlinlang.org",
+            "blog.cleancoder.com",
             "source.android.com",
             "docs.gradle.org",
             "firebase.google.com",

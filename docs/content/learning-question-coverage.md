@@ -53,7 +53,7 @@ invalidate the snapshot, but changing what it says does.
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
 | Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `9d5871d3dbd02ae7bd24abc0d7c52de23ef77c5f388e5355d65f345801fbf440` |
-| Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `caeeab0b5a3687d822a8a48cd260ecb4bb8bfc02fa9ccc268f57b1ef6550e00a` |
+| Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `2b1c544a53e2906abb2613dec44ca4cb056d9938ef720d9acc44fc0a005df220` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
 because editing lesson content can change whether the material still teaches an
@@ -72,10 +72,10 @@ Deprecated units, lessons and questions are excluded throughout.
 | Active lessons in those units | 101 |
 | Distinct primary subtopics | 49 |
 | Distinct supporting subtopics | 90 |
-| Unique active questions reached through primary mappings | 112 |
-| Primary subtopics with at least one active question | 47 |
-| Primary subtopics with no active question | 2 |
-| Active questions in the bank | 401 |
+| Unique active questions reached through primary mappings | 130 |
+| Primary subtopics with at least one active question | 49 |
+| Primary subtopics with no active question | 0 |
+| Active questions in the bank | 419 |
 | Deprecated questions excluded from this report | 41 |
 
 The two bank-size rows are context, not a target. The learning curriculum is
@@ -109,12 +109,12 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Flow Fundamentals (`unit_flow_fundamentals`) | 5 | 3 | 5 | 2 | 0 | 7 |
 | Flow Composition, Timing and Failure (`unit_flow_composition_timing_and_failure`) | 5 | 3 | 4 | 7 | 0 | 11 |
 | StateFlow, SharedFlow and Hot Streams (`unit_stateflow_sharedflow_and_hot_streams`) | 5 | 4 | 4 | 3 | 4 | 11 |
-| Architecture as Responsibilities and Boundaries (`unit_architecture_responsibilities_and_boundaries`) | 5 | 5 | 2 | 3 | 0 | 5 |
-| Screen State Holders, ViewModel and UI State (`unit_screen_state_holders_and_ui_state`) | 5 | 2 | 3 | 2 | 0 | 5 |
-| Repositories, Data Ownership and Single Source of Truth (`unit_repositories_and_data_ownership`) | 5 | 4 | 1 | 5 | 0 | 6 |
-| Domain Logic, Use Cases and Dependency Direction (`unit_domain_logic_and_dependency_direction`) | 5 | 4 | 1 | 4 | 0 | 5 |
-| MVP, MVVM and MVI Responsibility Models (`unit_responsibility_models_mvp_mvvm_mvi`) | 5 | 5 | 1 | 3 | 0 | 4 |
-| State, Events, Lifetime and Architecture Selection (`unit_state_events_lifetime_and_selection`) | 4 | 2 | 2 | 2 | 0 | 4 |
+| Architecture as Responsibilities and Boundaries (`unit_architecture_responsibilities_and_boundaries`) | 5 | 5 | 1 | 9 | 1 | 11 |
+| Screen State Holders, ViewModel and UI State (`unit_screen_state_holders_and_ui_state`) | 5 | 2 | 3 | 6 | 1 | 10 |
+| Repositories, Data Ownership and Single Source of Truth (`unit_repositories_and_data_ownership`) | 5 | 4 | 1 | 9 | 0 | 10 |
+| Domain Logic, Use Cases and Dependency Direction (`unit_domain_logic_and_dependency_direction`) | 5 | 4 | 0 | 9 | 0 | 9 |
+| MVP, MVVM and MVI Responsibility Models (`unit_responsibility_models_mvp_mvvm_mvi`) | 5 | 5 | 1 | 4 | 0 | 5 |
+| State, Events, Lifetime and Architecture Selection (`unit_state_events_lifetime_and_selection`) | 4 | 2 | 2 | 6 | 2 | 10 |
 
 ## Unit and lesson detail
 
@@ -184,7 +184,7 @@ Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `unidirectional_data_flow` — Unidirectional data flow | 1 | `architecture` — Application Architecture & Design Principles |
+| `unidirectional_data_flow` — Unidirectional data flow | 2 | `architecture` — Application Architecture & Design Principles |
 | `compose_state_hoisting` — State hoisting | 3 | `android_ui` — UI — Views & Jetpack Compose |
 
 ### State and State Ownership (`unit_state_and_state_ownership`)
@@ -259,7 +259,7 @@ Supporting context — not primary coverage:
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `compose_udf` — Unidirectional data flow in Compose | 1 | `android_ui` — UI — Views & Jetpack Compose |
-| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+| `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
 
 #### Collections and Observable Mutation (`lesson_observable_collections`)
 
@@ -479,7 +479,7 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `main_thread_performance` — Main-thread performance | 1 | `performance` — Performance, Memory & Debugging |
 | `layered_architecture` — Layered architecture | 2 | `architecture` — Application Architecture & Design Principles |
-| `use_cases` — Use cases and when to introduce them | 2 | `architecture` — Application Architecture & Design Principles |
+| `use_cases` — Use cases and when to introduce them | 3 | `architecture` — Application Architecture & Design Principles |
 
 ### Snapshot Fundamentals (`unit_snapshot_fundamentals`)
 
@@ -551,7 +551,7 @@ Supporting context — not primary coverage:
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `compose_state` — Compose state | 5 | `android_ui` — UI — Views & Jetpack Compose |
-| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+| `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
 | `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 
 #### The Stateless Content Boundary (`lesson_stateless_screen_content`)
@@ -583,7 +583,7 @@ Supporting context — not primary coverage:
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `compose_state` — Compose state | 5 | `android_ui` — UI — Views & Jetpack Compose |
-| `unidirectional_data_flow` — Unidirectional data flow | 1 | `architecture` — Application Architecture & Design Principles |
+| `unidirectional_data_flow` — Unidirectional data flow | 2 | `architecture` — Application Architecture & Design Principles |
 | `kotlin_data_classes` — Data classes | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 | `compose_stability` — Stability and skippability | 4 | `android_ui` — UI — Views & Jetpack Compose |
 
@@ -599,7 +599,7 @@ Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+| `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
 | `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 | `kmp_lifecycle_viewmodel` — Multiplatform Lifecycle/ViewModel | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
 | `configuration_changes` — Configuration changes | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
@@ -897,7 +897,7 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `flow_fundamentals` — Flow fundamentals | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `hot_vs_cold_streams` — Hot vs cold streams | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `separation_of_concerns` — Separation of concerns | 1 | `architecture` — Application Architecture & Design Principles |
+| `separation_of_concerns` — Separation of concerns | 3 | `architecture` — Application Architecture & Design Principles |
 
 ### Production UI Effects and Mechanism Selection (`unit_production_ui_effects_and_selection`)
 
@@ -958,7 +958,7 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `sharedflow` — SharedFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `hot_vs_cold_streams` — Hot vs cold streams | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+| `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
 | `stateflow` — StateFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
 ### Coroutine Fundamentals and Structured Concurrency (`unit_coroutines_and_structured_concurrency`)
@@ -1118,7 +1118,7 @@ Supporting context — not primary coverage:
 | `coroutine_dispatchers` — Dispatchers | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `coroutine_fundamentals` — Coroutine and suspend fundamentals | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `structured_concurrency` — Structured concurrency | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `repository_pattern` — Repository pattern | 1 | `architecture` — Application Architecture & Design Principles |
+| `repository_pattern` — Repository pattern | 4 | `architecture` — Application Architecture & Design Principles |
 
 #### Sequential by Default, Concurrent on Purpose (`lesson_sequential_and_concurrent_work`)
 
@@ -1259,8 +1259,8 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `coroutine_fundamentals` — Coroutine and suspend fundamentals | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `hot_vs_cold_streams` — Hot vs cold streams | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `repository_pattern` — Repository pattern | 1 | `architecture` — Application Architecture & Design Principles |
-| `single_source_of_truth` — Single source of truth | 1 | `architecture` — Application Architecture & Design Principles |
+| `repository_pattern` — Repository pattern | 4 | `architecture` — Application Architecture & Design Principles |
+| `single_source_of_truth` — Single source of truth | 2 | `architecture` — Application Architecture & Design Principles |
 
 #### Cold Flows: Producer, Collector and Operators (`lesson_cold_flows`)
 
@@ -1469,7 +1469,7 @@ Supporting context — not primary coverage:
 | `hot_vs_cold_streams` — Hot vs cold streams | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `flow_collection` — Flow collection | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `kotlin_equality` — Structural vs referential equality | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
-| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+| `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
 
 #### `SharedFlow`: Replay, Buffering and Subscribers (`lesson_shared_flow`)
 
@@ -1520,7 +1520,7 @@ Supporting context — not primary coverage:
 | `stateflow` — StateFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `sharedflow` — SharedFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `flow_sharing` — stateIn, shareIn, and sharing policies | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+| `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
 
 ### Architecture as Responsibilities and Boundaries (`unit_architecture_responsibilities_and_boundaries`)
 
@@ -1531,9 +1531,9 @@ once each however many lessons share the concept.
 
 | Level | Count | Question IDs |
 |---|---:|---|
-| FOUNDATION | 2 | `dependency_direction_domain_framework_types`, `separation_of_concerns_001` |
-| APPLIED | 3 | `architecture_interface_boundary_ownership`, `architecture_paging_ownership`, `dto_entity_domain_model_boundary` |
-| ADVANCED | 0 | — |
+| FOUNDATION | 1 | `separation_of_concerns_001` |
+| APPLIED | 9 | `added_layer_must_isolate_an_independent_change`, `architecture_interface_boundary_ownership`, `architecture_package_move_changes_nothing`, `architecture_paging_ownership`, `dependency_direction_callback_does_not_reverse_it`, `dependency_direction_domain_framework_types`, `dto_entity_domain_model_boundary`, `interface_with_one_implementation_is_not_a_boundary`, `separation_of_concerns_reason_to_change_test` |
+| ADVANCED | 1 | `smallest_structure_that_satisfies_the_requirements` |
 
 #### What Architecture Actually Decides (`lesson_what_architecture_decides`)
 
@@ -1541,13 +1541,13 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `separation_of_concerns` — Separation of concerns | 1 | 0 | 0 | 1 | `separation_of_concerns_001` |
+| `separation_of_concerns` — Separation of concerns | 1 | 2 | 0 | 3 | `architecture_package_move_changes_nothing`, `separation_of_concerns_001`, `separation_of_concerns_reason_to_change_test` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 0 | `architecture` — Application Architecture & Design Principles |
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 2 | `architecture` — Application Architecture & Design Principles |
 | `layered_architecture` — Layered architecture | 2 | `architecture` — Application Architecture & Design Principles |
 | `android_modules` — Application/library modules | 1 | `build_delivery` — Build System, Modularization & Delivery |
 
@@ -1557,15 +1557,15 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `separation_of_concerns` — Separation of concerns | 1 | 0 | 0 | 1 | `separation_of_concerns_001` |
+| `separation_of_concerns` — Separation of concerns | 1 | 2 | 0 | 3 | `architecture_package_move_changes_nothing`, `separation_of_concerns_001`, `separation_of_concerns_reason_to_change_test` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `solid` — SOLID principles | 1 | `architecture` — Application Architecture & Design Principles |
-| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 0 | `architecture` — Application Architecture & Design Principles |
-| `interface_boundaries` — Interface boundaries | 1 | `architecture` — Application Architecture & Design Principles |
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 2 | `architecture` — Application Architecture & Design Principles |
+| `interface_boundaries` — Interface boundaries | 2 | `architecture` — Application Architecture & Design Principles |
 
 #### Which Way May This Dependency Point? (`lesson_dependency_direction_and_boundaries`)
 
@@ -1573,13 +1573,13 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `dependency_direction` — Dependency direction and inversion | 1 | 0 | 0 | 1 | `dependency_direction_domain_framework_types` |
+| `dependency_direction` — Dependency direction and inversion | 0 | 2 | 0 | 2 | `dependency_direction_callback_does_not_reverse_it`, `dependency_direction_domain_framework_types` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `interface_boundaries` — Interface boundaries | 1 | `architecture` — Application Architecture & Design Principles |
+| `interface_boundaries` — Interface boundaries | 2 | `architecture` — Application Architecture & Design Principles |
 | `solid` — SOLID principles | 1 | `architecture` — Application Architecture & Design Principles |
 | `layered_architecture` — Layered architecture | 2 | `architecture` — Application Architecture & Design Principles |
 | `module_dependency_direction` — Module dependency direction | 1 | `build_delivery` — Build System, Modularization & Delivery |
@@ -1590,15 +1590,15 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `interface_boundaries` — Interface boundaries | 0 | 1 | 0 | 1 | `architecture_interface_boundary_ownership` |
+| `interface_boundaries` — Interface boundaries | 0 | 2 | 0 | 2 | `architecture_interface_boundary_ownership`, `interface_with_one_implementation_is_not_a_boundary` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `dependency_direction` — Dependency direction and inversion | 1 | `architecture` — Application Architecture & Design Principles |
+| `dependency_direction` — Dependency direction and inversion | 2 | `architecture` — Application Architecture & Design Principles |
 | `solid` — SOLID principles | 1 | `architecture` — Application Architecture & Design Principles |
-| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 0 | `architecture` — Application Architecture & Design Principles |
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 2 | `architecture` — Application Architecture & Design Principles |
 | `test_doubles` — Test doubles | 1 | `testing` — Testing & Testability |
 
 #### Layers as One Answer, and What They Cost (`lesson_layers_and_their_cost`)
@@ -1608,14 +1608,14 @@ Primary concepts:
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
 | `layered_architecture` — Layered architecture | 0 | 2 | 0 | 2 | `architecture_paging_ownership`, `dto_entity_domain_model_boundary` |
-| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 0 | 0 | 0 | 0 | — |
-| **Lesson total (unique)** | 0 | 2 | 0 | 2 | `architecture_paging_ownership`, `dto_entity_domain_model_boundary` |
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 0 | 1 | 1 | 2 | `added_layer_must_isolate_an_independent_change`, `smallest_structure_that_satisfies_the_requirements` |
+| **Lesson total (unique)** | 0 | 3 | 1 | 4 | `added_layer_must_isolate_an_independent_change`, `architecture_paging_ownership`, `dto_entity_domain_model_boundary`, `smallest_structure_that_satisfies_the_requirements` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `separation_of_concerns` — Separation of concerns | 1 | `architecture` — Application Architecture & Design Principles |
+| `separation_of_concerns` — Separation of concerns | 3 | `architecture` — Application Architecture & Design Principles |
 | `android_modules` — Application/library modules | 1 | `build_delivery` — Build System, Modularization & Delivery |
 | `modularization_tradeoffs` — Benefits and costs of modularization | 2 | `build_delivery` — Build System, Modularization & Delivery |
 
@@ -1629,8 +1629,8 @@ once each however many lessons share the concept.
 | Level | Count | Question IDs |
 |---|---:|---|
 | FOUNDATION | 3 | `state_ownership_001`, `unidirectional_data_flow_001`, `viewmodel_activity_reference_lifetime` |
-| APPLIED | 2 | `architecture_state_holder_taxonomy`, `durable_state_vs_one_off_event` |
-| ADVANCED | 0 | — |
+| APPLIED | 6 | `architecture_state_holder_taxonomy`, `architecture_ui_event_consumption`, `durable_state_vs_one_off_event`, `exposed_mutable_state_costs_a_second_write_path`, `owner_chosen_from_the_required_lifetime`, `ui_state_shape_from_the_screens_requirements` |
+| ADVANCED | 1 | `occurrence_guarantee_before_mechanism` |
 
 #### What a Screen State Holder Is Responsible For (`lesson_state_holder_responsibility`)
 
@@ -1638,7 +1638,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `state_ownership` — State ownership | 2 | 2 | 0 | 4 | `architecture_state_holder_taxonomy`, `durable_state_vs_one_off_event`, `state_ownership_001`, `viewmodel_activity_reference_lifetime` |
+| `state_ownership` — State ownership | 2 | 5 | 1 | 8 | `architecture_state_holder_taxonomy`, `architecture_ui_event_consumption`, `durable_state_vs_one_off_event`, `occurrence_guarantee_before_mechanism`, `owner_chosen_from_the_required_lifetime`, `state_ownership_001`, `ui_state_shape_from_the_screens_requirements`, `viewmodel_activity_reference_lifetime` |
 
 Supporting context — not primary coverage:
 
@@ -1647,7 +1647,7 @@ Supporting context — not primary coverage:
 | `compose_state_hoisting` — State hoisting | 3 | `android_ui` — UI — Views & Jetpack Compose |
 | `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 | `kmp_lifecycle_viewmodel` — Multiplatform Lifecycle/ViewModel | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
-| `separation_of_concerns` — Separation of concerns | 1 | `architecture` — Application Architecture & Design Principles |
+| `separation_of_concerns` — Separation of concerns | 3 | `architecture` — Application Architecture & Design Principles |
 
 #### The ViewModel Owner: Lifetime Is Not Persistence (`lesson_viewmodel_lifetime_and_persistence`)
 
@@ -1655,7 +1655,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `state_ownership` — State ownership | 2 | 2 | 0 | 4 | `architecture_state_holder_taxonomy`, `durable_state_vs_one_off_event`, `state_ownership_001`, `viewmodel_activity_reference_lifetime` |
+| `state_ownership` — State ownership | 2 | 5 | 1 | 8 | `architecture_state_holder_taxonomy`, `architecture_ui_event_consumption`, `durable_state_vs_one_off_event`, `occurrence_guarantee_before_mechanism`, `owner_chosen_from_the_required_lifetime`, `state_ownership_001`, `ui_state_shape_from_the_screens_requirements`, `viewmodel_activity_reference_lifetime` |
 
 Supporting context — not primary coverage:
 
@@ -1673,7 +1673,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `state_ownership` — State ownership | 2 | 2 | 0 | 4 | `architecture_state_holder_taxonomy`, `durable_state_vs_one_off_event`, `state_ownership_001`, `viewmodel_activity_reference_lifetime` |
+| `state_ownership` — State ownership | 2 | 5 | 1 | 8 | `architecture_state_holder_taxonomy`, `architecture_ui_event_consumption`, `durable_state_vs_one_off_event`, `occurrence_guarantee_before_mechanism`, `owner_chosen_from_the_required_lifetime`, `state_ownership_001`, `ui_state_shape_from_the_screens_requirements`, `viewmodel_activity_reference_lifetime` |
 
 Supporting context — not primary coverage:
 
@@ -1690,13 +1690,13 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `unidirectional_data_flow` — Unidirectional data flow | 1 | 0 | 0 | 1 | `unidirectional_data_flow_001` |
+| `unidirectional_data_flow` — Unidirectional data flow | 1 | 1 | 0 | 2 | `exposed_mutable_state_costs_a_second_write_path`, `unidirectional_data_flow_001` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+| `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
 | `compose_udf` — Unidirectional data flow in Compose | 1 | `android_ui` — UI — Views & Jetpack Compose |
 | `stateflow` — StateFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
@@ -1706,7 +1706,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `state_ownership` — State ownership | 2 | 2 | 0 | 4 | `architecture_state_holder_taxonomy`, `durable_state_vs_one_off_event`, `state_ownership_001`, `viewmodel_activity_reference_lifetime` |
+| `state_ownership` — State ownership | 2 | 5 | 1 | 8 | `architecture_state_holder_taxonomy`, `architecture_ui_event_consumption`, `durable_state_vs_one_off_event`, `occurrence_guarantee_before_mechanism`, `owner_chosen_from_the_required_lifetime`, `state_ownership_001`, `ui_state_shape_from_the_screens_requirements`, `viewmodel_activity_reference_lifetime` |
 
 Supporting context — not primary coverage:
 
@@ -1727,7 +1727,7 @@ once each however many lessons share the concept.
 | Level | Count | Question IDs |
 |---|---:|---|
 | FOUNDATION | 1 | `single_source_of_truth_001` |
-| APPLIED | 5 | `architecture_error_mapping_boundary`, `architecture_error_modeling_result_type`, `architecture_paging_ownership`, `dto_entity_domain_model_boundary`, `repository_observable_api_shape` |
+| APPLIED | 9 | `architecture_error_mapping_boundary`, `architecture_error_modeling_result_type`, `architecture_paging_ownership`, `authoritative_owner_is_chosen_per_fact`, `dto_entity_domain_model_boundary`, `repository_boundary_needs_a_decision_to_own`, `repository_contract_carries_meaning_not_origin`, `repository_observable_api_shape`, `viewmodel_vs_repository_responsibility` |
 | ADVANCED | 0 | — |
 
 #### What a Repository Is Responsible For (`lesson_what_a_repository_owns`)
@@ -1736,7 +1736,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `repository_pattern` — Repository pattern | 0 | 1 | 0 | 1 | `repository_observable_api_shape` |
+| `repository_pattern` — Repository pattern | 0 | 4 | 0 | 4 | `repository_boundary_needs_a_decision_to_own`, `repository_contract_carries_meaning_not_origin`, `repository_observable_api_shape`, `viewmodel_vs_repository_responsibility` |
 
 Supporting context — not primary coverage:
 
@@ -1744,8 +1744,8 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `room_dao` — Room DAOs and queries | 1 | `local_data` — Local Persistence & Offline Data |
 | `retrofit` — Retrofit | 1 | `networking` — Networking & Serialization |
-| `separation_of_concerns` — Separation of concerns | 1 | `architecture` — Application Architecture & Design Principles |
-| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 0 | `architecture` — Application Architecture & Design Principles |
+| `separation_of_concerns` — Separation of concerns | 3 | `architecture` — Application Architecture & Design Principles |
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 2 | `architecture` — Application Architecture & Design Principles |
 
 #### Coordinating Local and Remote Sources (`lesson_coordinating_sources`)
 
@@ -1753,7 +1753,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `repository_pattern` — Repository pattern | 0 | 1 | 0 | 1 | `repository_observable_api_shape` |
+| `repository_pattern` — Repository pattern | 0 | 4 | 0 | 4 | `repository_boundary_needs_a_decision_to_own`, `repository_contract_carries_meaning_not_origin`, `repository_observable_api_shape`, `viewmodel_vs_repository_responsibility` |
 
 Supporting context — not primary coverage:
 
@@ -1769,7 +1769,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `single_source_of_truth` — Single source of truth | 1 | 0 | 0 | 1 | `single_source_of_truth_001` |
+| `single_source_of_truth` — Single source of truth | 1 | 1 | 0 | 2 | `authoritative_owner_is_chosen_per_fact`, `single_source_of_truth_001` |
 
 Supporting context — not primary coverage:
 
@@ -1777,7 +1777,7 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `offline_first` — Offline-first architecture | 2 | `local_data` — Local Persistence & Offline Data |
 | `cache_invalidation` — Cache invalidation | 1 | `local_data` — Local Persistence & Offline Data |
-| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+| `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
 
 #### An Observable API, or a One-Shot Read? (`lesson_observable_or_one_shot_api`)
 
@@ -1785,7 +1785,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `repository_pattern` — Repository pattern | 0 | 1 | 0 | 1 | `repository_observable_api_shape` |
+| `repository_pattern` — Repository pattern | 0 | 4 | 0 | 4 | `repository_boundary_needs_a_decision_to_own`, `repository_contract_carries_meaning_not_origin`, `repository_observable_api_shape`, `viewmodel_vs_repository_responsibility` |
 
 Supporting context — not primary coverage:
 
@@ -1794,7 +1794,7 @@ Supporting context — not primary coverage:
 | `flow_fundamentals` — Flow fundamentals | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `flow_collection` — Flow collection | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `stateflow` — StateFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `single_source_of_truth` — Single source of truth | 1 | `architecture` — Application Architecture & Design Principles |
+| `single_source_of_truth` — Single source of truth | 2 | `architecture` — Application Architecture & Design Principles |
 
 #### Model and Error Boundaries: What May Cross (`lesson_model_and_error_boundaries`)
 
@@ -1810,7 +1810,7 @@ Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `repository_pattern` — Repository pattern | 1 | `architecture` — Application Architecture & Design Principles |
+| `repository_pattern` — Repository pattern | 4 | `architecture` — Application Architecture & Design Principles |
 | `kotlin_sealed_types` — Sealed classes and interfaces | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 | `room_dao` — Room DAOs and queries | 1 | `local_data` — Local Persistence & Offline Data |
 | `retrofit` — Retrofit | 1 | `networking` — Networking & Serialization |
@@ -1824,8 +1824,8 @@ once each however many lessons share the concept.
 
 | Level | Count | Question IDs |
 |---|---:|---|
-| FOUNDATION | 1 | `dependency_direction_domain_framework_types` |
-| APPLIED | 4 | `architecture_interface_boundary_ownership`, `architecture_use_case_reuse`, `clean_architecture_dependency_rule_tradeoff`, `domain_layer_passthrough_cost` |
+| FOUNDATION | 0 | — |
+| APPLIED | 9 | `architecture_interface_boundary_ownership`, `architecture_use_case_reuse`, `clean_architecture_dependency_rule_tradeoff`, `dependency_direction_callback_does_not_reverse_it`, `dependency_direction_domain_framework_types`, `dependency_rule_constrains_direction_not_layer_count`, `domain_layer_is_earned_by_the_feature`, `domain_layer_passthrough_cost`, `interface_with_one_implementation_is_not_a_boundary` |
 | ADVANCED | 0 | — |
 
 #### When Does Another Layer Earn Its Existence? (`lesson_when_a_domain_layer_earns_its_place`)
@@ -1834,15 +1834,15 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `use_cases` — Use cases and when to introduce them | 0 | 2 | 0 | 2 | `architecture_use_case_reuse`, `domain_layer_passthrough_cost` |
+| `use_cases` — Use cases and when to introduce them | 0 | 3 | 0 | 3 | `architecture_use_case_reuse`, `domain_layer_is_earned_by_the_feature`, `domain_layer_passthrough_cost` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `layered_architecture` — Layered architecture | 2 | `architecture` — Application Architecture & Design Principles |
-| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 0 | `architecture` — Application Architecture & Design Principles |
-| `separation_of_concerns` — Separation of concerns | 1 | `architecture` — Application Architecture & Design Principles |
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 2 | `architecture` — Application Architecture & Design Principles |
+| `separation_of_concerns` — Separation of concerns | 3 | `architecture` — Application Architecture & Design Principles |
 
 #### Use Cases That Earn Their Place, and Pass-Through Cost (`lesson_use_cases_and_pass_through_cost`)
 
@@ -1850,15 +1850,15 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `use_cases` — Use cases and when to introduce them | 0 | 2 | 0 | 2 | `architecture_use_case_reuse`, `domain_layer_passthrough_cost` |
+| `use_cases` — Use cases and when to introduce them | 0 | 3 | 0 | 3 | `architecture_use_case_reuse`, `domain_layer_is_earned_by_the_feature`, `domain_layer_passthrough_cost` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `repository_pattern` — Repository pattern | 1 | `architecture` — Application Architecture & Design Principles |
-| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 0 | `architecture` — Application Architecture & Design Principles |
-| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+| `repository_pattern` — Repository pattern | 4 | `architecture` — Application Architecture & Design Principles |
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 2 | `architecture` — Application Architecture & Design Principles |
+| `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
 
 #### Policy, Framework and Detail (`lesson_policy_and_framework_detail`)
 
@@ -1866,13 +1866,13 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `dependency_direction` — Dependency direction and inversion | 1 | 0 | 0 | 1 | `dependency_direction_domain_framework_types` |
+| `dependency_direction` — Dependency direction and inversion | 0 | 2 | 0 | 2 | `dependency_direction_callback_does_not_reverse_it`, `dependency_direction_domain_framework_types` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `clean_architecture` — Clean Architecture | 1 | `architecture` — Application Architecture & Design Principles |
+| `clean_architecture` — Clean Architecture | 2 | `architecture` — Application Architecture & Design Principles |
 | `layered_architecture` — Layered architecture | 2 | `architecture` — Application Architecture & Design Principles |
 | `kmp_architecture` — KMP architecture | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
 
@@ -1882,17 +1882,17 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `dependency_direction` — Dependency direction and inversion | 1 | 0 | 0 | 1 | `dependency_direction_domain_framework_types` |
-| `interface_boundaries` — Interface boundaries | 0 | 1 | 0 | 1 | `architecture_interface_boundary_ownership` |
-| **Lesson total (unique)** | 1 | 1 | 0 | 2 | `architecture_interface_boundary_ownership`, `dependency_direction_domain_framework_types` |
+| `dependency_direction` — Dependency direction and inversion | 0 | 2 | 0 | 2 | `dependency_direction_callback_does_not_reverse_it`, `dependency_direction_domain_framework_types` |
+| `interface_boundaries` — Interface boundaries | 0 | 2 | 0 | 2 | `architecture_interface_boundary_ownership`, `interface_with_one_implementation_is_not_a_boundary` |
+| **Lesson total (unique)** | 0 | 4 | 0 | 4 | `architecture_interface_boundary_ownership`, `dependency_direction_callback_does_not_reverse_it`, `dependency_direction_domain_framework_types`, `interface_with_one_implementation_is_not_a_boundary` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `solid` — SOLID principles | 1 | `architecture` — Application Architecture & Design Principles |
-| `clean_architecture` — Clean Architecture | 1 | `architecture` — Application Architecture & Design Principles |
-| `repository_pattern` — Repository pattern | 1 | `architecture` — Application Architecture & Design Principles |
+| `clean_architecture` — Clean Architecture | 2 | `architecture` — Application Architecture & Design Principles |
+| `repository_pattern` — Repository pattern | 4 | `architecture` — Application Architecture & Design Principles |
 | `service_locator_vs_di` — Service locator vs dependency injection | 1 | `dependency_injection` — Dependency Injection |
 
 #### Clean Architecture: the Dependency Rule, Not the Diagram (`lesson_clean_architecture_intent`)
@@ -1901,15 +1901,15 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `clean_architecture` — Clean Architecture | 0 | 1 | 0 | 1 | `clean_architecture_dependency_rule_tradeoff` |
+| `clean_architecture` — Clean Architecture | 0 | 2 | 0 | 2 | `clean_architecture_dependency_rule_tradeoff`, `dependency_rule_constrains_direction_not_layer_count` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `layered_architecture` — Layered architecture | 2 | `architecture` — Application Architecture & Design Principles |
-| `use_cases` — Use cases and when to introduce them | 2 | `architecture` — Application Architecture & Design Principles |
-| `dependency_direction` — Dependency direction and inversion | 1 | `architecture` — Application Architecture & Design Principles |
+| `use_cases` — Use cases and when to introduce them | 3 | `architecture` — Application Architecture & Design Principles |
+| `dependency_direction` — Dependency direction and inversion | 2 | `architecture` — Application Architecture & Design Principles |
 | `android_modules` — Application/library modules | 1 | `build_delivery` — Build System, Modularization & Delivery |
 
 ### MVP, MVVM and MVI Responsibility Models (`unit_responsibility_models_mvp_mvvm_mvi`)
@@ -1922,7 +1922,7 @@ once each however many lessons share the concept.
 | Level | Count | Question IDs |
 |---|---:|---|
 | FOUNDATION | 1 | `mvp_vs_mvvm_view_contract` |
-| APPLIED | 3 | `architecture_mvi_single_state`, `architecture_ui_event_consumption`, `viewmodel_vs_repository_responsibility` |
+| APPLIED | 4 | `architecture_mvi_single_state`, `classify_a_screen_by_its_responsibilities`, `explicit_transition_is_not_the_input_spelling`, `observed_state_arrangement_is_not_a_class_or_a_folder` |
 | ADVANCED | 0 | — |
 
 #### One Screen, Five Questions (`lesson_one_screen_five_questions`)
@@ -1931,7 +1931,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `mvc` — MVC | 0 | 0 | 0 | 0 | — |
+| `mvc` — MVC | 0 | 1 | 0 | 1 | `classify_a_screen_by_its_responsibilities` |
 
 Supporting context — not primary coverage:
 
@@ -1940,7 +1940,7 @@ Supporting context — not primary coverage:
 | `mvp` — MVP | 1 | `architecture` — Application Architecture & Design Principles |
 | `mvvm` — MVVM | 1 | `architecture` — Application Architecture & Design Principles |
 | `mvi` — MVI | 1 | `architecture` — Application Architecture & Design Principles |
-| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+| `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
 
 #### MVP: an Explicit View Contract (`lesson_mvp_view_contract`)
 
@@ -1954,9 +1954,9 @@ Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `mvc` — MVC | 0 | `architecture` — Application Architecture & Design Principles |
-| `interface_boundaries` — Interface boundaries | 1 | `architecture` — Application Architecture & Design Principles |
-| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+| `mvc` — MVC | 1 | `architecture` — Application Architecture & Design Principles |
+| `interface_boundaries` — Interface boundaries | 2 | `architecture` — Application Architecture & Design Principles |
+| `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
 
 #### MVVM: a UI That Observes State (`lesson_mvvm_observed_state`)
 
@@ -1964,14 +1964,14 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `mvvm` — MVVM | 0 | 1 | 0 | 1 | `viewmodel_vs_repository_responsibility` |
+| `mvvm` — MVVM | 0 | 1 | 0 | 1 | `observed_state_arrangement_is_not_a_class_or_a_folder` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
-| `unidirectional_data_flow` — Unidirectional data flow | 1 | `architecture` — Application Architecture & Design Principles |
+| `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
+| `unidirectional_data_flow` — Unidirectional data flow | 2 | `architecture` — Application Architecture & Design Principles |
 | `stateflow` — StateFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 
@@ -1981,14 +1981,14 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `mvi` — MVI | 0 | 1 | 0 | 1 | `architecture_ui_event_consumption` |
+| `mvi` — MVI | 0 | 1 | 0 | 1 | `explicit_transition_is_not_the_input_spelling` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `unidirectional_data_flow` — Unidirectional data flow | 1 | `architecture` — Application Architecture & Design Principles |
-| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+| `unidirectional_data_flow` — Unidirectional data flow | 2 | `architecture` — Application Architecture & Design Principles |
+| `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
 | `kotlin_sealed_types` — Sealed classes and interfaces | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 
 #### Classifying What a Real Codebase Actually Does (`lesson_classifying_a_real_architecture`)
@@ -2006,7 +2006,7 @@ Supporting context — not primary coverage:
 | `mvvm` — MVVM | 1 | `architecture` — Application Architecture & Design Principles |
 | `mvi` — MVI | 1 | `architecture` — Application Architecture & Design Principles |
 | `mvp` — MVP | 1 | `architecture` — Application Architecture & Design Principles |
-| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 0 | `architecture` — Application Architecture & Design Principles |
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 2 | `architecture` — Application Architecture & Design Principles |
 
 ### State, Events, Lifetime and Architecture Selection (`unit_state_events_lifetime_and_selection`)
 
@@ -2018,8 +2018,8 @@ once each however many lessons share the concept.
 | Level | Count | Question IDs |
 |---|---:|---|
 | FOUNDATION | 2 | `state_ownership_001`, `viewmodel_activity_reference_lifetime` |
-| APPLIED | 2 | `architecture_state_holder_taxonomy`, `durable_state_vs_one_off_event` |
-| ADVANCED | 0 | — |
+| APPLIED | 6 | `added_layer_must_isolate_an_independent_change`, `architecture_state_holder_taxonomy`, `architecture_ui_event_consumption`, `durable_state_vs_one_off_event`, `owner_chosen_from_the_required_lifetime`, `ui_state_shape_from_the_screens_requirements` |
+| ADVANCED | 2 | `occurrence_guarantee_before_mechanism`, `smallest_structure_that_satisfies_the_requirements` |
 
 #### Is This State, or Is It Something That Happened? (`lesson_state_or_occurrence`)
 
@@ -2027,16 +2027,16 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `state_ownership` — State ownership | 2 | 2 | 0 | 4 | `architecture_state_holder_taxonomy`, `durable_state_vs_one_off_event`, `state_ownership_001`, `viewmodel_activity_reference_lifetime` |
+| `state_ownership` — State ownership | 2 | 5 | 1 | 8 | `architecture_state_holder_taxonomy`, `architecture_ui_event_consumption`, `durable_state_vs_one_off_event`, `occurrence_guarantee_before_mechanism`, `owner_chosen_from_the_required_lifetime`, `state_ownership_001`, `ui_state_shape_from_the_screens_requirements`, `viewmodel_activity_reference_lifetime` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `unidirectional_data_flow` — Unidirectional data flow | 1 | `architecture` — Application Architecture & Design Principles |
+| `unidirectional_data_flow` — Unidirectional data flow | 2 | `architecture` — Application Architecture & Design Principles |
 | `stateflow` — StateFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `sharedflow` — SharedFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `single_source_of_truth` — Single source of truth | 1 | `architecture` — Application Architecture & Design Principles |
+| `single_source_of_truth` — Single source of truth | 2 | `architecture` — Application Architecture & Design Principles |
 
 #### What Guarantee Does This Occurrence Need? (`lesson_delivery_guarantees`)
 
@@ -2044,7 +2044,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `state_ownership` — State ownership | 2 | 2 | 0 | 4 | `architecture_state_holder_taxonomy`, `durable_state_vs_one_off_event`, `state_ownership_001`, `viewmodel_activity_reference_lifetime` |
+| `state_ownership` — State ownership | 2 | 5 | 1 | 8 | `architecture_state_holder_taxonomy`, `architecture_ui_event_consumption`, `durable_state_vs_one_off_event`, `occurrence_guarantee_before_mechanism`, `owner_chosen_from_the_required_lifetime`, `state_ownership_001`, `ui_state_shape_from_the_screens_requirements`, `viewmodel_activity_reference_lifetime` |
 
 Supporting context — not primary coverage:
 
@@ -2053,7 +2053,7 @@ Supporting context — not primary coverage:
 | `sharedflow` — SharedFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `hot_vs_cold_streams` — Hot vs cold streams | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `process_death` — Process death and recreation | 1 | `lifecycle_navigation` — Lifecycle, State & Navigation |
-| `single_source_of_truth` — Single source of truth | 1 | `architecture` — Application Architecture & Design Principles |
+| `single_source_of_truth` — Single source of truth | 2 | `architecture` — Application Architecture & Design Principles |
 
 #### Choosing an Owner From the Lifetime the Requirement Needs (`lesson_choosing_the_owner_by_lifetime`)
 
@@ -2061,7 +2061,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `state_ownership` — State ownership | 2 | 2 | 0 | 4 | `architecture_state_holder_taxonomy`, `durable_state_vs_one_off_event`, `state_ownership_001`, `viewmodel_activity_reference_lifetime` |
+| `state_ownership` — State ownership | 2 | 5 | 1 | 8 | `architecture_state_holder_taxonomy`, `architecture_ui_event_consumption`, `durable_state_vs_one_off_event`, `occurrence_guarantee_before_mechanism`, `owner_chosen_from_the_required_lifetime`, `state_ownership_001`, `ui_state_shape_from_the_screens_requirements`, `viewmodel_activity_reference_lifetime` |
 
 Supporting context — not primary coverage:
 
@@ -2078,16 +2078,16 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 0 | 0 | 0 | 0 | — |
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 0 | 1 | 1 | 2 | `added_layer_must_isolate_an_independent_change`, `smallest_structure_that_satisfies_the_requirements` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `use_cases` — Use cases and when to introduce them | 2 | `architecture` — Application Architecture & Design Principles |
-| `repository_pattern` — Repository pattern | 1 | `architecture` — Application Architecture & Design Principles |
+| `use_cases` — Use cases and when to introduce them | 3 | `architecture` — Application Architecture & Design Principles |
+| `repository_pattern` — Repository pattern | 4 | `architecture` — Application Architecture & Design Principles |
 | `layered_architecture` — Layered architecture | 2 | `architecture` — Application Architecture & Design Principles |
-| `clean_architecture` — Clean Architecture | 1 | `architecture` — Application Architecture & Design Principles |
+| `clean_architecture` — Clean Architecture | 2 | `architecture` — Application Architecture & Design Principles |
 
 ## Primary assessment gaps
 
@@ -2099,10 +2099,7 @@ subtopic taxonomy is deliberately finer-grained than the bank — see
 from subtopics that are empty on purpose. This report surfaces the gap; whether it
 matters is editorial judgement.
 
-| Primary subtopic | Owning topic |
-|---|---|
-| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | `architecture` — Application Architecture & Design Principles |
-| `mvc` — MVC | `architecture` — Application Architecture & Design Principles |
+Every primary concept of every active lesson has at least one active question.
 
 ## Semantic review reminder
 

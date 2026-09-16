@@ -445,7 +445,7 @@ internal class LearningUnitPracticeIntegrationTest {
                 // concepts and resolved Subtopics holds. Four Questions arrive through
                 // `state_ownership` and one through `unidirectional_data_flow`.
                 "unit_screen_state_holders_and_ui_state" to (
-                    setOf("state_ownership", "unidirectional_data_flow") to 5
+                    setOf("state_ownership", "unidirectional_data_flow") to 10
                 ),
                 // E26-04. `repository_pattern` is primary in three of the five Lessons and
                 // the closing Lesson declares two primaries, so five Lessons practise four
@@ -458,7 +458,7 @@ internal class LearningUnitPracticeIntegrationTest {
                         "single_source_of_truth",
                         "layered_architecture",
                         "error_modeling",
-                    ) to 6
+                    ) to 10
                 ),
                 // E26-05. `use_cases` is primary in two Lessons and `dependency_direction` in
                 // two, and the inversion Lesson declares two primaries, so five Lessons
@@ -470,7 +470,7 @@ internal class LearningUnitPracticeIntegrationTest {
                         "clean_architecture",
                         "dependency_direction",
                         "interface_boundaries",
-                    ) to 5
+                    ) to 9
                 ),
             )
             val content = BundledLearningContentRepository()
@@ -665,16 +665,18 @@ internal class LearningUnitPracticeIntegrationTest {
     }
 
     /**
-     * E26-02: the first `architecture` Unit, whose pool cannot be stated as a count.
+     * E26-08: the first `architecture` Unit, now that every primary concept reaches a Question.
      *
-     * The expectation table above asserts `concepts == questions.map { it.subtopicId }.toSet()`, and
-     * that identity does not hold here: `architecture_tradeoffs` is a primary concept of the closing
-     * Lesson and holds no ACTIVE Question at all. That is GAP-U1-E in
-     * `docs/content/architecture-units-1-6-plan.md` — the widest gap in the Unit — and it is asserted
-     * rather than hidden, because the honest mapping is the one E26-08 has to see when it closes the
-     * gap. The exact resolved ids are pinned for the same reason: two of the five belong semantically
-     * to the later data-ownership Unit and one to the dependency-direction Unit, which is an accepted
-     * consequence of shared Subtopics, not something a re-mapping may quietly repair.
+     * E26-02 could not put this Unit in the expectation table, because that table asserts
+     * `concepts == questions.map { it.subtopicId }.toSet()` and `architecture_tradeoffs` held no
+     * ACTIVE Question at all. E26-08 closed GAP-U1-E and GAP-U6-C, so the identity now holds and
+     * the test asserts it directly rather than asserting an absence.
+     *
+     * The exact ids stay pinned, because four of the eleven belong semantically to later Units and
+     * reach this one through a shared primary concept: two data-layer Questions through
+     * `layered_architecture`, and the whole-feature proportionality Question through
+     * `architecture_tradeoffs`, which `docs/content/architecture-units-1-6-plan.md` records as an
+     * accepted routing consequence rather than something a re-mapping may quietly repair.
      */
     @Test
     fun theArchitectureFoundationsUnitPractisesItsPrimaryConceptsAndNothingElse() = runUnitPracticeTest {
@@ -685,7 +687,7 @@ internal class LearningUnitPracticeIntegrationTest {
 
         assertEquals(unit.title, settled.scope.name)
         val available = assertIs<PracticeAvailability.Available>(settled.availability)
-        assertEquals(5, available.eligibleQuestionCount)
+        assertEquals(11, available.eligibleQuestionCount)
         builder.selectQuestionCount(available.eligibleQuestionCount)
         builder.settled()
 
@@ -703,16 +705,22 @@ internal class LearningUnitPracticeIntegrationTest {
         assertEquals(
             setOf(
                 "separation_of_concerns_001",
+                "architecture_package_move_changes_nothing",
+                "separation_of_concerns_reason_to_change_test",
                 "dependency_direction_domain_framework_types",
+                "dependency_direction_callback_does_not_reverse_it",
                 "architecture_interface_boundary_ownership",
+                "interface_with_one_implementation_is_not_a_boundary",
                 "architecture_paging_ownership",
                 "dto_entity_domain_model_boundary",
+                "added_layer_must_isolate_an_independent_change",
+                "smallest_structure_that_satisfies_the_requirements",
             ),
             questions.map { it.id }.toSet(),
         )
-        // The concept with no ACTIVE Question contributes nothing, so the Unit's proportionality
-        // reasoning is reachable only through `layered_architecture`.
-        assertFalse(questions.any { it.subtopicId == "architecture_tradeoffs" })
+        // Every primary concept now reaches at least one Question, which is what E26-08 changed.
+        assertEquals(concepts, questions.map { it.subtopicId }.toSet())
+        assertTrue(questions.any { it.subtopicId == "architecture_tradeoffs" })
 
         // Supporting concepts never broaden a Unit's practice. `solid` is the one that matters:
         // E26-01 made it supporting-only by design, and its single ACTIVE Question must therefore
@@ -730,14 +738,15 @@ internal class LearningUnitPracticeIntegrationTest {
      * E26-03: the state-holder Unit's pool, and the one routing limitation inside it.
      *
      * The expectation table above already asserts the count, the scope and the supporting-only
-     * exclusion. What it cannot state is *which* Questions arrive and why one of them is a
-     * Question about material this Unit deliberately does not teach. `state_ownership` is a
-     * primary concept of this Unit and, in the plan, of the closing synthesis Unit as well, so
-     * `durable_state_vs_one_off_event` — whose state-against-occurrence reasoning belongs to that
-     * later Unit — reaches this Unit's practice. `docs/content/architecture-units-1-6-plan.md`
-     * records it as a taxonomy limitation that only a Subtopic split would remove, and E26-08
-     * owns the assessment decision. It is asserted here so that a later re-map has to re-state
-     * the limitation rather than silently repairing it.
+     * exclusion. What it cannot state is *which* Questions arrive and why four of them are about
+     * material this Unit deliberately does not teach. `state_ownership` is a primary concept of
+     * this Unit and of the closing synthesis Unit, so every Question written for the later Unit's
+     * reasoning reaches this one too: `durable_state_vs_one_off_event`, the re-mapped
+     * `architecture_ui_event_consumption`, and the two Questions E26-08 authored for GAP-U6-A and
+     * GAP-U6-B. `docs/content/architecture-units-1-6-plan.md` records that as a taxonomy limitation
+     * only a Subtopic split would remove, and E26-08 accepted it deliberately rather than leaving
+     * the synthesis Unit unassessed. It is asserted here so a later re-map has to re-state the
+     * limitation rather than silently repairing it.
      */
     @Test
     fun theStateHolderUnitPractisesItsTwoPrimaryConceptsIncludingOneLaterUnitsQuestion() =
@@ -749,7 +758,7 @@ internal class LearningUnitPracticeIntegrationTest {
 
             assertEquals(unit.title, settled.scope.name)
             val available = assertIs<PracticeAvailability.Available>(settled.availability)
-            assertEquals(5, available.eligibleQuestionCount)
+            assertEquals(10, available.eligibleQuestionCount)
             builder.selectQuestionCount(available.eligibleQuestionCount)
             builder.settled()
 
@@ -758,19 +767,33 @@ internal class LearningUnitPracticeIntegrationTest {
             assertEquals(AssessmentScope.Subtopics(concepts), config.scope)
 
             val questions = selectedQuestions(config)
+            val questionIds = questions.map { it.id }.toSet()
             assertEquals(
                 setOf(
                     "state_ownership_001",
                     "architecture_state_holder_taxonomy",
                     "durable_state_vs_one_off_event",
                     "viewmodel_activity_reference_lifetime",
+                    "ui_state_shape_from_the_screens_requirements",
+                    "architecture_ui_event_consumption",
+                    "occurrence_guarantee_before_mechanism",
+                    "owner_chosen_from_the_required_lifetime",
                     "unidirectional_data_flow_001",
+                    "exposed_mutable_state_costs_a_second_write_path",
                 ),
-                questions.map { it.id }.toSet(),
+                questionIds,
             )
-            // The recorded overlap: this Question's reasoning is the synthesis Unit's, and it is
-            // here because the two Units share a primary concept the taxonomy does not split.
-            assertTrue("durable_state_vs_one_off_event" in questions.map { it.id }.toSet())
+            // The recorded overlap, now four Questions wide: each one's reasoning belongs to the
+            // synthesis Unit, and each is here because the two Units share a primary concept the
+            // taxonomy does not split.
+            assertTrue(
+                setOf(
+                    "durable_state_vs_one_off_event",
+                    "architecture_ui_event_consumption",
+                    "occurrence_guarantee_before_mechanism",
+                    "owner_chosen_from_the_required_lifetime",
+                ).all { it in questionIds },
+            )
 
             // The five lifecycle, Compose and coroutine bridges this Unit leans on are the ones
             // most likely to be promoted by mistake, because each has ACTIVE Questions of its
@@ -793,14 +816,17 @@ internal class LearningUnitPracticeIntegrationTest {
      * E26-04: the data-ownership Unit's pool, and the two Questions it shares with Unit 1.
      *
      * The expectation table above already asserts the count, the scope and the supporting-only
-     * exclusion. What it cannot state is *which* Questions arrive. Two of the six reach this Unit
+     * exclusion. What it cannot state is *which* Questions arrive. Two of the ten reach this Unit
      * through `layered_architecture`, which is also primary in the foundations Unit's closing
      * Lesson, so `architecture_paging_ownership` and `dto_entity_domain_model_boundary` appear in
      * both Units' practice. `docs/content/architecture-units-1-6-plan.md` records that overlap as
-     * calculated rather than discovered, and both Questions fit this Unit better than the one they
-     * are shared with — which is a reason for E26-08 to weigh a re-map, not a reason to demote a
-     * concept a Lesson genuinely teaches. It is asserted here so a later re-map has to re-state the
-     * consequence rather than silently repairing it.
+     * calculated rather than discovered, and E26-08 kept `architecture_paging_ownership` where it
+     * is because no honest re-map improves it and this epic creates no taxonomy split.
+     *
+     * The tenth Question is `viewmodel_vs_repository_responsibility`, which E26-08 re-mapped here
+     * from `mvvm`: its reasoning is the repository/state-holder responsibility split and the
+     * placement of cache and retry policy, which this Unit's opening Lessons own. It is asserted by
+     * id so a later re-map has to re-state the consequence rather than silently repairing it.
      */
     @Test
     fun theDataOwnershipUnitPractisesItsPrimaryConceptsIncludingTwoSharedWithUnitOne() =
@@ -812,7 +838,7 @@ internal class LearningUnitPracticeIntegrationTest {
 
             assertEquals(unit.title, settled.scope.name)
             val available = assertIs<PracticeAvailability.Available>(settled.availability)
-            assertEquals(6, available.eligibleQuestionCount)
+            assertEquals(10, available.eligibleQuestionCount)
             builder.selectQuestionCount(available.eligibleQuestionCount)
             builder.settled()
 
@@ -829,7 +855,11 @@ internal class LearningUnitPracticeIntegrationTest {
             assertEquals(
                 setOf(
                     "repository_observable_api_shape",
+                    "repository_boundary_needs_a_decision_to_own",
+                    "repository_contract_carries_meaning_not_origin",
+                    "viewmodel_vs_repository_responsibility",
                     "single_source_of_truth_001",
+                    "authoritative_owner_is_chosen_per_fact",
                     "architecture_paging_ownership",
                     "dto_entity_domain_model_boundary",
                     "architecture_error_mapping_boundary",
@@ -837,6 +867,9 @@ internal class LearningUnitPracticeIntegrationTest {
                 ),
                 questions.map { it.id }.toSet(),
             )
+            // E26-08 re-mapped this Question out of `mvvm`, so it reaches this Unit and no longer
+            // reaches the pattern Unit. The pattern-Unit half is asserted in that Unit's test.
+            assertTrue("viewmodel_vs_repository_responsibility" in questions.map { it.id }.toSet())
 
             // The recorded overlap with the foundations Unit, through `layered_architecture`.
             val foundationsBuilder =
@@ -872,17 +905,18 @@ internal class LearningUnitPracticeIntegrationTest {
      * E26-05: the domain Unit's pool, the two Questions it shares with Unit 1, and the one
      * architecture Question that still reaches no Unit at all.
      *
-     * Three separate claims the expectation table cannot make. First, *which* five Questions
-     * arrive — E26-01 predicted this pool exactly, and it is asserted rather than trusted.
-     * Second, the Unit 1 intersection: `dependency_direction` and `interface_boundaries` are
-     * primary in the foundations Unit's third and fourth Lessons and in this Unit's, so
-     * `dependency_direction_domain_framework_types` and `architecture_interface_boundary_ownership`
-     * appear in both pools. Both semantically belong here — this is the Unit that completes
-     * their reasoning — and `docs/content/architecture-units-1-6-plan.md` records the overlap
-     * as calculated rather than discovered. Third, `architecture_solid_dependency_substitution`
-     * stays outside: `solid` is supporting-only across the whole epic by design, and dependency
-     * inversion is taught under the concept where the decision is actually made. Asserting all
-     * three means a later re-map has to re-state the consequence rather than quietly repair it.
+     * Three separate claims the expectation table cannot make. First, *which* nine Questions
+     * arrive. Second, the Unit 1 intersection, now four Questions wide: `dependency_direction` and
+     * `interface_boundaries` are primary in the foundations Unit's third and fourth Lessons and in
+     * this Unit's, so the two Questions E26-01 predicted and the two E26-08 authored for GAP-U1-C
+     * and GAP-U1-D all appear in both pools. The two older ones complete their reasoning here; the
+     * two new ones are Unit 1's own reasoning and are deliberately kept simpler than the inversion
+     * Question, so the shared pool is fair in both directions.
+     * `docs/content/architecture-units-1-6-plan.md` records the overlap as calculated rather than
+     * discovered. Third, `architecture_solid_dependency_substitution` stays outside: `solid` is
+     * supporting-only across the whole epic by design, and dependency inversion is taught under the
+     * concept where the decision is actually made. Asserting all three means a later re-map has to
+     * re-state the consequence rather than quietly repair it.
      */
     @Test
     fun theDomainLogicUnitPractisesItsPrimaryConceptsIncludingTwoSharedWithUnitOne() =
@@ -894,7 +928,7 @@ internal class LearningUnitPracticeIntegrationTest {
 
             assertEquals(unit.title, settled.scope.name)
             val available = assertIs<PracticeAvailability.Available>(settled.availability)
-            assertEquals(5, available.eligibleQuestionCount)
+            assertEquals(9, available.eligibleQuestionCount)
             builder.selectQuestionCount(available.eligibleQuestionCount)
             builder.settled()
 
@@ -913,9 +947,13 @@ internal class LearningUnitPracticeIntegrationTest {
                 setOf(
                     "architecture_use_case_reuse",
                     "domain_layer_passthrough_cost",
+                    "domain_layer_is_earned_by_the_feature",
                     "clean_architecture_dependency_rule_tradeoff",
+                    "dependency_rule_constrains_direction_not_layer_count",
                     "dependency_direction_domain_framework_types",
+                    "dependency_direction_callback_does_not_reverse_it",
                     "architecture_interface_boundary_ownership",
+                    "interface_with_one_implementation_is_not_a_boundary",
                 ),
                 questionIds,
             )
@@ -934,7 +972,9 @@ internal class LearningUnitPracticeIntegrationTest {
             assertEquals(
                 setOf(
                     "dependency_direction_domain_framework_types",
+                    "dependency_direction_callback_does_not_reverse_it",
                     "architecture_interface_boundary_ownership",
+                    "interface_with_one_implementation_is_not_a_boundary",
                 ),
                 foundations intersect questionIds,
             )
@@ -964,27 +1004,22 @@ internal class LearningUnitPracticeIntegrationTest {
         }
 
     /**
-     * E26-06: the pattern Unit's pool, and the two Questions that reach it for structural reasons.
+     * E26-08: the pattern Unit's pool, after the two Questions that belonged elsewhere were moved.
      *
-     * Like the foundations Unit, this one cannot join the expectation table: that table asserts
-     * `concepts == questions.map { it.subtopicId }.toSet()`, and the identity fails here because
-     * `mvc` is the opening Lesson's primary concept and holds no ACTIVE Question at all. That is
-     * GAP-U5-A in `docs/content/architecture-units-1-6-plan.md`, and the mapping is deliberately
-     * not changed to manufacture coverage — the Lesson owns the origin of the Model/View/x
-     * vocabulary and the reason it is contested, which is what `mvc` names.
+     * E26-06 recorded a pool of four in which only two Questions assessed what the Unit teaches:
+     * `viewmodel_vs_repository_responsibility` was filed under `mvvm` while assessing the
+     * repository/state-holder split, and `architecture_ui_event_consumption` was filed under `mvi`
+     * while assessing replay, consumption and acknowledgement. E26-08 re-mapped both to the
+     * Subtopics that own their reasoning and authored the three Questions the Unit was missing, so
+     * the pool is still five and every one of them now assesses this Unit's own material.
      *
-     * The other two claims are the reason this test is worth its length. `viewmodel_vs_repository_responsibility`
-     * is filed under `mvvm` and actually assesses the ViewModel/repository responsibility split,
-     * which the state-holder and data-ownership Units own; `architecture_ui_event_consumption` is
-     * filed under `mvi` and actually assesses replay, consumption and acknowledgement, which the
-     * synthesis Unit owns. Both therefore reach this Unit's practice while genuine MVVM and MVI
-     * reasoning stays unassessed — GAP-U5-B and GAP-U5-C. E26-08 owns the re-mapping decision, so
-     * this test records the structural reality rather than endorsing it: if a later change moves
-     * either Question, the assertion fails and the consequence has to be re-stated rather than
-     * quietly repaired.
+     * That also closes GAP-U5-A: `mvc` held no ACTIVE Question through six issues, and the mapping
+     * was never distorted to manufacture coverage. It now holds the responsibility-classification
+     * Question, which is what the opening Lesson actually teaches. The identity between the Unit's
+     * concepts and its resolved Subtopics therefore holds for the first time, and is asserted.
      */
     @Test
-    fun thePatternUnitPractisesItsPrimaryConceptsIncludingTwoThatBelongElsewhere() =
+    fun thePatternUnitPractisesEveryOneOfItsFivePrimaryConcepts() =
         runUnitPracticeTest {
             val unitId = "unit_responsibility_models_mvp_mvvm_mvi"
             val unit = assertNotNull(BundledLearningContentRepository().getUnitById(unitId))
@@ -993,7 +1028,7 @@ internal class LearningUnitPracticeIntegrationTest {
 
             assertEquals(unit.title, settled.scope.name)
             val available = assertIs<PracticeAvailability.Available>(settled.availability)
-            assertEquals(4, available.eligibleQuestionCount)
+            assertEquals(5, available.eligibleQuestionCount)
             builder.selectQuestionCount(available.eligibleQuestionCount)
             builder.settled()
 
@@ -1005,16 +1040,21 @@ internal class LearningUnitPracticeIntegrationTest {
             val questionIds = questions.map { it.id }.toSet()
             assertEquals(
                 setOf(
+                    "classify_a_screen_by_its_responsibilities",
                     "mvp_vs_mvvm_view_contract",
-                    "viewmodel_vs_repository_responsibility",
-                    "architecture_ui_event_consumption",
+                    "observed_state_arrangement_is_not_a_class_or_a_folder",
+                    "explicit_transition_is_not_the_input_spelling",
                     "architecture_mvi_single_state",
                 ),
                 questionIds,
             )
-            // Five primary concepts, four Questions: the concept the opening Lesson teaches
-            // contributes nothing to practice.
-            assertFalse(questions.any { it.subtopicId == "mvc" })
+            // Five primary concepts, five Questions, one each: the identity E26-06 could not assert.
+            assertEquals(concepts, questions.map { it.subtopicId }.toSet())
+
+            // The two re-mapped Questions no longer contaminate this Unit. Their reasoning belongs
+            // to the state-holder, data-ownership and synthesis Units, and is asserted there.
+            assertFalse("viewmodel_vs_repository_responsibility" in questionIds)
+            assertFalse("architecture_ui_event_consumption" in questionIds)
 
             // The Unit shares no Question with any earlier architecture Unit, because the five
             // pattern concepts are primary nowhere else in the epic. Asserted rather than assumed,
@@ -1058,26 +1098,26 @@ internal class LearningUnitPracticeIntegrationTest {
         }
 
     /**
-     * E26-07: the synthesis Unit's pool, which is a strict subset of the state-holder Unit's.
+     * E26-08: the synthesis Unit's pool, which is still a strict subset of the state-holder Unit's.
      *
-     * Like Units 1 and 5, this one cannot join the expectation table, and for the same reason: that
-     * table asserts `concepts == questions.map { it.subtopicId }.toSet()`, and `architecture_tradeoffs`
-     * — the closing Lesson's primary concept, and the concept the whole epic ends on — holds no
-     * ACTIVE Question at all. That is GAP-U6-C in `docs/content/architecture-units-1-6-plan.md`.
+     * E26-07 recorded a pool of four in which `architecture_tradeoffs` — the closing Lesson's
+     * primary concept, and the concept the whole epic ends on — reached nothing, and only one of
+     * the four Questions semantically assessed this Unit's material. E26-08 closed GAP-U6-A by
+     * re-mapping `architecture_ui_event_consumption` out of `mvi`, closed GAP-U6-B and the part of
+     * GAP-U6-A the re-map left open with two new Questions, and closed GAP-U6-C and GAP-U1-E under
+     * `architecture_tradeoffs`. The identity between the Unit's concepts and its resolved Subtopics
+     * therefore holds now, and is asserted.
      *
-     * The other claim is the one worth the length. Three of the four Lessons take `state_ownership`,
-     * which is also primary across four Lessons of the state-holder Unit, so **every** Question this
-     * Unit reaches is also in that Unit's pool — the plan records the containment as calculated
-     * rather than discovered, and it is asserted here rather than described. Two of the four are
-     * Questions whose reasoning belongs to the state-holder Unit and reach this one structurally,
-     * and only `durable_state_vs_one_off_event` semantically assesses what this Unit teaches — while
-     * the delivery-and-acknowledgement Question that would, `architecture_ui_event_consumption`, sits
-     * under `mvi` and reaches the pattern Unit instead. E26-08 owns every one of those decisions, so
-     * this test records the structural reality without endorsing it: a later re-map fails an
-     * assertion and has to re-state the consequence rather than quietly repairing it.
+     * The containment is unchanged and is the accepted cost. Three of the four Lessons take
+     * `state_ownership`, which is also primary across four Lessons of the state-holder Unit, so
+     * every `state_ownership` Question this Unit reaches is also in that Unit's pool — and the two
+     * `architecture_tradeoffs` Questions are likewise shared with the foundations Unit. The plan
+     * records both as calculated rather than discovered, and E26-08 accepted them rather than
+     * distorting a mapping to separate practice. A later re-map fails an assertion here and has to
+     * re-state the consequence rather than quietly repairing it.
      */
     @Test
-    fun theSynthesisUnitPractisesASubsetOfTheStateHolderUnitAndNothingForItsClosingConcept() =
+    fun theSynthesisUnitPractisesBothPrimaryConceptsAndStaysInsideTheStateHolderUnit() =
         runUnitPracticeTest {
             val unitId = "unit_state_events_lifetime_and_selection"
             val unit = assertNotNull(BundledLearningContentRepository().getUnitById(unitId))
@@ -1086,7 +1126,7 @@ internal class LearningUnitPracticeIntegrationTest {
 
             assertEquals(unit.title, settled.scope.name)
             val available = assertIs<PracticeAvailability.Available>(settled.availability)
-            assertEquals(4, available.eligibleQuestionCount)
+            assertEquals(10, available.eligibleQuestionCount)
             builder.selectQuestionCount(available.eligibleQuestionCount)
             builder.settled()
 
@@ -1102,14 +1142,27 @@ internal class LearningUnitPracticeIntegrationTest {
                     "architecture_state_holder_taxonomy",
                     "durable_state_vs_one_off_event",
                     "viewmodel_activity_reference_lifetime",
+                    "ui_state_shape_from_the_screens_requirements",
+                    "architecture_ui_event_consumption",
+                    "occurrence_guarantee_before_mechanism",
+                    "owner_chosen_from_the_required_lifetime",
+                    "added_layer_must_isolate_an_independent_change",
+                    "smallest_structure_that_satisfies_the_requirements",
                 ),
                 questionIds,
             )
-            // Two primary concepts, four Questions: the concept the epic's closing Lesson teaches
-            // contributes nothing to practice, so the Unit reaches no Question about proportionality.
-            assertFalse(questions.any { it.subtopicId == "architecture_tradeoffs" })
+            // The concept the epic's closing Lesson teaches now reaches practice, which is what
+            // E26-08 changed, and the whole-feature proportionality Question is the one it ends on.
+            assertEquals(concepts, questions.map { it.subtopicId }.toSet())
+            assertTrue("smallest_structure_that_satisfies_the_requirements" in questionIds)
 
-            // The recorded containment: this Unit's whole pool is inside the state-holder Unit's.
+            // The re-map E26-07 recorded as owed: the delivery-and-acknowledgement Question this
+            // Unit's second Lesson teaches now reaches this Unit rather than the pattern Unit.
+            assertTrue("architecture_ui_event_consumption" in questionIds)
+
+            // The recorded containment: this Unit's `state_ownership` half is inside the
+            // state-holder Unit's pool, and its `architecture_tradeoffs` half is shared with the
+            // foundations Unit instead.
             val stateHolderBuilder =
                 builder(PracticeBuilderTarget.LearningUnit("unit_screen_state_holders_and_ui_state"))
             stateHolderBuilder.settled()
@@ -1119,11 +1172,27 @@ internal class LearningUnitPracticeIntegrationTest {
             )
             stateHolderBuilder.settled()
             val stateHolder = selectedQuestions(stateHolderBuilder.start()).map { it.id }.toSet()
-            assertEquals(questionIds, stateHolder intersect questionIds)
+            assertEquals(
+                questions.filter { it.subtopicId == "state_ownership" }.map { it.id }.toSet(),
+                stateHolder intersect questionIds,
+            )
 
-            // The delivery Question this Unit's second Lesson actually teaches is filed under `mvi`
-            // and reaches the pattern Unit, not this one.
-            assertFalse("architecture_ui_event_consumption" in questionIds)
+            val foundationsBuilder =
+                builder(PracticeBuilderTarget.LearningUnit("unit_architecture_responsibilities_and_boundaries"))
+            foundationsBuilder.settled()
+            foundationsBuilder.selectQuestionCount(
+                assertIs<PracticeAvailability.Available>(foundationsBuilder.uiState.value.availability)
+                    .eligibleQuestionCount,
+            )
+            foundationsBuilder.settled()
+            val foundations = selectedQuestions(foundationsBuilder.start()).map { it.id }.toSet()
+            assertEquals(
+                setOf(
+                    "added_layer_must_isolate_an_independent_change",
+                    "smallest_structure_that_satisfies_the_requirements",
+                ),
+                foundations intersect questionIds,
+            )
 
             // Ten supporting-only concepts, every one of them owned and assessed by another
             // curriculum, broaden nothing. The stream and lifetime bridges matter most: this Unit

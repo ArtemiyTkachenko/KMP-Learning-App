@@ -4963,7 +4963,7 @@
     {
       "id": "architecture_ui_event_consumption",
       "topicId": "architecture",
-      "subtopicId": "mvi",
+      "subtopicId": "state_ownership",
       "text": "A ViewModel exposes one-time navigation events as a SharedFlow with replay 1. After a configuration change the app navigates a second time. Why?",
       "answers": [
         {
@@ -11861,7 +11861,7 @@
     {
       "id": "viewmodel_vs_repository_responsibility",
       "topicId": "architecture",
-      "subtopicId": "mvvm",
+      "subtopicId": "repository_pattern",
       "text": "A screen refreshes account data and maps it into UI state. Which split keeps ViewModel and repository responsibilities clear?",
       "answers": [
         {
@@ -16751,7 +16751,7 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "FOUNDATION",
+      "level": "APPLIED",
       "correctAnswerIds": [
         "dependency_direction_domain_framework_types_d"
       ],
@@ -19163,6 +19163,764 @@
         {
           "title": "Compose UI Architecture",
           "url": "https://developer.android.com/develop/ui/compose/architecture"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "architecture_package_move_changes_nothing",
+      "topicId": "architecture",
+      "subtopicId": "separation_of_concerns",
+      "text": "A team moves a feature's files into `ui`, `domain` and `data` packages and adds a layer diagram to the README. No import, constructor call or signature changes: the screen class still constructs the storage class and compares the due dates itself. What did the move change?",
+      "answers": [
+        {
+          "id": "architecture_package_move_changes_nothing_a",
+          "text": "The dependency direction, because the screen now sits in a package above the one it reads from."
+        },
+        {
+          "id": "architecture_package_move_changes_nothing_b",
+          "text": "The coupling between the screen and storage, because a package boundary stops a type in `data` being used in `ui`."
+        },
+        {
+          "id": "architecture_package_move_changes_nothing_c",
+          "text": "Where the files sit, and nothing about which component is answerable for what or which one names the other."
+        },
+        {
+          "id": "architecture_package_move_changes_nothing_d",
+          "text": "The architecture, because the layer a component is filed under is what assigns its responsibility."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "architecture_package_move_changes_nothing_c"
+      ],
+      "explanation": "A source dependency exists where one component names another, so the arrangement lives in the imports and signatures rather than in the directory tree. Nothing moved here: the screen still constructs the storage class and still decides what overdue means, which is exactly what the recommendations rule out when they say UI-layer components should not interact directly with a data source. A Kotlin package carries no access rule of its own — `internal` is visible everywhere in the same module — so a package boundary forbids nothing, and the folder a file is filed under assigns no responsibility to the code inside it. Moving files is a readability decision and often a good one; it is not an architectural change, and the README now claims a structure the imports do not have.",
+      "sources": [
+        {
+          "title": "Guide to app architecture",
+          "url": "https://developer.android.com/topic/architecture"
+        },
+        {
+          "title": "Architecture recommendations",
+          "url": "https://developer.android.com/topic/architecture/recommendations"
+        },
+        {
+          "title": "Visibility modifiers",
+          "url": "https://kotlinlang.org/docs/visibility-modifiers.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "separation_of_concerns_reason_to_change_test",
+      "topicId": "architecture",
+      "subtopicId": "separation_of_concerns",
+      "text": "`DueDateFormatter` turns a due date into the text a card shows. A reviewer proposes splitting it into a formatter and a text builder, on the grounds that classes should be small. Every wording change, new case and locale rule would touch both files. Which is the strongest argument against the split?",
+      "answers": [
+        {
+          "id": "separation_of_concerns_reason_to_change_test_a",
+          "text": "The text builder would have to be internal, so the formatter could no longer be exercised without exposing it."
+        },
+        {
+          "id": "separation_of_concerns_reason_to_change_test_b",
+          "text": "One reason to change reaches both halves, so the split yields one concept in two files plus a contract to keep in step."
+        },
+        {
+          "id": "separation_of_concerns_reason_to_change_test_c",
+          "text": "A split is justified only once a second implementation exists, and no second text builder is planned."
+        },
+        {
+          "id": "separation_of_concerns_reason_to_change_test_d",
+          "text": "Both halves are presentation code, and behaviours in the same technical category should not be separated."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "separation_of_concerns_reason_to_change_test_b"
+      ],
+      "explanation": "A responsibility is a reason to change rather than a description of what the code does: gather together the things that change for the same reasons, and separate the things that change for different reasons. Every wording change, new case and locale rule here reaches both files in the same commit, so the two halves share one reason to change and the split produces a concept spread over two files, a contract to keep in step and a hop on every read. Counting implementations is the test for whether an abstraction is a boundary, not for whether a class holds two responsibilities. A shared technical category is not a reason to change either, and it is the substitute test used most often. Visibility decides nothing about testability here: both classes compile and are exercisable within the same module.",
+      "sources": [
+        {
+          "title": "The Single Responsibility Principle",
+          "url": "https://blog.cleancoder.com/uncle-bob/2014/05/08/SingleReponsibilityPrinciple.html"
+        },
+        {
+          "title": "Guide to app architecture",
+          "url": "https://developer.android.com/topic/architecture"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "dependency_direction_callback_does_not_reverse_it",
+      "topicId": "architecture",
+      "subtopicId": "dependency_direction",
+      "text": "`SyncLoader` and `LoanListScreen` are ordinary classes in the same module. `SyncLoader` takes an `onBatch: (List<Loan>) -> Unit` parameter and calls it as batches arrive; `LoanListScreen` calls `loader.load { render(it) }`. A reviewer proposes replacing the parameter with a `LoanListScreen` parameter, since the loader calls into the screen anyway. What would that change?",
+      "answers": [
+        {
+          "id": "dependency_direction_callback_does_not_reverse_it_a",
+          "text": "Nothing in the dependency structure, because control already crosses both ways and the two therefore already depend on each other."
+        },
+        {
+          "id": "dependency_direction_callback_does_not_reverse_it_b",
+          "text": "The loader would name a screen type, so it would inherit that screen's reasons to change and could not be compiled or reused without one."
+        },
+        {
+          "id": "dependency_direction_callback_does_not_reverse_it_c",
+          "text": "The compiler would reject it, because the screen already names the loader and a dependency cycle does not build."
+        },
+        {
+          "id": "dependency_direction_callback_does_not_reverse_it_d",
+          "text": "The screen would stop depending on the loader, because the loader would then be the component naming the other."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "dependency_direction_callback_does_not_reverse_it_b"
+      ],
+      "explanation": "A source dependency exists where one component names another. The loader names a function type and no screen type, so only the screen depends on the loader today; the callback carries control and data without carrying the dependency, which is why the flow of control and the source dependencies can point in different directions. Naming `LoanListScreen` in the parameter reverses that half: the loader would import a screen, could not be compiled, read or reused without one, and would change whenever the screen's contract did. It would not remove the screen's own dependency, because the screen still names `load` to call it. And a cycle inside one compilation unit builds perfectly well — the compiler objects only across build boundaries — which is what makes this kind of cycle cheap to introduce and expensive to live with.",
+      "sources": [
+        {
+          "title": "The Clean Architecture",
+          "url": "https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html"
+        },
+        {
+          "title": "Guide to app architecture",
+          "url": "https://developer.android.com/topic/architecture"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "interface_with_one_implementation_is_not_a_boundary",
+      "topicId": "architecture",
+      "subtopicId": "interface_boundaries",
+      "text": "`LoanStore` was extracted as an interface whose methods mirror its only implementation — rows in, rows out, plus `beginTransaction` and `endTransaction`. Adding a column edits both files in one commit. Which condition would make this abstraction a boundary?",
+      "answers": [
+        {
+          "id": "interface_with_one_implementation_is_not_a_boundary_a",
+          "text": "A second implementation, because an abstraction becomes a boundary once more than one class implements it."
+        },
+        {
+          "id": "interface_with_one_implementation_is_not_a_boundary_b",
+          "text": "A dependency-injection module that supplies the implementation, so the screen never constructs it."
+        },
+        {
+          "id": "interface_with_one_implementation_is_not_a_boundary_c",
+          "text": "A contract stated in the consumer's own vocabulary that a change to how the store is built would not have to alter."
+        },
+        {
+          "id": "interface_with_one_implementation_is_not_a_boundary_d",
+          "text": "A test that substitutes a fake store, because being able to substitute one is what decoupling means."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "interface_with_one_implementation_is_not_a_boundary_c"
+      ],
+      "explanation": "Two components are decoupled when one can change without the other being edited, and that is decided by who owns the contract and whether the two sides change for different reasons — not by the keyword. A contract that reads as the implementation's own method list, transactions and all, moves in step with it, so both files change together and every consumer has learned that storage has transactions. A contract written for what the consumer needs can stay still while the store's shape moves, and a second implementation is then a consequence of that difference rather than the thing that creates it. Injection decides which implementation arrives at run time and changes no source dependency, so a codebase can inject everywhere and have inverted nothing. Substitution does become easier once a real boundary exists, but a fake built against the store's own method list proves only that the consumer can drive a store.",
+      "sources": [
+        {
+          "title": "The Clean Architecture",
+          "url": "https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html"
+        },
+        {
+          "title": "Dependency injection on Android",
+          "url": "https://developer.android.com/training/dependency-injection"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "added_layer_must_isolate_an_independent_change",
+      "topicId": "architecture",
+      "subtopicId": "architecture_tradeoffs",
+      "text": "A data layer was added between a card and its source: a gateway that forwards every call, and a `LoanSummary` whose fields match `Loan` one for one. Adding a renewal-limit field edits `Loan`, `LoanSummary`, the mapper and the card. Which change would make the boundary worth its cost?",
+      "answers": [
+        {
+          "id": "added_layer_must_isolate_an_independent_change_a",
+          "text": "Two more screens start reading `LoanSummary`, so one mapping now serves three callers instead of one."
+        },
+        {
+          "id": "added_layer_must_isolate_an_independent_change_b",
+          "text": "The gateway is given an interface, so the card can be exercised in tests against a fake."
+        },
+        {
+          "id": "added_layer_must_isolate_an_independent_change_c",
+          "text": "The feature moves into its own Gradle module, so the compiler enforces that the card cannot name the source at all."
+        },
+        {
+          "id": "added_layer_must_isolate_an_independent_change_d",
+          "text": "The stored shape starts carrying sync bookkeeping the card never renders, so a field added there never reaches the card."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "added_layer_must_isolate_an_independent_change_d"
+      ],
+      "explanation": "A layer is a boundary applied wholesale, so it costs what a boundary costs — a second representation, mapping code, forwarding, another name and another hop — and it earns that only by isolating a change one side can make without the other noticing. While `LoanSummary` transcribes `Loan`, every field passes straight through and the boundary absorbs nothing. Once the stored shape carries row versions, soft-delete flags and epoch timestamps the card never renders, the mapping is where a real difference is absorbed, and the platform guidance draws the same line when it recommends new models wherever a data source returns data that does not match what the rest of the app expects. More callers of a pass-through still means the same four edits. A module makes a direction enforceable rather than conventional and isolates no new change. And a boundary does not become worthwhile because it can be faked: while the two sides change together, the fake gives you something to test across rather than a smaller thing to test.",
+      "sources": [
+        {
+          "title": "Data layer",
+          "url": "https://developer.android.com/topic/architecture/data-layer"
+        },
+        {
+          "title": "Guide to app architecture",
+          "url": "https://developer.android.com/topic/architecture"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "ui_state_shape_from_the_screens_requirements",
+      "topicId": "architecture",
+      "subtopicId": "state_ownership",
+      "text": "A loans screen must show a first-load placeholder, a list with a filter, a full-screen failure when there is nothing to show, and a membership line that loads and fails on its own. Which model keeps a membership failure from blanking the screen while making a loaded list and a full-screen failure unrepresentable together?",
+      "answers": [
+        {
+          "id": "ui_state_shape_from_the_screens_requirements_a",
+          "text": "One data class holding the loans, the filter, `isLoading`, `errorMessage` and `membershipError`, so each fact updates on its own."
+        },
+        {
+          "id": "ui_state_shape_from_the_screens_requirements_b",
+          "text": "A sealed hierarchy of Loading, Content, Error and MembershipError, so every failure is a top-level state the renderer branches on."
+        },
+        {
+          "id": "ui_state_shape_from_the_screens_requirements_c",
+          "text": "A sealed hierarchy of Loading, Content and Error, with `Content` carrying the membership region's own state."
+        },
+        {
+          "id": "ui_state_shape_from_the_screens_requirements_d",
+          "text": "One observable value per region — loans, filter, membership — each collected separately by the part of the screen that renders it."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "ui_state_shape_from_the_screens_requirements_c"
+      ],
+      "explanation": "The shape of the current state value is a per-screen decision made from which combinations the product requires and which it forbids. A flat data class can hold a populated list, a loading flag and a full-screen error at once, so the forbidden combination is reachable from an ordinary mistake and every consumer has to decide what it means. Promoting the membership failure to a top-level state makes it exclusive with content, which turns a missing membership line into a page the reader cannot read — a failure is modelled at the level of the thing that failed, so the region carries its own state inside `Content`. Separate observables per region give up the single consistent value as well, letting a consumer observe the screen part-way through a multi-field change. The platform's own recommendation states both halves: the screen state can be a data class holding data, errors and loading signals, and can be a sealed class where the states are exclusive.",
+      "sources": [
+        {
+          "title": "Architecture recommendations",
+          "url": "https://developer.android.com/topic/architecture/recommendations"
+        },
+        {
+          "title": "UI layer",
+          "url": "https://developer.android.com/topic/architecture/ui-layer"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "exposed_mutable_state_costs_a_second_write_path",
+      "topicId": "architecture",
+      "subtopicId": "unidirectional_data_flow",
+      "text": "A screen state holder exposes its `MutableStateFlow` directly. The team calls it safe because only code inside the feature module can reach it. A field is occasionally wrong when a refresh lands just after a tap. What does the exposure actually cost?",
+      "answers": [
+        {
+          "id": "exposed_mutable_state_costs_a_second_write_path_a",
+          "text": "Thread safety, because a mutable state flow's value cannot be updated atomically once more than one writer is present."
+        },
+        {
+          "id": "exposed_mutable_state_costs_a_second_write_path_b",
+          "text": "A second write path racing the holder's, an invariant no type enforces, and nowhere single to look when a value is wrong."
+        },
+        {
+          "id": "exposed_mutable_state_costs_a_second_write_path_c",
+          "text": "Nothing beyond style, because the module boundary limits who can write and the holder still writes first."
+        },
+        {
+          "id": "exposed_mutable_state_costs_a_second_write_path_d",
+          "text": "A recomposition on every write, because a mutable stream cannot be observed as a read-only value."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "exposed_mutable_state_costs_a_second_write_path_b"
+      ],
+      "explanation": "Visibility decides who can reach a write path; it does not remove one. With the container public, the holder writes when a refresh completes and the UI writes on a tap, neither knows about the other, and the last writer wins by timing — which is the defect described. The rules the holder knows, about which combinations may coexist and which transitions are legal, are in none of the types, so any caller can publish a value the holder would never have produced; and a wrong value now means finding every assignment in every consumer rather than reading one file. The guidance states the same rule from the other side: only owners of data should update the data they expose, and the state is kept mutable inside the owner and read-only for the UI. The stream type is not the problem — all of a state flow's methods are thread-safe and its value updates atomically — and a read-only view of the same container is observed identically.",
+      "sources": [
+        {
+          "title": "UI layer",
+          "url": "https://developer.android.com/topic/architecture/ui-layer"
+        },
+        {
+          "title": "StateFlow",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-state-flow/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "repository_boundary_needs_a_decision_to_own",
+      "topicId": "architecture",
+      "subtopicId": "repository_pattern",
+      "text": "A reminder-time preference has one local source and one caller, and the proposed `ReminderPreferenceRepository` forwards both calls unchanged. Which requirement would give the type a decision of its own to own?",
+      "answers": [
+        {
+          "id": "repository_boundary_needs_a_decision_to_own_a",
+          "text": "A second screen reads the preference, so both callers go through one function instead of each calling the source."
+        },
+        {
+          "id": "repository_boundary_needs_a_decision_to_own_b",
+          "text": "The source's API becomes suspending, so every caller has to await the read."
+        },
+        {
+          "id": "repository_boundary_needs_a_decision_to_own_c",
+          "text": "The team's convention is that no state holder names a data source, so the type supplies the uniform entry point."
+        },
+        {
+          "id": "repository_boundary_needs_a_decision_to_own_d",
+          "text": "The preference also lives in the reader's account on the service, so something must decide which copy wins."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "repository_boundary_needs_a_decision_to_own_d"
+      ],
+      "explanation": "A repository is the data layer's entry point, and what makes one worth having is a decision it owns that its callers should not: which source answers, when a refresh is attempted, which copy wins when two disagree, and what the contract exposes. A second copy on a service creates exactly such a decision — resolving conflicts between multiple data sources is on the guidance's own list of repository responsibilities, and neither source can make it, because each knows only itself. A second caller changes nothing while the class still forwards, since both callers receive the same forwarded result. A suspending source is a signature change. The uniform-entry-point argument is real, and the guidance does recommend creating repositories even for a single data source, but that is a decision about consistency across a codebase rather than a decision this feature's requirements put inside the type — and the same page asks that its recommendations be treated as recommendations rather than strict requirements.",
+      "sources": [
+        {
+          "title": "Data layer",
+          "url": "https://developer.android.com/topic/architecture/data-layer"
+        },
+        {
+          "title": "Architecture recommendations",
+          "url": "https://developer.android.com/topic/architecture/recommendations"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "repository_contract_carries_meaning_not_origin",
+      "topicId": "architecture",
+      "subtopicId": "repository_pattern",
+      "text": "A repository coordinates a local store and a service. The screen must be able to say when the loans were last confirmed, offer a retry after a failed refresh, and avoid calling a change final before the service has accepted it. Which contract supplies that without leaking how the data layer is built?",
+      "answers": [
+        {
+          "id": "repository_contract_carries_meaning_not_origin_a",
+          "text": "The loans, when they were last confirmed, a refresh state in the application's own terms, and whether local changes are unsent."
+        },
+        {
+          "id": "repository_contract_carries_meaning_not_origin_b",
+          "text": "The loans only, since origin, freshness and failure are implementation details the data layer has to keep inside."
+        },
+        {
+          "id": "repository_contract_carries_meaning_not_origin_c",
+          "text": "The loans, plus a flag saying whether this read was answered by the database or by the network."
+        },
+        {
+          "id": "repository_contract_carries_meaning_not_origin_d",
+          "text": "The loans, plus the service's last response code and the store's last query timestamp, so the screen decides what is stale."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "repository_contract_carries_meaning_not_origin_a"
+      ],
+      "explanation": "The line to hold is between application meaning and implementation origin. That the loans were last confirmed forty minutes ago, that a refresh failed, and that a local change has not yet reached the library are all true of the data and stay true if the whole data layer is rewritten, so a screen can legitimately render them, offer a retry, and decline to call a change final. Which store or transport produced a value is origin, and abstracting sources of data from the rest of the app is on the guidance's list of repository responsibilities. Handing the screen a response code and a query timestamp leaks a transport detail and a storage detail at once, and moves the freshness policy out of the layer that owns it. Withholding everything is the opposite error: the screen then cannot meet requirements the product stated, and freshness cannot be inferred from the data, because a list of loans does not record when it was obtained — which is why the offline-first guidance treats that bookkeeping as something the app has to keep deliberately.",
+      "sources": [
+        {
+          "title": "Data layer",
+          "url": "https://developer.android.com/topic/architecture/data-layer"
+        },
+        {
+          "title": "Build an offline-first app",
+          "url": "https://developer.android.com/topic/architecture/data-layer/offline-first"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "authoritative_owner_is_chosen_per_fact",
+      "topicId": "architecture",
+      "subtopicId": "single_source_of_truth",
+      "text": "Three facts in one application: a review the reader drafts offline and submits later; an outstanding fine the library desk can change without the device knowing; and a list's sort order, which should return to the default the next time the app opens. Which assignment of authoritative owners matches those requirements?",
+      "answers": [
+        {
+          "id": "authoritative_owner_is_chosen_per_fact_a",
+          "text": "The local store for all three, because a local database is the recommended source of truth."
+        },
+        {
+          "id": "authoritative_owner_is_chosen_per_fact_b",
+          "text": "The local store for the draft and the sort order, and the service for the fine, because anything the app reads must survive a restart."
+        },
+        {
+          "id": "authoritative_owner_is_chosen_per_fact_c",
+          "text": "The local store for the draft, the service for the fine, and an in-memory owner for the sort order."
+        },
+        {
+          "id": "authoritative_owner_is_chosen_per_fact_d",
+          "text": "The service for the draft and the fine, and the local store for the sort order, because facts the product cares about belong on the server."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "authoritative_owner_is_chosen_per_fact_c"
+      ],
+      "explanation": "A single source of truth is the authoritative owner of one fact — the one whose value wins when copies disagree — and it is decided per fact from the requirement, so one application legitimately has several. The service does not hold the draft at all until it is submitted, so the device is authoritative for it. The desk can change the fine without the device knowing, so the device's copy is a cache and loses. The sort order is required to disappear, so its owner holds it in memory and nothing is wrong when it is gone. The guidance says as much directly, noting that different repositories in an app might have different sources of truth and giving one that uses its cache and one that uses its network source. The local-database recommendation is real and conditional — it is scoped to offline-first support — and dropping that condition is exactly how it becomes a definition. Authority also says nothing about how long a value lives, which is why storing the sort order would contradict the requirement rather than satisfy it.",
+      "sources": [
+        {
+          "title": "Data layer",
+          "url": "https://developer.android.com/topic/architecture/data-layer"
+        },
+        {
+          "title": "Build an offline-first app",
+          "url": "https://developer.android.com/topic/architecture/data-layer/offline-first"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "domain_layer_is_earned_by_the_feature",
+      "topicId": "architecture",
+      "subtopicId": "use_cases",
+      "text": "A checkout feature has one screen, one repository, and roughly two hundred lines of validation that changes whenever that screen's requirements change. The team proposes a domain layer for it. Which observation argues most strongly against adding one here?",
+      "answers": [
+        {
+          "id": "domain_layer_is_earned_by_the_feature_a",
+          "text": "The validation is ordinary Kotlin with no framework types, so it is already independent of the platform."
+        },
+        {
+          "id": "domain_layer_is_earned_by_the_feature_b",
+          "text": "It changes exactly when the screen's requirements change and has no second caller, so a layer below would own nothing new."
+        },
+        {
+          "id": "domain_layer_is_earned_by_the_feature_c",
+          "text": "Two hundred lines is below the size at which a separate layer repays its files."
+        },
+        {
+          "id": "domain_layer_is_earned_by_the_feature_d",
+          "text": "A domain layer may be added only once a feature coordinates more than one repository, and this feature has just one."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "domain_layer_is_earned_by_the_feature_b"
+      ],
+      "explanation": "A domain layer is optional and earns its existence from reuse across callers, orchestration across repositories, policy with its own reasons to change, or enough decision-making to need one authoritative home. Logic that changes exactly when one screen's requirements change, and that nothing else calls, has already found its owner; moving it down buys a file, a name and a hop, and the guidance warns about precisely that, describing the layer as one to use only when needed and noting that forcing use cases that are simple calls into the data layer adds complexity for little benefit. None of the four conditions is individually necessary, so coordinating more than one repository is not a prerequisite: a rule that belongs to the business can earn a home with one caller today. Size is not the test in either direction, and neither is the absence of framework types — a forwarding class with no imports owns exactly as much as a forwarding class with them. A team may still route everything through a domain layer for uniformity, which is defensible as a decision about consistency provided it is named as one.",
+      "sources": [
+        {
+          "title": "Domain layer",
+          "url": "https://developer.android.com/topic/architecture/domain-layer"
+        },
+        {
+          "title": "Architecture recommendations",
+          "url": "https://developer.android.com/topic/architecture/recommendations"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "dependency_rule_constrains_direction_not_layer_count",
+      "topicId": "architecture",
+      "subtopicId": "clean_architecture",
+      "text": "Three designs. (1) A screen owner and a storage implementation, where the owner declares the contract and the implementation depends on it. (2) Four groupings — screen owner, operation, rule, storage implementation — whose innermost rule names only its own types. (3) Presentation, domain and data packages, where the domain operation takes a platform `Uri` and returns the transport library's response type. Which satisfy Clean Architecture's dependency rule?",
+      "answers": [
+        {
+          "id": "dependency_rule_constrains_direction_not_layer_count_a",
+          "text": "All three, because the rule constrains which component calls which at run time rather than which types a component names."
+        },
+        {
+          "id": "dependency_rule_constrains_direction_not_layer_count_b",
+          "text": "Designs 2 and 3, because both have at least three layers while design 1 has no domain layer."
+        },
+        {
+          "id": "dependency_rule_constrains_direction_not_layer_count_c",
+          "text": "Designs 1 and 2, because in each one every source dependency points toward policy and nothing inner names anything outer."
+        },
+        {
+          "id": "dependency_rule_constrains_direction_not_layer_count_d",
+          "text": "Design 2 only, because the rule is satisfied by the four circles the architecture describes."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "dependency_rule_constrains_direction_not_layer_count_c"
+      ],
+      "explanation": "The rule is one sentence: source code dependencies can only point inwards, and the name of something declared in an outer circle must not be mentioned by code in an inner one. Design 1 satisfies it with two layers, because the owner declares what it needs and the implementation depends on that declaration. Design 2 satisfies it with four groupings, because every arrow still points toward policy. Design 3 has the familiar three-package shape and breaks the rule, because its innermost operation names a platform type and a transport type. The count is not part of the rule: the article calls its circles schematic and says outright that there is no rule requiring exactly those four, and the platform guidance recommends designing with at least two layers and treats the domain layer as optional. The rule is also about source dependencies rather than the flow of control, which is exactly why an inner component can be invoked by an outer one without naming it.",
+      "sources": [
+        {
+          "title": "The Clean Architecture",
+          "url": "https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html"
+        },
+        {
+          "title": "Domain layer",
+          "url": "https://developer.android.com/topic/architecture/domain-layer"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "classify_a_screen_by_its_responsibilities",
+      "topicId": "architecture",
+      "subtopicId": "mvc",
+      "text": "A screen has a lifecycle-owned state holder that publishes one immutable state value the UI observes. The UI passes named callback functions for input. The holder keeps no reference to any UI instance, and each callback updates several fields of the state and then calls a separate `revalidate()`. Which reading of this screen is accurate?",
+      "answers": [
+        {
+          "id": "classify_a_screen_by_its_responsibilities_a",
+          "text": "State in the holder, one write path, no view knowledge, input as calls, output as observed state, transitions spread across the callbacks."
+        },
+        {
+          "id": "classify_a_screen_by_its_responsibilities_b",
+          "text": "State in the holder, one write path, no view knowledge, input as calls, output as observed state, one explicit transition from a state and an input."
+        },
+        {
+          "id": "classify_a_screen_by_its_responsibilities_c",
+          "text": "State in the holder, a view reference whose attachment the holder must track, input as calls, and output pushed into the UI by method calls."
+        },
+        {
+          "id": "classify_a_screen_by_its_responsibilities_d",
+          "text": "State in the holder, one write path, input as values from a closed set, output as observed state, transitions spread across the callbacks."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "classify_a_screen_by_its_responsibilities_a"
+      ],
+      "explanation": "Reading a screen's architecture means answering the same questions in order: where the state lives, who may write it, whether the behaviour owner knows the UI instance, how input arrives, how output returns, and how explicit the transitions are. Here the holder owns the value and is the only writer; it names no UI type, so nothing has to track whether a view is currently attached; input arrives as function calls rather than as values from a closed set; output is a value the UI observes rather than calls pushed into it; and the next state is assembled by several updates inside each callback with the validation as a separate step, so there is no single readable move from a current state and an input to the next one. Each wrong reading differs in exactly one answer, which is the point: these properties are independent, most production screens borrow from more than one tradition, and no one of them lets a pattern label be deduced.",
+      "sources": [
+        {
+          "title": "UI layer",
+          "url": "https://developer.android.com/topic/architecture/ui-layer"
+        },
+        {
+          "title": "State holders and UI state",
+          "url": "https://developer.android.com/topic/architecture/ui-layer/stateholders"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "observed_state_arrangement_is_not_a_class_or_a_folder",
+      "topicId": "architecture",
+      "subtopicId": "mvvm",
+      "text": "A screen's behaviour owner extends `ViewModel`, sits in a `viewmodel` package, and is handed a `PracticeConfigView` interface on which it calls `showOptions()` and `setStartEnabled()`. The team wants the arrangement in which the UI observes state the owner publishes and the owner holds no reference to the UI. Which change accomplishes that?",
+      "answers": [
+        {
+          "id": "observed_state_arrangement_is_not_a_class_or_a_folder_a",
+          "text": "Move the owner into a `presentation` package and rename it, since the directory is what declares the arrangement."
+        },
+        {
+          "id": "observed_state_arrangement_is_not_a_class_or_a_folder_b",
+          "text": "Keep the view interface but call it only from a lifecycle-aware callback, so a detached view is never called."
+        },
+        {
+          "id": "observed_state_arrangement_is_not_a_class_or_a_folder_c",
+          "text": "Replace the `ViewModel` superclass with a plain class the UI remembers, since the framework type is what makes the owner hold a view."
+        },
+        {
+          "id": "observed_state_arrangement_is_not_a_class_or_a_folder_d",
+          "text": "Publish one read-only current state the UI observes, and remove the view interface and every call the owner makes into it."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "observed_state_arrangement_is_not_a_class_or_a_folder_d"
+      ],
+      "explanation": "The arrangement is a statement about dependency direction and the shape of the output: the owner publishes the current state, the UI observes it and reports user events inward, and the owner names no UI type. Only removing the held view interface and inverting the output achieves that, and everything else follows from it, including the disappearance of any need to know whether a view is currently attached. Disciplining the calls with a lifecycle-aware callback keeps the reference and therefore keeps the obligation, which is why the recommendations tell a ViewModel not to hold a reference to any lifecycle-related type at all. A directory is a claim about where a file is, not about what depends on what. And the framework type supplies a lifetime from whatever owns its store rather than a mutation path or a dependency direction — which is why the guidance describes a business-logic state holder as typically implemented with a `ViewModel` and a UI-logic state holder as typically implemented with a plain class, two implementations of a responsibility chosen by lifetime.",
+      "sources": [
+        {
+          "title": "UI layer",
+          "url": "https://developer.android.com/topic/architecture/ui-layer"
+        },
+        {
+          "title": "State holders and UI state",
+          "url": "https://developer.android.com/topic/architecture/ui-layer/stateholders"
+        },
+        {
+          "title": "Architecture recommendations",
+          "url": "https://developer.android.com/topic/architecture/recommendations"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "explicit_transition_is_not_the_input_spelling",
+      "topicId": "architecture",
+      "subtopicId": "mvi",
+      "text": "Screen A holds one immutable state value and takes input as named callbacks, each updating several fields and then calling `revalidate()`. Screen B has the same holder and the same single state value, but input arrives as values of a closed `Action` type dispatched through one function whose branches update the same fields and call the same `revalidate()`. A reviewer says B now has an explicit state transition and A does not. What is accurate?",
+      "answers": [
+        {
+          "id": "explicit_transition_is_not_the_input_spelling_a",
+          "text": "Neither derives the next state from the current state and an input in one readable step; the two differ only in how input is spelled."
+        },
+        {
+          "id": "explicit_transition_is_not_the_input_spelling_b",
+          "text": "B has it, because dispatching a closed set of input values through one function is what makes a transition explicit."
+        },
+        {
+          "id": "explicit_transition_is_not_the_input_spelling_c",
+          "text": "A has it and B does not, because a named callback states the transition while a dispatch function hides it inside a `when`."
+        },
+        {
+          "id": "explicit_transition_is_not_the_input_spelling_d",
+          "text": "Neither has it, because an explicit transition requires the next state to be produced by a pure function that calls nothing else."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "explicit_transition_is_not_the_input_spelling_a"
+      ],
+      "explanation": "Modelling input as a closed set of values and making the state transition explicit are two separate properties, and adding the first changes how input is spelled while leaving the mutation path exactly as it was. In both screens the next state is assembled by several updates inside whichever branch ran, with the validation as a separate call somebody has to remember, so neither has a single readable step from a current state and an input to the next state. The change that would introduce one is that step: a function taking the current state and an input and returning the next state, with the derived rules applied inside it, so an invariant the transition establishes cannot be broken downstream — which is the platform guidance's own framing of the cycle, where the owner handles the user action and the updated state is fed back to the UI. Purity is not what makes a transition explicit: implementations differ on whether that function may do anything else, and treating one variant as the definition is the same error as reading a folder name as a design.",
+      "sources": [
+        {
+          "title": "UI layer",
+          "url": "https://developer.android.com/topic/architecture/ui-layer"
+        },
+        {
+          "title": "Architecture recommendations",
+          "url": "https://developer.android.com/topic/architecture/recommendations"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "occurrence_guarantee_before_mechanism",
+      "topicId": "architecture",
+      "subtopicId": "state_ownership",
+      "text": "Two occurrences on one screen. After a new loan appears the list should scroll to it, and nothing should happen if no list is on screen. Separately, a borrowing request the reader was told was submitted is confirmed by the library minutes later, possibly after the process has been killed; the next screen the reader opens must show that confirmation, and the application must be able to tell at any moment whether it has already been acknowledged. Which design satisfies both?",
+      "answers": [
+        {
+          "id": "occurrence_guarantee_before_mechanism_a",
+          "text": "Give both a durable pending-or-acknowledged fact, because an occurrence that is lost when nobody is listening is a defect in either case."
+        },
+        {
+          "id": "occurrence_guarantee_before_mechanism_b",
+          "text": "Leave the scroll transient with nothing recording it, and give the confirmation a durable pending-or-acknowledged fact with an owner."
+        },
+        {
+          "id": "occurrence_guarantee_before_mechanism_c",
+          "text": "Leave the scroll transient, and hold the confirmation in an application-scoped owner, which is never cancelled when the screen goes away."
+        },
+        {
+          "id": "occurrence_guarantee_before_mechanism_d",
+          "text": "Leave the scroll transient, and give the confirmation a durable record the screen writes after acting on it, so the action runs exactly once."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "ADVANCED",
+      "correctAnswerIds": [
+        "occurrence_guarantee_before_mechanism_b"
+      ],
+      "explanation": "State the guarantee before choosing anything. The scroll may be lost — with no list on screen there is nothing to scroll and nothing is owed — so the remaining questions mostly stop mattering, and giving it a durable record and a clearing protocol would be structure with no requirement behind it. The confirmation answers the other way: a later consumer must act, repetition is not safe, and the obligation must survive the process, which removes every in-memory owner from consideration before any stream type is discussed. An application-scoped owner is still in memory and ends with the process, so it answers a different question; the guidance separates operations that must survive process death from operations that are cancelled when the user moves away from a screen. What the requirement asks for is a readable fact: a durable pending-or-acknowledged value lets a consumer arriving at any moment ask whether the obligation is still outstanding, which is why the platform reduces such events to UI state that the UI clears once handled. Writing that record only after the screen has acted does not supply it, because a process ending in between leaves an acknowledged confirmation recorded as pending — which is also why the requirement is stated as a record the application can read rather than as exactly-once execution. Recorded handling, transport delivery and side-effect execution are three different claims, and an architecture supports only the first.",
+      "sources": [
+        {
+          "title": "UI events",
+          "url": "https://developer.android.com/topic/architecture/ui-layer/events"
+        },
+        {
+          "title": "Data layer",
+          "url": "https://developer.android.com/topic/architecture/data-layer"
+        },
+        {
+          "title": "ViewModel overview",
+          "url": "https://developer.android.com/topic/libraries/architecture/viewmodel"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "owner_chosen_from_the_required_lifetime",
+      "topicId": "architecture",
+      "subtopicId": "state_ownership",
+      "text": "Three things on one screen: whether a filter sheet is expanded, which should start closed each time it is opened; the loaded loans and an in-flight refresh, which must survive rotation and stop once the destination is gone for good; and a submitted borrowing request the reader was told about, which must complete even if the process is killed before the network returns. Which owners match?",
+      "answers": [
+        {
+          "id": "owner_chosen_from_the_required_lifetime_a",
+          "text": "The screen-level owner for all three, since it survives rotation and every part of the screen can reach it."
+        },
+        {
+          "id": "owner_chosen_from_the_required_lifetime_b",
+          "text": "An application-scoped owner for all three, so nothing is lost when a destination is destroyed."
+        },
+        {
+          "id": "owner_chosen_from_the_required_lifetime_c",
+          "text": "The sheet's own remembered holder, the screen-level owner, and a mechanism whose contract outlives the process."
+        },
+        {
+          "id": "owner_chosen_from_the_required_lifetime_d",
+          "text": "The sheet's own holder, the screen-level owner, and an application-scoped owner for the submission, which is never cancelled."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "owner_chosen_from_the_required_lifetime_c"
+      ],
+      "explanation": "Choose the owner from the ending event the requirement names, and take the shortest lifetime that still satisfies it. The sheet's expansion is meaningless once the sheet is gone and is required to reset, so it belongs to the sheet's own holder — which is why the recommendations keep ViewModels at screen level and put plain state holder classes in reusable UI components. The loans and the refresh belong to the destination, and cancelling the refresh when the reader leaves is the owner doing its job. The submission names an ending no in-process owner has: an application-scoped owner is never cancelled by navigation and still ends with the process, so it answers the wrong question, and the guidance separates operations that cannot be cancelled and must survive process death from work that follows a caller's lifecycle, noting that asynchronous work is not guaranteed to finish and that the task-scheduling APIs are what continue after the user leaves the app. A longer-lived owner is a deliberate lifetime with real costs — retention, staleness, coupling between screens that share it, and reset semantics somebody has to implement — rather than a safer default.",
+      "sources": [
+        {
+          "title": "Data layer",
+          "url": "https://developer.android.com/topic/architecture/data-layer"
+        },
+        {
+          "title": "Architecture recommendations",
+          "url": "https://developer.android.com/topic/architecture/recommendations"
+        },
+        {
+          "title": "Background work overview",
+          "url": "https://developer.android.com/develop/background-work/background-tasks"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "smallest_structure_that_satisfies_the_requirements",
+      "topicId": "architecture",
+      "subtopicId": "architecture_tradeoffs",
+      "text": "A feature: the reader assembles a basket; an eligibility rule the library owns decides whether they may borrow; three surfaces run that check; two data responsibilities with separate sources supply its inputs; the basket has invariants no path may break; and a submitted request the reader was told about must complete even if the process is killed, with the application able to tell whether the library has confirmed it. Which design is proportionate?",
+      "answers": [
+        {
+          "id": "smallest_structure_that_satisfies_the_requirements_a",
+          "text": "One repository and one screen owner, with the rule copied into each of the three surfaces and the submission scoped to the screen."
+        },
+        {
+          "id": "smallest_structure_that_satisfies_the_requirements_b",
+          "text": "A store with intents and a reducer at the centre, with the repositories, the rule and the submission arranged to fit it."
+        },
+        {
+          "id": "smallest_structure_that_satisfies_the_requirements_c",
+          "text": "Two repository boundaries, a domain operation for the rule, an explicit transition, a durable record, and work that outlives the process."
+        },
+        {
+          "id": "smallest_structure_that_satisfies_the_requirements_d",
+          "text": "All of that, plus a use case for every repository method and a distinct type at every boundary, so every feature has one shape."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "ADVANCED",
+      "correctAnswerIds": [
+        "smallest_structure_that_satisfies_the_requirements_c"
+      ],
+      "explanation": "Architecture is proportionate when every element traces to a requirement that names it, and each requirement here buys exactly one piece: a rule the library owns with three callers and two data responsibilities to coordinate earns a domain operation; sources with their own freshness questions earn separate repository boundaries; invariants no path may break are cheaper to keep in one transition than in five callbacks; a confirmation the application must be able to ask about earns a durable record with a pending-or-acknowledged position; and a submission that must complete after the process ends earns work scheduled to outlive it, which is not a scoping decision at all — an owner above the screen escapes navigation and still dies with the process, and a durable record preserves the pending fact without restarting the operation. The single-repository design is not simpler but under-architected: the rule has three homes so a lending-policy change will miss one, the invariants hold only on the paths somebody remembered, and leaving the screen cancels something the reader was told had happened. Adding a use case per repository method and a type at every boundary adds boundaries with no independent change behind them, which the guidance itself warns produces complexity for little benefit; buying it for uniformity is defensible only when it is named as a decision about consistency. And putting a pattern at the centre answers the ownership, lifetime and dependency questions before they have been asked.",
+      "sources": [
+        {
+          "title": "Guide to app architecture",
+          "url": "https://developer.android.com/topic/architecture"
+        },
+        {
+          "title": "Domain layer",
+          "url": "https://developer.android.com/topic/architecture/domain-layer"
+        },
+        {
+          "title": "Architecture recommendations",
+          "url": "https://developer.android.com/topic/architecture/recommendations"
         }
       ],
       "status": "ACTIVE"

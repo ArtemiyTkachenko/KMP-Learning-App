@@ -1612,7 +1612,7 @@ and Single Source of Truth**, homed in `architecture`, and appended **directly a
 `unit_screen_state_holders_and_ui_state`** — position 21 of 21, and third within the
 architecture sequence. No existing Unit moved and no shipped Lesson was edited.
 
-All five Lessons carry Core, Practical and Senior depth and run 1,515–2,112 words including
+All five Lessons carry Core, Practical and Senior depth and run 1,515–2,161 words including
 code, inside the 552–2,307 range the 82 previously shipped Lessons occupy.
 
 **Configured versions were re-read** from `gradle/libs.versions.toml` during authoring and
@@ -1745,9 +1745,16 @@ corrected with four conditions that would justify one, and the Lesson says in as
 that *which side defines the abstraction* belongs to the next Unit.
 
 **L3.2 — coordination.** Four decisions are named as the repository's; the read path is six
-steps under three stated requirements; the write path is a four-column table comparing
+steps under three stated requirements, followed by a paragraph that holds the diagram to its
+own requirement — a read-triggered refresh satisfies a freshness bound measured from opening
+and not one that holds while the screen stays open, so the second trigger is named as a
+decision rather than left implicit. The write path is a four-column table comparing
 local-first against remote-confirmed on requirement, path, what the reader sees and what a
-failure means. Origin-hiding is taught with its counterweight: four things a consumer
+failure means, and the remote-confirmed row is followed by the outcome the neat version of
+that design omits: the service may commit while its answer is lost, so the operation has
+three outcomes and "unknown" is one of them. The Lesson draws the consequence as a
+requirement rather than a mechanism — the unknown outcome is a state the screen can be in,
+and resolving it means the operation has to be safe to repeat. Origin-hiding is taught with its counterweight: four things a consumer
 legitimately needs — staleness, refresh in progress, last refresh failed, unsent local
 changes — separated from implementation origin by the **application meaning / implementation
 origin** distinction, and expressed in a `LoansSnapshot` type that names no transport, entity
@@ -1787,6 +1794,21 @@ application-owned failure contract, lists three mechanisms, and states that the 
 is narrower and stronger than any of them. The separation from Unit 2's L2.3 is stated in the
 Senior section: L2.3 asks how a screen represents an error it must render, L3.5 asks what
 representation reaches the state holder in the first place.
+
+### Corrections made during review
+
+Three defects were found by review after the Lessons were first written, all in Unit 3's own
+prose and all fixed in this change. They are recorded because two of them are the kind of
+overstatement this subject is especially prone to — a design described by the outcomes its
+author planned for rather than by the outcomes it has.
+
+| Where | Defect | Correction |
+| --- | --- | --- |
+| L3.1, Senior | The paragraph claimed all five repository implementations sit "in a separate tree under `data/local`". **False**: four do, and `BundledLearningContentRepository` sits under `curriculum/learning/content` because the document it serves is a bundled file rather than a table. [Part 7](#part-7--this-repositorys-own-architecture-as-evidence) records this correctly and the Lesson did not | The exception is now described, and used: the implementations are grouped by the source they work with, and no consumer is affected by which one that is |
+| L3.2, Practical | The read-path diagram showed a single read-triggered refresh while the stated requirement was a freshness bound holding "for as long as the reader is looking". A list left open drifts indefinitely under that path, so the Lesson's own "when a refresh is attempted, and what triggers it" decision was answered only half way | The requirement now says explicitly that the bound holds while the list is open, and a paragraph names the missing trigger — a refresh while the screen is visible, or the service announcing a change — while handing the mechanism to other curricula |
+| L3.2, Practical | The remote-confirmed write row said a failure means "the write did not happen" and that "the two copies never diverged". **Too strong**: if the service commits and the response is lost, the write happened and the local copy is stale, and no ordering of two sources across a network makes them change atomically | The row now names three outcomes — accepted, refused, unknown — and two paragraphs draw the consequence as requirements: the unknown outcome is a state the screen can be in, and repeating the confirmation has to be safe. The summary claim is narrowed from "refuses divergence" to "never diverges on purpose" |
+
+None of the three changed an identity, a mapping, a source or a Lesson boundary.
 
 ### Semantic review of the Questions this Unit now reaches
 

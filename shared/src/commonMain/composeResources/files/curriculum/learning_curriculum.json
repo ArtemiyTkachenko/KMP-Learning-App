@@ -13952,7 +13952,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "This application is useful evidence for the boundary and poor evidence for the coordination. It has five repository interfaces — `AssessmentRepository`, `CurriculumRepository`, `LessonStudyRepository`, `SavedQuestionRepository` and `LearningContentRepository` — each declared in the package of the feature that consumes it, with implementations in a separate tree under `data/local`. No DAO is used anywhere above `data/local`, so the entry-point rule holds here as a fact rather than as an intention, and the repositories really are the only door."
+                  "text": "This application is useful evidence for the boundary and poor evidence for the coordination. It has five repository interfaces — `AssessmentRepository`, `CurriculumRepository`, `LessonStudyRepository`, `SavedQuestionRepository` and `LearningContentRepository` — each declared in the package of the feature that consumes it, and each implemented somewhere its consumers never name. Four of the implementations sit under `data/local`, over the database; the fifth, `BundledLearningContentRepository`, sits under `curriculum/learning/content`, because the learning document it serves is a bundled file rather than a table. That split is itself the point — the implementations are grouped by the source they work with, and the consumers are unaffected by which one that is. No DAO is used anywhere above `data/local`, so the entry-point rule holds here as a fact rather than as an intention."
                 },
                 {
                   "type": "paragraph",
@@ -14032,12 +14032,16 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "A read path is only defensible against stated requirements, so state them first. The loans list must appear immediately when the reader opens it, including with no connectivity; it must be correct within a few minutes of the library's own records; and the reader must not be shown a spinner for data the device already holds. Under those three requirements, one coherent read path falls out:"
+                  "text": "A read path is only defensible against stated requirements, so state them first. The loans list must appear immediately when the reader opens it, including with no connectivity; it must agree with the library's own records to within a few minutes for as long as the reader is looking at it; and the reader must not be shown a spinner for data the device already holds. Under those three requirements, one coherent read path falls out:"
                 },
                 {
                   "type": "code",
                   "code": "a consumer asks for the current loans\n        ↓\nthe local source answers immediately with what it holds\n        ↓\nthe repository exposes that value\n        ↓\na refresh from the service is attempted\n        ↓\non success, the local copy is updated\n        ↓\nthe consumer sees the updated loans without having asked again",
                   "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read that diagram carefully, because it quietly answers only half of one of the four decisions. It shows *a* refresh, triggered by the read — which satisfies a freshness bound measured from the moment the list is opened, and not the bound the requirement actually stated, which holds while the reader is still looking. A list left open for an hour gets one refresh under this path and can then drift indefinitely. Closing that gap means naming a second trigger: refreshing again while the screen is visible, or letting the library tell the application when its records changed. Which of those to choose is another requirement question, and how either is implemented — scheduling, sockets, push delivery — belongs to other curricula. The point for this unit is that \"when a refresh is attempted, and what triggers it\" is a decision with an answer, and a read path that leaves it implicit has an unstated freshness policy rather than none."
                 },
                 {
                   "type": "paragraph",
@@ -14066,13 +14070,21 @@
                       "A renewal is only real once the library has accepted it",
                       "Remote-confirmed: the service must accept the renewal before the local copy changes",
                       "A pending control until the service answers, and then the new due date",
-                      "The write did not happen. The reader is told, and the two copies never diverged"
+                      "Either the library refused it and nothing changed anywhere, or the answer never arrived and the outcome is unknown — a third case the design has to represent rather than guess at"
                     ]
                   ]
                 },
                 {
                   "type": "paragraph",
-                  "text": "Both are correct designs; they answer different product questions. The first allows the device and the library to disagree on purpose for a while, and buys offline usability with that divergence. The second refuses divergence and pays for it with a wait the reader can see. What is not a design is having neither written down, because then the answer is whatever the code happened to do — and the reader finds out which one it was at the worst moment. How a deferred write actually gets sent — retries, backoff, scheduling that survives the app being closed — is mechanism, and the background-work curriculum owns it."
+                  "text": "That last cell is where the remote-confirmed design is usually described too neatly, including by people who have built one. It is tempting to say that it refuses divergence: nothing changes locally until the service agrees, so the two copies can never disagree. That holds for the two outcomes anyone plans for, and there is a third. If the library commits the renewal and its answer is lost on the way back, the write *did* happen, the local copy is stale, and the application cannot tell that case apart from a refusal without asking again. Two sources and a network between them cannot be made to change together atomically by ordering the steps, so \"unknown\" is a real outcome of the operation and not a failure of the design."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Naming it is the architectural decision; what follows from it is a requirement on the operation rather than a mechanism. The reader has to be told something honest while the outcome is unknown, which means it is a state the screen can be in. Resolving it means asking the library again — so the question \"is renewing twice the same as renewing once?\" stops being pedantry and becomes a property the operation has to have, or the reconciliation cannot be safe. What the remote-confirmed path genuinely buys, then, is narrower than \"no divergence\": it never diverges *on purpose*, and it never shows the reader a change the library has not accepted."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Both are correct designs; they answer different product questions. The first allows the device and the library to disagree on purpose for a while, and buys offline usability with that divergence. The second allows it only by accident, and pays for that with a wait the reader can see and an unknown outcome to model. What is not a design is having neither written down, because then the answer is whatever the code happened to do — and the reader finds out which one it was at the worst moment. How a deferred write or a repeated confirmation actually gets sent — retries, backoff, scheduling that survives the app being closed — is mechanism, and the background-work curriculum owns it."
                 },
                 {
                   "type": "paragraph",

@@ -15731,6 +15731,821 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "unit_responsibility_models_mvp_mvvm_mvi",
+      "topicId": "architecture",
+      "title": "MVP, MVVM and MVI Responsibility Models",
+      "summary": "The previous four units taught every decision these pattern names are about — ownership, mutation path, dependency direction, lifetime and what a boundary costs — without once using a pattern name. This unit adds the vocabulary, and it starts by saying what the vocabulary is worth: there is no normative specification governing modern use of MVC, MVP, MVVM or MVI, so the unit teaches the responsibility properties that are stable across sources and says where the naming varies. One hypothetical practice-configuration screen runs through the comparison unchanged, so every difference the reader sees is a difference in the responsibility model rather than in the product. The unit's purpose is classification rather than prescription: finish it able to read an unfamiliar screen, say where its state lives, who may mutate it, whether its behaviour owner knows the UI, how input arrives and how output returns — and only then say what a team would probably call it.",
+      "lessons": [
+        {
+          "id": "lesson_one_screen_five_questions",
+          "title": "One Screen, Five Questions",
+          "summary": "Four units taught how to describe what a screen's architecture actually does without ever needing a pattern name. This one adds the names, and it starts by saying what they are worth. Five questions — where state lives, who may mutate it, whether the behaviour owner knows the UI, how input arrives and how output returns — describe any screen arrangement completely, and a sixth consequence falls out of the answers rather than being asked separately. MVC appears only as the origin of the vocabulary and as the reason the vocabulary stopped being dependable.",
+          "primarySubtopicIds": [
+            "mvc"
+          ],
+          "supportingSubtopicIds": [
+            "mvp",
+            "mvvm",
+            "mvi",
+            "state_ownership"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Four units have been building one instrument. Who owns this responsibility, who may change this value and through what path, which component may name which, how long must each part live, and what does a boundary cost? A reader who can ask those questions about a screen can already describe its architecture completely. What they have not been given is the vocabulary an interview actually uses to ask about it — MVC, MVP, MVVM, MVI — and this unit adds it. It adds nothing structurally new: every arrangement in the next four lessons is something the previous units already gave you the means to reason about."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The vocabulary comes with a warning, and the warning has to come first because it changes how the rest of the unit should be read. **There is no single normative specification governing modern use of these four names.** They were coined for different UI toolkits across several decades, their original descriptions do not entirely agree with one another, and the same arrangement is routinely given different names by different teams. Martin Fowler, writing the most-cited practitioner history of the subject, opens it by saying that \"MVC is one of the most misunderstood architectural patterns around\" and that systems using the name \"display a range of important differences\". That is not a complaint about sloppy engineers. It is the actual state of the terminology."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So this unit does not resolve the disagreement by picking one author's diagram and presenting it as the truth. It teaches the properties that are stable across sources — ownership, mutation path, dependency direction, how input travels, how output travels, and what lifetime bookkeeping follows — and says explicitly where the naming varies. The instrument for that is five questions. Asked about any screen, in any codebase, in any framework, they describe completely how that screen's UI and its behaviour owner relate — which is the whole of what these four names are about — without using a pattern name once."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Where does the screen's state live?** Which component holds the values the screen renders — a widget, a composable, a screen-scoped owner, something longer-lived.",
+                    "**Who is allowed to mutate that state?** One component through one path, or anything that can reach it. This is ownership in the sense the foundations unit fixed: not who reads a value, but who may write it.",
+                    "**Does the behaviour owner know about the View or UI instance?** Does it hold a reference to something it can call, or does it publish something the UI reads? This is a dependency-direction question, and it is the one that decides most of the rest.",
+                    "**How does user input reach the behaviour owner?** A method call on a contract, a named function on a holder, a value representing what the user did — and who decides what that input means.",
+                    "**How does output or state reach the UI?** A sequence of imperative calls into the UI, or one current value the UI observes and renders."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Then there is a sixth question, and it deliberately is not a sixth category: **what lifetime bookkeeping does this arrangement force on somebody?** It is asked last because it is a *consequence* of the answers to the five, chiefly of the third. If the behaviour owner holds a reference to a UI instance, and the UI instance can be destroyed while the owner survives, then somebody has to coordinate when that reference is usable — and that requirement was created by the dependency, not chosen separately. If the owner holds no such reference, that particular bookkeeping does not exist, although the owner's own lifetime and the lifetime of whoever is observing it still do. Every named pattern in this unit differs mainly in the answers to questions three, four and five, and the sixth follows."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Five questions describe any screen architecture with no pattern name: where the state lives, who may mutate it, whether the behaviour owner knows the UI instance, how input reaches the owner, and how output reaches the UI. A sixth — what lifetime bookkeeping this forces on somebody — is the consequence of the answers rather than an independent choice. MVP, MVVM and MVI are three sets of answers to the same five questions."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "One hypothetical screen runs through this lesson and the three that follow, and it does not change between them. That is the point of it: if the example changed with the pattern, every difference the reader saw would be a difference in the product rather than in the responsibility model. It is a **practice-configuration screen**, and its requirements are fixed here once."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "It loads the practice options that are available — which topics can be practised, and which difficulty levels exist.",
+                    "It holds several selections the reader makes: a topic, a difficulty, and how many questions the session should contain.",
+                    "It validates those selections against each other, because not every combination has questions behind it.",
+                    "It enables a Start control only when the current configuration is valid.",
+                    "It can be loading, and it can fail while loading.",
+                    "After a failure it offers a retry."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Rich enough to expose every trade-off the unit is about, small enough that the arrangement stays visible. Now describe one possible design of it by answering the five questions, and notice that nothing below is a pattern name."
+                },
+                {
+                  "type": "code",
+                  "code": "1. Where does the state live?      One screen-scoped owner holds the loaded options,\n                                   the current selections, and whether Start is allowed.\n\n2. Who may mutate it?              Only that owner. The UI never assigns to it.\n\n3. Does the owner know the UI?     No. It holds no reference to any UI instance and\n                                   cannot call one.\n\n4. How does input reach it?        The UI reports what the reader did — chose a topic,\n                                   chose a difficulty, asked to retry. The owner decides\n                                   what each of those means for the configuration.\n\n5. How does output reach the UI?   The owner publishes one current value describing the\n                                   whole screen. The UI observes it and renders it.\n\n6. What bookkeeping follows?       No owner-to-UI reference exists, so nothing has to\n                                   track whether the UI is attached. The owner's own\n                                   lifetime, and the lifetime of whoever is observing,\n                                   are still real and still have to be decided.",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now ask the question the unit exists to make awkward: *what architecture is this?* The honest first answer is that we already know the important part, because we have just described the arrangement completely. Every question these four pattern names can settle — what breaks when the UI is absent, what has to be coordinated when the reader rotates the device, where a change to the screen's own behaviour lands, whether a second UI could be put in front of the same owner — is answerable from the six lines above. What the six lines deliberately do **not** settle is everything on the other side of that owner: whether there is a repository, which source is authoritative, whether a rule earns a domain layer, how dependencies are supplied. Those are the previous units' decisions, they are independent of this one, and no pattern name in this unit decides them either. A name adds nothing to the description. What a name does is let two people refer to it in three syllables, and that only works if they already agree on what the syllables mean."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Which is exactly where the trouble is. Three teams could implement precisely the arrangement above and describe it in three different ways, and none of them would be wrong."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Team",
+                    "What they call it",
+                    "What they would point at",
+                    "What actually differs"
+                  ],
+                  "rows": [
+                    [
+                      "A",
+                      "MVVM",
+                      "A screen-scoped state holder that publishes observable state and holds no reference to the UI.",
+                      "Nothing. This is the arrangement described above."
+                    ],
+                    [
+                      "B",
+                      "MVI-ish MVVM",
+                      "The same holder, but user input is represented as values of a closed set of types rather than as separate functions.",
+                      "The shape of question 4's answer. Ownership, mutation path and view knowledge are identical."
+                    ],
+                    [
+                      "C",
+                      "UDF, or state-holder architecture",
+                      "State flows out, intentions flow in, one owner writes — described in exactly those words, with no acronym at all.",
+                      "Nothing. This team declined to use a pattern name and described the responsibilities instead."
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The reader who can recognise all three as the same architecture has the skill this unit is for. Note carefully what that does **not** mean: labels are not meaningless and this unit does not treat them as noise. Inside a team that shares a definition, \"we're MVVM here\" is a useful three-syllable summary that saves a paragraph, and refusing to use the word in an interview because the sources disagree is its own kind of unhelpful. The claim is narrower and it holds: **a label cannot replace the description, because the label does not determine the responsibilities and two teams using the same label may not have the same ones.**"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "MVC is where all of this vocabulary came from, and this unit deliberately teaches it no further than that. It names a three-part separation originating in Smalltalk, and it is the reason every later name in this family is built from \"Model\", \"View\" and a third role. The third role is the unstable part: \"controller\" means substantially different things in different communities, and Fowler records that many designs \"follow the MVP style but use 'controller' as a synonym for presenter\". There is no fourth implementation of the practice-configuration screen in this unit, because a canonical MVC implementation is precisely the thing the sources do not supply. What MVC is here for is the conclusion that follows from it: when an interviewer asks whether you have used MVC, the strong move is to ask what they mean by the controller's responsibility, and then answer in the vocabulary of the five questions."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Answering \"what architecture do you use?\" with a name and stopping. \"MVVM with Clean Architecture\" tells a listener almost nothing: it does not say where state lives, who may write it, whether the behaviour owner references the UI, or how input is modelled — and two candidates who give that answer may be describing genuinely different systems. Describe the responsibilities, then name whichever label your team uses for them."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "It is worth understanding *why* the names drifted, because the reason predicts where the next disagreement will be. These terms were coined for particular UI toolkits over a span of decades, and the toolkits differed in what they made possible. MVC was described for a system in which the view could observe the model directly; MVP was described for frameworks where it could not, and where somebody therefore had to push updates into widgets; MVVM's ancestor, Fowler's Presentation Model, was described for a world where synchronising a model and a widget tree was the central problem, and Fowler explicitly gives two arrangements for it — the presentation model referencing the view, or the view referencing the presentation model — with different trade-offs. When the underlying toolkit changes, the parts of a pattern that were solutions to the old toolkit's problems either disappear or get quietly redefined, and the name survives the redefinition."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The originating descriptions were also not unanimous at the time. Fowler notes of the two best-known early accounts of MVP that \"the two descriptions don't entirely mesh\", and that a variant in which the presenter does all the widget manipulation \"isn't part of the original descriptions of MVP\" at all. So there was never a single specification that later usage departed from; there were several accounts of an idea, and thirty years of teams adapting them. A candidate who can say that, and then describe responsibilities, is in a much stronger position than one who picks a definition and defends it against an interviewer who learned a different one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The sixth question deserves one more pass, because collapsing it into the first five is a common way to get a lifetime answer wrong. Read it in both directions. If the answer to question three is *yes, the owner holds the UI instance*, then the arrangement has created an obligation: the UI can be destroyed while the owner survives, calling a destroyed UI is invalid, and something has to know which is currently true. If the answer is *no*, that specific obligation does not exist — but it is a mistake to conclude that lifetime stopped mattering. The owner still has a lifetime, decided by whoever owns it; whoever observes the published state still has to start and stop observing; and work the owner started still has to be cancelled by someone. The state-holder unit worked all of that out. What the third question decides is only whether one further piece of bookkeeping — *is the view currently there* — is forced on the design."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One last framing before the pattern lessons. It is tempting to read a section like this as \"names do not matter\", and that is not the argument. Names matter a great deal, because they are how a team coordinates and how an interview is conducted. What does not hold is the inference from name to behaviour. You cannot deduce from \"we use MVVM\" that the owner publishes one value rather than six, or that input is modelled as functions rather than as values, or that there is an explicit transition function somewhere — and every one of those is a decision with real consequences. The next three lessons take the same screen through three sets of answers, and the last one puts a real, unlabelled design in front of you and asks you to classify it."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Be ready to describe a screen's architecture in five sentences with no pattern name in them, then say which label your team uses and note that the term varies between sources. Be ready to say why MVC in particular needs clarification before it can be answered — the controller role is the contested part, and even the primary practitioner literature records the variance rather than resolving it. Do not defend one definition of a contested name against an interviewer; describe the responsibilities and let the label follow."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_what_architecture_decides",
+            "lesson_state_holder_responsibility"
+          ],
+          "sources": [
+            {
+              "title": "GUI Architectures",
+              "url": "https://martinfowler.com/eaaDev/uiArchs.html"
+            },
+            {
+              "title": "UI layer",
+              "url": "https://developer.android.com/topic/architecture/ui-layer"
+            },
+            {
+              "title": "Guide to app architecture",
+              "url": "https://developer.android.com/topic/architecture"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_mvp_view_contract",
+          "title": "MVP: an Explicit View Contract",
+          "summary": "MVP's defining decision is that the behaviour owner holds an abstraction of the view and pushes updates into it by calling methods. Everything characteristic of the pattern follows from that one dependency: an interface that enumerates what the screen can be told to do, output as an ordered sequence of calls rather than a value, and attach and detach bookkeeping that exists because a reference can outlive the thing it points at. It is a coherent responsibility model with real strengths, taught here as one, not as a strawman for the lesson that follows.",
+          "primarySubtopicIds": [
+            "mvp"
+          ],
+          "supportingSubtopicIds": [
+            "mvc",
+            "interface_boundaries",
+            "state_ownership"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Take the practice-configuration screen from the previous lesson — the same loaded options, the same selections, the same cross-validation, the same Start control, the same failure and retry — and change exactly one answer. **The behaviour owner is given a reference to the view.** Not to a concrete widget class, but to an abstraction of it: an interface the owner may call. That single decision is Model-View-Presenter, and everything else the pattern is known for follows from it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The behaviour owner is called a **presenter**. It receives the user's actions, decides what they mean, obtains whatever data the behaviour needs, and then updates the screen by *calling methods on the view interface it holds*. The view is comparatively passive: it renders what it is told to render and reports what the user did. Run the five questions over it and the shape is immediately different from the arrangement the last lesson described."
+                },
+                {
+                  "type": "code",
+                  "code": "1. Where does the state live?      In the presenter, and — importantly — partly in the\n                                   widgets themselves, which hold whatever the last call\n                                   left them displaying.\n\n2. Who may mutate it?              The presenter mutates its own state; the widgets are\n                                   mutated by the presenter's calls.\n\n3. Does the owner know the UI?     YES. The presenter holds a view abstraction and can\n                                   invoke it. This is the pattern's defining property.\n\n4. How does input reach it?        The view calls the presenter directly: onTopicChosen,\n                                   onRetryClicked. The presenter decides what each means.\n\n5. How does output reach the UI?   As a sequence of imperative calls into the view.\n\n6. What bookkeeping follows?       Because of (3): something must know whether the view\n                                   the presenter holds is still there.",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two things about the name before going further, because the unit's standing rule applies here as much as anywhere. First, the role is not always called a presenter — Fowler notes that \"a lot of designs will follow the MVP style but use 'controller' as a synonym for presenter\", which is one of the reasons MVC and MVP are so easily confused. Second, MVP has recognised variants that disagree about how much the view is allowed to do. In **Passive View**, the presenter manipulates every widget and the view contains no logic at all; in **Supervising Controller**, the view \"handles simple mapping to the underlying model\" itself and the controller handles \"input response and complex view logic\". Fowler is explicit that the fully passive variant \"isn't part of the original descriptions of MVP\". What is stable across all of them — and what this lesson teaches — is the presenter-holds-a-view-abstraction relationship and the consequences of it."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "MVP's load-bearing decision is that the behaviour owner holds an abstraction of the view and pushes updates into it. The view is comparatively passive and reports user actions inward. How much the view may do for itself varies by source — passive view against supervising controller — and the role is sometimes called a controller rather than a presenter, but the dependency from presenter to view is the part every account shares."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The view contract is the visible artefact of the pattern, and writing it out for the practice-configuration screen is the fastest way to see what the arrangement actually commits you to. Every affordance the screen has becomes a method."
+                },
+                {
+                  "type": "code",
+                  "code": "interface PracticeConfigView {\n    fun showLoading()\n    fun showOptions(options: PracticeOptions)\n    fun showSelection(selection: PracticeSelection)\n    fun setStartEnabled(enabled: Boolean)\n    fun showFailure(message: String)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "And the presenter holds one, receives the reader's actions, and decides what each of them means."
+                },
+                {
+                  "type": "code",
+                  "code": "class PracticeConfigPresenter(private val options: PracticeOptionsSource) {\n\n    private var view: PracticeConfigView? = null\n    private var selection = PracticeSelection.empty()\n\n    fun attach(view: PracticeConfigView) { this.view = view; load() }\n    fun detach() { this.view = null }\n\n    fun onTopicChosen(topic: Topic) {\n        selection = selection.copy(topic = topic)\n        view?.showSelection(selection)\n        view?.setStartEnabled(selection.isValid())\n    }\n\n    fun onRetryClicked() = load()\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is deliberately as little code as the argument needs; a production presenter would have more, and none of it would change the shape. The shape is what matters, and the first thing to read out of it is that **output is a sequence of calls rather than a value.** Loading the screen and choosing a difficulty produces something like this, in this order:"
+                },
+                {
+                  "type": "code",
+                  "code": "showLoading()\nshowOptions(...)\nsetStartEnabled(false)\nshowSelection(...)\nsetStartEnabled(true)",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What the reader sees is therefore the accumulated result of *which calls happened, in what order, and which ones the view was not there to receive*. This is a real architectural property and it is worth stating precisely, because the careless version of it is wrong. It is not true that MVP implementations necessarily have ordering defects — a careful presenter that always updates every affected affordance after every change is perfectly correct. What is true is that correctness here is a property of the call sequence rather than of a value: nothing in the arrangement makes it impossible to update the selection and forget to re-evaluate whether Start should be enabled, and the screen then shows a combination the presenter never intended. Compare that with an arrangement where the output is one value describing the whole screen. Be precise about what that changes, because the overstated version is wrong in the other direction: one value does not by itself make the bad combination unthinkable — a state value holding the selection beside a separate `canStart` field can be copied with one updated and the other left stale, which is exactly the representable-but-impossible problem the state-holder unit treats at length. What it does change is that the two facts now travel together, so a consumer can never observe the screen part-way through a multi-field update; and making the combination genuinely impossible is then one further step available to it — derive the flag from the selection, or model the state so the pair cannot disagree — which is a step the call-sequence arrangement has nowhere to take."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now the bookkeeping, and it must be understood as *caused* rather than merely required. The presenter holds `view`. A UI instance can be destroyed — the reader navigates away, the host recreates it — while the presenter survives, because something else owns the presenter's lifetime. A reference to a destroyed view is still a valid object reference, so calling it compiles and runs and does something wrong: it updates widgets nobody will see, or touches a UI that has been torn down. Therefore somebody has to coordinate when that reference is usable, which is what `attach` and `detach` are. That obligation was not chosen for its own sake and it is not a quirk of any particular Android class; it is the direct price of the answer to question three. The lifecycle mechanics that implement it — which callback calls `detach`, how the presenter is retained — belong to the lifecycle curriculum and are not this lesson's subject. The *requirement* is."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "With those on the table, both sides of MVP can be stated concretely, which is the only honest way to teach a pattern that is often dismissed. Its genuine strengths:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**The contract enumerates what the screen can be told to do.** Reading `PracticeConfigView` tells you the complete set of things behaviour is allowed to ask of this UI. That is a real and unusual property — most state-based designs cannot answer that question without reading the renderer.",
+                    "**Presentation logic leaves the view class.** In the toolkit MVP was designed for, the realistic alternative was all of this logic inside an Activity or a Fragment, mixed with widget wiring and lifecycle callbacks. Extracting it was a large, concrete improvement.",
+                    "**The view can stay genuinely simple.** In the passive variant it does nothing but render what it is handed and report what was touched.",
+                    "**The contract is a boundary in the foundations unit's exact sense.** The presenter's needs define `PracticeConfigView`, and the rendering implementation depends on it — so the interface is consumer-owned rather than a wrapper around an implementation, which is what makes substituting a different renderer a real possibility rather than a claim."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "And its costs, stated as things rather than as the word \"boilerplate\", which names nothing a reader can weigh:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**One contract method per UI capability.** Every new affordance — a second failure kind, a per-field validation message, a progress indicator — is a new method on the interface, an implementation in the view, and a call site in the presenter.",
+                    "**A view relationship to manage.** The presenter holds a nullable reference and every call site has to cope with its absence.",
+                    "**Attach and detach bookkeeping**, which has to be right for every path out of and back into the screen, not just the common one.",
+                    "**Update ordering as a correctness concern**, because output is a sequence and the sequence has to leave the widgets in a coherent combined state.",
+                    "**Contract growth.** The interface tracks the UI's complexity exactly, so the screen that has thirty things it can be told to do has an interface with thirty methods, and each one is a place two designs can drift apart.",
+                    "**Nothing describes the whole screen.** There is no single value you can print, log, compare or restore that says what the screen currently is; the current state is distributed across the presenter's fields and the widgets' own."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Treating MVP as obsolete and therefore not worth understanding. It is a coherent responsibility model that solved a real problem — UI logic accumulating inside view classes — in a toolkit that offered no observable-state mechanism to solve it with. Dismissing it also costs you the ability to say what the modern alternative gave up, which is the difference between having chosen an arrangement and having inherited one."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The deeper reason MVP is worth reasoning about is that it makes a trade visible that later designs make invisible. An explicit view contract gives you **enumerability**: the set of things behaviour may ask of the UI is written down in one file, and anything outside it is a compile error. A state-based design gives you **consistency**: every output is a complete description of the screen, so a partially applied update is not expressible. Those are different properties and you cannot have both in full. Knowing which one you traded away is what makes the modern choice defensible rather than merely conventional — and it is exactly the question an interviewer is probing when they ask why you would not use MVP today."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "It is also worth being precise about what MVP does *not* decide, because this is where the pattern gets blamed for things that are not its fault. It says nothing about threading — a presenter is not inherently main-thread or background. It says nothing about whether the presenter survives a configuration change; that depends entirely on what owns the presenter, which is a separate decision, and a presenter that is retained by something long-lived has *more* attach/detach bookkeeping to do, not less. It says nothing about the data layer: a presenter can sit above repositories, use cases, both or neither, exactly as any other behaviour owner can. And it does not require a specific view granularity — one contract per screen is conventional, but a contract per section of a screen is a legitimate design that trades a longer interface for several shorter ones."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One more observation, and it matters for how the next lesson is read. The properties that make MVP costly on Android today are not properties of MVP's reasoning; they are the interaction between a held view reference and a platform where UI instances are destroyed and recreated underneath surviving owners. On a platform where the view's lifetime matched the presenter's, several of the costs listed above would simply not arise. That is a useful habit to carry into any architecture argument: ask whether the cost you are naming belongs to the pattern or to the environment it is running in, because the answer changes whether the pattern is wrong or merely mismatched."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Be able to say that MVP's defining property is the presenter holding a view abstraction, and to derive attach and detach from it rather than listing it as a rule. Be able to name two real strengths — the enumerated contract and the extraction of logic from view classes — and at least three concrete costs, none of them the word \"boilerplate\". Note that the variants disagree about how much the view may do, and that some teams call the role a controller."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_one_screen_five_questions",
+            "lesson_when_an_interface_is_a_boundary"
+          ],
+          "sources": [
+            {
+              "title": "GUI Architectures",
+              "url": "https://martinfowler.com/eaaDev/uiArchs.html"
+            },
+            {
+              "title": "Passive View",
+              "url": "https://martinfowler.com/eaaDev/PassiveScreen.html"
+            },
+            {
+              "title": "Supervising Controller",
+              "url": "https://martinfowler.com/eaaDev/SupervisingPresenter.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_mvvm_observed_state",
+          "title": "MVVM: a UI That Observes State",
+          "summary": "Change one answer in MVP — take the view reference away from the behaviour owner — and almost everything characteristic of MVVM follows. The UI observes state the owner publishes, intentions travel inward, and the owner never needs to know whether anyone is currently looking. The state-holder unit built this arrangement without naming it, so this lesson adds the vocabulary rather than the design, and spends the rest of its length on what MVVM is not: a class, a folder, or a count of state streams.",
+          "primarySubtopicIds": [
+            "mvvm"
+          ],
+          "supportingSubtopicIds": [
+            "state_ownership",
+            "unidirectional_data_flow",
+            "stateflow",
+            "viewmodel_lifecycle"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Keep the practice-configuration screen exactly as it was — same options to load, same selections, same cross-validation, same Start rule, same failure and retry — and ask one question about the MVP design: **what happens if the behaviour owner stops calling the view?** It cannot push `showOptions` or `setStartEnabled` any more, so it needs another way to make the screen change. The answer is to invert the direction of the output: instead of the owner calling the UI, the owner *publishes* the current state and the UI *observes* it."
+                },
+                {
+                  "type": "code",
+                  "code": "UI reports an intention\n        │\n        ▼\n   state owner  ──── decides what the intention means,\n        │              produces the next current state\n        ▼\n  current UI state\n        │\n        ▼\n   UI observes it and renders whatever it currently says",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is the arrangement usually called MVVM, and the property doing the work is stated as a negative: **the owner holds no reference to the UI instance.** It publishes something; whether anyone is reading it is not its concern. Run the five questions and the difference from the previous lesson is concentrated in exactly one of them."
+                },
+                {
+                  "type": "code",
+                  "code": "1. Where does the state live?      In the screen's state owner, as one or more\n                                   observable values. Nothing authoritative lives\n                                   in the widgets.\n\n2. Who may mutate it?              Only the owner, through one write path.\n\n3. Does the owner know the UI?     NO. This is the change, and the rest follows.\n\n4. How does input reach it?        The UI reports what the reader intended; the owner\n                                   decides what that means. (Unchanged from MVP.)\n\n5. How does output reach the UI?   As current state the UI observes, not as calls.\n\n6. What bookkeeping follows?       No presenter-to-view reference exists, so nothing\n                                   has to track whether the view is attached.",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Be precise about what disappeared, because the overstated version of this is wrong. What is gone is the *presenter-to-view* bookkeeping specifically: no held UI reference, therefore no attach and detach relationship required by that reference, therefore no enumerated set of view methods, therefore no update sequence whose order can leave the screen in a combination nobody intended. What is **not** gone is lifetime as a subject. The owner still has a lifetime and something still decides it; whoever observes the published state still has to start and stop observing; work the owner started still has to be cancelled by someone. The state-holder unit worked all of that out, and none of it is repealed by removing one reference."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "MVVM's load-bearing property is that the behaviour owner holds no reference to the UI instance: it publishes current state, the UI observes it, and intentions travel inward. Everything else usually attributed to the pattern follows from that one answer. Lifetime does not stop mattering — only the specific obligation to know whether a held view is still attached goes away."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The most useful thing that can be said about this design to a reader of this curriculum is that **they have already built it.** The state-holder unit designed an owner that holds the state a screen renders, accepts the intentions the UI reports, is the one place that state changes, exposes it read-only, and knows nothing about any UI instance — and it did so without using the word MVVM once, because the reasoning did not need the word. So this lesson is not a new design. It is a name for one, and a set of corrections about what the name does and does not establish."
+                },
+                {
+                  "type": "code",
+                  "code": "class PracticeConfigViewModel(private val options: PracticeOptionsSource) {\n\n    private val _uiState = MutableStateFlow(PracticeConfigUiState.Loading)\n    val uiState: StateFlow<PracticeConfigUiState> = _uiState.asStateFlow()\n\n    fun onTopicChosen(topic: Topic) { /* decide, then publish the next state */ }\n    fun onDifficultyChosen(difficulty: Difficulty) { /* ... */ }\n    fun onRetry() { /* ... */ }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There is no `PracticeConfigView` interface, nothing to attach, and nothing to detach. The observable value is shown here as a `StateFlow` because that is what this curriculum's stack uses, and it is worth saying plainly that **the choice of carrier is not part of the pattern**: an observing UI can read a `StateFlow`, a Compose snapshot state object, a platform observable, or a callback registration, and the responsibility arrangement is unchanged. The coroutines curriculum owns how `StateFlow` behaves; nothing in this lesson depends on those mechanics."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now the corrections, because this is the pattern name most often attached to things that do not establish it. The first: **a class named `ViewModel` does not make an architecture MVVM.** The framework type supplies a lifetime from whatever owns its store. It says nothing about the four answers that matter — whether mutation goes through one path, whether the UI observes state, which way the dependency points, whether the owner references the UI. A class extending `ViewModel` that is handed a view interface and calls methods on it is an MVP presenter with an inconvenient superclass. And the converse holds just as firmly: an owner that is a plain class, created and remembered by the UI, publishing state the UI observes, satisfies the arrangement completely. Android's own guidance sets this up directly, describing a business-logic state holder as \"typically implemented with a `ViewModel`\" and a UI-logic state holder as \"typically implemented with a plain class\" — two implementations of a responsibility, chosen by lifetime."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second: **a folder layout does not make an architecture MVVM.** This is the architecture-versus-structure argument from the foundations unit applied to a pattern name, and it fails in exactly the same way."
+                },
+                {
+                  "type": "code",
+                  "code": "model/          ← says nothing about who owns data or who may write it\nview/           ← says nothing about what the view is allowed to decide\nviewmodel/      ← says nothing about whether anything in here holds a view reference",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A directory name is a claim about where a file is, not about what depends on what. Two projects with identical trees can differ completely in mutation path and dependency direction, which is the property the foundations unit established with two package trees and one architecture. If you want to know whether a codebase is MVVM-shaped, the three-second test is not to open the project pane: it is to search whether anything in the behaviour owners holds a reference to a UI type."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The third correction gets a full comparison in the classification lesson, but it belongs here as a warning: **the number of observable values does not define MVVM.** An owner that exposes one combined UI state and an owner that exposes four separate observables both satisfy the arrangement — state out, intentions in, no view reference, one write path. The choice between them is a real decision with real consequences, and the state-holder unit weighed them: one value makes each emission a complete, consistent description of the screen, so a consumer never observes it part-way through a multi-field change, while several values allow exactly that. That is a state-modelling trade-off. It is not what the pattern name is about, and a team that switches from four values to one has changed its state model, not its architecture."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There is a piece of evidence for all three corrections sitting in plain sight. Android's current UI-layer guidance describes this entire arrangement — UI state as an immutable value, the owner as the only thing that updates what it exposes, \"the pattern where the state flows down and the events flow up ... called a unidirectional data flow (UDF)\" — and the words MVVM, MVP and MVI appear nowhere on the page. The platform's own recommended architecture is describable, in full, without the acronym. If the label were the architecture, that would not be possible."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"This app has a ViewModel class, therefore it uses MVVM.\" The framework type establishes a lifetime, not a mutation path, a dependency direction, or an observed-state contract. A `ViewModel` that holds a view interface is a presenter; a plain class that publishes state the UI observes satisfies the MVVM arrangement without the type. Classify by the answers to the five questions, not by a superclass or a folder."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Why is the absent view reference the load-bearing property, rather than one characteristic among several? Because every other MVVM characteristic is a consequence of it, and it is the only one that cannot be removed without the arrangement becoming something else. Once the owner cannot call the UI, output must become something the UI *reads* rather than something the owner *pushes*, and that inversion is what the rest follows from. Be careful about how much it forces, though: it makes consumer-read output the only channel, and the overwhelmingly common form of that is current state, but it does not make every output current state. An owner holding no view reference can still publish one-off instructions for the UI to collect, which is a design question the next two lessons take up. What the inversion does settle is that the owner no longer needs to know whether anyone is currently looking, which is what makes it safe for the UI to be absent. Once it is safe for the UI to be absent, the owner can be exercised — and reasoned about — without constructing one. Reverse the order and none of it works: you can publish state from an owner that also holds a view reference, and you will still have the attach-and-detach problem, because the problem was never the shape of the output."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The terminology variance around this name is worth carrying into an interview. The arrangement descends from Fowler's **Presentation Model**, which represents \"the state and behavior of the presentation independently of the GUI controls used in the interface\" — and Fowler describes it with *both* possible reference directions, the presentation model referencing the view or the view referencing the presentation model, with different trade-offs for each. The name MVVM itself arrived later, from a platform whose declarative data binding made the second direction the default. That history is why sources disagree today about whether data binding is required, whether a class has to be called `ViewModel`, whether a screen may expose more than one observable, and what the commands or one-off messages between UI and owner should look like. What no credible source disagrees about is the direction of the dependency, which is why this curriculum defines the pattern by it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A related point of precision, and this curriculum has been careful about it before: do not translate \"the owner does not reference the view\" into claims about what survives what. Whether a particular owner outlives a particular UI instance is decided by whatever holds that owner, and on a multiplatform target it is decided by whichever host supplies that thing — which the state-holder unit worked through one situation at a time. The dependency direction and the lifetime are separate facts. MVVM settles the first and says nothing at all about the second, and an answer that conflates them will not survive a follow-up question."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Finally, the boundary of the claim. MVVM is a *presentation* responsibility model. Adopting it decides nothing about whether there is a repository, whether the data layer exposes streams or suspending functions, whether a domain layer exists, how dependencies are supplied, or how the app is modularised — all of which the previous units showed to be independent decisions with their own conditions. \"We're MVVM\" is an answer to questions three, four and five about one screen. It is not an application architecture, and treating it as one is how teams end up believing that a structural choice was made for them."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "State MVVM as a dependency direction: the UI observes state the owner publishes, and the owner holds no reference to the UI. Be able to say what that removes relative to MVP and what it does not — the attach/detach obligation goes, lifetime does not. Reject the class-name and folder-name definitions with a counterexample rather than an assertion, and note that the platform's own architecture guidance describes this arrangement without using the acronym at all."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_mvp_view_contract",
+            "lesson_state_holder_responsibility",
+            "lesson_state_out_intentions_in",
+            "lesson_viewmodel_lifetime_and_persistence",
+            "lesson_state_flow"
+          ],
+          "sources": [
+            {
+              "title": "UI layer",
+              "url": "https://developer.android.com/topic/architecture/ui-layer"
+            },
+            {
+              "title": "UI layer: state holders",
+              "url": "https://developer.android.com/topic/architecture/ui-layer/stateholders"
+            },
+            {
+              "title": "Presentation Model",
+              "url": "https://martinfowler.com/eaaDev/PresentationModel.html"
+            },
+            {
+              "title": "GUI Architectures",
+              "url": "https://martinfowler.com/eaaDev/uiArchs.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_mvi_intent_and_reduction",
+          "title": "MVI: Intent, Reduction and One Current State",
+          "summary": "MVI answers the same five questions as MVVM and differs in how it models two of them: user input becomes an explicit value rather than a function call, and the move from the current state to the next one becomes an explicit transition rather than a scattered set of assignments. That makes the state model and its transitions inspectable, and it costs real ceremony — a type per input, a transition for changes that were previously one line, and a separate answer for outputs that are not state at all.",
+          "primarySubtopicIds": [
+            "mvi"
+          ],
+          "supportingSubtopicIds": [
+            "unidirectional_data_flow",
+            "state_ownership",
+            "kotlin_sealed_types"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The practice-configuration screen has not changed and will not change: the same options to load, the same selections, the same cross-validation, the same Start rule, the same failure and retry. What changes in this lesson is how two of the five answers are *modelled*. The owner still publishes state and still holds no reference to the UI — questions three and five have the same answers as the previous lesson. Model-View-Intent's contribution is to question four, and to something the five questions do not ask directly: what happens in between."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two ideas, and they are separable. The first is that **user input is represented as a value** rather than as a method call. Instead of the UI calling `onTopicChosen(topic)`, it hands the owner a value that says a topic was chosen. The set of such values is closed, so the complete set of things that can happen to this screen is written down in one place."
+                },
+                {
+                  "type": "code",
+                  "code": "sealed interface PracticeIntent {\n    data class SelectTopic(val topic: Topic) : PracticeIntent\n    data class SelectDifficulty(val difficulty: Difficulty) : PracticeIntent\n    data object Retry : PracticeIntent\n    data object Start : PracticeIntent\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second idea is **one current state and an explicit transition between states**. There is one value describing the whole screen, and moving from one to the next is a named, readable step rather than a set of assignments spread across handler functions."
+                },
+                {
+                  "type": "code",
+                  "code": "current state  +  intent\n        │\n        ▼\n   transition\n        │\n        ▼\n   next state",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The function or logic that performs that step — given the current state and an input, produce the next state — is what **reduction** names, and the thing that does it is usually called a **reducer**. Be careful with how much that word is taken to imply, because this is where Android adaptations differ most from each other. This curriculum's definition requires only that the transition is explicit and that the next state is determined from the current state and the input. It does **not** require that the reducer be a pure function, that a `Store` type exist, that the transition live in its own class, or that any particular library be used. Those are implementation choices that vary between sources, and treating any one of them as the definition of MVI is the same mistake as treating a folder name as the definition of MVVM."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "MVI models user input as an explicit value from a closed set, keeps one current state describing the whole screen, and makes the move between states an explicit transition — reduction — from the current state and the input. The owner still publishes state and still holds no view reference; that part is unchanged from MVVM. Purity, store abstractions and library machinery vary by source and are not part of the definition."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The clearest way to see what this buys is to write one transition out in full. The reader has chosen a topic and no difficulty yet, so Start is not allowed. Then they choose a difficulty."
+                },
+                {
+                  "type": "code",
+                  "code": "current:\n  options    = loaded\n  topic      = Coroutines\n  difficulty = null\n  canStart   = false\n\nintent:\n  SelectDifficulty(Advanced)\n\nnext:\n  options    = loaded\n  topic      = Coroutines\n  difficulty = Advanced\n  canStart   = true",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Notice where the validation went. `canStart` is not something the UI computes and not something a caller sets: it is part of the next state, decided during the transition from the topic and the difficulty that the next state holds. This is the same invariant argument the state-holder unit made about ownership, expressed in a different shape — an invariant that the transition establishes cannot be broken by anything downstream, because nothing downstream produces state. What MVI adds is that the moment the invariant is applied is now a named, readable place rather than a line inside whichever handler happened to run."
+                },
+                {
+                  "type": "code",
+                  "code": "fun reduce(state: PracticeConfigState, intent: PracticeIntent): PracticeConfigState =\n    when (intent) {\n        is PracticeIntent.SelectTopic ->\n            state.copy(topic = intent.topic).revalidated()\n        is PracticeIntent.SelectDifficulty ->\n            state.copy(difficulty = intent.difficulty).revalidated()\n        PracticeIntent.Retry -> state.copy(failure = null, isLoading = true)\n        PracticeIntent.Start -> state\n    }",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is enough code to make the model visible and deliberately no more. What it buys is worth listing precisely, because each item is a property a reader can check for rather than a slogan:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**The screen's state has one explicit representation.** There is a single value you can print, log, compare or reconstruct that says what the screen currently is.",
+                    "**The inputs are enumerable.** The closed set of intent types is the complete answer to \"what can happen to this screen\", in one place, checked by the compiler.",
+                    "**The transitions are discoverable.** Asking what `SelectDifficulty` does is answered by reading one branch, not by finding every handler that touches the difficulty field.",
+                    "**The mutation path is explicit and singular.** Every change to the screen is the result of an input passing through the transition, which makes the write path something you can point at rather than something you have to trust."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Equally important is what it does **not** buy, and this list exists because each of these is claimed somewhere. Modelling input as values and transitions explicitly does not make the transitions correct — a wrong rule inside `reduce` is exactly as wrong as a wrong rule inside a handler. It does not provide thread safety, which depends on how the state is held and updated. It does not persist anything; the state value vanishes with its owner exactly as any other in-memory state does. It does not guarantee that anything happens once. And it says nothing about rendering performance, which is the subject of a correction below."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The ceremony has to be counted honestly, in things rather than in the word \"boilerplate\":"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**A type per kind of input.** Choosing a topic goes from one function signature to one declared type plus one branch that handles it.",
+                    "**A transition for changes that were previously one assignment.** Toggling a switch is a type, a branch and a state copy where it used to be a line.",
+                    "**One state model that grows with the screen.** Every field any part of the screen needs lives in the same value, and keeping it coherent is a design task that gets harder as the screen does.",
+                    "**A second mechanism for outputs that are not state.** Some things a screen does — ask to navigate, show a transient message, open something outside the app — are not descriptions of what the screen currently is, and the model has no place for them.",
+                    "**More concepts to learn before reading the screen.** Depending on the implementation, a newcomer meets an intent type, a state type, a transition function and possibly a store or a dispatch mechanism before they can follow one button press."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That fourth item deserves care, including about vocabulary. A navigation request is not a description of the screen's current condition, so it does not belong in the state value — and in MVI material such an output is frequently called an **effect**. That word is already taken in this curriculum. Compose's `LaunchedEffect`, `DisposableEffect` and `SideEffect` are a family of APIs for running work tied to a composition's lifetime, and they have nothing whatever to do with MVI's one-off outputs. Whenever the MVI sense is meant here it is qualified — an *MVI-style side output*, or *a one-off output sometimes called an effect in MVI literature* — and the bare word is never used for either. Naming the design question is as far as this lesson goes: which mechanism delivers such an output, what happens if nobody is listening, whether a late consumer should still act on it, and how anything records that it was handled are the subject of the next unit, which starts from the guarantee the requirement needs rather than from a mechanism."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"MVI is MVVM plus sealed intent classes.\" Adding a closed input type to an ordinary state holder changes how input is *spelled* and nothing else. If each branch of the resulting `when` assigns to a few fields wherever it likes, there is no single current state, no explicit transition and no reduction — the mutation path is exactly what it was. The input representation is one property of MVI; the transition discipline around it is the rest, and it is the part that does the work."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Two more claims have to be rejected explicitly, because both are common enough to appear in interviews as though they were settled. The first is **\"MVVM means several state streams and MVI means one\"**. Stream count is a state-modelling decision, and both patterns are compatible with either answer: an owner with no view reference publishing one combined immutable value is a perfectly ordinary MVVM-style design, and an MVI-influenced implementation can perfectly well be built on machinery that is not a `StateFlow` at all. Counting observables tells you about the state model; it tells you nothing about whether input is modelled as values or whether transitions are explicit. The classification lesson puts designs in front of you that make this obvious."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second is **\"MVI reduces recompositions\"**, and it does not survive contact with how Compose actually decides to re-execute anything. Invalidation follows from which state a composable reads, how that state compares for equality, and how the UI is structured — none of which a pattern name determines. The honest statement runs the other way as well: moving from several narrow observables to one large state value can cause a composable that reads the whole value to re-execute for changes it does not care about, so the change can increase recomposition rather than reduce it. Whatever is true for a particular screen is a fact about that implementation's state reads and stability, which the Compose curriculum owns, and no pattern label predicts it. A candidate who names the pattern as the reason for a performance property has made a claim they cannot support."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The origin explains most of the variance you will meet. MVI comes from **Cycle.js**, a fully reactive JavaScript framework, where André Staltz described it as a composition of functions over streams: \"Intent: function from Observable of user events to Observable of 'actions'\" and \"Model: function from Observable of actions to Observable of state\", with a cycle in which \"the user's rendering reacts to the View's output, which reacts to the Model's output, which reacts to the Intent's output (actions), which reacts to user events\". That is a stricter and more functional formulation than most Android implementations adopt, and it arrived in Android as an adaptation — several adaptations, in fact, which differ from the original and from each other on whether reduction must be pure, whether a store abstraction exists, how side outputs are delivered, and whether every input value is called an intent. **No adaptation is canonical**, and presenting a particular library's implementation as MVI itself is the error this unit exists to prevent."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Which leaves the useful question, the one an interviewer is actually asking: when is this modelling worth its ceremony? The honest answer is that it scales with how much of the screen's difficulty lives in its transitions. A screen whose state is three independent fields and whose rules are trivial pays the ceremony and gets an enumeration it did not need. A screen where many inputs interact, where invalid combinations are genuinely reachable, and where \"how did it get into this state\" is a question people actually ask, gets a model that answers it. That is a proportionality judgement of the kind this subject closes on, and — as with every structural decision in the previous four units — the fact that the technique exists is not an argument for applying it uniformly."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Define MVI by input-as-a-value, one current state and an explicit transition, and be able to write one transition out — current state, input, next state — including where a derived flag like \"Start is allowed\" is decided. Count the ceremony in concrete things. Refuse the two claims that MVI is MVVM plus sealed classes and that it reduces recompositions, and say why each fails. If you use the word \"effect\" for a one-off output, qualify it: in a Compose codebase that word already means something else."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_mvvm_observed_state",
+            "lesson_modelling_ui_state",
+            "lesson_state_out_intentions_in"
+          ],
+          "sources": [
+            {
+              "title": "Unidirectional User Interface Architectures (André Staltz)",
+              "url": "https://staltz.com/unidirectional-user-interface-architectures.html"
+            },
+            {
+              "title": "UI layer",
+              "url": "https://developer.android.com/topic/architecture/ui-layer"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_classifying_a_real_architecture",
+          "title": "Classifying What a Real Codebase Actually Does",
+          "summary": "Real screens are not textbook diagrams. They borrow a lifecycle-owned state holder from one tradition, a single immutable state value from another, callbacks or action values from wherever the team landed, and they work. This lesson is the unit's payoff: classify such a design by its responsibilities first, name which traditions it resembles second, and use the four claims that do not survive classification — stream counts, sealed intents, recomposition and folder names — as the test of whether you are reading the architecture or the vocabulary.",
+          "primarySubtopicIds": [
+            "mvvm_vs_mvi"
+          ],
+          "supportingSubtopicIds": [
+            "mvvm",
+            "mvi",
+            "mvp",
+            "architecture_tradeoffs"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The three previous lessons each showed one screen under one set of answers, which is how patterns are taught and not how code is written. A real screen is produced by a team making several decisions at different times for different reasons, and the result routinely takes its owner and lifetime from one tradition, its state model from another and its input shape from a third. That is not sloppiness; it is what happens when the decisions really are independent — and the previous four units spent their length establishing that they are."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So the skill this unit is actually for is classification, and it has a fixed order. **Describe the responsibilities, then identify the traditions, then — and only then — reach for a label.**"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Answer the five questions.** Where the state lives, who may mutate it, whether the behaviour owner knows the UI instance, how input reaches it, how output reaches the UI — plus the bookkeeping that follows.",
+                    "**Name what each answer resembles.** A held view abstraction and pushed updates resemble MVP. Published state and no view reference resemble MVVM. Input as values from a closed set, one current state and an explicit transition resemble MVI.",
+                    "**Say what the design is, in a sentence, using those observations.** Not \"it's MVVM\" — \"a screen-scoped owner publishes one immutable state, takes callbacks for input, holds no view reference, and has no explicit transition function.\"",
+                    "**Then offer the label the team would use**, and note that the term varies if it matters."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The reason the order matters is that the description is stable and the label is not. Two engineers can disagree about whether a design \"is MVI\" and agree completely about every one of the six answers — at which point the disagreement is about a word and there is nothing left to resolve. Reverse the order and the opposite happens: agreeing on a label while holding different pictures of the mutation path is a disagreement that stays hidden until it causes a defect."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Classify a real screen by answering the five questions first, naming which traditions each answer resembles second, and offering a label last. Most production screens borrow from more than one tradition, and that is a consequence of the decisions being independent rather than a sign that something is wrong. A design does not need a special name to be classifiable."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Three designs, all realistic, none of them a textbook instance of anything. Read each one by the answers rather than by the shape of the summary."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Design",
+                    "What it is made of",
+                    "Responsibility reading",
+                    "What a team might call it"
+                  ],
+                  "rows": [
+                    [
+                      "A",
+                      "A lifecycle-owned `ViewModel`; one immutable UI state value; named callback functions for input; no transition function anywhere; no reference to any UI instance.",
+                      "State in the owner, one write path, no view knowledge, input as calls, output as observed state. Transitions are distributed across the callback bodies.",
+                      "MVVM. Another team would say MVI-lite, or UDF, on the strength of the single state value."
+                    ],
+                    [
+                      "B",
+                      "A lifecycle-owned `ViewModel`; one state value; a closed set of action values; an explicit reducer; a separate mechanism for one-off outputs that are not state.",
+                      "Same ownership and view knowledge as A. Input is modelled as values and the transition is explicit and in one place.",
+                      "MVI — and it still uses the platform's ViewModel ownership, which no MVI description requires."
+                    ],
+                    [
+                      "C",
+                      "A screen-scoped state owner; several observable values rather than one; named callbacks for input; no reference to any UI instance.",
+                      "Same ownership, mutation path and view knowledge as A. The state model is split rather than combined, so a consumer can observe part-way through a multi-field change.",
+                      "MVVM — and it is not \"less MVVM\" than A for having four observables instead of one."
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A and C differ only in state modelling; A and B differ only in input modelling and transition explicitness; all three share the answers to questions one, two and three. None of them needs a name of its own, and inventing one — \"MVVM+\", \"MVI-lite\" — adds a term without adding a distinction that the six answers did not already make. Now put the four claims that circulate about these patterns against these designs, and watch each one fail against a concrete implementation rather than against an assertion."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**\"MVVM means several state streams; MVI means one.\"** Design A has exactly one state value, no action type and no transition function; nobody reading it would find anything of MVI's transition model in it. Design C has four observables and is otherwise identical to A. If the claim held, A would be the MVI one and C the MVVM one, and the difference would be the number of streams — but the property that actually separates MVI from MVVM, an explicit transition from a state and an input, is absent from both. One current value is *characteristic* of MVI because MVI's transition model needs something to transition between; it is available to any design that wants its correctness benefit, and taking it does not import the rest."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**\"MVI is MVVM plus sealed intent classes.\"** Take design A and add an action type, then dispatch to it:"
+                },
+                {
+                  "type": "code",
+                  "code": "fun onAction(action: PracticeAction) {\n    when (action) {\n        is SelectTopic -> {\n            _uiState.update { it.copy(topic = action.topic) }\n            recheckStartEnabled()\n        }\n        is SelectDifficulty -> {\n            _uiState.update { it.copy(difficulty = action.difficulty) }\n            recheckStartEnabled()\n        }\n        Retry -> load()\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Input is now a value, so by the claim this is MVI. But nothing about the transition changed: the next state is still assembled by a sequence of updates inside each branch, the validation is still a separate call that can be forgotten, and there is still no function from a state and an input to a state that anyone can read or reason about. What was added is a spelling for the input; what MVI is actually about — the transition discipline — is exactly as absent as it was before. This is the single most useful thing to be able to demonstrate in an interview on this subject, because it separates people who have adopted a shape from people who chose a model."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**\"MVI reduces recompositions.\"** Compose re-executes a composable because of which state it read, how that state compares for equality and how the UI is structured; no pattern label is an input to any of those decisions. Concretely: design C's four observables let a composable subscribe to only the one it renders, while design A's single value means a composable reading the whole state can be invalidated by a change to a field it never displays. So the design usually labelled \"more MVI\" can re-execute *more*, not less. Whatever is true of a particular screen is a fact about its state reads and stability — the Compose curriculum's subject — and any performance claim attached to a pattern name is a claim about one implementation wearing a label."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**\"The folder layout tells me the pattern.\"** Put designs A, B and C in identical `model/ view/ viewmodel/` trees and the trees say nothing about what distinguishes them. Worse, put an MVP presenter in a file under `viewmodel/`, holding a view interface and calling `setStartEnabled` on it, and the tree still reads as MVVM while the architecture is the one from two lessons ago. A directory is a claim about where a file is; the five questions are about what depends on what and who may write what."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Trying to decide whether a codebase \"is really MVVM or really MVI\" before describing what it does. The question has no answer in the general case, because the two names do not partition the space of designs — and a team's own label is a fact about the team, not about the code. Describe ownership, mutation path, view knowledge, input shape and transition explicitness; the classification is then a summary of things you have established rather than a vote."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "This repository supplies a useful piece of evidence for the whole argument. `LessonScrollStateReducer` takes raw scroll positions and turns them into a `LessonScrollUiState` describing whether the reading chrome should be shown — a transition function, named a reducer, in an application nobody would describe as MVI. It is also instructive about how loosely the word travels: it is not a pure function of a state and an input, because it accumulates scroll distance across calls in its own fields. Both observations point the same way. An architectural technique — an explicit transition, a state value, a closed input type — is available to any design that finds it useful, and using one does not enrol a codebase in a pattern. **This is evidence that techniques travel independently of labels; it is not evidence that this application \"uses MVI\", and reading it that way would be exactly the inference this unit rejects.**"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The same codebase's own practice-configuration screen is a live instance of design A. `PracticeBuilderViewModel` holds one immutable `PracticeBuilderUiState` data class, exposes it read-only, takes named callbacks — select a count, toggle a level, select a source, retry — holds no reference to any UI instance, derives whether Start is allowed from the state rather than accepting it from a caller, and sends its one outward occurrence through a separate channel because a request to start a session is not a description of what the screen currently is. There is no action type and no reducer. Classified by the six answers it is unambiguous; labelled, it is whatever the team says, and the label would change nothing about how it behaves."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two boundaries keep this unit's conclusions the right size. The first: these are **presentation** responsibility models. Choosing MVP, MVVM or MVI does not decide whether there is a repository, which source is authoritative, whether the data layer exposes streams or suspending functions, whether a domain layer earns its place, how dependencies are supplied, how navigation works, or how the project is modularised. Every one of those was shown in the previous units to be an independent decision with its own conditions, and an answer that treats a pattern name as having settled them is describing a convention rather than an architecture."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second: these patterns are **not alternatives to Clean Architecture**, and the previous unit is the reason the question arises at all. The dependency rule is a statement about which way source dependencies point between policy and detail; MVP, MVVM and MVI are statements about how one screen's behaviour owner relates to its UI. They answer different questions at different scales, so a codebase can perfectly coherently have inward-pointing dependencies in the Clean Architecture sense, an MVVM-style presentation arrangement, and MVI-style explicit transitions inside some of its state owners. That combination is not a contradiction and not a hybrid needing a name; it is three independent decisions that happen to have vocabulary attached."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Which is what makes the interview version of this answerable. Asked \"do you use MVVM or MVI?\", the weak answer picks one. The strong answer describes and then names: *we use a screen-scoped state owner that publishes one immutable state; the UI sends intentions and observes that state; the owner holds no reference to the view; a few screens with genuinely interacting inputs model those inputs as values and put the transition in one reducer function, and the rest use callbacks. The team calls that MVVM, though it borrows MVI-style state modelling where it pays.* Everything in it is checkable, none of it depends on the interviewer sharing your definitions, and the last clause tells them you know the definitions are contested. Do not memorise it as a script — the reason it works is that every clause is one of the five answers, which means you can produce it for any codebase you have actually read."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Be ready to classify an unfamiliar screen out loud: state location, mutation path, view knowledge, input shape, output shape, transition explicitness — then the label. Be ready to falsify the four claims with an implementation rather than a contradiction. And be ready to say what a pattern name does not decide: the data layer, the domain layer, dependency supply, navigation, modularization, or anything measurable about rendering."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_one_screen_five_questions",
+            "lesson_mvp_view_contract",
+            "lesson_mvvm_observed_state",
+            "lesson_mvi_intent_and_reduction"
+          ],
+          "sources": [
+            {
+              "title": "UI layer",
+              "url": "https://developer.android.com/topic/architecture/ui-layer"
+            },
+            {
+              "title": "GUI Architectures",
+              "url": "https://martinfowler.com/eaaDev/uiArchs.html"
+            },
+            {
+              "title": "Unidirectional User Interface Architectures (André Staltz)",
+              "url": "https://staltz.com/unidirectional-user-interface-architectures.html"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
     }
   ]
 }

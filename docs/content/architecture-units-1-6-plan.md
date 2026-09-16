@@ -2454,3 +2454,452 @@ Unit 4 introduced.
 - **The learning content itself is editorial** and no automated check can confirm that a
   Lesson teaches what it claims; the semantic review above is a judgement, as Rule 10 of the
   authoring contract requires.
+
+## Authoring outcomes for Unit 5
+
+Added by E26-06 after the five Lessons were written. Every source quotation, repository
+finding and routing figure below was re-opened, re-verified against current code, or
+executed during authoring rather than carried over from E26-01's tables; where a finding is
+unchanged, that is stated as a re-verification and not as a copy.
+
+### What did not change
+
+Every proposed Unit id, Lesson id, title, authored order and primary/supporting mapping for
+Unit 5 in the [identity tables](#identity-conventions-and-proposed-identities) shipped
+verbatim. **No Lesson boundary moved, none was split or merged, and neither planning
+document needed a correction.** The blueprint's `L5.1`–`L5.5` ordering, its
+Teach/Bridge/Reference/Exclude decisions and its misconception targets were followed as
+written, and nothing in Unit 5 required a Unit 1–4 identity, mapping or boundary to move.
+
+| Shipped identity | Title | Primary | Supporting |
+| --- | --- | --- | --- |
+| `lesson_one_screen_five_questions` | One Screen, Five Questions | `mvc` | `mvp`, `mvvm`, `mvi`, `state_ownership` |
+| `lesson_mvp_view_contract` | MVP: an Explicit View Contract | `mvp` | `mvc`, `interface_boundaries`, `state_ownership` |
+| `lesson_mvvm_observed_state` | MVVM: a UI That Observes State | `mvvm` | `state_ownership`, `unidirectional_data_flow`, `stateflow`, `viewmodel_lifecycle` |
+| `lesson_mvi_intent_and_reduction` | MVI: Intent, Reduction and One Current State | `mvi` | `unidirectional_data_flow`, `state_ownership`, `kotlin_sealed_types` |
+| `lesson_classifying_a_real_architecture` | Classifying What a Real Codebase Actually Does | `mvvm_vs_mvi` | `mvvm`, `mvi`, `mvp`, `architecture_tradeoffs` |
+
+The Unit ships directly after `unit_domain_logic_and_dependency_direction`, so the
+`architecture` Topic now holds **five Units of five Lessons each**, and the whole document
+holds **23 active Units and 97 active Lessons**.
+
+**Configured versions, re-verified.** `gradle/libs.versions.toml` was re-read during
+authoring: `androidx-lifecycle` is still `2.11.0-beta01`, Kotlin still `2.4.10`,
+kotlinx.coroutines still `1.11.0`, Compose Multiplatform still `1.11.1`. Unchanged from the
+table this plan assumes and from what E26-05 recorded.
+
+### Unit purpose, and how it stays separate from Units 1–4
+
+Units 1–4 taught every decision these pattern names are about without using a pattern name
+once. Unit 5 adds the vocabulary and immediately says what the vocabulary is worth. **Its
+purpose is classification, not prescription.**
+
+- **The Unit adds no new mechanism.** Every arrangement in it is one the reader already has
+  the means to reason about; what is new is the naming and the skill of reading a design
+  back into responsibility terms.
+- **Its five Lessons are one argument.** Establish the measurement instrument with no name
+  in it; apply it three times to one unchanged screen, each time as a *single* change to the
+  arrangement before it; then remove the training wheels and classify a design nobody
+  labelled. Opening on a pattern name would teach the label before the reasoning the label
+  summarises, which is the failure the whole Unit order exists to prevent.
+- **No recommendation is made.** The Unit does not conclude that MVI suits complex screens,
+  that MVVM is the default, or that MVP is legacy. It says what each arrangement buys and
+  costs and stops; choosing the smallest sufficient architecture is Unit 6's closing
+  decision.
+- **Unit 4 → Unit 5 orthogonality is taught explicitly.** L5.5's Senior section states that
+  these are presentation responsibility models operating at a different concern from the
+  dependency rule, that a codebase can coherently combine Clean-Architecture-style dependency
+  direction with MVVM-style presentation and MVI-style transitions, and that this is three
+  independent decisions rather than a contradiction.
+- **Unit 2 is reused rather than retaught.** L5.3 says in as many words that the reader has
+  already built this arrangement and that the Lesson supplies a name for it, not a design.
+
+### The one screen, and how it survives
+
+The blueprint fixes a **practice-configuration screen** and E26-05 recorded that it was held
+in reserve through Units 1–4, which used the borrowed-items library feature instead. That
+reservation held: the screen appears for the first time in L5.1 and is **unchanged through
+L5.2, L5.3 and L5.4.** Its requirements are stated once, in L5.1:
+
+- it loads the available practice options — which topics can be practised and which
+  difficulty levels exist;
+- it holds several selections: a topic, a difficulty, and how many questions the session
+  should contain;
+- it validates those selections against each other, because not every combination has
+  questions behind it;
+- it enables a Start control only when the configuration is valid;
+- it can be loading, and it can fail while loading;
+- after a failure it offers a retry.
+
+**No requirement was added or removed to suit a pattern**, and the MVP version is not
+simplified relative to the MVI version — the MVP Lesson writes out the same cross-validation
+(`setStartEnabled(selection.isValid())`) that the MVI Lesson expresses as a derived field of
+the next state. Every structural difference between the three Lessons is traceable to one of
+the five answers.
+
+### The five-question frame, and the sixth consequence
+
+L5.1 ships the frame as the Unit's measuring instrument, in exactly the order the issue
+requires: where the screen's state lives, who is allowed to mutate it, whether the behaviour
+owner knows the View or UI instance, how user input reaches the owner, and how output or
+state reaches the UI. The **sixth** — what lifetime bookkeeping the arrangement forces on
+somebody — is presented as a *consequence* of the five rather than a sixth category, and
+L5.1's Senior section reads it in both directions: a held UI reference creates the obligation
+to know whether the view is still there, and the absence of one removes that specific
+obligation without removing lifetime as a subject. Each of L5.2, L5.3 and L5.4 then opens by
+answering the same six lines for its own arrangement, in a fixed-width block, so the reader
+can diff them.
+
+L5.1's unlabelled description is worked in full and then answered with "we already know the
+important part", before any name is offered. The three-team comparison table shows the same
+arrangement called MVVM, MVI-ish MVVM, and UDF/state-holder architecture, with the last
+column stating what actually differs — nothing, in two of the three rows. Labels are
+explicitly **not** made meaningless: the Lesson states that inside a team with a shared
+definition a label is a useful three-syllable summary, and narrows the claim to the one that
+holds, that a label cannot replace the description.
+
+### Terminology sources reverified, and the variance treatment
+
+The [terminology variance](#mvp-mvvm-and-mvi-terminology-variance) table is this issue's
+source contract and every row of it was re-opened during authoring. **All findings held.**
+
+| Source | Used by | Claim it settles |
+| --- | --- | --- |
+| [GUI Architectures](https://martinfowler.com/eaaDev/uiArchs.html) | L5.1, L5.2, L5.3, L5.5 | That "MVC is one of the most misunderstood architectural patterns around" and that systems using the name "display a range of important differences"; that "a lot of designs will follow the MVP style but use 'controller' as a synonym for presenter"; that of the two best-known early MVP accounts "the two descriptions don't entirely mesh"; and that the fully passive variant "isn't part of the original descriptions of MVP" |
+| [Passive View](https://martinfowler.com/eaaDev/PassiveScreen.html) | L5.2 | The passive-view variant, in which the presenter manipulates every widget and the view holds no behaviour |
+| [Supervising Controller](https://martinfowler.com/eaaDev/SupervisingPresenter.html) | L5.2 | The other variant, quoted verbatim: the view "handles simple mapping to the underlying model" and the controller "handles input response and complex view logic" |
+| [Presentation Model](https://martinfowler.com/eaaDev/PresentationModel.html) | L5.3 | MVVM's ancestry — "Represent the state and behavior of the presentation independently of the GUI controls used in the interface" — and, decisively for the variance argument, that Fowler describes **both** reference directions, the presentation model referencing the view or the view referencing the presentation model, with different trade-offs |
+| [UI layer](https://developer.android.com/topic/architecture/ui-layer) | L5.1, L5.3, L5.4, L5.5 | That UI state is immutable and that "Only sources or owners of data should be responsible for updating the data they expose"; and "The pattern where the state flows down and the events flow up is called a unidirectional data flow (UDF)". **Re-checked during authoring: the words MVVM, MVP and MVI appear nowhere on the page**, which is the evidence L5.3 uses for the label being optional |
+| [UI layer: state holders](https://developer.android.com/topic/architecture/ui-layer/stateholders) | L5.3 | That a business-logic state holder is "typically implemented with a `ViewModel`" and a UI-logic state holder "typically implemented with a plain class" — two implementations of one responsibility, chosen by lifetime. **Re-checked: "MVVM" does not appear on this page either** |
+| [Guide to app architecture](https://developer.android.com/topic/architecture) | L5.1 | The platform's architecture vocabulary, stated without pattern acronyms |
+| [Unidirectional User Interface Architectures](https://staltz.com/unidirectional-user-interface-architectures.html) | L5.4, L5.5 | The MVI lineage from its originating author: "Intent: function from Observable of user events to Observable of 'actions'", "Model: function from Observable of actions to Observable of state", and the cycle in which "the user's rendering reacts to the View's output, which reacts to the Model's output, which reacts to the Intent's output (actions), which reacts to user events" |
+
+Two source decisions are worth recording because both are acceptance-critical:
+
+- **Fowler is cited as evidence of practitioner usage, never as a specification the
+  curriculum adopts.** This is the qualified exception the blueprint's source policy allows
+  for Unit 5, and it is used exactly as written: the quotations establish *that the
+  terminology varies*, not what the terms must mean.
+- **The MVI lineage and its Android adaptations are kept separate.** L5.4's Senior section
+  names Cycle.js and Staltz's formulation as the origin, states that Android versions are
+  adaptations that differ from it and from each other on reducer purity, store abstractions,
+  side-output delivery and whether every input value is called an intent, and says outright
+  that **no adaptation is canonical**. No MVI library is named anywhere in the Unit.
+
+**MVC variance treatment.** MVC is taught only as the origin of the Model/View/x vocabulary
+and as the reason the vocabulary is unreliable, with the "controller" role named as the
+especially overloaded part. There is **no fourth implementation of the practice screen**, no
+Smalltalk internals, no MVC framework history and no claim that any definition of MVC is
+canonical. L5.1's practical conclusion is the interview move: ask what the interviewer means
+by the controller's responsibility, then answer in the five questions.
+
+**MVP stable and variable.** Stable and taught: the presenter holds a view abstraction, the
+view is comparatively passive, the presenter pushes output by calling view methods, the view
+reports input inward, and attach/detach bookkeeping follows from the presenter holding the
+view. Variable and stated as variable: passive view against supervising controller, how much
+formatting the presenter owns, and whether the role is called presenter or controller.
+
+**MVVM stable and variable.** Stable and taught: the UI observes state the owner publishes,
+the owner holds no reference to the view, intentions travel inward and state travels outward.
+Variable and stated as variable: whether data binding is required, whether the class must be
+called `ViewModel`, how many observable values a screen may expose, and the shape of commands
+or events between UI and owner. The Presentation Model ancestry is one paragraph and carries
+the two-reference-directions finding, which is the sharpest available evidence that the name
+never had one arrangement behind it.
+
+**MVI stable and variable.** Stable and taught: input as an explicit value from a closed set,
+one current state describing the screen, an explicit transition, unidirectional state
+evolution. Variable and stated as variable: reducer purity, store abstractions, side-output
+mechanisms, whether all inputs are called intents, and library machinery. L5.4 states its own
+definition's limits explicitly — it does **not** require a pure reducer, a `Store` type, a
+separate transition class or any library.
+
+### The two terminology collisions
+
+**"Effect" is never used unqualified.** L5.4 names the collision directly: Compose's
+`LaunchedEffect`, `DisposableEffect` and `SideEffect` are a family of APIs for work tied to a
+composition's lifetime, and MVI literature's "effect" is a one-off output — unrelated
+abstractions. The Lesson uses *MVI-style side output* and *a one-off output sometimes called
+an effect in MVI literature*, and says in as many words that the bare word is never used for
+either. **Verified across the shipped Unit**: no Lesson uses "effect" in the MVI sense
+unqualified, and the only other occurrences are the named Compose API family in that same
+paragraph.
+
+**"Event" is avoided where it would be ambiguous.** The Unit uses *intention* or *action* for
+user input, *occurrence* where something happened and a delivery question is live, and
+qualifies the word elsewhere. The one place the unqualified plural survives is in a direct
+quotation of Android's UDF sentence ("the events flow up"), which is quoted as a source and
+labelled as such.
+
+### What each Lesson actually does, against the issue's requirements
+
+**L5.1 — the frame.** Opens by stating that there is no normative specification for modern
+use of these four names, with Fowler's two sentences as the evidence, and then introduces the
+five questions as a bulleted instrument. The sixth is presented as a consequence with its
+derivation. The practical half fixes the screen's six requirements, answers the five
+questions about one unlabelled design in a fixed-width block, asks "what architecture is
+this?" and answers that the important part is already known. The three-team table follows,
+then the bounded MVC treatment, then a common-mistake callout aimed at the name-only interview
+answer. Senior depth explains *why* the names drifted — different toolkits over decades,
+originating accounts that "don't entirely mesh", Presentation Model described with two
+possible reference directions — and re-reads the sixth question in both directions so that
+"no view reference" is not misread as "lifetime stopped mattering".
+
+**L5.2 — MVP.** The screen is carried over and exactly one answer changes: the owner is given
+a view abstraction. The six answers are re-run in the same block format, with question three
+marked as the defining property. Both variants are named from their primary sources and the
+presenter/controller naming variance is stated. The practical half ships the `PracticeConfigView`
+contract, a presenter holding one with `attach`/`detach`, the push-style call sequence, and the
+**causal** attach/detach explanation: the presenter holds the reference, the UI instance can be
+destroyed while the presenter survives, a reference to a destroyed view is still a valid
+reference, therefore something must coordinate when it is usable. No lifecycle callback appears
+anywhere. The ordering claim is deliberately narrowed — it is **not** claimed that MVP
+implementations necessarily have ordering defects, only that correctness here is a property of
+the call sequence rather than of a value. Four strengths are named, including that the contract
+is consumer-owned in the foundations Unit's exact sense, which is why substitution is real
+rather than asserted; six costs are named as things, never as "boilerplate". Senior depth states
+the trade explicitly — enumerability against consistency — lists what MVP does *not* decide
+(threading, survival, data layer, view granularity), and closes on the habit of asking whether a
+named cost belongs to the pattern or to the environment.
+
+**L5.3 — MVVM.** Opens on the MVP comparison as the plan requires — what happens if the owner
+stops calling the view — and answers it by inverting the output direction. The load-bearing
+property is stated as a negative and question three is the only answer that changes. What
+disappears is enumerated precisely (the held reference, the attach/detach relationship required
+by it, the enumerated call surface, the ordering question) and what does **not** disappear is
+stated in the same paragraph: the owner's lifetime, the observer's lifetime and the cancellation
+of owner-scoped work all remain, and removing one reference repeals none of it. The practical
+half opens by telling the reader they have already built this, then ships the three corrections:
+a `ViewModel` class does not make an architecture MVVM — with the converse stated as firmly, and
+with a `ViewModel` holding a view interface named as "an MVP presenter with an inconvenient
+superclass" — a folder layout does not, and the number of observable values does not. The
+many-against-one correction states the real trade-off (a complete consistent description against
+a consumer observing part-way through a multi-field change) and attributes it to state modelling
+rather than to the pattern. The section closes on the strongest available evidence: Android's own
+UI-layer page describes the whole arrangement, including UDF by name, without using any of the
+three acronyms. Senior depth derives every other MVVM characteristic from the absent view
+reference, carries the Presentation Model variance, and keeps dependency direction and lifetime
+separate.
+
+**L5.4 — MVI.** No new requirement is added. The two ideas are introduced separately — input as a
+value from a closed set, and one current state with an explicit transition — and the sealed
+declaration is shown without the Kotlin mechanism being taught. Reduction is defined
+conceptually, with the definition's limits stated immediately. The practical half writes one
+transition out in full in the issue's exact shape (current, intent, next), shows where validation
+belongs by deriving `canStart` inside the transition, and ships a short `reduce` function. Four
+benefits are listed as checkable properties; five things MVI does **not** buy are listed
+immediately after, covering correctness, thread safety, persistence, once-only handling and
+performance. Five ceremony items are counted as things. The state-versus-side-output question is
+named only far enough to explain the cost, with the terminology collision qualified in the same
+paragraph and the delivery design handed to Unit 6 by naming what that Unit decides — mechanism,
+loss, lateness and acknowledgement — without deciding any of it. Senior depth rejects the
+many-against-one distinction and the recompositions claim, gives the Cycle.js origin with
+Staltz's own function signatures, and closes on when the modelling is worth its ceremony.
+
+**L5.5 — classification.** Ships the classification procedure as a fixed order: answer the five
+questions, name what each answer resembles, state the design in a sentence, then offer a label.
+Three hybrids are given as a four-column table — a lifecycle-owned `ViewModel` with one state
+value and callbacks and no reducer; the same with action values, an explicit reducer and a
+separate side-output mechanism; and a several-observable design otherwise identical to the
+first — each with a responsibility reading and the labels different teams would use. The four
+misconceptions are then each **falsified against one of those designs** rather than contradicted:
+the stream-count claim fails because A has one value and none of MVI's transition model; the
+sealed-intents claim fails against a shipped code block that adds an action type to design A and
+changes nothing about the transition; the recomposition claim fails because the single large
+state value can invalidate a composable for fields it never renders; and the folder claim fails
+because an MVP presenter filed under `viewmodel/` still reads as MVVM in the project pane. Senior
+depth carries the repository evidence, the two boundaries (presentation-only, and orthogonal to
+Clean Architecture), and the interview answer — given in full and immediately qualified as
+something to be able to produce rather than to memorise.
+
+### Repository evidence used, and its limits
+
+Every Part 7 finding this Unit relies on was re-verified against current code before use.
+
+| Finding | Re-verified as | Used by |
+| --- | --- | --- |
+| **`LessonScrollStateReducer`** | Read in full. Still present at `topic_study/learning_lesson/LessonScrollStateReducer.kt`, still turning raw scroll positions into `LessonScrollUiState`. **One correction to the E26-01 note:** it is *not* a pure function of a state and an input — it accumulates `lastPosition` and `accumulatedDistance` in its own fields across calls | **L5.5's strongest local evidence.** Used for two claims: that a transition function can exist in a codebase nobody would call MVI, and that "reducer" itself travels loosely enough that a real one need not be pure. Explicitly **not** presented as evidence that this application "uses MVI" |
+| **`PracticeBuilderUiState` and `PracticeBuilderViewModel`** | Both read in full. The state is still a `data class` whose KDoc records the choice ("Everything the Practice Builder renders, and nothing it would have to derive"); `isStartEnabled` is still a derived property of the state; the ViewModel still exposes `MutableStateFlow(...).asStateFlow()`, still takes named callbacks (`selectQuestionCount`, `toggleLevel`, `selectSource`, `retryAvailability`, `startPractice`), still holds no UI reference, and still sends its one outward occurrence through a `Channel<PracticeBuilderEvent>` | **L5.5's production instance of hybrid design A.** Also the reason the hypothetical stays hypothetical: the Lesson cites the production screen as a classified example and never lets it stand in for the worked comparison |
+| **UI state is modelled both ways** | Re-counted: 16 UI-state types in `commonMain`, 14 sealed interfaces and 2 data classes (`PracticeBuilderUiState` and `LessonScrollUiState`). E26-01 recorded one data class; the second is the reducer's output type and was counted this time | L5.5, as evidence that state-shape choice is not itself a pattern label |
+| **15 `ViewModel` classes, all in `commonMain`, all `internal`** | Re-verified by search: still 15, still all in `commonMain` | L5.3 and L5.5, as evidence that a `ViewModel` implementation participates in whatever responsibility arrangement the surrounding design has, and is not itself the arrangement |
+| **No production owner holds a UI reference** | Verified by search across `commonMain` | L5.3's three-second classification test, stated as a method rather than as a claim about this app |
+
+**What the evidence is not used for.** No Lesson claims this repository demonstrates MVP, and no
+Lesson claims it "uses MVVM" or "uses MVI" — the two places production code appears, it is
+classified by the six answers and the label is left to the reader. **No production architecture
+code was changed or proposed for change**, and nothing in authoring surfaced a product defect
+worth recording. The one correction above is a correction to this plan's own note about
+`LessonScrollStateReducer`, not to the code.
+
+### Source-sensitive ViewModel and lifecycle claims
+
+E26-05 recorded that E26-06 inherits Part 8's verification obligation if it makes ViewModel or
+lifetime claims. **The obligation was discharged by not incurring it.** The configured lifecycle
+version was re-read and is unchanged at `2.11.0-beta01`, and the Unit deliberately makes no
+concrete claim about ViewModel retention, clearing, host ownership, configuration recreation or
+multiplatform lifetime. What it says is:
+
+- L5.3 states the dependency direction — the owner holds no reference to the UI — and hands
+  lifetime to Unit 2 by linking `lesson_viewmodel_lifetime_and_persistence`, with an explicit
+  paragraph warning not to translate "the owner does not reference the view" into a claim about
+  what survives what, and naming the multiplatform host dependency in the same sentence.
+- L5.2 says that a presenter can be retained by something long-lived and that this *increases*
+  attach/detach bookkeeping rather than removing it — a statement about the arrangement, not
+  about any platform's retention guarantee.
+- **The sentence "ViewModels survive the screen" appears nowhere**, and the E26-03 correction is
+  not regressed anywhere in the Unit.
+
+`stateflow` stays supporting-only and no `StateFlow` mechanic is taught: L5.3 states explicitly
+that the choice of carrier is not part of the pattern and that E24 owns stream behaviour.
+
+### Semantic review of the Questions this Unit now reaches
+
+All four ACTIVE Questions in the resolved pool were re-read in full and independently solved
+against the finished prose. **The E26-01 findings in [Part 5](#part-5--semantic-assessment-review)
+all still hold**, including both mismatches. The `architecture` Topic still holds 22 ACTIVE and 4
+DEPRECATED Questions over 18 Subtopics, re-counted from the bundled JSON during authoring.
+
+| Question | Level | Reached through | Re-read verdict against the shipped Lessons |
+| --- | --- | --- | --- |
+| `mvp_vs_mvvm_view_contract` | FOUNDATION | `mvp` (L5.2) | **Sound and precisely matched — the Unit's best-fitting Question, as predicted.** Its correct option is exactly the contrast L5.2 and L5.3 are built on: the presenter holds a view interface and pushes updates in, the state owner exposes state the view observes. Its explanation carries the attach/detach consequence that L5.2 derives causally. The Lessons reproduce none of its wording or options, and the three distractors are claims the Unit refuses independently — L5.2's Senior section states in as many words that MVP dictates nothing about threading, nothing about survival, and does not forbid modelling navigation. It spans two Lessons, which Part 5 already recorded as fine |
+| `viewmodel_vs_repository_responsibility` | APPLIED | `mvvm` (L5.3) | **Sound as a Question; mismatched to its Subtopic, exactly as E26-01 found.** Its reasoning is the repository/state-holder split, cache and retry policy placement, and why a state holder must not hold a `Context` to format state — which `lesson_state_holder_responsibility` and `lesson_what_a_repository_owns` own and teach. L5.3 was **not** reshaped to fit it and teaches none of that reasoning; a reader who has only read Unit 5 is not equipped for it, and a reader who reached Unit 5 in order is, because Units 2 and 3 taught it. The consequence stands: MVVM as a responsibility model remains unassessed. See GAP-U5-B |
+| `architecture_ui_event_consumption` | APPLIED | `mvi` (L5.4) | **Sound as a Question; mismatched to its Subtopic, and it is the strongest re-map candidate in the Topic.** Its reasoning is that a replay cache re-delivers to a late collector because the stream records no consumption, so handling once requires the consumption to be recorded — Unit 6 L6.2's subject entire. **L5.4 was deliberately not distorted to support it**: the Lesson names the side-output design question only far enough to count it as a cost and hands delivery, loss, lateness and acknowledgement to Unit 6 without designing any of them. The consequence stands: Unit 5 structurally receives a Unit 6 Question while MVI's transition model remains unassessed. See GAP-U5-C |
+| `architecture_mvi_single_state` | APPLIED | `mvvm_vs_mvi` (L5.5) | **Sound and well matched to L5.5, and it functions as a semantic guard rather than a target.** Its correct answer — one immutable state prevents the UI rendering combinations the owner never intended — is taught by L5.3's many-against-one paragraph and L5.5's first misconception, and its explicit refusal of the recomposition claim is the same refusal L5.4 and L5.5 make, with L5.5 adding the direction the Question only hints at: a single large value can recompose *more*. **Its scenario is not reproduced** — the Lessons never pose "a screen currently exposes several independent StateFlows" as a migration question, and design C exists precisely to make the several-observable arrangement a legitimate classification rather than a thing to be migrated away from |
+
+Adjacent Questions were inspected as duplication guards: `architecture_state_holder_taxonomy`
+and `durable_state_vs_one_off_event` (both `state_ownership`) and `compose_udf_event_direction`
+(`compose_udf`). None is reachable from a Unit 5 primary concept, and none assesses reasoning
+this Unit claims — which is the intended result of `state_ownership` and
+`unidirectional_data_flow` being supporting-only here.
+
+**No Question was created, edited, re-mapped, re-levelled or re-statused by this issue**, no
+taxonomy entry was invented, and no factual defect was found in any Question read. The two
+mapping mismatches were **not repaired here**; E26-08 owns them.
+
+### GAP-U5-A to GAP-U5-D after authoring
+
+All four gaps survive the finished prose. **None was closed, none was found wrong, and no new
+gap was created.** The issue's instruction is honoured in both directions: a gap is not declared
+closed because a structurally reachable Question exists, and a gap is not preserved merely
+because it was planned.
+
+| Gap | Status after E26-06 | What the finished Lesson changes about it |
+| --- | --- | --- |
+| GAP-U5-A | **Open, unchanged** | L5.1 now ships the whole classification instrument: five questions, a worked unlabelled description of the screen, and the three-team table showing one arrangement under three names. `mvc` still holds **zero** ACTIVE Questions, so the Unit's central contribution reaches no practice at all. Confirmed by running the production resolver, not by reading the mapping. The mapping was **not** changed to manufacture coverage |
+| GAP-U5-B | **Open, unchanged; now the sharper of the two MVVM-side gaps** | L5.3 now ships the reasoning exactly as the gap defines it — an observing UI and an owner that holds no view reference, against the class-name and folder-name definitions, each rejected with a counterexample rather than an assertion. `mvvm`'s only ACTIVE Question still assesses the ViewModel/repository split. The gap is now a gap in assessment of material that ships, which is the strongest case an E26-08 Question can have. If `viewmodel_vs_repository_responsibility` is re-mapped, `mvvm` becomes empty and this gap becomes obligatory |
+| GAP-U5-C | **Open, unchanged; still a strong candidate** | L5.4 now ships intent-as-a-value, one current state, an explicit transition written out in full, and five counted ceremony items. `mvi`'s only ACTIVE Question is still a delivery-and-consumption Question. Nothing assesses reduction, and "MVI is MVVM plus sealed intents" — which L5.4 and L5.5 both correct, the latter with a falsifying implementation — still cannot be assessed at all |
+| GAP-U5-D | **Open, unchanged** | L5.5 now ships three hybrid designs with their responsibility readings and the labels different teams would attach. `architecture_mvi_single_state` still assesses the one-state property and stops there; classifying an unlabelled hybrid from ownership, view knowledge, mutation path and transition explicitness is still unassessed |
+
+Two observations are recorded for E26-08 without being promoted to gaps:
+
+- **Nothing assesses the pattern-versus-property distinction that L5.5's four corrections rest
+  on.** The single most testable idea in the Unit is arguably that adding a closed input type to
+  an ordinary state holder changes the spelling of the input and nothing about the transition
+  model. It may belong inside a GAP-U5-C or GAP-U5-D Question rather than as one of its own.
+- **Nothing assesses the orthogonality claim.** That MVP, MVVM and MVI decide presentation
+  responsibilities and do not decide the data layer, the domain layer, dependency supply,
+  navigation or modularization is L5.5's Senior half and one of the Unit's most interview-relevant
+  conclusions. It spans Units 1–5 rather than sitting inside one, so E26-08 should weigh it
+  against GAP-U1-E and GAP-U4-A rather than authoring into Unit 5 alone.
+
+### Actual practice reach, resolved through the production resolver
+
+Recomputed by running the shipped Unit through `PracticeBuilderViewModel` and the real selection
+path in `LearningUnitPracticeIntegrationTest`, not by reading mappings. The Unit configures
+`AssessmentScope.Subtopics` of exactly its five primary concepts and resolves **four** Questions:
+
+| Resolved Question | Level | Reached through | Semantically belongs mainly to |
+| --- | --- | --- | --- |
+| `mvp_vs_mvvm_view_contract` | FOUNDATION | `mvp` | Unit 5 |
+| `viewmodel_vs_repository_responsibility` | APPLIED | `mvvm` | **Units 2 and 3** — structural reach only |
+| `architecture_ui_event_consumption` | APPLIED | `mvi` | **Unit 6** — structural reach only |
+| `architecture_mvi_single_state` | APPLIED | `mvvm_vs_mvi` | Unit 5 |
+
+This matches [Part 6](#part-6--unit-practice-routing-modelled-now)'s modelled pool exactly — four
+Questions, the same four ids — so E26-01's prediction is confirmed rather than assumed. The level
+split is one FOUNDATION and three APPLIED, with **no ADVANCED Question**, matching the Topic-wide
+observation in Part 5. **Only two of the four semantically assess what this Unit teaches**, which
+is the epic's least favourable ratio and the reason GAP-U5-B and GAP-U5-C matter more than their
+peers.
+
+Three further structural facts, all asserted in tests rather than inspected:
+
+1. **`mvc` contributes nothing.** Five primary concepts resolve four Questions, and the Unit's
+   opening concept reaches none. Asserted by subtopic id.
+2. **Supporting concepts broaden nothing.** The Unit's seven supporting-only concepts —
+   `state_ownership`, `unidirectional_data_flow`, `stateflow`, `viewmodel_lifecycle`,
+   `kotlin_sealed_types`, `interface_boundaries` and `architecture_tradeoffs`, holding **fourteen**
+   ACTIVE Questions between them — contribute nothing to the pool. `state_ownership` is the one
+   that matters: it is primary across seven Lessons of two other Units, so promoting it here would
+   pull the whole state-holder pool into a Unit that teaches none of it.
+3. **This Unit shares no Question with any earlier architecture Unit.** It is the first E26 Unit
+   with no overlap, because the five pattern concepts are primary nowhere else in the epic. The
+   test computes all four earlier pools and intersects them rather than assuming it. **No shipped
+   Unit's practice changed**: Unit 1's pool is unchanged at five, Unit 2's at five, Unit 3's at six
+   and Unit 4's at five.
+
+### Cross-links
+
+Backward only, and every target already shipped. L5.1 → `lesson_what_architecture_decides`,
+`lesson_state_holder_responsibility`; L5.2 → L5.1, `lesson_when_an_interface_is_a_boundary`;
+L5.3 → L5.2, `lesson_state_holder_responsibility`, `lesson_state_out_intentions_in`,
+`lesson_viewmodel_lifetime_and_persistence`, `lesson_state_flow`; L5.4 → L5.3,
+`lesson_modelling_ui_state`, `lesson_state_out_intentions_in`; L5.5 → L5.1, L5.2, L5.3, L5.4.
+
+The plan's explicit requirement — that L5.3 links to the relevant Unit 2 Lessons and to
+`lesson_state_flow` — is met with four of those five links; the fifth is L5.2, which L5.3 opens
+by comparing itself against. Every other link is an actual semantic dependency: L5.1 leans on the
+architecture-is-not-structure argument and on what a screen owner is responsible for, L5.2 on the
+consumer-owned-abstraction test because the view contract is one, L5.4 on the UI-state modelling
+Lesson because one current state is its input and on the intentions-in Lesson because reduction is
+the write path made explicit, and L5.5 on all four Lessons it synthesises. **No shipped Lesson was
+edited**, no earlier Unit received a reciprocal link, and **no forward link into Unit 6 exists** —
+L5.4 and L5.5 name the synthesis Unit in prose without naming a Lesson id.
+
+### Tests changed, and why
+
+| File | Change | Why production data made it necessary |
+| --- | --- | --- |
+| `BundledLearningCurriculumTest` | Unit id, title and home-Topic lists extended by one; Lesson id/title order and primary mappings for the new Unit added; two new tests — `responsibilityModelsUnitKeepsItsPlannedBridgesOutOfPrimaryPractice` and `responsibilityModelsUnitLinksBackwardsOnlyToShippedArchitectureAnchors` | The document lists Units positionally, so a fifth architecture Unit changes four lists. The bridge test exists because this Unit has the epic's densest primary/supporting reuse — every pattern concept is primary in one Lesson and supporting in at least two others — and because promoting `state_ownership`, `stateflow`, `kotlin_sealed_types` or `viewmodel_lifecycle` would silently claim another curriculum's practice. The link test pins the five-link MVVM Lesson the plan explicitly requires |
+| `LearningUnitPracticeIntegrationTest` | The traversal now expects five architecture Units and `listOf(5, 5, 5, 5, 5)` Lessons, and its final studied-record count rises from 91 to 96; new test `thePatternUnitPractisesItsPrimaryConceptsIncludingTwoThatBelongElsewhere` | Continue Learning walks the whole document, so a fifth architecture Unit changes the traversal and the Topic's progress denominator. The Unit **cannot** join the shared expectation table, which asserts `concepts == resolved subtopics`: `mvc` holds no ACTIVE Question, so the identity fails exactly as it does for Unit 1. The bespoke test therefore pins the four ids, asserts that `mvc` contributes none, computes the empty intersection with all four earlier Units, and records the two structural mismatches |
+
+**The tests record structural reality and do not endorse it.** Both mismatch assertions are
+commented as such: they exist so that if E26-08 re-maps either Question the assertion fails and
+the consequence has to be re-stated, rather than the mapping being quietly repaired. No test was
+added that only re-states schema validation `LearningCurriculumValidatorTest` already performs,
+and the data-driven suites — the reader journey over every shipped Unit, Topic Detail's Unit rows,
+the end-to-end repository path — needed no edit because they read the document rather than listing
+it. No prose is snapshotted anywhere.
+
+### Validation performed
+
+| Command | Result |
+| --- | --- |
+| `python3` structural pre-check over both bundled JSON documents | Ids unique across the whole document, every mapping an ACTIVE Subtopic, no primary/supporting overlap within a Lesson, every `relatedLessonIds` target resolvable and non-self, no blank text, every comparison row matching its header count, every Source URL well-formed. No defect in the new Unit |
+| `./gradlew :shared:jvmTest --tests "*BundledLearningCurriculumTest*" --tests "*LearningUnitPracticeIntegrationTest*" --tests "*LearningCurriculumValidatorTest*" --tests "*LearningContentEndToEndTest*"` | **104 tests, 0 failures** |
+| `./gradlew :shared:jvmTest` | **1,399 tests, 0 failures**, including `LearningProductionContentJourneyTest`, which renders every authored block of the new Unit in the reader, checks the reading column never widens, and opens every authored Source link through the app's own URI boundary |
+| `python3 tools/learning_question_coverage.py --write` then `--check` | Snapshot regenerated and reported current |
+| `cd tools && python3 -m unittest test_learning_question_coverage.py` | 21 tests, OK |
+| `./gradlew :shared:check` | Passed |
+| `./gradlew :androidApp:assembleDebug` | Passed |
+| `git status --short` and `git diff --check` | Five files changed — the bundled learning document, two jvm test files, this plan and the generated coverage snapshot — with no build or cache output and no whitespace defects |
+
+The regenerated `docs/content/learning-question-coverage.md` now reports **23 active Units and 97
+active Lessons**, the new Unit appearing directly after Unit 4 with five Lessons, a pool of four
+Questions across two levels and no ADVANCED Question. **Primary Subtopics with no active Question
+rises from one to two** — `architecture_tradeoffs` (GAP-U1-E) and now `mvc` (GAP-U5-A) — which is
+the generated confirmation that GAP-U5-A is real rather than a prediction.
+
+### Not validated
+
+- **`iosArm64` is not compiled locally or on CI**, unchanged from E25 and from every E26 issue so
+  far. Unit 5 introduces no target-specific code and makes no source-sensitive ViewModel or
+  lifecycle claim, so nothing in its prose depends on that target; the limitation is reported
+  because it is still true of the epic.
+- **No CI run is claimed.** Nothing in this issue was observed on GitHub Actions.
+- **Backlog validation could not be run**: `PyYAML` is unavailable in this environment, so
+  `.github/project/backlog.yml` was read as text rather than parsed and validated. Issue #366 was
+  read from that file rather than through `gh`, which is still not installed.
+- **The learning content itself is editorial** and no automated check can confirm that a Lesson
+  teaches what it claims; the semantic review above is a judgement, as Rule 10 of the authoring
+  contract requires.

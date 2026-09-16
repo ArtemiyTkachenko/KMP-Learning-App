@@ -55,6 +55,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_screen_state_holders_and_ui_state",
                 "unit_repositories_and_data_ownership",
                 "unit_domain_logic_and_dependency_direction",
+                "unit_responsibility_models_mvp_mvvm_mvi",
             ),
             units().map { it.id },
         )
@@ -83,6 +84,7 @@ internal class BundledLearningCurriculumTest {
                 "Screen State Holders, ViewModel and UI State",
                 "Repositories, Data Ownership and Single Source of Truth",
                 "Domain Logic, Use Cases and Dependency Direction",
+                "MVP, MVVM and MVI Responsibility Models",
             ),
             units().map { it.title },
         )
@@ -109,6 +111,7 @@ internal class BundledLearningCurriculumTest {
                 "async_reactive",
                 "async_reactive",
                 "async_reactive",
+                "architecture",
                 "architecture",
                 "architecture",
                 "architecture",
@@ -487,6 +490,34 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_domain_logic_and_dependency_direction").lessons.map { it.title },
         )
+
+        // The pattern Unit's order is the argument the unit exists to make. The comparison frame
+        // comes first, with no pattern name in it; then the three responsibility models applied to
+        // one unchanged screen, in the order in which each is a single change to the one before —
+        // MVP holds the view, MVVM takes the reference away, MVI changes how input and transitions
+        // are modelled; and only last the classification Lesson, which removes the training wheels.
+        // Opening on a pattern name would teach the label before the reasoning the label summarises.
+        assertEquals(
+            listOf(
+                "lesson_one_screen_five_questions",
+                "lesson_mvp_view_contract",
+                "lesson_mvvm_observed_state",
+                "lesson_mvi_intent_and_reduction",
+                "lesson_classifying_a_real_architecture",
+            ),
+            unit("unit_responsibility_models_mvp_mvvm_mvi").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "One Screen, Five Questions",
+                "MVP: an Explicit View Contract",
+                "MVVM: a UI That Observes State",
+                "MVI: Intent, Reduction and One Current State",
+                "Classifying What a Real Codebase Actually Does",
+            ),
+            unit("unit_responsibility_models_mvp_mvvm_mvi").lessons.map { it.title },
+        )
     }
 
     @Test
@@ -757,6 +788,23 @@ internal class BundledLearningCurriculumTest {
                 listOf("clean_architecture"),
             ),
             unit("unit_domain_logic_and_dependency_direction").lessons.map { it.primarySubtopicIds },
+        )
+
+        // Five Lessons, five distinct primary concepts — the only E26 Unit with no shared primary,
+        // because each pattern name is its own Subtopic and the comparison has one of its own.
+        // `mvc` is primary in the opening Lesson although it holds no ACTIVE Question: the Lesson
+        // owns the origin of the vocabulary and the reason it is contested, and manufacturing
+        // coverage by re-mapping it would be the dishonest repair. That is GAP-U5-A in
+        // `docs/content/architecture-units-1-6-plan.md`.
+        assertEquals(
+            listOf(
+                listOf("mvc"),
+                listOf("mvp"),
+                listOf("mvvm"),
+                listOf("mvi"),
+                listOf("mvvm_vs_mvi"),
+            ),
+            unit("unit_responsibility_models_mvp_mvvm_mvi").lessons.map { it.primarySubtopicIds },
         )
     }
 
@@ -1579,6 +1627,111 @@ internal class BundledLearningCurriculumTest {
                 assertTrue(
                     lesson.relatedLessonIds.none { it in ownIds },
                     "${lesson.id} links forward into the domain-logic Unit",
+                )
+            }
+    }
+
+    @Test
+    fun responsibilityModelsUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        // Seven concepts are supporting-only across this Unit, and three of them are the ones a
+        // promotion would damage. `stateflow` is one bounded sentence saying the carrier is not part
+        // of the pattern — E24 owns stream mechanics; `kotlin_sealed_types` is the spelling of an
+        // intent type and nothing about the language mechanism is taught; `viewmodel_lifecycle` is
+        // named only to say that dependency direction and lifetime are separate facts, with the
+        // lifetime itself deferred to the state-holder Unit. Promoting any of them would claim
+        // practice coverage for material this Unit deliberately does not carry.
+        assertEquals(
+            listOf(
+                listOf("mvp", "mvvm", "mvi", "state_ownership"),
+                listOf("mvc", "interface_boundaries", "state_ownership"),
+                listOf("state_ownership", "unidirectional_data_flow", "stateflow", "viewmodel_lifecycle"),
+                listOf("unidirectional_data_flow", "state_ownership", "kotlin_sealed_types"),
+                listOf("mvvm", "mvi", "mvp", "architecture_tradeoffs"),
+            ),
+            unit("unit_responsibility_models_mvp_mvvm_mvi").lessons.map { it.supportingSubtopicIds },
+        )
+
+        // Every pattern concept is primary in one Lesson and supporting in at least one other, which
+        // the validator permits across Lessons and rejects within one. That is the Unit's shape
+        // rather than an accident: the comparison frame names all three models it has not taught
+        // yet, and the classification Lesson names all three it has.
+        val lessons = unit("unit_responsibility_models_mvp_mvvm_mvi").lessons.associateBy { it.id }
+        listOf("mvp", "mvvm", "mvi").forEach { concept ->
+            assertTrue(concept in lessons.getValue("lesson_one_screen_five_questions").supportingSubtopicIds)
+            assertTrue(concept in lessons.getValue("lesson_classifying_a_real_architecture").supportingSubtopicIds)
+        }
+        assertEquals(listOf("mvc"), lessons.getValue("lesson_one_screen_five_questions").primarySubtopicIds)
+        assertTrue("mvc" in lessons.getValue("lesson_mvp_view_contract").supportingSubtopicIds)
+    }
+
+    @Test
+    fun responsibilityModelsUnitLinksBackwardsOnlyToShippedArchitectureAnchors() = runTest {
+        val lessons = unit("unit_responsibility_models_mvp_mvvm_mvi").lessons.associateBy { it.id }
+
+        // The MVVM Lesson carries five links because the plan requires it to name what the
+        // state-holder Unit already built rather than re-derive it, and to hand the stream carrier
+        // back to E24. Every other link is one actual semantic dependency rather than a mention.
+        assertEquals(
+            listOf("lesson_what_architecture_decides", "lesson_state_holder_responsibility"),
+            lessons.getValue("lesson_one_screen_five_questions").relatedLessonIds,
+        )
+        assertEquals(
+            listOf("lesson_one_screen_five_questions", "lesson_when_an_interface_is_a_boundary"),
+            lessons.getValue("lesson_mvp_view_contract").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_mvp_view_contract",
+                "lesson_state_holder_responsibility",
+                "lesson_state_out_intentions_in",
+                "lesson_viewmodel_lifetime_and_persistence",
+                "lesson_state_flow",
+            ),
+            lessons.getValue("lesson_mvvm_observed_state").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_mvvm_observed_state",
+                "lesson_modelling_ui_state",
+                "lesson_state_out_intentions_in",
+            ),
+            lessons.getValue("lesson_mvi_intent_and_reduction").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_one_screen_five_questions",
+                "lesson_mvp_view_contract",
+                "lesson_mvvm_observed_state",
+                "lesson_mvi_intent_and_reduction",
+            ),
+            lessons.getValue("lesson_classifying_a_real_architecture").relatedLessonIds,
+        )
+
+        val shippedAnchors = setOf(
+            "lesson_what_architecture_decides",
+            "lesson_when_an_interface_is_a_boundary",
+            "lesson_state_holder_responsibility",
+            "lesson_state_out_intentions_in",
+            "lesson_modelling_ui_state",
+            "lesson_viewmodel_lifetime_and_persistence",
+            "lesson_state_flow",
+        )
+        val ownIds = lessons.keys
+        lessons.values.forEach { lesson ->
+            lesson.relatedLessonIds.forEach { related ->
+                assertTrue(related in ownIds || related in shippedAnchors, "${lesson.id} -> $related")
+            }
+        }
+
+        // No Lesson authored before this Unit was edited to receive a reciprocal link, and no
+        // Lesson here links forward into the synthesis Unit, which has not shipped.
+        units()
+            .takeWhile { it.id != "unit_responsibility_models_mvp_mvvm_mvi" }
+            .flatMap { it.lessons }
+            .forEach { lesson ->
+                assertTrue(
+                    lesson.relatedLessonIds.none { it in ownIds },
+                    "${lesson.id} links forward into the responsibility-models Unit",
                 )
             }
     }

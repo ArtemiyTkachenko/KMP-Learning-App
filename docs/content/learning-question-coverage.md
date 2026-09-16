@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `2139727f548879aa5e1b10930b3cd7d1ad80b0df1aba4a1d61fcb95ae650d4b7` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `2b9ac5fd9c8668df87288660f02a01f434e9ca3c3d7d8d3efab5e30a9c5b8510` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `caeeab0b5a3687d822a8a48cd260ecb4bb8bfc02fa9ccc268f57b1ef6550e00a` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,13 +68,13 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 22 |
-| Active lessons in those units | 92 |
-| Distinct primary subtopics | 44 |
-| Distinct supporting subtopics | 86 |
-| Unique active questions reached through primary mappings | 108 |
-| Primary subtopics with at least one active question | 43 |
-| Primary subtopics with no active question | 1 |
+| Active learning units | 23 |
+| Active lessons in those units | 97 |
+| Distinct primary subtopics | 49 |
+| Distinct supporting subtopics | 90 |
+| Unique active questions reached through primary mappings | 112 |
+| Primary subtopics with at least one active question | 47 |
+| Primary subtopics with no active question | 2 |
 | Active questions in the bank | 401 |
 | Deprecated questions excluded from this report | 41 |
 
@@ -113,6 +113,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Screen State Holders, ViewModel and UI State (`unit_screen_state_holders_and_ui_state`) | 5 | 2 | 3 | 2 | 0 | 5 |
 | Repositories, Data Ownership and Single Source of Truth (`unit_repositories_and_data_ownership`) | 5 | 4 | 1 | 5 | 0 | 6 |
 | Domain Logic, Use Cases and Dependency Direction (`unit_domain_logic_and_dependency_direction`) | 5 | 4 | 1 | 4 | 0 | 5 |
+| MVP, MVVM and MVI Responsibility Models (`unit_responsibility_models_mvp_mvvm_mvi`) | 5 | 5 | 1 | 3 | 0 | 4 |
 
 ## Unit and lesson detail
 
@@ -1910,6 +1911,102 @@ Supporting context — not primary coverage:
 | `dependency_direction` — Dependency direction and inversion | 1 | `architecture` — Application Architecture & Design Principles |
 | `android_modules` — Application/library modules | 1 | `build_delivery` — Build System, Modularization & Delivery |
 
+### MVP, MVVM and MVI Responsibility Models (`unit_responsibility_models_mvp_mvvm_mvi`)
+
+Home topic: `architecture` — Application Architecture & Design Principles.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 1 | `mvp_vs_mvvm_view_contract` |
+| APPLIED | 3 | `architecture_mvi_single_state`, `architecture_ui_event_consumption`, `viewmodel_vs_repository_responsibility` |
+| ADVANCED | 0 | — |
+
+#### One Screen, Five Questions (`lesson_one_screen_five_questions`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `mvc` — MVC | 0 | 0 | 0 | 0 | — |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `mvp` — MVP | 1 | `architecture` — Application Architecture & Design Principles |
+| `mvvm` — MVVM | 1 | `architecture` — Application Architecture & Design Principles |
+| `mvi` — MVI | 1 | `architecture` — Application Architecture & Design Principles |
+| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+
+#### MVP: an Explicit View Contract (`lesson_mvp_view_contract`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `mvp` — MVP | 1 | 0 | 0 | 1 | `mvp_vs_mvvm_view_contract` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `mvc` — MVC | 0 | `architecture` — Application Architecture & Design Principles |
+| `interface_boundaries` — Interface boundaries | 1 | `architecture` — Application Architecture & Design Principles |
+| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+
+#### MVVM: a UI That Observes State (`lesson_mvvm_observed_state`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `mvvm` — MVVM | 0 | 1 | 0 | 1 | `viewmodel_vs_repository_responsibility` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+| `unidirectional_data_flow` — Unidirectional data flow | 1 | `architecture` — Application Architecture & Design Principles |
+| `stateflow` — StateFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+
+#### MVI: Intent, Reduction and One Current State (`lesson_mvi_intent_and_reduction`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `mvi` — MVI | 0 | 1 | 0 | 1 | `architecture_ui_event_consumption` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `unidirectional_data_flow` — Unidirectional data flow | 1 | `architecture` — Application Architecture & Design Principles |
+| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+| `kotlin_sealed_types` — Sealed classes and interfaces | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+
+#### Classifying What a Real Codebase Actually Does (`lesson_classifying_a_real_architecture`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `mvvm_vs_mvi` — MVVM vs MVI | 0 | 1 | 0 | 1 | `architecture_mvi_single_state` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `mvvm` — MVVM | 1 | `architecture` — Application Architecture & Design Principles |
+| `mvi` — MVI | 1 | `architecture` — Application Architecture & Design Principles |
+| `mvp` — MVP | 1 | `architecture` — Application Architecture & Design Principles |
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 0 | `architecture` — Application Architecture & Design Principles |
+
 ## Primary assessment gaps
 
 Primary concepts of active lessons that currently have no active question.
@@ -1923,6 +2020,7 @@ matters is editorial judgement.
 | Primary subtopic | Owning topic |
 |---|---|
 | `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | `architecture` — Application Architecture & Design Principles |
+| `mvc` — MVC | `architecture` — Application Architecture & Design Principles |
 
 ## Semantic review reminder
 

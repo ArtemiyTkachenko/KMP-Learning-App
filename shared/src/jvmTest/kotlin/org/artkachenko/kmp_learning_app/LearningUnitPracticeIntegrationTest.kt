@@ -217,10 +217,11 @@ internal class LearningUnitPracticeIntegrationTest {
                     "unit_screen_state_holders_and_ui_state",
                     "unit_repositories_and_data_ownership",
                     "unit_domain_logic_and_dependency_direction",
+                    "unit_responsibility_models_mvp_mvvm_mvi",
                 ),
                 architectureUnits.map { it.id },
             )
-            assertEquals(listOf(5, 5, 5, 5), architectureUnits.map { it.lessons.size })
+            assertEquals(listOf(5, 5, 5, 5, 5), architectureUnits.map { it.lessons.size })
             val architectureTopic = topic("architecture")
             val architectureParents = architectureUnits.associate { it.id to unit(it.id) }
             val architectureLessonCount = architectureUnits.sumOf { it.lessons.size }
@@ -301,9 +302,9 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             val rebuilt = LocalLessonStudyRepository(database)
             assertFalse(rebuilt.isStudied(earlierLesson.id))
-            // 43 `android_ui` Lessons, 29 in the coroutines and Flow Units and 15 in the
-            // three architecture Units, less the one that was just un-studied.
-            assertEquals(91, rebuilt.getStudiedLessons().size)
+            // 43 `android_ui` Lessons, 29 in the coroutines and Flow Units and 25 in the
+            // five architecture Units, less the one that was just un-studied.
+            assertEquals(96, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -955,6 +956,100 @@ internal class LearningUnitPracticeIntegrationTest {
             assertTrue(questions.none { it.subtopicId in supportingOnly })
             assertFalse("architecture_solid_dependency_substitution" in questionIds)
             assertFalse("architecture_solid_dependency_substitution" in foundations)
+            assertEquals(0, attemptCount())
+        }
+
+    /**
+     * E26-06: the pattern Unit's pool, and the two Questions that reach it for structural reasons.
+     *
+     * Like the foundations Unit, this one cannot join the expectation table: that table asserts
+     * `concepts == questions.map { it.subtopicId }.toSet()`, and the identity fails here because
+     * `mvc` is the opening Lesson's primary concept and holds no ACTIVE Question at all. That is
+     * GAP-U5-A in `docs/content/architecture-units-1-6-plan.md`, and the mapping is deliberately
+     * not changed to manufacture coverage — the Lesson owns the origin of the Model/View/x
+     * vocabulary and the reason it is contested, which is what `mvc` names.
+     *
+     * The other two claims are the reason this test is worth its length. `viewmodel_vs_repository_responsibility`
+     * is filed under `mvvm` and actually assesses the ViewModel/repository responsibility split,
+     * which the state-holder and data-ownership Units own; `architecture_ui_event_consumption` is
+     * filed under `mvi` and actually assesses replay, consumption and acknowledgement, which the
+     * synthesis Unit owns. Both therefore reach this Unit's practice while genuine MVVM and MVI
+     * reasoning stays unassessed — GAP-U5-B and GAP-U5-C. E26-08 owns the re-mapping decision, so
+     * this test records the structural reality rather than endorsing it: if a later change moves
+     * either Question, the assertion fails and the consequence has to be re-stated rather than
+     * quietly repaired.
+     */
+    @Test
+    fun thePatternUnitPractisesItsPrimaryConceptsIncludingTwoThatBelongElsewhere() =
+        runUnitPracticeTest {
+            val unitId = "unit_responsibility_models_mvp_mvvm_mvi"
+            val unit = assertNotNull(BundledLearningContentRepository().getUnitById(unitId))
+            val builder = builder(PracticeBuilderTarget.LearningUnit(unitId))
+            val settled = builder.settled()
+
+            assertEquals(unit.title, settled.scope.name)
+            val available = assertIs<PracticeAvailability.Available>(settled.availability)
+            assertEquals(4, available.eligibleQuestionCount)
+            builder.selectQuestionCount(available.eligibleQuestionCount)
+            builder.settled()
+
+            val config = builder.start()
+            val concepts = setOf("mvc", "mvp", "mvvm", "mvi", "mvvm_vs_mvi")
+            assertEquals(AssessmentScope.Subtopics(concepts), config.scope)
+
+            val questions = selectedQuestions(config)
+            val questionIds = questions.map { it.id }.toSet()
+            assertEquals(
+                setOf(
+                    "mvp_vs_mvvm_view_contract",
+                    "viewmodel_vs_repository_responsibility",
+                    "architecture_ui_event_consumption",
+                    "architecture_mvi_single_state",
+                ),
+                questionIds,
+            )
+            // Five primary concepts, four Questions: the concept the opening Lesson teaches
+            // contributes nothing to practice.
+            assertFalse(questions.any { it.subtopicId == "mvc" })
+
+            // The Unit shares no Question with any earlier architecture Unit, because the five
+            // pattern concepts are primary nowhere else in the epic. Asserted rather than assumed,
+            // since every other architecture Unit so far has had an overlap to record.
+            val earlier = listOf(
+                "unit_architecture_responsibilities_and_boundaries",
+                "unit_screen_state_holders_and_ui_state",
+                "unit_repositories_and_data_ownership",
+                "unit_domain_logic_and_dependency_direction",
+            ).flatMap { earlierUnitId ->
+                val earlierBuilder = builder(PracticeBuilderTarget.LearningUnit(earlierUnitId))
+                earlierBuilder.settled()
+                earlierBuilder.selectQuestionCount(
+                    assertIs<PracticeAvailability.Available>(earlierBuilder.uiState.value.availability)
+                        .eligibleQuestionCount,
+                )
+                earlierBuilder.settled()
+                selectedQuestions(earlierBuilder.start()).map { it.id }
+            }.toSet()
+            assertEquals(emptySet(), earlier intersect questionIds)
+
+            // Seven supporting-only concepts, holding fourteen ACTIVE Questions between them,
+            // broaden nothing. `state_ownership` is the one that matters most: it is supporting in
+            // four of the five Lessons and primary across seven Lessons of two other Units, so a
+            // promotion here would pull the whole state-holder pool into a Unit that teaches none
+            // of it.
+            val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
+            assertTrue(
+                setOf(
+                    "state_ownership",
+                    "unidirectional_data_flow",
+                    "stateflow",
+                    "viewmodel_lifecycle",
+                    "kotlin_sealed_types",
+                    "interface_boundaries",
+                    "architecture_tradeoffs",
+                ).all { it in supportingOnly },
+            )
+            assertTrue(questions.none { it.subtopicId in supportingOnly })
             assertEquals(0, attemptCount())
         }
 

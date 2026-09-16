@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `f9eb6feb8de44ab0b2898fe8f571622665f6d0259c4ffe94cf944167346d4360` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `7e251b7a16e6d29cbe1e0f80efde173da2fa768ad8f0ddd9d86620c1bfd98ce6` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `caeeab0b5a3687d822a8a48cd260ecb4bb8bfc02fa9ccc268f57b1ef6550e00a` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,12 +68,12 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 20 |
-| Active lessons in those units | 82 |
-| Distinct primary subtopics | 39 |
-| Distinct supporting subtopics | 78 |
-| Unique active questions reached through primary mappings | 101 |
-| Primary subtopics with at least one active question | 38 |
+| Active learning units | 21 |
+| Active lessons in those units | 87 |
+| Distinct primary subtopics | 42 |
+| Distinct supporting subtopics | 83 |
+| Unique active questions reached through primary mappings | 105 |
+| Primary subtopics with at least one active question | 41 |
 | Primary subtopics with no active question | 1 |
 | Active questions in the bank | 401 |
 | Deprecated questions excluded from this report | 41 |
@@ -111,6 +111,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | StateFlow, SharedFlow and Hot Streams (`unit_stateflow_sharedflow_and_hot_streams`) | 5 | 4 | 4 | 3 | 4 | 11 |
 | Architecture as Responsibilities and Boundaries (`unit_architecture_responsibilities_and_boundaries`) | 5 | 5 | 2 | 3 | 0 | 5 |
 | Screen State Holders, ViewModel and UI State (`unit_screen_state_holders_and_ui_state`) | 5 | 2 | 3 | 2 | 0 | 5 |
+| Repositories, Data Ownership and Single Source of Truth (`unit_repositories_and_data_ownership`) | 5 | 4 | 1 | 5 | 0 | 6 |
 
 ## Unit and lesson detail
 
@@ -1712,6 +1713,104 @@ Supporting context — not primary coverage:
 | `coroutine_scope` — CoroutineScope | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 | `background_api_selection` — Choosing the appropriate background API | 1 | `background_work` — Background Work & OS Constraints |
+
+### Repositories, Data Ownership and Single Source of Truth (`unit_repositories_and_data_ownership`)
+
+Home topic: `architecture` — Application Architecture & Design Principles.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 1 | `single_source_of_truth_001` |
+| APPLIED | 5 | `architecture_error_mapping_boundary`, `architecture_error_modeling_result_type`, `architecture_paging_ownership`, `dto_entity_domain_model_boundary`, `repository_observable_api_shape` |
+| ADVANCED | 0 | — |
+
+#### What a Repository Is Responsible For (`lesson_what_a_repository_owns`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `repository_pattern` — Repository pattern | 0 | 1 | 0 | 1 | `repository_observable_api_shape` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `room_dao` — Room DAOs and queries | 1 | `local_data` — Local Persistence & Offline Data |
+| `retrofit` — Retrofit | 1 | `networking` — Networking & Serialization |
+| `separation_of_concerns` — Separation of concerns | 1 | `architecture` — Application Architecture & Design Principles |
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 0 | `architecture` — Application Architecture & Design Principles |
+
+#### Coordinating Local and Remote Sources (`lesson_coordinating_sources`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `repository_pattern` — Repository pattern | 0 | 1 | 0 | 1 | `repository_observable_api_shape` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `offline_first` — Offline-first architecture | 2 | `local_data` — Local Persistence & Offline Data |
+| `cache_invalidation` — Cache invalidation | 1 | `local_data` — Local Persistence & Offline Data |
+| `caching` — Caching | 1 | `local_data` — Local Persistence & Offline Data |
+
+#### Which Source Is Authoritative? (`lesson_single_source_of_truth`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `single_source_of_truth` — Single source of truth | 1 | 0 | 0 | 1 | `single_source_of_truth_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `offline_first` — Offline-first architecture | 2 | `local_data` — Local Persistence & Offline Data |
+| `cache_invalidation` — Cache invalidation | 1 | `local_data` — Local Persistence & Offline Data |
+| `state_ownership` — State ownership | 4 | `architecture` — Application Architecture & Design Principles |
+
+#### An Observable API, or a One-Shot Read? (`lesson_observable_or_one_shot_api`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `repository_pattern` — Repository pattern | 0 | 1 | 0 | 1 | `repository_observable_api_shape` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `flow_fundamentals` — Flow fundamentals | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_collection` — Flow collection | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `stateflow` — StateFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `single_source_of_truth` — Single source of truth | 1 | `architecture` — Application Architecture & Design Principles |
+
+#### Model and Error Boundaries: What May Cross (`lesson_model_and_error_boundaries`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `layered_architecture` — Layered architecture | 0 | 2 | 0 | 2 | `architecture_paging_ownership`, `dto_entity_domain_model_boundary` |
+| `error_modeling` — Error representation/modeling | 0 | 2 | 0 | 2 | `architecture_error_mapping_boundary`, `architecture_error_modeling_result_type` |
+| **Lesson total (unique)** | 0 | 4 | 0 | 4 | `architecture_error_mapping_boundary`, `architecture_error_modeling_result_type`, `architecture_paging_ownership`, `dto_entity_domain_model_boundary` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `repository_pattern` — Repository pattern | 1 | `architecture` — Application Architecture & Design Principles |
+| `kotlin_sealed_types` — Sealed classes and interfaces | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `room_dao` — Room DAOs and queries | 1 | `local_data` — Local Persistence & Offline Data |
+| `retrofit` — Retrofit | 1 | `networking` — Networking & Serialization |
 
 ## Primary assessment gaps
 

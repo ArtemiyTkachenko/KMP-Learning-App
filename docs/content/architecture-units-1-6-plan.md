@@ -1579,3 +1579,416 @@ which remains `architecture_tradeoffs` and GAP-U1-E rather than anything Unit 2 
 - **The learning content itself is editorial** and no automated check can confirm that a
   Lesson teaches what it claims; the semantic review above is a judgement, as Rule 10 of the
   authoring contract requires.
+
+---
+
+## Authoring outcomes for Unit 3
+
+Added by E26-04 after the five Lessons were written. Every source quotation, repository
+finding and routing figure below was re-opened, re-verified against current code, or
+executed during authoring rather than carried over from E26-01's tables; where a finding is
+unchanged, that is stated as a re-verification and not as a copy.
+
+### What did not change
+
+Every proposed Unit id, Lesson id, title, authored order and primary/supporting mapping for
+Unit 3 in the [identity tables](#identity-conventions-and-proposed-identities) shipped
+verbatim. **No Lesson boundary moved, none was split or merged, and neither planning
+document needed a correction.** The blueprint's `L3.1`–`L3.5` ordering, its
+Teach/Bridge/Reference/Exclude decisions and its misconception targets were followed as
+written. E26-02's and E26-03's outcomes held as well: nothing in Unit 3 required a Unit 1 or
+Unit 2 identity, mapping or boundary to move.
+
+| Shipped identity | Title | Primary | Supporting |
+| --- | --- | --- | --- |
+| `lesson_what_a_repository_owns` | What a Repository Is Responsible For | `repository_pattern` | `room_dao`, `retrofit`, `separation_of_concerns`, `architecture_tradeoffs` |
+| `lesson_coordinating_sources` | Coordinating Local and Remote Sources | `repository_pattern` | `offline_first`, `cache_invalidation`, `caching` |
+| `lesson_single_source_of_truth` | Which Source Is Authoritative? | `single_source_of_truth` | `offline_first`, `cache_invalidation`, `state_ownership` |
+| `lesson_observable_or_one_shot_api` | An Observable API, or a One-Shot Read? | `repository_pattern` | `flow_fundamentals`, `flow_collection`, `stateflow`, `single_source_of_truth` |
+| `lesson_model_and_error_boundaries` | Model and Error Boundaries: What May Cross | `layered_architecture`, `error_modeling` | `repository_pattern`, `kotlin_sealed_types`, `room_dao`, `retrofit` |
+
+The Unit is `unit_repositories_and_data_ownership`, titled **Repositories, Data Ownership
+and Single Source of Truth**, homed in `architecture`, and appended **directly after
+`unit_screen_state_holders_and_ui_state`** — position 21 of 21, and third within the
+architecture sequence. No existing Unit moved and no shipped Lesson was edited.
+
+All five Lessons carry Core, Practical and Senior depth and run 1,515–2,161 words including
+code, inside the 552–2,307 range the 82 previously shipped Lessons occupy.
+
+**Configured versions were re-read** from `gradle/libs.versions.toml` during authoring and
+are unchanged from E26-03: Kotlin 2.4.10, `androidx-lifecycle` 2.11.0-beta01, Koin 4.2.2,
+Navigation 3 1.1.1, Room 3.0.1. **No [Part 8](#part-8--kotlin-multiplatform-viewmodel-and-lifecycle-findings)
+contract is used by this Unit** — Unit 3 makes no claim about `ViewModel`, `viewModelScope`,
+clearing or host-supplied owners — so nothing in Part 8 needed re-verification here, and
+E26-05 inherits that obligation unchanged.
+
+### Unit purpose, and how it stays separate from Unit 2
+
+Unit 2 asked who owns the state a screen renders and how long that owner lives. Unit 3 asks
+who owns the policy for obtaining and changing the application's data, and which copy is
+authoritative when two disagree. The two are kept apart deliberately and in the prose:
+
+- **No Lesson turns the state holder into the repository.** L3.3 states explicitly that the
+  answer to two screens disagreeing about a fine is *not* to move the fine into a state
+  holder, because a state holder owns what a screen is currently rendering rather than what
+  is true for the application, and then names the three-part stack — service authoritative,
+  repository exposing, state holder rendering.
+- **No Lesson turns the repository into a persistence wrapper.** L3.1's whole argument is
+  that a repository owning none of the listed decisions has created a file rather than a
+  boundary.
+- **The Unit's five Lessons form one argument**, in the order the issue requires: what
+  responsibility would justify a repository → who coordinates several sources → which copy
+  is authoritative → what API shape the consumer needs → which representations and failures
+  may cross.
+
+### Editorial decisions worth recording
+
+1. **The Unit continues the borrowed-items feature and gives the library a service.** Units
+   1 and 2 used loans with a due date, an overdue rule and a renewal write; Unit 3 keeps the
+   same feature and adds a library service so a second source exists. The vocabulary carries
+   over — `Loan`, `LoanSource`, `RenewalOutcome` — so the epic still reads as one argument,
+   and the **practice-configuration screen stays reserved for Unit 5**.
+2. **The hypothetical is labelled the first time it is used.** L3.2 opens by saying in as
+   many words that this application has no network layer, so the coordination that follows is
+   a design worked through rather than an example lifted from production. L3.3 repeats the
+   limit in its Senior section. No invented remote implementation is ever described as this
+   repository's production code.
+3. **Every policy is stated as a consequence of stated requirements.** L3.2 lists three
+   requirements before drawing a read path and then says outright that one changed
+   requirement — a balance that must never be shown stale — makes the same path a defect.
+   The lesson's Common Mistake is exactly the recital of "read locally, refresh, write to the
+   database" as though it were the pattern.
+4. **Cost is always stated as things.** Following the Unit 1 precedent, the pass-through
+   repository's cost is a name, a file, two forwarding functions and a navigation hop; the
+   model split's cost is two mapping functions, three places a field is named and a
+   translation decision per field.
+5. **No Lesson prescribes one error mechanism.** L3.5 lists a sealed result, an
+   application-owned exception and an outcome carried inside returned data as three
+   defensible shapes, quotes the guidance offering two of them, and states that choosing
+   between them is deliberately not the lesson's argument.
+6. **Forward material is prose that names a Unit, never a link.** L3.1 defers "which side
+   should define that abstraction" to "the unit after this one" without naming a Lesson id,
+   because no Unit 4 Lesson exists.
+7. **No pattern name appears anywhere in the Unit.** MVVM, MVI and MVP are not named, so
+   Unit 5 still has its subject.
+
+### Sources used, and the claims they settle
+
+Five distinct pages across the five Lessons, each opened during authoring and each attached
+to the specific claim it supports.
+
+| Source | Used by | Claim it settles |
+| --- | --- | --- |
+| [Data layer](https://developer.android.com/topic/architecture/data-layer) | L3.1, L3.2, L3.3, L3.4, L3.5 | The five repository responsibilities, quoted verbatim; "Each data source class should have the responsibility of working with only one source of data, which can be a file, a network source, or a local database"; "Other layers in the hierarchy should never access data sources directly; the entry points to the data layer are always the repository classes"; "It's important that each repository defines a single source of truth" and that the exposed data "should always be the data coming directly from the source of truth"; "In order to provide offline-first support, a local data source—such as a database—is the recommended source of truth"; the one-shot/notification split; the model-separation recommendation and its "At minimum" threshold; and both error representations — custom exceptions and a `Result` class |
+| [Architecture recommendations](https://developer.android.com/topic/architecture/recommendations) | L3.1 | "Create repositories even if they contain only a single data source" and "Make sure components in the UI layer such as composables or ViewModels don't interact directly with a data source", both marked **Strongly recommended**, together with the page's own "Treat the recommendations in the document as recommendations and not strict requirements" |
+| [Build an offline-first app](https://developer.android.com/topic/architecture/data-layer/offline-first) | L3.2, L3.3 | That the local data source "should be the exclusive source of any data that higher layers of the app read", which "ensures data consistency between connection states"; and, for L3.2's Senior claim, "Conflict resolution often requires versioning. The app needs to do some bookkeeping to keep track of when changes occurred, so it can pass the metadata to the network data source" |
+| [Best practices for coroutines in Android](https://developer.android.com/kotlin/coroutines/coroutines-best-practices) | L3.4 | "Classes in those layers should expose suspend functions for one-shot calls and Flow to notify about data changes" — reused from E24's settled sources rather than re-researched |
+| [Sealed classes and interfaces](https://kotlinlang.org/docs/sealed-classes.html) | L3.5 | The language mechanism only, cited so a reader can follow a closed error contract without the Lesson teaching sealed types |
+
+Three source-sensitive decisions follow, and all three are acceptance-critical:
+
+- **The offline-first recommendation is never separated from its condition.** L3.3 quotes
+  the sentence whole, names the condition in the next sentence, gives the reason from the
+  offline-first page, and then shows two facts in one application getting different answers.
+  Dropping the condition is precisely how the recommendation becomes "the database is the
+  source of truth".
+- **"Create repositories even if they contain only a single data source" is taught as a
+  uniformity decision, not as a refutation of the no-repository case.** L3.1 quotes it as
+  strongly recommended, states its actual benefit — a uniform entry point, and one type to
+  change when a responsibility arrives — and then says this is a decision about consistency
+  across a codebase rather than a derivation from the feature's requirements, citing the
+  page's own "recommendations and not strict requirements" note. The Lesson's claim about
+  the pass-through type is narrow and survives the recommendation: it has created no
+  *boundary* yet, which is a statement about what it isolates rather than an instruction to
+  delete it.
+- **The error guidance is used for its plurality.** The data-layer page offers custom
+  exceptions *and* a `Result` class, which is what licenses L3.5 to teach the boundary
+  without prescribing a mechanism.
+
+### Repository evidence used, and its limits
+
+Four findings from [Part 7](#part-7--this-repositorys-own-architecture-as-evidence) were
+re-verified against current code before use. **All four were unchanged.**
+
+| Finding | Re-verified as | Used by |
+| --- | --- | --- |
+| Five repository interfaces owned by their consumer-side packages | `AssessmentRepository`, `CurriculumRepository`, `LessonStudyRepository`, `SavedQuestionRepository` in feature packages and `LearningContentRepository` in `curriculum/learning/repository`, all `internal`, with implementations under `data/local/**` and `curriculum/learning/content` | L3.1's Senior section, as evidence that the entry-point rule holds here |
+| No DAO is used outside `data/local` | Re-verified by search across `shared/src/commonMain/kotlin`: no `…Dao()` call appears above `data/local` | L3.1, as the reason the entry point is a fact rather than an intention |
+| **Every repository method is a one-shot `suspend` function; no repository returns a `Flow`** | Re-verified across all five interfaces and their implementations: no `Flow` return type appears in any repository | **L3.4's counterexample**, the Unit's most instructive local finding |
+| `LocalLessonStudyRepository` maps `StudiedLessonEntity` to `StudiedLesson`, and no Room type is visible above `data/local` | Unchanged; the mapping is a two-field copy inside `getStudiedLessons()` | **L3.5's model-boundary evidence** |
+| `StudyProgressStateHolder`'s source-of-truth KDoc | Unchanged, including "[repository] remains the source of truth. Nothing is stored here that the database does not already hold: this is the in-memory projection the UI observes, read back from the repository after every mutation rather than assembled independently" | L3.3's Senior section and L3.4's counterexample |
+| No network layer | Re-verified: `gradle/libs.versions.toml` and `shared/build.gradle.kts` declare no Ktor, Retrofit or OkHttp dependency | Stated as a limit in L3.1, L3.2 and L3.3 |
+
+**What the evidence is used for, and what it is explicitly not used for.** L3.1 says the
+application demonstrates the boundary and not the coordination. L3.3 says that with no
+network layer no fact here has two candidate authorities, so the codebase shows the
+vocabulary being used precisely and is "no evidence whatsoever" for the conflict reasoning.
+L3.5 adds the counterpart limit: `LearningContentRepository` returns the learning document's
+own types directly, so the entity-to-domain mapping is **not** presented as something every
+repository here needs. **No production architecture code was changed or proposed for
+change**, and nothing in authoring surfaced a product defect worth recording.
+
+### What each Lesson actually does, against the issue's requirements
+
+**L3.1 — repository responsibility.** The responsibility model is a six-item list framed as
+a menu of decisions rather than a checklist, introduced by the ownership question — what
+decision does this component own that its callers should not own themselves — and followed
+immediately by the guidance's own five. The repository-versus-data-source comparison is a
+six-row table on one feature (`LoanRepository` over `LocalLoanSource` and `RemoteLoanSource`)
+whose rows are decisions, and the Lesson states that the distinction does not depend on a
+class-name suffix. The **no-repository case** is `ReminderPreferenceRepository`, a
+two-function pass-through over one trivial source, answered with "none yet" and costed. The
+**requirement change that earns it** is a four-item list: a second copy on the service, a
+readable-while-slow requirement, a second consumer needing one answer, and a stored
+representation that stops matching the application's. The **interface misconception** is
+corrected with four conditions that would justify one, and the Lesson says in as many words
+that *which side defines the abstraction* belongs to the next Unit.
+
+**L3.2 — coordination.** Four decisions are named as the repository's; the read path is six
+steps under three stated requirements, followed by a paragraph that holds the diagram to its
+own requirement — a read-triggered refresh satisfies a freshness bound measured from opening
+and not one that holds while the screen stays open, so the second trigger is named as a
+decision rather than left implicit. The write path is a four-column table comparing
+local-first against remote-confirmed on requirement, path, what the reader sees and what a
+failure means, and the remote-confirmed row is followed by the outcome the neat version of
+that design omits: the service may commit while its answer is lost, so the operation has
+three outcomes and "unknown" is one of them. The Lesson draws the consequence as a
+requirement rather than a mechanism — the unknown outcome is a state the screen can be in,
+and resolving it means the operation has to be safe to repeat. Origin-hiding is taught with its counterweight: four things a consumer
+legitimately needs — staleness, refresh in progress, last refresh failed, unsent local
+changes — separated from implementation origin by the **application meaning / implementation
+origin** distinction, and expressed in a `LoansSnapshot` type that names no transport, entity
+or exception. Freshness is Senior depth: it cannot be inferred from the data, so a cache that
+recorded nothing cannot be given a staleness policy later.
+
+**L3.3 — authority.** The correction is stated first and the definition is per fact, about
+disagreement, and about an owner rather than a technology. The three-answer comparison is a
+four-column table: a local store authoritative for an offline draft, the library service
+authoritative for a fine, and an in-memory session holder authoritative for a sort order —
+with the Lesson saying that the third breaks the reflex because source of truth says nothing
+about how long a value lives. The conflict is concrete (local 80 against service 100), the
+"which is newer" question is rejected unless the requirement says so, and four resolution
+rules are listed without one being made a default. The two-screen failure is diagnosed as
+*no authoritative owner* rather than as duplication. The offline-first recommendation is
+quoted with its condition and its reason.
+
+**L3.4 — API shape.** Both guidance sentences are quoted, and the decisive word is named as
+*notified*. The same-data comparison is `observeLoans(): Flow<List<Loan>>` against
+`suspend fun quoteRenewal(id: LoanId): RenewalQuote`, with the one-shot consequence stated as
+a contract rather than a defect. The consumer cost of a stream is three obligations —
+collection lifetime, later values, a policy for values it must ignore — and the mechanics are
+handed to E24 by link. Mutable stream exposure is refused explicitly as the data-boundary
+form of Unit 2's second-write-path problem. **Both shapes on one repository** is Senior depth
+with three conditions that keep it one truth. The **one-shot counterexample** is this
+application, with a two-row buys/costs table naming the obligation it moves onto writers.
+
+**L3.5 — boundaries.** Both slogans are rejected in the first paragraph and replaced with the
+independent-change question. The split is shown as three real types whose differences are
+constraints rather than spelling, with a four-row buys/costs table. The **leakage example** is
+constructed so the coupling is genuinely present — the shared type carries the service's
+ISO-8601 string and the *screen* parses it — and the Lesson explicitly warns against
+overstating it, noting that a serialization library can map a renamed field without the change
+reaching upward. The **small-feature counterexample** is the reminder-time preference. The
+**error boundary** contrasts catching a transport library's exception with an
+application-owned failure contract, lists three mechanisms, and states that the boundary claim
+is narrower and stronger than any of them. The separation from Unit 2's L2.3 is stated in the
+Senior section: L2.3 asks how a screen represents an error it must render, L3.5 asks what
+representation reaches the state holder in the first place.
+
+### Corrections made during review
+
+Three defects were found by review after the Lessons were first written, all in Unit 3's own
+prose and all fixed in this change. They are recorded because two of them are the kind of
+overstatement this subject is especially prone to — a design described by the outcomes its
+author planned for rather than by the outcomes it has.
+
+| Where | Defect | Correction |
+| --- | --- | --- |
+| L3.1, Senior | The paragraph claimed all five repository implementations sit "in a separate tree under `data/local`". **False**: four do, and `BundledLearningContentRepository` sits under `curriculum/learning/content` because the document it serves is a bundled file rather than a table. [Part 7](#part-7--this-repositorys-own-architecture-as-evidence) records this correctly and the Lesson did not | The exception is now described, and used: the implementations are grouped by the source they work with, and no consumer is affected by which one that is |
+| L3.2, Practical | The read-path diagram showed a single read-triggered refresh while the stated requirement was a freshness bound holding "for as long as the reader is looking". A list left open drifts indefinitely under that path, so the Lesson's own "when a refresh is attempted, and what triggers it" decision was answered only half way | The requirement now says explicitly that the bound holds while the list is open, and a paragraph names the missing trigger — a refresh while the screen is visible, or the service announcing a change — while handing the mechanism to other curricula |
+| L3.2, Practical | The remote-confirmed write row said a failure means "the write did not happen" and that "the two copies never diverged". **Too strong**: if the service commits and the response is lost, the write happened and the local copy is stale, and no ordering of two sources across a network makes them change atomically | The row now names three outcomes — accepted, refused, unknown — and two paragraphs draw the consequence as requirements: the unknown outcome is a state the screen can be in, and repeating the confirmation has to be safe. The summary claim is narrowed from "refuses divergence" to "never diverges on purpose" |
+
+None of the three changed an identity, a mapping, a source or a Lesson boundary.
+
+### Semantic review of the Questions this Unit now reaches
+
+All six ACTIVE Questions in the resolved pool were re-read in full and independently solved
+against the finished prose. **The E26-01 findings in
+[Part 5](#part-5--semantic-assessment-review) all still hold**; nothing below overturns one.
+The `architecture` Topic still holds 22 ACTIVE and 4 DEPRECATED Questions over 18 Subtopics,
+re-counted from the bundled JSON during authoring.
+
+| Question | Level | Reached through | Re-read verdict against the shipped Lessons |
+| --- | --- | --- | --- |
+| `repository_observable_api_shape` | APPLIED | `repository_pattern` (L3.4) | **The Unit's best-matched Question, and it survives the prose test.** L3.4 teaches exactly the reasoning it turns on — a requirement to reflect writes the screen did not make needs the repository to be able to push, and a one-shot read is stale the instant it returns — using a different feature, different wording and none of its distractors. The Lesson's one-shot half is taught as a contract rather than as a wrong answer, which is what keeps it from coaching the option |
+| `single_source_of_truth_001` | FOUNDATION | `single_source_of_truth` (L3.3) | Sound and answerable from L3.3's Core. It remains definitional — it establishes that one owner is authoritative and consumers read from there — and never makes the reader choose an owner for a stated requirement, which is GAP-U3-C unchanged. Its distractor rejecting last-writer-wins as a definition is consistent with L3.3's treatment of resolution rules as requirements |
+| `architecture_paging_ownership` | APPLIED | `layered_architecture` (L3.5) | Sound, and a much better fit here than in Unit 1, exactly as E26-01 predicted. Its argument — deciding when a page is fetched, caching it and recording where to resume are data-layer responsibilities — is L3.1's responsibility list and L3.2's coordination reasoning, and a reader who has finished this Unit has the data-layer vocabulary the Question uses. Paging's own APIs are still taught nowhere and do not need to be |
+| `dto_entity_domain_model_boundary` | APPLIED | `layered_architecture` (L3.5) | Sound, and the closest existing match to L3.5's contract. Its correct answer is the Lesson's central trade-off, including the mapping cost, and its explanation's "may be unnecessary for very small features" is the Lesson's small-feature counterexample. L3.5 teaches both halves without reproducing its wording |
+| `architecture_error_mapping_boundary` | APPLIED | `error_modeling` (L3.5) | **Confirmed to assess the responsibility L3.5 actually teaches.** The Question is about a state holder catching a transport library's exception types, which is the Lesson's error-boundary example in the same shape; its explanation's conclusion — that translating at the repository boundary keeps the client choice inside the data layer — is the Lesson's claim. Importantly, its correct answer is the *boundary* one and not a Result-versus-exception one, so it does not push L3.5 toward prescribing a mechanism |
+| `architecture_error_modeling_result_type` | APPLIED | `error_modeling` (L3.5) | Sound, and the one to watch. It asks why a sealed result rather than throwing, and its correct answer — the failure becomes part of the signature the caller must handle — is a property L3.5 states while listing the sealed result as one of three defensible shapes. **L3.5 was deliberately not written to make this Question's option the lesson's conclusion**: its explanation is itself careful ("Exceptions stay reasonable for genuinely exceptional conditions"), so the Question and the Lesson agree that this is a trade-off. No defect, and no change needed |
+
+**Adjacent Questions read as duplication guards, none edited or re-mapped:**
+`flow_one_shot_result_vs_observable_stream` (`async_reactive` / `flow_fundamentals`),
+`offline_first_001` and `offline_first_local_write_then_sync` (`local_data` / `offline_first`),
+`cache_invalidation_staleness_policy` (`local_data` / `cache_invalidation`), and `room_dao_001`
+(`local_data` / `room_dao`). All five reach this Unit only as supporting context and therefore
+create no practice here, which is asserted rather than inspected. `offline_first_001` in
+particular states the recommendation L3.3 had to qualify, and the Lesson's wording is
+compatible with it: the Question's own explanation says the remote source "is still
+authoritative for data the device did not create".
+
+**The two relevant DEPRECATED repository Questions were re-read and not edited.**
+`repository_pattern_001` occupied the repository's role — coordinating access to one or more
+data sources behind a focused API, keeping persistence types behind the boundary — and
+`repository_vs_data_source_responsibility` occupied the repository-against-data-source split
+on a two-source feature. **Both concepts are now taught in full by L3.1, and neither retired
+wording is reproduced.** L3.1's treatment is materially wider than either: it derives the
+responsibility from an ownership question, treats the list as a menu rather than a
+definition, and adds the case where the type is not worth adding, which neither Question ever
+posed. Their existence is why GAP-U3-A is the widest gap in the Unit, and E26-08 owns the
+response.
+
+**No Question was created, edited, re-mapped, re-levelled or re-statused by this issue**, and
+no factual defect was found in any Question read.
+
+### GAP-U3-A to GAP-U3-C after authoring
+
+All three gaps survive the finished prose unchanged. Authoring proved no gap definition
+wrong, and E26-08 still owns all three.
+
+| Gap | Status after E26-04 | What the finished Lesson changes about it |
+| --- | --- | --- |
+| GAP-U3-A | **Open, unchanged; still the widest gap in the Unit** | L3.1 now ships the whole contract — the responsibility model, the repository-against-data-source comparison on one feature, the no-repository case and the requirement change that earns the type. The ACTIVE bank still holds exactly one `repository_pattern` Question and it is about API *shape*, so the responsibility itself remains unassessed. The gap is now a gap in assessment of material that ships, which is the strongest case an E26-08 Question can have. **Neither retired wording may be re-asked** |
+| GAP-U3-B | **Open, unchanged** | L3.2 ships the read path, both write paths, and the origin/freshness/failure contract as the repository's own decision. The persistence Topic still assesses staleness policy and offline-first from the storage side, and nothing poses the *contract* question from above. E26-08 should note that the Lesson's sharpest testable idea is the application-meaning-against-implementation-origin distinction, not the read path |
+| GAP-U3-C | **Open, unchanged; still a strong candidate** | L3.3 ships the decision the gap describes, including a correct answer that is not a database — the session-scoped in-memory owner — and the conflicting-copy scenario with a stated rule. `single_source_of_truth_001` is still definitional and `offline_first_001` still states the recommendation from the persistence side, so nothing makes the reader choose |
+
+**The L3.4 duplication guard, recorded for E26-08 rather than raised as a gap.**
+`flow_one_shot_result_vs_observable_stream` (`async_reactive` / `flow_fundamentals`, APPLIED)
+already assesses very nearly L3.4's decision from the stream side, with a repository example
+and a deliberately frozen quote. L3.4 still had to teach the architecture decision, because
+Unit 3 needs it and because the Question is unreachable from any E26 primary mapping — which
+is asserted in the test suite. **This is not automatically an E26 assessment gap, and no new
+GAP id was created for it.** E26-08 must decide deliberately whether an architecture-side
+Question adds reasoning the Flow-side one does not: the candidate distinction is that the
+Flow Question decides an API shape from a consumer requirement, while the unassessed
+architecture reasoning is what a stream commits *every* caller to and why exposing a mutable
+stream from the data layer recreates a second write path.
+
+**L3.5's existing coverage is confirmed as meaningful and no new gap was invented.**
+`dto_entity_domain_model_boundary`, `architecture_error_mapping_boundary` and
+`architecture_error_modeling_result_type` between them assess the mapping trade-off, the
+leakage consequence and one error representation, which is more than any other Lesson in the
+Unit has. One observation is recorded for E26-08 without being promoted to a gap: **nothing
+assesses the choice between separate and shared models in the direction that favours one
+type** — every existing Question argues the split — so a reader could pass all three while
+still believing the triple is mandatory. That is the same shape of observation E26-02 recorded
+about L1.3, and a single Question may well cover it alongside GAP-U3-A.
+
+### Actual practice reach, resolved through the production resolver
+
+Recomputed by running the shipped Unit through `PracticeBuilderViewModel` and the real
+selection path in `LearningUnitPracticeIntegrationTest`, not by reading mappings. The Unit
+configures `AssessmentScope.Subtopics` of exactly its four primary concepts and resolves
+**six** Questions:
+
+| Resolved Question | Level | Reached through | Semantically belongs mainly to |
+| --- | --- | --- | --- |
+| `repository_observable_api_shape` | APPLIED | `repository_pattern` | Unit 3, and it is the Unit's best-matched Question |
+| `single_source_of_truth_001` | FOUNDATION | `single_source_of_truth` | Unit 3 |
+| `architecture_error_mapping_boundary` | APPLIED | `error_modeling` | Unit 3 |
+| `architecture_error_modeling_result_type` | APPLIED | `error_modeling` | Unit 3 |
+| `architecture_paging_ownership` | APPLIED | `layered_architecture` | Unit 3, **shared with Unit 1** |
+| `dto_entity_domain_model_boundary` | APPLIED | `layered_architecture` | Unit 3, **shared with Unit 1** |
+
+This matches [Part 6](#part-6--unit-practice-routing-modelled-now)'s modelled pool exactly —
+six Questions, the same six ids — so no mapping moved during authoring, and E26-01's
+prediction is confirmed rather than assumed. The level split is one FOUNDATION and five
+APPLIED, with **no ADVANCED Question**, which matches the Topic-wide observation in Part 5.
+
+**The Unit 1 / Unit 3 overlap is now a fact rather than a prediction.**
+`layered_architecture` is primary in Unit 1's closing Lesson and in Unit 3's, so
+`architecture_paging_ownership` and `dto_entity_domain_model_boundary` appear in both Units'
+practice — asserted directly by computing both pools and intersecting them. Both fit Unit 3
+better: one is a data-layer responsibility question in data-layer vocabulary, the other is
+L3.5's central trade-off. It was **not** fixed by demoting `layered_architecture` from L3.5 or
+from Unit 1, by re-mapping either Question, or by inventing a taxonomy concept, all of which
+the issue forbids and the plan already rejected. E26-08 owns the decision; the test asserts
+the intersection so a later re-map has to re-state the consequence rather than silently
+repairing it.
+
+Two further structural facts, both asserted rather than inspected:
+
+1. **Supporting concepts broaden nothing.** The Unit's twelve supporting-only concepts —
+   including `offline_first`, `cache_invalidation`, `caching`, `room_dao`, `retrofit`,
+   `flow_fundamentals`, `flow_collection`, `stateflow`, `kotlin_sealed_types`,
+   `state_ownership` and `separation_of_concerns`, between them holding twenty-one ACTIVE
+   Questions — contribute nothing to the pool. `flow_one_shot_result_vs_observable_stream` is
+   asserted by id to stay outside it.
+2. **No shipped Unit's practice changed.** No shipped Lesson takes an `architecture` Subtopic
+   as primary, so nothing this Unit maps can reach an existing Unit's pool. Unit 2's pool is
+   unchanged at five and shares no Question with Unit 3, because their primary concepts are
+   disjoint; Unit 1's is unchanged at five and shares the two Questions above.
+
+### Cross-links
+
+Backward only, and every target already shipped. L3.1 → `lesson_when_an_interface_is_a_boundary`,
+`lesson_layers_and_their_cost`, `lesson_state_holder_responsibility`; L3.2 → L3.1,
+`lesson_layers_and_their_cost`; L3.3 → L3.2, `lesson_state_holder_responsibility`; L3.4 →
+`lesson_why_flow`, `lesson_state_flow`, `lesson_choosing_a_stream_abstraction`, L3.3; L3.5 →
+`lesson_layers_and_their_cost`, `lesson_modelling_ui_state`, L3.1.
+
+This is the plan's intended E24 graph for L3.4 exactly, plus one within-Unit backward link per
+Lesson and the Unit 1/Unit 2 anchors each Lesson actually applies — which follows the Unit 1
+and Unit 2 precedent. **No shipped Lesson was edited**, no Unit 1 or Unit 2 Lesson received a
+reciprocal link, and no forward link was invented.
+
+One test had to be corrected rather than extended. `stateHolderUnitLinksBackwardsOnlyToShippedComposeAndCoroutineAnchors`
+asserted that *no other Lesson in the document* names a Unit 2 Lesson, which was true when
+Unit 2 was the last Unit and is not the property the plan actually requires. It was narrowed
+to Lessons authored **before** Unit 2, which is what "no shipped Lesson was edited to receive
+a reciprocal link" means; a later Unit linking backward into Unit 2 is the intended graph, and
+Unit 3 does it twice. The new Unit 3 link test uses the same narrowed form.
+
+### Tests changed, and why
+
+| File | Change | Why production data made it necessary |
+| --- | --- | --- |
+| `BundledLearningCurriculumTest` | Unit id, title and home-Topic lists extended by one; Lesson id/title order and primary mappings for the new Unit added; the Unit 2 link test narrowed from "no other Unit" to "no earlier Unit"; two new tests — `dataOwnershipUnitKeepsItsPlannedBridgesOutOfPrimaryPractice` and `dataOwnershipUnitLinksBackwardsOnlyToShippedArchitectureAndFlowAnchors` | The document lists Units positionally, and the twelve bridges are where a promotion to primary would silently claim another curriculum's practice — `offline_first` and `room_dao` most of all, since this Unit's whole boundary with the persistence curriculum rests on them staying supporting. The bridge test also pins the two concepts that are primary in one Lesson and supporting in another, which the validator cannot catch across Lessons |
+| `LearningUnitPracticeIntegrationTest` | The traversal now expects three architecture Units and `listOf(5, 5, 5)` Lessons, and its final studied-record count rises from 81 to 86; the shared expectation table gained a Unit 3 row; new test `theDataOwnershipUnitPractisesItsPrimaryConceptsIncludingTwoSharedWithUnitOne` | Continue Learning walks the whole document, so a third architecture Unit changes the traversal and the Topic's progress denominator. Unit 3 fits the shared table — all four primary concepts hold Questions — so the bespoke test exists to pin the exact six ids, to compute the Unit 1 intersection rather than assert it from memory, and to assert that the E24 Flow Question stays outside the pool |
+
+No test was added that only re-states schema validation `LearningCurriculumValidatorTest`
+already performs, and the data-driven suites — the reader journey over every shipped Unit,
+Topic Detail's Unit rows, the end-to-end repository path — needed no edit because they read
+the document rather than listing it.
+
+### Validation performed
+
+| Command | Result |
+| --- | --- |
+| `python3` structural pre-check over both bundled JSON documents | Ids unique, every mapping an ACTIVE Subtopic, no primary/supporting overlap, every `relatedLessonIds` target resolvable, no blank or placeholder text, every comparison row matching its header count, every Source URL well-formed |
+| `./gradlew :shared:jvmTest --tests "*BundledLearningCurriculumTest*" --tests "*LearningUnitPracticeIntegrationTest*" --tests "*LearningCurriculumValidatorTest*" --tests "*LearningContentEndToEndTest*"` | 98 tests, 0 failures (the first run surfaced one real defect: the Unit 2 forward-link assertion described above) |
+| `./gradlew :shared:jvmTest` | **1,393 tests, 0 failures**, including `LearningProductionContentJourneyTest`, which renders every authored block of the new Unit in the reader, checks the reading column never widens, and opens every authored Source link through the app's own URI boundary |
+| `python3 tools/learning_question_coverage.py --write` then `--check` | Snapshot regenerated and reported current |
+| `cd tools && python3 -m unittest test_learning_question_coverage.py` | 21 tests, OK |
+| `./gradlew :shared:check` | Passed |
+| `./gradlew :androidApp:assembleDebug` | Passed |
+| `git status --short` and `git diff --check` | Five files changed — the bundled learning document, two jvm test files, this plan and the generated coverage snapshot — with no build or cache output and no whitespace defects |
+
+The regenerated `docs/content/learning-question-coverage.md` now reports **21 active Units and
+87 active Lessons**, the new Unit appearing directly after Unit 2 with five Lessons, a pool of
+six Questions across two levels and no ADVANCED Question, and one primary Subtopic still with
+no active Question — which remains `architecture_tradeoffs` and GAP-U1-E rather than anything
+Unit 3 introduced.
+
+### Not validated
+
+- **`iosArm64` is not compiled locally or on CI**, unchanged from E25, E26-01, E26-02 and
+  E26-03. Unit 3 makes no multiplatform claim at all, so nothing in its prose depends on that
+  target; the limitation is reported because it is still true of the epic.
+- **No CI run is claimed.** Nothing in this issue was observed on GitHub Actions.
+- **Backlog validation could not be run**: `PyYAML` is unavailable in this environment, so
+  `.github/project/backlog.yml` was read as text rather than parsed and validated. Issue #364
+  was read from that file rather than through `gh`, which is still not installed.
+- **The learning content itself is editorial** and no automated check can confirm that a
+  Lesson teaches what it claims; the semantic review above is a judgement, as Rule 10 of the
+  authoring contract requires.

@@ -16890,7 +16890,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Be careful with \"exactly once\", because it is three different claims that a single sentence tends to merge. **Recording application handling state** is what a pending-or-acknowledged fact provides: the application can read whether an obligation remains outstanding. **Transport delivery** is what a stream or a network call provides, and it is a separate matter. **Side-effect execution** is whether the thing in the world actually happened once — and a process can end between performing an external action and recording that it did, which is precisely the window in which the first two are satisfied and the third is not."
+                  "text": "Be careful with \"exactly once\", because it is three different claims that a single sentence tends to merge. **Recording application handling state** is what a pending-or-acknowledged fact provides: the application can read whether an obligation remains outstanding. **Transport delivery** is what a stream or a network call provides, and it is a separate matter. **Side-effect execution** is whether the thing in the world actually happened once. The three come apart at one specific moment, and it is worth being exact about which way round it falls: if the process ends *after* the external action has been performed and *before* the record of it has been written, the action happened and the application has no idea that it did. The obligation still reads as outstanding, so whatever resumes it performs the action a second time. That is the ordinary reason a retry duplicates a request — not a failure to execute, but a missing record of an execution that succeeded — and no arrangement of owners closes that window by itself."
                 },
                 {
                   "type": "paragraph",
@@ -16906,7 +16906,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "One last framing, because it generalises past the example. A mechanism describes *delivery*; a requirement describes *handling*; and no description of delivery answers a question about handling. That is why the argument in this lesson never needed to compare two stream types, and why comparing them is the wrong first move: both of them lose everything they hold when the process ends, so if the fifth question is yes the comparison was decided before it began, and if it is no then either might do and the choice is a detail rather than the design."
+                  "text": "One last framing, because it generalises past the example. A mechanism describes *delivery*; a requirement describes *handling*; and no description of delivery answers a question about handling. That is why the argument in this lesson never needed to compare two stream types, and why comparing them is the wrong first move: both of them lose everything they hold when the process ends, so if the fifth question is yes the comparison was decided before it began. If it is no, the answer is still not that either will do — it is that the four remaining guarantees do the choosing. Whether a consumer arriving later must receive the value, whether more than one consumer must, and whether losing it or repeating it is acceptable are precisely what replay, buffering, conflation and single-receiver against broadcast delivery decide, and the streams curriculum sets out which contract provides which. The mechanism becomes a detail only once every guarantee that applies is satisfied, which is the last step of the sequence rather than a way of skipping it."
                 },
                 {
                   "type": "callout",
@@ -17001,11 +17001,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "**Three — the studied-lesson and progress projections several screens share.** Now the requirement changes shape. More than one destination renders the same truth, those destinations are simultaneously alive on a back stack, and a change made in one must be visible in the others when the reader navigates back. A screen-level owner cannot hold this: each destination would have its own copy, and going back would show stale screens above a fresh one. That is the application-lifetime rung, and this repository is a worked example of it."
+                  "text": "**Three — the studied-lesson and progress projections several screens share.** Now the requirement changes shape. More than one destination renders the same truth, those destinations are simultaneously alive on a back stack, and a change made in one must be visible in the others when the reader navigates back. Notice first what does **not** force the rung, because this is where the argument is most often waved through. Several screens needing one fact is not enough on its own: destination-scoped owners that each observe an *observable* source all receive the change as it happens, keep their own derived state, and none of them goes stale — which is the arrangement the data-ownership unit describes and the ordinary answer. The rung is forced only when there is no such source to observe, so that a change made in one destination reaches another only if something above both of them is holding the result. That is this repository's situation, which is why it is a worked example rather than a general rule."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Its `AppCoroutineScope` is a distinct type wrapping a scope with a `SupervisorJob`, deliberately named so that injecting it is unambiguous, and the reason it exists is stated in its own documentation rather than inferred: the caches built on it \"are shared by several screens and survive a navigation entry being destroyed, so they cannot belong to a `viewModelScope`\". Five state holders receive it. That is the argument in the right order — a requirement about what must survive a navigation entry being destroyed, and then a scope chosen to match. It is worth adding what makes it defensible *here*: this application is local-first with no network layer, and these holders are in-memory projections of a database that remains the source of truth. **Application scope is not the generic answer**; it is the answer when several screens genuinely share one truth."
+                  "text": "Its `AppCoroutineScope` is a distinct type wrapping a scope with a `SupervisorJob`, deliberately named so that injecting it is unambiguous, and the reason it exists is stated in its own documentation rather than inferred: the caches built on it \"are shared by several screens and survive a navigation entry being destroyed, so they cannot belong to a `viewModelScope`\". Five state holders receive it. That is the argument in the right order — a requirement about what must survive a navigation entry being destroyed, and then a scope chosen to match. It is worth adding what makes it defensible *here*, and the decisive detail is the one the previous paragraph named: **every repository in this application exposes one-shot suspending reads and none of them returns a `Flow`**, verified across every interface and implementation. There is therefore no observable source for a destination-scoped owner to subscribe to, and the shared projection exists to supply what an observable repository would otherwise have supplied — it is read back from the repository after every mutation and republished, with the database remaining the source of truth. The application is also local-first with no network layer. **Application scope is not the generic answer**, and it is not earned by the number of screens reading a fact; it was earned here by a data-layer shape that leaves nothing else to observe. Change that shape and this rung stops being the right one."
                 },
                 {
                   "type": "paragraph",
@@ -17100,6 +17100,7 @@
           ],
           "relatedLessonIds": [
             "lesson_delivery_guarantees",
+            "lesson_observable_or_one_shot_api",
             "lesson_owner_scoped_work",
             "lesson_viewmodel_lifetime_and_persistence",
             "lesson_coroutine_scope_ownership"
@@ -17170,7 +17171,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "That is the whole architecture, and every part of it earns its place. A state holder exists because the screen has state to own and one write path to keep. A data contract exists because the screen owner should not name the storage mechanism, which is the boundary the data-ownership unit designed. What the feature deliberately does **not** have is the interesting half: no domain layer, because none of the four conditions that earn one is present; no use case forwarding a single repository call; no reducer or action type, because there is one transition and it is an assignment; no occurrence mechanism, because nothing here must be delivered to anybody; and no second representation of a time of day, because both sides of the boundary have exactly one reason to change between them."
+                  "text": "That is the whole architecture, and every part of it earns its place. A state holder exists because the screen has state to own and one write path to keep. A data contract exists because the screen owner should not name the storage mechanism, which is the boundary the data-ownership unit designed. What the feature deliberately does **not** have is the interesting half: no domain layer, because none of the four conditions that earn one is present; no use case forwarding a single repository call; no reducer or action type, because there is one transition and it is an assignment; no occurrence mechanism, because nothing here must be delivered to anybody; and no second representation of a time of day, because both sides of the boundary have exactly one reason to change between them. One thing it does take care about is not structure at all: the write has to commit, because the reader was shown the new value, so it belongs to an owner that will not be cancelled halfway through it. That is the owner-scoped-work test answered without adding a single type."
                 },
                 {
                   "type": "paragraph",
@@ -17221,7 +17222,7 @@
                     [
                       "An owner whose lifetime exceeds the screen",
                       "The submission must complete whether or not the reader stays, and survive the process",
-                      "Writing a preference completes while the reader is looking at it, and nothing is promised if it does not"
+                      "The write must still commit — the reader was shown the new value — but it is one short write with nothing to continue afterwards, so what it needs is an owner that is not cancelled mid-write, not a further rung of the ladder"
                     ]
                   ]
                 },

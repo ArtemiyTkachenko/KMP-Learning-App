@@ -1836,9 +1836,13 @@ internal class BundledLearningCurriculumTest {
             ),
             lessons.getValue("lesson_delivery_guarantees").relatedLessonIds,
         )
+        // The observable-API link is load-bearing rather than decorative: the Lesson's
+        // application-scope rung turns on this repository having no observable source to
+        // subscribe to, which is that Lesson's decision, so the bounded claim carries its pointer.
         assertEquals(
             listOf(
                 "lesson_delivery_guarantees",
+                "lesson_observable_or_one_shot_api",
                 "lesson_owner_scoped_work",
                 "lesson_viewmodel_lifetime_and_persistence",
                 "lesson_coroutine_scope_ownership",

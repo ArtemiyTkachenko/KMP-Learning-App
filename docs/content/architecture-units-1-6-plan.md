@@ -3123,8 +3123,12 @@ universal rule, and the acceptable-loss column stays transient.
 
 **Exactly-once caution.** The Senior section separates three claims a single sentence tends to
 merge: recording application handling state, transport delivery, and side-effect execution — and
-names the window in which the first two hold and the third does not, a process ending between
-performing an external action and recording that it did. The phrasing the Lesson prefers is stated
+names the window in which they come apart, being explicit about which way round it falls. If the
+process ends *after* the external action has been performed and *before* the record of it has been
+written, the action happened and the application does not know it did; the obligation still reads as
+outstanding, so whatever resumes it performs the action again. The Lesson states that this is the
+ordinary reason a retry duplicates a request — a missing record of an execution that succeeded,
+rather than a failure to execute. The phrasing the Lesson prefers is stated
 outright: *the application can record whether this obligation remains pending, and a consumer can
 read that record*. General exactly-once processing is named as outside this curriculum, with a
 one-clause pointer to where stronger properties actually come from (an identity the external system
@@ -3144,8 +3148,12 @@ beside the rejected one, *something called an event → a stream type*. Its Seni
 general form: a mechanism describes delivery, a requirement describes handling, and no description
 of delivery answers a question about handling — **which is why the Unit never compares two stream
 types at all**: both lose everything they hold when the process ends, so a yes to the
-process-survival question decides the comparison before it begins, and a no makes the choice a
-detail rather than the design. This is the E25 handoff row "`Channel` against `SharedFlow` as a
+process-survival question decides the comparison before it begins. A no does **not** make the stream
+types interchangeable, and the Lesson says so: the four remaining guarantees are what replay,
+buffering, conflation and single-receiver against broadcast delivery actually decide, the streams
+curriculum owns which contract provides which, and the mechanism becomes a detail only once every
+guarantee that applies is satisfied — the last step of the sequence rather than a way of skipping
+it. This is the E25 handoff row "`Channel` against `SharedFlow` as a
 ViewModel event design decision" answered as the plan intended — reframed as the guarantee question
 and deliberately **not** answered as a type comparison.
 
@@ -3231,6 +3239,14 @@ conditions is present), no use case forwarding a single repository call, no redu
 anybody), and no second representation of a time of day (both sides have one reason to change
 between them). The Core section states before either example that this is a **complete and correct**
 architecture rather than a first draft to be grown out of.
+
+**One thing Feature A does take care about is not structure**, and it was added during review: the
+preference write has to commit, because the reader was shown the new value, so it belongs to an owner
+that will not be cancelled halfway through it — the owner-scoped-work test answered without adding a
+single type. The element table's last row says the same thing, that what the write needs is an
+uncancelled owner rather than a further rung of the ladder. An earlier draft said instead that
+"nothing is promised if it does not" complete, which contradicted the feature's own stated
+requirement and would have left the smallest sufficient architecture failing a promise it makes.
 
 **Feature B — the borrowing checkout**, a committed workflow in the same library application. Five
 requirements are stated, and each buys exactly one piece of structure: a real eligibility rule with
@@ -3412,8 +3428,8 @@ Backward only, and every target already shipped. L6.1 → `lesson_transient_ui_e
 `lesson_transient_effect_delivery`, `lesson_state_flow`, `lesson_state_holder_responsibility`,
 `lesson_single_source_of_truth`; L6.2 → L6.1, `lesson_transient_effect_delivery`,
 `lesson_shared_flow`, `lesson_choosing_a_stream_abstraction`, `lesson_single_source_of_truth`;
-L6.3 → L6.2, `lesson_owner_scoped_work`, `lesson_viewmodel_lifetime_and_persistence`,
-`lesson_coroutine_scope_ownership`; L6.4 → `lesson_layers_and_their_cost`,
+L6.3 → L6.2, `lesson_observable_or_one_shot_api`, `lesson_owner_scoped_work`,
+`lesson_viewmodel_lifetime_and_persistence`, `lesson_coroutine_scope_ownership`; L6.4 → `lesson_layers_and_their_cost`,
 `lesson_state_holder_responsibility`, `lesson_what_a_repository_owns`,
 `lesson_when_a_domain_layer_earns_its_place`, `lesson_classifying_a_real_architecture`, L6.2 and L6.3.
 

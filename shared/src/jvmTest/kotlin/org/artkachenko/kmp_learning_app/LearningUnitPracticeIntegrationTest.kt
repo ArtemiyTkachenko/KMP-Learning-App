@@ -212,17 +212,21 @@ internal class LearningUnitPracticeIntegrationTest {
             // the coroutines Units leads into the architecture Unit rather than to Complete.
             val architectureUnits = BundledLearningContentRepository().getActiveUnitsByTopic("architecture")
             assertEquals(
-                listOf("unit_architecture_responsibilities_and_boundaries"),
+                listOf(
+                    "unit_architecture_responsibilities_and_boundaries",
+                    "unit_screen_state_holders_and_ui_state",
+                ),
                 architectureUnits.map { it.id },
             )
-            assertEquals(listOf(5), architectureUnits.map { it.lessons.size })
+            assertEquals(listOf(5, 5), architectureUnits.map { it.lessons.size })
             val architectureTopic = topic("architecture")
             val architectureParents = architectureUnits.associate { it.id to unit(it.id) }
+            val architectureLessonCount = architectureUnits.sumOf { it.lessons.size }
             suspend fun awaitArchitectureTopic(count: Int) {
                 architectureTopic.uiState.await { state ->
                     state is TopicDetailUiState.Content &&
                         (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
-                        StudyProgressSummary.Progress(count, 5)
+                        StudyProgressSummary.Progress(count, architectureLessonCount)
                 }
             }
             awaitArchitectureTopic(0)
@@ -295,9 +299,9 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             val rebuilt = LocalLessonStudyRepository(database)
             assertFalse(rebuilt.isStudied(earlierLesson.id))
-            // 43 `android_ui` Lessons, 29 in the coroutines and Flow Units and 5 in the
-            // architecture Unit, less the one that was just un-studied.
-            assertEquals(76, rebuilt.getStudiedLessons().size)
+            // 43 `android_ui` Lessons, 29 in the coroutines and Flow Units and 10 in the two
+            // architecture Units, less the one that was just un-studied.
+            assertEquals(81, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -428,6 +432,13 @@ internal class LearningUnitPracticeIntegrationTest {
                         "sharedflow",
                         "flow_sharing",
                     ) to 11
+                ),
+                // E26-03. Unlike Unit 1, this Unit joins the table: both of its primary
+                // concepts hold ACTIVE Questions, so the identity the loop asserts between
+                // concepts and resolved Subtopics holds. Four Questions arrive through
+                // `state_ownership` and one through `unidirectional_data_flow`.
+                "unit_screen_state_holders_and_ui_state" to (
+                    setOf("state_ownership", "unidirectional_data_flow") to 5
                 ),
             )
             val content = BundledLearningContentRepository()
@@ -682,6 +693,69 @@ internal class LearningUnitPracticeIntegrationTest {
         )
         assertEquals(0, attemptCount())
     }
+
+    /**
+     * E26-03: the state-holder Unit's pool, and the one routing limitation inside it.
+     *
+     * The expectation table above already asserts the count, the scope and the supporting-only
+     * exclusion. What it cannot state is *which* Questions arrive and why one of them is a
+     * Question about material this Unit deliberately does not teach. `state_ownership` is a
+     * primary concept of this Unit and, in the plan, of the closing synthesis Unit as well, so
+     * `durable_state_vs_one_off_event` — whose state-against-occurrence reasoning belongs to that
+     * later Unit — reaches this Unit's practice. `docs/content/architecture-units-1-6-plan.md`
+     * records it as a taxonomy limitation that only a Subtopic split would remove, and E26-08
+     * owns the assessment decision. It is asserted here so that a later re-map has to re-state
+     * the limitation rather than silently repairing it.
+     */
+    @Test
+    fun theStateHolderUnitPractisesItsTwoPrimaryConceptsIncludingOneLaterUnitsQuestion() =
+        runUnitPracticeTest {
+            val unitId = "unit_screen_state_holders_and_ui_state"
+            val unit = assertNotNull(BundledLearningContentRepository().getUnitById(unitId))
+            val builder = builder(PracticeBuilderTarget.LearningUnit(unitId))
+            val settled = builder.settled()
+
+            assertEquals(unit.title, settled.scope.name)
+            val available = assertIs<PracticeAvailability.Available>(settled.availability)
+            assertEquals(5, available.eligibleQuestionCount)
+            builder.selectQuestionCount(available.eligibleQuestionCount)
+            builder.settled()
+
+            val config = builder.start()
+            val concepts = setOf("state_ownership", "unidirectional_data_flow")
+            assertEquals(AssessmentScope.Subtopics(concepts), config.scope)
+
+            val questions = selectedQuestions(config)
+            assertEquals(
+                setOf(
+                    "state_ownership_001",
+                    "architecture_state_holder_taxonomy",
+                    "durable_state_vs_one_off_event",
+                    "viewmodel_activity_reference_lifetime",
+                    "unidirectional_data_flow_001",
+                ),
+                questions.map { it.id }.toSet(),
+            )
+            // The recorded overlap: this Question's reasoning is the synthesis Unit's, and it is
+            // here because the two Units share a primary concept the taxonomy does not split.
+            assertTrue("durable_state_vs_one_off_event" in questions.map { it.id }.toSet())
+
+            // The five lifecycle, Compose and coroutine bridges this Unit leans on are the ones
+            // most likely to be promoted by mistake, because each has ACTIVE Questions of its
+            // own. None of them may reach this Unit's practice.
+            val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
+            assertTrue(
+                setOf(
+                    "viewmodel_lifecycle",
+                    "configuration_changes",
+                    "process_death",
+                    "saved_state",
+                    "kmp_lifecycle_viewmodel",
+                ).all { it in supportingOnly },
+            )
+            assertTrue(questions.none { it.subtopicId in supportingOnly })
+            assertEquals(0, attemptCount())
+        }
 
     /**
      * The whole runtime flow in one pass: the route's Unit ID becomes the current Unit, its ACTIVE

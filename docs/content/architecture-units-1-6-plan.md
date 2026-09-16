@@ -1221,3 +1221,361 @@ Question, matching the Topic-wide observation in Part 5.
 - **The learning content itself is editorial** and no automated check can confirm that a
   Lesson teaches what it claims; the semantic review above is a judgement, as Rule 10 of the
   authoring contract requires.
+
+---
+
+## Authoring outcomes for Unit 2
+
+Added by E26-03 after the five Lessons were written. Every version, source claim and
+repository fact below was re-checked or executed during authoring rather than carried over
+from E26-01's tables; where a finding is unchanged, that is stated as a re-verification and
+not as a copy.
+
+### What did not change
+
+Every proposed Unit id, Lesson id, title, authored order and primary/supporting mapping for
+Unit 2 in the [identity tables](#identity-conventions-and-proposed-identities) shipped
+verbatim. **No Lesson boundary moved, none was split or merged, and neither planning
+document needed a correction.** The blueprint's `L2.1`–`L2.5` ordering, its
+Teach/Bridge/Reference/Exclude decisions and its misconception targets were followed as
+written. E26-02's Unit 1 outcome held as well: nothing in Unit 2 required a Unit 1 identity,
+mapping or boundary to move.
+
+| Shipped identity | Title | Primary | Supporting |
+| --- | --- | --- | --- |
+| `lesson_state_holder_responsibility` | What a Screen State Holder Is Responsible For | `state_ownership` | `compose_state_hoisting`, `viewmodel_lifecycle`, `kmp_lifecycle_viewmodel`, `separation_of_concerns` |
+| `lesson_viewmodel_lifetime_and_persistence` | The ViewModel Owner: Lifetime Is Not Persistence | `state_ownership` | `viewmodel_lifecycle`, `configuration_changes`, `process_death`, `saved_state`, `kmp_lifecycle_viewmodel` |
+| `lesson_modelling_ui_state` | Modelling the Current UI State | `state_ownership` | `kotlin_sealed_types`, `error_modeling`, `compose_stability`, `compose_state` |
+| `lesson_state_out_intentions_in` | State Out, Intentions In | `unidirectional_data_flow` | `state_ownership`, `compose_udf`, `stateflow` |
+| `lesson_owner_scoped_work` | Work Whose Lifetime Is the Owner's | `state_ownership` | `lifecycle_coroutines`, `coroutine_scope`, `viewmodel_lifecycle`, `background_api_selection` |
+
+The Unit is `unit_screen_state_holders_and_ui_state`, titled **Screen State Holders,
+ViewModel and UI State**, homed in `architecture`, and inserted **directly after
+`unit_architecture_responsibilities_and_boundaries`** — position 20 of 20, and second within
+the architecture sequence. No existing Unit moved, no shipped Lesson was edited, and
+`state_ownership` is supporting in `lesson_state_out_intentions_in` while being primary in
+the other four, which is the one place in the Unit where the two roles meet.
+
+All five Lessons carry Core, Practical and Senior depth and run 1,498–2,052 words including
+code, inside the 552–2,307 range the previously shipped Lessons occupy.
+
+### Configured versions, re-verified
+
+Read from `gradle/libs.versions.toml`, `shared/build.gradle.kts` and
+`desktopApp/build.gradle.kts` during authoring. **Nothing changed since E26-01.**
+
+| Component | Version at E26-01 | Version now | Changed? |
+| --- | --- | --- | --- |
+| Kotlin | 2.4.10 | 2.4.10 | No |
+| Compose Multiplatform | 1.11.1 | 1.11.1 | No |
+| `androidx-lifecycle` (via `org.jetbrains.androidx.lifecycle`) | 2.11.0-beta01 | 2.11.0-beta01 | No |
+| kotlinx.coroutines | 1.11.0 | 1.11.0 | No |
+| Koin | 4.2.2 | 4.2.2 | No |
+| Navigation 3 (`multiplatform-nav3-ui`) | catalog | 1.1.1 | No |
+| `kotlinx-coroutines-swing` in `desktopApp` | declared | declared | No |
+
+**The lifecycle dependency is still a beta**, so the contracts below were read from the
+resolved sources again rather than preserved by assumption, and E26-04 must do the same.
+
+### KMP ViewModel and lifecycle source verification
+
+Re-read from the resolved `androidx.lifecycle:lifecycle-viewmodel-android:2.11.0-beta01`
+sources jar in the Gradle cache — the implementation behind the
+`org.jetbrains.androidx.lifecycle` artifacts this project declares — and from the current
+JetBrains multiplatform ViewModel documentation. **All five of [Part 8](#part-8--kotlin-multiplatform-viewmodel-and-lifecycle-findings)'s
+findings hold unchanged; none was overturned and none needed re-phrasing.**
+
+| Contract | Verified statement | Where L2.2 or L2.5 uses it |
+| --- | --- | --- |
+| `ViewModel` common availability | `public expect abstract class ViewModel` in `commonMain/androidx/lifecycle/ViewModel.kt`, with `ViewModelStore` and `ViewModelStoreOwner` beside it in `commonMain` | L2.2 names the artifact and the version when saying the class is shared here |
+| `ViewModelStore` | Its KDoc still states both halves of the contract: an instance "must be retained across configuration changes", and an owner "being destroyed permanently … should call `clear`" | L2.2 quotes both, as the source of the owner-decides-lifetime claim |
+| Clearing semantics | `ViewModelStore.clear()` snapshots the map, clears it and calls `ViewModel.clear()` on each instance; `ViewModelImpl.clear()` closes every registered `AutoCloseable` before `onCleared()` | L2.2's rung 5 and the statement that the class contributes only a hook |
+| `viewModelScope` | A `commonMain` extension property that lazily calls `createViewModelScope()`, registers it under `VIEW_MODEL_SCOPE_KEY` via `addCloseable`, and returns the same instance afterwards | L2.5's three properties |
+| Scope context and dispatcher | `createViewModelScope()` builds `Dispatchers.Main.immediate + SupervisorJob()`, catching `NotImplementedError` (source comment: Native environments such as Linux) and `IllegalStateException` (source comment: "JVM Desktop environments where `Dispatchers.Main` might not exist (e.g., Swing)") and falling back to `EmptyCoroutineContext` | L2.5 states the fallback explicitly and says the main dispatcher is not guaranteed |
+| Scope cancellation | `CloseableCoroutineScope.close()` cancels its context, and the key registration is what makes `clear()` cancel it | L2.5's "cancellation is what being owned means" |
+| Host-supplied ownership | The JetBrains page still states that Android's Compose finds the `Activity`-provided owner, that "Compose Multiplatform provides a common `ViewModelStoreOwner` implementation", and that on iOS "there is no built-in `ViewModelStoreOwner`, so the ViewModel's lifecycle must be tied to SwiftUI manually" | L2.2's per-host bullet list |
+| Navigation 3 scoping | The same page still states that "when using ViewModels with Navigation 3 in common code, ViewModels are not automatically scoped to navigation entries by default" | L2.2's Navigation 3 paragraph |
+| Reflection limit | The page still states that `viewModel()` cannot be called without parameters in common code on non-JVM platforms | **Not used.** It is a construction detail and E27's, exactly as Finding 5 records |
+
+Two phrasing decisions follow, and both are acceptance-critical:
+
+- **L2.2 never says "a ViewModel survives configuration changes" unqualified.** The claim
+  appears only as rung 3 of the ladder, attributed to the Android host retaining the store,
+  and the per-host list immediately afterwards says the same shared class gets a different
+  answer on each target. This scopes `viewmodel_activity_reference_lifetime` rather than
+  contradicting it.
+- **L2.5 never says `viewModelScope` runs on the main dispatcher.** It states the attempt,
+  the two caught exceptions, the empty-context fallback, and the fact that this repository
+  supplies `kotlinx-coroutines-swing` to its desktop shell — then says explicitly that the
+  dispatcher is not the lesson.
+
+### Repository evidence used, and its limits
+
+Six findings from [Part 7](#part-7--this-repositorys-own-architecture-as-evidence) were
+re-verified against current code before use, and all six were unchanged.
+
+| Finding | Re-verified as | Used by |
+| --- | --- | --- |
+| 15 `ViewModel` classes, all `internal`, all in `commonMain` | 15, unchanged | L2.2, as the reason the shared-class-different-lifetime point matters here |
+| 5 non-ViewModel state holders | `StudyProgressStateHolder`, `ProgressStateHolder`, `MistakeReviewStateHolder`, `InterviewHistoryStateHolder`, `SavedQuestionStateHolder`, unchanged | **L2.1's acceptance-critical example.** Named as plain classes holding the same responsibility with a different lifetime |
+| `AppCoroutineScope` | Unchanged, including the KDoc sentence that its caches "are shared by several screens and survive a navigation entry being destroyed, so they cannot belong to a `viewModelScope`" | L2.5's Senior section, as a lifetime requirement that produced a type |
+| `PracticeBuilderUiState` as a data class | Unchanged, with its "everything the Practice Builder renders, and nothing it would have to derive" KDoc | L2.3, as one codebase choosing differently per screen |
+| `LearningLessonUiState.Content.studyState` nested rather than promoted | Unchanged, including the recorded reason that promoting it "would turn a missing indicator into a page the learner cannot read at all" | **L2.3's partial-state example** |
+| `rememberViewModelStoreNavEntryDecorator()` installed in `App.kt` after `rememberSaveableStateHolderNavEntryDecorator()` | Unchanged | L2.2, as why forward navigation and pop differ here |
+| `SavedStateHandle` unused in production Kotlin | Re-verified: it appears only inside the two bundled curriculum JSON documents, never in `shared/src/**/*.kt` | L2.2 says so explicitly rather than implying the app demonstrates saved state |
+
+Three limits were observed. No Lesson presents this application as a model to copy; every
+appearance says what the app does and for what stated reason. **Koin is named nowhere in the
+Unit** — L2.1 says only that construction is a separate decision with its own curriculum,
+without naming a container or a DSL. And **no production architecture code was changed or
+proposed for change**; nothing in authoring surfaced a product defect worth recording.
+
+### Editorial decisions worth recording
+
+1. **The Unit continues Unit 1's worked feature rather than opening a new one.** The
+   borrowed-items screen — loans, due dates, an overdue rule, a filter, a renewal — is the
+   same feature Unit 1 used, now given a screen. This keeps the epic reading as one argument
+   and, more importantly, **leaves the practice-configuration screen free for Unit 5**,
+   which the plan reserves for it.
+2. **The responsibility is named before any class, in every Lesson that could name one.**
+   L2.1's Core lists five responsibilities and only then says `ViewModel` is one
+   implementation; the phrase "state holder = ViewModel" is rejected explicitly. Unit 1's
+   decision model — responsibility, ownership, dependency, lifetime, cost — is applied in
+   the opening paragraph and nowhere re-taught.
+3. **Four ownership levels on one screen, with one value correctly staying local.** L2.1's
+   table places a help-panel expansion (local), a search draft (local, with the requirement
+   that would move it), the filter and loan rows (screen-level) and a borrowed-items badge
+   (longer-lived shared owner). "All production state belongs in the ViewModel" is rejected
+   against the first row and the fourth in opposite directions.
+4. **L2.2 re-asks E25's ladder from the store's side, deliberately.**
+   `lesson_screen_state_owner_boundary` already answers "does the value survive?" from the
+   Composition's edge. L2.2 says so and then asks each rung as two questions — which owner,
+   and is it still holding its store — so the Lesson adds the mechanism rather than
+   repeating the conclusion. The table's columns differ from the shipped one's for the same
+   reason.
+5. **The three concepts are separated in a table, not a sentence.** Ownership, lifetime and
+   persistence each get a question and an answer for the same screen, and the
+   lifetime-is-not-persistence correction is then made twice: once at rung 6 of the ladder
+   and once in the Senior section, which is what the issue asks for.
+6. **L2.3 grew a field in the sealed model rather than pretending the comparison was even.**
+   `Content.refreshFailed` exists because a failed refresh over populated content is not a
+   fourth top-level state, and the Lesson says that the field appearing *is* the trade-off
+   arriving. Both models are then compared against six requirements, and the impossible
+   combination is shown as a literal constructor call.
+7. **L2.4 names three failures as consequences, never as "encapsulation".** A second write
+   path that races the first, an invariant no type enforces, and the loss of one place to
+   look are each stated with the failure they produce. The intention-vs-setter argument is
+   carried by a requirement change (selecting a filter must also clear the search box and be
+   remembered) rather than asserted, and setter-shaped APIs are explicitly not banned.
+8. **Forward material is prose that names a Unit, never a link.** L2.1 defers the lifetime
+   ladder to "the closing unit of this curriculum", L2.4 defers intents and reduction to "the
+   unit … that compares responsibility models", and L2.5 defers owner selection and
+   background mechanisms the same way. No Unit 3–6 Lesson id appears anywhere, because none
+   of them exists yet.
+9. **MVVM, MVI and MVP are named nowhere in the Unit.** A ViewModel is never presented as
+   implying MVVM, and no example is labelled with a pattern name. Unit 5 still has its
+   subject.
+
+### Sources used, and the claims they settle
+
+Eight distinct pages across the five Lessons, each attached to a specific claim, each read
+during authoring.
+
+| Source | Used by | Claim it settles |
+| --- | --- | --- |
+| [State holders and UI state](https://developer.android.com/topic/architecture/ui-layer/stateholders) | L2.1, L2.3, L2.4 | The business-logic against UI-logic state-holder split; that the first is "typically implemented with a `ViewModel`" and the second "with a plain class"; and the placement rule, "you should produce UI state using state holders closest to where it is consumed" |
+| [ViewModel overview](https://developer.android.com/topic/libraries/architecture/viewmodel) | L2.1, L2.2, L2.5 | That a ViewModel "remains in memory until the `ViewModelStoreOwner` to which it is scoped disappears"; that `onCleared()` runs when the owner destroys it; and, quoted directly in L2.1, that because they "can potentially live longer than the `ViewModelStoreOwner`", ViewModels "shouldn't hold any references of lifecycle-related APIs such as the `Context` or `Resources` to prevent memory leaks" |
+| [`ViewModelStore`](https://developer.android.com/reference/androidx/lifecycle/ViewModelStore) | L2.2 | The store contract quoted in Core: retained across configuration changes, cleared when the owner is destroyed permanently |
+| [Compose Multiplatform: ViewModel](https://kotlinlang.org/docs/multiplatform/compose-viewmodel.html) | L2.2, L2.5 | The per-host ownership statements and the Navigation 3 scoping statement, both quoted; and the `Dispatchers.Main.immediate` caveat |
+| [Compose Multiplatform: Lifecycle](https://kotlinlang.org/docs/multiplatform/compose-lifecycle.html) | L2.5 | The desktop main-dispatcher condition that makes `kotlinx-coroutines-swing` relevant |
+| [UI layer](https://developer.android.com/topic/architecture/ui-layer) and [UI events](https://developer.android.com/topic/architecture/ui-layer/events) | L2.1, L2.3, L2.4 (the UI-layer page); L2.4 (the events page) | UI state as one immutable value the screen renders; unidirectional data flow at the application boundary as state outward and events inward |
+| [Sealed classes and interfaces](https://kotlinlang.org/docs/sealed-classes.html) | L2.3 | The language mechanism only, cited so a reader can follow the construct without the Lesson teaching it |
+
+One source-sensitive decision is worth recording because a later Unit could contradict it:
+**the Android guidance's state-holder split is used as a recommendation with its condition
+attached, not as a taxonomy.** L2.1 teaches the responsibility and then says a `ViewModel`
+is chosen when the lifetime its owner supplies is the lifetime required — which is what the
+guidance's own reason ("particularly surviving `Activity` recreation") says — rather than
+converting "typically implemented with" into a rule.
+
+### UI-state modelling decisions
+
+Recorded because GAP-U2-B is the epic's widest gap and E26-08 will author against what the
+Lesson actually teaches.
+
+- **The same screen is modelled twice**, on identical product requirements: a data class of
+  four independent fields, and a three-variant sealed hierarchy. Neither is presented as
+  correct.
+- **Six requirements drive the comparison**: first load, content, full-screen failure, a
+  refresh failure over populated content, a filter change during a load, and how much the
+  renderer must branch. Two of the six favour each shape, which is the point.
+- **The impossible combination is concrete**: a constructor call producing a populated list,
+  `isLoading = true` and a non-null error at once. Its cost is stated as three consequences —
+  every consumer must decide what it means, two consumers can decide differently, and the
+  invariant is written nowhere — and it is shown to be reachable from one ordinary mistake.
+- **The cost of eliminating it is stated as specifically**: every change becomes a transition
+  rather than a field update, a new mode is a variant every consumer must handle, and partial
+  updates become decisions about what to carry across.
+- **Partial state is taught as a scoping rule**: a failure is modelled at the level of the
+  thing that failed, shown as a nested region state and evidenced by
+  `LearningLessonUiState.Content.studyState`.
+- **"Make illegal states unrepresentable" is taught as a direction with a price that scales**,
+  and the choice is explicitly per screen and from the product.
+- **Two boundaries are stated in the Lesson itself**: error representation at the data
+  boundary is deferred to the repositories Unit, and Compose stability is deferred to E23.
+
+### UDF and write-path treatment
+
+L2.4 states that the composable-tree half is already shipped, names why the application
+boundary is a different argument (the write path crosses out of the UI layer, so what enters
+decides what work runs), and then does four things the acceptance criteria name: shows the
+broken mutable exposure as code with a legal UI write beside it; names the second write path,
+the breakable invariant and the lost single place to look as consequences rather than as
+"encapsulation"; shows the corrected surface; and carries the intention-vs-assignment
+argument with a requirement change. The form/draft nuance is a two-row table decided by who
+else must react before submission, and reducers, intent hierarchies and MVI stores are
+deferred in one clause.
+
+### Semantic review of the Questions this Unit now reaches
+
+All five ACTIVE Questions in the resolved pool were re-read in full and independently solved
+against the finished prose. **The E26-01 findings in [Part 5](#part-5--semantic-assessment-review)
+all still hold**; nothing below overturns one.
+
+| Question | Level | Reached through | Re-read verdict against the shipped Lessons |
+| --- | --- | --- | --- |
+| `state_ownership_001` | FOUNDATION | `state_ownership` | Answerable from L2.1's Core and L2.4's Core together — one owner, read-only publication, no second writer. Its explanation's aside about durability is now taught properly, by L2.2. Still definitional: it asks why ownership is good rather than making the reader decide an owner |
+| `architecture_state_holder_taxonomy` | APPLIED | `state_ownership` | **The closest match in the bank to any Unit 2 Lesson's contract, and it survives the prose test.** L2.1's four-row ownership table teaches exactly the reasoning — a reusable component's internal state has no tie to the screen's lifetime, so a screen-level owner would hand it a lifetime and a dependency surface it never asked for — without using the Question's wording, its component or its distractors |
+| `durable_state_vs_one_off_event` | APPLIED | `state_ownership` | Sound, and semantically the synthesis Unit's. Its state-against-occurrence reasoning is **not** pre-taught here: L2.3 models what a screen renders and L2.2 separates lifetime from persistence, neither of which is the durable-against-consumable decision. A Unit 2 reader can reach part of it from the lifetime-is-not-persistence material and not all of it, which is the accepted consequence of the shared primary concept |
+| `viewmodel_activity_reference_lifetime` | FOUNDATION | `state_ownership` | Sound, and the one the Unit had to be careful with. L2.1's "what the holder must not know" list and the ViewModel documentation quote teach the failure directly; L2.2's rung 3 states the Android premise the Question rests on **as the Android host's guarantee**, so the Lesson scopes the claim rather than contradicting or generalising it |
+| `unidirectional_data_flow_001` | FOUNDATION | `unidirectional_data_flow` | Sound and answerable from L2.4's Core. It remains definitional — direction only — and assesses none of the three concrete failures L2.4 teaches, which is GAP-U2-C unchanged |
+
+Adjacent Questions were read as duplication guards and **none was edited or re-mapped**:
+`viewmodel_scope_cleared_cancellation` (`async_reactive`), which assesses the cancellation
+fact L2.5 deliberately does not re-derive; `viewmodel_vs_repository_responsibility` (`mvvm`),
+whose `Context`-for-formatting half L2.1 now teaches from the ownership side while the
+Question stays where it is; and `kmp_shared_viewmodel_owner_platform` (`kmp`), which reaches
+the same conclusion as L2.2's per-host list from its own Topic. All three remain outside this
+Unit's pool, which is correct.
+
+**No Question was created, edited, re-mapped, re-levelled or re-statused by this issue**, and
+no factual defect was found in any Question read.
+
+### GAP-U2-A to GAP-U2-D after authoring
+
+All four gaps survive the finished prose unchanged. Authoring proved no gap definition wrong,
+and E26-08 still owns all four.
+
+| Gap | Status after E26-03 | What the finished Lesson changes about it |
+| --- | --- | --- |
+| GAP-U2-A | **Open, unchanged** | L2.2 now ships the reasoning in full — the owner chain, the six-rung ladder answered by naming the owner, and the ownership/lifetime/persistence table. The architecture-side assessment still does not exist: the reasoning is assessed four times in `lifecycle_navigation` and once in `kmp`, none of it reachable from a Unit 2 primary, and `state_ownership_001` still carries it only as an explanation aside |
+| GAP-U2-B | **Open, unchanged; still the widest gap in the epic** | L2.3 ships the same-screen comparison the gap describes, including the impossible combination, the partial-state case and the cost of removing combinations. **Nothing in any Topic assesses the choice**, so the gap is now a gap in assessment of material that ships — the strongest case an E26-08 Question can have |
+| GAP-U2-C | **Open, unchanged** | L2.4 ships the three failures as named consequences with a code example of the broken surface. `unidirectional_data_flow_001` remains definitional and `compose_udf_event_direction` still assesses the composable-tree version in another Topic |
+| GAP-U2-D | **Open, unchanged; still the lowest priority of the four** | L2.5 ships the ownership decision — two operations, one requirement test, and the conclusion that the second needs a different owner. The reasoning nearest to it, `viewmodel_scope_cleared_cancellation`, is still `async_reactive` supporting-only and still creates no Unit 2 practice, and it still assesses the cancellation fact rather than the ownership decision. E26-08's duplication judgement is unchanged by authoring |
+
+**E25's GAP-U7-C is instructionally closed by this issue and remains open as assessment.**
+E25-08 left it to this epic on the grounds that the ownership side of "moving state out of
+the Composition changes the owner, and the owner's lifetime decides what survives" was
+E26's to teach. L2.2 teaches it: the owner chain, the store, the clearing contract, the
+per-host qualification and the separation of lifetime from persistence. What E25 deferred
+was the *instruction*; the Question that would assess it is GAP-U2-A, which E26-08 still
+owns. No E25 document was edited — the disposition is recorded here, and E26-09 checks the
+ledger row.
+
+### Actual practice reach, resolved through the production resolver
+
+Recomputed by running the shipped Unit through `PracticeBuilderViewModel` and the real
+selection path in `LearningUnitPracticeIntegrationTest`, not by reading mappings. The Unit
+configures `AssessmentScope.Subtopics` of exactly its two primary concepts and resolves
+**five** Questions:
+
+| Resolved Question | Level | Reached through | Semantically belongs mainly to |
+| --- | --- | --- | --- |
+| `state_ownership_001` | FOUNDATION | `state_ownership` | Unit 2 |
+| `architecture_state_holder_taxonomy` | APPLIED | `state_ownership` | Unit 2, and it is the Unit's best-matched Question |
+| `viewmodel_activity_reference_lifetime` | FOUNDATION | `state_ownership` | Unit 2, scoped to the Android host |
+| `unidirectional_data_flow_001` | FOUNDATION | `unidirectional_data_flow` | Unit 2 |
+| `durable_state_vs_one_off_event` | APPLIED | `state_ownership` | **Unit 6** (L6.1's state-against-occurrence reasoning) |
+
+This matches [Part 6](#part-6--unit-practice-routing-modelled-now)'s modelled pool exactly, so
+no mapping moved during authoring, and it confirms E26-01's prediction that the pool would be
+five rather than assuming it.
+
+**The Unit 2 / Unit 6 routing limitation is now a fact rather than a prediction.**
+`state_ownership` is primary in four Unit 2 Lessons and, in the plan, in three Unit 6
+Lessons, so `durable_state_vs_one_off_event` reaches Unit 2 practice even though its
+reasoning is L6.1's. It was **not** fixed by demoting `state_ownership`, re-mapping the
+Question or inventing a taxonomy concept, all three of which the issue forbids and the plan
+already rejected. Unit 2 does not pre-teach Unit 6 to compensate. The limitation is asserted
+in the test suite so a later re-map has to re-state it rather than silently repairing it, and
+E26-08 owns the decision.
+
+Two further structural facts, both asserted rather than inspected:
+
+1. **Supporting concepts broaden nothing.** The Unit's sixteen supporting-only concepts —
+   including `viewmodel_lifecycle`, `configuration_changes`, `process_death`, `saved_state`
+   and `kmp_lifecycle_viewmodel`, every one of which has ACTIVE Questions of its own —
+   contribute no Question to the pool.
+2. **No shipped Unit's practice changed.** No shipped Lesson takes an `architecture` Subtopic
+   as primary, so nothing this Unit maps can reach an existing Unit's pool. Unit 1's pool is
+   unchanged at five, and the two architecture Units share no Question, because their primary
+   concepts are disjoint.
+
+### Cross-links
+
+Backward only, and every target already shipped. L2.1 → `lesson_state_hoisting`,
+`lesson_classes_of_screen_state`, `lesson_screen_state_owner_boundary`; L2.2 →
+`lesson_remember_saveable`, `lesson_screen_state_owner_boundary`, L2.1; L2.3 →
+`lesson_immutability_vs_stability`, `lesson_screen_state_and_ui_events`, L2.1; L2.4 →
+`lesson_state_down_events_up`, `lesson_screen_state_and_ui_events`, L2.3; L2.5 →
+`lesson_coroutine_scope_ownership`, `lesson_remember_coroutine_scope`,
+`lesson_who_owns_the_trigger`, L2.1.
+
+This is the plan's intended graph plus one within-Unit backward link per Lesson, which
+follows the Unit 1 precedent. **No shipped Lesson was edited**, no Unit 1 Lesson received a
+reciprocal link, and no forward link was invented — asserted by a test that no other Lesson
+in the document names a Unit 2 Lesson.
+
+### Tests changed, and why
+
+| File | Change | Why production data made it necessary |
+| --- | --- | --- |
+| `BundledLearningCurriculumTest` | Unit id, title and home-Topic lists extended by one; Lesson id/title order and primary mappings for the new Unit added; a stale comment corrected from "two home Topics" to three; two new tests — `stateHolderUnitKeepsItsPlannedBridgesOutOfPrimaryPractice` and `stateHolderUnitLinksBackwardsOnlyToShippedComposeAndCoroutineAnchors` | The document lists Units positionally, and the five lifecycle and Compose bridges are where a promotion to primary would silently claim practice the Unit did not earn. The link test also asserts that no shipped Lesson was edited to point into this Unit |
+| `LearningUnitPracticeIntegrationTest` | `existingLearnerTraversesTheExpansionWithLiveParentProgressAndDurableIdentities` now expects two architecture Units, derives the Topic's Lesson total instead of hard-coding five, and raises its final studied-record count from 76 to 81; the shared expectation table gained a Unit 2 row; new test `theStateHolderUnitPractisesItsTwoPrimaryConceptsIncludingOneLaterUnitsQuestion` | Continue Learning walks the whole document, so a second architecture Unit changes the traversal and the Topic's progress denominator. Unlike Unit 1, Unit 2 fits the shared table — both primary concepts hold Questions — so the bespoke test exists only to pin the exact five ids and the Unit 2 / Unit 6 overlap |
+
+No test was added that only re-states schema validation `LearningCurriculumValidatorTest`
+already performs, and the data-driven suites — the reader journey over every shipped Unit,
+Topic Detail's Unit rows, the end-to-end repository path — needed no edit because they read
+the document rather than listing it.
+
+### Validation performed
+
+| Command | Result |
+| --- | --- |
+| `python3` structural pre-check over both bundled JSON documents | Ids unique, every mapping an ACTIVE Subtopic, no primary/supporting overlap, every `relatedLessonIds` target resolvable, no blank or placeholder text, every comparison row matching its header count |
+| `./gradlew :shared:jvmTest --tests "*BundledLearningCurriculumTest*" --tests "*LearningUnitPracticeIntegrationTest*" --tests "*LearningCurriculumValidatorTest*" --tests "*LearningContentEndToEndTest*"` | 95 tests, 0 failures |
+| `./gradlew :shared:jvmTest` | **1,390 tests, 0 failures**, including `LearningProductionContentJourneyTest`, which renders every authored block of the new Unit in the reader, checks the reading column never widens, and opens every authored Source link |
+| `python3 tools/learning_question_coverage.py --write` then `--check` | Snapshot regenerated and reported current |
+| `cd tools && python3 -m unittest test_learning_question_coverage.py` | 21 tests, OK |
+| `./gradlew :shared:check` | Passed |
+| `./gradlew :androidApp:assembleDebug` | Passed |
+| `git status --short` and `git diff --check` | Five files changed, no build or cache output, no whitespace defects |
+
+The regenerated `docs/content/learning-question-coverage.md` now reports **20 active Units
+and 82 active Lessons**, the new Unit appearing directly after Unit 1 with five Lessons, a
+pool of five Questions across two levels and no ADVANCED Question — which matches the
+Topic-wide observation in Part 5 — and one primary Subtopic still with no active Question,
+which remains `architecture_tradeoffs` and GAP-U1-E rather than anything Unit 2 introduced.
+
+### Not validated
+
+- **`iosArm64` is not compiled locally or on CI**, unchanged from E25, E26-01 and E26-02.
+  The multiplatform claims in L2.2 and L2.5 rest on the resolved common sources, the
+  official JetBrains documentation and `iosSimulatorArm64`.
+- **No CI run is claimed.** Nothing in this issue was observed on GitHub Actions.
+- **Backlog validation could not be run**: `PyYAML` is unavailable in this environment, so
+  `.github/project/backlog.yml` was read as text rather than parsed and validated. Issue
+  #363 was read from that file rather than through `gh`, which is still not installed.
+- **The learning content itself is editorial** and no automated check can confirm that a
+  Lesson teaches what it claims; the semantic review above is a judgement, as Rule 10 of the
+  authoring contract requires.

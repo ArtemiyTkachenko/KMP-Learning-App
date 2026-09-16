@@ -52,6 +52,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_flow_composition_timing_and_failure",
                 "unit_stateflow_sharedflow_and_hot_streams",
                 "unit_architecture_responsibilities_and_boundaries",
+                "unit_screen_state_holders_and_ui_state",
             ),
             units().map { it.id },
         )
@@ -77,12 +78,13 @@ internal class BundledLearningCurriculumTest {
                 "Flow Composition, Timing and Failure",
                 "StateFlow, SharedFlow and Hot Streams",
                 "Architecture as Responsibilities and Boundaries",
+                "Screen State Holders, ViewModel and UI State",
             ),
             units().map { it.title },
         )
 
         // A Unit's home Topic decides where it is browsed, so it is asserted per Unit
-        // rather than as one value: the document now spans two home Topics.
+        // rather than as one value: the document now spans three home Topics.
         assertEquals(
             listOf(
                 "android_ui",
@@ -103,6 +105,7 @@ internal class BundledLearningCurriculumTest {
                 "async_reactive",
                 "async_reactive",
                 "async_reactive",
+                "architecture",
                 "architecture",
             ),
             units().map { it.topicId },
@@ -394,6 +397,34 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_architecture_responsibilities_and_boundaries").lessons.map { it.title },
         )
+
+        // The state-holder Unit's order is its progression: what the owner is responsible
+        // for, then how long one implementation of that responsibility lives, then what
+        // shape its current state takes, then how the UI reads from and writes toward it,
+        // and only then which work belongs to its lifetime. Every later Lesson needs the
+        // responsibility the first one names, so opening on the ViewModel class would put
+        // the implementation before the decision it answers.
+        assertEquals(
+            listOf(
+                "lesson_state_holder_responsibility",
+                "lesson_viewmodel_lifetime_and_persistence",
+                "lesson_modelling_ui_state",
+                "lesson_state_out_intentions_in",
+                "lesson_owner_scoped_work",
+            ),
+            unit("unit_screen_state_holders_and_ui_state").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "What a Screen State Holder Is Responsible For",
+                "The ViewModel Owner: Lifetime Is Not Persistence",
+                "Modelling the Current UI State",
+                "State Out, Intentions In",
+                "Work Whose Lifetime Is the Owner's",
+            ),
+            unit("unit_screen_state_holders_and_ui_state").lessons.map { it.title },
+        )
     }
 
     @Test
@@ -615,6 +646,22 @@ internal class BundledLearningCurriculumTest {
                 listOf("layered_architecture", "architecture_tradeoffs"),
             ),
             unit("unit_architecture_responsibilities_and_boundaries").lessons.map { it.primarySubtopicIds },
+        )
+
+        // Four of the five state-holder Lessons take `state_ownership`, because ownership of
+        // the screen's state is genuinely what each of them decides at a different angle —
+        // the responsibility, its lifetime, its shape, and the work bounded by it. Only the
+        // contract Lesson declares `unidirectional_data_flow`, which is the concept that
+        // Lesson alone teaches thoroughly.
+        assertEquals(
+            listOf(
+                listOf("state_ownership"),
+                listOf("state_ownership"),
+                listOf("state_ownership"),
+                listOf("unidirectional_data_flow"),
+                listOf("state_ownership"),
+            ),
+            unit("unit_screen_state_holders_and_ui_state").lessons.map { it.primarySubtopicIds },
         )
     }
 
@@ -1093,6 +1140,135 @@ internal class BundledLearningCurriculumTest {
                 assertTrue(related in ownIds || related in shippedAnchors, "${lesson.id} -> $related")
             }
         }
+    }
+
+    @Test
+    fun stateHolderUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        // Every supporting concept here belongs to another Topic and is bridged only as far
+        // as this Unit needs it: the Compose hoisting and state contracts are E23's and
+        // E25's, the lifecycle facts are the lifecycle and navigation curriculum's, the
+        // coroutine scope model is E24's, and `background_api_selection` is named once as
+        // where the answer continues for work the screen owner is too short-lived to hold.
+        // None of them may broaden the Unit's practice, which the integration test asserts.
+        assertEquals(
+            listOf(
+                listOf(
+                    "compose_state_hoisting",
+                    "viewmodel_lifecycle",
+                    "kmp_lifecycle_viewmodel",
+                    "separation_of_concerns",
+                ),
+                listOf(
+                    "viewmodel_lifecycle",
+                    "configuration_changes",
+                    "process_death",
+                    "saved_state",
+                    "kmp_lifecycle_viewmodel",
+                ),
+                listOf("kotlin_sealed_types", "error_modeling", "compose_stability", "compose_state"),
+                listOf("state_ownership", "compose_udf", "stateflow"),
+                listOf(
+                    "lifecycle_coroutines",
+                    "coroutine_scope",
+                    "viewmodel_lifecycle",
+                    "background_api_selection",
+                ),
+            ),
+            unit("unit_screen_state_holders_and_ui_state").lessons.map { it.supportingSubtopicIds },
+        )
+
+        // `state_ownership` is primary in four of the five Lessons and supporting in the
+        // fifth, which is the one place in the Unit where the two roles meet. The validator
+        // rejects the overlap only within a Lesson, so the split is asserted here: the
+        // contract Lesson teaches direction thoroughly and leans on ownership, rather than
+        // claiming to teach both.
+        val contract = unit("unit_screen_state_holders_and_ui_state")
+            .lessons
+            .single { it.id == "lesson_state_out_intentions_in" }
+        assertEquals(listOf("unidirectional_data_flow"), contract.primarySubtopicIds)
+        assertTrue("state_ownership" in contract.supportingSubtopicIds)
+    }
+
+    @Test
+    fun stateHolderUnitLinksBackwardsOnlyToShippedComposeAndCoroutineAnchors() = runTest {
+        val lessons = unit("unit_screen_state_holders_and_ui_state").lessons.associateBy { it.id }
+
+        // Each Lesson names the shipped Lessons whose model it applies, and nothing else.
+        // The plan's intended link graph is backward-only, so a Lesson in a later E26 Unit —
+        // none of which ships yet — could not be named even if it were useful.
+        assertEquals(
+            listOf(
+                "lesson_state_hoisting",
+                "lesson_classes_of_screen_state",
+                "lesson_screen_state_owner_boundary",
+            ),
+            lessons.getValue("lesson_state_holder_responsibility").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_remember_saveable",
+                "lesson_screen_state_owner_boundary",
+                "lesson_state_holder_responsibility",
+            ),
+            lessons.getValue("lesson_viewmodel_lifetime_and_persistence").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_immutability_vs_stability",
+                "lesson_screen_state_and_ui_events",
+                "lesson_state_holder_responsibility",
+            ),
+            lessons.getValue("lesson_modelling_ui_state").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_state_down_events_up",
+                "lesson_screen_state_and_ui_events",
+                "lesson_modelling_ui_state",
+            ),
+            lessons.getValue("lesson_state_out_intentions_in").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_coroutine_scope_ownership",
+                "lesson_remember_coroutine_scope",
+                "lesson_who_owns_the_trigger",
+                "lesson_state_holder_responsibility",
+            ),
+            lessons.getValue("lesson_owner_scoped_work").relatedLessonIds,
+        )
+
+        val shippedAnchors = setOf(
+            "lesson_state_hoisting",
+            "lesson_classes_of_screen_state",
+            "lesson_screen_state_owner_boundary",
+            "lesson_remember_saveable",
+            "lesson_immutability_vs_stability",
+            "lesson_screen_state_and_ui_events",
+            "lesson_state_down_events_up",
+            "lesson_coroutine_scope_ownership",
+            "lesson_remember_coroutine_scope",
+            "lesson_who_owns_the_trigger",
+        )
+        val ownIds = lessons.keys
+        lessons.values.forEach { lesson ->
+            lesson.relatedLessonIds.forEach { related ->
+                assertTrue(related in ownIds || related in shippedAnchors, "${lesson.id} -> $related")
+            }
+        }
+
+        // No shipped Lesson was edited to receive a reciprocal link: E26 links backwards only,
+        // and the two Compose Lessons that point at this curriculum do so in prose.
+        val ownedByThisUnit = ownIds.toSet()
+        units()
+            .filter { it.id != "unit_screen_state_holders_and_ui_state" }
+            .flatMap { it.lessons }
+            .forEach { lesson ->
+                assertTrue(
+                    lesson.relatedLessonIds.none { it in ownedByThisUnit },
+                    "${lesson.id} links forward into the state-holder Unit",
+                )
+            }
     }
 
     @Test

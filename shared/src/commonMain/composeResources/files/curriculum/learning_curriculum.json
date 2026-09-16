@@ -12794,6 +12794,975 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "unit_screen_state_holders_and_ui_state",
+      "topicId": "architecture",
+      "title": "Screen State Holders, ViewModel and UI State",
+      "summary": "The Compose curriculum takes a screen as far as an owner outside the Composition and then deliberately refuses to design it. This unit designs it: what a screen-level state holder is answerable for before any framework class is named, why one implementation's lifetime belongs to whatever owns it rather than to the class, what shape the current UI state should take when the same screen can be modelled several defensible ways, how the UI may read from and write toward that owner, and which work legitimately belongs to that owner's lifetime.",
+      "lessons": [
+        {
+          "id": "lesson_state_holder_responsibility",
+          "title": "What a Screen State Holder Is Responsible For",
+          "summary": "A screen-level state holder is a responsibility before it is a class: own what the screen renders, accept what the user intends, turn application results into current state, and be the one place that state changes. A ViewModel is one platform-provided implementation of that responsibility, chosen when the lifetime its owner supplies is the lifetime the responsibility needs.",
+          "primarySubtopicIds": [
+            "state_ownership"
+          ],
+          "supportingSubtopicIds": [
+            "compose_state_hoisting",
+            "viewmodel_lifecycle",
+            "kmp_lifecycle_viewmodel",
+            "separation_of_concerns"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The borrowed-items feature from the previous unit now needs a screen. It lists loans with their due dates, marks the overdue ones, lets the reader narrow the list to the overdue ones only, and offers a renewal control on each row. The Compose curriculum has already taken this as far as it goes: the rendering composable receives one immutable value and reports what the reader did, and something outside the Composition supplies that value. It then stops, on purpose, and names the thing outside without designing it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This unit designs it, and it starts where the previous unit ended rather than with a class name. Something has to be answerable for the loans the screen is showing. Ask the question that unit built: what is that thing responsible for, what does it own, how long must it live, and what does having it cost? Five responsibilities come back, and together they are the whole job."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Own the state the screen renders.** There is one current value describing what the reader is looking at, and this component is the only one that may produce it.",
+                    "**Accept the intentions the UI reports.** The reader renewed a loan, chose a filter, asked for a retry. Those arrive as reports of what happened, not as instructions about what the state should become.",
+                    "**Obtain the application results the screen needs.** Loans come from somewhere — a store, a service, a cache. Getting hold of them, and reacting when they change, belongs here.",
+                    "**Turn those results into current screen state.** A loan record is not a row. Deciding that a loan four days past its due date renders as overdue, and what the renewal control says when renewal is not allowed, is work this component does.",
+                    "**Be the one place that state changes.** Every transition from one current value to the next happens here, which is what makes a wrong value traceable to one file."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Notice what that list does not contain: a class, a base class, a library, or a lifetime. It is a responsibility, and the name for it is a **screen-level state holder**. That is deliberate. As soon as the responsibility has a name of its own, the next question becomes a real design question instead of a reflex: which implementation, with which lifetime, should hold it?"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`ViewModel` is one answer to that question, and a very good one on the platforms that supply it. It is a class a host can keep alive across events that destroy the UI, so a screen whose state must outlive those events gets the lifetime it needs without inventing anything. But the class is the implementation. A screen state holder can equally be a plain object owned by something longer-lived, or — for a small enough piece of the screen — an object a composable remembers. The word describes what something is answerable for, not what it extends."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A screen-level state holder owns the state the screen renders, accepts the intentions the UI reports, obtains the application results the screen needs, turns them into current state, and is the one place that state changes. `ViewModel` is one platform-provided implementation of that responsibility, chosen when the lifetime its owner supplies is the lifetime the responsibility needs. Naming the responsibility first is what turns \"which class?\" into a lifetime question with more than one correct answer."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Put four real values from the loans screen side by side and apply the reader, writer and lifetime test the Compose curriculum already taught. They do not all land in the same place, and a screen where they did would be a screen that had stopped asking."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The value",
+                    "Who reads and writes it",
+                    "Where it belongs",
+                    "What decided it"
+                  ],
+                  "rows": [
+                    [
+                      "Whether the \"how renewals work\" help panel is expanded",
+                      "One composable draws it, the same composable's toggle writes it, nothing else looks at it",
+                      "Local, remembered inside the composable that draws it",
+                      "Nothing outside that subtree reads it and nothing needs it after the panel is gone. Moving it to the screen owner buys nothing and costs a field, a transition and a hop when reading the code"
+                    ],
+                    [
+                      "The text in the search box, before the reader submits it",
+                      "The field draws it and writes it; on this screen nobody else reacts until submission",
+                      "Local, unless the requirement changes",
+                      "Ownership follows readers and writers. Add a requirement — the count in the header must update as the reader types — and the readers change, so the answer changes with them"
+                    ],
+                    [
+                      "The chosen filter and the loan rows currently being rendered",
+                      "Several sibling composables read them; only one component may change them; they must survive the screen being re-created",
+                      "The screen-level state holder",
+                      "Three readers, one writer and a lifetime longer than any one composable's. This is the value the whole unit is about"
+                    ],
+                    [
+                      "How many items the reader currently has borrowed, shown as a badge on several destinations",
+                      "Read by this screen and by two others; written whenever any of them renews or returns",
+                      "A longer-lived holder shared by those destinations",
+                      "Its readers outlive this screen. Giving it to this screen's owner means the next screen keeps its own copy, and two badges can then disagree"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second row and the fourth row are the two the reflex gets wrong in opposite directions. \"All production state belongs in the ViewModel\" is a rule that would move the help panel's expansion out of the composable that owns it completely, and it is wrong for a plain reason: no reader, no writer and no lifetime requirement asked for the move. A screen with nothing left local is usually a screen that stopped asking the question and started following a convention. Equally, a value whose readers outlive this screen does not become correct by living in this screen's owner; it becomes a copy."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The fourth row is where a state holder that is not a `ViewModel` shows up, and this repository has five of them. `StudyProgressStateHolder`, `ProgressStateHolder`, `MistakeReviewStateHolder`, `InterviewHistoryStateHolder` and `SavedQuestionStateHolder` are plain classes in shared code, each holding exactly the responsibility named above — a current value published for the UI, one place it changes, results read back from a repository — with no framework base class anywhere. They exist because their state is shared by several destinations and has to survive one of them being destroyed, which is a lifetime requirement no screen-level owner can satisfy. The class is a consequence of the lifetime, not the other way round."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "In neutral terms, the same responsibility written twice: once as a plain class whose lifetime comes from whoever constructs it, and once as a `ViewModel` whose lifetime comes from a host-supplied owner. The bodies are the same because the responsibility is the same."
+                },
+                {
+                  "type": "code",
+                  "code": "// Implementation one: a plain class. Its lifetime is whatever its holder's is.\ninternal class LoansStateHolder(\n    private val loans: LoanStore,\n    private val scope: CoroutineScope,\n) {\n    private val _state = MutableStateFlow<LoansUiState>(LoansUiState.Loading)\n    val state: StateFlow<LoansUiState> = _state.asStateFlow()\n\n    fun onFilterSelected(filter: LoanFilter) { /* one transition, in one place */ }\n\n    fun onRenewRequested(loanId: LoanId) { /* ... */ }\n}\n\n// Implementation two: the same responsibility, with a lifetime a host supplies.\ninternal class LoansViewModel(\n    private val loans: LoanStore,\n) : ViewModel() {\n    private val _state = MutableStateFlow<LoansUiState>(LoansUiState.Loading)\n    val state: StateFlow<LoansUiState> = _state.asStateFlow()\n\n    fun onFilterSelected(filter: LoanFilter) { /* ... */ }\n\n    fun onRenewRequested(loanId: LoanId) { /* ... */ }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "How either object is actually constructed and handed to the screen — by a factory, by a container, by the caller — is a separate decision with its own trade-offs, and the dependency-injection curriculum owns it. This application happens to supply both kinds through a container; that is a fact about the application, not part of what a state holder is."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The other half of the responsibility is what a screen-level owner must **not** know, and it is worth stating as concretely as the list of what it does own."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "A composable, a `View`, or any other UI instance.",
+                    "A rendering decision: a colour, a dimension, a layout choice, a scroll offset that only means something while a particular UI exists.",
+                    "An `Activity`, a `UIViewController` or any other host object it could outlive.",
+                    "A framework `Context` retained so that the holder can format the text it puts in the state."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The platform's own ViewModel documentation states the reason directly: because they \"can potentially live longer than the `ViewModelStoreOwner`\", ViewModels \"shouldn't hold any references of lifecycle-related APIs such as the `Context` or `Resources` to prevent memory leaks\". That is the concrete failure — the holder survives, the thing it points at does not, and the reference keeps a destroyed object alive while the holder acts on state that no longer describes anything."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read that as a statement about lifetimes rather than as a ban on platform abstractions. A state holder may perfectly well depend on an abstraction that happens to be implemented with platform services — a text-provider, a clock, a permission checker — as long as what it holds is the abstraction and not a UI owner's own details. The architectural defect is depending on something whose lifetime and responsibility belong to the UI; how a platform service is abstracted is a different subject with its own curriculum."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Answering \"what is a state holder?\" with \"a ViewModel\" reverses the definition, and it is expensive rather than merely imprecise: it makes every piece of state on the screen a candidate for the same class, so a help panel's expansion and an application-wide badge get the same lifetime as the loan list. Name the responsibility, then choose the implementation whose lifetime fits."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "It is worth being precise about what naming the responsibility separately actually buys, because it looks like vocabulary and is not. A team whose only word is `ViewModel` can ask one question: should this be in the ViewModel, yes or no? A team that can say *screen state holder* asks a different question, and it is the one with real answers in it — which implementation, with which lifetime, should hold this responsibility?"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That question has several correct answers, and which one is right is decided by the lifetime the requirement needs rather than by what is conventional:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "an object a composable remembers, when the responsibility genuinely dies with that piece of UI;",
+                    "a plain class owned by something else, when the lifetime should be that something else's and not a framework's;",
+                    "a `ViewModel`, when the owner a host supplies for it is exactly the lifetime the screen needs;",
+                    "an application-lifetime holder, when several screens share one truth and it must survive any of them being destroyed."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Each rung has a cost, and the last one's is the easiest to overlook: an owner that never goes away holds what it holds for the life of the process. Choosing it because several screens genuinely share one fact is a decision; choosing it to avoid thinking about lifetime is the beginning of a global-state problem. Working down that ladder deliberately — matching each requirement to the shortest lifetime that satisfies it — is the closing unit of this curriculum, and the next four lessons do the groundwork for it by designing one rung of it thoroughly."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One more distinction worth holding, because the rest of the unit depends on it: this responsibility is about *presentation state*, not about what is true for the application. The holder consumes results from wherever application data lives and derives a current screen value from them. Where that data comes from, which copy is authoritative when two disagree, and whether a business rule deserves a home of its own are genuinely different questions with different failure modes, and they are the subjects of the two units after this one. A state holder that quietly acquires a caching policy has not become more powerful; it has acquired a second reason to change."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked what a ViewModel is for, answer with the responsibility first — own the screen's current state, accept intentions, turn application results into that state, and be the single place it changes — and then say that `ViewModel` is one implementation, picked because the lifetime its owner supplies matches what the screen needs. Follow it with one value that correctly stayed out of it and why. That pair of answers is what separates someone describing a class from someone describing a decision."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_state_hoisting",
+            "lesson_classes_of_screen_state",
+            "lesson_screen_state_owner_boundary"
+          ],
+          "sources": [
+            {
+              "title": "State holders and UI state",
+              "url": "https://developer.android.com/topic/architecture/ui-layer/stateholders"
+            },
+            {
+              "title": "ViewModel overview",
+              "url": "https://developer.android.com/topic/libraries/architecture/viewmodel"
+            },
+            {
+              "title": "UI layer",
+              "url": "https://developer.android.com/topic/architecture/ui-layer"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_viewmodel_lifetime_and_persistence",
+          "title": "The ViewModel Owner: Lifetime Is Not Persistence",
+          "summary": "A ViewModel decides nothing about what it survives. It is stored in a ViewModelStore, that store belongs to an owner a host supplies, and the owner's lifetime is the ViewModel's lifetime. Walking one screen through six events by naming the owner each time separates three ideas that are routinely collapsed into one: who may change a value, when its owner disappears, and how the value comes back afterwards.",
+          "primarySubtopicIds": [
+            "state_ownership"
+          ],
+          "supportingSubtopicIds": [
+            "viewmodel_lifecycle",
+            "configuration_changes",
+            "process_death",
+            "saved_state",
+            "kmp_lifecycle_viewmodel"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The loans screen now has an owner holding its current state. The next question is the one every engineer eventually gets wrong in an interview: what does that state survive? The sentence that causes the trouble is \"the ViewModel survives the screen\", and the reason it causes trouble is that it names the wrong subject. A `ViewModel` has no lifetime of its own to survive anything with."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The actual arrangement is a chain of three links, and reading it in order answers every survival question there is."
+                },
+                {
+                  "type": "code",
+                  "code": "LoansViewModel\n      is stored in ->  ViewModelStore          (a map of ViewModels, keyed)\n      which belongs to ->  ViewModelStoreOwner (an Activity, a back-stack entry, a host-supplied object)\n      whose lifetime decides ->  when the store is cleared\n\nViewModelStore.clear()  ->  every stored ViewModel is cleared  ->  its state is gone",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Nothing in that chain is a property of the `ViewModel` class. The class contributes one thing: a hook that runs when it is cleared. Everything else is the owner's. The androidx `ViewModelStore` documentation states both halves of the contract plainly — a store instance \"must be retained across configuration changes\", so an owner that is re-created for a configuration change must hand the new instance the previous store; and when an owner is \"being destroyed permanently (i.e., it will not be recreated), it should call `clear`\". Retention and destruction are both the owner's behaviour."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So the correct form of every answer in this area has two steps rather than one. First: **which owner holds this ViewModel?** Second: **does that owner still exist after the event in question?** If the owner is still there holding its store, the ViewModel and everything in memory inside it are still there. If the owner is gone and cleared its store, they are not — and being outside the Composition, which is where the Compose curriculum left the argument, adds nothing further."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A ViewModel is stored in a `ViewModelStore`, the store belongs to a `ViewModelStoreOwner`, and the owner's lifetime is the ViewModel's lifetime. `ViewModelStore.clear()` is what ends it. Answer any survival question by naming the owner first and asking whether it still exists — never by naming the class."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Walk the loans screen up the ladder once. The Compose curriculum already asked, from the Composition's edge, whether the value survives; this asks the same six events from the store's side, which is where the answer actually comes from. Each rung is the same two questions: which owner, and is it still holding its store?"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The event",
+                    "Which owner is being asked about",
+                    "Is it still holding its store?",
+                    "So the screen's in-memory state"
+                  ],
+                  "rows": [
+                    [
+                      "The screen recomposes, possibly many times",
+                      "Unchanged — recomposition never touches the owner",
+                      "Yes; nothing asked it to clear",
+                      "Survives. Recomposition is not a lifetime event for anything outside the Composition"
+                    ],
+                    [
+                      "The composable that reads the state leaves the Composition while its destination stays on the back stack",
+                      "Still the destination's owner",
+                      "Yes; a composable leaving is not its owner being destroyed",
+                      "Survives, and is there again when the destination composes again"
+                    ],
+                    [
+                      "Android re-creates the UI for a configuration change",
+                      "The Android host's owner, re-created for the new configuration",
+                      "Yes — the host is required to hand the new instance the previous store",
+                      "Survives, because the host retained the store. This is the host's guarantee, not the class's"
+                    ],
+                    [
+                      "The reader navigates forward and this destination stays on the back stack",
+                      "This destination's entry, still on the stack",
+                      "Yes; nothing removed it",
+                      "Survives, and the screen is found in the state the reader left it in"
+                    ],
+                    [
+                      "The destination is popped and its entry removed",
+                      "That entry, now being destroyed permanently",
+                      "No — it clears its store",
+                      "Is gone, and `onCleared` has run. Existing outside the Composition protected nothing"
+                    ],
+                    [
+                      "The process is killed and the app is launched again later",
+                      "There is no owner; the process that held it no longer exists",
+                      "No store, no owner, no objects at all",
+                      "Is gone. Anything the reader must find again has to be reconstructed by something else"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Every answer in that table came from a fact about an owner. None came from a fact about `ViewModel`, and that is the point of walking it this way: the same class gives different answers on different rungs, so an answer that names only the class is wrong on some rung however it is phrased."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Which owner exists is a property of the host, not of shared code.** This matters here because the `ViewModel` class in this repository genuinely is shared code: the resolved `androidx.lifecycle:lifecycle-viewmodel` sources behind the `org.jetbrains.androidx.lifecycle` artifacts this project declares at **2.11.0-beta01** put `ViewModel`, `ViewModelStore` and `ViewModelStoreOwner` in `commonMain`, and all fifteen of this app's ViewModels live in shared code. Sharing the class does not share the lifetime, and the hosts differ:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Android.** Jetpack Compose finds the `ViewModelStoreOwner` the `Activity` provides, and that host retains the store through configuration recreation. This is the rung that produces the familiar \"survives rotation\" sentence — and it is true of this host, not of the class.",
+                    "**Desktop.** Compose Multiplatform supplies a common `ViewModelStoreOwner` implementation, so shared code gets an owner without the Android host.",
+                    "**iOS.** JetBrains' multiplatform documentation states that \"there is no built-in `ViewModelStoreOwner`, so the ViewModel's lifecycle must be tied to SwiftUI manually\". The lifetime is whatever the integration makes it.",
+                    "**Navigation entries.** The same documentation is explicit that \"when using ViewModels with Navigation 3 in common code, ViewModels are not automatically scoped to navigation entries by default\". Entry scoping is something an application installs."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This application installs it. `App.kt` passes `rememberSaveableStateHolderNavEntryDecorator()` and then `rememberViewModelStoreNavEntryDecorator()` to its `NavDisplay`, which is what gives each back-stack entry its own `ViewModelStore`. That is why rungs four and five in the table have different answers here: navigating forward leaves the entry alive and therefore its store, while popping the entry destroys it and therefore clears the store. Neither answer would follow from the shared class by itself, and an application that did not install the decorator would get different ones."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"The ViewModel survives configuration changes\" is a sentence about one host that gets repeated as a sentence about a class. In a codebase whose ViewModels are shared across Android, desktop and iOS, it is true on one target, supplied by a common implementation on another, and manual on a third. Name the host and the owner, then answer."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The reason this lesson insists on the owner is that three separate ideas are routinely spoken as one word, and separating them is what makes the whole subject tractable. They answer different questions and they can have different answers for the same value."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The idea",
+                    "The question it answers",
+                    "For the loans screen"
+                  ],
+                  "rows": [
+                    [
+                      "Ownership",
+                      "Who may change this value, and through what path?",
+                      "The screen-level holder, through its named intention functions, and nothing else"
+                    ],
+                    [
+                      "Lifetime",
+                      "When does that owner disappear?",
+                      "When the back-stack entry is removed and its store is cleared"
+                    ],
+                    [
+                      "Persistence",
+                      "How does the value come back after the owner is gone?",
+                      "It does not, unless something else recorded enough to rebuild it"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Moving state into a ViewModel changes the second row. It does not touch the third. A ViewModel can hold a value in memory across events that destroy and re-create the UI, and that is genuinely useful — it is why a half-filled renewal form is still half-filled after a rotation on Android. But the value is in memory, in the process, and the process is the outer bound on all of it. Kill the process and the whole chain is gone: no owner, no store, no object, no value. **In-memory retention across a host's recreation is not persistence, and the two are separated by exactly one event.**"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So the honest form of the claim is: *moving state out of the Composition changes the owner, and therefore possibly the lifetime, and says nothing whatsoever about durability.* If a requirement says the reader must find something again after the app was killed, no choice of state holder answers it. Something has to write enough down."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Saved-state mechanisms are the answer to the last rung specifically, and this lesson names them and stops. There is a mechanism for handing a small amount of information to the system so a screen can be reconstructed after the process is gone — `SavedStateHandle` on the ViewModel side, `rememberSaveable` on the Composition side — and there is ordinary application storage for data of any size. Which to use, what fits, and the API surface of either belong to the lifecycle-and-navigation curriculum and to the persistence curriculum respectively. What belongs here is only the architectural consequence: **persistence is a separate responsibility with a separate owner, and a state holder that has not been given one does not have it.** This repository is a fair illustration of the boundary and not of the mechanism — it uses `rememberSaveable` for small UI flags and does not use `SavedStateHandle` in production code at all, so nothing here demonstrates saved state for a screen owner."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "\"Does a ViewModel survive X?\" is never answerable as asked. Answer it in three moves: name the owner that holds the store, say whether that owner survives X on the host in question, and then say whether surviving X is the same thing as the value being durable. Doing that for configuration recreation and for process death in the same breath — retained for one, gone for the other, and persistence is a different mechanism entirely — is the whole answer."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_remember_saveable",
+            "lesson_screen_state_owner_boundary",
+            "lesson_state_holder_responsibility"
+          ],
+          "sources": [
+            {
+              "title": "ViewModel overview",
+              "url": "https://developer.android.com/topic/libraries/architecture/viewmodel"
+            },
+            {
+              "title": "ViewModelStore",
+              "url": "https://developer.android.com/reference/androidx/lifecycle/ViewModelStore"
+            },
+            {
+              "title": "Compose Multiplatform: ViewModel",
+              "url": "https://kotlinlang.org/docs/multiplatform/compose-viewmodel.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_modelling_ui_state",
+          "title": "Modelling the Current UI State",
+          "summary": "The screen renders one current immutable value; what shape that value takes is a design decision with no universal answer. Model the same screen twice — a data class of independent fields and a sealed hierarchy of exclusive states — and the trade-off becomes concrete: one can represent combinations the product forbids, the other makes ordinary partial updates awkward.",
+          "primarySubtopicIds": [
+            "state_ownership"
+          ],
+          "supportingSubtopicIds": [
+            "kotlin_sealed_types",
+            "error_modeling",
+            "compose_stability",
+            "compose_state"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The screen renders one current immutable value, and the holder produces it. That much is already settled: the Compose curriculum established the value-based contract, and immutability is what lets the renderer treat each new value as a complete description of what to draw rather than as a set of changes to apply."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What is not settled — and what no amount of Compose knowledge answers — is what that value should look like. The loans screen has to be able to show a first load, a list of loans, a filter selection, a failure with nothing to show, and a failure that arrives while perfectly good loans are already on screen. Several shapes can express all of that. They are not equivalent, and neither of the two everyone reaches for is universally right."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The decisive question is narrower and more useful than \"which Kotlin construct is better\": **which combinations must this screen be able to represent, and which must it be impossible to represent?** That question has a different answer for a settings form than for a payment confirmation, which is why the answer cannot be inherited from a style guide. Ask it of the product requirement and the shape follows."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two facts make the question worth taking seriously rather than deciding by habit. Every combination a model can express is a combination somebody has to decide how to render — including the nonsensical ones. And every combination a model makes impossible is a transition somebody has to write explicitly, because states that cannot coexist have to be swapped rather than adjusted."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "One current immutable value is the contract; its shape is a per-screen decision. Choose it by asking which combinations the product requires and which it forbids — not by preferring a data class or a sealed hierarchy in general. Each impossible combination you remove from the model is a transition you must then express, and each one you leave in is a case every consumer must handle."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Here is the loans screen as a single data class of independent fields. It is the shape most screens start with, and for many screens it is where they should stop."
+                },
+                {
+                  "type": "code",
+                  "code": "internal data class LoansUiState(\n    val loans: List<LoanRow>,\n    val filter: LoanFilter,\n    val isLoading: Boolean,\n    val errorMessage: String?,\n)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "And the same screen, the same requirements, as a hierarchy of mutually exclusive states."
+                },
+                {
+                  "type": "code",
+                  "code": "internal sealed interface LoansUiState {\n    data object Loading : LoansUiState\n\n    data class Content(\n        val loans: List<LoanRow>,\n        val filter: LoanFilter,\n        val refreshFailed: Boolean,\n    ) : LoansUiState\n\n    data class Error(\n        val message: String,\n    ) : LoansUiState\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second one had to grow a `refreshFailed` flag inside `Content` to keep up, and that is already the trade-off arriving: a refresh that fails while loans are on screen is not a fourth top-level state, because the reader must keep seeing the loans. Compare the two against what the screen actually has to do."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The requirement",
+                    "Data class of independent fields",
+                    "Sealed hierarchy of exclusive states"
+                  ],
+                  "rows": [
+                    [
+                      "First load, nothing to show yet",
+                      "`isLoading = true`, empty list, no error — three fields have to agree",
+                      "`Loading`. One value, nothing to coordinate"
+                    ],
+                    [
+                      "Loans on screen",
+                      "Populated list with the flags off",
+                      "`Content`, and the renderer knows the list is there without checking"
+                    ],
+                    [
+                      "Load failed with nothing to show",
+                      "Error set, list empty, loading off — and the renderer has to work out that this means a full-screen failure",
+                      "`Error`. The renderer branches once and is done"
+                    ],
+                    [
+                      "A refresh fails while loans are on screen",
+                      "Natural: set the error, leave the list alone. The fields are independent, which is exactly what this requirement needs",
+                      "Awkward: `Error` would hide the loans, so the failure has to live inside `Content` as an extra field — the exclusivity does not match the requirement"
+                    ],
+                    [
+                      "The filter changes while a refresh is running",
+                      "One field copied; everything else untouched",
+                      "Only expressible inside `Content`, so a filter change during `Loading` needs a decision about which state it is even in"
+                    ],
+                    [
+                      "How much the renderer must branch",
+                      "Reads several fields and reconstructs the screen's mode from their combination, on every render and in every consumer",
+                      "Branches on the type once; each branch then has exactly the data that branch needs"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Neither column wins. The sealed hierarchy is better wherever the screen genuinely has modes that exclude each other, and the data class is better wherever facts are genuinely independent and can be true at the same time. Those are properties of the product, so a codebase can correctly contain both — this repository does. Most of its sixteen UI-state types are sealed hierarchies, because most of its screens either show content or do not. `PracticeBuilderUiState` is a data class, and its own documentation says why: it is a configuration screen whose fields — scope, question count, levels, source, availability — are simultaneously true and independently editable, and nothing about it has modes."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now the failure the data class makes possible. Nothing in its type stops this value from existing:"
+                },
+                {
+                  "type": "code",
+                  "code": "LoansUiState(\n    loans = listOf(overdueLoan, dueSoonLoan),  // there is content\n    filter = LoanFilter.Overdue,\n    isLoading = true,                          // and it is loading\n    errorMessage = \"Could not reach the library\",  // and it failed\n)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "If the product says those three are mutually exclusive, this value is a defect the compiler cannot see, and the cost is not abstract. Every consumer that reads the state now has to decide what the combination means, and two consumers can decide differently — the header trusting `isLoading` and showing a spinner while the list trusts `loans` and shows rows. The invariant that was supposed to hold is written nowhere, so it is enforced by whoever remembers it. And a contradictory value is reachable from an ordinary mistake: a failure handler that sets the error and forgets to clear the loading flag produces it, and the screen leaks the contradiction to the reader."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Making that unrepresentable is a real gain, and it is also a real bill. The sealed version cannot express the contradiction — and in exchange, every change becomes a transition rather than a field update. Turning a failed refresh into a visible message on a populated screen is a copy in one model and a decision about which variant you are in, and what to carry across, in the other. Adding a fourth mode means a new variant everywhere the state is consumed. More variants mean more branching; more exclusivity means more explicit transitions. The bill is paid in code that has to be written and kept correct, which is a fair price where contradictions actually matter and a poor one where they do not."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Promoting every failure to a top-level `Error` state is the most common way a sealed hierarchy goes wrong. It is right when the failure means there is nothing to show, and wrong when a region failed while the rest of the screen is still useful — at which point the model has turned a missing badge into a blank screen."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The case the two shapes handle worst is the one real screens hit most: a screen is not one thing that succeeds or fails, it is several regions that can succeed and fail independently. The loans screen shows loans, and it also shows the reader's membership status, which comes from somewhere else and can fail on its own. A failed membership read should cost the reader the membership line. It should not cost them the loans."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Neither a flat data class nor a flat three-variant hierarchy says that. What says it is a state for the region, nested inside the state for the screen:"
+                },
+                {
+                  "type": "code",
+                  "code": "internal sealed interface LoansUiState {\n    data object Loading : LoansUiState\n\n    data class Content(\n        val loans: List<LoanRow>,\n        val filter: LoanFilter,\n        // The membership region loads and fails on its own, so it carries its own state\n        // rather than being promoted to a fourth screen state.\n        val membership: MembershipUiState,\n    ) : LoansUiState\n\n    data class Error(val message: String) : LoansUiState\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The rule the nesting expresses is a scoping rule: **a failure is modelled at the level of the thing that failed.** This repository does exactly this and records the reason in the code. `LearningLessonUiState.Content` carries a nested `studyState` rather than a fourth screen state, because the learner's study record and the lesson document fail independently — an unreadable record costs the studied indicator and the mark control, while the lesson still reads perfectly well. Promoting it, the comment says, \"would turn a missing indicator into a page the learner cannot read at all\". That is the partial-state decision stated as a consequence rather than as a preference."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Which brings the unit's most-quoted slogan into proportion. \"Make illegal states unrepresentable\" is a direction, and a good one: it moves an invariant out of everyone's memory and into a type where the compiler keeps it. It is not a law, because it has a price that scales. Every combination removed from the model becomes a transition or a variant the code must express explicitly, and a hierarchy that encodes exclusivity perfectly can make an ordinary partial update — one field changing while everything else stays — into a rebuild of a whole variant."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So the decision is made per screen, from the product, and it is worth being able to state in one sentence for whichever screen you are looking at. If the screen has modes that must never overlap and a wrong combination would show the reader something incoherent, pay for exclusivity. If the screen's facts are genuinely simultaneous and independent — a configuration form, a filter bar, a dashboard of regions — a data class says that truthfully and a hierarchy would be fighting the requirement. The shape is an answer to a question about the product, and a codebase that answers it the same way everywhere has stopped asking."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two boundaries, so this lesson stays about the screen. How a failure is represented as it crosses out of the data layer — whether a load returns a result type, throws, or is modelled in the application's own vocabulary — is a different decision made at a different boundary, and the repositories unit owns it. This lesson only models the error the screen has to render. And why an immutable value integrates cleanly with Compose in the first place — what the runtime can conclude from a type, and what it does with that conclusion — is already taught in the Compose curriculum; this lesson takes it as given."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked whether UI state should be a sealed class or a data class, refuse the general question and answer with the screen: which combinations must be representable, which must be impossible, and does any region of this screen fail independently of the rest? Then name the cost of your own choice — a combination the data class can express that the product forbids, or a partial update the hierarchy makes into a transition. Naming the cost of the option you picked is what shows the decision was made rather than inherited."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_immutability_vs_stability",
+            "lesson_screen_state_and_ui_events",
+            "lesson_state_holder_responsibility"
+          ],
+          "sources": [
+            {
+              "title": "UI layer: define UI state",
+              "url": "https://developer.android.com/topic/architecture/ui-layer"
+            },
+            {
+              "title": "Sealed classes and interfaces",
+              "url": "https://kotlinlang.org/docs/sealed-classes.html"
+            },
+            {
+              "title": "State holders and UI state",
+              "url": "https://developer.android.com/topic/architecture/ui-layer/stateholders"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_state_out_intentions_in",
+          "title": "State Out, Intentions In",
+          "summary": "The holder's public surface decides whether it is really the owner. State leaves read-only, every change enters through one named path, and the UI reports what the reader intended rather than what the state should become. Exposing the mutable container instead costs a second write path, an invariant anyone can break, and the single place to look when a value is wrong.",
+          "primarySubtopicIds": [
+            "unidirectional_data_flow"
+          ],
+          "supportingSubtopicIds": [
+            "state_ownership",
+            "compose_udf",
+            "stateflow"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Calling something the owner of the loans state is a claim about the code, and the public surface of the class is what makes it true or false. If any caller can write the state, the holder is not the owner — it is one of several writers that happens to have been there first."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The shape that makes the claim true has two halves, and both are about direction:"
+                },
+                {
+                  "type": "code",
+                  "code": "current screen state\n        |\n        v\n       UI                      (read-only: the UI renders it and cannot change it)\n\nreader's intention\n        |\n        v\nscreen state holder            (one named path in)\n        |\n        v\nstate transition, work\n        |\n        v\nnew current screen state",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The Compose curriculum already taught this shape inside the composable tree: state travels down to children, and callbacks describing what the reader did travel back up to the owner. This is the same rule one level out, at the boundary between the UI layer and the rest of the application — and the reasons are not identical, which is why it is worth stating again rather than assuming. Inside the tree, the direction is what keeps a parent's value from being changed by a child. Here the write path crosses out of the UI entirely: what enters the holder decides what work runs, what data is read, and what the screen will be. A second way in is not an inconsistency, it is a second place decisions get made."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second half matters as much as the first. What travels inward is **what the reader did**, not what the state should become. \"The reader chose the overdue filter\" is a report; \"set the filter field to Overdue\" is an instruction. The first leaves the holder free to decide what the choice means. The second has already decided, in the UI, and written today's state shape into the contract."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "State leaves the holder as an immutable, read-only value; intentions enter through named functions; the holder decides what an intention means and produces the next state. That is unidirectional data flow at the application boundary, and it is what makes \"this component owns the state\" a fact about the code rather than a convention."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The broken version is rarely written out of ignorance. It is written because it is shorter, and because inside one module it feels harmless."
+                },
+                {
+                  "type": "code",
+                  "code": "// Broken: the holder hands out the thing it is supposed to own.\ninternal class LoansStateHolder(\n    private val loans: LoanStore,\n) {\n    val state: MutableStateFlow<LoansUiState> = MutableStateFlow(LoansUiState.Loading)\n}\n\n// ...somewhere in the UI, entirely legally:\nholder.state.value = LoansUiState.Content(\n    loans = emptyList(),\n    filter = LoanFilter.Overdue,\n    membership = MembershipUiState.Loading,\n)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Three things are now true, and \"it breaks encapsulation\" names none of them."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**There is a second write path.** The holder writes the state when a refresh completes; the UI writes it on a click. Neither knows about the other, so the last writer wins by timing. A refresh that finishes a moment after a click silently discards what the click did, and the bug reproduces only under the timing that produced it.",
+                    "**Any caller can build a state the holder would never have produced.** The holder knows that a populated list and a full-screen error are mutually exclusive, that the filter must be one the current data supports, that `Loading` is only entered from an empty screen. None of those rules is in the type. The caller above has just published content with an empty list while a load is still running, and nothing objected.",
+                    "**There is no single place to look when the value is wrong.** With one write path, a wrong value means reading one file. With two, it means finding every assignment in every consumer and reasoning about the order they ran in — and the number of places to search grows with every new caller rather than staying fixed."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The correct shape costs one line and removes all three."
+                },
+                {
+                  "type": "code",
+                  "code": "internal class LoansStateHolder(\n    private val loans: LoanStore,\n) {\n    private val _state = MutableStateFlow<LoansUiState>(LoansUiState.Loading)\n    val state: StateFlow<LoansUiState> = _state.asStateFlow()\n\n    fun onFilterSelected(filter: LoanFilter) { /* decides what the choice means */ }\n\n    fun onRenewRequested(loanId: LoanId) { /* decides what renewing means */ }\n\n    fun onRetryRequested() { /* decides what retrying means */ }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The private mutable container and the public read-only view of it are an implementation detail of that boundary; the coroutines curriculum owns what those stream types are and how they behave. What matters here is structural: outward, the type says *read*; inward, the only doors are named, and each one is a place a decision is made."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Which is where the naming of those doors starts to earn its keep. Compare two contracts for the same interaction:"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The contract",
+                    "What the UI is saying",
+                    "Who decides what happens"
+                  ],
+                  "rows": [
+                    [
+                      "`onFilterSelected(filter: LoanFilter)`",
+                      "The reader picked this filter",
+                      "The holder"
+                    ],
+                    [
+                      "`setFilter(filter: LoanFilter)`",
+                      "Put this value in that field",
+                      "The UI, already"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "They behave identically until a requirement changes, and then they do not. Say the product decides that choosing a filter should also clear the search box and remember the choice for the reader's next visit. With `onFilterSelected`, that is three lines inside one function; every caller is unchanged, because no caller ever knew what selecting a filter *did*. With `setFilter`, the UI now has to call `setFilter`, `setSearchText(\"\")` and `rememberFilterChoice(filter)` in the right order — and the invariant that those three go together is now a rule the UI is expected to remember, in every place a filter can be chosen."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is not a prohibition on setter-shaped functions. Where a value genuinely is just a value the reader is setting and the holder has nothing to decide, a setter is honest and the ceremony of renaming it buys nothing. The test is ownership of the transition: if the holder is responsible for deciding what an interaction means, the function should be named for the interaction, because a name that describes the assignment has published the current state shape as part of the contract."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"It is all internal to the feature, so exposing the mutable state is fine.\" Visibility limits who can reach the second write path; it does not remove it. The failure that follows is a timing bug between two writers who never knew about each other, and the module boundary does nothing to make that easier to find."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The genuinely debatable case is the one a rule cannot settle: a form. Taken literally, \"every change enters through one named path\" makes every keystroke in the loans screen's search box an intention reported to the holder, which produces a state transition per character and a contract with a function in it for something the holder may have no opinion about at all."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is sometimes exactly right and sometimes obvious overkill, and the deciding question is the same one the ownership test has always asked: **who else has to react to this value before it is submitted?**"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The situation",
+                    "Who reacts before submission",
+                    "Where the value belongs"
+                  ],
+                  "rows": [
+                    [
+                      "A renewal note that is validated against the loan's remaining renewals, with the Renew control enabled or disabled as the reader types",
+                      "Validation the holder owns, and a control elsewhere on the screen",
+                      "The holder. The keystroke really is an intention, because something outside the field depends on it"
+                    ],
+                    [
+                      "A search box whose text only matters when the reader presses Search, and which nothing else on the screen reads",
+                      "Nobody",
+                      "Local to the field. One intention — the submission — crosses the boundary, and the draft never does"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second row is not a compromise of the rule; it is the rule applied honestly. Unidirectional data flow at the application boundary governs the state the *screen* owns. A draft that nothing outside one field reads is not screen state yet, and routing it through the holder gives it a lifetime and a write path it never asked for, exactly as the first lesson in this unit said about the help panel. What crosses the boundary is the submission, which is the moment something else has to react."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One deliberate omission. A contract that names intentions immediately suggests modelling them as values — a closed set of intent types and a single function that receives them, with the transition written as one function from the current state and an intent to the next. That is a real design with real advantages and real ceremony, it has a name, and it belongs to the unit of this curriculum that compares responsibility models rather than to this one. Nothing here requires it: a named function per intention already gives one write path, one place decisions are made, and a contract that says what happened rather than what to assign."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "\"What is unidirectional data flow?\" gets a much stronger answer at the application boundary than at the composable-tree one, because the failures are concrete. Say: state leaves read-only, intentions enter by name, the holder owns every transition — and then name what exposing the mutable holder actually costs, which is a second writer that races the first, an invariant no type enforces, and no single place to look when the value is wrong."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_state_down_events_up",
+            "lesson_screen_state_and_ui_events",
+            "lesson_modelling_ui_state"
+          ],
+          "sources": [
+            {
+              "title": "UI layer: unidirectional data flow",
+              "url": "https://developer.android.com/topic/architecture/ui-layer"
+            },
+            {
+              "title": "UI events",
+              "url": "https://developer.android.com/topic/architecture/ui-layer/events"
+            },
+            {
+              "title": "State holders and UI state",
+              "url": "https://developer.android.com/topic/architecture/ui-layer/stateholders"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_owner_scoped_work",
+          "title": "Work Whose Lifetime Is the Owner's",
+          "summary": "An owner that starts work owns a scope whose lifetime is its own, and work launched there is cancelled when the owner is cleared. That is correct exactly when the work stops mattering the moment the owner is gone — so the decision is not how cancellation works but whether this owner is the right owner for this work.",
+          "primarySubtopicIds": [
+            "state_ownership"
+          ],
+          "supportingSubtopicIds": [
+            "lifecycle_coroutines",
+            "coroutine_scope",
+            "viewmodel_lifecycle",
+            "background_api_selection"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The loans holder does not only hold state; it starts work. Loading the loans, refreshing them, submitting a renewal — each is an operation that begins somewhere and takes time, and each one therefore belongs to something whose ending ends it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That much the coroutines curriculum already settled: every coroutine's lifetime belongs to a scope, and the useful question about any piece of asynchronous code is which object owns the work and what event ends that ownership. This lesson asks one architectural question on top of it, and only that one:"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Is this owner the right owner for this work?**"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "An owner that starts work owns a scope whose lifetime is its own. Work launched in that scope is cancelled when the owner is cleared, and nothing survives it. That arrangement is correct under one condition, and it is worth stating as a requirement rather than as a mechanism: **the work must stop mattering at the moment the owner is gone.** If the product would still care about the result after the reader has left, the owner's lifetime is too short, and the cancellation that looked like tidy cleanup is the feature failing."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So the decision is made from the requirement, before any scope is chosen. Ask what must happen if the reader navigates away mid-operation. If the answer is \"nothing — the result was only ever for that screen\", owner-scoped work fits. If the answer names a consequence the reader expects to survive their leaving, this owner is the wrong one and no amount of care inside it will fix that."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Work in a scope owned by the screen's state holder dies with that holder. That is the right design when the work's only consumer is the screen, and a defect when the requirement says the operation must finish regardless. Decide by asking what must happen if the reader leaves — not by asking where the code was convenient to write."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "`viewModelScope` is the concrete instance of owner-scoped work in this stack, and it is worth being accurate about what it is, because it is often described as more than it is. In the resolved `androidx.lifecycle` sources behind the `org.jetbrains.androidx.lifecycle` artifacts this project declares at **2.11.0-beta01**, it is a `commonMain` extension property on `ViewModel` that lazily creates one scope, registers it with the ViewModel as a closeable resource, and hands back the same instance afterwards. Three facts follow from how it is built:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Its context is a `SupervisorJob`, so one failing operation does not cancel its siblings.",
+                    "It attempts `Dispatchers.Main.immediate`, and where the main dispatcher is unavailable — the source names Native environments and JVM desktop environments such as Swing — it falls back to an empty context, so the coroutine runs in the caller's context instead. **It is not true that `viewModelScope` always runs on the main dispatcher.** This repository supplies `kotlinx-coroutines-swing` to its desktop application, which is what makes a main dispatcher available on that target.",
+                    "It is registered under a key, so clearing the ViewModel closes it, and closing it cancels its context. Cancellation is not a separate arrangement someone has to remember; it is what being owned means."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The dispatcher detail is worth knowing and is not the lesson. The architectural content of `viewModelScope` is its first and third properties: it is a scope whose lifetime is exactly one owner's, and the owner's clearing is what ends it. Everything else is implementation."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now put two operations from the loans screen side by side. They look alike in the editor and they are not alike at all."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The operation",
+                    "Who consumes the result",
+                    "If the reader leaves mid-operation",
+                    "So the owner is"
+                  ],
+                  "rows": [
+                    [
+                      "Refreshing the loan list after a pull-to-refresh",
+                      "This screen, and nothing else",
+                      "Nothing should happen. The rows were going to be rendered here; there is nobody left to render them for",
+                      "Right. Cancelling is the correct outcome, not a loss"
+                    ],
+                    [
+                      "Submitting a return: the reader confirmed they are returning an item",
+                      "The library, the reader's borrowed-items badge, every other screen showing their loans",
+                      "The return must still be submitted. The reader confirmed it and expects it to have happened",
+                      "Wrong. Cancelling it silently loses something the reader was told was done"
+                    ]
+                  ]
+                },
+                {
+                  "type": "code",
+                  "code": "internal class LoansViewModel(\n    private val loans: LoanStore,\n    private val returns: ReturnSubmissions,  // owned elsewhere, on purpose\n) : ViewModel() {\n\n    // Owner-scoped: the result is for this screen. Leaving cancels it, correctly.\n    fun onRefreshRequested() {\n        viewModelScope.launch { /* reload and publish new state */ }\n    }\n\n    // Not owner-scoped: the reader was told this happened, so it must not die with the screen.\n    fun onReturnConfirmed(loanId: LoanId) {\n        returns.submit(loanId)\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What `ReturnSubmissions` actually is, and which lifetime it should have, is the honest end of this lesson rather than something it answers. The conclusion available here — and it is a real conclusion, not an evasion — is that **this work needs a different owner, with a lifetime the requirement chose.** How far up the ladder that owner sits is the closing unit's decision, and if the requirement says the submission must survive the process being killed, the answer is not a scope at all; it is a background-work mechanism, which has its own curriculum."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Writing `viewModelScope.launch { }` around every operation because the code is already in the ViewModel. The scope is a lifetime decision wearing the clothes of a convenience, and the failure is invisible in testing: an operation that is always given time to finish on a fast machine is the same operation that is cancelled the moment a real reader taps back."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "There is a distinction underneath the two operations above that is worth naming, because it is the difference between a lifetime that was chosen and one that happened."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Arrangement",
+                    "Where the lifetime came from",
+                    "What it says"
+                  ],
+                  "rows": [
+                    [
+                      "The owner creates its own scope, or uses the one its base class gives it",
+                      "From the object the code happened to be written inside",
+                      "This work belongs to me. Correct when it is true, and invisible when it is not — nothing in the code records that anyone decided"
+                    ],
+                    [
+                      "A longer-lived scope is supplied to the owner from outside",
+                      "From whoever supplies it, deliberately",
+                      "This work's lifetime was assigned to something else on purpose, and the parameter is the record of that decision"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second arrangement is not a workaround for the first; it is a different design, and it is frequently the correct one. Its virtue is that the decision is legible. A holder that takes a scope as a parameter is a holder whose author had to think about which lifetime the work needed, and the next reader can see that they did."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This repository is a worked example of exactly that. It defines an `AppCoroutineScope` — a distinct type wrapping a scope with a `SupervisorJob`, deliberately named so that injecting it is unambiguous — and its documentation states the architectural reason in its own words: the caches built on it \"are shared by several screens and survive a navigation entry being destroyed, so they cannot belong to a `viewModelScope`\". The five state holders from the first lesson of this unit are the components that receive it. The lifetime requirement came first; the scope, the type and the injection are the consequences."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two limits on reading that as a pattern. It is the right answer for state and work that several screens genuinely share, and it is the wrong answer used as a general escape from lifetime questions — an application-scoped owner never goes away, so everything it holds never goes away either, and choosing it to avoid deciding is how a codebase acquires global state one reasonable step at a time. When that becomes a problem, and how to tell the two cases apart, is the closing unit's subject. And an application scope still ends with the process: work that must survive the app being killed is not a scoping decision at all."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Finally, the boundary that keeps this lesson about architecture. How scopes, jobs, structured concurrency and cancellation actually work is taught in the coroutines curriculum and applied here rather than re-derived; when a lifecycle owner begins and ends is the lifecycle-and-navigation curriculum's, used here only to answer *when does this owner end*; and which mechanism carries work that must outlive the process belongs to the background-work curriculum. What is left is one question, and it is the one worth practising: does this work belong to this owner's lifetime?"
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked where you launch coroutines in a ViewModel, do not answer with `viewModelScope` and stop. Answer with the test — the work belongs to the owner's scope exactly when it stops mattering once the owner is gone — then give one operation on each side of it, and say for the second one that the requirement makes the screen owner the wrong owner. Adding that `viewModelScope` uses a `SupervisorJob` and attempts the main dispatcher, rather than guaranteeing it on every target, is the detail that shows you have read it rather than inherited it."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_coroutine_scope_ownership",
+            "lesson_remember_coroutine_scope",
+            "lesson_who_owns_the_trigger",
+            "lesson_state_holder_responsibility"
+          ],
+          "sources": [
+            {
+              "title": "ViewModel overview",
+              "url": "https://developer.android.com/topic/libraries/architecture/viewmodel"
+            },
+            {
+              "title": "Compose Multiplatform: ViewModel",
+              "url": "https://kotlinlang.org/docs/multiplatform/compose-viewmodel.html"
+            },
+            {
+              "title": "Compose Multiplatform: Lifecycle",
+              "url": "https://kotlinlang.org/docs/multiplatform/compose-lifecycle.html"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
     }
   ]
 }

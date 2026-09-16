@@ -54,6 +54,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_architecture_responsibilities_and_boundaries",
                 "unit_screen_state_holders_and_ui_state",
                 "unit_repositories_and_data_ownership",
+                "unit_domain_logic_and_dependency_direction",
             ),
             units().map { it.id },
         )
@@ -81,6 +82,7 @@ internal class BundledLearningCurriculumTest {
                 "Architecture as Responsibilities and Boundaries",
                 "Screen State Holders, ViewModel and UI State",
                 "Repositories, Data Ownership and Single Source of Truth",
+                "Domain Logic, Use Cases and Dependency Direction",
             ),
             units().map { it.title },
         )
@@ -107,6 +109,7 @@ internal class BundledLearningCurriculumTest {
                 "async_reactive",
                 "async_reactive",
                 "async_reactive",
+                "architecture",
                 "architecture",
                 "architecture",
                 "architecture",
@@ -456,6 +459,34 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_repositories_and_data_ownership").lessons.map { it.title },
         )
+
+        // The domain Unit's order is one argument in five steps, and the order is the
+        // pedagogy: whether a feature earns another layer at all, then whether a single
+        // operation earns a type, then what counts as policy and what as detail, then who
+        // owns the abstraction between them, and only last the named architecture that
+        // formalises the direction. Opening on Clean Architecture would hand the reader the
+        // conclusion before any of the decisions it is the conclusion of.
+        assertEquals(
+            listOf(
+                "lesson_when_a_domain_layer_earns_its_place",
+                "lesson_use_cases_and_pass_through_cost",
+                "lesson_policy_and_framework_detail",
+                "lesson_dependency_inversion_in_practice",
+                "lesson_clean_architecture_intent",
+            ),
+            unit("unit_domain_logic_and_dependency_direction").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "When Does Another Layer Earn Its Existence?",
+                "Use Cases That Earn Their Place, and Pass-Through Cost",
+                "Policy, Framework and Detail",
+                "Who Defines the Abstraction?",
+                "Clean Architecture: the Dependency Rule, Not the Diagram",
+            ),
+            unit("unit_domain_logic_and_dependency_direction").lessons.map { it.title },
+        )
     }
 
     @Test
@@ -709,6 +740,23 @@ internal class BundledLearningCurriculumTest {
                 listOf("layered_architecture", "error_modeling"),
             ),
             unit("unit_repositories_and_data_ownership").lessons.map { it.primarySubtopicIds },
+        )
+
+        // `use_cases` is primary twice because the layer decision and the class decision are
+        // genuinely different questions at two scales, and `dependency_direction` twice
+        // because policy-against-detail and who-owns-the-abstraction are two halves of one
+        // arrow. The inversion Lesson declares two primaries: which side defines a contract
+        // is simultaneously a direction decision and a statement about what makes an
+        // abstraction a boundary, which is why the foundations Unit deferred it whole.
+        assertEquals(
+            listOf(
+                listOf("use_cases"),
+                listOf("use_cases"),
+                listOf("dependency_direction"),
+                listOf("dependency_direction", "interface_boundaries"),
+                listOf("clean_architecture"),
+            ),
+            unit("unit_domain_logic_and_dependency_direction").lessons.map { it.primarySubtopicIds },
         )
     }
 
@@ -1423,6 +1471,114 @@ internal class BundledLearningCurriculumTest {
                 assertTrue(
                     lesson.relatedLessonIds.none { it in ownIds },
                     "${lesson.id} links forward into the data-ownership Unit",
+                )
+            }
+    }
+
+    @Test
+    fun domainLogicUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        // Nine concepts are supporting-only across this Unit and four of them are the ones a
+        // careless promotion would damage most. `solid` is supporting-only across the whole
+        // epic by design, so `architecture_solid_dependency_substitution` reaches no Unit's
+        // practice; `service_locator_vs_di` and `android_modules` belong to the dependency-
+        // injection and modularization curricula, which this Unit names and does not teach;
+        // and `kmp_architecture` is one bounded sentence about what the policy/detail split
+        // makes shareable. Promoting any of them would claim practice coverage for material
+        // this Unit deliberately does not carry.
+        assertEquals(
+            listOf(
+                listOf("layered_architecture", "architecture_tradeoffs", "separation_of_concerns"),
+                listOf("repository_pattern", "architecture_tradeoffs", "state_ownership"),
+                listOf("clean_architecture", "layered_architecture", "kmp_architecture"),
+                listOf("solid", "clean_architecture", "repository_pattern", "service_locator_vs_di"),
+                listOf("layered_architecture", "use_cases", "dependency_direction", "android_modules"),
+            ),
+            unit("unit_domain_logic_and_dependency_direction").lessons.map { it.supportingSubtopicIds },
+        )
+
+        // Two concepts are primary in one Lesson of this Unit and supporting in another, which
+        // the validator permits across Lessons and rejects within one. `clean_architecture` is
+        // supporting where the policy/detail split borrows the dependency rule and primary
+        // where the rule itself is the subject; `use_cases` is the reverse.
+        val lessons = unit("unit_domain_logic_and_dependency_direction").lessons.associateBy { it.id }
+        val policy = lessons.getValue("lesson_policy_and_framework_detail")
+        assertEquals(listOf("dependency_direction"), policy.primarySubtopicIds)
+        assertTrue("clean_architecture" in policy.supportingSubtopicIds)
+        val cleanArchitecture = lessons.getValue("lesson_clean_architecture_intent")
+        assertEquals(listOf("clean_architecture"), cleanArchitecture.primarySubtopicIds)
+        assertTrue("use_cases" in cleanArchitecture.supportingSubtopicIds)
+    }
+
+    @Test
+    fun domainLogicUnitLinksBackwardsOnlyToShippedArchitectureAnchors() = runTest {
+        val lessons = unit("unit_domain_logic_and_dependency_direction").lessons.associateBy { it.id }
+
+        // Every link is backward and chosen by actual semantic dependency rather than by
+        // giving each earlier Lesson a mention. The inversion Lesson carries three because the
+        // foundations Unit deferred direction and interface ownership to it explicitly and the
+        // data-ownership Unit deferred the repository half of the same question.
+        assertEquals(
+            listOf("lesson_layers_and_their_cost", "lesson_what_a_repository_owns"),
+            lessons.getValue("lesson_when_a_domain_layer_earns_its_place").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_when_a_domain_layer_earns_its_place",
+                "lesson_what_a_repository_owns",
+                "lesson_state_holder_responsibility",
+            ),
+            lessons.getValue("lesson_use_cases_and_pass_through_cost").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_dependency_direction_and_boundaries",
+                "lesson_state_holder_responsibility",
+                "lesson_model_and_error_boundaries",
+            ),
+            lessons.getValue("lesson_policy_and_framework_detail").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_dependency_direction_and_boundaries",
+                "lesson_when_an_interface_is_a_boundary",
+                "lesson_what_a_repository_owns",
+            ),
+            lessons.getValue("lesson_dependency_inversion_in_practice").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_layers_and_their_cost",
+                "lesson_when_a_domain_layer_earns_its_place",
+                "lesson_policy_and_framework_detail",
+            ),
+            lessons.getValue("lesson_clean_architecture_intent").relatedLessonIds,
+        )
+
+        val shippedAnchors = setOf(
+            "lesson_layers_and_their_cost",
+            "lesson_dependency_direction_and_boundaries",
+            "lesson_when_an_interface_is_a_boundary",
+            "lesson_state_holder_responsibility",
+            "lesson_what_a_repository_owns",
+            "lesson_model_and_error_boundaries",
+        )
+        val ownIds = lessons.keys
+        lessons.values.forEach { lesson ->
+            lesson.relatedLessonIds.forEach { related ->
+                assertTrue(related in ownIds || related in shippedAnchors, "${lesson.id} -> $related")
+            }
+        }
+
+        // No Lesson authored before this Unit was edited to receive a reciprocal link. The
+        // three earlier architecture Units point forward in prose only, naming the Unit rather
+        // than a Lesson id, because a forward link would not have resolved when they shipped.
+        units()
+            .takeWhile { it.id != "unit_domain_logic_and_dependency_direction" }
+            .flatMap { it.lessons }
+            .forEach { lesson ->
+                assertTrue(
+                    lesson.relatedLessonIds.none { it in ownIds },
+                    "${lesson.id} links forward into the domain-logic Unit",
                 )
             }
     }

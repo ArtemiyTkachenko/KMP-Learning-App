@@ -1992,3 +1992,465 @@ Unit 3 introduced.
 - **The learning content itself is editorial** and no automated check can confirm that a
   Lesson teaches what it claims; the semantic review above is a judgement, as Rule 10 of the
   authoring contract requires.
+
+---
+
+## Authoring outcomes for Unit 4
+
+Added by E26-05 after the five Lessons were written. Every source quotation, repository
+finding and routing figure below was re-opened, re-verified against current code, or
+executed during authoring rather than carried over from E26-01's tables; where a finding is
+unchanged, that is stated as a re-verification and not as a copy.
+
+### What did not change
+
+Every proposed Unit id, Lesson id, title, authored order and primary/supporting mapping for
+Unit 4 in the [identity tables](#identity-conventions-and-proposed-identities) shipped
+verbatim. **No Lesson boundary moved, none was split or merged, and neither planning
+document needed a correction.** The blueprint's `L4.1`–`L4.5` ordering, its
+Teach/Bridge/Reference/Exclude decisions and its misconception targets were followed as
+written, and nothing in Unit 4 required a Unit 1, Unit 2 or Unit 3 identity, mapping or
+boundary to move.
+
+| Shipped identity | Title | Primary | Supporting |
+| --- | --- | --- | --- |
+| `lesson_when_a_domain_layer_earns_its_place` | When Does Another Layer Earn Its Existence? | `use_cases` | `layered_architecture`, `architecture_tradeoffs`, `separation_of_concerns` |
+| `lesson_use_cases_and_pass_through_cost` | Use Cases That Earn Their Place, and Pass-Through Cost | `use_cases` | `repository_pattern`, `architecture_tradeoffs`, `state_ownership` |
+| `lesson_policy_and_framework_detail` | Policy, Framework and Detail | `dependency_direction` | `clean_architecture`, `layered_architecture`, `kmp_architecture` |
+| `lesson_dependency_inversion_in_practice` | Who Defines the Abstraction? | `dependency_direction`, `interface_boundaries` | `solid`, `clean_architecture`, `repository_pattern`, `service_locator_vs_di` |
+| `lesson_clean_architecture_intent` | Clean Architecture: the Dependency Rule, Not the Diagram | `clean_architecture` | `layered_architecture`, `use_cases`, `dependency_direction`, `android_modules` |
+
+The Unit is `unit_domain_logic_and_dependency_direction`, titled **Domain Logic, Use Cases
+and Dependency Direction**, homed in `architecture`, and appended **directly after
+`unit_repositories_and_data_ownership`** — position 22 of 22, and fourth within the
+architecture sequence. No existing Unit moved and no shipped Lesson was edited. The
+architecture sequence is now 5/5/5/5 Lessons across four Units, and the whole document is
+**22 active Units and 92 active Lessons**, both derived from production rather than
+assumed.
+
+All five Lessons carry Core, Practical and Senior depth. `lesson_when_a_domain_layer_earns_its_place`
+is the longest Lesson in the document by roughly four per cent, which was accepted rather
+than trimmed further: it is the one Lesson required to carry a definition, four earning
+conditions, three rejected claims, three worked features, the actionability argument and
+both the module and DDD boundaries, and Rule 8 of the authoring contract prefers a coherent
+Lesson to a mechanical limit. The other four sit inside the range the previously shipped
+Lessons occupy.
+
+**Configured versions were re-read** from `gradle/libs.versions.toml` during authoring and
+are unchanged from E26-04: Kotlin 2.4.10, Compose Multiplatform 1.11.1, `androidx-lifecycle`
+2.11.0-beta01, kotlinx.coroutines 1.11.0, Koin 4.2.2, Room 3.0.1. **No
+[Part 8](#part-8--kotlin-multiplatform-viewmodel-and-lifecycle-findings) contract is used by
+this Unit** — Unit 4 makes no claim about `ViewModel`, `viewModelScope`, clearing or
+host-supplied owners, and the one `ViewModel` that appears in its prose is a misplaced-policy
+example whose point is where a rule lives rather than what the class guarantees — so nothing
+in Part 8 needed re-verification here, and E26-06 inherits that obligation unchanged.
+
+### Unit purpose, and how it stays separate from Units 1 and 3
+
+Unit 3 gave the learner a repository and a data boundary. Unit 4 asks whether a feature
+needs another architectural boundary between its screen or state owner and its repositories,
+and its central claim is that **a domain layer is optional**: it earns its existence only
+when there is enough independent responsibility to put there.
+
+- **The Unit does not teach `UI → Domain → Data` as a mandatory Android template.** The
+  three-box diagram appears exactly once, in L4.5, and is labelled there as one possible
+  application structure compatible with some Clean Architecture principles rather than as
+  Clean Architecture itself.
+- **The five Lessons form one argument in the plan's order**: does another layer earn its
+  cost, does this individual operation earn a use-case type, what is policy and what is
+  detail, who should define the abstraction, and only last what Clean Architecture actually
+  requires. Opening on Clean Architecture or on a layer diagram would hand the reader the
+  conclusion before the decisions it is the conclusion of, which is why the order is
+  asserted in `BundledLearningCurriculumTest` with the reason recorded beside it.
+- **Unit 1 and Unit 3 prerequisites are applied rather than re-taught.** L4.1 uses the layer
+  cost model from `lesson_layers_and_their_cost` without re-deriving it; L4.4 opens by
+  naming the three places the question was deferred — L1.3 taught direction and named
+  inversion, L1.4 asked whether an abstraction earns existence and left ownership open, and
+  L3.1 deferred "which side should define that abstraction" to this Unit in as many words.
+- **No pattern name appears anywhere in the Unit.** MVP, MVVM and MVI are named only in
+  L4.5's closing sentence as the next Unit's subject, so Unit 5 still has its material.
+
+### Editorial decisions worth recording
+
+1. **The borrowed-items feature carries forward, and the library gains a renewal
+   operation.** Units 1–3 used loans, a due date, an overdue rule, a renewal write and the
+   reminder-time preference; Unit 4 keeps all of them and adds `RenewLoan`,
+   `RenewalEligibility`, `RenewalOutcome` and `BorrowerRepository`. The
+   practice-configuration screen stays reserved for Unit 5.
+2. **The simple feature is one the reader has already seen judged.** L4.1's no-layer case is
+   the reminder-time preference, which L3.1 already answered "none yet" about at the
+   repository level. Re-using it makes the layer-level question visibly a different question
+   about the same feature rather than a new example.
+3. **Cost is always stated as things.** Following the Unit 1 and Unit 3 precedent, the
+   forwarding layer's cost is two types, two files, two names, one navigation hop, a third
+   place a change lands and a directory that claims a responsibility the feature does not
+   have; the pass-through type's cost is a type, a file, a hop, an abstraction to explain,
+   and a precedent priced per repository method.
+4. **Every source recommendation is quoted with its condition attached.** The domain layer is
+   quoted as "an _optional_ layer" together with "You should only use it when needed"; the
+   Android recommendation is quoted with its own "Recommended in big apps" strength and the
+   page's "recommendations and not strict requirements" note.
+5. **Forward material is prose that names a Unit, never a link.** L4.5 names the pattern Unit
+   without naming a Lesson id, because no Unit 5 Lesson exists.
+6. **No DI mechanism is named anywhere.** Constructor parameters appear because dependencies
+   have to be visible; no container, module, binding, scope, qualifier or graph is described,
+   and the one place wiring is discussed is L4.4's explicit separation of injection from
+   inversion.
+7. **No test code appears in the Unit**, and every testability claim names a dependency
+   boundary rather than a layer count.
+
+### Sources used, and the claims they settle
+
+Seven distinct pages across the five Lessons, each opened during authoring and each attached
+to the specific claim it supports. The three source families stay separate: the primary
+Clean Architecture material settles the dependency rule, Android's guidance settles
+Android-specific application-layer recommendations, and neither is used as evidence for the
+other's claim.
+
+| Source | Used by | Claim it settles |
+| --- | --- | --- |
+| [Domain layer](https://developer.android.com/topic/architecture/domain-layer) | L4.1, L4.2, L4.3 | That the domain layer "is an _optional_ layer that sits between the UI layer and the data layer"; that "You should only use it when needed—for example, to handle complexity or favor reusability"; that use cases "don't have their own lifecycle. Instead, they're scoped to the class that uses them"; the `operator fun invoke()` idiom offered as an option rather than a definition; and the data-layer-access-restriction passage in full, including the "**potentially significant disadvantage** … it forces you to add use cases even when they are just simple function calls to the data layer, which can add complexity for little benefit" and the page's own proportional conclusion, "A good approach is to add use cases only when required. If you find that your UI layer is accessing data through use cases almost exclusively, it may make sense to _only_ access data this way." |
+| [Architecture recommendations](https://developer.android.com/topic/architecture/recommendations) | L4.1, L4.2, L4.5 | "Use a domain layer", marked **Recommended in big apps**, with its stated condition — "if you need to reuse business logic that interacts with the data layer across multiple ViewModels, or you want to simplify the business logic complexity of a particular ViewModel" — and the page's own "Treat the recommendations in the document as recommendations and not strict requirements." |
+| [The Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html) | L4.3, L4.4, L4.5 | The Dependency Rule — "source code dependencies can only point inwards" — together with the statement that nothing declared in an outer circle may be named by code in an inner one; that the circles are schematic and there is no rule requiring exactly the four shown; the entities/use-cases/interface-adapters/frameworks naming; that the data crossing boundaries is "simple data structures" rather than entity objects or database rows; and that testability follows from the arrangement rather than justifying it. |
+| [Guide to app architecture](https://developer.android.com/topic/architecture) | L4.5 | That Android recommends designing each application "with at least two layers", UI and data, and describes the domain layer as "an optional layer between the UI and data layers" to be used "only when needed". |
+| [Separated Interface](https://martinfowler.com/eaaCatalog/separatedInterface.html) | L4.4 | That the pattern "Defines an interface in a separate package from its implementation", so "a client that needs the dependency to the interface can be completely unaware of the implementation" — the primary statement behind L4.4's placement argument. |
+| [Inversion of Control Containers and the Dependency Injection pattern](https://martinfowler.com/articles/injection.html) | L4.4 | That injection is about assembly — "a separate object, an assembler, that populates a field in the lister class with an appropriate implementation" — and the sentence that locates the two decisions relative to each other: "The important issue in all of this is to ensure that the configuration of services is separated from their use. Indeed this is a fundamental design principle that sits with the separation of interfaces from implementation." |
+| [Share code on platforms](https://kotlinlang.org/docs/multiplatform/multiplatform-share-on-platforms.html) | L4.3 | That the common source set is for "sharing the common business logic that applies to all platforms" — the single bounded sentence behind L4.3's KMP bridge. |
+
+Three source-sensitive decisions follow, and all three are acceptance-critical:
+
+- **The Android domain-layer wording is unchanged from E26-01's review.** The optionality
+  sentence, the reuse-and-complexity condition, the naming convention, the no-own-lifecycle
+  statement and the pass-through warning were all re-read on the current page and all still
+  read as E26-01 recorded them. No plan outcome needed updating.
+- **The primary Clean Architecture source is used only for the rule, and Android's guidance
+  only for Android's recommendation.** L4.5 never cites the three-layer recommendation as
+  evidence about the dependency rule, and never cites the diagram as evidence that Android
+  requires a domain layer. The two are placed side by side and explicitly distinguished.
+- **The uniformity convention is taught from the guidance's own two-sided passage.** L4.2
+  quotes the advantage, the disadvantage and the proportional conclusion together, which is
+  what licenses the Lesson to treat "all access crosses use cases" as a legitimate team
+  decision without letting it become an architectural claim.
+
+### Repository evidence used, and its limits
+
+Every Part 7 finding this Unit relies on was re-verified against current code before use.
+**All were unchanged.**
+
+| Finding | Re-verified as | Used by |
+| --- | --- | --- |
+| **No class named `UseCase` or `Interactor` anywhere** | Re-verified by searching every `.kt` file in `shared/`, `androidApp/`, `desktopApp/` and `webApp/` for both names: **zero matches**, and no base class or `invoke` idiom standing in for one | **L4.2's central local evidence** |
+| Services that orchestrate | `MistakeReviewService`, `StudyProgressService`, `LearningProgressService`, `AssessmentRetakeService` all still present. `MistakeReviewService` was read in full: it takes `AssessmentRepository` and `AssessmentReviewLoader`, applies `UnresolvedMistakeDerivation`, and is called from `AppShellViewModel`, `ProgressStateHolder`, `MistakeReviewStateHolder`, `LearningRecommendationResolver` and `LearningProgressService` | L4.2, as an operation whose responsibility would earn a type |
+| Pure policies | `ContinueLearningPolicy`, `LearningRecommendationPolicy`, `LearningProgressPolicy`, `RecentPerformancePolicy` all still present. `ContinueLearningPolicy` was read in full, including its documented constraint that it uses no clock, no repository, no attempt history and no persistence; `LearningRecommendationPolicy` has three production callers | L4.2 and **L4.3's policy example** |
+| Derivations | `StudyProgressDerivation`, `UnresolvedMistakeDerivation`, `LearningPerformanceDerivation` all still present | L4.2 |
+| **No package named `domain`, and no domain layer** | Re-verified by listing every package under `shared/src/commonMain/kotlin`: application behaviour sits in feature packages (`lesson_study`, `mistake_review`, `learning_progress`, `guided_learning`, `assessment/*`) with implementations under `data/local` | L4.1's Senior section |
+| Five repository interfaces owned in consumer-side packages, implementations in a separate tree | `AssessmentRepository`, `CurriculumRepository`, `LessonStudyRepository`, `SavedQuestionRepository` in feature packages and `LearningContentRepository` in `curriculum/learning/repository`; implementations under `data/local/**` and `curriculum/learning/content` | **L4.4's inversion evidence** |
+| **The source dependency actually points inward** | Traced from imports rather than inferred from folder names. `LocalLessonStudyRepository` imports `lesson_study.StudiedLesson` and `lesson_study.repository.LessonStudyRepository`; `LessonStudyRepository` imports only `lesson_study.StudiedLesson` and names no database type. A search for `import org.artkachenko.kmp_learning_app.data.local` anywhere in `commonMain` **outside** `data/local` returns **nothing** | **L4.4**, as the claim that the detail names the policy and the policy names no detail |
+| One Gradle module | All of the above compiles inside `:shared` | L4.1 and L4.4, as the refutation of "a layer needs a module" |
+
+**What the evidence is used for, and what it is not.** L4.2 states that the repository's
+services, policies and derivations show the responsibility earning the class and the suffix
+recording what it was, and then says outright that this is one legitimate arrangement rather
+than a universally preferable one, and that a small local-first application is weak evidence
+about what a large one needs. It explicitly declines to relabel those types as "actually use
+cases": the comparison is drawn on responsibilities and the Lesson says that nothing here is
+named a use case and that calling it one would be reading the Lesson back into the codebase.
+L4.3 uses `ContinueLearningPolicy` as a framework-independent rule stated in the
+application's own vocabulary, and states the limit in the same paragraph — this application's
+policy is about a curriculum rather than a business domain, so the renewal scenario is a
+worked design and not something lifted from production. L4.4 says that package placement
+alone proves nothing and reports the import trace instead. **No production architecture code
+was changed or proposed for change**, and nothing in authoring surfaced a product defect
+worth recording.
+
+### What each Lesson actually does, against the issue's requirements
+
+**L4.1 — the layer decision.** The domain layer is defined as optional, between UI and data,
+with the Android sentence quoted together with its condition. The four earning conditions —
+reuse across callers, orchestration, business policy worth isolating, meaningful complexity —
+are introduced as evidence rather than a quota, with the explicit statement that one can be
+sufficient and that they often arrive together. Three claims are rejected by name: that every
+production application needs a domain layer, that Clean Architecture requires one, and that
+the presence of business logic anywhere justifies a domain package. The **simple feature** is
+the reminder-time preference, shown as a package listing with a forwarding middle layer, and
+answered "architecturally, nothing yet" with a five-item cost list. The **complex feature** is
+renewals, with four conditions visible at once and the two alternatives named — the rule in a
+state holder leaves the second caller reaching into another screen's owner, and the rule in
+the repository gives the data layer a policy about borrowers. A five-row comparison table puts
+the two features on the same questions. The **honest middle case** is the borrowed-items
+attention ordering: one moderately complex rule, one caller, plausible but unrequested reuse,
+answered with four pieces of *observable* evidence that would settle it, and the explicit
+refusal of speculative future flexibility as justification. Senior depth makes "add it when
+needed" actionable by giving both defensible sentences in full, separates the logical layer
+from the Gradle module, names DDD as excluded, and distinguishes the layer decision from
+L4.2's type decision.
+
+**L4.2 — the use-case decision.** A use case is defined as one application operation, with the
+guidance's no-own-lifecycle statement quoted, and "interactor" named once as an equivalent
+term with the variance noted and no architectural distinction invented. Four non-definitions
+are listed and refused: the suffix, `operator fun invoke`, a base class, and a folder. The
+**pass-through example** is `GetLoansUseCase` forwarding `repository.loans()`, costed as five
+concrete things including the precedent priced per repository method and the directory whose
+name overstates its contents. The **useful use case** is `RenewLoan` in the same shape —
+class, constructor parameters, one function — loading two inputs, applying a rule, deciding
+the outcome and writing only on the allowed branch, with a four-row table whose rows are
+responsibilities rather than aesthetics. Both symmetrical reuse mistakes are refused: that a
+use case needs two callers, and that anything appearing twice should be extracted. The
+**team-uniformity nuance** is a two-column table separating the architectural justification
+from the team convention on four axes, followed by a paragraph giving the convention its four
+genuine benefits before naming its four costs, and the closing claim that the failure mode is
+not choosing the convention but describing it as architecture. Senior depth is the repository
+evidence and the state-holder boundary.
+
+**L4.3 — policy and detail.** Both terms are defined, and the distinction is stated as being
+about reasons to change. Two shortcuts are refused explicitly: policy is not a synonym for
+pure function, and plain Kotlin is not evidence that a responsibility exists. The
+**framework-leak example** is a return-submission operation whose signature takes
+`android.net.Uri` and returns the transport library's `Response`, traced to three named
+consequences — a transport change becomes a policy change, a platform type restricts where the
+rule can live, and the rule is stated in someone else's vocabulary — and then redrawn with
+application-owned inputs and outputs and the adapter outside. The **wrong-owner example** is
+renewal eligibility computed inside `BorrowedItemsViewModel`, diagnosed not as duplication but
+as the rule's responsibility being broader than the component holding it, with an explicit
+refusal of "business logic does not belong in a ViewModel" and a four-row table separating
+decisions that genuinely are the screen owner's from policy that is not. The **KMP bridge** is
+one bounded paragraph: framework-independent policy is the strongest sharing candidate,
+sharing is a consequence of the split rather than a reason for it, and the reverse claim that
+everything in a domain layer belongs in common code does not follow. The **testability
+treatment** names the dependency boundary and states outright that five layers with framework
+imports gain nothing while two layers with a correct boundary may have everything.
+
+**L4.4 — inversion.** The Lesson opens on the three deferrals it is answering. The correction
+is stated first: an interface does not invert anything by existing, and the question is who
+defines the abstraction. The conceptual direction is drawn once, with placement and runtime
+supply both explicitly excluded from it. The **two arrangements** use the same three types —
+`RenewLoan`, `LoanRepository`, `LocalLoanRepository` — with real import lines in both, so the
+source dependency is visible rather than asserted: in A the policy imports the data package
+and the contract speaks of rows and epoch milliseconds, in B the data package imports the
+consumer and the contract speaks of loans and due dates. A six-row table traces which side
+names the other, who the contract was designed for, what a storage change costs, what a
+policy change costs, who can vary without the other, and whether anything was inverted. The
+**repository evidence** is the import trace described above. Senior depth holds the
+consumer-ownership nuance — placement expresses responsibility and a neutral location can
+obscure it, with Separated Interface as the source — the **dependency inversion against
+dependency injection** distinction as a four-row table plus the consequence that a codebase
+can inject everywhere and have inverted nothing, the single naming of SOLID's D, and the
+ordering relative to L1.4.
+
+**L4.5 — the dependency rule.** The rule is stated from the primary source in one sentence,
+with the schematic-circles finding immediately after it. Four claims are rejected by name:
+presentation-domain-data, a fixed layer count, a use case per repository method, and a module
+per layer. The **template comparison** shows the three-box diagram and labels it as one
+possible structure compatible with some principles, with Android's own more careful wording
+quoted beside it. A **two-layer design** satisfying the rule is traced, and a **four-grouping
+design** is traced beside it, with a five-row table showing both compliant. **Terminology is
+reconciled** without adopting one vocabulary: the Clean Architecture circle names, Android's
+layer names and the interactor/application/infrastructure variants are named as differing,
+and the curriculum's answer is to teach policy, detail and direction and to ask an interviewer
+what they mean by "domain". Senior depth lists what the rule buys as four instances of one
+sentence, lists what it does **not** buy — fewer files, faster builds, fewer mappings, simpler
+code, fewer modules, better runtime performance — and notes it often produces more of several
+of them, carries the testability treatment forward in the same precise form, separates the
+architectural boundary from the build unit, and closes the Unit by restating its five
+decisions and naming Unit 5 in prose.
+
+### Corrections made during review
+
+Four defects were found by reading the rendered Unit after the Lessons were first written,
+all in Unit 4's own prose and all fixed in this change. The first is recorded because it is
+the kind of error this subject is most prone to: a diagram that asserts a structure the
+surrounding prose denies.
+
+| Where | Defect | Correction |
+| --- | --- | --- |
+| L4.5, Practical | The four-grouping diagram was drawn as a **vertical chain** — eligibility, then the operation, then the screen owner, then the implementation — which reads as `LocalLoanRepository → BorrowedItemsViewModel → RenewLoan`. That is a dependency the design does not have, and the paragraph directly beneath it says in as many words that the screen owner and the implementation are both outer and neither names the other | Redrawn as a branch: both outer components point inward at `RenewLoan`, and neither points at the other. The picture now shows what the caption claims, which is the whole point of a Lesson arguing that the drawing is not the rule |
+| L4.5, Senior | The "what it does not buy" list said the rule frequently produces more files, more mappings **and more modules**. The third is not supportable and contradicts the Lesson's own separation of the architectural boundary from the build unit | Narrowed to files and mappings, which follow directly from the contracts and translations the rule requires |
+| L4.4, Practical | "The column that matters is the last row of the middle block" named a structure the six-row table does not have | Replaced with the row's own name — what a storage change costs |
+| L4.4, Senior | "manual construction inverts nothing less well" is a double negative that reverses on a careless read | Restated positively: a dependency constructed by hand in one place is inverted just as fully |
+
+None of the four changed an identity, a mapping, a source or a Lesson boundary.
+
+### Semantic review of the Questions this Unit now reaches
+
+All five ACTIVE Questions in the resolved pool were re-read in full and independently solved
+against the finished prose. **The E26-01 findings in
+[Part 5](#part-5--semantic-assessment-review) all still hold**; nothing below overturns one.
+The `architecture` Topic still holds 22 ACTIVE and 4 DEPRECATED Questions over 18 Subtopics,
+re-counted from the bundled JSON during authoring.
+
+| Question | Level | Reached through | Re-read verdict against the shipped Lessons |
+| --- | --- | --- | --- |
+| `architecture_use_case_reuse` | APPLIED | `use_cases` (L4.1, L4.2) | Sound and answerable. Its correct answer — that extracting multi-repository orchestration gives it one home that can be exercised without constructing either ViewModel — is L4.2's `RenewLoan` argument plus L4.3's testability framing, and its final explanation sentence is exactly L4.2's pass-through claim. The Lesson uses a different feature, different wording and none of its distractors, and deliberately teaches the single-caller case the Question does not pose, so it does not coach the option |
+| `domain_layer_passthrough_cost` | APPLIED | `use_cases` (L4.1, L4.2) | **The Unit's best-matched Question, and it survives the prose test.** L4.2 teaches the reasoning directly — a class that forwards one repository method with no reuse and no rule centralises nothing and costs indirection — while pricing it as five specific things rather than as the word the Question's correct option uses. Its three distractors (testing, `Context`, blocking) are all claims L4.2 never makes and one L4.3 explicitly refuses |
+| `clean_architecture_dependency_rule_tradeoff` | APPLIED | `clean_architecture` (L4.5) | Sound, and confirmed to assess the *consequences* of following the rule rather than the rule's own shape. Both correct options are taught: framework-free policy exercisable without instrumentation is L4.3's and L4.5's testability paragraph, and mapping appearing wherever an annotated type would otherwise have been reused is the cost L4.5 carries forward from Unit 1 and Unit 3. Its refusal of the build-speed claim is the same refusal L4.5's "what it does not buy" list makes. **It does not assess GAP-U4-B**, which is unchanged |
+| `dependency_direction_domain_framework_types` | FOUNDATION | `dependency_direction` (L4.3, L4.4) | Sound and precisely matched to L4.3, whose framework-leak example is the same shape — a platform URI in and a transport type out — with a different operation and different consequences prose. The Question's correct answer is L4.3's first two consequences, and its explanation's refusal of "coupling means untestability" is consistent with L4.3's insistence that the useful property is the dependency boundary. **Level observation unchanged and recorded below.** **Routing:** also Unit 1 practice, as predicted |
+| `architecture_interface_boundary_ownership` | APPLIED | `interface_boundaries` (L4.4) | Sound and precisely matched to L4.4. All four of its options are reasoning the Lesson teaches independently: the consumer owns the abstraction, placing it beside the implementation leaves the arrow pointing outward, a neutral module removes coupling while scattering the contract, and the presentation layer's binding choice is a wiring decision rather than an ownership one — which is L4.4's injection-against-inversion distinction. The Lesson uses a package-level trace with real imports rather than the Question's module scenario, and reproduces none of its distractor wording |
+
+**`architecture_solid_dependency_substitution` was re-read as required, and is confirmed to
+stay outside Unit 4's practice.** It is sound and well written; `solid` is supporting-only in
+L4.4 by the epic's design, so the Question reaches no E26 Unit at all. L4.4 names the D of
+SOLID once for recognition and teaches the reasoning under `dependency_direction` and
+`interface_boundaries`, which is where an engineer makes the decision. The exclusion is now
+asserted by id in `LearningUnitPracticeIntegrationTest` rather than left as a claim.
+
+**The DEPRECATED `architecture_tradeoffs_001` was re-read and deliberately not restored.** Its
+concept — when a use-case layer is most defensible — is closest to L4.1's, and its correct
+answer ("when it holds business rules or orchestration that would otherwise be duplicated")
+is two of L4.1's four conditions. Two observations for E26-08 rather than an action here.
+First, it is a *use-case-level* Question filed under `architecture_tradeoffs`, so restoring it
+unchanged would put a use-case answer into Unit 1's and Unit 6's practice and not into Unit 4's,
+which is the opposite of what GAP-U4-A needs. Second, its two weakest distractors are now
+things the shipped Lessons address head-on — reading from two repositories is L4.2's
+orchestration condition stated too loosely, and "the team wants every repository call wrapped
+for the sake of consistency" is precisely the uniformity convention L4.2 treats as a
+legitimate team decision rather than as a wrong answer. Restoring that option as a distractor
+would now contradict the Unit. E26-08 should treat its reasoning as input to GAP-U4-A and
+author at the layer level rather than re-ask it.
+
+**No Question was created, edited, re-mapped, re-levelled or re-statused by this issue**, and
+no factual defect was found in any Question read.
+
+### GAP-U4-A and GAP-U4-B after authoring
+
+Both gaps survive the finished prose unchanged, and no new gap was created.
+
+| Gap | Status after E26-05 | What the finished Lesson changes about it |
+| --- | --- | --- |
+| GAP-U4-A | **Open, unchanged; still lower priority than GAP-U4-B** | L4.1 now ships the whole layer-level decision: the definition, the four conditions, three worked features including an honest middle case, and the evidence that would settle it. The two ACTIVE `use_cases` Questions still both work at the *class* level and are both well matched to L4.2, so a reader who can answer both has still never been asked whether a feature earns a layer. The distinction is now taught explicitly — L4.1's Senior section states it in as many words — which makes the gap sharper rather than smaller. Its priority is unchanged because a reader who holds L4.2's reasoning is close, and `architecture_tradeoffs_001` must not simply be restored (see above) |
+| GAP-U4-B | **Open, unchanged; still a strong candidate** | L4.5 now ships the reasoning directly: the dependency rule as a direction, the schematic-circles finding, a two-layer compliant design beside a four-grouping one, and the four template claims rejected by name. `clean_architecture_dependency_rule_tradeoff` still assesses the consequences of following the rule and still takes the layer structure as given, so "Clean Architecture means three layers" remains unassessed. The gap is now a gap in assessment of material that ships, which is the strongest case an E26-08 Question can have |
+
+**No new gap was created for L4.3 or L4.4**, which is the plan's default and was re-checked
+rather than assumed. `dependency_direction_domain_framework_types` assesses L4.3's leak in the
+same shape, and `architecture_interface_boundary_ownership` assesses L4.4's ownership claim
+precisely; neither Lesson introduces reasoning that no existing Question can reach. Two
+observations are recorded for E26-08 without being promoted to gaps:
+
+- **Nothing assesses the team-uniformity nuance.** L4.2's sharpest testable idea is arguably
+  not the pass-through cost — which `domain_layer_passthrough_cost` covers — but the
+  distinction between an architectural justification and a deliberate team convention, and no
+  Question in any Topic poses it. It may well belong inside a GAP-U4-A Question rather than
+  as one of its own.
+- **Nothing assesses dependency inversion against dependency injection.** The distinction is
+  L4.4's Senior half and the reason a codebase can inject everywhere and invert nothing.
+  `service_locator_vs_di_001` and `di_hilt_viewmodel_scope` sit in `dependency_injection` and
+  assess hidden dependencies and DI-scoped lifetimes, which is not the same claim. This is
+  E27's territory as much as E26's, and E26-08 should weigh it with E27 rather than author
+  into it unilaterally.
+
+**Level observation for `dependency_direction_domain_framework_types`, recorded and not
+acted on.** It remains `FOUNDATION` for reasoning that is a design judgement rather than
+recall: the reader has to read a signature, recognise two kinds of framework coupling and
+name the consequence, which is what L4.3 spends its Practical section teaching. E26-01
+recorded this as a level-review candidate; authoring L4.3 strengthens the observation rather
+than changing it, because the reasoning the Lesson had to build for it is Practical-depth
+reasoning. **No level was changed by this issue**, as the issue requires.
+
+### Actual practice reach, resolved through the production resolver
+
+Recomputed by running the shipped Unit through `PracticeBuilderViewModel` and the real
+selection path in `LearningUnitPracticeIntegrationTest`, not by reading mappings. The Unit
+configures `AssessmentScope.Subtopics` of exactly its four primary concepts and resolves
+**five** Questions:
+
+| Resolved Question | Level | Reached through | Semantically belongs mainly to |
+| --- | --- | --- | --- |
+| `architecture_use_case_reuse` | APPLIED | `use_cases` | Unit 4 |
+| `domain_layer_passthrough_cost` | APPLIED | `use_cases` | Unit 4, and it is the Unit's best-matched Question |
+| `clean_architecture_dependency_rule_tradeoff` | APPLIED | `clean_architecture` | Unit 4 |
+| `dependency_direction_domain_framework_types` | FOUNDATION | `dependency_direction` | Unit 4, **shared with Unit 1** |
+| `architecture_interface_boundary_ownership` | APPLIED | `interface_boundaries` | Unit 4, **shared with Unit 1** |
+
+This matches [Part 6](#part-6--unit-practice-routing-modelled-now)'s modelled pool exactly —
+five Questions, the same five ids — so no mapping moved during authoring and E26-01's
+prediction is confirmed rather than assumed. The level split is one FOUNDATION and four
+APPLIED, with **no ADVANCED Question**, matching the Topic-wide observation in Part 5.
+
+**The Unit 1 / Unit 4 overlap is now a fact rather than a prediction.** Both Units take
+`dependency_direction` and `interface_boundaries` as primary concepts, so
+`dependency_direction_domain_framework_types` and `architecture_interface_boundary_ownership`
+appear in both pools — asserted directly by computing both pools and intersecting them. Both
+fit Unit 4 better, because Unit 4 is where their reasoning is completed: L4.3 teaches the
+framework-leak consequence in full and L4.4 teaches abstraction ownership in full, while Unit
+1 gives a reader direction and the boundary test and stops deliberately. It was **not** fixed
+by demoting a concept from L1.3, L1.4 or from this Unit, by re-mapping either Question, or by
+inventing a taxonomy concept, all of which the issue forbids and the plan already rejected.
+E26-08 owns the decision; the test asserts the intersection so a later re-map has to re-state
+the consequence rather than silently repairing it.
+
+Two further structural facts, both asserted rather than inspected:
+
+1. **Supporting concepts broaden nothing.** The Unit's nine supporting-only concepts —
+   `solid`, `service_locator_vs_di`, `android_modules`, `kmp_architecture`,
+   `repository_pattern`, `layered_architecture`, `architecture_tradeoffs`, `state_ownership`
+   and `separation_of_concerns`, between them holding eleven ACTIVE Questions — contribute
+   nothing to the pool. `architecture_solid_dependency_substitution` is asserted by id to
+   stay outside it, and asserted to stay outside Unit 1's pool as well, which is the
+   epic-level claim that `solid` reaches no E26 Unit at all.
+2. **No shipped Unit's practice changed.** No shipped Lesson takes an `architecture` Subtopic
+   as primary, so nothing this Unit maps can reach an existing Unit's pool. Unit 2's pool is
+   unchanged at five and Unit 3's at six, and neither shares a Question with Unit 4 because
+   their primary concepts are disjoint from its; Unit 1's is unchanged at five and shares the
+   two Questions above.
+
+### Cross-links
+
+Backward only, and every target already shipped. L4.1 → `lesson_layers_and_their_cost`,
+`lesson_what_a_repository_owns`; L4.2 → L4.1, `lesson_what_a_repository_owns`,
+`lesson_state_holder_responsibility`; L4.3 → `lesson_dependency_direction_and_boundaries`,
+`lesson_state_holder_responsibility`, `lesson_model_and_error_boundaries`; L4.4 →
+`lesson_dependency_direction_and_boundaries`, `lesson_when_an_interface_is_a_boundary`,
+`lesson_what_a_repository_owns`; L4.5 → `lesson_layers_and_their_cost`, L4.1, L4.3.
+
+Each link is an actual semantic dependency rather than one mention per prior Lesson: L4.1
+applies Unit 1's layer cost model to the repository Unit 3 designed, L4.2 and L4.3 both lean
+on what a state holder owns because both draw a line against it, L4.4 names the three
+deferrals it answers, and L4.5 builds on the layer cost, the layer decision and the
+policy/detail split. **No shipped Lesson was edited**, no Unit 1, 2 or 3 Lesson received a
+reciprocal link, and no forward link into Unit 5 was invented. The link test uses the same
+narrowed form E26-04 introduced — no Lesson authored *before* this Unit links into it — which
+is the property the plan actually requires.
+
+### Tests changed, and why
+
+| File | Change | Why production data made it necessary |
+| --- | --- | --- |
+| `BundledLearningCurriculumTest` | Unit id, title and home-Topic lists extended by one; Lesson id/title order and primary mappings for the new Unit added; two new tests — `domainLogicUnitKeepsItsPlannedBridgesOutOfPrimaryPractice` and `domainLogicUnitLinksBackwardsOnlyToShippedArchitectureAnchors` | The document lists Units positionally, so a fourth architecture Unit changes four lists. The bridge test exists because this Unit's nine supporting-only concepts are where a promotion to primary would silently claim another curriculum's practice — `solid`, `service_locator_vs_di`, `android_modules` and `kmp_architecture` most of all, since the Unit's whole boundary with E27, E29 and E33 rests on them staying supporting. It also pins the two concepts that are primary in one Lesson and supporting in another, which the validator checks only within a Lesson |
+| `LearningUnitPracticeIntegrationTest` | The traversal now expects four architecture Units and `listOf(5, 5, 5, 5)` Lessons, and its final studied-record count rises from 86 to 91; the shared expectation table gained a Unit 4 row; new test `theDomainLogicUnitPractisesItsPrimaryConceptsIncludingTwoSharedWithUnitOne` | Continue Learning walks the whole document, so a fourth architecture Unit changes the traversal and the Topic's progress denominator. Unit 4 fits the shared table — all four primary concepts hold Questions — so the bespoke test exists to pin the exact five ids, to compute the Unit 1 intersection rather than assert it from memory, and to assert that `architecture_solid_dependency_substitution` reaches neither Unit |
+
+No test was added that only re-states schema validation `LearningCurriculumValidatorTest`
+already performs, and the data-driven suites — the reader journey over every shipped Unit,
+Topic Detail's Unit rows, the end-to-end repository path — needed no edit because they read
+the document rather than listing it. No prose is snapshotted anywhere.
+
+### Validation performed
+
+| Command | Result |
+| --- | --- |
+| `python3` structural pre-check over both bundled JSON documents | Ids unique across the whole document, every mapping an ACTIVE Subtopic, no primary/supporting overlap within a Lesson, every `relatedLessonIds` target resolvable and non-self, no blank or placeholder text, every comparison row matching its header count, every Source URL well-formed |
+| `./gradlew :shared:jvmTest --tests "*BundledLearningCurriculumTest*" --tests "*LearningUnitPracticeIntegrationTest*" --tests "*LearningCurriculumValidatorTest*" --tests "*LearningContentEndToEndTest*"` | 101 tests, 0 failures. The first run surfaced one real defect: three comparison tables shipped with a blank first header, which `LearningCurriculumValidator` rejects as `BLANK_COMPARISON_HEADER`. All three were given real column labels |
+| `./gradlew :shared:jvmTest` | **1,396 tests, 0 failures**, including `LearningProductionContentJourneyTest`, which renders every authored block of the new Unit in the reader, checks the reading column never widens, and opens every authored Source link through the app's own URI boundary |
+| `python3 tools/learning_question_coverage.py --write` then `--check` | Snapshot regenerated and reported current |
+| `cd tools && python3 -m unittest test_learning_question_coverage.py` | 21 tests, OK |
+| `./gradlew :shared:check` | Passed |
+| `./gradlew :androidApp:assembleDebug` | Passed |
+| `git status --short` and `git diff --check` | Five files changed — the bundled learning document, two jvm test files, this plan and the generated coverage snapshot — with no build or cache output and no whitespace defects |
+
+The regenerated `docs/content/learning-question-coverage.md` now reports **22 active Units and
+92 active Lessons**, the new Unit appearing directly after Unit 3 with five Lessons, a pool of
+five Questions across two levels and no ADVANCED Question, and one primary Subtopic still with
+no active Question — which remains `architecture_tradeoffs` and GAP-U1-E rather than anything
+Unit 4 introduced.
+
+### Not validated
+
+- **`iosArm64` is not compiled locally or on CI**, unchanged from E25 and from every E26
+  issue so far. Unit 4 introduces no target-specific code and makes no source-sensitive
+  ViewModel or lifecycle claim, so nothing in its prose depends on that target; the
+  limitation is reported because it is still true of the epic.
+- **No CI run is claimed.** Nothing in this issue was observed on GitHub Actions.
+- **Backlog validation could not be run**: `PyYAML` is unavailable in this environment, so
+  `.github/project/backlog.yml` was read as text rather than parsed and validated. Issue #365
+  was read from that file rather than through `gh`, which is still not installed.
+- **The learning content itself is editorial** and no automated check can confirm that a
+  Lesson teaches what it claims; the semantic review above is a judgement, as Rule 10 of the
+  authoring contract requires.

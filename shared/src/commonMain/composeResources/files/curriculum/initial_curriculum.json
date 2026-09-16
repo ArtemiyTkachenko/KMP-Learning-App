@@ -19794,7 +19794,7 @@
       "id": "occurrence_guarantee_before_mechanism",
       "topicId": "architecture",
       "subtopicId": "state_ownership",
-      "text": "Two occurrences on one screen. After a new loan appears the list should scroll to it, and nothing should happen if no list is on screen. Separately, a borrowing request the reader was told was submitted is confirmed by the library minutes later, possibly after the process has been killed, and the next screen the reader opens must show that confirmation once. Which design satisfies both?",
+      "text": "Two occurrences on one screen. After a new loan appears the list should scroll to it, and nothing should happen if no list is on screen. Separately, a borrowing request the reader was told was submitted is confirmed by the library minutes later, possibly after the process has been killed; the next screen the reader opens must show that confirmation, and the application must be able to tell at any moment whether it has already been acknowledged. Which design satisfies both?",
       "answers": [
         {
           "id": "occurrence_guarantee_before_mechanism_a",
@@ -19818,7 +19818,7 @@
       "correctAnswerIds": [
         "occurrence_guarantee_before_mechanism_b"
       ],
-      "explanation": "State the guarantee before choosing anything. The scroll may be lost — with no list on screen there is nothing to scroll and nothing is owed — so the remaining questions mostly stop mattering, and giving it a durable record and a clearing protocol would be structure with no requirement behind it. The confirmation answers the other way: a later consumer must act, repetition is not safe, and the obligation must survive the process, which removes every in-memory owner from consideration before any stream type is discussed. An application-scoped owner is still in memory and ends with the process, so it answers a different question; the guidance separates operations that must survive process death from operations that are cancelled when the user moves away from a screen. A recorded pending-or-acknowledged fact is what makes \"is this still outstanding?\" readable by a consumer arriving at any moment, which is why the platform reduces such events to UI state that the UI clears once handled. It is also the honest limit of the claim: recorded handling, transport delivery and side-effect execution are three different things, and a process that ends after the action and before the record is written leaves the obligation reading as outstanding, so the action repeats.",
+      "explanation": "State the guarantee before choosing anything. The scroll may be lost — with no list on screen there is nothing to scroll and nothing is owed — so the remaining questions mostly stop mattering, and giving it a durable record and a clearing protocol would be structure with no requirement behind it. The confirmation answers the other way: a later consumer must act, repetition is not safe, and the obligation must survive the process, which removes every in-memory owner from consideration before any stream type is discussed. An application-scoped owner is still in memory and ends with the process, so it answers a different question; the guidance separates operations that must survive process death from operations that are cancelled when the user moves away from a screen. What the requirement asks for is a readable fact: a durable pending-or-acknowledged value lets a consumer arriving at any moment ask whether the obligation is still outstanding, which is why the platform reduces such events to UI state that the UI clears once handled. Writing that record only after the screen has acted does not supply it, because a process ending in between leaves an acknowledged confirmation recorded as pending — which is also why the requirement is stated as a record the application can read rather than as exactly-once execution. Recorded handling, transport delivery and side-effect execution are three different claims, and an architecture supports only the first.",
       "sources": [
         {
           "title": "UI events",
@@ -19884,7 +19884,7 @@
       "id": "smallest_structure_that_satisfies_the_requirements",
       "topicId": "architecture",
       "subtopicId": "architecture_tradeoffs",
-      "text": "A feature: the reader assembles a basket; an eligibility rule the library owns decides whether they may borrow; three surfaces run that check; two data responsibilities with separate sources supply its inputs; the basket has invariants no path may break; and a submitted request the reader was told about must complete and be acknowledged once even if the process is killed. Which design is proportionate?",
+      "text": "A feature: the reader assembles a basket; an eligibility rule the library owns decides whether they may borrow; three surfaces run that check; two data responsibilities with separate sources supply its inputs; the basket has invariants no path may break; and a submitted request the reader was told about must complete even if the process is killed, with the application able to tell whether the library has confirmed it. Which design is proportionate?",
       "answers": [
         {
           "id": "smallest_structure_that_satisfies_the_requirements_a",
@@ -19896,7 +19896,7 @@
         },
         {
           "id": "smallest_structure_that_satisfies_the_requirements_c",
-          "text": "Two repository boundaries, a domain operation for the rule, an explicit transition, a durable record, and an owner above the screen."
+          "text": "Two repository boundaries, a domain operation for the rule, an explicit transition, a durable record, and work that outlives the process."
         },
         {
           "id": "smallest_structure_that_satisfies_the_requirements_d",
@@ -19908,7 +19908,7 @@
       "correctAnswerIds": [
         "smallest_structure_that_satisfies_the_requirements_c"
       ],
-      "explanation": "Architecture is proportionate when every element traces to a requirement that names it, and each requirement here buys exactly one piece: a rule the library owns with three callers and two data responsibilities to coordinate earns a domain operation; sources with their own freshness questions earn separate repository boundaries; invariants no path may break are cheaper to keep in one transition than in five callbacks; a fact the reader was told about that must survive the process earns a durable record with a pending-or-acknowledged position; and a submission that must complete regardless earns an owner above the screen. The single-repository design is not simpler but under-architected: the rule has three homes so a lending-policy change will miss one, the invariants hold only on the paths somebody remembered, and leaving the screen cancels something the reader was told had happened. Adding a use case per repository method and a type at every boundary adds boundaries with no independent change behind them, which the guidance itself warns produces complexity for little benefit; buying it for uniformity is defensible only when it is named as a decision about consistency. And putting a pattern at the centre answers the ownership, lifetime and dependency questions before they have been asked.",
+      "explanation": "Architecture is proportionate when every element traces to a requirement that names it, and each requirement here buys exactly one piece: a rule the library owns with three callers and two data responsibilities to coordinate earns a domain operation; sources with their own freshness questions earn separate repository boundaries; invariants no path may break are cheaper to keep in one transition than in five callbacks; a confirmation the application must be able to ask about earns a durable record with a pending-or-acknowledged position; and a submission that must complete after the process ends earns work scheduled to outlive it, which is not a scoping decision at all — an owner above the screen escapes navigation and still dies with the process, and a durable record preserves the pending fact without restarting the operation. The single-repository design is not simpler but under-architected: the rule has three homes so a lending-policy change will miss one, the invariants hold only on the paths somebody remembered, and leaving the screen cancels something the reader was told had happened. Adding a use case per repository method and a type at every boundary adds boundaries with no independent change behind them, which the guidance itself warns produces complexity for little benefit; buying it for uniformity is defensible only when it is named as a decision about consistency. And putting a pattern at the centre answers the ownership, lifetime and dependency questions before they have been asked.",
       "sources": [
         {
           "title": "Guide to app architecture",

@@ -3585,9 +3585,9 @@ silently.**
 | GAP-U5-B | **Closed by new Question** | `observed_state_arrangement_is_not_a_class_or_a_folder` (APPLIED, `mvvm`). Obligatory once `viewmodel_vs_repository_responsibility` moved. Keyed on the change that actually establishes the arrangement, with the class-name and folder-name definitions as distractors; the arrangement is stated in the stem rather than deduced from the label |
 | GAP-U5-C | **Closed by new Question** | `explicit_transition_is_not_the_input_spelling` (APPLIED, `mvi`). Obligatory once `architecture_ui_event_consumption` moved. Assesses the transition model with the "MVI is MVVM plus sealed intents" misconception as the central discrimination and the purity over-claim as a fourth option. **Nothing about `SharedFlow`, `Channel` or occurrence delivery**, which was the mapping error being corrected |
 | GAP-U5-D | **Closed by the GAP-U5-A Question** | The design `classify_a_screen_by_its_responsibilities` presents is a hybrid — a lifecycle-owned holder from one tradition, one immutable state value from another, callbacks from a third — and its three distractors each differ on exactly one property, which is the classification skill the gap describes. A separate hybrid Question would have given Unit 5 one Question per Lesson, which is the quota this issue was told not to author |
-| GAP-U6-A | **Mostly closed by the re-map; the remainder closed by one new Question** | The re-map delivers `architecture_ui_event_consumption` to Unit 6. `occurrence_guarantee_before_mechanism` (ADVANCED, `state_ownership`) closes what E26-07 said the re-map would leave: an occurrence whose correct answer is **acceptable loss**, where a durable mechanism would be over-architecture, with process survival as the eligibility test that removes in-memory owners and the recorded-handling against side-effect-execution distinction as a distractor. **No second replay Question was written**, as the issue required |
+| GAP-U6-A | **Mostly closed by the re-map; the remainder closed by one new Question** | The re-map delivers `architecture_ui_event_consumption` to Unit 6. `occurrence_guarantee_before_mechanism` (ADVANCED, `state_ownership`) closes what E26-07 said the re-map would leave: an occurrence whose correct answer is **acceptable loss**, where a durable mechanism would be over-architecture, with process survival as the eligibility test that removes in-memory owners and the recorded-handling against side-effect-execution distinction carried by the fourth option. Its requirement is stated as a readable pending-or-acknowledged record rather than as exactly-once handling, which is the limit L6.2 says an architecture can actually promise. **No second replay Question was written**, as the issue required |
 | GAP-U6-B | **Closed by new Question** | `owner_chosen_from_the_required_lifetime` (APPLIED, `state_ownership`). Three rungs of the ladder from three stated ending events, with the application-scoped owner as the tempting longer-lived answer that fails on process death. Also carries the architecture-side half of GAP-U2-A and GAP-U2-D |
-| GAP-U6-C | **Closed by new Question** | `smallest_structure_that_satisfies_the_requirements` (ADVANCED, `architecture_tradeoffs`). The epic's synthesis Question: one feature's requirements, four designs, with under-architecture, over-architecture and pattern-first as the three wrong answers. Distinct from GAP-U1-E, whose Question judges one boundary |
+| GAP-U6-C | **Closed by new Question** | `smallest_structure_that_satisfies_the_requirements` (ADVANCED, `architecture_tradeoffs`). The epic's synthesis Question: one feature's requirements, four designs, with under-architecture, over-architecture and pattern-first as the three wrong answers. Its key names work that outlives the process rather than L6.4's shorthand "an owner above the screen", so that it agrees with `owner_chosen_from_the_required_lifetime` and with L6.3's rung. Distinct from GAP-U1-E, whose Question judges one boundary |
 
 **No gap was left open**, and no new gap was created. One observation E26-04 recorded was weighed and
 deliberately not promoted: *nothing assesses the model-separation trade-off in the direction that
@@ -3608,9 +3608,9 @@ levelled to fix that, and sixteen of the eighteen new Questions are APPLIED.
 - **`occurrence_guarantee_before_mechanism`.** Two occurrences have to be answered against five
   independent guarantee questions in the right order; the process-survival answer eliminates a whole
   class of owners before any mechanism is considered; the correct answer requires recognising that a
-  durable design is *wrong* for one of them; and one distractor is right about the structure and wrong
-  about what the structure guarantees. Several constraints interact and a superficially safer answer
-  is invalidated by one of them.
+  durable design is *wrong* for one of them; and the last distractor turns on *when* the record is
+  written rather than on whether one exists. Several constraints interact and a superficially safer
+  answer is invalidated by one of them.
 - **`smallest_structure_that_satisfies_the_requirements`.** Six stated requirements each earn or fail
   to earn a structural element, and the three wrong answers fail in three different directions —
   missing owners, boundaries with no independent change behind them, and a mechanism chosen before the
@@ -3733,6 +3733,29 @@ That pass changed two Questions before they shipped, both in a distractor rather
   and differed only in what it claimed about it, so two options described one design. It was replaced
   with a genuinely different design — a durable record the screen writes *after* acting — which is
   wrong for a concrete reason L6.2 teaches.
+
+**Review found two more, and both were the same defect: a stem demanding a guarantee no option could
+deliver.** They are recorded because the pattern is worth carrying forward — in both, the key was
+fine as a design and the *requirement* was overstated.
+
+- **`occurrence_guarantee_before_mechanism`** — the stem asked that the confirmation be shown
+  "once". No architecture supplies exactly-once execution, and this Question's own explanation said
+  so, so the key did not satisfy its own stem and the fourth option described the key's structure
+  with a different claim attached. The shipped stem asks for what L6.2 says a design can actually
+  promise: that the next screen shows the confirmation, and that the application can tell at any
+  moment whether it has been acknowledged. The distractor now fails on the stated requirement,
+  because a record written only after acting is missing for something already acted on.
+- **`smallest_structure_that_satisfies_the_requirements`** — the same over-claim, plus a key that
+  named "an owner above the screen" for a requirement that outlives the process. That is exactly what
+  `owner_chosen_from_the_required_lifetime` keys on being insufficient, **in this same batch**, so the
+  two Questions contradicted each other and a reader who answered the first correctly had grounds to
+  reject the second. The key now names work that outlives the process. L6.4 uses the shorthand "an
+  owner above the screen" for this element and the Question deliberately does not reproduce it,
+  because L6.3 is the authority on the rung and is explicit that surviving the process is not a
+  scoping decision at all.
+
+Both Questions were still unshipped when they were changed, so no `AnswerOption` id was reissued for
+the one option whose claim narrowed and no historical attempt can reference it.
 
 The three re-mapped and re-levelled Questions were re-solved unchanged and needed no edit; the other
 nineteen ACTIVE architecture Questions were re-read whole and re-solved against the shipped prose, and

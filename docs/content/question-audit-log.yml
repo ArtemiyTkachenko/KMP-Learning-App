@@ -228,8 +228,40 @@ audits:
         process ending between the action and the write leaves the obligation reading as
         outstanding, so the action repeats.
 
-        No fix was needed in any key, and no new AnswerOption id was issued outside the batch,
-        because both Questions were still unshipped when they were changed.
+        Review then found two more, and both were worse than the first two, because both were in a
+        stem that demanded a guarantee no option could deliver.
+
+        occurrence_guarantee_before_mechanism - the stem required that the next screen show the
+        confirmation "once". No architecture supplies exactly-once execution, and this Question's
+        own explanation says so: a process ending after the side effect and before the record is
+        written leaves the obligation reading as outstanding. The key therefore did not satisfy
+        its own stem, and the distractor about writing the record after acting described the same
+        structure as the key and differed only in what it claimed. The shipped stem asks for what
+        the design can actually provide - that the next screen shows the confirmation and that the
+        application can tell at any moment whether it has already been acknowledged - which is
+        lesson_delivery_guarantees' own distinction between a recorded fact and exactly-once
+        execution. The distractor now fails for a stated reason rather than an unstated one: a
+        record written only after acting is absent for something already acted on, so the
+        application cannot answer the question the requirement asks. The explanation was rewritten
+        so its closing paragraph justifies the requirement instead of conceding the key.
+
+        smallest_structure_that_satisfies_the_requirements - the same exactly-once over-claim in
+        the stem, and a worse defect in the key, which named "an owner above the screen" for a
+        requirement that survives process death. That is precisely what
+        owner_chosen_from_the_required_lifetime, authored in this same batch, keys on being
+        insufficient, with an application-scoped owner as its distractor - so a reader who
+        answered that Question correctly had grounds to reject this one's key. The key now names
+        work that outlives the process, the stem asks for a confirmation the application can ask
+        about rather than exactly-once handling, and the explanation states outright that an owner
+        above the screen escapes navigation and still dies with the process while a durable record
+        preserves the pending fact without restarting the operation. lesson_smallest_sufficient_architecture
+        uses the shorthand "an owner above the screen" for this element; the Question deliberately
+        does not reproduce it, because lesson_choosing_the_owner_by_lifetime is the authority on
+        the rung and says a requirement to survive the process is not a scoping decision at all.
+
+        No fix was needed in any key's identity, and no new AnswerOption id was issued for the one
+        option whose claim narrowed, because all four Questions were still unshipped when they were
+        changed and no historical attempt can reference them.
 
     passed:
       note: >-

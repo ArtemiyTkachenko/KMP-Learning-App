@@ -218,10 +218,14 @@ internal class LearningUnitPracticeIntegrationTest {
                     "unit_repositories_and_data_ownership",
                     "unit_domain_logic_and_dependency_direction",
                     "unit_responsibility_models_mvp_mvvm_mvi",
+                    "unit_state_events_lifetime_and_selection",
                 ),
                 architectureUnits.map { it.id },
             )
-            assertEquals(listOf(5, 5, 5, 5, 5), architectureUnits.map { it.lessons.size })
+            // The synthesis Unit carries four Lessons rather than five: it adds no mechanism and
+            // has four decisions in it, which `docs/content/architecture-units-1-6-plan.md`
+            // records as derived rather than as a quota.
+            assertEquals(listOf(5, 5, 5, 5, 5, 4), architectureUnits.map { it.lessons.size })
             val architectureTopic = topic("architecture")
             val architectureParents = architectureUnits.associate { it.id to unit(it.id) }
             val architectureLessonCount = architectureUnits.sumOf { it.lessons.size }
@@ -302,9 +306,9 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             val rebuilt = LocalLessonStudyRepository(database)
             assertFalse(rebuilt.isStudied(earlierLesson.id))
-            // 43 `android_ui` Lessons, 29 in the coroutines and Flow Units and 25 in the
-            // five architecture Units, less the one that was just un-studied.
-            assertEquals(96, rebuilt.getStudiedLessons().size)
+            // 43 `android_ui` Lessons, 29 in the coroutines and Flow Units and 29 in the
+            // six architecture Units, less the one that was just un-studied.
+            assertEquals(100, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -1050,6 +1054,104 @@ internal class LearningUnitPracticeIntegrationTest {
                 ).all { it in supportingOnly },
             )
             assertTrue(questions.none { it.subtopicId in supportingOnly })
+            assertEquals(0, attemptCount())
+        }
+
+    /**
+     * E26-07: the synthesis Unit's pool, which is a strict subset of the state-holder Unit's.
+     *
+     * Like Units 1 and 5, this one cannot join the expectation table, and for the same reason: that
+     * table asserts `concepts == questions.map { it.subtopicId }.toSet()`, and `architecture_tradeoffs`
+     * — the closing Lesson's primary concept, and the concept the whole epic ends on — holds no
+     * ACTIVE Question at all. That is GAP-U6-C in `docs/content/architecture-units-1-6-plan.md`.
+     *
+     * The other claim is the one worth the length. Three of the four Lessons take `state_ownership`,
+     * which is also primary across four Lessons of the state-holder Unit, so **every** Question this
+     * Unit reaches is also in that Unit's pool — the plan records the containment as calculated
+     * rather than discovered, and it is asserted here rather than described. Two of the four are
+     * Questions whose reasoning belongs to the state-holder Unit and reach this one structurally,
+     * and only `durable_state_vs_one_off_event` semantically assesses what this Unit teaches — while
+     * the delivery-and-acknowledgement Question that would, `architecture_ui_event_consumption`, sits
+     * under `mvi` and reaches the pattern Unit instead. E26-08 owns every one of those decisions, so
+     * this test records the structural reality without endorsing it: a later re-map fails an
+     * assertion and has to re-state the consequence rather than quietly repairing it.
+     */
+    @Test
+    fun theSynthesisUnitPractisesASubsetOfTheStateHolderUnitAndNothingForItsClosingConcept() =
+        runUnitPracticeTest {
+            val unitId = "unit_state_events_lifetime_and_selection"
+            val unit = assertNotNull(BundledLearningContentRepository().getUnitById(unitId))
+            val builder = builder(PracticeBuilderTarget.LearningUnit(unitId))
+            val settled = builder.settled()
+
+            assertEquals(unit.title, settled.scope.name)
+            val available = assertIs<PracticeAvailability.Available>(settled.availability)
+            assertEquals(4, available.eligibleQuestionCount)
+            builder.selectQuestionCount(available.eligibleQuestionCount)
+            builder.settled()
+
+            val config = builder.start()
+            val concepts = setOf("state_ownership", "architecture_tradeoffs")
+            assertEquals(AssessmentScope.Subtopics(concepts), config.scope)
+
+            val questions = selectedQuestions(config)
+            val questionIds = questions.map { it.id }.toSet()
+            assertEquals(
+                setOf(
+                    "state_ownership_001",
+                    "architecture_state_holder_taxonomy",
+                    "durable_state_vs_one_off_event",
+                    "viewmodel_activity_reference_lifetime",
+                ),
+                questionIds,
+            )
+            // Two primary concepts, four Questions: the concept the epic's closing Lesson teaches
+            // contributes nothing to practice, so the Unit reaches no Question about proportionality.
+            assertFalse(questions.any { it.subtopicId == "architecture_tradeoffs" })
+
+            // The recorded containment: this Unit's whole pool is inside the state-holder Unit's.
+            val stateHolderBuilder =
+                builder(PracticeBuilderTarget.LearningUnit("unit_screen_state_holders_and_ui_state"))
+            stateHolderBuilder.settled()
+            stateHolderBuilder.selectQuestionCount(
+                assertIs<PracticeAvailability.Available>(stateHolderBuilder.uiState.value.availability)
+                    .eligibleQuestionCount,
+            )
+            stateHolderBuilder.settled()
+            val stateHolder = selectedQuestions(stateHolderBuilder.start()).map { it.id }.toSet()
+            assertEquals(questionIds, stateHolder intersect questionIds)
+
+            // The delivery Question this Unit's second Lesson actually teaches is filed under `mvi`
+            // and reaches the pattern Unit, not this one.
+            assertFalse("architecture_ui_event_consumption" in questionIds)
+
+            // Ten supporting-only concepts, every one of them owned and assessed by another
+            // curriculum, broaden nothing. The stream and lifetime bridges matter most: this Unit
+            // applies their conclusions and teaches none of their mechanisms, so promoting one
+            // would claim practice coverage for material it deliberately does not carry.
+            val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
+            assertTrue(
+                setOf(
+                    "sharedflow",
+                    "hot_vs_cold_streams",
+                    "stateflow",
+                    "process_death",
+                    "viewmodel_lifecycle",
+                    "lifecycle_coroutines",
+                    "coroutine_scope",
+                    "background_api_selection",
+                    "use_cases",
+                    "repository_pattern",
+                    "layered_architecture",
+                    "clean_architecture",
+                    "unidirectional_data_flow",
+                    "single_source_of_truth",
+                ).all { it in supportingOnly },
+            )
+            assertTrue(questions.none { it.subtopicId in supportingOnly })
+            assertFalse("stream_choice_cannot_supply_a_delivery_guarantee" in questionIds)
+            assertFalse("shared_flow_try_emit_true_is_not_delivery" in questionIds)
+            assertFalse("background_api_selection_criteria" in questionIds)
             assertEquals(0, attemptCount())
         }
 

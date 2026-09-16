@@ -56,6 +56,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_repositories_and_data_ownership",
                 "unit_domain_logic_and_dependency_direction",
                 "unit_responsibility_models_mvp_mvvm_mvi",
+                "unit_state_events_lifetime_and_selection",
             ),
             units().map { it.id },
         )
@@ -85,6 +86,7 @@ internal class BundledLearningCurriculumTest {
                 "Repositories, Data Ownership and Single Source of Truth",
                 "Domain Logic, Use Cases and Dependency Direction",
                 "MVP, MVVM and MVI Responsibility Models",
+                "State, Events, Lifetime and Architecture Selection",
             ),
             units().map { it.title },
         )
@@ -111,6 +113,7 @@ internal class BundledLearningCurriculumTest {
                 "async_reactive",
                 "async_reactive",
                 "async_reactive",
+                "architecture",
                 "architecture",
                 "architecture",
                 "architecture",
@@ -518,6 +521,31 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_responsibility_models_mvp_mvvm_mvi").lessons.map { it.title },
         )
+
+        // The synthesis Unit's order is the decision sequence it teaches, and it is the only
+        // four-Lesson Unit in the Topic because the subject has four decisions in it. What must
+        // the application represent; what guarantee does that representation need; whose lifetime
+        // matches the guarantee; and how much structure does the whole feature earn. Each Lesson
+        // consumes the previous one's answer, so no other order is available to it.
+        assertEquals(
+            listOf(
+                "lesson_state_or_occurrence",
+                "lesson_delivery_guarantees",
+                "lesson_choosing_the_owner_by_lifetime",
+                "lesson_smallest_sufficient_architecture",
+            ),
+            unit("unit_state_events_lifetime_and_selection").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "Is This State, or Is It Something That Happened?",
+                "What Guarantee Does This Occurrence Need?",
+                "Choosing an Owner From the Lifetime the Requirement Needs",
+                "How Much Architecture Does This Feature Need?",
+            ),
+            unit("unit_state_events_lifetime_and_selection").lessons.map { it.title },
+        )
     }
 
     @Test
@@ -805,6 +833,24 @@ internal class BundledLearningCurriculumTest {
                 listOf("mvvm_vs_mvi"),
             ),
             unit("unit_responsibility_models_mvp_mvvm_mvi").lessons.map { it.primarySubtopicIds },
+        )
+
+        // Three of the four Lessons take `state_ownership`, which is also primary across four
+        // Lessons of the state-holder Unit — the taxonomy has no finer concept for representing an
+        // occurrence, for acknowledgement, or for owner selection by lifetime, and inventing one is
+        // a question-bank change rather than an authoring decision. The closing Lesson is the
+        // second home of `architecture_tradeoffs`, which holds no ACTIVE Question at all, so the
+        // Lesson this epic ends on currently contributes nothing to practice. That is GAP-U6-C in
+        // `docs/content/architecture-units-1-6-plan.md`, and the mapping is deliberately not
+        // changed to manufacture coverage.
+        assertEquals(
+            listOf(
+                listOf("state_ownership"),
+                listOf("state_ownership"),
+                listOf("state_ownership"),
+                listOf("architecture_tradeoffs"),
+            ),
+            unit("unit_state_events_lifetime_and_selection").lessons.map { it.primarySubtopicIds },
         )
     }
 
@@ -1732,6 +1778,117 @@ internal class BundledLearningCurriculumTest {
                 assertTrue(
                     lesson.relatedLessonIds.none { it in ownIds },
                     "${lesson.id} links forward into the responsibility-models Unit",
+                )
+            }
+    }
+
+    @Test
+    fun theSynthesisUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        // Ten concepts are supporting-only across this Unit, and every one of them is a concept
+        // another shipped curriculum owns and assesses. `sharedflow`, `hot_vs_cold_streams` and
+        // `stateflow` carry the stream contracts this Unit applies without re-deriving;
+        // `process_death` and `viewmodel_lifecycle` carry the lifetime facts the lifecycle
+        // curriculum owns; `background_api_selection` is named once as where the last rung of the
+        // lifetime ladder continues. Promoting any of them would claim practice coverage for
+        // mechanisms this Unit deliberately refuses to teach.
+        assertEquals(
+            listOf(
+                listOf("unidirectional_data_flow", "stateflow", "sharedflow", "single_source_of_truth"),
+                listOf("sharedflow", "hot_vs_cold_streams", "process_death", "single_source_of_truth"),
+                listOf("lifecycle_coroutines", "coroutine_scope", "viewmodel_lifecycle", "background_api_selection"),
+                listOf("use_cases", "repository_pattern", "layered_architecture", "clean_architecture"),
+            ),
+            unit("unit_state_events_lifetime_and_selection").lessons.map { it.supportingSubtopicIds },
+        )
+
+        // The closing Lesson names four concepts that are primary in Units 1, 3 and 4, and takes
+        // none of them as its own: it asks whether a whole feature's structure is proportionate,
+        // which is `architecture_tradeoffs`, not whether any one of those structures is correct.
+        val lessons = unit("unit_state_events_lifetime_and_selection").lessons.associateBy { it.id }
+        val closing = lessons.getValue("lesson_smallest_sufficient_architecture")
+        assertEquals(listOf("architecture_tradeoffs"), closing.primarySubtopicIds)
+        listOf("use_cases", "repository_pattern", "layered_architecture", "clean_architecture").forEach {
+            assertTrue(it in closing.supportingSubtopicIds)
+        }
+    }
+
+    @Test
+    fun theSynthesisUnitLinksBackwardsAndClosesTheLoopOverEveryEarlierArchitectureUnit() = runTest {
+        val lessons = unit("unit_state_events_lifetime_and_selection").lessons.associateBy { it.id }
+
+        assertEquals(
+            listOf(
+                "lesson_transient_ui_effects",
+                "lesson_transient_effect_delivery",
+                "lesson_state_flow",
+                "lesson_state_holder_responsibility",
+                "lesson_single_source_of_truth",
+            ),
+            lessons.getValue("lesson_state_or_occurrence").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_state_or_occurrence",
+                "lesson_transient_effect_delivery",
+                "lesson_shared_flow",
+                "lesson_choosing_a_stream_abstraction",
+                "lesson_single_source_of_truth",
+            ),
+            lessons.getValue("lesson_delivery_guarantees").relatedLessonIds,
+        )
+        // The observable-API link is load-bearing rather than decorative: the Lesson's
+        // application-scope rung turns on this repository having no observable source to
+        // subscribe to, which is that Lesson's decision, so the bounded claim carries its pointer.
+        assertEquals(
+            listOf(
+                "lesson_delivery_guarantees",
+                "lesson_observable_or_one_shot_api",
+                "lesson_owner_scoped_work",
+                "lesson_viewmodel_lifetime_and_persistence",
+                "lesson_coroutine_scope_ownership",
+            ),
+            lessons.getValue("lesson_choosing_the_owner_by_lifetime").relatedLessonIds,
+        )
+
+        // The plan's one explicit link requirement for this Unit: the closing Lesson must reach
+        // back into every one of the five Units it synthesises. It is asserted by resolving each
+        // target to its Unit rather than by listing ids, so the claim is the one the plan makes.
+        val closing = lessons.getValue("lesson_smallest_sufficient_architecture")
+        val owningUnit = units().flatMap { owner -> owner.lessons.map { it.id to owner.id } }.toMap()
+        assertEquals(
+            setOf(
+                "unit_architecture_responsibilities_and_boundaries",
+                "unit_screen_state_holders_and_ui_state",
+                "unit_repositories_and_data_ownership",
+                "unit_domain_logic_and_dependency_direction",
+                "unit_responsibility_models_mvp_mvvm_mvi",
+                "unit_state_events_lifetime_and_selection",
+            ),
+            closing.relatedLessonIds.map { owningUnit.getValue(it) }.toSet(),
+        )
+
+        // Every link in the Unit points backwards: to a Lesson shipped before this epic, to an
+        // earlier E26 Unit, or to an earlier Lesson of this one.
+        val ownIds = lessons.keys
+        val order = units().flatMap { it.lessons.map { lesson -> lesson.id } }
+        lessons.values.forEach { lesson ->
+            lesson.relatedLessonIds.forEach { related ->
+                assertTrue(
+                    order.indexOf(related) < order.indexOf(lesson.id),
+                    "${lesson.id} -> $related is not a backward link",
+                )
+            }
+        }
+
+        // No Lesson authored before this Unit was edited to receive a reciprocal link. This is the
+        // last instructional Unit of the epic, so nothing in the document links forward at all.
+        units()
+            .takeWhile { it.id != "unit_state_events_lifetime_and_selection" }
+            .flatMap { it.lessons }
+            .forEach { lesson ->
+                assertTrue(
+                    lesson.relatedLessonIds.none { it in ownIds },
+                    "${lesson.id} links forward into the synthesis Unit",
                 )
             }
     }

@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `cc50888750137c1fb7a8c6c8695c066df6689f3a9333624fc65bef58d46bfd20` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `9d5871d3dbd02ae7bd24abc0d7c52de23ef77c5f388e5355d65f345801fbf440` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `caeeab0b5a3687d822a8a48cd260ecb4bb8bfc02fa9ccc268f57b1ef6550e00a` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,8 +68,8 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 23 |
-| Active lessons in those units | 97 |
+| Active learning units | 24 |
+| Active lessons in those units | 101 |
 | Distinct primary subtopics | 49 |
 | Distinct supporting subtopics | 90 |
 | Unique active questions reached through primary mappings | 112 |
@@ -114,6 +114,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Repositories, Data Ownership and Single Source of Truth (`unit_repositories_and_data_ownership`) | 5 | 4 | 1 | 5 | 0 | 6 |
 | Domain Logic, Use Cases and Dependency Direction (`unit_domain_logic_and_dependency_direction`) | 5 | 4 | 1 | 4 | 0 | 5 |
 | MVP, MVVM and MVI Responsibility Models (`unit_responsibility_models_mvp_mvvm_mvi`) | 5 | 5 | 1 | 3 | 0 | 4 |
+| State, Events, Lifetime and Architecture Selection (`unit_state_events_lifetime_and_selection`) | 4 | 2 | 2 | 2 | 0 | 4 |
 
 ## Unit and lesson detail
 
@@ -2006,6 +2007,87 @@ Supporting context — not primary coverage:
 | `mvi` — MVI | 1 | `architecture` — Application Architecture & Design Principles |
 | `mvp` — MVP | 1 | `architecture` — Application Architecture & Design Principles |
 | `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 0 | `architecture` — Application Architecture & Design Principles |
+
+### State, Events, Lifetime and Architecture Selection (`unit_state_events_lifetime_and_selection`)
+
+Home topic: `architecture` — Application Architecture & Design Principles.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 2 | `state_ownership_001`, `viewmodel_activity_reference_lifetime` |
+| APPLIED | 2 | `architecture_state_holder_taxonomy`, `durable_state_vs_one_off_event` |
+| ADVANCED | 0 | — |
+
+#### Is This State, or Is It Something That Happened? (`lesson_state_or_occurrence`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `state_ownership` — State ownership | 2 | 2 | 0 | 4 | `architecture_state_holder_taxonomy`, `durable_state_vs_one_off_event`, `state_ownership_001`, `viewmodel_activity_reference_lifetime` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `unidirectional_data_flow` — Unidirectional data flow | 1 | `architecture` — Application Architecture & Design Principles |
+| `stateflow` — StateFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `sharedflow` — SharedFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `single_source_of_truth` — Single source of truth | 1 | `architecture` — Application Architecture & Design Principles |
+
+#### What Guarantee Does This Occurrence Need? (`lesson_delivery_guarantees`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `state_ownership` — State ownership | 2 | 2 | 0 | 4 | `architecture_state_holder_taxonomy`, `durable_state_vs_one_off_event`, `state_ownership_001`, `viewmodel_activity_reference_lifetime` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `sharedflow` — SharedFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `hot_vs_cold_streams` — Hot vs cold streams | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `process_death` — Process death and recreation | 1 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `single_source_of_truth` — Single source of truth | 1 | `architecture` — Application Architecture & Design Principles |
+
+#### Choosing an Owner From the Lifetime the Requirement Needs (`lesson_choosing_the_owner_by_lifetime`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `state_ownership` — State ownership | 2 | 2 | 0 | 4 | `architecture_state_holder_taxonomy`, `durable_state_vs_one_off_event`, `state_ownership_001`, `viewmodel_activity_reference_lifetime` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `lifecycle_coroutines` — Lifecycle-aware coroutine scopes | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `coroutine_scope` — CoroutineScope | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `background_api_selection` — Choosing the appropriate background API | 1 | `background_work` — Background Work & OS Constraints |
+
+#### How Much Architecture Does This Feature Need? (`lesson_smallest_sufficient_architecture`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 0 | 0 | 0 | 0 | — |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `use_cases` — Use cases and when to introduce them | 2 | `architecture` — Application Architecture & Design Principles |
+| `repository_pattern` — Repository pattern | 1 | `architecture` — Application Architecture & Design Principles |
+| `layered_architecture` — Layered architecture | 2 | `architecture` — Application Architecture & Design Principles |
+| `clean_architecture` — Clean Architecture | 1 | `architecture` — Application Architecture & Design Principles |
 
 ## Primary assessment gaps
 

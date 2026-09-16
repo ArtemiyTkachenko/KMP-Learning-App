@@ -1126,12 +1126,15 @@ on any material edit; the dependency rule and the pattern history do not move.
 
 ## Status
 
-This blueprint is complete as a map and **no Unit has been authored**. E26-01 produced it
-together with [`architecture-units-1-6-plan.md`](architecture-units-1-6-plan.md), which
-holds the taxonomy inventory, the semantic Question review, the stable identities, the
-practice-routing model, the repository and multiplatform findings, and the authoring
-handoffs. Authoring runs E26-02 → E26-07 in Unit order, E26-08 addresses assessment gaps,
-and E26-09 verifies and closes the epic.
+This blueprint is complete as a map, and **all six Units have now been authored** — E26-07
+shipped Unit 6, the last instructional Unit, so the 29 planned Lessons are in production.
+E26-01 produced this map together with
+[`architecture-units-1-6-plan.md`](architecture-units-1-6-plan.md), which holds the taxonomy
+inventory, the semantic Question review, the stable identities, the practice-routing model,
+the repository and multiplatform findings, the authoring handoffs, and a per-Unit record of
+what each authoring issue actually shipped. Authoring ran E26-02 → E26-07 in Unit order and
+moved no Lesson boundary; E26-08 addresses assessment gaps and E26-09 verifies and closes
+the epic.
 
 The six-Unit structure the merged backlog assumes is **unchanged**, for the reasons recorded
 in the plan's [scope confirmation](architecture-units-1-6-plan.md#scope-confirmation).

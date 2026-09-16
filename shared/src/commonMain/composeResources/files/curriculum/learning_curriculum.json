@@ -16546,6 +16546,790 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "unit_state_events_lifetime_and_selection",
+      "topicId": "architecture",
+      "title": "State, Events, Lifetime and Architecture Selection",
+      "summary": "The five previous units each started from something that already existed — a boundary to judge, a screen owner to design, a repository to shape, a layer to justify, an arrangement to classify. This one starts from a product requirement and nothing built, and asks four questions in the order that makes them answerable: what must the application represent, what guarantee does that representation need, whose lifetime matches the guarantee, and how much structure does the whole feature earn? It adds no new mechanism. It applies the five units, and it finishes an argument the Compose curriculum deliberately left at a negative result — a transient in-memory mechanism cannot promise that an occurrence was handled, so this unit says what can, who would own it, and where the answer stops being architecture and becomes somebody else's curriculum. Finish it able to take one requirement and defend an architecture for it, including the frequent and correct answer that the smallest structure is enough.",
+      "lessons": [
+        {
+          "id": "lesson_state_or_occurrence",
+          "title": "Is This State, or Is It Something That Happened?",
+          "summary": "One real-world fact — a practice session was scored — needs a different representation under different requirements: something currently true that the screen renders, something currently true that must survive the process, or something that happened and is executed once. This lesson separates the two dimensions hiding behind that comparison, corrects the facts most often misfiled as occurrences because they became true at a moment, and shows the duplicate-execution failure that follows from recording an occurrence as persistent current truth.",
+          "primarySubtopicIds": [
+            "state_ownership"
+          ],
+          "supportingSubtopicIds": [
+            "unidirectional_data_flow",
+            "stateflow",
+            "sharedflow",
+            "single_source_of_truth"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The five previous units each began with something that already existed: a component to place, a boundary to judge, a repository to design, a layer to justify, a screen to classify. This one begins with a product requirement and nothing built. Its question runs in four steps — what must the application represent, what guarantee does that representation need, whose lifetime matches the guarantee, and how much structure does the whole feature earn — and this lesson answers the first."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Start with the divide everything else hangs from, because getting it wrong is what produces the failures later in this lesson. **Is this something that is currently true, or something that happened?** A fact that is currently true is *rendered*: a screen reads it and draws it, and drawing it a second time changes nothing. Something that happened is *executed*: it is performed once, and performing it again is visible to the reader. The Compose curriculum established that contrast at the screen boundary and this unit applies it rather than re-deriving it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Then ask a second question, and ask it only of the first kind: **how long must that truth remain reconstructable?** Some current state is needed for as long as one component is on screen. Some is needed for as long as the destination exists. Some must still be correct after the process has been killed and started again. That is a requirement about lifetime, not a different kind of thing — which is why the three cases this lesson compares should not be read as three mutually exclusive runtime types."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Dimension one — currently true, or happened.** Decided by the requirement's verb: does a screen *show* this, or does the application *do* this once? Nothing about the code decides it.",
+                    "**Dimension two — required retention, asked only of the first.** How long must the truth survive, and what event is allowed to end it: leaving a composable, leaving a destination, the process ending, or nothing at all.",
+                    "**Durable is a point on the second dimension, not a third kind.** A fact can be current state *and* durable, and most of an application's important facts are exactly that."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The practical consequence of keeping the dimensions apart is that the two questions have different owners. The first decides the shape of the model — a value somebody publishes, or an occurrence somebody performs. The second decides *which* owner may hold it, and that is the next-but-one lesson's subject. Collapsing them into one three-way choice is how a design ends up with a durable record of something that should have vanished, or with a transient signal carrying something the product promised would survive."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Two questions, asked in order. Is this something currently true, or something that happened? If it is currently true, how long must that truth remain reconstructable? Current state, durable state and a transient occurrence are the answers to those two questions rather than three separate categories of thing — durability is a lifetime requirement placed on state, and the same real-world fact changes representation when the requirement changes."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Take one fact and hold it fixed: **the practice session was scored.** It is a single real event in the world — the reader answered the last question, the answers were marked, a result exists. Nothing about that sentence says what the application should build. Three different requirements about it produce three different answers, and every difference below comes from the requirement rather than from the fact."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Requirement A — the result screen must render the finished session.** The reader is looking at the score, the pass or fail verdict, their answers and the actions available next. What the application must represent here is a current truth: *this session currently has a completed result, and the result is this one.* A screen that arrives at this session later must immediately see the correct current result rather than waiting for something to be re-announced. That is current state with current-value semantics, which the streams curriculum already characterises."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Requirement B — the application must still know the score after the reader leaves.** They close the result screen, navigate elsewhere, background the app, come back tomorrow to a restarted process, and the session still reads as scored eight out of ten. Nothing about the representation's *kind* changed: it is still a fact that is currently true. What changed is its required retention — it must now survive every in-memory owner being destroyed, so it has to be recorded somewhere that outlives them and reconstructed from there. Which owner is authoritative for it is the source-of-truth decision the data-ownership unit makes, and the mechanism belongs to the persistence curriculum."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Requirement C — immediately after scoring, celebrate.** While the reader is still on the active result screen, play a short animation, give one haptic confirmation and show a brief congratulatory message. This is not a fact anyone renders; it is something the application *does*, once. And if the reader closed the app in the half-second before it ran, performing it tomorrow when they open the borrowed-items list would be wrong — a celebration for a session they finished yesterday and have already seen the result of. The occurrence may legitimately be lost."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The requirement",
+                    "What the application must represent",
+                    "What a consumer arriving later should get",
+                    "What losing it means"
+                  ],
+                  "rows": [
+                    [
+                      "A — render the finished session",
+                      "Current state: this session has a completed result",
+                      "The current result, immediately and correctly",
+                      "A defect: the screen would show a session with no outcome"
+                    ],
+                    [
+                      "B — still know it tomorrow, after a restart",
+                      "The same current state, with a retention requirement: it must be reconstructable after every in-memory owner is gone",
+                      "The same current result, read back from wherever it was recorded",
+                      "A defect, and a worse one: the application would have forgotten something the reader was told"
+                    ],
+                    [
+                      "C — celebrate on the active result screen",
+                      "A transient occurrence: something performed once, while somebody is watching",
+                      "Nothing. There is no later consumer for this",
+                      "Nothing. The requirement was about the moment, and the moment has passed"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The third row is the one worth pausing on, because it is routinely treated as an embarrassment to be engineered away. It is not. **Loss is a defect only when it violates the requirement**, and Requirement C's requirement is satisfied by doing nothing when nobody is there. The same is true of a haptic confirmation for a button the reader is pressing, or a request to scroll the visible list to the item that was just added: each is meaningful only in the presence of the UI it belongs to, and each is correctly discarded in its absence. Designing a durable record and an acknowledgement for any of them buys a guarantee nobody asked for and makes it permanent."
+                },
+                {
+                  "type": "callout",
+                  "kind": "NOTE",
+                  "text": "\"Could this be lost?\" is the wrong question, because the answer is almost always yes for anything transient. The question is whether losing it would violate the requirement. Some occurrences are supposed to disappear when nobody is present, and treating that as a bug produces architecture nobody needed."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now the misfiling that costs the most, and it runs the other way. Some facts sound like occurrences because they became true at a particular moment, and they are state. *There is an unfinished practice session. The last submission failed. This borrowing request is awaiting approval. The reader's account needs another confirmation step before anything else can be borrowed.* Every one of those is the residue of something that happened — a session was abandoned, a submission failed, a request was filed — and in each case the requirement is not that somebody be told at the moment it happened. It is that a screen opening afterwards knows the current position."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So the past occurrence is not the important representation; the **current consequence** is. \"There is an unfinished practice session\" is a fact that stays true until the reader resumes or abandons it, and a screen that opens six days later must read it and offer to resume. Modelling that as something announced once, at the moment the session was abandoned, gives a screen that was not present nothing to read — and the reflex repair is to retain the announcement, which answers a different question badly instead of answering this one at all."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The reverse mistake has a sharper failure, because it produces visible wrong behaviour rather than missing behaviour. Suppose Requirement C's celebration is modelled as current state on the result screen, which is a reasonable-looking first move: a boolean that is set when the score is computed and read by whatever is observing."
+                },
+                {
+                  "type": "code",
+                  "code": "// The celebration, modelled as if it were a fact about the screen.\ndata class ResultUiState(\n    val score: Score? = null,\n    val showCongratulations: Boolean = false,\n)\n\n// Set once, when the session is scored.\n_state.update { it.copy(score = score, showCongratulations = score.isPass) }",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Nothing is wrong with that value until somebody observes it a second time. The owner survives a configuration change, or the destination is still on the back stack when the reader returns to it, or the fact was written somewhere durable in service of Requirement B and read back on a fresh process — and the consumer reads `showCongratulations = true`, correctly concludes that the screen currently says a celebration is warranted, and celebrates again. The reader has now been congratulated twice for one session."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Be precise about what went wrong, because the usual diagnosis is wrong in a way that misdirects the repair. The defect is **not** that a boolean was used, and it is not that current state is the wrong tool for transient behaviour in general. The defect is that an occurrence was recorded as persistent current truth **without any rule for what \"already handled\" means.** The value says a celebration is warranted; it does not say whether one has happened; and no consumer can tell the difference from the value alone. Whether the fix is to keep the state and add that rule, or to stop representing it as state at all, is decided by the guarantee the requirement needs — which is the next lesson, and not something to settle by reaching for an occurrence wrapper type."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Diagnosing a duplicate celebration, a duplicate navigation or a duplicate snackbar as \"we used the wrong type\" and swapping the type. The type was never the claim. What was missing was a statement of whether the occurrence must be handled once, and if so, what records that it has been — and a different type does not supply it either."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "There is a deeper reason the two dimensions cannot be collapsed, and it is the most useful thing in this lesson for an interview. **Current state is a lossy compression of the occurrences that produced it.** The result screen holds one value:"
+                },
+                {
+                  "type": "code",
+                  "code": "score = 8 / 10",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "and that value is enough to render everything the screen owes the reader. It is not enough to answer any question about how the session got there. Which answer was changed first, how long the reader spent on question six, whether the score was computed once or recomputed after a correction, how many intermediate values existed between the first answer and the last — none of it is recoverable, because none of it was recorded. The compression happened at the moment the application decided what to keep."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That asymmetry is exactly why a consumer arriving late can be *correct about state* and cannot be *correct about history*. Give it the current value and it renders the truth; ask it what happened and it has nothing, and no retention setting on any stream changes that, because retention keeps the most recent values rather than the sequence that produced them. A late reader of `score = 8 / 10` cannot distinguish a session answered confidently in one pass from one answered twice with a correction, and if the product ever needs to distinguish them, that is a **new requirement** rather than a bug in the state."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The conclusion is a design rule worth stating plainly: **if the product requires history, current state is not enough, and the requirement has to name the occurrences worth preserving as recorded facts in their own right.** \"Show the reader their last five practice sessions and how each was scored\" is not satisfied by holding the latest score better; it is satisfied by deciding that each scored session is a fact the application keeps. That is a modelling decision with a cost — more records, a retention policy, a decision about what counts as the same session — and it is made deliberately, for a stated requirement. It is emphatically not a reason to record every change to everything and derive all current state from the log; that is an architecture of its own, with consequences this curriculum does not teach and this app's requirements do not ask for."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Hold the two dimensions together one last time, because the useful quadrant is the one the three-way comparison hides. Requirements A and B are the *same* kind of thing at two retentions, and a fact that is both current state and durable is the ordinary case rather than a special one: the scored session, the list of loans, the reader's studied lessons. This repository is a plain example — a studied lesson is a durable fact in the database and a current truth projected in memory for the screens that render it, and its own documentation is careful to say which of the two is authoritative. What varies across the three requirements is not the nature of the fact but what the product promised about it, and that is the only input the decision ever had."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked whether something should be state or an event, refuse the binary and ask the two questions. Is it currently true, or did it happen? If it is currently true, how long must it remain reconstructable — and say that durability is a retention requirement on state rather than a third category. Then give the two corrections that carry the most weight: a fact that became true at a moment is still state when a later screen must know the current position, and an occurrence recorded as persistent current truth with no notion of having been handled will be performed twice."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_transient_ui_effects",
+            "lesson_transient_effect_delivery",
+            "lesson_state_flow",
+            "lesson_state_holder_responsibility",
+            "lesson_single_source_of_truth"
+          ],
+          "sources": [
+            {
+              "title": "UI events",
+              "url": "https://developer.android.com/topic/architecture/ui-layer/events"
+            },
+            {
+              "title": "UI layer",
+              "url": "https://developer.android.com/topic/architecture/ui-layer"
+            },
+            {
+              "title": "Data layer",
+              "url": "https://developer.android.com/topic/architecture/data-layer"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_delivery_guarantees",
+          "title": "What Guarantee Does This Occurrence Need?",
+          "summary": "The Compose curriculum reached a negative result and stopped there: a transient in-memory mechanism cannot promise that an occurrence was handled. This lesson starts from that result and answers the question it left open. Four independent questions state the guarantee, a fifth asks whether the obligation must survive the process, and the answers decide who must own a readable pending-or-handled fact — before any stream type is considered, and without building a queue.",
+          "primarySubtopicIds": [
+            "state_ownership"
+          ],
+          "supportingSubtopicIds": [
+            "sharedflow",
+            "hot_vs_cold_streams",
+            "process_death",
+            "single_source_of_truth"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The previous lesson sorted a fact into current state or an occurrence. If it is an occurrence, one question decides everything that follows, and it is not a question about a type: **what does the product actually guarantee about it?** The Compose curriculum asked that from the consumer's side and reached a deliberate stopping point — a requirement naming persistence, acknowledgement or guaranteed later handling has left the UI layer, and designing the owner on the other side is this curriculum's work. This lesson does that work."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Four questions state the guarantee. They are independent: an answer to one predicts nothing about the others, and a design has to satisfy every one that applies rather than the one that made a mechanism look suitable."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**May the occurrence be lost if nobody is listening?** If the requirement is satisfied by doing nothing in the absence of a consumer, the remaining three questions mostly stop mattering.",
+                    "**Must a consumer arriving later still act on it?** This is the question about absence: not whether something can be retained, but whether the product owes a later consumer an action.",
+                    "**Is repeated handling safe?** Handling something twice may be untidy, or it may be a second charge, a second borrowing request, a second navigation. These are not the same risk and the design is not the same either.",
+                    "**Must the application record that it was handled?** Anything that answers \"yes\" to the second and \"no\" to the third needs some authoritative way to distinguish outstanding from dealt-with. Nothing supplies that by accident."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A fifth question is asked only when the second is answered yes, and it is the one that decides whether an in-memory owner is even eligible: **must that obligation survive the process ending?** Every coroutine scope, every hot stream, every state holder and every ViewModel is in memory, and when the process is gone so are they. If the product says the obligation outlives that, no arrangement of in-memory owners can carry it, and the argument moves to a mechanism with a durability contract."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Only now is a mechanism a sensible thing to choose, and the order is the whole content of this lesson:"
+                },
+                {
+                  "type": "code",
+                  "code": "requirement\n    ↓\nguarantees          (may it be lost, must a later consumer act,\n                     is repetition safe, must handling be recorded,\n                     must the obligation survive the process)\n    ↓\nowner / lifetime    (who holds the fact, and what ends that owner)\n    ↓\nmechanism           (whatever satisfies all of the above)\n\nrather than:\n\nsomething called an event\n    ↓\na stream type",
+                  "language": "text"
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "State the guarantee before choosing anything. Whether the occurrence may be lost, whether a later consumer must act, whether repetition is safe and whether handling must be recorded are four independent answers; if a later consumer must act, ask whether the obligation must also survive the process. A mechanism is the last decision, not the first, and slogans of the form \"this stream type is for state and that one is for events\" answer with a type where the question was about a guarantee."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Work one real requirement through the questions. In the library application, a reader submits a borrowing request for a title that is currently on hold. The submission is sent, the library's system confirms it a minute or two later, and by then the reader has left the screen and backgrounded the app. The product's promise is explicit: the next time they open the application they must see that the request was confirmed, and the confirmation must be acknowledged once. Put beside it a second occurrence from the same screen — after a new loan appears in the list, scroll the list to it — and answer the five questions for both."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The question",
+                    "Confirmed borrowing request",
+                    "Scroll the visible list to the new loan"
+                  ],
+                  "rows": [
+                    [
+                      "May it be lost if nobody is listening?",
+                      "No. The reader was told the request was submitted and is owed the outcome",
+                      "Yes. If no list is on screen there is nothing to scroll, and nothing should happen"
+                    ],
+                    [
+                      "Must a later consumer act on it?",
+                      "Yes. The next screen that opens must show it",
+                      "No. A later screen has its own scroll position and its own reasons for it"
+                    ],
+                    [
+                      "Is repeated handling safe?",
+                      "Showing it twice is untidy; acknowledging it twice, or re-submitting, is not",
+                      "Harmless. Scrolling to the same row again is invisible"
+                    ],
+                    [
+                      "Must the application record that it was handled?",
+                      "Yes. \"Confirmed and seen\" has to be distinguishable from \"confirmed\"",
+                      "No. There is nothing whose handling anybody needs to know about"
+                    ],
+                    [
+                      "Must the obligation survive the process ending?",
+                      "Yes. The confirmation may arrive while the app is not running at all",
+                      "No. The obligation does not outlive the composition that has the list"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The right-hand column is a complete answer, and the correct design for it is the transient one the Compose curriculum already supplies. Giving it a durable record and an acknowledgement would be over-architecture in the precise sense the closing lesson of this unit defines: structure whose cost is real and whose requirement does not exist. The left-hand column is the one that has left the UI layer, and the rest of this lesson is about what it needs."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two conclusions from the streams curriculum apply immediately and are not re-derived here. The first concerns **replay**: a retention window changes what a subscriber arriving later can recover, and that is all it changes. It does not mean anybody handled the value, that it was handled only once, that it survived the process, or that the intended consumer was the one who got it — a collector created after a configuration change is simply a new subscriber, and it reads what was retained exactly as the first one did. Answering question two with a retention setting therefore also answers question three, badly, and usually without anyone noticing."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second concerns **emission**. A producer's emission call reports what the transport did with the value under its current configuration, and nothing else: on an unbuffered shared flow with no subscriber it reports success and the value is gone in the same instant. That is a property of the transport operation, not evidence that the product requirement was satisfied. A log line written from a successful emission is a statement about the emitter, and the requirement above was about the reader."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So what would satisfy the left-hand column? Only one thing does, and it is a fact rather than a channel. **Acknowledgement is state that somebody owns.** If the requirement is that some future consumer must act, and act once, the system needs a readable answer to the question *is this obligation still outstanding?* — which means there is a value somewhere with two distinguishable positions and an owner responsible for moving it."
+                },
+                {
+                  "type": "code",
+                  "code": "// Not a queue and not a delivery mechanism: a fact with an owner.\nenum class ConfirmationState { Pending, Acknowledged }\n\n// The architectural question is not which type carries it.\n// It is: which component is authoritative for this value,\n// what is its lifetime, and who is allowed to move it?",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A stream having accepted a value creates none of that. A retention cache creates none of it either: it holds the most recent values, and \"most recent\" is not \"outstanding\". The question the design has to answer out loud is **who owns the pending-or-handled truth**, because that owner's lifetime is what the guarantee actually rests on — which is the next lesson's subject, and the reason these two lessons are adjacent."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Android's own guidance reaches this conclusion and is worth reading for its reason rather than its recommendation. It states the limit first — when the producer outlives the consumer, stream-based solutions for one-off events \"don't guarantee the delivery and processing of those events\" — and then says what to do instead: \"Handle such events immediately and reduce them to UI state\", because \"UI state better represents the UI at a given point in time, it gives you more delivery and processing guarantees\". Its worked shape is exactly the pending-or-handled pair above: the state carries the outstanding item, the UI acts on it, and then tells the owner, \"causing another UI state update to clear the `userMessage` property\"."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The reason is the part worth carrying into an interview. **A current value is readable: a consumer arriving at any moment can ask whether work remains. A transient emission is not: a consumer arriving after it has nothing to ask.** That is why reduction to state answers question two and question four together, and it is also why it is a *conclusion from the requirement* rather than a universal rule. The right-hand column of the table above stays transient, and turning every occurrence into state would give the scroll request a lifetime and a clearing protocol it never needed."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Reading \"events are being lost\" as an instruction to add retention. That is a decision about what a late subscriber can recover, applied to a question about whether anybody must act — and it trades a missed confirmation for a repeated one. Which trade is acceptable depends entirely on the third question, and a repeated borrowing request is not a repeated toast."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Be careful with \"exactly once\", because it is three different claims that a single sentence tends to merge. **Recording application handling state** is what a pending-or-acknowledged fact provides: the application can read whether an obligation remains outstanding. **Transport delivery** is what a stream or a network call provides, and it is a separate matter. **Side-effect execution** is whether the thing in the world actually happened once — and a process can end between performing an external action and recording that it did, which is precisely the window in which the first two are satisfied and the third is not."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So prefer the claim the design can actually support. \"The application can record whether this obligation remains pending, and a consumer can read that record\" is honest and usually sufficient; \"this is handled exactly once\" is a much stronger promise, and general exactly-once processing is a subject outside this curriculum. Where a requirement genuinely needs the stronger property, the sources of it are things like an identity the external system recognises so that a repeat is recognisable as the same request — and that is a data-ownership and integration decision, not something a state holder arrangement provides on its own."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Process death deserves the same precision, because it is where most confident designs fail. Every in-memory carrier disappears with the process: a `StateFlow`, a `SharedFlow`, a `Channel`, a state holder, a ViewModel. The ViewModel's own documentation places its lifetime with its `ViewModelStoreOwner` — \"A `ViewModel` remains in memory until the `ViewModelStoreOwner` to which it is scoped disappears\" — and names saved state as a *separate* mechanism that \"lets you persist data not just through configuration changes, but across process death\". Retained lifetime and durability are two facts, and neither implies the other. If the fifth question is answered yes, the fact must live somewhere with a durability contract, and which mechanism that is belongs to the persistence and lifecycle curricula rather than here."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is also where the unit deliberately stops. Having concluded that an obligation needs a recorded owner, it is tempting to keep going and build the general machinery — an application-wide event bus, a durable queue with consumers and offsets, a delivery protocol with retries and dead-letter handling, an outbox that ties the record and the external call into one transaction. Every one of those is a real subject with real trade-offs, and none of them is this curriculum's. The decision this lesson exists to teach is complete when you can say which guarantee is missing, which fact would have to exist, and who would own it. Building a messaging infrastructure is a different project, and reaching for one before that sentence can be said is the most expensive way to get this wrong."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One last framing, because it generalises past the example. A mechanism describes *delivery*; a requirement describes *handling*; and no description of delivery answers a question about handling. That is why the argument in this lesson never needed to compare two stream types, and why comparing them is the wrong first move: both of them lose everything they hold when the process ends, so if the fifth question is yes the comparison was decided before it began, and if it is no then either might do and the choice is a detail rather than the design."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Answer a one-off-event question with the five questions and their order. May it be lost, must a later consumer act, is repetition safe, must handling be recorded, must the obligation survive the process — then name the owner before naming a type. Be able to say why the platform guidance reduces such events to state rather than recommending a stream: a current value is readable by a consumer arriving at any moment and a past emission is not. And be able to say where you would stop: the requirement needs a recorded owner, and building a queue is a different project."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_state_or_occurrence",
+            "lesson_transient_effect_delivery",
+            "lesson_shared_flow",
+            "lesson_choosing_a_stream_abstraction",
+            "lesson_single_source_of_truth"
+          ],
+          "sources": [
+            {
+              "title": "UI events",
+              "url": "https://developer.android.com/topic/architecture/ui-layer/events"
+            },
+            {
+              "title": "ViewModel overview",
+              "url": "https://developer.android.com/topic/libraries/architecture/viewmodel"
+            },
+            {
+              "title": "SharedFlow",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-shared-flow/"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_choosing_the_owner_by_lifetime",
+          "title": "Choosing an Owner From the Lifetime the Requirement Needs",
+          "summary": "An owner is chosen from the lifetime the requirement needs, not from where the code was easiest to write or which scope was already in the constructor. Four requirements from one feature land on four different rungs of a ladder that runs from a single UI element to something that outlives the process — including one screen-level owner that is the wrong lifetime in both directions — and each rung is priced, because a longer-lived owner is a decision with a cost rather than a safer default.",
+          "primarySubtopicIds": [
+            "state_ownership"
+          ],
+          "supportingSubtopicIds": [
+            "lifecycle_coroutines",
+            "coroutine_scope",
+            "viewmodel_lifecycle",
+            "background_api_selection"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The previous lesson ended on a question it deliberately did not answer: an obligation needs an owner, so which one? The answer is not chosen from importance, from where the code already was, or from which scope happened to be available in the constructor. It is chosen from a single property of the requirement — **how long must this survive, and what event is allowed to end it?** — and the whole of this lesson is learning to read that property out of a requirement and match it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The lifetimes available in an application form a ladder. Each rung has a different ending event, and that ending event is what makes it the right or wrong answer:"
+                },
+                {
+                  "type": "code",
+                  "code": "a single UI element's own owner        ends when that element leaves the UI\n        ↓\na screen or destination owner          ends when that destination is permanently gone\n        ↓\nan application-lifetime owner          ends when the process ends\n        ↓\nsomething that outlives the process    ends when the work is actually done",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read the ladder as four different answers, not as a scale of seriousness. **Moving down it is not an upgrade.** Each rung buys survival across one more kind of ending and pays for it in something specific: a longer-lived owner holds what it holds for longer, is reachable by more of the application, and resets less naturally. \"This matters a lot, so put it higher up\" is not a lifetime argument; it is importance wearing a lifetime's clothes, and it is the most common way a codebase acquires state nobody can safely remove."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So the question to ask of any piece of state or work is deliberately awkward: **what is the shortest lifetime that still satisfies the requirement?** Start at the bottom rung and move only when a stated requirement forces it, naming the requirement each time. That is the same cost discipline the foundations unit applied to boundaries, applied to lifetime instead."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Choose the owner from the ending event the requirement names, and prefer the shortest lifetime that still satisfies it. The ladder runs from one UI element's owner, through a screen or destination owner, through an application-lifetime owner, to something that outlives the process — four answers to four different requirements rather than four levels of safety. Every step down the ladder costs something, so each one needs a requirement that pays for it."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Put four requirements from one feature on that ladder. The borrowed-items screen lists a reader's loans; it can filter them; it refreshes; and from it the reader can submit a borrowing request for a title on hold. Four pieces of state or work, four different answers — and the screen-level owner, which is where all four would end up by default, is the wrong lifetime for two of them in opposite directions."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**One — whether the filter sheet is expanded.** It exists while the sheet is on screen, it means nothing when the sheet is gone, and the correct behaviour when the reader closes it and opens it again is that it starts closed. That is the bottom rung: a UI element's own owner, alongside the component it belongs to. Hoisting it into the screen's state holder is not merely unnecessary, it is wrong in three concrete ways. The value now outlives the sheet, so it survives when it should have reset. The holder's public surface grows by a field and a function that have nothing to do with what the screen is about. And unrelated parts of the screen can now read and write it, which is an ownership change nobody asked for."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Two — the loaded loans, the current filter selection and the in-flight refresh.** All of this is about the destination: it is produced for this screen, it must survive a configuration change while the reader is on it, and it stops mattering the moment the destination is permanently gone. That is the screen-level owner, exactly as the state-holder unit designed it, and the refresh is exactly the owner-scoped work that unit described — cancelling it when the reader leaves is the correct outcome rather than a loss."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Three — the studied-lesson and progress projections several screens share.** Now the requirement changes shape. More than one destination renders the same truth, those destinations are simultaneously alive on a back stack, and a change made in one must be visible in the others when the reader navigates back. A screen-level owner cannot hold this: each destination would have its own copy, and going back would show stale screens above a fresh one. That is the application-lifetime rung, and this repository is a worked example of it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Its `AppCoroutineScope` is a distinct type wrapping a scope with a `SupervisorJob`, deliberately named so that injecting it is unambiguous, and the reason it exists is stated in its own documentation rather than inferred: the caches built on it \"are shared by several screens and survive a navigation entry being destroyed, so they cannot belong to a `viewModelScope`\". Five state holders receive it. That is the argument in the right order — a requirement about what must survive a navigation entry being destroyed, and then a scope chosen to match. It is worth adding what makes it defensible *here*: this application is local-first with no network layer, and these holders are in-memory projections of a database that remains the source of truth. **Application scope is not the generic answer**; it is the answer when several screens genuinely share one truth."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That qualification is worth spending a paragraph on, because the application rung is the one most often taken for the wrong reason. An application-lifetime owner never goes away, so everything it holds never goes away either, and the costs are specific rather than stylistic:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Retention.** Whatever it holds is held for the life of the process, including a large projection built for a screen the reader visited once.",
+                    "**Staleness.** Nothing ends it, so nothing invalidates it; keeping it correct becomes a job somebody owns rather than something the lifetime does for free.",
+                    "**Hidden coupling.** Two screens that both read it are now connected through it, and a change made for one can surprise the other with no call site linking them.",
+                    "**Global mutable state, one reasonable step at a time.** Each promotion is defensible on its own, and the aggregate is an application where anything can be reached from anywhere.",
+                    "**Reset semantics.** \"Start again\" — a signed-out reader, a cleared cache, a switched profile — has to be implemented explicitly, because no ending event will do it."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Moving work to an application-scoped owner because it was being cancelled. Cancellation is the screen owner doing its job, and the fact that it is inconvenient is evidence about the requirement rather than about the scope. Application scope is a deliberate lifetime, not an escape from cancellation — and if the requirement is that the work finishes regardless, the next rung down is usually the honest answer rather than this one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Four — the submitted borrowing request.** The reader confirmed it and was told it was submitted. The product's promise is that it completes whether or not they stay on the screen, whether or not the app is in the foreground, and whether or not the process is still alive when the network is available again. Three of those exceed the screen owner and the third exceeds every in-process owner: an application scope still ends with the process, so it satisfies the first two and not the third."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The honest conclusion is therefore that **an in-process coroutine owner is not enough, and this requirement leaves the scoping question entirely.** Android's own guidance draws the same line: asynchronous work \"is not guaranteed to finish if the app stops being in a valid lifecycle stage\", and the task-scheduling APIs are \"a more flexible option when you need to do tasks that need to continue even if the user leaves the app\". Which scheduler, which constraints, what retry and backoff policy and how the platform's execution rules apply are the background-work curriculum's subject, and this lesson stops at naming the rung."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The owner",
+                    "What ends it",
+                    "The requirement that chooses it",
+                    "What it costs"
+                  ],
+                  "rows": [
+                    [
+                      "One UI element's own owner",
+                      "The element leaving the UI",
+                      "The value is meaningful only while that element is present, and should reset when it returns",
+                      "Nothing, when it is the right choice — the cost appears only if something else needed to read it"
+                    ],
+                    [
+                      "A screen or destination owner",
+                      "The destination being permanently destroyed",
+                      "The state is produced for this screen and stops mattering when the reader leaves for good",
+                      "A lifetime longer than a single element's, and a public surface that everything on the screen can reach"
+                    ],
+                    [
+                      "An application-lifetime owner",
+                      "The process ending",
+                      "Several destinations share one truth and it must survive a navigation entry being destroyed",
+                      "Retention, staleness, hidden coupling between screens, and reset that has to be written"
+                    ],
+                    [
+                      "Something outliving the process",
+                      "The work actually completing",
+                      "The product promised the operation finishes regardless of the app being closed or killed",
+                      "A scheduler's constraints and deferral, and a mechanism whose curriculum is not this one"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The sharpest thing in this lesson is that one owner was wrong in **both directions on the same screen**. The screen-level holder is too long-lived for the filter sheet's expansion, which should have died with the sheet, and too short-lived for the borrowing submission, which must outlive everything. A design that reaches for it by default gets both wrong, and it gets them wrong invisibly: the over-hoisted value looks like tidy centralisation, and the under-scoped work looks correct on every machine fast enough to finish before the reader navigates away."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Be careful with what is said about the screen-level owner itself, because the convenient shorthand is false. A ViewModel does not have a lifetime of its own; it has the lifetime of its `ViewModelStoreOwner`, and the documentation is explicit that it \"remains in memory until the `ViewModelStoreOwner` to which it is scoped disappears\", naming an activity finishing, a navigation entry being removed from the back stack and a composable leaving the composition as three different endings. \"The ViewModel survives the screen\" compresses that into a claim that is true of some hosts and not others, and the state-holder unit works the full ladder of events through; this lesson only needs the conclusion, which is that **naming the owner is what makes a lifetime answer checkable.**"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The same discipline applies one rung up the navigation stack, and the boundary is worth stating. A destination owns a lifetime, and so can a group of destinations: a multi-step flow can share one owner across its steps and lose it when the flow is popped, which is a genuinely different lifetime from either a single screen or the application. That is a real rung and it is used here to describe the shape of the ladder — how a back stack is built, how entries are scoped and what API expresses it belong to the lifecycle and navigation curriculum, and this lesson teaches none of it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Finally, the reasoning trap this lesson exists to remove. Asked where something should live, the tempting inputs are all about the code: where the class already is, which scope is in scope, what the base class provides, which choice needs the fewest constructor parameters. None of them is about lifetime, and each of them produces an owner by accident. The requirement, by contrast, always names an ending — *until the sheet closes*, *until the reader leaves for good*, *until the process ends*, *until the work is done* — and reading that ending out of the requirement is the entire decision. When a lifetime was chosen rather than inherited, the design usually shows it: a scope handed in as a parameter records that somebody decided which lifetime the work needed, and the next reader can see that they did."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked where a piece of state or work belongs, answer with the ending event rather than with a class. Name the four rungs, say that the shortest lifetime satisfying the requirement is the one to take, and be ready with the two failures in opposite directions on one screen — a value hoisted above the element that owns it, and work scoped to a screen the requirement said it must outlive. Say what an application-scoped owner costs, and say that a requirement to survive the process is not a scoping decision at all."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_delivery_guarantees",
+            "lesson_owner_scoped_work",
+            "lesson_viewmodel_lifetime_and_persistence",
+            "lesson_coroutine_scope_ownership"
+          ],
+          "sources": [
+            {
+              "title": "ViewModel overview",
+              "url": "https://developer.android.com/topic/libraries/architecture/viewmodel"
+            },
+            {
+              "title": "State holders and UI state",
+              "url": "https://developer.android.com/topic/architecture/ui-layer/stateholders"
+            },
+            {
+              "title": "Background work overview",
+              "url": "https://developer.android.com/develop/background-work/background-tasks"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_smallest_sufficient_architecture",
+          "title": "How Much Architecture Does This Feature Need?",
+          "summary": "Two features in one application, designed end to end: a reminder-time setting that needs a state holder and one data contract, and a borrowing checkout that earns repositories, a domain operation, explicit transitions, a durable submitted fact and an owner that outlives the screen. Every element in the second is traced to a requirement the first does not have, both are then designed wrongly by swapping their structures, and the cost of each mistake is counted rather than called over- or under-engineering.",
+          "primarySubtopicIds": [
+            "architecture_tradeoffs"
+          ],
+          "supportingSubtopicIds": [
+            "use_cases",
+            "repository_pattern",
+            "layered_architecture",
+            "clean_architecture"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "This is the last question in the subject, and it is the one that makes the others usable: **how much architecture does this feature actually need?** Every previous unit produced a candidate — a boundary, a screen owner, a repository, a domain operation, a pattern, a durable fact, a longer-lived owner — and each of them arrived with a condition attached. This lesson puts two features side by side and applies every condition at once."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The principle is short, and the discipline is in applying it honestly. **The amount of structure is chosen from the complexity actually present, and every element in the design has to be traceable to a requirement that names it.** Not to a convention, not to a diagram, not to what the previous feature looked like, and not to the unit that happened to teach it. If you cannot say which requirement pays for a component, the component is not yet justified — which is a reason to leave it out, and to be able to say what would bring it back."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The consequence surprises people, so it is worth stating before the examples. A screen state holder and one small data contract, with no domain layer, no use case, no reducer, no repository interface and no occurrence mechanism, is a **complete and correct architecture** for a feature whose requirements are that shape. It is not a first draft to be grown out of and it is not a compromise. It satisfies every requirement the feature has, which is the only test any architecture is held to."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Architecture is proportionate when every element traces to a stated requirement. The smallest structure that satisfies a feature's requirements is the correct structure for it, not an unfinished version of a larger one — and a larger structure is justified by naming the requirement each additional piece answers, one piece at a time."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Two features in the library application. The first is the reminder-time setting the domain unit already used: the reader picks a time of day at which they want to be reminded about loans due soon, and it is remembered. Its requirements, stated in full, are unusually short — load one current preference, let the reader change it, store it through one source, and that is all. No rule beyond the value being a time of day, no second caller, nothing to coordinate, no transition worth naming and no occurrence anybody must be guaranteed."
+                },
+                {
+                  "type": "code",
+                  "code": "reminder/\n  ReminderSettingsViewModel     owns the screen's current state and the one write path\n  ReminderPreferenceRepository  the data contract the screen owner depends on\n    LocalReminderPreferences    the implementation; names the store and the platform",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is the whole architecture, and every part of it earns its place. A state holder exists because the screen has state to own and one write path to keep. A data contract exists because the screen owner should not name the storage mechanism, which is the boundary the data-ownership unit designed. What the feature deliberately does **not** have is the interesting half: no domain layer, because none of the four conditions that earn one is present; no use case forwarding a single repository call; no reducer or action type, because there is one transition and it is an assignment; no occurrence mechanism, because nothing here must be delivered to anybody; and no second representation of a time of day, because both sides of the boundary have exactly one reason to change between them."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now the second feature. A borrowing checkout: the reader assembles the items they want to borrow, the application checks that they may, and the request is submitted to the library. Its requirements are a different animal, and it is the requirements rather than the subject matter that make them so."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "The eligibility rule is real: loan limits by title and by reader, unpaid fines that block borrowing, items already on hold for somebody else, and a membership that can be expired.",
+                    "Answering it needs several data responsibilities — the reader's current loans and standing, the catalogue's availability and holds — each with its own source and its own freshness question.",
+                    "Three surfaces perform the check: the checkout screen, the title detail screen, and a re-check at submission time.",
+                    "The flow has one current workflow state with transitions that must hold invariants: nothing may be submitted from an unvalidated basket, and a confirmed request may not be edited.",
+                    "The submitted request is a fact the reader was told about, so it must survive the screen, the app being backgrounded and the process ending, and it must be acknowledged once when the library confirms it."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Each of those buys one piece of structure, and nothing buys two. The eligibility rule plus three callers earns a domain operation with a home of its own — reuse, orchestration and policy, which is precisely the condition the domain unit stated. Several data responsibilities with independent sources and freshness questions earn repository boundaries rather than one. The invariants earn an explicit transition, because a rule that must hold across every change is cheaper to keep in one function than in five callbacks. The submitted fact earns a durable record with a pending-or-acknowledged position, from the guarantee lesson. And the submission's promise to complete regardless of the reader leaving earns an owner above the screen, from the lifetime lesson."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The structural element",
+                    "The requirement that earns it in the checkout",
+                    "Why it is absent from the setting"
+                  ],
+                  "rows": [
+                    [
+                      "A domain operation with its own home",
+                      "One eligibility rule, three callers, and orchestration across two data responsibilities",
+                      "One caller, no rule, nothing to orchestrate — the class would forward and nothing else"
+                    ],
+                    [
+                      "More than one repository boundary",
+                      "Loans and standing change for different reasons and from different sources than catalogue availability",
+                      "One fact, one source, one reason to change: a second boundary would isolate nothing"
+                    ],
+                    [
+                      "An explicit transition function",
+                      "Invariants that must hold across every change, including \"not submittable until validated\"",
+                      "One transition, and it is an assignment — a reducer would name the assignment and add nothing"
+                    ],
+                    [
+                      "A durable submitted-or-confirmed fact",
+                      "The reader was told the request was submitted, and the confirmation may arrive with the app closed",
+                      "Nothing here must reach anybody; the stored preference is the whole of what survives"
+                    ],
+                    [
+                      "An owner whose lifetime exceeds the screen",
+                      "The submission must complete whether or not the reader stays, and survive the process",
+                      "Writing a preference completes while the reader is looking at it, and nothing is promised if it does not"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now design both wrongly, starting with the setting given the checkout's structure. A `GetReminderTime` and a `SetReminderTime` appear in a `domain` directory; a `ReminderUiState` is reduced from a `ReminderAction` through a transition function; a second representation of the preference is mapped at the repository boundary; and the change is published through an occurrence mechanism in case anybody needs to be told. The word for this is not \"over-engineered\", because that word ends the conversation instead of pricing the mistake. Count what the team pays, permanently:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Two classes and two files that forward a call and return what they were given.",
+                    "A mapping function between two representations that change together, so every field added lands in three places instead of one.",
+                    "An action type and a transition for a single assignment, and one more indirection between what the reader tapped and the value being written.",
+                    "A delivery mechanism with no delivery requirement, which now has a configuration somebody has to defend in review.",
+                    "A directory named for a responsibility this feature does not have, which tells the next engineer that the policy lives there — so the next real rule ends up somewhere else."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The last item is the only cost that compounds, and it is the reason this matters beyond tidiness. Structure is a claim about where things are; a structure that makes a false claim misdirects every reader of the codebase afterwards."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Then the reverse: the checkout given the setting's structure. One state holder, one repository, no domain operation, no explicit transition, no durable record. It will demo perfectly. What it lacks is not classes but **owners**, and each gap is a requirement with nowhere to live: the eligibility rule is duplicated into three screen owners, so a lending-policy change has three homes and one of them will be missed; source policy leaks upward because the holder now decides which store answers and when to refresh; the invariants are distributed across callbacks, so \"not submittable until validated\" is true only in the paths somebody remembered; the confirmation is a transient emission although the product promised a later consumer would see it; and the submission runs in the screen's scope, so leaving the screen cancels something the reader was told had happened."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Treating under-architecture as \"too few classes\" and over-architecture as \"too many\". Neither is a count. Under-architecture is responsibilities with no owner — a rule in three places, an invariant nobody enforces, a promise nothing keeps. Over-architecture is boundaries with no independent change behind them. A feature can have both at once, and frequently does."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Notice which question was never asked: whether either feature is MVVM or MVI. That is deliberate, and it preserves what the pattern unit taught. The decisions that were actually made are where state lives, who may write it, how explicit the transitions are, what lifetime each owner needs, what must be delivered or durable, and which way each dependency points. Once those are settled, the implementation will resemble one pattern or another — the checkout's explicit transition over one current workflow state will read as MVI-ish to most teams — but the resemblance is a **description of the result** rather than an input to it. Choosing the label first means choosing answers to five questions before they have been asked."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There is one honest argument against everything in this lesson, and a strong engineer should be able to make it. **Uniformity has real value.** A team that gives every feature the same broad structure buys things a proportionate design does not: an engineer opening an unfamiliar feature knows where to look before they read anything; a reviewer has one shape to check rather than a judgement to second-guess; new engineers need fewer local decisions and make fewer novel mistakes; and tooling, templates and conventions can assume the shape. Those benefits are worth paying indirection for, and a team that has decided this is not confused."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What the senior position adds is only this: **say that it was purchased.** \"Every feature here has a domain layer because we chose consistency over per-feature proportionality, and we pay two forwarding classes on the small ones for it\" is a defensible engineering decision, stated as a trade. \"Every feature needs a domain layer\" is the same structure with the reasoning removed, and it cannot be argued with, revisited, or applied to a feature that genuinely does not fit. The difference between the two sentences is the difference between a decision and a habit, and only the first survives the requirement changing."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Resist, too, the reflex to turn all of this into a table. There is no scoring rubric here, no complexity threshold above which a domain layer is required and no count of repositories that implies a reducer. Any such rule would make the judgement mechanical, and the judgement is the skill — a rubric would have added the mapping layer to the reminder setting and would have been perfectly happy with the under-architected checkout, because neither mistake is visible in a count. The checklist this subject offers is a list of *questions*, and it never outputs an architecture on its own."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So close the loop where the subject opened it. The foundations unit asked four questions about a boundary, and the whole curriculum has been assembling the material to answer them for a whole feature. Ask them of both designs above and the answers are complete sentences in both cases:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**What responsibility exists here?** Rendering a setting and writing it, against assembling a basket, deciding eligibility, holding a workflow and keeping a promise about a submission.",
+                    "**Who owns it?** One state holder and one data contract, against several owners whose boundaries were each argued separately.",
+                    "**What may depend on what?** The same rule in both: the screen owner depends on a contract it needs, and the implementation depends inward on that contract.",
+                    "**What lifetime does each part require?** Everything within the screen, against a ladder with a rung above the screen and a fact that outlives the process.",
+                    "**What does each boundary cost, and is it paid for?** Two boundaries, both earning their keep, against five, each traced to a named requirement."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is the subject's actual answer to \"what architecture should I use\": not a stack, not an acronym, and not a number of layers, but the smallest arrangement in which every responsibility has an owner, every dependency points somewhere defensible, every lifetime matches a requirement, and every boundary was paid for by an independent change it isolates. Both features above satisfy that description, and they look nothing like each other — which is the point."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked how you would architect a feature, ask for the requirements before answering, then build up from the smallest structure and name the requirement that earns each addition. Be ready to defend a feature with no domain layer and no use cases as finished rather than unfinished. Be ready to price both failures concretely: over-architecture as boundaries isolating no independent change, under-architecture as responsibilities with no owner. And when uniformity is the real reason, say so — a trade-off named is an engineering decision, and the same structure unnamed is a habit."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_layers_and_their_cost",
+            "lesson_state_holder_responsibility",
+            "lesson_what_a_repository_owns",
+            "lesson_when_a_domain_layer_earns_its_place",
+            "lesson_classifying_a_real_architecture",
+            "lesson_delivery_guarantees",
+            "lesson_choosing_the_owner_by_lifetime"
+          ],
+          "sources": [
+            {
+              "title": "Guide to app architecture",
+              "url": "https://developer.android.com/topic/architecture"
+            },
+            {
+              "title": "Architecture recommendations",
+              "url": "https://developer.android.com/topic/architecture/recommendations"
+            },
+            {
+              "title": "Domain layer",
+              "url": "https://developer.android.com/topic/architecture/domain-layer"
+            },
+            {
+              "title": "The Clean Architecture",
+              "url": "https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
     }
   ]
 }

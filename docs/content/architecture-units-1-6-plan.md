@@ -2923,3 +2923,576 @@ the generated confirmation that GAP-U5-A is real rather than a prediction.
 - **The learning content itself is editorial** and no automated check can confirm that a Lesson
   teaches what it claims; the semantic review above is a judgement, as Rule 10 of the authoring
   contract requires.
+
+---
+
+## Authoring outcomes for Unit 6
+
+Added by E26-07 after the four Lessons were written. Unit 6 is the **last instructional Unit
+of E26**, so this section also closes the authoring run that E26-02 opened: every source
+quotation, repository finding and routing figure below was re-opened, re-read against current
+code, or executed during authoring rather than carried over from E26-01's tables, and where a
+finding is unchanged that is stated as a re-verification rather than as a copy.
+
+### What did not change
+
+Every proposed Unit id, Lesson id, title, authored order and primary/supporting mapping for
+Unit 6 in the [identity tables](#identity-conventions-and-proposed-identities) shipped
+verbatim. **No Lesson boundary moved, none was split or merged, and no mapping was altered to
+improve practice routing.** The blueprint's `L6.1`–`L6.4` ordering, its
+Teach/Bridge/Reference/Exclude decisions and its misconception targets were followed as
+written, and nothing in Unit 6 required a Unit 1–5 identity, mapping or boundary to move.
+
+| Shipped identity | Title | Primary | Supporting |
+| --- | --- | --- | --- |
+| `lesson_state_or_occurrence` | Is This State, or Is It Something That Happened? | `state_ownership` | `unidirectional_data_flow`, `stateflow`, `sharedflow`, `single_source_of_truth` |
+| `lesson_delivery_guarantees` | What Guarantee Does This Occurrence Need? | `state_ownership` | `sharedflow`, `hot_vs_cold_streams`, `process_death`, `single_source_of_truth` |
+| `lesson_choosing_the_owner_by_lifetime` | Choosing an Owner From the Lifetime the Requirement Needs | `state_ownership` | `lifecycle_coroutines`, `coroutine_scope`, `viewmodel_lifecycle`, `background_api_selection` |
+| `lesson_smallest_sufficient_architecture` | How Much Architecture Does This Feature Need? | `architecture_tradeoffs` | `use_cases`, `repository_pattern`, `layered_architecture`, `clean_architecture` |
+
+The Unit ships directly after `unit_responsibility_models_mvp_mvvm_mvi`, so the `architecture`
+Topic now holds **six Units and 29 Lessons** in the planned 5/5/5/5/5/4 distribution, and the
+whole document holds **24 active Units and 101 active Lessons**.
+
+**One documentation correction outside the outcomes sections.** The blueprint's `Status`
+section still said "no Unit has been authored", which was true when E26-01 wrote it and is now
+false in the strongest possible way. It was corrected to state that all six Units have shipped
+and that no Lesson boundary moved. No objective, depth layer, mapping, misconception row,
+terminology entry or Exclude decision in the blueprint was touched.
+
+**Configured versions, re-verified.** `gradle/libs.versions.toml` was re-read during authoring:
+`androidx-lifecycle` is still `2.11.0-beta01`, Kotlin still `2.4.10`, kotlinx.coroutines still
+`1.11.0`, Compose Multiplatform still `1.11.1`, Koin still `4.2.2`, Room still `3.0.1`.
+Unchanged from the table this plan assumes and from what E26-06 recorded. The beta re-check
+mattered less here than in Unit 2: Unit 6 makes exactly one source-sensitive ViewModel claim,
+recorded below.
+
+### Unit purpose, and how it stays separate from Units 1–5
+
+Units 1–5 all begin with something that exists — a boundary to judge, a component to design, a
+repository to shape, a layer to justify, an arrangement to classify. **Unit 6 begins with a
+requirement and nothing built**, and that is the whole of what makes it a separate Unit rather
+than an appendix.
+
+- **It adds no mechanism.** Nothing in the four Lessons is a new abstraction, type or API. Every
+  element is something an earlier Unit or an earlier curriculum already taught, and what is new
+  is the order in which the decisions are taken.
+- **Its four Lessons are one sequence, and each consumes the previous answer.** What must the
+  application represent → what guarantee does that representation need → whose lifetime matches
+  the guarantee → how much structure does the whole feature earn. No other order is available:
+  L6.2 cannot start until L6.1 has said the thing is an occurrence, and L6.3 exists because L6.2
+  ends on "an obligation needs an owner, so which one?".
+- **Every Lesson reasons from the requirement towards the architecture.** No Lesson opens on a
+  mechanism and looks for a use for it, and the one place where a mechanism comparison would be
+  the obvious move — `Channel` against `SharedFlow` — is deliberately never made, for the reason
+  recorded under [the stream-slogan correction](#the-stream-slogan-correction-and-the-mechanism-boundary).
+- **The earlier Units are applied, not re-taught.** L6.4 in particular re-uses two features the
+  shipped Lessons already introduced rather than inventing a third application.
+
+### Terminology discipline, audited across the shipped Unit
+
+E26-06's rules are preserved, and the Unit was scanned for both dangerous words after authoring
+rather than trusted.
+
+- **"Occurrence"** is used throughout for something that happened where the delivery question is
+  live, **"state"** for something currently true, **"durable state" or "durable fact"** where the
+  truth must survive process loss, and **"emission"** for transport mechanics. Every Lesson uses
+  them consistently.
+- **"Effect" never appears in either of its collided senses.** The only occurrence in the Unit is
+  **"side-effect execution"**, in L6.2's exactly-once separation, where it names the third of three
+  distinguished claims — whether the thing in the world actually happened once — and is defined in
+  the same sentence. It is neither a Compose effect API nor an MVI one-off output, and no bare
+  "effect" is used for a transient application output anywhere.
+- **"Event" is never used bare for an application concept.** Every occurrence falls into one of
+  four audited categories: the lifetime sense the blueprint's own register defines ("what event ends
+  it", "the ending event"), which is L6.3's central vocabulary; a direct quotation of Android's
+  guidance, labelled as a quotation; a slogan or a mistaken phrasing the Lesson is rejecting, set
+  off as such ("something called an event", "this stream type is for state and that one is for
+  events", "events are being lost"); and two places where the word names the question as an
+  interviewer or a real-world description actually poses it — "a single real event in the world" and
+  "asked whether something should be state or an event, refuse the binary". The last is deliberate:
+  the interview asks it in exactly those words, and refusing the binary is the answer the Lesson
+  teaches.
+
+### L6.1: the same fact under three requirements
+
+The fact is the blueprint's: **the practice session was scored.** It is held fixed and three
+requirements are placed on it, each with its consequence spelled out and its failure named.
+
+| Requirement | What the application must represent | What losing it means |
+| --- | --- | --- |
+| **A — render the finished session.** The result screen shows the score, the pass/fail verdict, the answers and the next actions | Current state: this session currently has a completed result, with current-value semantics so a consumer arriving later reads the correct result immediately | A defect: the screen would show a session with no outcome |
+| **B — still know it tomorrow.** After leaving the screen, after process recreation, after restarting the application | The same current state with a retention requirement: it must be reconstructable after every in-memory owner is gone | A defect, and a worse one: the application would have forgotten something the reader was told |
+| **C — celebrate on the active result screen.** A short animation, one haptic confirmation, a brief congratulatory message, while the reader is still there | A transient occurrence: performed once, in the presence of the UI it belongs to | Nothing. The requirement was about the moment and the moment has passed |
+
+**The current-versus-durable nuance is taught explicitly rather than left to be inferred.** The
+Lesson's Core section refuses the three-mutually-exclusive-types reading in as many words and
+replaces it with two dimensions: first, *is this currently true or did it happen* — decided by
+the requirement's verb, rendered against executed; second, asked **only** of the first kind,
+*how long must that truth remain reconstructable*. Durability is named as a point on the second
+dimension rather than a third kind, and the Senior section closes on the quadrant the three-way
+comparison hides — a fact that is both current state and durable is the ordinary case, with this
+repository's studied-lesson record named as the local example.
+
+**Acceptable loss.** Requirement C is the worked case, and the Lesson states the rule directly:
+*loss is a defect only when it violates the requirement*. Two further examples are named as
+correctly lossy — a haptic confirmation for a button the reader is pressing, and a request to
+scroll the visible list to a newly added item — and a `NOTE` callout makes the correction
+explicit: "could this be lost?" is the wrong question, because for anything transient the answer
+is almost always yes.
+
+**State that sounds like an occurrence.** Four are given: *there is an unfinished practice
+session*, *the last submission failed*, *this borrowing request is awaiting approval*, *the
+account needs another confirmation step*. Each became true at a moment and each is current state,
+because the requirement is that a screen opening later knows the current position. The Lesson
+states the correction in the form that generalises: **the past occurrence is not the important
+representation; the current consequence is.**
+
+**The duplicate-execution failure.** The blueprint's `showCongratulations` case ships as authored
+Kotlin — a `ResultUiState` with a boolean set when the score is computed — followed by the three
+ways a second consumer meets it: an owner surviving a configuration change, a destination still on
+the back stack, or the value read back from a durable record written in service of Requirement B.
+The diagnosis is deliberately precise and is stated as a refusal of the usual one: the defect is
+**not** that a boolean was used, it is that an occurrence was recorded as persistent current truth
+**without any rule for what "already handled" means**. The Lesson explicitly declines to solve it
+with an occurrence wrapper and hands the decision to L6.2, where the guarantee decides.
+
+**Current state as lossy history.** The Senior section uses `score = 8 / 10` and lists what the
+value cannot answer — which answer was changed first, how long question six took, whether the
+score was recomputed after a correction, how many intermediate values existed. The conclusion is
+that a late consumer can be correct about state and cannot be correct about history, that no
+retention setting changes this because retention keeps recent values rather than the sequence, and
+that a product needing history has a **new requirement** which must name the occurrences worth
+preserving as recorded facts. Event sourcing is refused in the same paragraph, in one clause, as an
+architecture with consequences this curriculum does not teach.
+
+### L6.2: the guarantee questions, and what answers them
+
+The four questions ship in the issue's order, as a bulleted instrument, with their independence
+stated: may the occurrence be lost if nobody is listening; must a consumer arriving later still act
+on it; is repeated handling safe; must the application record that it was handled.
+
+**Process survival is a qualification, not a fifth universal question.** It is asked only when the
+second is answered yes — *must that obligation survive the process ending?* — and its role is
+stated as eligibility: every coroutine scope, hot stream, state holder and ViewModel is in memory,
+so a yes removes in-memory ownership from consideration before any mechanism is compared.
+
+**The backgrounded-consumer scenario.** A reader submits a borrowing request for a title on hold;
+the library confirms it a minute later while the app is backgrounded and the screen is gone; the
+product promises that the next time they open the application they see the confirmation and that it
+is acknowledged once. All five questions are answered for it.
+
+**The acceptable-loss contrast is in the same table**, which is what makes it acceptance-critical
+rather than decorative: *scroll the visible list to the newly added loan* is answered on the same
+five rows, coming out lost-able, with no later consumer, harmless to repeat and with nothing to
+record. The Lesson says in as many words that the transient design the Compose curriculum already
+supplies is the correct and complete answer for it, and that giving it a durable record and an
+acknowledgement would be over-architecture in the precise sense L6.4 defines.
+
+**Replay and emission are applied, not re-derived.** Replay: a retention window changes what a
+later subscriber can recover and changes nothing else — not that anybody handled the value, not
+that it was handled once, not that it survived the process, not that the intended consumer received
+it; a collector created after recreation is simply a new subscriber. Emission: an emission call
+reports what the transport did under its current configuration, and on an unbuffered shared flow
+with no subscriber it reports success while the value is gone in the same instant, which is a
+property of the transport operation rather than evidence that the requirement was satisfied. Both
+conclusions are E24's, cited rather than re-measured, and no buffer mechanics are re-taught.
+
+**The acknowledgement model.** Acknowledgement ships as **state somebody owns**: a value with two
+distinguishable positions — outstanding and dealt-with — and a component responsible for moving it.
+The authored code block is a two-position enum with three questions beside it (which component is
+authoritative, what is its lifetime, who may move it) and an explicit comment that it is *not a
+queue and not a delivery mechanism*. The Lesson then states what creates none of that: a stream
+having accepted a value, and a retention cache, because "most recent" is not "outstanding". The
+architectural question it ends on is **who owns the pending-or-handled truth**, which is why L6.3
+follows it immediately.
+
+**Android's state-reduction guidance, verified from the current page.** `developer.android.com/topic/architecture/ui-layer/events`
+was re-opened during authoring and its wording is unchanged from what E26-01 recorded on
+2026-09-15. Quoted in the Lesson: that for one-off events carried by streams, "when the producer
+(the ViewModel) outlives the consumer (Compose UI), these solutions don't guarantee the delivery
+and processing of those events"; the instruction to "Handle such events immediately and reduce them
+to UI state"; and the reason, that "UI state better represents the UI at a given point in time, it
+gives you more delivery and processing guarantees". The page's worked shape — the UI notifying the
+owner once the message is shown, "causing another UI state update to clear the `userMessage`
+property" — is the same pending-or-handled pair, and the Lesson says so. **The reason is taught,
+not just the recommendation:** a current value is readable by a consumer arriving at any moment and
+a past emission is not, which is why reduction answers the second and fourth questions together.
+The Lesson then bounds it explicitly — this is a conclusion from a requirement rather than a
+universal rule, and the acceptable-loss column stays transient.
+
+**Exactly-once caution.** The Senior section separates three claims a single sentence tends to
+merge: recording application handling state, transport delivery, and side-effect execution — and
+names the window in which the first two hold and the third does not, a process ending between
+performing an external action and recording that it did. The phrasing the Lesson prefers is stated
+outright: *the application can record whether this obligation remains pending, and a consumer can
+read that record*. General exactly-once processing is named as outside this curriculum, with a
+one-clause pointer to where stronger properties actually come from (an identity the external system
+recognises, which is a data-ownership and integration decision).
+
+**Process death.** Named carriers, stated as losing everything with the process: `StateFlow`,
+`SharedFlow`, `Channel`, a state holder, a ViewModel. The ViewModel documentation is quoted for the
+lifetime claim and for saved state being a *separate* mechanism, and both are handed to the
+persistence and lifecycle curricula rather than taught.
+
+### The stream-slogan correction, and the mechanism boundary
+
+No slogan of the form "one stream type is for state and another for events" appears anywhere in the
+Unit, and the correction is made structurally rather than by assertion. L6.2's Core section ships
+the required order as a fixed-width block — requirement → guarantees → owner/lifetime → mechanism —
+beside the rejected one, *something called an event → a stream type*. Its Senior section adds the
+general form: a mechanism describes delivery, a requirement describes handling, and no description
+of delivery answers a question about handling — **which is why the Unit never compares two stream
+types at all**: both lose everything they hold when the process ends, so a yes to the
+process-survival question decides the comparison before it begins, and a no makes the choice a
+detail rather than the design. This is the E25 handoff row "`Channel` against `SharedFlow` as a
+ViewModel event design decision" answered as the plan intended — reframed as the guarantee question
+and deliberately **not** answered as a type comparison.
+
+**The queue and event-bus boundary is stated inside the Lesson, not only in this plan.** L6.2's
+Senior section names what it is refusing to build — an application-wide event bus, a durable queue
+with consumers and offsets, a delivery protocol with retries and dead-letter handling, an outbox
+tying the record and the external call into one transaction — says each is a real subject with real
+trade-offs, and says the decision this Lesson teaches is complete when you can name the missing
+guarantee, the fact that would have to exist and who would own it. No infrastructure is taught.
+
+### L6.3: the lifetime ladder
+
+The ladder ships as a fixed-width block with each rung's **ending event** beside it, because the
+ending event is what makes a rung right or wrong: a single UI element's owner ends when the element
+leaves the UI; a screen or destination owner ends when the destination is permanently gone; an
+application-lifetime owner ends when the process ends; something that outlives the process ends when
+the work is actually done. The Lesson states in as many words that **moving down the ladder is not
+an upgrade**, and that "this matters a lot, so put it higher up" is importance wearing a lifetime's
+clothes. The decision rule is the awkward one: *what is the shortest lifetime that still satisfies
+the requirement?*
+
+Four requirements from one feature — the borrowed-items screen — are placed on it, and the
+screen-level owner is shown to be wrong in **both** directions on that one screen.
+
+| Rung | The requirement used | Why that rung |
+| --- | --- | --- |
+| A UI element's own owner | Whether the filter sheet is expanded | Meaningful only while the sheet is present, and should reset when it returns. Hoisting it into the screen holder is priced in three concrete ways: it outlives the sheet, the holder's public surface grows, and unrelated parts of the screen gain write access |
+| A screen or destination owner | The loaded loans, the current filter selection, an in-flight refresh | Produced for this destination and stops mattering when it is permanently gone. Cancelling the refresh on leaving is the correct outcome rather than a loss |
+| An application-lifetime owner | The studied-lesson and progress projections several screens share | Several live destinations render one truth and a change in one must be visible in the others; per-destination copies would show stale screens above a fresh one |
+| Something outliving the process | The submitted borrowing request | The reader was told it was submitted, so it must complete whether or not they stay, whether or not the app is foregrounded, and whether or not the process is alive |
+
+**`AppCoroutineScope`, re-verified.** `shared/src/commonMain/kotlin/.../assessment/history/AppCoroutineScope.kt`
+was re-read during authoring and is unchanged: a distinct type delegating to
+`CoroutineScope(SupervisorJob() + Dispatchers.Default)`, documented as existing because the caches
+built on it "are shared by several screens and survive a navigation entry being destroyed, so they
+cannot belong to a `viewModelScope`", and named distinctly "so injecting it is unambiguous". The
+five non-ViewModel state holders that receive it are unchanged, and `StudyProgressStateHolder`'s
+KDoc still states the source-of-truth relationship the Lesson leans on. **The caveat ships with the
+evidence**: the Lesson says this application is local-first with no network layer and that these
+holders are in-memory projections of a database that remains authoritative, and states plainly that
+**application scope is not the generic answer**.
+
+**Application-scope cost** is a five-item list rather than the word "complexity": retention for the
+life of the process, staleness with no ending event to invalidate it, hidden coupling between
+screens connected only through it, global mutable state acquired one defensible step at a time, and
+reset semantics that have to be written because no ending event will do them. A `COMMON_MISTAKE`
+callout names the specific failure the rung invites — moving work up because it was being cancelled
+— and states that application scope is a deliberate lifetime rather than an escape from
+cancellation.
+
+**The background-work handoff** is made from the current source. Android's background-work overview
+was re-opened, and two sentences carry the boundary: asynchronous work "is not guaranteed to finish
+if the app stops being in a valid lifecycle stage", and the task-scheduling APIs are "a more
+flexible option when you need to do tasks that need to continue even if the user leaves the app".
+The Lesson concludes that an in-process coroutine owner is not enough and that the requirement
+leaves the scoping question entirely, then stops: **no scheduler, no constraints, no retry or
+backoff policy and no OS execution rules are taught.**
+
+**Source-sensitive ViewModel claim.** Unit 6 makes exactly one, in L6.3's Senior section, and it is
+the Unit 2 model preserved rather than restated: a ViewModel has no lifetime of its own, it has its
+`ViewModelStoreOwner`'s. The ViewModel overview was re-opened during authoring and quoted — "A
+`ViewModel` remains in memory until the `ViewModelStoreOwner` to which it is scoped disappears" —
+together with its three named endings (an activity finishing, a navigation entry removed from the
+back stack, a composable leaving the composition). The Lesson explicitly refuses the shorthand "the
+ViewModel survives the screen", hands the full ladder of events back to
+`lesson_viewmodel_lifetime_and_persistence`, and **makes no `viewModelScope` dispatcher claim at
+all**, because that is `lesson_owner_scoped_work`'s and repeating it here would have been a
+re-derivation. Navigation ownership is used to describe the destination and flow rungs and no
+Navigation API, graph setup, back-stack mechanic or decorator is named.
+
+### L6.4: proportionality, worked twice
+
+The two features are in the same application and **both were already introduced by shipped
+Lessons**, which is why L6.4 can apply the earlier Units rather than re-establishing them.
+
+**Feature A — the reminder-time setting**, the feature `lesson_when_a_domain_layer_earns_its_place`
+uses as its no-domain-layer case. Its requirements are stated in full and are short: load one
+current preference, let the reader change it, store it through one source. The shipped structure is
+a screen state holder, a data contract and its implementation — and the Lesson lists what the
+feature **deliberately does not have**, with the reason for each: no domain layer (none of the four
+conditions is present), no use case forwarding a single repository call, no reducer or action type
+(one transition, and it is an assignment), no occurrence mechanism (nothing must be delivered to
+anybody), and no second representation of a time of day (both sides have one reason to change
+between them). The Core section states before either example that this is a **complete and correct**
+architecture rather than a first draft to be grown out of.
+
+**Feature B — the borrowing checkout**, a committed workflow in the same library application. Five
+requirements are stated, and each buys exactly one piece of structure: a real eligibility rule with
+three callers earns a domain operation; data responsibilities with independent sources and freshness
+questions earn more than one repository boundary; invariants that must hold across every change earn
+an explicit transition; a submitted fact the reader was told about earns a durable
+pending-or-confirmed record (L6.2); and a submission promised to complete regardless of the reader
+leaving earns an owner above the screen (L6.3). A three-column table traces each element to the
+requirement that earns it **and** to why it is absent from Feature A.
+
+**Over-architecture, counted.** Feature A is given Feature B's structure and the cost is listed as
+things rather than as a word: two classes that forward, a mapping between two representations that
+change together so every field lands in three places, an action type and a transition for a single
+assignment, a delivery mechanism with no delivery requirement, and a directory named for a
+responsibility the feature does not have. The Lesson names the last as the only cost that compounds
+— structure is a claim about where things are, and a false claim misdirects every later reader.
+
+**Under-architecture, as missing owners.** Feature B is given Feature A's structure and the Lesson
+states that what is missing is not classes but owners: the eligibility rule duplicated into three
+screen owners so a policy change has three homes; source policy leaking upward into the holder; the
+invariants distributed across callbacks so "not submittable until validated" holds only where
+somebody remembered; the confirmation as a transient emission although a later consumer was
+promised; and the submission in the screen's scope, cancelled on leaving. A `COMMON_MISTAKE`
+callout refuses the count-based reading of both failures and notes that a feature can have both at
+once.
+
+**Pattern choice at synthesis level.** The Senior section opens by noting which question was never
+asked — whether either feature is MVVM or MVI — and states the reason: the decisions actually made
+are ownership, mutation path, transition explicitness, lifetime, delivery and durability, and
+dependency direction, and the resemblance to a pattern is a *description of the result* rather than
+an input to it. Unit 5's classification model is preserved intact.
+
+**The uniformity trade-off is taught fairly and then named.** Four concrete benefits are given —
+placement known before reading, one shape for a reviewer to check, fewer local decisions for new
+engineers, and conventions tooling can assume — and the Lesson says outright that a team choosing
+this is not confused and that the indirection may be worth paying. The senior addition is the
+distinction between two sentences: "every feature here has a domain layer because we chose
+consistency over per-feature proportionality, and we pay two forwarding classes on the small ones
+for it" is an engineering decision stated as a trade; "every feature needs a domain layer" is the
+same structure with the reasoning removed. **No uniform architecture is framed as bad.**
+
+**No rubric.** The Lesson refuses one explicitly and gives the reason rather than the rule: any
+threshold would have added the mapping layer to the reminder setting and would have been perfectly
+happy with the under-architected checkout, because neither mistake is visible in a count.
+
+**Unit 1 closure.** The final section asks the foundations Unit's questions of both designs — what
+responsibility exists, who owns it, what may depend on what, what lifetime each part requires, what
+each boundary costs and whether it is paid for — and answers all five for each feature. The closing
+paragraph states the subject's answer to "what architecture should I use": the smallest arrangement
+in which every responsibility has an owner, every dependency points somewhere defensible, every
+lifetime matches a requirement, and every boundary was paid for by an independent change it
+isolates — and notes that both features satisfy it while looking nothing like each other.
+
+### Semantic review of the Questions this Unit now reaches
+
+All four ACTIVE Questions in the resolved pool were re-read in full and independently solved against
+the finished prose, together with the duplication guards listed below. **The E26-01 findings in
+[Part 5](#part-5--semantic-assessment-review) all still hold.** The `architecture` Topic still holds
+22 ACTIVE and 4 DEPRECATED Questions over 18 Subtopics, re-counted from the bundled JSON during
+authoring.
+
+| Question | Level | Reached through | Re-read verdict against the shipped Lessons |
+| --- | --- | --- | --- |
+| `durable_state_vs_one_off_event` | APPLIED | `state_ownership` (L6.1) | **Sound and precisely matched to L6.1 — the only one of the four that semantically assesses what this Unit teaches.** Its correct option is the state-against-consumable decision L6.1 is built on, and its explanation's warning that replaying transient behaviour as durable state can duplicate the effect is exactly the `showCongratulations` failure. **Its scenario and wording are not reproduced**: the Question is a payment result against a snackbar, and the Lesson uses a scored practice session against a celebration, reaches the duplicate execution through an authored code block rather than through a type comparison, and never poses the four-way mechanism choice its options do. A reader who understood L6.1 can answer it without having met it |
+| `state_ownership_001` | FOUNDATION | `state_ownership` (L6.1–L6.3) | Sound, and answerable from this Unit although it is Unit 2's. Its point — one owner decides how state changes and publishes it read-only — is Unit 2's contract; what Unit 6 adds is the aside in its explanation, that ownership is separate from durability, which L6.1's two dimensions teach directly. Structurally reachable here because the Subtopic is shared; semantically it belongs to Unit 2 |
+| `architecture_state_holder_taxonomy` | APPLIED | `state_ownership` (L6.1–L6.3) | Sound. **Partly matched, and the part that matches is L6.3's.** Its correct answer — a plain remembered holder for a component's own state, rather than a ViewModel that would give it a lifetime and a dependency surface it never asked for — is the first rung of L6.3's ladder and the over-hoisting failure L6.3 prices in three ways. Its framing is still Unit 2's state-holder taxonomy, and L6.3 was not reshaped towards it: the Lesson reasons from ending events rather than from holder kinds. See GAP-U6-B |
+| `viewmodel_activity_reference_lifetime` | FOUNDATION | `state_ownership` (L6.1–L6.3) | Sound, and Unit 2's. It assesses why a ViewModel must not retain a UI instance, which L2.2 owns. L6.3 touches the adjacent fact — that a ViewModel's lifetime is its `ViewModelStoreOwner`'s — and deliberately does not re-derive the retention argument. Structural reach only |
+
+Adjacent and cross-topic Questions were re-read as duplication and mapping guards, and **none was
+re-mapped**: `architecture_ui_event_consumption` (`mvi`, see below);
+`stream_choice_cannot_supply_a_delivery_guarantee` and `shared_flow_try_emit_true_is_not_delivery`
+(`async_reactive`, both ADVANCED) — L6.2 applies both conclusions and re-asks neither, and neither
+reaches this Unit; `viewmodel_scope_cleared_cancellation`, `coroutine_scope_outlives_its_consumer`
+and `coroutine_scope_job_ownership` (`async_reactive`) — the mechanism half of L6.3's ladder, owned
+by E24 and by `lesson_owner_scoped_work`; `background_api_selection_criteria` (`background_work`) —
+exactly the decision L6.3 stops before, and the reason it stops there;
+`navigation_back_stack_entry_lifetime`, `navigation_graph_viewmodel_shared_scope` and
+`viewmodel_destination_scope` (`lifecycle_navigation`) — the destination and flow rungs from the
+navigation side, which L6.3 describes and does not assess; and `realtime_messages_persist_then_render`
+and `system_design_pagination_state_ownership` (`mobile_system_design`) — L6.2 and L6.3 reasoning
+under a system-design framing, left where they are.
+
+**No Question was created, edited, re-mapped, re-levelled or re-statused by this issue**, no taxonomy
+entry was invented, and no factual defect was found in any Question read.
+
+### `architecture_ui_event_consumption`: the disposition E26-08 needs
+
+Re-read in full against the finished L6.2, as the issue requires. **The E26-01 and E26-06 conclusion
+is confirmed, and the finished Lesson strengthens it rather than merely leaving it standing.**
+
+- **The Question's reasoning is L6.2's, line for line.** A replay cache hands the event to the
+  collector created after recreation because "the stream has no notion of an event having been acted
+  on"; handling once "requires the consumption to be recorded where it survives the collector"; and
+  its explanation names the architecture guidance's conclusion that such events are modelled as UI
+  state the UI clears once handled. Those are L6.2's replay conclusion, its acknowledgement model and
+  its state-reduction section, in that order.
+- **L6.2 was not shaped towards it.** The Lesson's worked scenario is a borrowing confirmation
+  arriving while the app is backgrounded, not a navigation event after a configuration change; it
+  never poses the Question's four options; and its distinctive content — the five questions, the
+  pending-or-handled owner, the exactly-once separation — is broader than the Question asks.
+- **A reader who has finished L6.2 can answer it, and a reader who has finished Unit 5 cannot** from
+  Unit 5 alone, which is what E26-06 recorded.
+- **It still routes to Unit 5.** Its Subtopic is `mvi`, so it is the pattern Unit's practice and
+  reaches Unit 6 not at all. **No re-map was performed here**, per the issue's instruction.
+
+**If E26-08 moves it to `state_ownership`:** it would enter Unit 6's practice — and also Unit 2's,
+since the two Units share that Subtopic — and `mvi` would become empty, which makes GAP-U5-C
+obligatory rather than optional. On GAP-U6-A specifically, the move would close **most but not all**
+of it; what would remain is recorded in the gap row below.
+
+### GAP-U6-A to GAP-U6-C after authoring
+
+All three gaps survive the finished prose. **None was closed, none was found wrong, and no new gap
+was created.** A gap is not declared closed because a structurally reachable Question exists, and
+not preserved merely because it was planned.
+
+| Gap | Status after E26-07 | What the finished Lesson changes about it |
+| --- | --- | --- |
+| GAP-U6-A | **Open. Substantially a routing problem, exactly as the plan predicted — decide the re-map first** | L6.2 now ships the four questions, the process-survival qualification, the acknowledgement model and the state-reduction conclusion. The reasoning is assessed three times in the bank and **none of it is reachable from a Unit 6 primary**: twice in `async_reactive` (`stream_choice_cannot_supply_a_delivery_guarantee`, `shared_flow_try_emit_true_is_not_delivery`) and once under `mvi` (`architecture_ui_event_consumption`). Moving the last of those to `state_ownership` would close most of the gap. **What it would leave unassessed, stated precisely:** (1) answering the four questions for a requirement whose correct answer is *acceptable loss* — every existing Question poses the must-not-be-lost case, so nothing assesses recognising that a transient occurrence may legitimately disappear and that a durable mechanism would be over-architecture; (2) the process-survival qualification as the *eligibility* test that removes in-memory ownership from consideration, as opposed to the fact that streams die with the process, which the two `async_reactive` Questions already assess; and (3) the exactly-once separation between recorded handling state and side-effect execution. E26-08 should decide the re-map first and then author only for what remains |
+| GAP-U6-B | **Open, unchanged; the Unit's clearest candidate for new authoring** | L6.3 now ships the whole ladder with each rung's ending event, one owner wrong in both directions on one screen, and the application-scope cost list. `architecture_state_holder_taxonomy` still assesses only the bottom rung, and it does so as a holder-kind question rather than as a lifetime selection. The "even the screen owner is too short-lived" half is assessed only in `background_work` (`background_api_selection_criteria`) and `async_reactive` (`viewmodel_scope_cleared_cancellation`), neither reachable from a Unit 6 primary. Nothing makes a reader *select* an owner from a stated requirement |
+| GAP-U6-C | **Open, unchanged; the widest gap in the Unit and the last one in the epic** | L6.4 now ships the two-feature comparison, both wrong designs with their costs counted, the uniformity trade-off and the closing loop. `architecture_tradeoffs` still holds **zero** ACTIVE Questions, so the Lesson the whole epic ends on contributes nothing to practice — confirmed by running the production resolver, not by reading the mapping, and asserted in a test. The distinction from GAP-U1-E holds after authoring and is now visible in the prose: L1.5 asks whether **one boundary** earns its mapping and forwarding cost, and L6.4 asks whether a **whole feature's** structure is proportionate, with the failure it names being missing owners rather than an excessive layer count. One Question cannot serve both |
+
+One observation is recorded for E26-08 without being promoted to a gap: **nothing assesses the
+current-versus-durable dimensional distinction** that L6.1 exists to install — that durability is a
+retention requirement placed on state rather than a third kind of thing.
+`durable_state_vs_one_off_event` assesses the state-against-occurrence half and takes the durability
+of the payment result as given. It may belong inside a GAP-U6-A Question rather than as one of its
+own.
+
+### Actual practice reach, resolved through the production resolver
+
+Recomputed by running the shipped Unit through `PracticeBuilderViewModel` and the real selection path
+in `LearningUnitPracticeIntegrationTest`, not by reading mappings. The Unit configures
+`AssessmentScope.Subtopics` of its two primary concepts and resolves **four** Questions:
+
+| Resolved Question | Level | Reached through | Semantically belongs mainly to |
+| --- | --- | --- | --- |
+| `state_ownership_001` | FOUNDATION | `state_ownership` | **Unit 2** — structural reach only |
+| `architecture_state_holder_taxonomy` | APPLIED | `state_ownership` | **Unit 2**, with one rung of L6.3's ladder inside it |
+| `durable_state_vs_one_off_event` | APPLIED | `state_ownership` | Unit 6 (L6.1) |
+| `viewmodel_activity_reference_lifetime` | FOUNDATION | `state_ownership` | **Unit 2** — structural reach only |
+
+This matches [Part 6](#part-6--unit-practice-routing-modelled-now)'s modelled pool exactly — four
+Questions, the same four ids — so E26-01's prediction is confirmed rather than assumed. The level
+split is two FOUNDATION and two APPLIED with **no ADVANCED Question**, matching the Topic-wide
+observation in Part 5. **Only one of the four semantically assesses what this Unit teaches**, which is
+the epic's least favourable ratio — worse than Unit 5's two of four — and it is the reason GAP-U6-A
+and GAP-U6-B matter more than their peers.
+
+Three further structural facts, all asserted in tests rather than inspected:
+
+1. **`architecture_tradeoffs` contributes nothing.** Two primary concepts resolve four Questions, and
+   the concept the epic's closing Lesson teaches reaches none. Asserted by subtopic id.
+2. **Unit 6's pool is a strict subset of Unit 2's**, and the containment is total: every Question this
+   Unit reaches is also in the state-holder Unit's pool, because all four arrive through the one
+   Subtopic both Units take as primary. The test computes Unit 2's pool and asserts the intersection
+   rather than assuming it. The consequences the plan predicted all hold — Unit 2 meets
+   `durable_state_vs_one_off_event` before Unit 6 teaches its full reasoning; Unit 6 receives three
+   Questions whose semantic home is Unit 2; and Unit 6 receives no `architecture_tradeoffs` Question.
+   **No mapping was changed to relieve this**, which would require splitting `state_ownership` and is a
+   question-bank decision.
+3. **Supporting concepts broaden nothing.** The Unit's fourteen supporting-only concepts contribute
+   nothing to the pool. The stream and lifetime bridges matter most — `sharedflow`,
+   `hot_vs_cold_streams`, `stateflow`, `process_death`, `viewmodel_lifecycle`, `lifecycle_coroutines`,
+   `coroutine_scope` and `background_api_selection` — because this Unit applies their conclusions and
+   teaches none of their mechanisms, so a promotion would claim coverage for material it deliberately
+   does not carry. The four structural concepts L6.4 names without teaching — `use_cases`,
+   `repository_pattern`, `layered_architecture`, `clean_architecture` — are the other half of the same
+   discipline: the closing Lesson asks whether a whole feature's structure is proportionate, not
+   whether any one of those structures is correct.
+
+**No shipped Unit's practice changed.** Unit 1's pool is unchanged at five, Unit 2's at five, Unit 3's
+at six, Unit 4's at five and Unit 5's at four; no shipped Lesson takes an `architecture` Subtopic as
+primary, so nothing this Unit maps can reach an earlier curriculum's Unit.
+
+### Cross-links
+
+Backward only, and every target already shipped. L6.1 → `lesson_transient_ui_effects`,
+`lesson_transient_effect_delivery`, `lesson_state_flow`, `lesson_state_holder_responsibility`,
+`lesson_single_source_of_truth`; L6.2 → L6.1, `lesson_transient_effect_delivery`,
+`lesson_shared_flow`, `lesson_choosing_a_stream_abstraction`, `lesson_single_source_of_truth`;
+L6.3 → L6.2, `lesson_owner_scoped_work`, `lesson_viewmodel_lifetime_and_persistence`,
+`lesson_coroutine_scope_ownership`; L6.4 → `lesson_layers_and_their_cost`,
+`lesson_state_holder_responsibility`, `lesson_what_a_repository_owns`,
+`lesson_when_a_domain_layer_earns_its_place`, `lesson_classifying_a_real_architecture`, L6.2 and L6.3.
+
+The plan's two explicit requirements for this Unit are met. L6.1 and L6.2 between them link to all
+four named E24/E25 anchors, and L6.3 links to Unit 2's owner-scoped-work Lesson and to E24's scope
+ownership Lesson. **L6.4 links backward to at least one Lesson from each of Units 1–5**, and the links
+chosen are the ones the two-feature design actually uses rather than a complete set: the layers Lesson
+because over-architecture is priced the way that Lesson prices a boundary, the state-holder Lesson
+because both features have one, the repository Lesson because Feature B's several boundaries are its
+decision applied more than once, the domain-layer Lesson because Feature A is its own worked
+counterexample and Feature B meets its four conditions, and the classification Lesson because the
+Senior section's refusal to start from a pattern name is what preserves it. That claim is asserted in
+a test by resolving each target to its owning Unit rather than by listing ids. **No shipped Lesson was
+edited**, no earlier Unit received a reciprocal link, and — this being the last instructional Unit —
+**no forward link exists anywhere in the document**.
+
+### E25 handoff rows Unit 6 owns, re-checked
+
+Re-read against the shipped prose. E26-09 owns the complete deferral-by-deferral check; this is the
+subset [Part 3](#part-3--the-e25--e26-handoff-ledger) assigns to Unit 6.
+
+| Deferred by E25 | Status after E26-07 |
+| --- | --- |
+| Work whose required lifetime exceeds the Composition, and what owner it needs | **Answered instructionally by L6.3.** The ladder places the requirement, names the rung, and hands the process-surviving mechanism to the background-work curriculum |
+| Application-level occurrence modelling | **Answered by L6.1 and L6.2.** L6.1 classifies; L6.2 states the guarantee and names the owner of the record |
+| Durable against transient architecture | **Answered by L6.1 and L6.2**, and made two-dimensional rather than two-valued: durability is a retention requirement on state, and the transient case is preserved as legitimate |
+| `Channel` against `SharedFlow` as a ViewModel event design decision | **Answered as the plan intended: reframed as the guarantee question and deliberately not answered as a type comparison.** L6.2 states why the comparison is decided before it begins |
+| The consumable-event-channel against acknowledged-state trade-off; acknowledgement and consumption | **Answered by L6.2** as a pending-or-handled fact with a named owner, together with the exactly-once caution that keeps the claim honest |
+| The full production pipeline chosen proportionally | **Answered by L6.4**, end to end, on two features in one application, with both wrong designs priced |
+| Queueing architecture | **Still deferred, and excluded by design.** L6.2 names the machinery it is refusing to build and says why. This is not a gap |
+| Dependency construction and injection | **Still deferred. E27's**, untouched by this Unit: no Lesson names a DI framework, a module or a graph |
+| `SavedStateHandle` as a state-production mechanism | **Still deferred.** L6.2 names saved state once, quoting the ViewModel documentation, as evidence that durability is a *separate* mechanism from retained lifetime. **No API is taught**, and this Unit does not claim to teach it |
+
+### Tests changed, and why
+
+| File | Change | Why production data made it necessary |
+| --- | --- | --- |
+| `BundledLearningCurriculumTest` | Unit id, title and home-Topic lists extended by one; the four-Lesson id/title order and the Unit's primary mappings added; two new tests — `theSynthesisUnitKeepsItsPlannedBridgesOutOfPrimaryPractice` and `theSynthesisUnitLinksBackwardsAndClosesTheLoopOverEveryEarlierArchitectureUnit` | The document lists Units positionally, so a sixth architecture Unit changes four lists. The bridge test exists because every one of this Unit's fourteen supporting concepts is owned and assessed by another curriculum, so a promotion would be invisible and would claim that curriculum's practice. The link test pins the plan's one explicit link requirement by resolving each of the closing Lesson's targets to its owning Unit, and asserts backwardness positionally rather than against a hand-written anchor list |
+| `LearningUnitPracticeIntegrationTest` | The traversal now expects six architecture Units and `listOf(5, 5, 5, 5, 5, 4)` Lessons, and its final studied-record count rises from 96 to 100; new test `theSynthesisUnitPractisesASubsetOfTheStateHolderUnitAndNothingForItsClosingConcept` | Continue Learning walks the whole document, so a sixth architecture Unit changes the traversal and the Topic's progress denominator. The Unit **cannot** join the shared expectation table, which asserts `concepts == resolved subtopics`: `architecture_tradeoffs` holds no ACTIVE Question, so the identity fails exactly as it does for Units 1 and 5. The bespoke test therefore pins the four ids, asserts that `architecture_tradeoffs` contributes none, computes the containment in Unit 2's pool rather than assuming it, and asserts that the delivery Question L6.2 actually teaches is not reachable here |
+
+**The tests record structural reality and do not endorse it.** The containment assertion, the empty
+`architecture_tradeoffs` assertion and the `architecture_ui_event_consumption` exclusion are all
+commented as such: they exist so that if E26-08 re-maps a Question or splits a Subtopic the assertion
+fails and the consequence has to be re-stated, rather than the mapping being quietly repaired. No test
+was added that only re-states schema validation `LearningCurriculumValidatorTest` already performs, and
+the data-driven suites — the reader journey over every shipped Unit, Topic Detail's Unit rows, the
+end-to-end repository path — needed no edit because they read the document rather than listing it. No
+prose is snapshotted anywhere.
+
+### Validation performed
+
+| Command | Result |
+| --- | --- |
+| `python3` structural pre-check over both bundled JSON documents | Ids unique across the whole document, every mapping an ACTIVE Subtopic, no primary/supporting overlap within a Lesson, every `relatedLessonIds` target resolvable and non-self, no blank or placeholder text, every comparison row matching its header count, every Source URL well-formed, no new widest table and no code line over 86 characters. No defect in the new Unit |
+| `./gradlew :shared:jvmTest --tests "*BundledLearningCurriculumTest*" --tests "*LearningUnitPracticeIntegrationTest*" --tests "*LearningCurriculumValidatorTest*" --tests "*LearningContentEndToEndTest*"` | **107 tests, 0 failures** |
+| `./gradlew :shared:jvmTest` | **1,402 tests, 0 failures**, including `LearningProductionContentJourneyTest`, which renders every authored block of the new Unit in the reader, checks the reading column never widens, and opens every authored Source link through the app's own URI boundary |
+| `python3 tools/learning_question_coverage.py --write` then `--check` | Snapshot regenerated and reported current |
+| `cd tools && python3 -m unittest test_learning_question_coverage.py` | 21 tests, OK |
+| `./gradlew :shared:check` | Passed — jvm, Android host, JS and wasmJs test targets included |
+| `./gradlew :androidApp:assembleDebug` | Passed |
+| `git status --short` and `git diff --check` | Six files changed — the bundled learning document, two jvm test files, this plan, the generated coverage snapshot and the blueprint's one-paragraph status correction — with no build or cache output and no whitespace defects |
+
+The regenerated `docs/content/learning-question-coverage.md` now reports **24 active Units and 101
+active Lessons**, the new Unit appearing directly after Unit 5 with four Lessons, a pool of four
+Questions across two levels and no ADVANCED Question. **Primary Subtopics with no active Question
+remains two** — `architecture_tradeoffs` (GAP-U1-E and GAP-U6-C) and `mvc` (GAP-U5-A) — which is the
+generated confirmation that the closing Lesson of the epic reaches no practice at all.
+
+### Not validated
+
+- **`iosArm64` is not compiled locally or on CI**, unchanged from E25 and from every E26 issue. Unit 6
+  introduces no target-specific code, and its one source-sensitive ViewModel claim is scoped to the
+  `ViewModelStoreOwner` contract rather than to a target; the limitation is reported because it is
+  still true of the epic.
+- **No CI run is claimed.** Nothing in this issue was observed on GitHub Actions, and no merge is
+  claimed.
+- **Backlog validation could not be run**: `PyYAML` is unavailable in this environment, so
+  `.github/project/backlog.yml` was read as text rather than parsed and validated. Issue #367 was read
+  from that file rather than through `gh`, which is still not installed.
+- **The learning content itself is editorial** and no automated check can confirm that a Lesson teaches
+  what it claims; the semantic review above is a judgement, as Rule 10 of the authoring contract
+  requires.

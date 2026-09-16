@@ -13763,6 +13763,949 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "unit_repositories_and_data_ownership",
+      "topicId": "architecture",
+      "title": "Repositories, Data Ownership and Single Source of Truth",
+      "summary": "The previous unit asked who owns the state a screen renders and how long that owner lives. This unit asks a different question about the data behind it: who owns the policy for obtaining and changing the application's data, and when two copies disagree, which one is authoritative? It derives a repository's responsibility from the decisions it owns rather than from the class it wraps, works a local and remote coordination through its read and write paths, chooses a source of truth from a requirement rather than from a technology, shapes the data API from what its consumer must observe, and decides which representations of a concept — and which failures — may cross the boundary at all.",
+      "lessons": [
+        {
+          "id": "lesson_what_a_repository_owns",
+          "title": "What a Repository Is Responsible For",
+          "summary": "A repository is not a wrapper around a DAO or an HTTP client. It is the data layer's entry point, and what makes it worth having is a decision it owns that its callers should not: which source answers, when data is refreshed, which copy wins, and what contract consumers see. This lesson derives that responsibility, separates a repository from a data source on one feature, and shows a feature where adding the type buys nothing yet.",
+          "primarySubtopicIds": [
+            "repository_pattern"
+          ],
+          "supportingSubtopicIds": [
+            "room_dao",
+            "retrofit",
+            "separation_of_concerns",
+            "architecture_tradeoffs"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The borrowed-items feature the previous two units worked through has to get its loans from somewhere. Ask an engineer what a repository is and the answer usually arrives pre-packaged: an interface around the API, or around the DAO. It is worth taking that answer seriously for a moment, because it is not nonsense — it describes where repositories often sit in a project. It just does not describe anything a repository *decides*, and the previous unit's test applies here unchanged: a component that decides nothing is a naming convention rather than a boundary."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So start from the question the foundations unit taught, in the form that makes it answerable about data: **what decision does this component own that its callers should not own themselves?** Everything below is an answer to that question, and the list of answers is what a repository can legitimately be responsible for."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Exposing application data through a contract written for its consumers**, rather than one shaped by whatever produced the data.",
+                    "**Centralising changes to that data**, so a write has one path rather than several.",
+                    "**Coordinating more than one source** — deciding which one answers, and how their answers combine.",
+                    "**Deciding freshness**: when a refresh is attempted, and whether what is currently held may still be shown.",
+                    "**Resolving conflicts** when two sources disagree about the same fact.",
+                    "**Hiding origin**, so nothing above the data layer knows which store or transport produced a value."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Android's data-layer guidance names almost exactly that set — repository classes are responsible for \"Exposing data to the rest of the app\", \"Centralizing changes to the data\", \"Resolving conflicts between multiple data sources\", \"Abstracting sources of data from the rest of the app\" and \"Containing business logic\". Read it as a menu of decisions rather than as a checklist every class must satisfy. Not every repository owns every item, and treating the list as mandatory produces the same failure from the opposite direction: an elaborate type that forwards."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Against that, a **data source** is narrow by definition. The same guidance is precise about it: \"Each data source class should have the responsibility of working with only one source of data, which can be a file, a network source, or a local database.\" A Room DAO, an HTTP service declared with a client library, a file reader and a platform key-value store are all examples of that shape. They are named here as examples and taught nowhere in this unit — the persistence and networking curricula own their APIs, and this unit owns the contract above them."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The two together give the data layer one door. The guidance states the rule directly: \"Other layers in the hierarchy should never access data sources directly; the entry points to the data layer are always the repository classes.\" That is what makes the responsibilities above enforceable — if a screen can reach a DAO, then whatever the repository decided about source policy or freshness is only a suggestion."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A repository is the data layer's entry point and owns whatever data contract and source policy justify its existence: which source answers, when data refreshes, which copy wins when two disagree, and what consumers see. A data source works with exactly one source of data and knows nothing about the others. The distinction is about responsibility, not about class names — and a repository that owns none of those decisions has created a file rather than a boundary."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Put the distinction on one feature. Suppose the library that lends the books runs a service, so a reader's loans now exist in two places: a store on the device and the library's own records. The shape is three types, and which one owns what is the whole lesson."
+                },
+                {
+                  "type": "code",
+                  "code": "LoanRepository\n    ├── LocalLoanSource    // knows the device's store, and nothing else\n    └── RemoteLoanSource   // knows the library service, and nothing else",
+                  "language": "text"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The decision",
+                    "Who owns it",
+                    "Why it cannot belong anywhere else"
+                  ],
+                  "rows": [
+                    [
+                      "Which source answers a read",
+                      "`LoanRepository`",
+                      "Neither source can answer it. Each one knows only itself, and a caller that chose would be making a data-layer decision from outside the data layer"
+                    ],
+                    [
+                      "Whether the copy currently held may still be shown",
+                      "`LoanRepository`",
+                      "Freshness is a fact about the application's policy, not about either store. The device's store can say what it holds; it cannot say whether that is still acceptable"
+                    ],
+                    [
+                      "Where a renewal lands first, and what happens if the other side rejects it",
+                      "`LoanRepository`",
+                      "The write path crosses both sources, so only the component that can see both can define it"
+                    ],
+                    [
+                      "What consumers see, and in what vocabulary",
+                      "`LoanRepository`",
+                      "The contract is written for callers. Both sources speak their own language — rows and columns on one side, a wire format on the other"
+                    ],
+                    [
+                      "How a row is read out of the device's store",
+                      "`LocalLoanSource`",
+                      "One source, one mechanism. Nothing about the other source changes this"
+                    ],
+                    [
+                      "How a list of loans is requested from the library service",
+                      "`RemoteLoanSource`",
+                      "Same, from the other side. It has no view of the local copy and needs none"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Nothing in that split depends on a class-name suffix. A type called `LoanRepository` that forwards to one DAO owns nothing on the list; a type called `LoanStore` that decides all of it owns the responsibility whatever it is called. That matters more than it looks, because it is what makes the reasoning survive a codebase that does not use the word."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now the case the reflex definition gets right by accident. The same application lets the reader choose a time of day to be reminded about loans coming due. It is one value, in one place, with no second copy, no refresh policy, no translation and no conflict:"
+                },
+                {
+                  "type": "code",
+                  "code": "internal class ReminderPreferenceRepository(\n    private val source: ReminderPreferenceSource,\n) {\n    suspend fun getReminderTime(): LocalTime = source.getReminderTime()\n\n    suspend fun setReminderTime(value: LocalTime) = source.setReminderTime(value)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Ask the foundations unit's question of it: what boundary did this create? The honest answer is **none yet**. Both sides change at the same rate and for the same reason — add a field to one and you add it to the other in the same commit — and there is no decision inside the class that a caller is being protected from. What it did add is a name to learn, a file to open, two forwarding functions to keep in step with the source's, and one more hop between the caller and the code that does the work."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is where a real recommendation has to be read carefully rather than quoted. Android's architecture recommendations list \"Create repositories even if they contain only a single data source\" as strongly recommended, alongside \"Make sure components in the UI layer such as composables or ViewModels don't interact directly with a data source.\" The reason is uniformity of the entry point: if every read goes through a repository then nothing above the data layer ever learns whether a value came from a database, a preference file or a network call, and the day the reminder time acquires a source policy, one type changes instead of every caller. That is a genuine benefit — and it is a decision about consistency across a codebase, not a derivation from this feature's requirements. The same page says so of itself: \"Treat the recommendations in the document as recommendations and not strict requirements.\""
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So name what you are buying. A pass-through repository buys a uniform door into the data layer and cheaper change later; it does not buy isolation, because there is nothing yet to isolate. What would change that is a requirement, and any one of these would do it:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "the reminder time also lives in the reader's account on the service, and the two copies can disagree;",
+                    "the value must be readable instantly even when the store is slow, so something has to decide what is shown meanwhile;",
+                    "a second screen starts reading the same value, and both must be guaranteed to see one answer;",
+                    "the stored representation stops matching what the application wants — minutes past midnight on disk, a time of day in the app."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Each of those puts a decision inside the type. The boundary is earned at the moment the answer to \"what does this own that its callers should not\" stops being \"nothing\"."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "\"Every repository needs an interface\" is the same reflex one level further down, and the foundations unit already settled what to do with it: an abstraction earns its existence when a contract can change independently of whatever implements it. Applied to a repository, that means asking which of these is actually true."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "More than one implementation genuinely exists or is imminent — a device-only implementation beside a synchronised one, or a demo implementation the product ships.",
+                    "The source policy is expected to move while the contract stays still.",
+                    "The implementation is volatile in a way its callers should not inherit.",
+                    "Several consumers depend on one stable data contract while the implementation changes underneath them."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Where none of them holds, the interface is one more file that changes in the same commit as its only implementation, and it has inverted nothing. One thing this lesson deliberately does not settle is *which side should define that abstraction* so the dependency points the way you intended — that is a separate argument, and the unit after this one is where it belongs. Here the question is narrower: does this boundary earn an abstraction at all?"
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"A repository is an interface around the API or the DAO\" survives because it is often geographically true and analytically empty. It names where the class sits and nothing it decides, so it cannot distinguish a repository coordinating two sources with a refresh policy and a conflict rule from a class with two forwarding functions. Replace it with the ownership question: name the coordination, source policy, freshness rule, conflict rule or consumer-facing contract this repository owns. If there is none, say so — that is a legitimate answer about a small feature, not a failure."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Of the responsibilities the guidance lists, \"abstracting sources of data from the rest of the app\" is the weakest and ownership is the strongest. Abstraction is a consequence: once one component decides which source answers, callers stop being able to ask. A repository whose only claim is that it hides a DAO has taken the consequence and left the cause behind, which is why it feels like ceremony — it is ceremony. The interesting repositories are the ones that decide something."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "It is also worth not being dogmatic about the word. Codebases call this component a store, a gateway, a client, a provider, or name it after the data and say nothing about the pattern at all. The definition this curriculum uses is deliberately responsibility-based — the data layer's entry point, owning a data contract and whatever source policy justifies it — so a team whose `LoanStore` owns those decisions has a repository under another name, and the architectural reasoning is unchanged. In an interview, describing the responsibilities is a stronger answer than defending a pattern name, because the interviewer's codebase may well use a different one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This application is useful evidence for the boundary and poor evidence for the coordination. It has five repository interfaces — `AssessmentRepository`, `CurriculumRepository`, `LessonStudyRepository`, `SavedQuestionRepository` and `LearningContentRepository` — each declared in the package of the feature that consumes it, with implementations in a separate tree under `data/local`. No DAO is used anywhere above `data/local`, so the entry-point rule holds here as a fact rather than as an intention, and the repositories really are the only door."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The limits matter as much as the finding. This application is small and entirely local-first: there is no network layer at all, no fact with a second source, and therefore no conflict for any repository here to resolve. What its repositories own is a data contract and the translation from stored rows into application types — which is enough to justify the boundary and nothing like the full list. The coordination the next lesson works through cannot be shown from this codebase, and that lesson says so and builds its example deliberately."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked what a repository is, lead with the decision it owns rather than with what it wraps: it is the data layer's entry point, and it owns whichever of source selection, refresh policy, conflict resolution, write coordination and consumer-facing contract this feature actually needs. Then show you can apply it in both directions — name a feature where one trivial source makes the extra type pure indirection, and name the requirement that would earn it. Being able to say \"this repository buys us a uniform entry point and nothing else yet\" is a stronger answer than defending it as a rule."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_when_an_interface_is_a_boundary",
+            "lesson_layers_and_their_cost",
+            "lesson_state_holder_responsibility"
+          ],
+          "sources": [
+            {
+              "title": "Data layer",
+              "url": "https://developer.android.com/topic/architecture/data-layer"
+            },
+            {
+              "title": "Architecture recommendations",
+              "url": "https://developer.android.com/topic/architecture/recommendations"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_coordinating_sources",
+          "title": "Coordinating Local and Remote Sources",
+          "summary": "When one fact lives in two places, four decisions appear that did not exist before: which source answers a read, when a refresh happens, where a write lands first, and what a failure means. All four belong to the repository, because neither source can see the other. This lesson works them through on one feature and separates what a consumer legitimately needs to know — that content is stale, that a refresh failed — from the implementation origin it should never learn.",
+          "primarySubtopicIds": [
+            "repository_pattern"
+          ],
+          "supportingSubtopicIds": [
+            "offline_first",
+            "cache_invalidation",
+            "caching"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Give the library a service. The reader's loans are now recorded by the library and cached on the device, and both copies are real: the device can answer instantly and be out of date, the service is closer to the library's own records and is sometimes unreachable. From here on this feature is **hypothetical**. The application you are reading this in has no network layer at all, so what follows is a design worked through rather than an example lifted from production code, and the lesson says which is which."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two sources do not mean twice as much code. They mean four decisions that did not exist when there was one source, and all four belong to the repository for the same reason: neither source can see the other."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Which source answers a read**, and what happens when the chosen one cannot.",
+                    "**When a refresh is attempted**, what triggers it, and whether the consumer waits for it.",
+                    "**Where a write lands first**, and what has to accept it before the reader is told it worked.",
+                    "**What a failure of either side means** for the data the consumer is looking at."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Underneath all four is the contract. The consumer asks for the application's current loans. It does not ask whether they came from the device or from the service, because that is a fact about how the data layer is built rather than about what the loans are — and the moment a caller has to ask, the repository has stopped owning the decision it exists for."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A repository with more than one source owns four decisions its callers should not: which source answers, when a refresh happens, where a write lands first, and what a failure means. Those decisions come from the product's requirements, so there is no universal read path and no universal write path — only one that has been written down for this feature. What a consumer asks for is the application's current data; whether it came from a database or a service is implementation origin and stays inside."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A read path is only defensible against stated requirements, so state them first. The loans list must appear immediately when the reader opens it, including with no connectivity; it must be correct within a few minutes of the library's own records; and the reader must not be shown a spinner for data the device already holds. Under those three requirements, one coherent read path falls out:"
+                },
+                {
+                  "type": "code",
+                  "code": "a consumer asks for the current loans\n        ↓\nthe local source answers immediately with what it holds\n        ↓\nthe repository exposes that value\n        ↓\na refresh from the service is attempted\n        ↓\non success, the local copy is updated\n        ↓\nthe consumer sees the updated loans without having asked again",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Every step there is a consequence of a requirement, which is the only reason it is defensible. Change one requirement and the same shape becomes wrong: \"a fine balance must never be shown from a stale local copy\" makes answering locally first a defect rather than a feature. This is one policy for one set of requirements, not the repository policy, and reciting it as though it were the pattern is how the pattern stops being a decision."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The write path is where the product question becomes unavoidable, because two reasonable requirements produce two different designs with two different user-visible behaviours."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The requirement",
+                    "The write path",
+                    "What the reader sees",
+                    "What a failure means"
+                  ],
+                  "rows": [
+                    [
+                      "Renewing must work with no connectivity, and the library reconciles afterwards",
+                      "Local first: the device's copy changes and is marked as not yet sent; the service is told at the next opportunity",
+                      "The new due date appears at once, with whatever indication the product chooses for \"not yet confirmed\"",
+                      "Nothing at the moment of writing. The library can still refuse the renewal later, and the application has to decide what it shows then"
+                    ],
+                    [
+                      "A renewal is only real once the library has accepted it",
+                      "Remote-confirmed: the service must accept the renewal before the local copy changes",
+                      "A pending control until the service answers, and then the new due date",
+                      "The write did not happen. The reader is told, and the two copies never diverged"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Both are correct designs; they answer different product questions. The first allows the device and the library to disagree on purpose for a while, and buys offline usability with that divergence. The second refuses divergence and pays for it with a wait the reader can see. What is not a design is having neither written down, because then the answer is whatever the code happened to do — and the reader finds out which one it was at the worst moment. How a deferred write actually gets sent — retries, backoff, scheduling that survives the app being closed — is mechanism, and the background-work curriculum owns it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That leaves the most interesting half of the contract: what the consumer is told. \"Did this come from the device or the service\" is implementation origin and should stay inside. But it is easy to overstate that into \"consumers never need anything but the data\", which is plainly false — real product behaviour needs some of it."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "That what is shown is older than the policy allows, so the screen can say when it was last confirmed.",
+                    "That a refresh is currently running, so the screen does not offer an action that assumes fresh data.",
+                    "That the last refresh failed, so the screen can say so and offer a retry.",
+                    "That a local change has not yet reached the library, so the reader is not told something is final when it is not."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The distinction that makes all four legitimate is between **application meaning** and **implementation origin**. \"These loans were last confirmed with the library forty minutes ago\" is application meaning: it is true of the data, and it stays true if the whole data layer is rewritten. \"This came from a database query rather than a network call\" is origin. A contract can carry the first without leaking the second:"
+                },
+                {
+                  "type": "code",
+                  "code": "internal data class LoansSnapshot(\n    val loans: List<Loan>,\n    val lastConfirmedAt: Instant?,\n    val refresh: RefreshState,      // Idle, InProgress, or Failed with an app-level reason\n    val hasUnsentChanges: Boolean,\n)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Nothing in that type names a transport library, a client's response class, a stored row or an exception from either side. A caller can render \"updated forty minutes ago\", show a retry, and decide whether an action is safe to offer — and still not know whether the loans arrived from a database, a file or an in-memory cache. What shape that failure reason should take, and which types must never appear inside it, is the subject of the last lesson in this unit."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"Read locally, refresh from the network, write to the database\" gets recited as though it were the repository pattern. It is one policy, correct for a product that must work offline and can tolerate a few minutes of staleness. Applied to a balance that must never be shown stale, or to a write the user is told is final, the same policy is a defect. The deliverable is not the diagram; it is the sentence that says which source answers this read, how fresh the answer must be, where this write lands first, and what the reader is told when either side fails."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "There is one property of freshness that decides whether any of this is implementable, and it is easy to miss: **freshness cannot be inferred from the data**. A list of loans does not say when it was obtained. Whether a copy may still be shown is a question about the copy, not about its contents, so it can only be answered if the application wrote down enough to answer it — the time of the last successful confirmation, a version the service issued, a marker that a local change has not been sent."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The offline-first guidance arrives at the same point from the synchronisation side: \"Conflict resolution often requires versioning. The app needs to do some bookkeeping to keep track of when changes occurred, so it can pass the metadata to the network data source.\" Bookkeeping is the word worth keeping. A cache added first and given a staleness policy afterwards usually cannot have one, because the facts the policy would need were never recorded, and retrofitting them means a migration rather than a rule."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is also where this unit's boundary with the persistence curriculum sits, and it is a clean one. How a store keeps that timestamp, when entries are evicted, how a synchronisation job is scheduled, and what algorithm merges two divergent copies are all mechanisms with their own curriculum. What belongs here is the decision those mechanisms implement: this repository holds a copy, this is what makes the copy acceptable to show, this is when it is replaced, and this is what the consumer is told while it is not."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A last honest note about scope. Everything above describes a repository that has two sources because the product gave it two. Adding a second source to gain an architecture is the same error as adding a layer to gain one: it creates the four decisions, and then someone has to answer them. A feature with one source and no policy has a repository with a contract and nothing else to own, which the previous lesson already said is a legitimate place to be."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked how a repository coordinates a local and a remote source, do not answer with a diagram. Answer with a requirement, then the read path it produces, then the write path and the divergence it does or does not allow, then what the consumer is told about staleness and failure — and say which of those choices would change if the requirement changed. The detail that separates a strong answer is the freshness point: a cache that recorded nothing about when it was filled cannot be given a staleness policy later."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_what_a_repository_owns",
+            "lesson_layers_and_their_cost"
+          ],
+          "sources": [
+            {
+              "title": "Data layer",
+              "url": "https://developer.android.com/topic/architecture/data-layer"
+            },
+            {
+              "title": "Build an offline-first app",
+              "url": "https://developer.android.com/topic/architecture/data-layer/offline-first"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_single_source_of_truth",
+          "title": "Which Source Is Authoritative?",
+          "summary": "A single source of truth is the owner whose value is authoritative for one particular fact when copies disagree. That is a decision made from a requirement, not a sentence about databases. This lesson chooses authoritative owners for three facts in the same application — including one that is not stored anywhere — works a concrete disagreement through to a stated rule, and reads the offline-first recommendation with its condition attached.",
+          "primarySubtopicIds": [
+            "single_source_of_truth"
+          ],
+          "supportingSubtopicIds": [
+            "offline_first",
+            "cache_invalidation",
+            "state_ownership"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Ask what a single source of truth is and the answer that comes back is usually \"the database\". Follow it with two questions — which database, and authoritative for what? — and the sentence stops being useful almost immediately. It names a technology where the idea names a responsibility, and it answers for a whole application where the idea answers for one fact at a time."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The definition worth carrying is this: a single source of truth is **the owner whose value is authoritative for a particular fact when copies disagree**. Three parts of that are load-bearing. It is per fact, so one application can have several. It is about disagreement, so it only means anything where copies exist. And it names an owner, which may be a store, a service, or a component holding a value in memory."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Android's data-layer guidance places the decision at the repository: \"It's important that each repository defines a single source of truth\", and \"the data exposed from the repository should always be the data coming directly from the source of truth.\" Notice what that sentence does not say. It does not name a storage technology, and it does not say every repository picks the same kind of owner."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The counterpart term keeps the idea honest. A **cache** is a copy kept for speed or availability, and it is not authoritative: when a cache disagrees with the source of truth, the cache is what is wrong. Whether a particular database is a source of truth or a cache is decided entirely by the requirement it serves — the same Room database can be one for a draft the reader is writing and the other for a balance the library owns."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A single source of truth is the authoritative owner of one fact — the one whose value wins when copies disagree — chosen from what the product requires rather than from what technology is available. It is decided per fact, so one application legitimately has several, and the answer is sometimes a server, sometimes a local store, and sometimes a component holding a value in memory that is meant to disappear. \"Source of truth\" is not a synonym for \"database\", and a copy that is not authoritative is a cache."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Take three facts from the same borrowed-items application. They are all real product data, they all have more than one plausible home, and they get three different answers."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The fact",
+                    "The requirement",
+                    "The authoritative owner",
+                    "Why the other candidates are wrong"
+                  ],
+                  "rows": [
+                    [
+                      "The review the reader is drafting for a book",
+                      "It must be editable with no connectivity and must survive the app being closed; the service receives it when the reader submits it",
+                      "The local store on the device",
+                      "The service does not have the draft at all until submission, so a server copy treated as authoritative would let a synchronisation overwrite what the reader typed"
+                    ],
+                    [
+                      "The fine currently owed on overdue loans",
+                      "It must never be presented as current when it may have changed, and payments can be made at the library desk",
+                      "The library service",
+                      "The device cannot know about a payment made at the desk. The local copy is a cache, and showing it as truth misinforms the reader about money"
+                    ],
+                    [
+                      "The sort order the reader chose for this visit to the loans list",
+                      "It applies while the reader is using the app and is meant to be gone next time",
+                      "An in-memory holder that lives as long as the session",
+                      "Persisting it would make a deliberate default sticky, and asking the service would give a private, momentary choice a lifetime nobody asked for"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The third row is the one that breaks the reflex, and it is worth sitting with. Its authoritative owner holds nothing on disk and nothing on a server; the value disappears when the session does, by design. It is still a source of truth, because there is exactly one owner that decides what the sort order currently is and everything else reads it from there. \"Source of truth\" says which owner wins a disagreement. It says nothing about how long the value lives — that is the lifetime question the previous unit separated out, and the two are decided independently."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now make a disagreement concrete. Two copies of the fine, at the same moment:"
+                },
+                {
+                  "type": "code",
+                  "code": "the device's copy says:   fine = 80\nthe library service says: fine = 100",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The tempting question is which value is newer. It is the wrong question unless the requirement actually says that the newest write wins — and \"last write wins\" is a resolution rule that someone chose, with consequences, not a law of data. For this fact the requirement already answered it: the service is authoritative because the desk can take a payment the device never saw, so the fine is 100 and the local 80 is a stale cache to be replaced. Other requirements produce other rules, all of them legitimate:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "the service wins and the local copy is a cache, as above;",
+                    "the local copy wins until it is submitted, which is the rule for the reader's own draft;",
+                    "the disagreement is surfaced to the reader to resolve, which is the honest answer when both versions represent real human intent;",
+                    "an application-level rule reconciles them — per field, or by preferring whichever change the reader made themselves."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What this lesson will not do is pick one of those as a default. Algorithms for automatic reconciliation are a subject of their own and not an Android architecture subject. What belongs here is that the rule exists, is written down, and is owned by something — because a system with two copies and no stated rule has not avoided the decision, it has just made it accidentally."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The failure this prevents is worth showing rather than asserting. Suppose the loans list keeps its own copy of the fine, and the account screen fetches its own. One of them refreshes, the other does not, and now two screens in the same application show different numbers for the same fact. It is tempting to describe that defect as \"the state is duplicated\", but duplication is normal and unavoidable — the fine exists on the device, at the library, and inside whatever is currently rendering it. The defect is that **no owner is authoritative**, so nothing can say which of the two is correct, and there is no single place to fix it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is the same argument the previous unit made about a screen's state, one level down and about a different thing. There the answer was to give the screen's state one owner; here the answer is not to move the fine into a state holder, because a state holder owns what a screen is currently rendering rather than what is true for the application. The two questions stack: the service is authoritative for the fine, the repository exposes it under a policy it owns, and the state holder owns how this screen is currently showing it. That split is worth being able to state in both directions, because it is violated in both. A repository that starts deciding what the fine's label says when it is zero has taken on a rendering decision it will now hold for every screen; a state holder that starts deciding when the cached fine is too old to show has taken on a source policy that the next screen will implement differently."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Finally, the recommendation this lesson exists to qualify. The guidance says: \"In order to provide offline-first support, a local data source—such as a database—is the recommended source of truth.\" Read the whole sentence, including the condition. It is a recommendation, it is scoped to offline-first support, and the offline-first guidance gives the reason — the local source \"should be the exclusive source of any data that higher layers of the app read\", which \"ensures data consistency between connection states\"."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For a fact the device can legitimately be authoritative for, that is exactly right, and it is why the reader's draft lives where it does. For the fine it would be a claim that the device knows the balance better than the library does. Both facts live in the same application, behind repositories following the same guidance, and they get different answers because their requirements differ. That is what \"per fact\" means, and dropping the condition from the sentence is precisely how the recommendation turns into the misconception."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"The database is the single source of truth\" takes a conditional recommendation and states it as a definition. It answers for a whole application where the idea answers for one fact, and it names a technology where the idea names an owner. Corrected, the reasoning runs the other way: name the fact, name the requirement, then say which owner is authoritative when copies disagree and what happens to the others. At least one correct answer in a real application will not be a database."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The case worth being able to handle is the one where neither source can simply be declared authoritative. The reader edits their review offline; meanwhile a librarian corrects the same record because of a complaint. Both changes are real, both are intended, and neither store contains a rule that settles which one the application should keep."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The answer is not that the single source of truth has been abandoned. It has moved one level up: whatever owns the reconciliation rule becomes the authoritative owner for the resulting application fact, and both stores become inputs to it. That relocation is a genuine design decision with genuine costs. Something now has to hold the rule; the rule has to be stated for each field that can diverge; and the application has to define what happens when the rule cannot decide — which usually means asking the reader, and therefore means the divergence has to be representable in the UI rather than resolved silently."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "It is also where an interview answer should usually stop unless it is pushed further. The architectural point is that authority always has an owner, and that when two sources disagree legitimately the owner is the policy rather than a store. Designing the synchronisation engine that implements it is a different subject with its own literature, and reaching for merge algorithms before naming the owner is answering a question that was not asked."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This application's own version of the idea is much simpler, and is worth reading as a limit rather than as a model. `StudyProgressStateHolder` publishes the studied-lesson state that every Learn surface renders, and its documentation is explicit that it is not the truth: \"[repository] remains the source of truth. Nothing is stored here that the database does not already hold: this is the in-memory projection the UI observes, read back from the repository after every mutation rather than assembled independently.\" That is a cache named correctly — one authority, one projection, no second writer, and a stated reason for the projection to exist at all."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "It is also no evidence whatsoever for the reasoning above. With no network layer, no fact in this application has two candidate authorities, so nothing here has ever had to resolve a conflict or choose between a device and a service. It demonstrates the vocabulary being used precisely. The decision this lesson teaches is demonstrated by the hypothetical library service, and saying which is which is part of using a codebase as evidence honestly."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked about single source of truth, define it as the authoritative owner of a fact when copies disagree, and then immediately make it concrete with two facts in one application that get different owners — including one whose owner is not a database. Quote the offline-first recommendation with its condition rather than as a rule. If pushed on conflicting copies, state the resolution rule as a requirement the architecture must define, and name the case where authority moves up to whatever owns that rule."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_coordinating_sources",
+            "lesson_state_holder_responsibility"
+          ],
+          "sources": [
+            {
+              "title": "Data layer",
+              "url": "https://developer.android.com/topic/architecture/data-layer"
+            },
+            {
+              "title": "Build an offline-first app",
+              "url": "https://developer.android.com/topic/architecture/data-layer/offline-first"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_observable_or_one_shot_api",
+          "title": "An Observable API, or a One-Shot Read?",
+          "summary": "Whether a repository exposes a stream or a suspending read is decided by what its consumer must observe, not by whether the underlying data can change. This lesson compares both shapes on the same feature, states what each one costs the caller, and uses this application's entirely one-shot repositories — beside the observable state it still provides — as a counterexample to the rule that a modern repository always returns Flow.",
+          "primarySubtopicIds": [
+            "repository_pattern"
+          ],
+          "supportingSubtopicIds": [
+            "flow_fundamentals",
+            "flow_collection",
+            "stateflow",
+            "single_source_of_truth"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The shape of a data API looks like a style question and is not. Android's data-layer guidance draws the line by the operation rather than by the data: \"For one-shot operations, expose suspend functions\" and \"To be notified of data changes over time, expose flows.\" The coroutines guidance says the same thing about the classes doing the work — \"Classes in those layers should expose suspend functions for one-shot calls and Flow to notify about data changes.\""
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The decisive word in both sentences is *notified*. The question is not whether the data can change, because almost all data can. The question is whether **this consumer must be told when it does**, and that is a fact about the requirement rather than about the storage underneath."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Three answers that feel like reasons and are not:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "\"The data can technically change.\" So can nearly everything. This decides from the data instead of from the consumer, and it makes every caller pay for updates most of them did not ask for.",
+                    "\"A stream is the modern shape.\" A shape is not an argument. The guidance above names two shapes and gives each a condition.",
+                    "\"There is already a `StateFlow` in the state holder.\" That one says something about how the screen is fed, not about what the data layer must notify anyone of."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Choose the API shape from what the consumer must observe. If a caller has to learn about changes it did not itself make, the repository must be able to push, and a stream is the shape that expresses that. If a caller needs one value at one moment — even a value the world will change afterwards — a suspending read is correct, and its result being stale later is the contract rather than a defect."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Two requirements over the same feature make the comparison fair, because the underlying data is identical and only the consumer's need differs."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**The first requirement is observation.** The loans list must reflect renewals and returns made elsewhere in the application while the reader is looking at it — a renewal triggered from a notification, a return processed on the account screen. The consumer cannot know when those happen, so it cannot know when to ask again:"
+                },
+                {
+                  "type": "code",
+                  "code": "fun observeLoans(): Flow<List<Loan>>",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**The second requirement is a deliberately frozen snapshot.** Tapping Renew shows the new due date and any fee for that renewal, quoted at that moment and held still while the reader reads it and confirms:"
+                },
+                {
+                  "type": "code",
+                  "code": "suspend fun quoteRenewal(id: LoanId): RenewalQuote",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The library can reprice a renewal a second after that call returns, and the requirement says outright that this quote must not move. A stream here would deliver values the caller is obliged to discard, and would turn \"the terms you were shown\" into a number that changes underneath a confirmation dialog. The same data, the same store, two different shapes, and the requirement is what chose."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So be precise about the one-shot contract instead of apologising for it. A suspending read is correct at the instant it returns and stale afterwards unless it is asked again. That is not a weakness to be designed around; for the quote it is exactly the meaning the product wants. The reflex that anything the server can change must be returned as a stream decides from the data rather than the consumer, and pushes the cost of ignoring changes onto every caller."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The stream has a contract of its own, and it commits the caller to more than \"it updates automatically\". A consumer that collects now owns:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "a collection lifetime — something has to start collecting and something has to stop, and getting that wrong is either a leak or a screen that silently stops updating;",
+                    "the handling of every later value, including ones that arrive while the consumer is in the middle of something else;",
+                    "a policy for values it no longer cares about — ignoring them, conflating them, or cancelling the collection."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "None of that mechanism is taught here. Cold and hot streams, collection, conflation, and the operators that turn one into the other are the coroutines and Flow curriculum's, and the lessons linked from this one are where their contracts live. What belongs to this lesson is the architectural consequence: choosing the observable shape chooses those obligations for every caller, present and future, so it should be chosen because a caller needs them."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One shape is wrong regardless of which of the two the requirement chose:"
+                },
+                {
+                  "type": "code",
+                  "code": "internal class LoanRepository(/* ... */) {\n    // Observable, and a write surface for anyone who can reach it.\n    val loans: MutableStateFlow<List<Loan>> = MutableStateFlow(emptyList())\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is the failure the previous unit named at the screen boundary, reappearing at the data boundary where it is worse. A repository's central claim is that changes to this data go through one path it controls; a public mutable container hands that path to every caller, so the coordination, the freshness policy and the conflict rule can all be bypassed by an assignment. If an observable value belongs here, expose the observation read-only and let changes arrive through named operations that the repository actually implements."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"Modern repositories should expose Flow\" replaces a decision with a default, and the tell is that it can be said without knowing the requirement. Apply the guidance's own split instead: suspending functions for one-shot operations, flows to be notified of changes over time — and notice that both halves of that sentence are recommendations with conditions. A one-shot read is not a legacy shape, and a stream nobody needed to collect is a cost paid by every caller."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A repository may legitimately offer both shapes for the same data, and that does not create two sources of truth by itself:"
+                },
+                {
+                  "type": "code",
+                  "code": "internal interface LoanRepository {\n    fun observeLoans(): Flow<List<Loan>>\n    suspend fun getLoan(id: LoanId): Loan?\n    suspend fun renew(id: LoanId): RenewalOutcome\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Three things have to stay true for that to be two views of one responsibility rather than two truths:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "both reads resolve against the same authoritative data — the snapshot is not allowed to consult a source the stream ignores;",
+                    "the same source policy applies to both, so a snapshot cannot be fresher or staler than the policy says;",
+                    "neither creates an independently mutable copy that can drift from the other."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Break any of those and the second truth arrived with the second method. Keep them and the two shapes are simply two ways of asking one owner, which is what the previous lesson's definition of authority allows."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This learning application is the sharpest available counterexample to the stream default, and it is worth reading carefully because it is a real design with a real reason. **Every repository method in this application is a one-shot `suspend` function; no repository here returns a `Flow`** — across all five interfaces and their implementations. And yet the application has observable studied-lesson state on every Learn surface, updating the Topic and Unit screens behind the reader while they mark a lesson in the reader."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "It obtains that one level up. `StudyProgressStateHolder` reads from `LessonStudyRepository`, publishes a `StateFlow` of the resulting projection, and re-reads from the repository after every mutation. The repository stays one-shot; the observation and the projection belong to a holder that outlives any one navigation entry."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "What the design buys",
+                    "What it costs"
+                  ],
+                  "rows": [
+                    [
+                      "Repositories keep a small one-shot contract, and the projection several screens share is assembled in one place — which this application needed anyway, because that state has to survive any single destination being destroyed",
+                      "Every writer must go through the same coordination path, because the published projection is only current if the holder re-reads after the write. A write that reached the database by another route would leave the visible state stale with nothing to notice"
+                    ],
+                    [
+                      "The data layer makes no commitment about collection lifetimes, so each consumer decides what it needs to observe and for how long",
+                      "A consumer that wanted its own observation of this data cannot have one from the repository; it would have to ask the holder, or the repository's contract would have to change"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Neither arrangement is better in general. An observable repository moves the obligation in the right-hand column into the data layer, which is exactly what you want when several independent consumers each need their own observation of one fact. This application's consumers needed one shared projection instead, so it put the observation where the sharing already was. That is the same decision the lesson opened with, answered from this product's requirements — which is the only way it can be answered."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked whether a repository should return `Flow`, refuse the default and ask what the consumer must observe. Give both halves: a screen that must reflect writes made elsewhere needs the repository to push, and a quote frozen at the moment of a tap is correctly a suspending read whose result is stale afterwards by contract. Then name the costs — a stream commits every caller to a collection lifetime and a policy for values it must ignore — and mention that exposing a mutable stream from the data layer hands every caller a second write path."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_why_flow",
+            "lesson_state_flow",
+            "lesson_choosing_a_stream_abstraction",
+            "lesson_single_source_of_truth"
+          ],
+          "sources": [
+            {
+              "title": "Data layer",
+              "url": "https://developer.android.com/topic/architecture/data-layer"
+            },
+            {
+              "title": "Best practices for coroutines in Android",
+              "url": "https://developer.android.com/kotlin/coroutines/coroutines-best-practices"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_model_and_error_boundaries",
+          "title": "Model and Error Boundaries: What May Cross",
+          "summary": "Whether a concept needs a transfer, a storage and an application representation — or one type for all three — is a trade-off between mapping cost and coupling rather than a rule. This lesson compares both on the same concept, shows a wire-format change reaching a screen because one type crossed every boundary, and asks the same question about failure: how much should a caller have to know about how the data layer is built in order to handle an error?",
+          "primarySubtopicIds": [
+            "layered_architecture",
+            "error_modeling"
+          ],
+          "supportingSubtopicIds": [
+            "repository_pattern",
+            "kotlin_sealed_types",
+            "room_dao",
+            "retrofit"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Two claims turn up constantly, and they are both answers to a question nobody asked. The first is that every feature needs a transfer object, a storage entity, a domain model and a UI model. The second is that one model everywhere is simpler and therefore better. Neither is a decision; each is a policy applied before the feature was looked at."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The question underneath both is the one the foundations unit already taught, asked about types: **do these representations need to change independently enough to justify the mapping between them?** A boundary is a place where one side may change without the other noticing, and mapping code is what that costs here. The same test decides the error question at the end of this lesson, which is why the two live together."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Android's guidance states the recommendation with its reason and, importantly, with a condition. It says \"It's a good practice to separate model classes and have your repositories expose only the data that the other layers of the hierarchy require\", and then gives the threshold: \"At minimum, it's recommended that you create new models in any case where a data source receives data that doesn't match with what the rest of your app expects.\" The condition is doing real work. A feature where the received shape does match is a feature where the recommendation's own reason is absent."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Separate transfer, storage and application representations are a trade-off, not a requirement: they buy independent change on each side and cost mapping code, repeated field names and more places a change lands. One shared type buys the absence of mapping and costs coupling — whatever defines the type now constrains everything that uses it. Decide per feature from how independently the two sides actually change, and expect a healthy codebase to contain both answers."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Take the loan concept and split it, with the hypothetical library service from earlier in this unit supplying the transport side:"
+                },
+                {
+                  "type": "code",
+                  "code": "@Serializable\ninternal data class LoanPayload(        // the service's shape\n    val id: String,\n    val title: String,\n    val due: String,                    // ISO-8601, exactly as the service sends it\n    val renewals: Int,\n)\n\n@Entity(tableName = \"loans\")\ninternal data class LoanEntity(         // the device's shape\n    @PrimaryKey val id: String,\n    val title: String,\n    val dueAtMillis: Long,\n    val renewals: Int,\n    val pendingSync: Boolean,\n)\n\ninternal data class Loan(              // the application's shape\n    val id: LoanId,\n    val title: String,\n    val dueOn: LocalDate,\n    val renewalsRemaining: Int,\n)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Three types and two mapping functions, and the differences between them are not spelling. The payload carries a date as text because that is what the wire says. The entity carries epoch milliseconds and a synchronisation flag that exists only because the device stores things and can be offline. The application type carries a date, a renewal *allowance* the application computed from a limit the service never sends, and an id type nothing outside this app would recognise. Each is shaped by a different set of constraints, which is the strongest case for their being three."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "What the split buys",
+                    "What the split costs"
+                  ],
+                  "rows": [
+                    [
+                      "The service can rename or restructure a field and the change stops at one mapping function",
+                      "Two mapping functions to write, and two more edits every time a field is added"
+                    ],
+                    [
+                      "Storage concerns — annotations, a synchronisation flag, a column type — stay below the boundary",
+                      "The same field is named in three places, so a reader tracing one value opens three files"
+                    ],
+                    [
+                      "The application type says what the application means rather than what a store happens to hold",
+                      "Every field needs a translation decision, and the ones that are not straight copies are where quiet policy accumulates"
+                    ],
+                    [
+                      "Changing transport or storage becomes a data-layer change rather than a codebase-wide one",
+                      "More names to learn for one concept, which is a real cost on a feature nobody is changing"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now the other answer, on the same concept. One type, annotated for serialization, annotated for the database, and handed straight to the screen:"
+                },
+                {
+                  "type": "code",
+                  "code": "@Serializable\n@Entity(tableName = \"loans\")\ninternal data class Loan(\n    @PrimaryKey val id: String,\n    val title: String,\n    val due: String,        // the service's ISO-8601 string, stored and rendered as-is\n    val renewals: Int,\n)\n\n// In the screen's renderer, three boundaries away from the service:\nfun dueLabel(loan: Loan, today: LocalDate): String =\n    DueDateFormatter.format(LocalDate.parse(loan.due), today)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The benefit is immediate and real: no mapping, one name, one file. The cost arrives with the first independent change. The library switches `due` from an ISO-8601 string to epoch milliseconds, which is a transport decision about encoding. Because the same type crossed every boundary, `due` is the field the screen reads, and the screen is the code that parses it — so a serialization change becomes a rendering change, and the product meaning, that a loan has a due date, never changed at all."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "It is worth being careful here, because this example is easy to overstate. A renamed field does not by itself force a change above the boundary: a serialization library can be told the wire name while the property keeps its own, and that is the cheap and correct fix when the shapes are otherwise aligned. The coupling above is real because the *representation* crossed, not just the name — the screen is parsing the transport's encoding of a date. That is what a shared type makes possible, and it is why the cost shows up as a change that lands in surprising places rather than as a compile error someone expected."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So the counterexample matters as much as the example. Take the reminder-time preference from the first lesson of this unit: one value, one store, no transport, no annotation that means anything above the data layer, and two sides that change together when they change at all. Separate storage and application models for it would duplicate a field and add a mapping function whose entire job is to copy it. One type is the correct choice there, and a codebase holding both answers is not inconsistent — the two features have different change rates, and the change rate is the whole criterion."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This application demonstrates the small version of the boundary. `LocalLessonStudyRepository` maps `StudiedLessonEntity` to `StudiedLesson`, and no Room type is visible anywhere above `data/local`. It is two fields, so the mapping cost is a handful of lines and completely visible, and what it buys is equally visible: the study feature's types carry no storage annotations, and the persistence layer can be changed without the feature noticing. It is also not a rule the application applies everywhere — `LearningContentRepository` returns the learning document's own types directly, because that document already is the application's representation and there is nothing to translate. One codebase, both answers, each following from its own change rates."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Failure crossing the same boundary is the same question in different clothes. A caller handling an error has to know *something* about what failed; the boundary decides how much:"
+                },
+                {
+                  "type": "code",
+                  "code": "// The state holder has now learned which HTTP client the data layer uses.\ntry {\n    repository.loans()\n} catch (e: HttpClientSpecificException) {\n    // ...\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What is wrong there is not the exception; it is the vocabulary. The caller names a transport library's type, so introducing a cache, serving the call from the device, or replacing the client becomes a change that reaches every screen that catches it — the coupling is identical in shape to the shared-model coupling above. The fix is to state failure in terms the consumer's contract can own: the loans could not be refreshed, the session has expired, this renewal was refused by the library and here is why."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The guidance offers more than one mechanism for that and prescribes none. It says the data layer \"can understand and handle different types of errors and expose them using custom exceptions—for example, a `UserNotAuthenticatedException`\", and that \"Another way to model the result of interactions with the data layer is by using a `Result` class\". Three shapes are all defensible:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "a sealed result whose branches are exactly the failures the caller must distinguish;",
+                    "an application-owned exception type, which keeps the ordinary path free of wrapping;",
+                    "an outcome carried inside the data the repository already returns — the refresh state from the coordination lesson is this shape."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Choosing between them is a real decision with real trade-offs, and it is deliberately not this lesson's argument. The boundary claim is narrower and stronger than any of the three: whatever the mechanism, failures crossing the data boundary should be stated in the application's vocabulary, and the ones that must not cross are the ones that name how the data layer happens to be implemented."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"Every feature needs a DTO, an entity and a domain model\" and \"one model is simpler, so use one\" are the same mistake facing opposite directions: both answer before looking at how independently the two sides change. Ask instead whether a change on one side would have to reach the other, and what it would cost if it did. On a feature where the stored shape is the application's shape, three types duplicate fields for nothing; on a feature whose wire format is someone else's schema, one type puts that schema in your screens."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The two halves of this lesson are one question. Models and errors both decide what a caller is forced to know about the data layer, and both are settled by the same test: the boundary earns its mapping exactly where the two sides change at different rates. That is why the same codebase can correctly do both, and why applying either answer uniformly means the measurement stopped happening."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The cost that is usually underestimated is not writing the mapping function; it is keeping the translation *decisions* correct. A mapping is where \"the service omits a loan that was returned\" becomes \"this loan is not in the list\", where a null becomes a default, and where a limit and a count become an allowance. That is policy, living in a function everybody files under boilerplate and nobody reviews closely. It is an argument for having fewer mappings where nothing is being decided — and for reading them carefully where something is."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There is a boundary with the previous unit here that is easy to blur. That unit asked how a screen should represent an error it has to render: a field on a state, a variant of a sealed hierarchy, a nested region that failed independently. This lesson asks what representation reaches that state holder in the first place. They compose rather than compete — the data layer names what went wrong in application terms, and the state holder decides what the screen does about it. Getting the first one wrong is what forces the second to know about HTTP."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A closing note on mechanism. A closed set of failure cases is easiest to express with Kotlin's sealed types, which is why they were named as one of the three shapes above; the language curriculum owns how they work and what exhaustive matching guarantees, and this lesson treats them only as one way of writing a contract down. The same applies to the annotations in the code above: they are markers that a storage or a transport concern exists at that point, and the persistence and networking curricula own everything about what they do."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked about DTOs, entities and domain models, answer with the trade-off and then decide it for a stated feature. Name what the split buys — independent change on each side — and what it costs in mapping, repeated names and change sites; then name a feature where one type is correct and say why. For errors, describe the boundary rather than a favourite mechanism: the caller should learn what failed in the application's vocabulary, and should never have to name the data layer's client, its exceptions or its stored types in order to handle it."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_layers_and_their_cost",
+            "lesson_modelling_ui_state",
+            "lesson_what_a_repository_owns"
+          ],
+          "sources": [
+            {
+              "title": "Data layer",
+              "url": "https://developer.android.com/topic/architecture/data-layer"
+            },
+            {
+              "title": "Sealed classes and interfaces",
+              "url": "https://kotlinlang.org/docs/sealed-classes.html"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
     }
   ]
 }

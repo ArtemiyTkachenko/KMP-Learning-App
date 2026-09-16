@@ -53,6 +53,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_stateflow_sharedflow_and_hot_streams",
                 "unit_architecture_responsibilities_and_boundaries",
                 "unit_screen_state_holders_and_ui_state",
+                "unit_repositories_and_data_ownership",
             ),
             units().map { it.id },
         )
@@ -79,6 +80,7 @@ internal class BundledLearningCurriculumTest {
                 "StateFlow, SharedFlow and Hot Streams",
                 "Architecture as Responsibilities and Boundaries",
                 "Screen State Holders, ViewModel and UI State",
+                "Repositories, Data Ownership and Single Source of Truth",
             ),
             units().map { it.title },
         )
@@ -105,6 +107,7 @@ internal class BundledLearningCurriculumTest {
                 "async_reactive",
                 "async_reactive",
                 "async_reactive",
+                "architecture",
                 "architecture",
                 "architecture",
             ),
@@ -425,6 +428,34 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_screen_state_holders_and_ui_state").lessons.map { it.title },
         )
+
+        // The data-ownership Unit's order is one argument in five steps: what responsibility
+        // would justify a repository, then who coordinates several sources, then which copy
+        // is authoritative when they disagree, then what API shape the consumer actually
+        // needs, and only then which representations and failures may cross the boundary.
+        // Authority cannot be chosen before there is coordination to have a conflict in, and
+        // the API shape cannot be chosen before the contract has something to expose.
+        assertEquals(
+            listOf(
+                "lesson_what_a_repository_owns",
+                "lesson_coordinating_sources",
+                "lesson_single_source_of_truth",
+                "lesson_observable_or_one_shot_api",
+                "lesson_model_and_error_boundaries",
+            ),
+            unit("unit_repositories_and_data_ownership").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "What a Repository Is Responsible For",
+                "Coordinating Local and Remote Sources",
+                "Which Source Is Authoritative?",
+                "An Observable API, or a One-Shot Read?",
+                "Model and Error Boundaries: What May Cross",
+            ),
+            unit("unit_repositories_and_data_ownership").lessons.map { it.title },
+        )
     }
 
     @Test
@@ -662,6 +693,22 @@ internal class BundledLearningCurriculumTest {
                 listOf("state_ownership"),
             ),
             unit("unit_screen_state_holders_and_ui_state").lessons.map { it.primarySubtopicIds },
+        )
+
+        // `repository_pattern` is primary in three of the five data-ownership Lessons —
+        // what a repository owns, how it coordinates sources, and what shape its API takes
+        // are three depths of one concept — and the closing Lesson declares two primaries
+        // because what may cross a layer boundary and how failure is represented as it
+        // crosses are the same decision asked about types and about errors.
+        assertEquals(
+            listOf(
+                listOf("repository_pattern"),
+                listOf("repository_pattern"),
+                listOf("single_source_of_truth"),
+                listOf("repository_pattern"),
+                listOf("layered_architecture", "error_modeling"),
+            ),
+            unit("unit_repositories_and_data_ownership").lessons.map { it.primarySubtopicIds },
         )
     }
 
@@ -1194,8 +1241,8 @@ internal class BundledLearningCurriculumTest {
         val lessons = unit("unit_screen_state_holders_and_ui_state").lessons.associateBy { it.id }
 
         // Each Lesson names the shipped Lessons whose model it applies, and nothing else.
-        // The plan's intended link graph is backward-only, so a Lesson in a later E26 Unit —
-        // none of which ships yet — could not be named even if it were useful.
+        // The plan's intended link graph is backward-only, so no Lesson here names one from a
+        // Unit authored after this one, however useful the pointer would be.
         assertEquals(
             listOf(
                 "lesson_state_hoisting",
@@ -1257,16 +1304,125 @@ internal class BundledLearningCurriculumTest {
             }
         }
 
-        // No shipped Lesson was edited to receive a reciprocal link: E26 links backwards only,
-        // and the two Compose Lessons that point at this curriculum do so in prose.
+        // No Lesson authored *before* this Unit was edited to receive a reciprocal link: E26
+        // links backwards only, and the two Compose Lessons that point at this curriculum do
+        // so in prose. Units authored afterwards may of course link back into this one, and
+        // the data-ownership Unit does.
         val ownedByThisUnit = ownIds.toSet()
         units()
-            .filter { it.id != "unit_screen_state_holders_and_ui_state" }
+            .takeWhile { it.id != "unit_screen_state_holders_and_ui_state" }
             .flatMap { it.lessons }
             .forEach { lesson ->
                 assertTrue(
                     lesson.relatedLessonIds.none { it in ownedByThisUnit },
                     "${lesson.id} links forward into the state-holder Unit",
+                )
+            }
+    }
+
+    @Test
+    fun dataOwnershipUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        // Every supporting concept here belongs to a curriculum this Unit states a boundary
+        // against and must not claim practice from: `room_dao` and `retrofit` are named only
+        // as examples of a data source, the three local_data concepts motivate a source
+        // policy without teaching storage mechanics, the three Flow concepts are E24's
+        // contracts applied rather than re-derived, and `kotlin_sealed_types` is one way of
+        // writing an error contract down rather than a subject. `state_ownership` is the one
+        // most likely to be promoted by mistake, because the authority Lesson borrows the
+        // ownership vocabulary the previous Unit established for a different question.
+        assertEquals(
+            listOf(
+                listOf("room_dao", "retrofit", "separation_of_concerns", "architecture_tradeoffs"),
+                listOf("offline_first", "cache_invalidation", "caching"),
+                listOf("offline_first", "cache_invalidation", "state_ownership"),
+                listOf("flow_fundamentals", "flow_collection", "stateflow", "single_source_of_truth"),
+                listOf("repository_pattern", "kotlin_sealed_types", "room_dao", "retrofit"),
+            ),
+            unit("unit_repositories_and_data_ownership").lessons.map { it.supportingSubtopicIds },
+        )
+
+        // Two concepts are primary in one Lesson and supporting in another, which is the
+        // shape a Unit takes when its Lessons genuinely teach different things about the
+        // same vocabulary. The validator rejects the overlap only within a Lesson, so the
+        // split is asserted here: the API-shape Lesson leans on authority without claiming
+        // to teach it, and the boundary Lesson leans on the repository contract while
+        // teaching what crosses it.
+        val lessons = unit("unit_repositories_and_data_ownership").lessons.associateBy { it.id }
+        val apiShape = lessons.getValue("lesson_observable_or_one_shot_api")
+        assertEquals(listOf("repository_pattern"), apiShape.primarySubtopicIds)
+        assertTrue("single_source_of_truth" in apiShape.supportingSubtopicIds)
+        val boundaries = lessons.getValue("lesson_model_and_error_boundaries")
+        assertEquals(listOf("layered_architecture", "error_modeling"), boundaries.primarySubtopicIds)
+        assertTrue("repository_pattern" in boundaries.supportingSubtopicIds)
+    }
+
+    @Test
+    fun dataOwnershipUnitLinksBackwardsOnlyToShippedArchitectureAndFlowAnchors() = runTest {
+        val lessons = unit("unit_repositories_and_data_ownership").lessons.associateBy { it.id }
+
+        // Each Lesson names the shipped Lessons whose reasoning it applies, and nothing else.
+        // The three E24 links belong to the API-shape Lesson because that is where the stream
+        // contracts are applied rather than re-derived, which is the plan's intended graph.
+        assertEquals(
+            listOf(
+                "lesson_when_an_interface_is_a_boundary",
+                "lesson_layers_and_their_cost",
+                "lesson_state_holder_responsibility",
+            ),
+            lessons.getValue("lesson_what_a_repository_owns").relatedLessonIds,
+        )
+        assertEquals(
+            listOf("lesson_what_a_repository_owns", "lesson_layers_and_their_cost"),
+            lessons.getValue("lesson_coordinating_sources").relatedLessonIds,
+        )
+        assertEquals(
+            listOf("lesson_coordinating_sources", "lesson_state_holder_responsibility"),
+            lessons.getValue("lesson_single_source_of_truth").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_why_flow",
+                "lesson_state_flow",
+                "lesson_choosing_a_stream_abstraction",
+                "lesson_single_source_of_truth",
+            ),
+            lessons.getValue("lesson_observable_or_one_shot_api").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_layers_and_their_cost",
+                "lesson_modelling_ui_state",
+                "lesson_what_a_repository_owns",
+            ),
+            lessons.getValue("lesson_model_and_error_boundaries").relatedLessonIds,
+        )
+
+        val shippedAnchors = setOf(
+            "lesson_when_an_interface_is_a_boundary",
+            "lesson_layers_and_their_cost",
+            "lesson_state_holder_responsibility",
+            "lesson_modelling_ui_state",
+            "lesson_why_flow",
+            "lesson_state_flow",
+            "lesson_choosing_a_stream_abstraction",
+        )
+        val ownIds = lessons.keys
+        lessons.values.forEach { lesson ->
+            lesson.relatedLessonIds.forEach { related ->
+                assertTrue(related in ownIds || related in shippedAnchors, "${lesson.id} -> $related")
+            }
+        }
+
+        // No Lesson authored before this Unit was edited to receive a reciprocal link. The two
+        // earlier architecture Units point forward in prose only, because a forward link would
+        // not have resolved when they shipped.
+        units()
+            .takeWhile { it.id != "unit_repositories_and_data_ownership" }
+            .flatMap { it.lessons }
+            .forEach { lesson ->
+                assertTrue(
+                    lesson.relatedLessonIds.none { it in ownIds },
+                    "${lesson.id} links forward into the data-ownership Unit",
                 )
             }
     }

@@ -215,10 +215,11 @@ internal class LearningUnitPracticeIntegrationTest {
                 listOf(
                     "unit_architecture_responsibilities_and_boundaries",
                     "unit_screen_state_holders_and_ui_state",
+                    "unit_repositories_and_data_ownership",
                 ),
                 architectureUnits.map { it.id },
             )
-            assertEquals(listOf(5, 5), architectureUnits.map { it.lessons.size })
+            assertEquals(listOf(5, 5, 5), architectureUnits.map { it.lessons.size })
             val architectureTopic = topic("architecture")
             val architectureParents = architectureUnits.associate { it.id to unit(it.id) }
             val architectureLessonCount = architectureUnits.sumOf { it.lessons.size }
@@ -299,9 +300,9 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             val rebuilt = LocalLessonStudyRepository(database)
             assertFalse(rebuilt.isStudied(earlierLesson.id))
-            // 43 `android_ui` Lessons, 29 in the coroutines and Flow Units and 10 in the two
-            // architecture Units, less the one that was just un-studied.
-            assertEquals(81, rebuilt.getStudiedLessons().size)
+            // 43 `android_ui` Lessons, 29 in the coroutines and Flow Units and 15 in the
+            // three architecture Units, less the one that was just un-studied.
+            assertEquals(86, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -439,6 +440,19 @@ internal class LearningUnitPracticeIntegrationTest {
                 // `state_ownership` and one through `unidirectional_data_flow`.
                 "unit_screen_state_holders_and_ui_state" to (
                     setOf("state_ownership", "unidirectional_data_flow") to 5
+                ),
+                // E26-04. `repository_pattern` is primary in three of the five Lessons and
+                // the closing Lesson declares two primaries, so five Lessons practise four
+                // concepts. All four hold ACTIVE Questions, so the Unit joins the table;
+                // which Questions arrive, and the two it shares with the foundations Unit,
+                // are pinned by the bespoke test below.
+                "unit_repositories_and_data_ownership" to (
+                    setOf(
+                        "repository_pattern",
+                        "single_source_of_truth",
+                        "layered_architecture",
+                        "error_modeling",
+                    ) to 6
                 ),
             )
             val content = BundledLearningContentRepository()
@@ -754,6 +768,85 @@ internal class LearningUnitPracticeIntegrationTest {
                 ).all { it in supportingOnly },
             )
             assertTrue(questions.none { it.subtopicId in supportingOnly })
+            assertEquals(0, attemptCount())
+        }
+
+    /**
+     * E26-04: the data-ownership Unit's pool, and the two Questions it shares with Unit 1.
+     *
+     * The expectation table above already asserts the count, the scope and the supporting-only
+     * exclusion. What it cannot state is *which* Questions arrive. Two of the six reach this Unit
+     * through `layered_architecture`, which is also primary in the foundations Unit's closing
+     * Lesson, so `architecture_paging_ownership` and `dto_entity_domain_model_boundary` appear in
+     * both Units' practice. `docs/content/architecture-units-1-6-plan.md` records that overlap as
+     * calculated rather than discovered, and both Questions fit this Unit better than the one they
+     * are shared with — which is a reason for E26-08 to weigh a re-map, not a reason to demote a
+     * concept a Lesson genuinely teaches. It is asserted here so a later re-map has to re-state the
+     * consequence rather than silently repairing it.
+     */
+    @Test
+    fun theDataOwnershipUnitPractisesItsPrimaryConceptsIncludingTwoSharedWithUnitOne() =
+        runUnitPracticeTest {
+            val unitId = "unit_repositories_and_data_ownership"
+            val unit = assertNotNull(BundledLearningContentRepository().getUnitById(unitId))
+            val builder = builder(PracticeBuilderTarget.LearningUnit(unitId))
+            val settled = builder.settled()
+
+            assertEquals(unit.title, settled.scope.name)
+            val available = assertIs<PracticeAvailability.Available>(settled.availability)
+            assertEquals(6, available.eligibleQuestionCount)
+            builder.selectQuestionCount(available.eligibleQuestionCount)
+            builder.settled()
+
+            val config = builder.start()
+            val concepts = setOf(
+                "repository_pattern",
+                "single_source_of_truth",
+                "layered_architecture",
+                "error_modeling",
+            )
+            assertEquals(AssessmentScope.Subtopics(concepts), config.scope)
+
+            val questions = selectedQuestions(config)
+            assertEquals(
+                setOf(
+                    "repository_observable_api_shape",
+                    "single_source_of_truth_001",
+                    "architecture_paging_ownership",
+                    "dto_entity_domain_model_boundary",
+                    "architecture_error_mapping_boundary",
+                    "architecture_error_modeling_result_type",
+                ),
+                questions.map { it.id }.toSet(),
+            )
+
+            // The recorded overlap with the foundations Unit, through `layered_architecture`.
+            val foundationsBuilder =
+                builder(PracticeBuilderTarget.LearningUnit("unit_architecture_responsibilities_and_boundaries"))
+            foundationsBuilder.settled()
+            foundationsBuilder.selectQuestionCount(
+                assertIs<PracticeAvailability.Available>(foundationsBuilder.uiState.value.availability)
+                    .eligibleQuestionCount,
+            )
+            foundationsBuilder.settled()
+            val foundations = selectedQuestions(foundationsBuilder.start()).map { it.id }.toSet()
+            assertEquals(
+                setOf("architecture_paging_ownership", "dto_entity_domain_model_boundary"),
+                foundations intersect questions.map { it.id }.toSet(),
+            )
+
+            // The bridges this Unit leans on all have ACTIVE Questions of their own, and the
+            // Flow one matters most: `flow_one_shot_result_vs_observable_stream` assesses very
+            // nearly the API-shape decision from the stream side, and it stays in `async_reactive`
+            // rather than reaching this Unit. E26-08 owns whether an architecture-side Question
+            // would add anything or merely duplicate it.
+            val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
+            assertTrue(
+                setOf("offline_first", "cache_invalidation", "caching", "room_dao", "retrofit")
+                    .all { it in supportingOnly },
+            )
+            assertTrue(questions.none { it.subtopicId in supportingOnly })
+            assertFalse("flow_one_shot_result_vs_observable_stream" in questions.map { it.id }.toSet())
             assertEquals(0, attemptCount())
         }
 

@@ -5655,3 +5655,515 @@ epics:
         priority: "P1"
         size: "M"
         initial_status: "Backlog"
+
+  - key: E27
+    github_title: "EPIC-27 Dependency Injection and Object Graphs"
+
+    goal: >
+      Build a senior-level dependency-injection curriculum that continues the
+      application-architecture epic from dependency direction into dependency
+      construction. Teach the reasoning in its own order — a dependency
+      requirement, the responsibility for constructing it, the object graph that
+      results, the lifetime and reuse requirements that graph carries, the
+      composition root or container that owns it, and only then the way manual
+      wiring, Dagger, Hilt and Koin each encode those same decisions — so the
+      learner can reason about construction before meeting any annotation.
+      Deliver the curriculum through the existing production learning-content
+      system, with reviewed assessment coverage and verified integration into
+      the existing learning experience. Keep dependency injection distinct from
+      dependency inversion throughout, teach manual dependency injection and the
+      composition root as legitimate production tools rather than as a
+      stepping-stone, and make choosing the smallest sufficient dependency
+      strategy for a stated project the recurring decision rather than ranking
+      frameworks. Dagger and Hilt are curriculum subjects only. Koin is both a
+      curriculum subject and this repository's real production evidence, and
+      that distinction stays explicit. Annotation-processing and Gradle build
+      configuration, testing frameworks and test-replacement APIs, general
+      Kotlin Multiplatform source-set architecture, new learning UI, database
+      changes, any change to the production Koin graph, and any addition of
+      Dagger or Hilt to this application remain outside this epic.
+
+    issues:
+      - key: E27-01
+        title: "Confirm the dependency injection and object graph curriculum scope and assessment coverage"
+
+        issue: >
+          The dependency-injection Topic already carries twenty-five Subtopics
+          and a substantial question bank, but no learning blueprint, and the
+          architecture epic deliberately stopped at dependency direction and
+          handed construction forward without designing it. The Units this epic
+          delivers therefore need a reconciled map, identities, prerequisites,
+          source and terminology expectations, and a semantic assessment review
+          before production authoring begins.
+
+        approach: >
+          Inspect what already exists rather than assuming: every
+          `dependency_injection` Subtopic and its current status, the ACTIVE and
+          relevant DEPRECATED Questions mapped to them, the shipped architecture
+          Units and every construction responsibility their planning documents
+          recorded as deferred to this epic, and the `architecture`,
+          `lifecycle_navigation`, `kmp` and `android_ui` Subtopics this subject
+          touches. Inspect this repository's own Koin graph as real evidence —
+          the configured Koin version in `gradle/libs.versions.toml`, the
+          `commonMain` definition modules, the per-platform modules, each host's
+          startup path, the ViewModel definitions and the destinations that
+          resolve them — treating the current implementation as an example to
+          explain rather than as a model to imitate or rewrite. Verify current
+          Dagger, Hilt and Koin documentation at planning time rather than
+          authoring from recalled behavior, and record which Koin documentation
+          version the plan is written against. Then produce the blueprint the
+          learning-content authoring contract requires for a major subject,
+          together with the confirmed authoring plan: the Unit and Lesson
+          blueprint, stable Unit and Lesson identities following existing
+          conventions, primary and supporting mappings using real IDs,
+          Teach/Bridge/Reference/Exclude decisions, prerequisites that are
+          already taught or need bounded bridging, the misconception targets the
+          Lessons must correct, the recurring worked examples that carry across
+          Units, the source-sensitive claims and the authoritative sources that
+          must settle them, a semantic review of existing Questions, and the
+          expected Unit practice pools under the existing resolver. Record it in
+          canonical documentation under `docs/content/` following the precedent
+          of the earlier blueprints and planning documents, and register it in
+          the documentation map. The backlog assumes six instructional Units;
+          adjust that only with a documented pedagogical reason. Keep this issue
+          planning-only: do not add production Lessons or Questions, and do not
+          change the question taxonomy or the production Koin graph.
+
+        acceptance_criteria:
+          - "Every dependency-injection Subtopic is inventoried with its current status, and the ones this epic teaches, bridges, references, or leaves unmapped are named."
+          - "The existing taxonomy is used as it stands, and any recommended change is justified by a demonstrated semantic impossibility rather than by a Subtopic that looks empty."
+          - "Existing ACTIVE and relevant DEPRECATED dependency-injection Questions receive a semantic review with gaps and mismatches recorded, rather than being assumed adequate because a mapping exists or a count looks healthy."
+          - "Each construction responsibility the architecture epic deferred to this epic is accounted for concept by concept, with the Unit that owns it or a documented reason it stays out."
+          - "A dependency-injection learning blueprint exists under `docs/content/`, is registered in the documentation map, and defines each Unit's Lessons, objectives, and boundaries."
+          - "Any departure from six instructional Units is justified pedagogically rather than by taxonomy shape or Question availability."
+          - "Unit and Lesson identities are defined using existing conventions and are stable for the authoring issues."
+          - "Primary and supporting mappings use valid IDs, and concepts with no exact Subtopic are documented, not given invented IDs."
+          - "Prerequisites are already taught, included earlier in the sequence, or explicitly bridged."
+          - "The plan orders the subject as dependency requirement, construction responsibility, object graph, lifetime and reuse requirement, composition root or container, and framework encoding, rather than as a sequence of framework APIs."
+          - "The misconceptions the epic exists to correct are recorded as reasoning targets, and include at minimum that dependency injection requires a framework, that it requires interfaces, that constructor injection is a Dagger feature, that dependency inversion and dependency injection are the same thing, that a scope declaration defines lifetime independently of the graph owner, that singleton means process-durable, and that service locator is equivalent to injection."
+          - "Recurring worked examples are defined and carried across Units, covering at least a graph small enough for manual wiring, a growing Android-only graph, and a multiplatform graph."
+          - "Authoritative current Dagger, Hilt and Koin sources are identified for the source-sensitive claims, and the Koin documentation version the plan is written against is recorded together with the repository's configured Koin version read from the version catalog."
+          - "Claims about this repository's own Koin graph are settled against the modules, host startup paths and ViewModel definitions in the code rather than inferred from framework documentation."
+          - "Boundaries with the architecture Units are stated concept by concept, so this epic applies dependency direction and ownership rather than reteaching them."
+          - "Boundaries with the build and modularization, testing, and Kotlin Multiplatform curricula are stated concept by concept, so code generation, test replacement and source-set architecture stay deferred."
+          - "Expected Unit practice pools are modelled against the existing resolver so assessment gaps are visible before authoring begins."
+          - "The repository's current Koin implementation is treated as evidence rather than as prescription, and no production dependency-injection change is proposed as part of this epic."
+          - "The plan adds no task to add Dagger or Hilt to the application, to migrate away from Koin, or to maintain a second production dependency-injection framework."
+          - "This issue introduces no production Lessons or Questions."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Ready"
+
+      - key: E27-02
+        title: "Author Dependency Injection as Object Construction"
+
+        issue: >
+          Learners meet dependency injection as a framework they were told to
+          add, which leaves them unable to say what injection actually changes
+          about a class, why a constructor parameter is a design decision, or
+          when wiring a graph by hand is the right answer.
+
+        approach: >
+          After E27-01, author the planned foundations Unit in the production
+          learning-content format, covering the planned territory: what
+          dependency injection actually changes, the separation of constructing
+          an object from using it, constructor injection, dependencies made
+          explicit in a type signature, manual injection, the composition root
+          as the one place that knows how to build things, the service locator
+          as a different answer to the same question, and the conditions under
+          which manual wiring is completely sufficient in production. Build the
+          Unit around a small object graph the learner can genuinely wire by
+          hand, and reach every conclusion without a container. Follow the
+          learning-content authoring contract, preserve the plan's pedagogical
+          order and stable identities, and use clear objectives, substantive
+          Core explanations, practical examples, and Senior-depth reasoning
+          where useful. Explain supporting concepts only as far as this Unit
+          needs them. Use valid taxonomy IDs, distinguish primary from
+          supporting mappings, verify claims against specific authoritative
+          sources, and semantically review associated Questions against what the
+          Lessons actually teach. Keep the planning and generated
+          learning-to-question coverage documents current, then run and honestly
+          report the relevant existing content validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "Dependency injection is defined and demonstrated without any framework, and no Dagger, Hilt or Koin syntax appears beyond a brief forward reference."
+          - "The claim that dependency injection means adding a framework is addressed directly and shown to be wrong."
+          - "The claim that dependency injection requires interfaces is addressed directly and shown to be wrong, with an injected concrete type that is still injected."
+          - "Constructor injection is explained from the reason it works, and is shown not to be a Dagger feature."
+          - "Dependency injection and dependency inversion are distinguished explicitly, with an injected dependency whose source direction is still wrong and an inverted dependency constructed entirely by hand."
+          - "A composition root is built by hand for a small graph, and the responsibility it carries is stated rather than named."
+          - "Service locator and injection are distinguished through dependency visibility and resolution responsibility rather than through the observation that both return objects."
+          - "The claim that every class should receive its dependencies from a container is addressed directly and shown to be wrong."
+          - "Manual wiring is presented as a legitimate production choice, with the conditions under which it remains sufficient stated concretely."
+          - "Testability is argued from explicit dependencies rather than from the number of interfaces, and no testing framework or mocking library is taught."
+          - "Unit practice mappings contain only primary concepts."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E27-03
+        title: "Author Object Graphs, Lifetimes and Scopes"
+
+        issue: >
+          One injected constructor is not a graph, and a learner who has only
+          seen a single dependency cannot reason about transitive construction,
+          about which objects must be shared, or about how long a shared
+          instance is actually allowed to live.
+
+        approach: >
+          After E27-02, author the planned graph Unit in the production
+          learning-content format, covering the planned territory: the
+          transitive dependency graph, graph roots, what the composition root is
+          responsible for once the graph grows, one instance against a new
+          instance per request, lifetime as distinct from scope, the scope owner
+          and what it actually owns, the lifetime of the graph or container
+          itself, runtime input distinguished from a graph dependency, two
+          dependencies of the same type as a design problem rather than a
+          configuration problem, and what it means for a graph to be validated
+          or to fail. Teach all of this as generic reasoning, using no framework
+          scope annotation as the definition of a concept, and connect it
+          explicitly to the lifetime and ownership reasoning the architecture
+          Units already established. Follow the learning-content authoring
+          contract, preserve the plan's pedagogical order and stable identities,
+          and use clear objectives, substantive Core explanations, practical
+          examples, and Senior-depth reasoning where useful. Explain supporting
+          concepts only as far as this Unit needs them. Use valid taxonomy IDs,
+          distinguish primary from supporting mappings, verify claims against
+          specific authoritative sources, and semantically review associated
+          Questions against what the Lessons actually teach. Keep the planning
+          and generated learning-to-question coverage documents current, then run
+          and honestly report the relevant existing content validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "A transitive graph is traced from a root, and the construction responsibility at each edge is named."
+          - "Reuse of one instance against construction per request is taught from a stated requirement rather than as a default."
+          - "Lifetime and scope are distinguished explicitly, and a scope is shown to be a name for a lifetime the owner already decides."
+          - "The claim that declaring a scope defines how long an object lives is addressed directly and shown to be wrong, with the graph or container owner identified as what actually decides."
+          - "Singleton is shown not to mean immortal, global, or process-durable, and the container lifetime that bounds it is made concrete."
+          - "Runtime input is distinguished from a graph dependency, with an example of a value that must not be a binding."
+          - "Two dependencies of the same type are presented as a design question before any disambiguation mechanism is named."
+          - "Graph validation and graph failure are explained as concepts, with the difference between failing at construction time and failing later made concrete."
+          - "The Unit connects explicitly to the architecture curriculum's lifetime and ownership reasoning and applies it rather than reteaching it."
+          - "No framework scope annotation or container API is presented as the definition of a concept in this Unit."
+          - "Unit practice mappings contain only primary concepts."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E27-04
+        title: "Author Dagger Compile-Time Object Graphs"
+
+        issue: >
+          Dagger is usually learned as a list of annotations to copy, which
+          produces engineers who can add `@Provides` and still cannot say which
+          binding satisfies a key, which graph owns an instance, or what the
+          compiler actually checked.
+
+        approach: >
+          After E27-03, author the planned Dagger Unit in the production
+          learning-content format as one concrete encoding of the generic graph
+          the previous Units established, covering the planned territory:
+          `@Inject` constructor bindings, generated factories and what code
+          generation replaces, modules, `@Provides`, `@Binds`, components as
+          graph APIs and graph roots, component dependencies, subcomponents,
+          scopes, qualifiers, multibindings, and compile-time graph validation.
+          Introduce every Dagger API as the answer to a graph question the
+          learner already has — who constructs this, which graph owns it, which
+          binding satisfies this key, are these the same instance, how does a
+          child graph see parent bindings, how do independently developed
+          features contribute implementations — rather than as a name to
+          memorise. Verify behavior against current official Dagger
+          documentation. Follow the learning-content authoring contract,
+          preserve the plan's pedagogical order and stable identities, and use
+          clear objectives, substantive Core explanations, practical examples,
+          and Senior-depth reasoning where useful. Explain supporting concepts
+          only as far as this Unit needs them. Use valid taxonomy IDs,
+          distinguish primary from supporting mappings, verify claims against
+          specific authoritative sources, and semantically review associated
+          Questions against what the Lessons actually teach. Keep the planning
+          and generated learning-to-question coverage documents current, then run
+          and honestly report the relevant existing content validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "Each Dagger API is introduced as the answer to a graph question established in the earlier Units, and annotation recall is not the objective of any Lesson."
+          - "Constructor bindings and generated construction are explained through what the generated code does, and no claim of runtime reflection is made."
+          - "The choice between `@Provides` and `@Binds` is taught from what each can express rather than as a style preference."
+          - "Components are taught as graph roots with a declared API, and component dependencies are distinguished from subcomponents by what each can see."
+          - "Scopes are tied to the component instance that owns them, consistent with the generic lifetime reasoning already taught."
+          - "Qualifiers are motivated by the same-type ambiguity raised in the graph Unit rather than introduced as syntax."
+          - "Multibindings are motivated by independently developed contributors to one collection rather than by the annotation names."
+          - "Compile-time graph validation is explained through what the compiler can and cannot check, and the claim that a compile-time graph makes the architecture correct is addressed directly and shown to be wrong."
+          - "Dagger behavior claims are verified against current official Dagger documentation and cited."
+          - "No Dagger dependency, plugin, annotation processor or code is added to any production module, and the examples are curriculum-only."
+          - "Unit practice mappings contain only primary concepts."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E27-05
+        title: "Author Hilt Android Lifecycle Integration"
+
+        issue: >
+          Hilt is commonly treated as a separate dependency-injection system
+          with its own rules, which leaves learners unable to say what it adds
+          to Dagger, why field injection appears at all, or what any of its
+          generated components actually outlive.
+
+        approach: >
+          After E27-04, author the planned Hilt Unit in the production
+          learning-content format, covering the planned territory: Hilt as
+          convention and Android integration built on Dagger rather than as a
+          separate graph model, the predefined Android component hierarchy and
+          the lifetimes those generated components have, `@AndroidEntryPoint`,
+          framework-created classes and why the application cannot always use
+          constructor injection for them, the field-injection boundary,
+          `@HiltViewModel` and the ViewModel component lifetime, runtime and
+          navigation inputs distinguished from injected dependencies, assisted
+          injection where it genuinely applies, Hilt modules and `@InstallIn`,
+          entry points as the escape hatch for owners Hilt does not support, and
+          Hilt against hand-written Dagger components. Apply the existing
+          lifecycle curriculum rather than reteaching Android lifecycle. Verify
+          the component hierarchy and every lifetime claim against current
+          official Android and Hilt documentation, since these are
+          source-sensitive. Follow the learning-content authoring contract,
+          preserve the plan's pedagogical order and stable identities, and use
+          clear objectives, substantive Core explanations, practical examples,
+          and Senior-depth reasoning where useful. Explain supporting concepts
+          only as far as this Unit needs them. Use valid taxonomy IDs,
+          distinguish primary from supporting mappings, verify claims against
+          specific authoritative sources, and semantically review associated
+          Questions against what the Lessons actually teach. Keep the planning
+          and generated learning-to-question coverage documents current, then run
+          and honestly report the relevant existing content validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "Hilt is taught as generated convention over Dagger, and the claim that it is a separate graph model is addressed directly and shown to be wrong."
+          - "The Android component hierarchy and each component's lifetime are stated and verified against current official documentation."
+          - "Field injection is explained as a consequence of a framework owning construction, and the claim that it is preferable because it shortens a constructor is addressed directly and shown to be wrong."
+          - "Constructor injection is reaffirmed as the normal model wherever the application owns construction."
+          - "The claim that a singleton-scoped binding means process-durable state is addressed directly and shown to be wrong."
+          - "A retained-scope binding is distinguished from a ViewModel by what each owns and how each is cleared."
+          - "ViewModel injection is taught through the component lifetime it is tied to, and navigation or runtime input is distinguished from an injected dependency."
+          - "Modules and `@InstallIn` are taught as a declaration of which graph a binding joins rather than as required boilerplate."
+          - "Entry points are taught as the escape hatch for framework owners Hilt does not support, with the cost of reaching for them stated."
+          - "Hilt and hand-written Dagger are compared by what each decides for the engineer, without a context-free verdict."
+          - "Android lifecycle mechanics are applied and cross-linked rather than reteaught."
+          - "No Hilt dependency, plugin, annotation processor or code is added to any production module, and no Lesson implies this application uses Hilt."
+          - "Unit practice mappings contain only primary concepts."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E27-06
+        title: "Author Koin and Dependency Injection in KMP"
+
+        issue: >
+          This application's own dependency graph is built with Koin across
+          common and platform source sets, and the curriculum currently teaches
+          none of it, so the learner cannot read the code they are studying
+          inside and has no worked multiplatform graph to reason about.
+
+        approach: >
+          After E27-05, author the planned Koin Unit in the production
+          learning-content format, covering the planned territory: the Koin
+          application and container, modules as groupings of definitions,
+          `single`, `factory` and `scoped` as answers to the reuse question
+          already established, binding an implementation to an interface,
+          constructor-first design despite container-based resolution, the
+          Compose integration, multiplatform ViewModel definitions and
+          `koinViewModel()`, platform-independent definitions in `commonMain`,
+          platform-specific modules and bindings, the composition root of a
+          multiplatform application, the platform-service boundary only as far
+          as a multiplatform graph requires it, and scope and lifetime reasoning
+          in Koin terms. Use this repository's own graph as the worked case
+          study — the `commonMain` definition modules, the per-platform modules,
+          each host's startup path, and the destinations that resolve
+          ViewModels — treating it as evidence to explain rather than as a
+          design to endorse, and recording any observation that the graph could
+          be better without acting on it. Distinguish the framework's available
+          capabilities from the mechanism this repository actually uses, and do
+          not describe modern Koin as inherently runtime-only. Verify behavior
+          against current Koin documentation matching the repository's
+          configured version. Follow the learning-content authoring contract,
+          preserve the plan's pedagogical order and stable identities, and use
+          clear objectives, substantive Core explanations, practical examples,
+          and Senior-depth reasoning where useful. Explain supporting concepts
+          only as far as this Unit needs them. Use valid taxonomy IDs,
+          distinguish primary from supporting mappings, verify claims against
+          specific authoritative sources, and semantically review associated
+          Questions against what the Lessons actually teach. Keep the planning
+          and generated learning-to-question coverage documents current, then run
+          and honestly report the relevant existing content validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "Koin definitions are taught from the reuse and lifetime requirements established in the graph Unit rather than as DSL to memorise."
+          - "The claim that `single` means a Kotlin `object` is addressed directly and shown to be wrong."
+          - "The claim that `factory` requires a factory class to exist is addressed directly and shown to be wrong."
+          - "Constructor-first design is shown to survive container-based resolution, and retrieving dependencies directly from the container inside a class is shown as the service-locator shape the foundations Unit already rejected."
+          - "Scopes are explained through the owner whose lifetime bounds them, consistent with the generic scope reasoning already taught."
+          - "ViewModel resolution from common code is explained together with the lifetime the resolved owner actually has."
+          - "The split between `commonMain` definitions and platform-specific modules is taught from what each host must supply, and the multiplatform composition root is made concrete."
+          - "This repository's actual Koin graph is used as the worked case study, with real module, host startup and ViewModel evidence."
+          - "The repository's configured Koin version is read from the version catalog and the documentation used matches it or the closest current compatible documentation."
+          - "Modern Koin is not described as inherently runtime-only, and the framework's available capabilities are distinguished from the mechanism this repository currently uses."
+          - "Koin compiler and code-generation setup is not taught, and build configuration is left to the build curriculum."
+          - "Kotlin Multiplatform source-set architecture and `expect`/`actual` mechanics are applied and cross-linked rather than reteaught."
+          - "Any observation that the production graph could be improved is recorded rather than acted on, and no production Koin code is changed by this issue."
+          - "Unit practice mappings contain only primary concepts."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E27-07
+        title: "Author Dependency Injection Strategy and Framework Trade-offs"
+
+        issue: >
+          Framework choice is argued by habit and reputation, and a learner who
+          has been taught four encodings still cannot justify one for a concrete
+          project or defend the decision not to add a container at all.
+
+        approach: >
+          After E27-06, author the planned synthesis Unit in the production
+          learning-content format, comparing manual dependency injection,
+          Dagger, Hilt and Koin from stated project requirements rather than
+          from brand preference. Cover the planned decision axes: the project
+          and platform targets, object-graph size and rate of growth, lifecycle
+          integration needs, when graph errors are detected, runtime
+          flexibility, build and code-generation cost, how much the framework
+          decides by convention, Kotlin Multiplatform requirements, team
+          familiarity, debugging and observability of the graph, and the cost of
+          migrating later. Carry the epic's recurring scenarios through the
+          comparison so the reasoning is grounded, and make choosing the
+          smallest sufficient strategy the Unit's central decision. Follow the
+          learning-content authoring contract, preserve the plan's pedagogical
+          order and stable identities, and use clear objectives, substantive
+          Core explanations, practical examples, and Senior-depth reasoning
+          where useful. Explain supporting concepts only as far as this Unit
+          needs them. Use valid taxonomy IDs, distinguish primary from
+          supporting mappings, verify claims against specific authoritative
+          sources, and semantically review associated Questions against what the
+          Lessons actually teach. Keep the planning and generated
+          learning-to-question coverage documents current, then run and honestly
+          report the relevant existing content validation.
+
+        acceptance_criteria:
+          - "Every planned Lesson meets the shared authoring requirements in this issue's approach and uses the production content format."
+          - "Every comparison is made from a stated requirement, and no framework receives a context-free best or worst verdict."
+          - "Manual dependency injection is carried through the comparison as a real option rather than as a beginner stage."
+          - "The claim that runtime resolution is inherently worse, and the claim that compile-time validation makes an architecture correct, are both addressed directly and shown to be wrong."
+          - "The claim that any one framework is automatically correct for Android, or for Kotlin Multiplatform, is addressed directly and shown to be wrong."
+          - "Each decision axis names the observable consequence of choosing differently rather than asserting a preference."
+          - "The epic's recurring scenarios are carried through the comparison, and at least one resolves to adding no container."
+          - "Migration and team cost are treated as real inputs rather than as afterthoughts."
+          - "Documented capability differences are stated with sources, and marketing or community claims are not presented as fact."
+          - "The learner is left able to justify a choice for a concrete project, assessed by a decision-from-requirement scenario rather than by a ranking."
+          - "Unit practice mappings contain only primary concepts."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E27-08
+        title: "Address assessment gaps for Dependency Injection and Object Graphs"
+
+        issue: >
+          The dependency-injection bank already holds substantive Questions
+          weighted towards Dagger and Hilt, so this epic is not greenfield
+          assessment authoring, and structural mappings between Lessons and
+          Questions do not establish that the new Units' reasoning is actually
+          assessed.
+
+        approach: >
+          After E27-02 through E27-07, revisit E27-01's semantic coverage
+          analysis against the finished Lessons. Re-read every Lesson, re-audit
+          every ACTIVE dependency-injection Question and the relevant DEPRECATED
+          ones, and decide remapping and level corrections before adding
+          anything. Add or correct Questions only for substantive conceptual
+          gaps using the existing question-authoring and validation workflows,
+          giving particular attention to the generic reasoning the framework
+          Questions currently crowd out, to the Koin concepts with no ACTIVE
+          coverage, to framework selection from requirements, and to the
+          misconceptions the Units exist to correct. Preserve Question and
+          AnswerOption identities and lifecycle conventions, independently solve
+          every changed or added Question, verify its Sources, compute the
+          actual Unit practice pools under the existing resolver, and keep the
+          generated coverage reports current.
+
+        acceptance_criteria:
+          - "Each Unit's primary concepts receive a documented semantic coverage review against the finished Lessons."
+          - "Existing dependency-injection Questions are re-examined against what the Lessons teach rather than assumed adequate, and coverage is never inferred from Question counts."
+          - "Remapping and level corrections are decided before new Questions are authored."
+          - "Generic constructor-injection, object-graph, scope and composition-root reasoning is assessed on its own terms rather than only through framework-specific scenarios."
+          - "Koin fundamentals, scopes and ViewModel integration receive meaningful assessment or a documented reason they do not."
+          - "Framework selection is assessed by decision-from-requirement scenarios rather than by a ranking or a capability list."
+          - "Material gaps are addressed or explicitly justified as deferred."
+          - "Questions assess reasoning rather than copied Lesson wording, annotation recall, or API definitions, wherever the concept allows it."
+          - "DEPRECATED Questions are restored only where their reasoning is genuinely worth teaching, and none is resurrected merely to populate a Subtopic."
+          - "Difficulty matches required reasoning without per-Lesson or per-level quotas."
+          - "Every changed or added Question is independently solved and its Sources verified against current documentation."
+          - "Supporting-only mappings do not broaden practice eligibility, and the computed Unit practice pools are recorded."
+          - "Question and AnswerOption identity and lifecycle conventions are preserved."
+          - "The taxonomy is not expanded, and any unavoidable overlap between Subtopics is documented instead."
+          - "Affected coverage reports are regenerated."
+          - "Every new Unit has meaningful practice or a reviewed explanation for its absence."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Backlog"
+
+      - key: E27-09
+        title: "Verify the Dependency Injection learning experience and close E27"
+
+        issue: >
+          The new Units must work as one coherent learning sequence, sit
+          correctly behind the shipped architecture Units, and integrate with
+          study progress, Continue Learning, and Unit practice without changing
+          unrelated product behavior or implying this application uses a
+          framework it does not.
+
+        approach: >
+          After E27-08, review the Units as one learning sequence and verify
+          their integration using existing tooling and focused production-content
+          checks, including how the sequence sits behind the architecture Units,
+          whether the construction responsibilities those Units deferred are now
+          answered, and whether the cross-links between them resolve in both
+          directions. Re-verify the source-sensitive Dagger, Hilt and Koin
+          claims against current documentation, and re-verify every example
+          drawn from this repository's Koin graph against the code as it stands.
+          Add tests only for concrete gaps and accurately report content, build,
+          and platform verification results. Fix concrete defects only, and do
+          not begin the next curriculum epic.
+
+        acceptance_criteria:
+          - "Every authored Unit and Lesson appears in the intended authored order."
+          - "Cross-Unit review checks prerequisites, contradictions, duplication, and terminology consistency for dependency, requirement, construction, graph, root, binding, instance, lifetime, scope, owner and container."
+          - "The framework Units are shown to rest on the terminology the first two Units establish rather than redefining it."
+          - "Each construction responsibility the architecture epic deferred to this epic is answered by a shipped Lesson or recorded as still deferred with its reason."
+          - "Cross-links to the architecture, Compose state, and Coroutines and Flow Units resolve and do not duplicate what they reference."
+          - "Dagger, Hilt and Koin claims are re-verified against current sources at closure time."
+          - "Every example drawn from this repository's Koin graph matches the code as it stands."
+          - "No Lesson, example or Question implies this application uses Dagger or Hilt, and no Dagger or Hilt dependency exists in any module."
+          - "Structured content, code examples, and Sources render correctly."
+          - "Mark and unmark update Unit and Topic study progress correctly."
+          - "Continue Learning traverses the expanded content and handles completion correctly."
+          - "Unit practice uses intended primary concepts through the existing assessment flow."
+          - "Content and coverage validation passes with current reports."
+          - "New tests address concrete gaps rather than duplicating existing checks."
+          - "Required build and platform checks are reported accurately."
+          - "Remaining limitations and any material deferred to the build and modularization, testing, or Kotlin Multiplatform curriculum are recorded."
+          - "No unrelated product behavior changes."
+
+        priority: "P1"
+        size: "M"
+        initial_status: "Backlog"

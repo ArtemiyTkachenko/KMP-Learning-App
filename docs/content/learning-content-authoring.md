@@ -424,6 +424,40 @@ python3 tools/learning_question_coverage.py --write   # rewrite the snapshot
 python3 tools/learning_question_coverage.py --check    # fail if it is stale
 ```
 
+## Rule 11 — Lessons Are Project-Agnostic
+
+Learner-facing curriculum text teaches Android, Kotlin, Compose, KMP and the surrounding
+engineering concepts. It is not documentation for this application, and a reader must
+never need to know how this application is built in order to follow a Lesson.
+
+Concrete examples are not the problem — they are most of what makes a Lesson teachable.
+The problem is the difference between presenting an arrangement and reporting this
+codebase's own. "Consider an application whose repositories expose one-shot suspending
+reads" teaches a design; "every repository in this application exposes one-shot
+suspending reads, verified across every interface" reports a fact about the repository the
+Lesson happens to ship inside, and a reader who has not read that repository cannot check
+it, learn from it, or carry it anywhere else.
+
+So a Lesson may name types, packages and versions freely, as long as it names them as
+parts of an example rather than as parts of this product:
+
+- Do not write "this project", "this repository", "this app", "this application", "in the
+  current implementation", or any phrasing that makes the learning app itself the subject.
+- Frame worked examples as examples: "consider an application where…", "here is a worked
+  instance of…", "take a `LessonStudyRepository` with one implementation…".
+- Attribute a measurement to what actually determines it — the target and the resolved
+  versions — rather than to this build. "Measured on a JVM target" and "checked against
+  kotlinx-coroutines-core 1.11.0" are reproducible; "measured on this project's JVM
+  target" is not.
+- Do not quote this codebase's own KDoc as though it were a cited source. State the point
+  in the Lesson's own voice; reserve quotation marks for the authoritative sources of
+  Rule 9.
+- Keep the caveats. A worked example that is poor evidence for something should still say
+  so — just as a property of the example, not as a confession about this repository.
+
+None of this is a reason to weaken an explanation. Replacing a specific claim with vague
+wording loses the teaching point, which is a worse outcome than the coupling it removed.
+
 ## Authoring Checklist
 
 Before a blueprint is considered complete:
@@ -451,3 +485,5 @@ Before a Lesson is considered ready to ship:
 - [ ] The questions for its primary Subtopics are answerable by a reader who understood
       it — verified by reading them, not by mapping them.
 - [ ] The Lesson teaches the concept rather than the phrasing of any question.
+- [ ] Nothing in the Lesson requires the reader to know how this application is built;
+      worked examples are framed as examples and measurements name their toolchain.

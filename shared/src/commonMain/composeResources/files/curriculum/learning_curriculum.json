@@ -806,7 +806,7 @@
                 {
                   "type": "callout",
                   "kind": "NOTE",
-                  "text": "The saved-state guarantee described here is Android's, and it is documented precisely. This app also ships on desktop, iOS and web, where Compose Multiplatform documents lifecycle states and events but no equivalent statement about what a host restores. Treat `rememberSaveable` as participation in a host-provided saved-state mechanism whose Android behaviour is specified and whose behaviour elsewhere is not something to rely on. The part that holds everywhere — and the part an interview is asking about — is the ladder itself: re-execution, leaving the Composition, UI recreation, process recreation."
+                  "text": "The saved-state guarantee described here is Android's, and it is documented precisely. A Compose Multiplatform application may also ship on desktop, iOS and web, where Compose Multiplatform documents lifecycle states and events but no equivalent statement about what a host restores. Treat `rememberSaveable` as participation in a host-provided saved-state mechanism whose Android behaviour is specified and whose behaviour elsewhere is not something to rely on. The part that holds everywhere — and the part an interview is asking about — is the ladder itself: re-execution, leaving the Composition, UI recreation, process recreation."
                 }
               ]
             },
@@ -1775,7 +1775,7 @@
       "id": "unit_identity_keys_and_stability",
       "topicId": "android_ui",
       "title": "Identity, Keys, Stability and Immutability",
-      "summary": "Every time the runtime reaches a call it has seen before it answers three separate questions: is this the same composition identity, was an observable change recorded, and may this execution be skipped. Collapsing them into one is behind most of the confusion in this area and most of the advice that no longer holds. This unit takes them apart — identity from the call site and from keys you supply, the gap between Kotlin's several kinds of \"cannot change\" and the guarantee Compose actually needs, and the stability rules that decide skipping under the compiler this project builds with — and ends with the two annotations that let you answer the third question yourself, along with what it costs when the answer is wrong.",
+      "summary": "Every time the runtime reaches a call it has seen before it answers three separate questions: is this the same composition identity, was an observable change recorded, and may this execution be skipped. Collapsing them into one is behind most of the confusion in this area and most of the advice that no longer holds. This unit takes them apart — identity from the call site and from keys you supply, the gap between Kotlin's several kinds of \"cannot change\" and the guarantee Compose actually needs, and the stability rules that decide skipping under the compiler version in use — and ends with the two annotations that let you answer the third question yourself, along with what it costs when the answer is wrong.",
       "lessons": [
         {
           "id": "lesson_composable_identity",
@@ -2410,7 +2410,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Any concrete prediction about skipping depends on the compiler, so it is worth stating what this project is actually built with rather than inheriting assumptions from older writing. The Kotlin version is 2.4.10 and the Compose compiler plugin is versioned with it; Compose Multiplatform is 1.11.1; and no module declares a `composeCompiler { }` block, so no compiler option is customised anywhere in the repository."
+                  "text": "Any concrete prediction about skipping depends on the compiler, so it is worth stating which toolchain an observation came from rather than inheriting assumptions from older writing. The observations that follow were made with Kotlin 2.4.10 and the Compose compiler plugin versioned with it, Compose Multiplatform 1.11.1, and no `composeCompiler { }` block declared anywhere in the build, so no compiler option was customised."
                 },
                 {
                   "type": "paragraph",
@@ -2489,7 +2489,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Running the middle row of that table against this repository's own toolchain does not reproduce it for collections. A composable taking a `List` parameter, whose caller built a fresh and structurally equal list on every pass, was **not** re-executed; a control that changed the list's contents was re-executed every time, so the comparison was certainly happening. The same experiment with a class carrying a `var` property behaved exactly as documented: a fresh but equal instance re-ran the child, and the same instance passed again skipped it."
+                  "text": "Running the middle row of that table against the toolchain named above does not reproduce it for collections. A composable taking a `List` parameter, whose caller built a fresh and structurally equal list on every pass, was **not** re-executed; a control that changed the list's contents was re-executed every time, so the comparison was certainly happening. The same experiment with a class carrying a `var` property behaved exactly as documented: a fresh but equal instance re-ran the child, and the same instance passed again skipped it."
                 },
                 {
                   "type": "paragraph",
@@ -2501,7 +2501,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "It is also worth saying plainly what none of this is for. Skipping is a mechanism, not a target. The previous unit's argument stands unchanged: a recomposition count is an observation, the thing that costs something is the work performed during composition, and \"make this skippable\" is only worth doing when an actual symptom traces to an actual expense. The tools for inspecting what the compiler decided — the compiler metrics and reports that list which functions came out skippable and which types came out stable — exist and are the right instrument when you have a measured problem. They are not configured in this project, they are not something you can read here today, and they belong to the performance unit later in this path."
+                  "text": "It is also worth saying plainly what none of this is for. Skipping is a mechanism, not a target. The previous unit's argument stands unchanged: a recomposition count is an observation, the thing that costs something is the work performed during composition, and \"make this skippable\" is only worth doing when an actual symptom traces to an actual expense. The tools for inspecting what the compiler decided — the compiler metrics and reports that list which functions came out skippable and which types came out stable — exist and are the right instrument when you have a measured problem. They are off by default and have to be enabled deliberately, and they belong to the performance unit later in this path."
                 },
                 {
                   "type": "callout",
@@ -2617,7 +2617,7 @@
                 {
                   "type": "callout",
                   "kind": "NOTE",
-                  "text": "One honest detail, because the tempting version of this story is not quite true. Removing the annotation from `Playlist` did not fix it under this project's toolchain — the unannotated type was skipped in the same way, since the compiler could not classify it either and its `equals` still reported the two playlists equal. So the annotation was not the sole cause of the stale screen here. What the annotation contributes is worse than being the cause: it converts a judgement the compiler was making cautiously, and might make differently in a future version, into a guarantee it is entitled to rely on. The bug becomes latent and toolchain-dependent rather than absent."
+                  "text": "One honest detail, because the tempting version of this story is not quite true. Removing the annotation from `Playlist` did not fix it under the toolchain measured here — the unannotated type was skipped in the same way, since the compiler could not classify it either and its `equals` still reported the two playlists equal. So the annotation was not the sole cause of the stale screen here. What the annotation contributes is worse than being the cause: it converts a judgement the compiler was making cautiously, and might make differently in a future version, into a guarantee it is entitled to rely on. The bug becomes latent and toolchain-dependent rather than absent."
                 },
                 {
                   "type": "paragraph",
@@ -2659,7 +2659,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Two adjacent mechanisms exist and are worth one line each rather than a section. A **stability configuration file** lets you opt types you do not own — a standard-library date type, a module you cannot annotate — into the same contract at compile time; it is the same kind of promise with the same warning attached, and it does not make a class stable on its own. The **kotlinx immutable collections** library provides collection types that are genuinely immutable rather than read-only, and the compiler treats them as such, which removes the most common reason a UI type comes out unstable. Neither is configured in this project, and neither is where to start."
+                  "text": "Two adjacent mechanisms exist and are worth one line each rather than a section. A **stability configuration file** lets you opt types you do not own — a standard-library date type, a module you cannot annotate — into the same contract at compile time; it is the same kind of promise with the same warning attached, and it does not make a class stable on its own. The **kotlinx immutable collections** library provides collection types that are genuinely immutable rather than read-only, and the compiler treats them as such, which removes the most common reason a UI type comes out unstable. Neither is where to start."
                 },
                 {
                   "type": "paragraph",
@@ -2671,7 +2671,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "So if a stable comparison is genuinely needed for a type like that, the honest routes are the ones already named: a persistent immutable collection, a stability configuration entry, or an annotation whose contract you have actually checked. What is not honest is assuming the classification went your way. Which one this project's compiler actually applies is the observation the previous lesson recorded and told you not to design against, and that advice is unchanged here."
+                  "text": "So if a stable comparison is genuinely needed for a type like that, the honest routes are the ones already named: a persistent immutable collection, a stability configuration entry, or an annotation whose contract you have actually checked. What is not honest is assuming the classification went your way. Which one a given compiler version actually applies is the observation the previous lesson recorded and told you not to design against, and that advice is unchanged here."
                 },
                 {
                   "type": "callout",
@@ -2811,7 +2811,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Those three failures and the correct case were measured on this project's JVM target rather than reasoned about. Each calculation incremented its own counter and the enclosing composable body incremented another, so \"the body ran and the calculation did not\" is an observation rather than an inference."
+                  "text": "Those three failures and the correct case were measured on a JVM target rather than reasoned about. Each calculation incremented its own counter and the enclosing composable body incremented another, so \"the body ran and the calculation did not\" is an observation rather than an inference."
                 },
                 {
                   "type": "comparison",
@@ -2998,7 +2998,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Measured on this project's JVM target: a composable scope read a derived `showButton` while an index was driven 0 → 1 → 2 → 3 → 4, letting the runtime settle after each write. The derived calculation ran five times — the initial composition plus one per settled change. The scope reading it executed twice: once initially, and once when the Boolean flipped at 0 → 1. The three later index changes invalidated nobody. That count belongs to this schedule rather than to the API, for a reason the deeper section takes up."
+                  "text": "Measured on a JVM target: a composable scope read a derived `showButton` while an index was driven 0 → 1 → 2 → 3 → 4, letting the runtime settle after each write. The derived calculation ran five times — the initial composition plus one per settled change. The scope reading it executed twice: once initially, and once when the Boolean flipped at 0 → 1. The three later index changes invalidated nobody. That count belongs to this schedule rather than to the API, for a reason the deeper section takes up."
                 },
                 {
                   "type": "paragraph",
@@ -3050,11 +3050,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Measured on this project's JVM target: with the threshold changed from 1 to 5 and the index then moved to 2, the flag reported `true`. Two is not past five — the derived state was still comparing against the 1 it had captured. The fix is to key the `remember` on every captured value, `remember(listState, threshold)`, or to make those inputs snapshot state so the calculation reads them instead of closing over them. Keying on `threshold` alone would look like a fix and would not be one: `listState` is captured on exactly the same terms, so a caller that supplies a different `LazyListState` would keep a derived value still watching the previous list's scroll position. That is the under-specified key of the first lesson in this unit, arriving in a place where it is much harder to see."
+                  "text": "Measured on a JVM target: with the threshold changed from 1 to 5 and the index then moved to 2, the flag reported `true`. Two is not past five — the derived state was still comparing against the 1 it had captured. The fix is to key the `remember` on every captured value, `remember(listState, threshold)`, or to make those inputs snapshot state so the calculation reads them instead of closing over them. Keying on `threshold` alone would look like a fix and would not be one: `listState` is captured on exactly the same terms, so a caller that supplies a different `LazyListState` would keep a derived value still watching the previous list's scroll position. That is the under-specified key of the first lesson in this unit, arriving in a place where it is much harder to see."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Third, the calculation is pulled rather than pushed, and this is the part that corrects the cost model. A write to a dependency marks the derived value invalid; nothing is recalculated until that value is next read, or until the runtime checks whether a scope that read it has to be invalidated. Two measurements on this project's JVM target make the difference concrete. Four writes with no opportunity for the runtime to settle between them produced **one** recalculation rather than four. A derived state that was created and remembered but whose value was never read ran its calculation **zero** times, across the initial composition and four subsequent writes to its dependency."
+                  "text": "Third, the calculation is pulled rather than pushed, and this is the part that corrects the cost model. A write to a dependency marks the derived value invalid; nothing is recalculated until that value is next read, or until the runtime checks whether a scope that read it has to be invalidated. Two measurements on a JVM target make the difference concrete. Four writes with no opportunity for the runtime to settle between them produced **one** recalculation rather than four. A derived state that was created and remembered but whose value was never read ran its calculation **zero** times, across the initial composition and four subsequent writes to its dependency."
                 },
                 {
                   "type": "paragraph",
@@ -3062,7 +3062,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "One point of mechanism is worth having, and only one. The runtime this project resolves offers two overloads — `derivedStateOf(calculation)` and `derivedStateOf(policy, calculation)` — where the policy decides what counts as a changed result. Its documentation notes that a derived state carrying no policy signals an update on every dependency change and leaves it to the observer to decide whether that matters, and Compose's own recomposition machinery is exactly such an observer: before invalidating a scope that read a derived value it compares the new result against the one that scope last saw, using structural equality when no policy was supplied. That is why the plain overload behaves inside a composable the way the guide describes. It also means the filter is only as good as the result type's `equals` — a derived state returning a freshly built object that no two runs consider equal filters nothing at all. How the snapshot system records and compares these reads is the next unit's subject; this is as far into it as the decision needs to go."
+                  "text": "One point of mechanism is worth having, and only one. The Compose runtime offers two overloads — `derivedStateOf(calculation)` and `derivedStateOf(policy, calculation)` — where the policy decides what counts as a changed result. Its documentation notes that a derived state carrying no policy signals an update on every dependency change and leaves it to the observer to decide whether that matters, and Compose's own recomposition machinery is exactly such an observer: before invalidating a scope that read a derived value it compares the new result against the one that scope last saw, using structural equality when no policy was supplied. That is why the plain overload behaves inside a composable the way the guide describes. It also means the filter is only as good as the result type's `equals` — a derived state returning a freshly built object that no two runs consider equal filters nothing at all. How the snapshot system records and compares these reads is the next unit's subject; this is as far into it as the decision needs to go."
                 },
                 {
                   "type": "callout",
@@ -3344,7 +3344,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "`Cart` is an ordinary class. Its field can be read inside a composable perfectly well, and that read is recorded against nothing, because there is nothing in an ordinary field to do the reporting. Measured on this project's JVM target: after the field was changed from 0 to 1, the composable did not execute again, and reading the field afterwards confirmed it really did hold 1. No part of the mechanism was ever involved."
+                  "text": "`Cart` is an ordinary class. Its field can be read inside a composable perfectly well, and that read is recorded against nothing, because there is nothing in an ordinary field to do the reporting. Measured on a JVM target: after the field was changed from 0 to 1, the composable did not execute again, and reading the field afterwards confirmed it really did hold 1. No part of the mechanism was ever involved."
                 },
                 {
                   "type": "code",
@@ -3436,7 +3436,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "There is a second limit, and it is the one that actually bites in production code. The guarantee is about one version of the values; it is not a guarantee about one *update* of yours. Two ordinary assignments to two state holders are two separate changes, and an observer that gets a chance to run between them sees the first holder's new value beside the second holder's old one. Measured on this project's JVM target: a reader of both holders observed the pair `(1, 0)` between `(0, 0)` and `(1, 1)` when each write was applied before the next was made, and observed only `(0, 0)` and `(1, 1)` when both writes landed before either was applied. The second outcome is a scheduling accident rather than a promise, so it is not something to design around. When two values form one invariant, the answer is not to hope they are written closely enough together — it is to put them in one state object, so that changing them is a single assignment of a single new value. That is the conclusion Unit 2 reached about collections and nested data, arriving here from the other direction."
+                  "text": "There is a second limit, and it is the one that actually bites in production code. The guarantee is about one version of the values; it is not a guarantee about one *update* of yours. Two ordinary assignments to two state holders are two separate changes, and an observer that gets a chance to run between them sees the first holder's new value beside the second holder's old one. Measured on a JVM target: a reader of both holders observed the pair `(1, 0)` between `(0, 0)` and `(1, 1)` when each write was applied before the next was made, and observed only `(0, 0)` and `(1, 1)` when both writes landed before either was applied. The second outcome is a scheduling accident rather than a promise, so it is not something to design around. When two values form one invariant, the answer is not to hope they are written closely enough together — it is to put them in one state object, so that changing them is a single assignment of a single new value. That is the conclusion Unit 2 reached about collections and nested data, arriving here from the other direction."
                 },
                 {
                   "type": "paragraph",
@@ -3564,7 +3564,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "This compiles, it runs, and it emits exactly one value and then nothing ever again. By the time the block sees `index` it is an ordinary `Int`; the read that could have recorded a dependency happened in the composable, so the block reads no snapshot state at all. Measured on this project's JVM target: a block returning a captured plain value evaluated once, emitted once, and was never evaluated again after the underlying state changed. Note what this does *not* say — capturing a value is not a defect in itself and an ordinary captured value is not somehow half-observable. It is simply not observable. There is also a second, quieter cost here: the composable now reads `firstVisibleItemIndex` itself, so it is invalidated by every scrolled row, which is precisely what routing the value through a flow was supposed to avoid."
+                  "text": "This compiles, it runs, and it emits exactly one value and then nothing ever again. By the time the block sees `index` it is an ordinary `Int`; the read that could have recorded a dependency happened in the composable, so the block reads no snapshot state at all. Measured on a JVM target: a block returning a captured plain value evaluated once, emitted once, and was never evaluated again after the underlying state changed. Note what this does *not* say — capturing a value is not a defect in itself and an ordinary captured value is not somehow half-observable. It is simply not observable. There is also a second, quieter cost here: the composable now reads `firstVisibleItemIndex` itself, so it is invalidated by every scrolled row, which is precisely what routing the value through a flow was supposed to avoid."
                 },
                 {
                   "type": "paragraph",
@@ -3577,7 +3577,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The first block returns the `SnapshotStateList` reference without reading its contents, so two things go wrong at once and either alone would be fatal. No element read is recorded, so a change to the list never re-runs the block; and if it did re-run, the value it produced would be the same object it produced last time, equal to itself, so the emission would be suppressed anyway. Measured on this project's JVM target: adding an element after collection began produced no further evaluation and no further emission. The second block calls `toList()`, which reads the contents — creating the dependency — and returns an immutable list that genuinely differs from the previous one; the same measurement gave two evaluations and two emissions. This is not a trick to memorise: the runtime's own documentation for `SnapshotStateList.toList()` recommends it specifically for returning the value of the list from a `snapshotFlow`, and records that it is an O(1) operation returning the immutable list used internally rather than copying anything."
+                  "text": "The first block returns the `SnapshotStateList` reference without reading its contents, so two things go wrong at once and either alone would be fatal. No element read is recorded, so a change to the list never re-runs the block; and if it did re-run, the value it produced would be the same object it produced last time, equal to itself, so the emission would be suppressed anyway. Measured on a JVM target: adding an element after collection began produced no further evaluation and no further emission. The second block calls `toList()`, which reads the contents — creating the dependency — and returns an immutable list that genuinely differs from the previous one; the same measurement gave two evaluations and two emissions. This is not a trick to memorise: the runtime's own documentation for `SnapshotStateList.toList()` recommends it specifically for returning the value of the list from a `snapshotFlow`, and records that it is an O(1) operation returning the immutable list used internally rather than copying anything."
                 },
                 {
                   "type": "paragraph",
@@ -3638,7 +3638,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Measured on this project's JVM target, with the collector already running before any change was made and each change allowed to be applied and the scheduler allowed to settle before the next one, unless a row says otherwise:"
+                  "text": "Measured on a JVM target, with the collector already running before any change was made and each change allowed to be applied and the scheduler allowed to settle before the next one, unless a row says otherwise:"
                 },
                 {
                   "type": "bullet_list",
@@ -3655,7 +3655,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "That sentence is also the reason for the constraint on what the block may contain. Because it can run an unpredictable number of times, it must be idempotent and free of side effects — and Compose enforces the strong half of that rather than trusting you with it. The block runs inside a read-only snapshot, and writing snapshot state from within it fails collection with an `IllegalStateException`; running that case on this project's JVM target produces exactly that, with the message `Cannot modify a state object in a read-only snapshot`. Which rules out the tempting debugging move of counting evaluations by incrementing a counter held in state. Keep the calculation a calculation and do the work in the collector, where side effects belong."
+                  "text": "That sentence is also the reason for the constraint on what the block may contain. Because it can run an unpredictable number of times, it must be idempotent and free of side effects — and Compose enforces the strong half of that rather than trusting you with it. The block runs inside a read-only snapshot, and writing snapshot state from within it fails collection with an `IllegalStateException`; running that case on a JVM target produces exactly that, with the message `Cannot modify a state object in a read-only snapshot`. Which rules out the tempting debugging move of counting evaluations by incrementing a counter held in state. Keep the calculation a calculation and do the work in the collector, where side effects belong."
                 },
                 {
                   "type": "paragraph",
@@ -4075,7 +4075,7 @@
         {
           "id": "lesson_screen_state_owner_boundary",
           "title": "The Screen-Level Owner as a Bounded Bridge",
-          "summary": "Moving screen state outside the Composition changes who owns it; it does not itself make the state persistent. Determine what survives from the new owner's actual lifetime, using this app's entry-scoped ViewModels as one concrete multiplatform Navigation 3 example, and stop before application architecture begins.",
+          "summary": "Moving screen state outside the Composition changes who owns it; it does not itself make the state persistent. Determine what survives from the new owner's actual lifetime, using entry-scoped ViewModels as one concrete multiplatform Navigation 3 example, and stop before application architecture begins.",
           "primarySubtopicIds": [
             "compose_state_hoisting"
           ],
@@ -4101,7 +4101,7 @@
                   "type": "comparison",
                   "headers": [
                     "What happens to the screen",
-                    "Does entry-scoped owner state survive in this app?",
+                    "Does entry-scoped owner state survive?",
                     "What decides"
                   ],
                   "rows": [
@@ -4148,7 +4148,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "This repository supplies a concrete example in shared Compose code. Its `NavDisplay` installs a saveable-state entry decorator followed by the lifecycle ViewModel entry decorator. Each relevant Navigation 3 back-stack entry therefore receives its own `ViewModelStore`. Screen ViewModels are resolved at that destination boundary, remain while their entry remains on the area's back stack, and are cleared when the entry is removed."
+                  "text": "Take a concrete example in shared Compose code. A `NavDisplay` installs a saveable-state entry decorator followed by the lifecycle ViewModel entry decorator. Each relevant Navigation 3 back-stack entry therefore receives its own `ViewModelStore`. Screen ViewModels are resolved at that destination boundary, remain while their entry remains on the area's back stack, and are cleared when the entry is removed."
                 },
                 {
                   "type": "code",
@@ -4637,7 +4637,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "In this repository's configured lifecycle runtime Compose 2.11.0-beta01, `collectAsStateWithLifecycle` defaults to `LocalLifecycleOwner.current` and `minActiveState = Lifecycle.State.STARTED`. At or above that state, it collects upstream. Below it, collection stops; when the lifecycle reaches the threshold again, collection restarts. `INITIALIZED` is not a valid threshold and the API rejects it with `IllegalArgumentException`."
+                  "text": "In lifecycle-runtime-compose 2.11.0-beta01, `collectAsStateWithLifecycle` defaults to `LocalLifecycleOwner.current` and `minActiveState = Lifecycle.State.STARTED`. At or above that state, it collects upstream. Below it, collection stops; when the lifecycle reaches the threshold again, collection restarts. `INITIALIZED` is not a valid threshold and the API rejects it with `IllegalArgumentException`."
                 },
                 {
                   "type": "paragraph",
@@ -4655,7 +4655,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "`collectAsStateWithLifecycle` is not Android-only in this project. The dependency `org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:2.11.0-beta01` is declared in `commonMain`, resolves to the AndroidX multiplatform implementation in package `androidx.lifecycle.compose`, and production destination composables already import it from shared code. The API is common; the lifecycle that drives it is supplied by the actual platform host."
+                  "text": "`collectAsStateWithLifecycle` is not Android-only. The dependency `org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:2.11.0-beta01` can be declared in `commonMain`, where it resolves to the AndroidX multiplatform implementation in package `androidx.lifecycle.compose`, so destination composables can import it from shared code. The API is common; the lifecycle that drives it is supplied by the actual platform host."
                 },
                 {
                   "type": "comparison",
@@ -4693,7 +4693,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "For desktop, JetBrains also notes that lifecycle coroutine scopes rely on `Dispatchers.Main.immediate`, which needs a Main dispatcher implementation. This repository's desktop application already declares `kotlinx-coroutines-swing`; that configuration supports the host contract. It is a platform setup note, not a reason to teach dispatcher selection again."
+                  "text": "For desktop, JetBrains also notes that lifecycle coroutine scopes rely on `Dispatchers.Main.immediate`, which needs a Main dispatcher implementation. A desktop application that declares `kotlinx-coroutines-swing` supplies one; that configuration supports the host contract. It is a platform setup note, not a reason to teach dispatcher selection again."
                 },
                 {
                   "type": "callout",
@@ -4715,7 +4715,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Version precision matters here because the configured lifecycle artifact is beta. These overloads, defaults and mappings were rechecked against this repository's resolved 2.11.0-beta01 lifecycle sources and its Compose Multiplatform 1.11.1 host sources, with Compose runtime resolving to 1.11.2. A future dependency update should re-read those contracts rather than preserve this table by assumption."
+                  "text": "Version precision matters here because the lifecycle artifact described is beta. These overloads, defaults and mappings were checked against the 2.11.0-beta01 lifecycle sources and the Compose Multiplatform 1.11.1 host sources, with the Compose runtime at 1.11.2. A later dependency update should re-read those contracts rather than preserve this table by assumption."
                 },
                 {
                   "type": "callout",
@@ -5069,7 +5069,7 @@
                   "type": "comparison",
                   "headers": [
                     "Decision",
-                    "Comparison used in this project"
+                    "Comparison used"
                   ],
                   "rows": [
                     [
@@ -5093,7 +5093,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Lambda keys obey the same equality contract, but source syntax does not tell you whether the instance supplied on a later pass is equal. A probe against this repository's Kotlin/Compose compiler 2.4.10 and runtime 1.11.2 observed one effect start for a non-capturing lambda, one for a lambda capturing unchanged data, and one for an explicitly remembered lambda. A lambda capturing changing data produced a changed instance and four starts across four passes."
+                  "text": "Lambda keys obey the same equality contract, but source syntax does not tell you whether the instance supplied on a later pass is equal. A probe against Kotlin/Compose compiler 2.4.10 and runtime 1.11.2 observed one effect start for a non-capturing lambda, one for a lambda capturing unchanged data, and one for an explicitly remembered lambda. A lambda capturing changing data produced a changed instance and four starts across four passes."
                 },
                 {
                   "type": "paragraph",
@@ -5229,7 +5229,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Lambda keys need the same evidence. With this repository's current compiler, a non-capturing lambda and a lambda whose captures stayed unchanged were memoized in the measured cases; neither restarted the effect. A lambda capturing changing data supplied a different instance and restarted on every measured pass. These observations explain a possible restart storm, but the lasting review rule remains equality plus lifetime intent, not lambda syntax."
+                  "text": "Lambda keys need the same evidence. With a current Kotlin/Compose compiler, a non-capturing lambda and a lambda whose captures stayed unchanged were memoized in the measured cases; neither restarted the effect. A lambda capturing changing data supplied a different instance and restarted on every measured pass. These observations explain a possible restart storm, but the lasting review rule remains equality plus lifetime intent, not lambda syntax."
                 },
                 {
                   "type": "paragraph",
@@ -6356,7 +6356,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Three screens from this app's own practice flow, each worked through the four facts. The first is the one most often over-engineered, because it contains nothing to run."
+                  "text": "Three screens from a practice-question flow, each worked through the four facts. The first is the one most often over-engineered, because it contains nothing to run."
                 },
                 {
                   "type": "code",
@@ -6825,7 +6825,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "On an unbuffered shared flow with no subscriber, that call returns `true` and the value is gone at once: `true` records that the flow took the call, and with nobody to hand the value to and no replay cache to hold it, nothing remains. The stream lesson measured exactly that on this project's toolchain, so this lesson cites it rather than re-deriving it. At the Compose boundary the consequence is blunt — a UI effect cannot execute something the UI never received, and a log line written from a `true` result is evidence about the producer, not about the screen."
+                  "text": "On an unbuffered shared flow with no subscriber, that call returns `true` and the value is gone at once: `true` records that the flow took the call, and with nobody to hand the value to and no replay cache to hold it, nothing remains. The stream lesson measured exactly that on the same toolchain, so this lesson cites it rather than re-deriving it. At the Compose boundary the consequence is blunt — a UI effect cannot execute something the UI never received, and a log line written from a `true` result is evidence about the producer, not about the screen."
                 },
                 {
                   "type": "paragraph",
@@ -7031,7 +7031,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The cost of getting this wrong is easy to make visible. Measured on this project's JVM target, on a dispatcher backed by a single thread: two coroutines each running `Thread.sleep(300)` took **607 ms** in total, while two coroutines each running `delay(300)` took **310 ms**. The blocking pair could not overlap, because there was one thread and the first coroutine never gave it up. On Android that thread is often the one drawing frames."
+                  "text": "The cost of getting this wrong is easy to make visible. Measured on a JVM target, on a dispatcher backed by a single thread: two coroutines each running `Thread.sleep(300)` took **607 ms** in total, while two coroutines each running `delay(300)` took **310 ms**. The blocking pair could not overlap, because there was one thread and the first coroutine never gave it up. On Android that thread is often the one drawing frames."
                 },
                 {
                   "type": "callout",
@@ -7188,7 +7188,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The second mistake is loud, and the useful skill is predicting it from the definition rather than remembering a rule about it. `runBlocking` blocks the calling thread until its coroutine finishes. On Android's main thread, that thread is the one that draws frames, dispatches touches and runs lifecycle callbacks, so for the duration of the call the app renders nothing and responds to nothing; long enough and the system raises an ANR. Measured on this project's JVM target, `runBlocking { delay(300) }` returned to its caller after **306 ms**: suspending inside the block changed nothing whatsoever for the thread outside it, which is the entire point of a bridge."
+                  "text": "The second mistake is loud, and the useful skill is predicting it from the definition rather than remembering a rule about it. `runBlocking` blocks the calling thread until its coroutine finishes. On Android's main thread, that thread is the one that draws frames, dispatches touches and runs lifecycle callbacks, so for the duration of the call the app renders nothing and responds to nothing; long enough and the system raises an ANR. Measured on a JVM target, `runBlocking { delay(300) }` returned to its caller after **306 ms**: suspending inside the block changed nothing whatsoever for the thread outside it, which is the entire point of a bridge."
                 },
                 {
                   "type": "code",
@@ -7318,7 +7318,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The parent's block has run to the end. It is nevertheless not complete, because it has a child that is not finished. Measured on this project's JVM target at the 100 ms mark: `isActive` was `true`, `isCompleted` was `false`, the job reported exactly one child, and printing the job itself gave `StandaloneCoroutine{Completing}`. After `parent.join()` returned, `isCompleted` was `true`."
+                  "text": "The parent's block has run to the end. It is nevertheless not complete, because it has a child that is not finished. Measured on a JVM target at the 100 ms mark: `isActive` was `true`, `isCompleted` was `false`, the job reported exactly one child, and printing the job itself gave `StandaloneCoroutine{Completing}`. After `parent.join()` returned, `isCompleted` was `true`."
                 },
                 {
                   "type": "paragraph",
@@ -7514,7 +7514,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The last of those is measurable. Measured on this project's JVM target: a suspending function whose body launched into a separately constructed scope returned to its caller after **5 ms** for work that took **300 ms**, and that work then completed normally long after the caller had moved on. Written as a structured child of the caller instead, the same body returned after **306 ms**. Both versions \"work\"; only one of them told the caller anything true."
+                  "text": "The last of those is measurable. Measured on a JVM target: a suspending function whose body launched into a separately constructed scope returned to its caller after **5 ms** for work that took **300 ms**, and that work then completed normally long after the caller had moved on. Written as a structured child of the caller instead, the same body returned after **306 ms**. Both versions \"work\"; only one of them told the caller anything true."
                 },
                 {
                   "type": "paragraph",
@@ -7663,7 +7663,7 @@
                 {
                   "type": "bullet_list",
                   "items": [
-                    "Not the knowledge that the work is done. The function returns as soon as the coroutine has been launched — measured on this project's JVM target, this shape returned in 5 ms for work that ran for 300 ms.",
+                    "Not the knowledge that the work is done. The function returns as soon as the coroutine has been launched — measured on a JVM target, this shape returned in 5 ms for work that ran for 300 ms.",
                     "Not the failure. If `api.load()` throws, it throws inside a coroutine attached to a different tree, and nothing reaches the caller's `try`/`catch`.",
                     "Not the ability to stop it. Cancelling the caller cancels the caller's children, and this coroutine is not one of them.",
                     "Not a lifetime it can reason about at all. The work outlives the call by an amount nothing in the signature discloses."
@@ -8042,7 +8042,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The portable abstraction is a CoroutineDispatcher. Its platform realization is not portable. This repository builds Android, Desktop/JVM, iOS, JS and Wasm/JS, so the JVM pool description above must not be generalized to all five. Main is declared in common code, but that declaration alone does not guarantee a usable platform implementation."
+                  "text": "The portable abstraction is a CoroutineDispatcher. Its platform realization is not portable. A Kotlin Multiplatform project may build Android, Desktop/JVM, iOS, JS and Wasm/JS, so the JVM pool description above must not be generalized to all five. Main is declared in common code, but that declaration alone does not guarantee a usable platform implementation."
                 },
                 {
                   "type": "comparison",
@@ -8057,7 +8057,7 @@
                     ],
                     [
                       "Desktop/JVM",
-                      "Main needs a UI integration at runtime. This project's desktop shell includes kotlinx-coroutines-swing for the Swing event dispatch thread."
+                      "Main needs a UI integration at runtime. A desktop shell includes kotlinx-coroutines-swing for the Swing event dispatch thread."
                     ],
                     [
                       "iOS / Darwin Native",
@@ -8734,7 +8734,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "That last claim is worth measuring rather than asserting, so it was. The cases below were run on this project's JVM target against the resolved kotlinx-coroutines-core 1.11.0, each with a 100 ms deadline and withTimeoutOrNull. They are measurements on one machine, not API guarantees. For calibration, a cooperative delay(1500) under the same deadline returned in 171-212 ms on the same run, so roughly 100 ms of every figure below is harness overhead rather than coroutine behaviour."
+                  "text": "That last claim is worth measuring rather than asserting, so it was. The cases below were run on a JVM target against kotlinx-coroutines-core 1.11.0, each with a 100 ms deadline and withTimeoutOrNull. They are measurements on one machine, not API guarantees. For calibration, a cooperative delay(1500) under the same deadline returned in 171-212 ms on the same run, so roughly 100 ms of every figure below is harness overhead rather than coroutine behaviour."
                 },
                 {
                   "type": "comparison",
@@ -9516,7 +9516,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Ask what has happened by the time that line finishes. The answer is nothing. Nothing was printed, loadFirst was not called, and no value exists anywhere. Measured on this project's JVM target: after constructing exactly this shape, the producer block had run zero times. What the variable holds is the block itself, wrapped in an object that knows how to run it later."
+                  "text": "Ask what has happened by the time that line finishes. The answer is nothing. Nothing was printed, loadFirst was not called, and no value exists anywhere. Measured on a JVM target: after constructing exactly this shape, the producer block had run zero times. What the variable holds is the block itself, wrapped in an object that knows how to run it later."
                 },
                 {
                   "type": "paragraph",
@@ -9556,7 +9556,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Measured on this project's JVM target, a two-emission flow collected twice ran its producer twice and delivered its values twice over: 1, 2, 1, 2. Take that literally when the producer does real work. If it opens a database cursor, two collectors are two cursors; if it issues a request, two collectors are two requests. And because the producer only runs during a collection, the flow object itself stores nothing — there is no current value to read off it, and holding a reference to a Flow is not holding data."
+                  "text": "Measured on a JVM target, a two-emission flow collected twice ran its producer twice and delivered its values twice over: 1, 2, 1, 2. Take that literally when the producer does real work. If it opens a database cursor, two collectors are two cursors; if it issues a request, two collectors are two requests. And because the producer only runs during a collection, the flow object itself stores nothing — there is no current value to read off it, and holding a reference to a Flow is not holding data."
                 },
                 {
                   "type": "paragraph",
@@ -9569,7 +9569,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The consequence is the one worth carrying, and the documentation states it outright: intermediate operators are themselves cold, so the returned flow does not start processing values until it is collected. Measured on this project's JVM target, a flow with a map applied to it and no terminal operator had run its producer zero times; the same chain after a single collect had run it once. Terminal operators are the ones that collect, and there are more of them than the ones a guide happens to name: collect and collectLatest; the operators that reduce a flow to a value, such as first, last, single, count, toList, toSet, fold and reduce; and launchIn, which collects in a scope you hand it. The list is not the thing to memorise — the signature is. An operator that returns another Flow is intermediate and has started nothing; one that suspends to give you a result, or launches a coroutine to produce it, has collected."
+                  "text": "The consequence is the one worth carrying, and the documentation states it outright: intermediate operators are themselves cold, so the returned flow does not start processing values until it is collected. Measured on a JVM target, a flow with a map applied to it and no terminal operator had run its producer zero times; the same chain after a single collect had run it once. Terminal operators are the ones that collect, and there are more of them than the ones a guide happens to name: collect and collectLatest; the operators that reduce a flow to a value, such as first, last, single, count, toList, toSet, fold and reduce; and launchIn, which collects in a scope you hand it. The list is not the thing to memorise — the signature is. An operator that returns another Flow is intermediate and has started nothing; one that suspends to give you a result, or launches a coroutine to produce it, has collected."
                 },
                 {
                   "type": "paragraph",
@@ -9688,11 +9688,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Two things about it are precise. It is a terminal operator, so it is the thing that starts the flow — onEach is an ordinary intermediate operator and would do nothing on its own. And it returns a Job, the same handle the Job Lesson introduced, which means the collection is an ordinary child coroutine of that scope with an ordinary lifetime. Measured on this project's JVM target, launchIn returned a StandaloneCoroutine which is a Job, and cancelling the scope ended the collection it had started."
+                  "text": "Two things about it are precise. It is a terminal operator, so it is the thing that starts the flow — onEach is an ordinary intermediate operator and would do nothing on its own. And it returns a Job, the same handle the Job Lesson introduced, which means the collection is an ordinary child coroutine of that scope with an ordinary lifetime. Measured on a JVM target, launchIn returned a StandaloneCoroutine which is a Job, and cancelling the scope ended the collection it had started."
                 },
                 {
                   "type": "paragraph",
-                  "text": "What launchIn does not do is change the flow's contract. It does not make a cold flow hot: the source still produces per collection, and two launchIn calls on the same cold flow are two collections. Measured on this project's JVM target, the same cold adapter collected through two launchIn calls executed its producer twice, exactly as two plain collect calls would. The KDoc's own note points the same way — the provided scope takes care of cancellation, and the returned Job does not need to be used for cancellation purposes, because the scope is the owner."
+                  "text": "What launchIn does not do is change the flow's contract. It does not make a cold flow hot: the source still produces per collection, and two launchIn calls on the same cold flow are two collections. Measured on a JVM target, the same cold adapter collected through two launchIn calls executed its producer twice, exactly as two plain collect calls would. The KDoc's own note points the same way — the provided scope takes care of cancellation, and the returned Job does not need to be used for cancellation purposes, because the scope is the owner."
                 },
                 {
                   "type": "paragraph",
@@ -9714,11 +9714,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Measured on this project's JVM target, with a producer whose first statement was a six-hundred-millisecond blocking sleep — a JVM-specific case, used here because it is the clearest one — the collecting coroutine was cancelled after a hundred milliseconds. The blocking call ran to completion anyway, and joining the cancelled coroutine returned six hundred and ninety-four milliseconds after the start. The producer was inside a flow, it had been cancelled, and it was still not interruptible."
+                  "text": "Measured on a JVM target, with a producer whose first statement was a six-hundred-millisecond blocking sleep — a JVM-specific case, used here because it is the clearest one — the collecting coroutine was cancelled after a hundred milliseconds. The blocking call ran to completion anyway, and joining the cancelled coroutine returned six hundred and ninety-four milliseconds after the start. The producer was inside a flow, it had been cancelled, and it was still not interruptible."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The ordinary case is much better behaved, and for a documented reason: the flow builder is cancellable by default, which means cancellation is checked on each emission, and on top of that almost everything a realistic producer does between emissions is itself a suspending call. Measured on this project's JVM target with a producer whose only cooperative point was emit — a tight loop with no delay, no yield and no other suspending call anywhere in it — cancelling the collector stopped it: the loop never exited normally and the coroutine completed. So the accurate formulation is the one Unit 3 already gave. Cancelling the collector requests cancellation of production, and production stops where it observes the request; in a flow built the ordinary way, that is almost immediately, and the only producers that overrun are the ones doing work that cooperates with nothing."
+                  "text": "The ordinary case is much better behaved, and for a documented reason: the flow builder is cancellable by default, which means cancellation is checked on each emission, and on top of that almost everything a realistic producer does between emissions is itself a suspending call. Measured on a JVM target with a producer whose only cooperative point was emit — a tight loop with no delay, no yield and no other suspending call anywhere in it — cancelling the collector stopped it: the loop never exited normally and the coroutine completed. So the accurate formulation is the one Unit 3 already gave. Cancelling the collector requests cancellation of production, and production stops where it observes the request; in a flow built the ordinary way, that is almost immediately, and the only producers that overrun are the ones doing work that cooperates with nothing."
                 },
                 {
                   "type": "paragraph",
@@ -9821,7 +9821,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The flow builder's KDoc states the requirement — emit should happen strictly in the dispatchers of the block in order to preserve the flow context — and carries this exact case as its own illustration of an IllegalStateException. Run it against the coroutines version this repository resolves and the runtime explains itself:"
+                  "text": "The flow builder's KDoc states the requirement — emit should happen strictly in the dispatchers of the block in order to preserve the flow context — and carries this exact case as its own illustration of an IllegalStateException. Run it against kotlinx-coroutines-core 1.11.0 and the runtime explains itself:"
                 },
                 {
                   "type": "code",
@@ -9865,7 +9865,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Unit 2's precision about context and threads carries forward unchanged, and this operator is a good place to see why it mattered. Measured on this project's JVM target: a chain whose upstream was moved with flowOn(Dispatchers.IO), collected from a coroutine already running on Dispatchers.Default. The upstream did run in a separate coroutine, as the KDoc describes — but the thread it landed on was named DefaultDispatcher-worker-3, and the collector's was DefaultDispatcher-worker-1. Asking for IO did not produce a thread from some separate IO pool, because there is no separate pool: the Dispatchers.IO reference states that it shares threads with Default, and that switching to it when already on Default typically does not lead to an actual switch to another thread. What flowOn guarantees is about the context. Which physical thread that turns into is a scheduling detail, and reasoning that depends on a particular one is folklore."
+                  "text": "Unit 2's precision about context and threads carries forward unchanged, and this operator is a good place to see why it mattered. Measured on a JVM target: a chain whose upstream was moved with flowOn(Dispatchers.IO), collected from a coroutine already running on Dispatchers.Default. The upstream did run in a separate coroutine, as the KDoc describes — but the thread it landed on was named DefaultDispatcher-worker-3, and the collector's was DefaultDispatcher-worker-1. Asking for IO did not produce a thread from some separate IO pool, because there is no separate pool: the Dispatchers.IO reference states that it shares threads with Default, and that switching to it when already on Default typically does not lead to an actual switch to another thread. What flowOn guarantees is about the context. Which physical thread that turns into is a scheduling detail, and reasoning that depends on a particular one is folklore."
                 },
                 {
                   "type": "paragraph",
@@ -9945,7 +9945,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "It is still a cold flow — the KDoc is explicit that the block is called every time a terminal operator is applied to the resulting flow — and what it buys is concurrency, at the price of ordering. Measured on this project's JVM target, a channelFlow with two child coroutines, one of them delayed, delivered its values in the order they were actually produced rather than the order the children were launched. That is the builder working as intended, and it is the reason to reach for it deliberately rather than by default."
+                  "text": "It is still a cold flow — the KDoc is explicit that the block is called every time a terminal operator is applied to the resulting flow — and what it buys is concurrency, at the price of ordering. Measured on a JVM target, a channelFlow with two child coroutines, one of them delayed, delivered its values in the order they were actually produced rather than the order the children were launched. That is the builder working as intended, and it is the reason to reach for it deliberately rather than by default."
                 },
                 {
                   "type": "callout",
@@ -9976,7 +9976,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Without awaitClose the block would return the instant the listener was registered, the channel would close, and the collection would end — with the listener still attached to the source. The library refuses to let that happen silently. Its KDoc says awaitClose should be used to keep the flow running, that otherwise the channel will be closed immediately when the block completes, and that using it is mandatory in order to prevent memory leaks. Measured on this project's JVM target, a callbackFlow whose block sent one value and returned failed with:"
+                  "text": "Without awaitClose the block would return the instant the listener was registered, the channel would close, and the collection would end — with the listener still attached to the source. The library refuses to let that happen silently. Its KDoc says awaitClose should be used to keep the flow running, that otherwise the channel will be closed immediately when the block completes, and that using it is mandatory in order to prevent memory leaks. Measured on a JVM target, a callbackFlow whose block sent one value and returned failed with:"
                 },
                 {
                   "type": "code",
@@ -9999,7 +9999,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Because a callbackFlow is cold, each collection registers its own listener. Measured on this project's JVM target, one adapter collected by two coroutines registered twice while both were running, and when the scope was cancelled it unregistered twice. That is usually the behaviour you want — each consumer owns its own subscription and its own cleanup, and no consumer can end another's — but it is a genuine cost when registration is expensive, or when the underlying source only tolerates one listener. The remedy is not a different builder; it is sharing one collection among several consumers, which is the subject of the hot streams unit later in this curriculum."
+                  "text": "Because a callbackFlow is cold, each collection registers its own listener. Measured on a JVM target, one adapter collected by two coroutines registered twice while both were running, and when the scope was cancelled it unregistered twice. That is usually the behaviour you want — each consumer owns its own subscription and its own cleanup, and no consumer can end another's — but it is a genuine cost when registration is expensive, or when the underlying source only tolerates one listener. The remedy is not a different builder; it is sharing one collection among several consumers, which is the subject of the hot streams unit later in this curriculum."
                 },
                 {
                   "type": "paragraph",
@@ -10128,7 +10128,7 @@
                 },
                 {
                   "type": "code",
-                  "code": "flowOf(\"A\", \"A\", \"B\", \"A\").distinctUntilChanged()\n// Measured on this project's JVM target: A, B, A\n// The final A is not suppressed. An earlier A is irrelevant;\n// only the immediately preceding value is compared.",
+                  "code": "flowOf(\"A\", \"A\", \"B\", \"A\").distinctUntilChanged()\n// Measured on a JVM target: A, B, A\n// The final A is not suppressed. An earlier A is irrelevant;\n// only the immediately preceding value is compared.",
                   "language": "kotlin"
                 },
                 {
@@ -10152,11 +10152,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "debounce asks a question about quiet: emit a value only once nothing newer has arrived for the configured interval. Every new value restarts that interval, so a burst of keystrokes produces nothing at all until the burst ends. Measured on this project's JVM target, typing.debounce(300) produced kot and kotlin — one value per real pause. The two-hundred-millisecond hesitation before the last keystroke produced nothing, because it was shorter than the timeout."
+                  "text": "debounce asks a question about quiet: emit a value only once nothing newer has arrived for the configured interval. Every new value restarts that interval, so a burst of keystrokes produces nothing at all until the burst ends. Measured on a JVM target, typing.debounce(300) produced kot and kotlin — one value per real pause. The two-hundred-millisecond hesitation before the last keystroke produced nothing, because it was shorter than the timeout."
                 },
                 {
                   "type": "paragraph",
-                  "text": "sample asks a different question, about cadence: on a fixed tick, emit whatever the most recent value is, and emit nothing if there has been no new value since the last tick. It is indifferent to whether the user is still typing. Measured on this project's JVM target over the same timeline, typing.sample(300) produced kot, kotl and kotlin — three values, and the middle one is a string the user never paused at. It is simply what happened to be current when a tick arrived, which is also why the exact middle value is a property of where the emissions fall relative to the ticks rather than a guarantee of the operator."
+                  "text": "sample asks a different question, about cadence: on a fixed tick, emit whatever the most recent value is, and emit nothing if there has been no new value since the last tick. It is indifferent to whether the user is still typing. Measured on a JVM target over the same timeline, typing.sample(300) produced kot, kotl and kotlin — three values, and the middle one is a string the user never paused at. It is simply what happened to be current when a tick arrived, which is also why the exact middle value is a property of where the emissions fall relative to the ticks rather than a guarantee of the operator."
                 },
                 {
                   "type": "paragraph",
@@ -10173,7 +10173,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The reason the order reads well is that each one removes something the other cannot see. debounce removes intermediate values that only existed because typing is incremental; it cannot tell that the settled query is the same one that was searched a moment ago. distinctUntilChanged removes that repeat; it has no notion of time, so it would happily pass every keystroke through. Measured on this project's JVM target with a user who typed kot, paused, added and deleted a character, and paused again, debounce alone emitted kot twice and the pair emitted it once."
+                  "text": "The reason the order reads well is that each one removes something the other cannot see. debounce removes intermediate values that only existed because typing is incremental; it cannot tell that the settled query is the same one that was searched a moment ago. distinctUntilChanged removes that repeat; it has no notion of time, so it would happily pass every keystroke through. Measured on a JVM target with a user who typed kot, paused, added and deleted a character, and paused again, debounce alone emitted kot twice and the pair emitted it once."
                 },
                 {
                   "type": "callout",
@@ -10187,7 +10187,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Two details separate a careful answer from a recognising one. First, the opt-in status. Checked against this project's resolved kotlinx-coroutines-core 1.11.0 artifact, debounce and sample are annotated @FlowPreview, not @ExperimentalCoroutinesApi. The distinction matters if you quote it: FlowPreview states that the declaration has no backward compatibility guarantees and its semantics can change between releases, and it is the stronger of the two opt-ins. Both are warning-level, so using them costs an @OptIn and nothing else, and both are the standard answers to the problems they solve. The annotation is a stability contract, not a warning about correctness."
+                  "text": "Two details separate a careful answer from a recognising one. First, the opt-in status. Checked against the kotlinx-coroutines-core 1.11.0 artifact, debounce and sample are annotated @FlowPreview, not @ExperimentalCoroutinesApi. The distinction matters if you quote it: FlowPreview states that the declaration has no backward compatibility guarantees and its semantics can change between releases, and it is the stronger of the two opt-ins. Both are warning-level, so using them costs an @OptIn and nothing else, and both are the standard answers to the problems they solve. The annotation is a stability contract, not a warning about correctness."
                 },
                 {
                   "type": "paragraph",
@@ -10269,12 +10269,12 @@
                 },
                 {
                   "type": "code",
-                  "code": "val user = flow { emit(\"U1\"); delay(600); emit(\"U2\") }\nval settings = flow { delay(200); emit(\"S1\"); delay(200); emit(\"S2\") }\n\nuser.combine(settings) { u, s -> \"($u,$s)\" }\n\n// Measured on this project's JVM target:\n// t=0    U1 arrives           -> nothing; settings has never emitted\n// t=200  S1 arrives           -> (U1,S1)\n// t=400  S2 arrives           -> (U1,S2)   the user did not change\n// t=600  U2 arrives           -> (U2,S2)   the settings did not change",
+                  "code": "val user = flow { emit(\"U1\"); delay(600); emit(\"U2\") }\nval settings = flow { delay(200); emit(\"S1\"); delay(200); emit(\"S2\") }\n\nuser.combine(settings) { u, s -> \"($u,$s)\" }\n\n// Measured on a JVM target:\n// t=0    U1 arrives           -> nothing; settings has never emitted\n// t=200  S1 arrives           -> (U1,S1)\n// t=400  S2 arrives           -> (U1,S2)   the user did not change\n// t=600  U2 arrives           -> (U2,S2)   the settings did not change",
                   "language": "kotlin"
                 },
                 {
                   "type": "paragraph",
-                  "text": "Read the first line again, because it is the diagnosis for one of the more baffling failures in this area: a screen that renders nothing at all, with no error, no crash, and every individual source working correctly when inspected on its own. If one of the combined sources has not yet produced its first value, the combined flow is silent. A source that queries an empty table and emits nothing, or a source waiting on a permission that was never granted, holds the entire screen. Measured on this project's JVM target, combining a working source with one that completes without ever emitting produced an empty result — not a partial one."
+                  "text": "Read the first line again, because it is the diagnosis for one of the more baffling failures in this area: a screen that renders nothing at all, with no error, no crash, and every individual source working correctly when inspected on its own. If one of the combined sources has not yet produced its first value, the combined flow is silent. A source that queries an empty table and emits nothing, or a source waiting on a permission that was never granted, holds the entire screen. Measured on a JVM target, combining a working source with one that completes without ever emitting produced an empty result — not a partial one."
                 },
                 {
                   "type": "callout",
@@ -10292,12 +10292,12 @@
                 },
                 {
                   "type": "code",
-                  "code": "val fast = flowOf(\"A1\", \"A2\", \"A3\").onEach { delay(50) }\nval slow = flowOf(\"B1\", \"B2\").onEach { delay(120) }\n\nfast.zip(slow) { a, b -> \"($a,$b)\" }\n// Measured on this project's JVM target: (A1,B1), (A2,B2)",
+                  "code": "val fast = flowOf(\"A1\", \"A2\", \"A3\").onEach { delay(50) }\nval slow = flowOf(\"B1\", \"B2\").onEach { delay(120) }\n\nfast.zip(slow) { a, b -> \"($a,$b)\" }\n// Measured on a JVM target: (A1,B1), (A2,B2)",
                   "language": "kotlin"
                 },
                 {
                   "type": "paragraph",
-                  "text": "A3 never appears, and that is zip's documented completion contract rather than an accident: the resulting flow completes as soon as one of the flows completes, and cancel is called on the remaining flow. The pair ends when either side can no longer supply a partner. Measured on this project's JVM target with a four-value source zipped against a two-value one, the faster upstream produced three values and two pairs were emitted — one value was produced, found no partner, and was discarded when the zip completed."
+                  "text": "A3 never appears, and that is zip's documented completion contract rather than an accident: the resulting flow completes as soon as one of the flows completes, and cancel is called on the remaining flow. The pair ends when either side can no longer supply a partner. Measured on a JVM target with a four-value source zipped against a two-value one, the faster upstream produced three values and two pairs were emitted — one value was produced, found no partner, and was discarded when the zip completed."
                 },
                 {
                   "type": "paragraph",
@@ -10313,7 +10313,7 @@
                 },
                 {
                   "type": "code",
-                  "code": "merge(userEvents, systemEvents)\n// Measured on this project's JVM target with the two sources above:\n// U1, S1, S2, U2 — every value, in arrival order, uncombined",
+                  "code": "merge(userEvents, systemEvents)\n// Measured on a JVM target with the two sources above:\n// U1, S1, S2, U2 — every value, in arrival order, uncombined",
                   "language": "kotlin"
                 },
                 {
@@ -10361,7 +10361,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The implementation reads pending updates in batches and bails out of a batch as soon as it sees a second value from the same source, which means that when updates from different sources are already waiting, they can be folded into a single combined result. Measured on this project's JVM target, the same two-source timeline emitted three values when its emissions were two hundred milliseconds apart, and sometimes only two when they were compressed to a hundred — the intermediate combination was skipped rather than delayed. The documentation's own worked example, whose sources are ten and fifteen milliseconds apart, printed one fewer value here than the text beside it lists."
+                  "text": "The implementation reads pending updates in batches and bails out of a batch as soon as it sees a second value from the same source, which means that when updates from different sources are already waiting, they can be folded into a single combined result. Measured on a JVM target, the same two-source timeline emitted three values when its emissions were two hundred milliseconds apart, and sometimes only two when they were compressed to a hundred — the intermediate combination was skipped rather than delayed. The documentation's own worked example, whose sources are ten and fifteen milliseconds apart, printed one fewer value here than the text beside it lists."
                 },
                 {
                   "type": "paragraph",
@@ -10481,7 +10481,7 @@
                 },
                 {
                   "type": "code",
-                  "code": "val queries = flow { emit(\"A\"); delay(50); emit(\"B\") }\n\nfun inner(q: String) = flow {\n    delay(if (q == \"A\") 200 else 40); emit(\"$q-1\")\n    delay(if (q == \"A\") 200 else 40); emit(\"$q-2\")\n}\n\n// Measured on this project's JVM target:\n// queries.flatMapConcat { inner(it) }  ->  A-1, A-2, B-1, B-2\n// queries.flatMapMerge  { inner(it) }  ->  B-1, A-1, B-2, A-2\n// queries.flatMapLatest { inner(it) }  ->  B-1, B-2",
+                  "code": "val queries = flow { emit(\"A\"); delay(50); emit(\"B\") }\n\nfun inner(q: String) = flow {\n    delay(if (q == \"A\") 200 else 40); emit(\"$q-1\")\n    delay(if (q == \"A\") 200 else 40); emit(\"$q-2\")\n}\n\n// Measured on a JVM target:\n// queries.flatMapConcat { inner(it) }  ->  A-1, A-2, B-1, B-2\n// queries.flatMapMerge  { inner(it) }  ->  B-1, A-1, B-2, A-2\n// queries.flatMapLatest { inner(it) }  ->  B-1, B-2",
                   "language": "kotlin"
                 },
                 {
@@ -10490,7 +10490,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "flatMapMerge collects several inner flows at once, so B's first result arrived before A's even though A started first. Two details are worth stating precisely. Its documentation notes that the transform function itself is still called sequentially — it is the resulting flows that are collected concurrently. And the number of inner flows collected at once is bounded by a concurrency parameter which defaults to DEFAULT_CONCURRENCY; read from this project's resolved kotlinx-coroutines-core 1.11.0 artifact, that value is 16, and on the JVM it is overridable through a system property. The bound is the point: an unbounded fan-out over a long upstream is a way to open more work than the process can carry."
+                  "text": "flatMapMerge collects several inner flows at once, so B's first result arrived before A's even though A started first. Two details are worth stating precisely. Its documentation notes that the transform function itself is still called sequentially — it is the resulting flows that are collected concurrently. And the number of inner flows collected at once is bounded by a concurrency parameter which defaults to DEFAULT_CONCURRENCY; read from the kotlinx-coroutines-core 1.11.0 artifact, that value is 16, and on the JVM it is overridable through a system property. The bound is the point: an unbounded fan-out over a long upstream is a way to open more work than the process can carry."
                 },
                 {
                   "type": "paragraph",
@@ -10525,7 +10525,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Cancellation stops work from continuing. It does not undo work already performed. Measured on this project's JVM target, two queries flattened with flatMapLatest started two inner flows and completed one — but both inner flows had already executed their first statement before either was cancelled. If that first statement had sent a request, charged a card, or written a row, the cancellation would have arrived afterwards and changed nothing about it."
+                  "text": "Cancellation stops work from continuing. It does not undo work already performed. Measured on a JVM target, two queries flattened with flatMapLatest started two inner flows and completed one — but both inner flows had already executed their first statement before either was cancelled. If that first statement had sent a request, charged a card, or written a row, the cancellation would have arrived afterwards and changed nothing about it."
                 },
                 {
                   "type": "paragraph",
@@ -10544,7 +10544,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "One version-sensitive fact belongs in a complete answer. Checked against this project's resolved kotlinx-coroutines-core 1.11.0 artifact, flatMapConcat, flatMapMerge, flatMapLatest and their relatives transformLatest and mapLatest are all annotated @ExperimentalCoroutinesApi, at warning level. merge, by contrast, carries no opt-in annotation at all. The annotation is a statement about API stability — the semantics may change in some way in a future release — and not a statement about safety or fitness. These operators are the standard answers to the problems they solve, and using them means adding an @OptIn, not avoiding them."
+                  "text": "One version-sensitive fact belongs in a complete answer. Checked against the kotlinx-coroutines-core 1.11.0 artifact, flatMapConcat, flatMapMerge, flatMapLatest and their relatives transformLatest and mapLatest are all annotated @ExperimentalCoroutinesApi, at warning level. merge, by contrast, carries no opt-in annotation at all. The annotation is a statement about API stability — the semantics may change in some way in a future release — and not a statement about safety or fitness. These operators are the standard answers to the problems they solve, and using them means adding an @OptIn, not avoiding them."
                 },
                 {
                   "type": "callout",
@@ -10616,7 +10616,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "With no operator at all, the collector receives all five values, in order, and the whole thing takes as long as the slower of the two. Measured on this project's JVM target: values 1 through 5, in 2,676 milliseconds — the collector's five times three hundred milliseconds, not the producer's five times one hundred. The producer did not run ahead. It was suspended inside emit until the collector was ready for the next value."
+                  "text": "With no operator at all, the collector receives all five values, in order, and the whole thing takes as long as the slower of the two. Measured on a JVM target: values 1 through 5, in 2,676 milliseconds — the collector's five times three hundred milliseconds, not the producer's five times one hundred. The producer did not run ahead. It was suspended inside emit until the collector was ready for the next value."
                 },
                 {
                   "type": "paragraph",
@@ -10642,7 +10642,7 @@
                 },
                 {
                   "type": "code",
-                  "code": "producer.buffer().collect { value -> process(value); delay(300) }\n// Measured on this project's JVM target: 1, 2, 3, 4, 5 in 1,870 ms",
+                  "code": "producer.buffer().collect { value -> process(value); delay(300) }\n// Measured on a JVM target: 1, 2, 3, 4, 5 in 1,870 ms",
                   "language": "kotlin"
                 },
                 {
@@ -10655,7 +10655,7 @@
                 },
                 {
                   "type": "code",
-                  "code": "producer.conflate().collect { value -> process(value); delay(300) }\n// Measured on this project's JVM target: 1, 3, 5 in 1,101 ms",
+                  "code": "producer.conflate().collect { value -> process(value); delay(300) }\n// Measured on a JVM target: 1, 3, 5 in 1,101 ms",
                   "language": "kotlin"
                 },
                 {
@@ -10668,7 +10668,7 @@
                 },
                 {
                   "type": "code",
-                  "code": "producer.collectLatest { value -> process(value); delay(300) }\n// Measured on this project's JVM target:\n//   started:  1, 2, 3, 4, 5     every value began processing\n//   finished: 5                 only the last one completed\n//   total:    1,124 ms",
+                  "code": "producer.collectLatest { value -> process(value); delay(300) }\n// Measured on a JVM target:\n//   started:  1, 2, 3, 4, 5     every value began processing\n//   finished: 5                 only the last one completed\n//   total:    1,124 ms",
                   "language": "kotlin"
                 },
                 {
@@ -10810,7 +10810,7 @@
                 },
                 {
                   "type": "code",
-                  "code": "flow { emit(1) }\n    .map { it }\n    .catch { cause -> handle(cause) }   // never runs\n    .collect { error(\"thrown by collect\") }\n\n// Measured on this project's JVM target: catch received nothing,\n// and the exception propagated out to the caller of collect.",
+                  "code": "flow { emit(1) }\n    .map { it }\n    .catch { cause -> handle(cause) }   // never runs\n    .collect { error(\"thrown by collect\") }\n\n// Measured on a JVM target: catch received nothing,\n// and the exception propagated out to the caller of collect.",
                   "language": "kotlin"
                 },
                 {
@@ -10861,7 +10861,7 @@
                 },
                 {
                   "type": "code",
-                  "code": "var producerRuns = 0\nflow {\n    producerRuns++\n    emit(producerRuns)\n    if (producerRuns < 3) error(\"transient\")\n}.retry(2) { it is IllegalStateException }\n\n// Measured on this project's JVM target: the producer ran 3 times,\n// and the collector received 1, 2, 3 — including the values emitted\n// by the two attempts that then failed.",
+                  "code": "var producerRuns = 0\nflow {\n    producerRuns++\n    emit(producerRuns)\n    if (producerRuns < 3) error(\"transient\")\n}.retry(2) { it is IllegalStateException }\n\n// Measured on a JVM target: the producer ran 3 times,\n// and the collector received 1, 2, 3 — including the values emitted\n// by the two attempts that then failed.",
                   "language": "kotlin"
                 },
                 {
@@ -10870,7 +10870,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "retryWhen is the conditional form, and its predicate receives both the cause and a zero-based attempt index. Measured on this project's JVM target, a flow that failed every time and stopped retrying at attempt 2 saw the indexes 0, 1 and 2. Because the predicate is a suspending function, a delay between attempts belongs inside it."
+                  "text": "retryWhen is the conditional form, and its predicate receives both the cause and a zero-based attempt index. Measured on a JVM target, a flow that failed every time and stopped retrying at attempt 2 saw the indexes 0, 1 and 2. Because the predicate is a suspending function, a delay between attempts belongs inside it."
                 },
                 {
                   "type": "code",
@@ -10893,7 +10893,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Measured on this project's JVM target, across four endings of the same shape of pipeline:"
+                  "text": "Measured on a JVM target, across four endings of the same shape of pipeline:"
                 },
                 {
                   "type": "comparison",
@@ -11030,7 +11030,7 @@
                 },
                 {
                   "type": "code",
-                  "code": "val flow = flow {\n    emit(load())\n}\n\n// Measured on this project's JVM target: collecting `flow` twice\n// ran the builder block twice.",
+                  "code": "val flow = flow {\n    emit(load())\n}\n\n// Measured on a JVM target: collecting `flow` twice\n// ran the builder block twice.",
                   "language": "kotlin"
                 },
                 {
@@ -11039,7 +11039,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Read that as a statement about the stream, not about whether anything is being produced into it right now. The two come apart, and the fourth lesson of this unit is where they do: a shared stream can exist with its production not yet started, and under some sharing policies the arrival of the first subscriber is exactly what starts it. Measured on this project's JVM target with a lazily started shared stream: before any subscriber the object was there and its current value readable, while the upstream had not run once; the first subscriber to arrive started it. So \"a subscriber never starts anything\" is not part of the definition. What is, is that production is not per-collector."
+                  "text": "Read that as a statement about the stream, not about whether anything is being produced into it right now. The two come apart, and the fourth lesson of this unit is where they do: a shared stream can exist with its production not yet started, and under some sharing policies the arrival of the first subscriber is exactly what starts it. Measured on a JVM target with a lazily started shared stream: before any subscriber the object was there and its current value readable, while the upstream had not run once; the first subscriber to arrive started it. So \"a subscriber never starts anything\" is not part of the definition. What is, is that production is not per-collector."
                 },
                 {
                   "type": "paragraph",
@@ -11107,7 +11107,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The same split governs the other half of the question — what happens to a value emitted while nobody is subscribed. A cold Flow cannot be in that situation at all, because with no collector there is no production. A hot stream can be, and again the outcome is a retention decision rather than a hotness one. Measured on this project's JVM target against the configured coroutines version: a shared stream that keeps nothing produced six values before any subscriber existed, and the first value the subscriber saw was the seventh. The same stream configured to keep the last two handed over the two most recent and then continued live."
+                  "text": "The same split governs the other half of the question — what happens to a value emitted while nobody is subscribed. A cold Flow cannot be in that situation at all, because with no collector there is no production. A hot stream can be, and again the outcome is a retention decision rather than a hotness one. Measured on a JVM target against kotlinx-coroutines-core 1.11.0: a shared stream that keeps nothing produced six values before any subscriber existed, and the first value the subscriber saw was the seventh. The same stream configured to keep the last two handed over the two most recent and then continued live."
                 },
                 {
                   "type": "callout",
@@ -11231,7 +11231,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Measured on this project's JVM target: a `MutableStateFlow` holding a `data class`, with a collector attached and three spaced assignments of an equal value, delivered exactly one value — the initial one, and nothing after it. The same experiment with a class that inherits identity equality delivered four: the initial value, plus one for each of the three assignments, because two distinct instances carrying the same field are not equal to each other. Same code, same assignments, different `equals`."
+                  "text": "Measured on a JVM target: a `MutableStateFlow` holding a `data class`, with a collector attached and three spaced assignments of an equal value, delivered exactly one value — the initial one, and nothing after it. The same experiment with a class that inherits identity equality delivered four: the initial value, plus one for each of the three assignments, because two distinct instances carrying the same field are not equal to each other. Same code, same assignments, different `equals`."
                 },
                 {
                   "type": "comparison",
@@ -11264,7 +11264,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Mutable state inside the value makes the same failure worse, because there is no assignment for equality to suppress. Measured on this project's JVM target: an object held in a `MutableStateFlow` was mutated in place from 1 to 99, and then an equal instance was assigned. The collector received the value once, at subscription, and never again — while reading `value.count` afterwards returned 99. The state had changed twice and no collector was told either time."
+                  "text": "Mutable state inside the value makes the same failure worse, because there is no assignment for equality to suppress. Measured on a JVM target: an object held in a `MutableStateFlow` was mutated in place from 1 to 99, and then an equal instance was assigned. The collector received the value once, at subscription, and never again — while reading `value.count` afterwards returned 99. The state had changed twice and no collector was told either time."
                 },
                 {
                   "type": "callout",
@@ -11273,7 +11273,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The other half of what a collector sees is a speed question rather than an equality one, and the buffering lesson already established the model. Because updates are conflated, a slow collector skips fast updates but always collects the most recently emitted value. Measured on this project's JVM target, with the value assigned 1 through 10 at 20-millisecond intervals and a collector taking 200 milliseconds per value: the collector observed 0, 7 and 10. Seven intermediate states were never delivered, and the final state was."
+                  "text": "The other half of what a collector sees is a speed question rather than an equality one, and the buffering lesson already established the model. Because updates are conflated, a slow collector skips fast updates but always collects the most recently emitted value. Measured on a JVM target, with the value assigned 1 through 10 at 20-millisecond intervals and a collector taking 200 milliseconds per value: the collector observed 0, 7 and 10. Seven intermediate states were never delivered, and the final state was."
                 },
                 {
                   "type": "paragraph",
@@ -11295,7 +11295,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Measured on this project's JVM target: eight coroutines each performing 2,000 increments through `value = value + 1` produced 5,998 out of an expected 16,000. The same load through `update` produced exactly 16,000. `update` is a compare-and-set loop, which is why it works and also why its documentation warns that the function may be evaluated more than once if the value is being concurrently updated — so the lambda must compute a new value and do nothing else."
+                  "text": "Measured on a JVM target: eight coroutines each performing 2,000 increments through `value = value + 1` produced 5,998 out of an expected 16,000. The same load through `update` produced exactly 16,000. `update` is a compare-and-set loop, which is why it works and also why its documentation warns that the function may be evaluated more than once if the value is being concurrently updated — so the lambda must compute a new value and do nothing else."
                 },
                 {
                   "type": "paragraph",
@@ -11412,7 +11412,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Both columns are measured on this project's JVM target. The left one counts how many values a present 400-millisecond subscriber could fall behind by before `tryEmit` began returning `false`, and it came out as `replay + extraBufferCapacity` in every configuration tried. The right one emitted six values with nobody subscribed and then subscribed: `replay = 0, extraBufferCapacity = 3` delivered nothing at all, which is the half of the rule that catches people out — extra capacity buys headroom for a subscriber that is there, and retains nothing for one that is not."
+                  "text": "Both columns are measured on a JVM target. The left one counts how many values a present 400-millisecond subscriber could fall behind by before `tryEmit` began returning `false`, and it came out as `replay + extraBufferCapacity` in every configuration tried. The right one emitted six values with nobody subscribed and then subscribed: `replay = 0, extraBufferCapacity = 3` delivered nothing at all, which is the half of the rule that catches people out — extra capacity buys headroom for a subscriber that is there, and retains nothing for one that is not."
                 },
                 {
                   "type": "callout",
@@ -11430,7 +11430,7 @@
                 },
                 {
                   "type": "code",
-                  "code": "val withoutReplay = MutableSharedFlow<Event>(replay = 0)\n// emit(A) with nobody subscribed, then subscribe, then emit(B)\n// Measured on this project's JVM target: the subscriber received B only.\n\nval withReplay = MutableSharedFlow<Event>(replay = 1)\n// The same sequence.\n// Measured on this project's JVM target: the subscriber received A, then B.",
+                  "code": "val withoutReplay = MutableSharedFlow<Event>(replay = 0)\n// emit(A) with nobody subscribed, then subscribe, then emit(B)\n// Measured on a JVM target: the subscriber received B only.\n\nval withReplay = MutableSharedFlow<Event>(replay = 1)\n// The same sequence.\n// Measured on a JVM target: the subscriber received A, then B.",
                   "language": "kotlin"
                 },
                 {
@@ -11444,15 +11444,15 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Now the emitter's side. A `MutableSharedFlow()` constructed with no arguments has neither replay nor extra buffer, and its `emit` suspends until all subscribers receive the emitted value. Measured on this project's JVM target with one subscriber taking 300 milliseconds per value: three emissions returned at roughly 109, 414 and 718 milliseconds from the start. The first handed straight over to a waiting subscriber; each later one waited for the subscriber to come back for the next value."
+                  "text": "Now the emitter's side. A `MutableSharedFlow()` constructed with no arguments has neither replay nor extra buffer, and its `emit` suspends until all subscribers receive the emitted value. Measured on a JVM target with one subscriber taking 300 milliseconds per value: three emissions returned at roughly 109, 414 and 718 milliseconds from the start. The first handed straight over to a waiting subscriber; each later one waited for the subscriber to come back for the next value."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Configuring `onBufferOverflow` is how that waiting is avoided, and the cost is paid by whichever subscriber was behind. Measured on this project's JVM target with one subscriber taking 300 milliseconds per value and six values emitted 20 milliseconds apart: the default suspending strategy delivered all six, while the same flow with one slot of extra buffer and a drop-oldest strategy delivered 1 and 6. The subscriber was present throughout both runs. That is the qualification the broadcast rule needs — fan-out says the value is offered to everyone, not that everyone receives it."
+                  "text": "Configuring `onBufferOverflow` is how that waiting is avoided, and the cost is paid by whichever subscriber was behind. Measured on a JVM target with one subscriber taking 300 milliseconds per value and six values emitted 20 milliseconds apart: the default suspending strategy delivered all six, while the same flow with one slot of extra buffer and a drop-oldest strategy delivered 1 and 6. The subscriber was present throughout both runs. That is the qualification the broadcast rule needs — fan-out says the value is offered to everyone, not that everyone receives it."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The same unbuffered flow with nobody subscribed behaves completely differently, and this is the part that contradicts the folklore. The documentation says `emit` returns immediately if there are no subscribers, and the value is simply dropped when no replay cache was configured. Measured on this project's JVM target: a thousand emissions to an unbuffered `MutableSharedFlow` with no subscribers completed in about 1 millisecond and left an empty replay cache. Nothing suspended, nothing was queued, and every one of those values is gone."
+                  "text": "The same unbuffered flow with nobody subscribed behaves completely differently, and this is the part that contradicts the folklore. The documentation says `emit` returns immediately if there are no subscribers, and the value is simply dropped when no replay cache was configured. Measured on a JVM target: a thousand emissions to an unbuffered `MutableSharedFlow` with no subscribers completed in about 1 millisecond and left an empty replay cache. Nothing suspended, nothing was queued, and every one of those values is gone."
                 },
                 {
                   "type": "callout",
@@ -11461,11 +11461,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The absence of subscribers changes buffering too, in a way worth stating because it looks like an exception. The documentation is explicit that buffer overflow can only happen when at least one subscriber is not ready for a new value; with no subscribers only the most recent `replay` values are stored, and the overflow strategy has no effect at all. Measured on this project's JVM target: ten emissions to a `replay = 2` flow with no subscribers left a replay cache of the last two."
+                  "text": "The absence of subscribers changes buffering too, in a way worth stating because it looks like an exception. The documentation is explicit that buffer overflow can only happen when at least one subscriber is not ready for a new value; with no subscribers only the most recent `replay` values are stored, and the overflow strategy has no effect at all. Measured on a JVM target: ten emissions to a `replay = 2` flow with no subscribers left a replay cache of the last two."
                 },
                 {
                   "type": "paragraph",
-                  "text": "`tryEmit` is the non-suspending variant, and its result is easy to over-read. It returns `false` only when the strategy is to suspend and there is a subscriber that cannot take the value; with no subscribers it returns `true`. Measured on this project's JVM target: `tryEmit` on an unbuffered flow with no subscribers returned `true` and the replay cache stayed empty — the value was accepted and immediately lost. With one slow subscriber attached, the same call returned `false`."
+                  "text": "`tryEmit` is the non-suspending variant, and its result is easy to over-read. It returns `false` only when the strategy is to suspend and there is a subscriber that cannot take the value; with no subscribers it returns `true`. Measured on a JVM target: `tryEmit` on an unbuffered flow with no subscribers returned `true` and the replay cache stayed empty — the value was accepted and immediately lost. With one slow subscriber attached, the same call returned `false`."
                 },
                 {
                   "type": "callout",
@@ -11513,7 +11513,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The first row deserves as much care as the last, because `replay = 1` looks like it should do that job and does not. A freshly constructed `MutableSharedFlow(replay = 1)` has an empty replay cache until something is emitted into it, so a subscriber arriving before the first emission receives nothing and waits. Measured on this project's JVM target: it received nothing at all, and nothing again after a later `resetReplayCache()`, while a `MutableStateFlow` built alongside it handed over its initial value immediately. The mandatory initial value is what closes that gap, and the `StateFlow` documentation spells out the rest — a shared flow behaves like a state flow only when it is created with `replay = 1` and a drop-oldest strategy, seeded with `tryEmit(initialValue)`, and read through `distinctUntilChanged`. Three ingredients, of which `replay = 1` is one."
+                  "text": "The first row deserves as much care as the last, because `replay = 1` looks like it should do that job and does not. A freshly constructed `MutableSharedFlow(replay = 1)` has an empty replay cache until something is emitted into it, so a subscriber arriving before the first emission receives nothing and waits. Measured on a JVM target: it received nothing at all, and nothing again after a later `resetReplayCache()`, while a `MutableStateFlow` built alongside it handed over its initial value immediately. The mandatory initial value is what closes that gap, and the `StateFlow` documentation spells out the rest — a shared flow behaves like a state flow only when it is created with `replay = 1` and a drop-oldest strategy, seeded with `tryEmit(initialValue)`, and read through `distinctUntilChanged`. Three ingredients, of which `replay = 1` is one."
                 },
                 {
                   "type": "paragraph",
@@ -11584,7 +11584,7 @@
                 },
                 {
                   "type": "code",
-                  "code": "val source: Flow<Data> = repository.observeData()\n\n// Two direct collectors of a cold source are two collections of it.\n// Measured on this project's JVM target: collecting a cold flow twice\n// ran its builder block twice.",
+                  "code": "val source: Flow<Data> = repository.observeData()\n\n// Two direct collectors of a cold source are two collections of it.\n// Measured on a JVM target: collecting a cold flow twice\n// ran its builder block twice.",
                   "language": "kotlin"
                 },
                 {
@@ -11593,7 +11593,7 @@
                 },
                 {
                   "type": "code",
-                  "code": "val shared: SharedFlow<Data> = source.shareIn(\n    scope = scope,\n    started = SharingStarted.WhileSubscribed(),\n    replay = 1,\n)\n\nval state: StateFlow<Data> = source.stateIn(\n    scope = scope,\n    started = SharingStarted.WhileSubscribed(),\n    initialValue = Data.Empty,\n)\n\n// Measured on this project's JVM target: three concurrent subscribers to a\n// shared cold upstream started that upstream exactly once between them.",
+                  "code": "val shared: SharedFlow<Data> = source.shareIn(\n    scope = scope,\n    started = SharingStarted.WhileSubscribed(),\n    replay = 1,\n)\n\nval state: StateFlow<Data> = source.stateIn(\n    scope = scope,\n    started = SharingStarted.WhileSubscribed(),\n    initialValue = Data.Empty,\n)\n\n// Measured on a JVM target: three concurrent subscribers to a\n// shared cold upstream started that upstream exactly once between them.",
                   "language": "kotlin"
                 },
                 {
@@ -11624,7 +11624,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Measured on this project's JVM target, using a cold source that counts how many times it is started and stopped, with one subscriber that arrives and later leaves:"
+                  "text": "Measured on a JVM target, using a cold source that counts how many times it is started and stopped, with one subscriber that arrives and later leaves:"
                 },
                 {
                   "type": "comparison",
@@ -11693,7 +11693,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "And `Eagerly` is not a mistake to be corrected on sight. This repository's own state holders use `stateIn(scope, SharingStarted.Eagerly, ...)`, and it is worth being precise about why, because the tempting reason is wrong. It is **not** that their scope lives as long as the process: the scope only sets the maximum lifetime, and `WhileSubscribed` on that same scope would still stop the upstream every time the subscriber count reached zero. The actual reason is what the upstream is — a derivation over shared history that several screens read — so keeping it running means the figures are already computed the first time a screen opens, and still current after a gap, instead of being re-derived on every entry. What that costs is the derivation running while nobody is looking, which is affordable here because the result is one small value. Ask what the upstream costs to keep running and what restarting it costs; the scope's lifetime is a different question."
+                  "text": "And `Eagerly` is not a mistake to be corrected on sight. Consider a state holder that uses `stateIn(scope, SharingStarted.Eagerly, ...)`, and be precise about why, because the tempting reason is wrong. It is **not** that its scope lives as long as the process: the scope only sets the maximum lifetime, and `WhileSubscribed` on that same scope would still stop the upstream every time the subscriber count reached zero. The actual reason is what the upstream is — say a derivation over shared history that several screens read — so keeping it running means the figures are already computed the first time a screen opens, and still current after a gap, instead of being re-derived on every entry. What that costs is the derivation running while nobody is looking, which is affordable when the result is one small value. Ask what the upstream costs to keep running and what restarting it costs; the scope's lifetime is a different question."
                 }
               ]
             },
@@ -11720,11 +11720,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "That default is worth deciding about rather than inheriting, and it also disposes of a common assumption: stopping the upstream does not send a returning subscriber back to the initial value. Measured on this project's JVM target with a plain `WhileSubscribed()`, a subscriber returning after the upstream had stopped received the value retained from the previous run within a few milliseconds, and the restarted upstream's own first value only 250 milliseconds later. So a screen re-entered much later renders the figure from its previous visit until the restart produces a new one — right when that value is a cheap-to-confirm cache, wrong when a stale figure is misleading. That is `stateIn`, where there is always a value to retain: the same measurement against `shareIn(..., replay = 0)` gave the returning subscriber nothing for those 250 milliseconds, because retention is what fills the gap and at `replay = 0` there is none."
+                  "text": "That default is worth deciding about rather than inheriting, and it also disposes of a common assumption: stopping the upstream does not send a returning subscriber back to the initial value. Measured on a JVM target with a plain `WhileSubscribed()`, a subscriber returning after the upstream had stopped received the value retained from the previous run within a few milliseconds, and the restarted upstream's own first value only 250 milliseconds later. So a screen re-entered much later renders the figure from its previous visit until the restart produces a new one — right when that value is a cheap-to-confirm cache, wrong when a stale figure is misleading. That is `stateIn`, where there is always a value to retain: the same measurement against `shareIn(..., replay = 0)` gave the returning subscriber nothing for those 250 milliseconds, because retention is what fills the gap and at `replay = 0` there is none."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Upstream completion and failure both behave in ways that do not follow from the cold model. Normal completion of the upstream has no effect on subscribers: the sharing coroutine keeps running, the hot result does not complete, and the last value stays. Measured on this project's JVM target with an upstream that emitted once and finished, the collector was still active afterwards and the state still read that value. Failure is different — an exception in the upstream terminates the sharing coroutine without affecting subscribers, and is handled by the scope the sharing was launched in. If an upstream can fail recoverably, `catch` or `retry` belongs before the `shareIn` or `stateIn` call, where it can still see the failure."
+                  "text": "Upstream completion and failure both behave in ways that do not follow from the cold model. Normal completion of the upstream has no effect on subscribers: the sharing coroutine keeps running, the hot result does not complete, and the last value stays. Measured on a JVM target with an upstream that emitted once and finished, the collector was still active afterwards and the state still read that value. Failure is different — an exception in the upstream terminates the sharing coroutine without affecting subscribers, and is handled by the scope the sharing was launched in. If an upstream can fail recoverably, `catch` or `retry` belongs before the `shareIn` or `stateIn` call, where it can still see the failure."
                 },
                 {
                   "type": "paragraph",
@@ -11835,7 +11835,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "What a channel does not provide deserves the same care, because it is the distinction this Lesson ends on. Receiving an element removes it, and nothing tracks what happens next. Measured on this project's JVM target with five queued elements and one worker: the worker took 1, 2 and 3 and finished 1 and 2 before being cancelled part-way through 3. A replacement receiver then drained 4 and 5 — and 3 was never redelivered and never finished by anyone. A channel decides which receiver gets an element, not that the work on it ever completes."
+                  "text": "What a channel does not provide deserves the same care, because it is the distinction this Lesson ends on. Receiving an element removes it, and nothing tracks what happens next. Measured on a JVM target with five queued elements and one worker: the worker took 1, 2 and 3 and finished 1 and 2 before being cancelled part-way through 3. A replacement receiver then drained 4 and 5 — and 3 was never redelivered and never finished by anyone. A channel decides which receiver gets an element, not that the work on it ever completes."
                 },
                 {
                   "type": "paragraph",
@@ -12033,7 +12033,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "This project has `ui`, `domain` and `data` packages and a three-layer diagram in its README. The screen names `LoanDatabase`, constructs `LoanStore` and compares the dates itself, so the UI depends on storage directly and the `domain` package is not on the path at all. Change the database and the screen changes. Change the overdue rule and you change a screen. The folder names describe an intention that nothing enforces; the import list describes the architecture, and only one of the two is true. Android's own recommendations state the same rule in stronger terms than a folder name can — components in the UI layer \"don't interact directly with a data source\" — but a rule in a document is not a boundary in a codebase either. Only the imports are."
+                  "text": "The codebase this example comes from has `ui`, `domain` and `data` packages and a three-layer diagram in its README. The screen names `LoanDatabase`, constructs `LoanStore` and compares the dates itself, so the UI depends on storage directly and the `domain` package is not on the path at all. Change the database and the screen changes. Change the overdue rule and you change a screen. The folder names describe an intention that nothing enforces; the import list describes the architecture, and only one of the two is true. Android's own recommendations state the same rule in stronger terms than a folder name can — components in the UI layer \"don't interact directly with a data source\" — but a rule in a document is not a boundary in a codebase either. Only the imports are."
                 },
                 {
                   "type": "paragraph",
@@ -12587,7 +12587,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "This repository contains a useful example of the honest middle. `LessonStudyRepository` is an interface with exactly one implementation, `LocalLessonStudyRepository`, and counted alone that pair looks like the anti-pattern above. What makes it a boundary is the contract: it is written in the study feature's vocabulary — mark a Lesson studied, unmark it, ask whether one is studied, read the studied Lessons in a stated order — and it names no database type at all, so the entire storage mechanism can change without a consumer being edited. The point is not that this application is a model to copy; it is that the number of implementations was never the test, and the shape of the contract always was."
+                  "text": "Here is an example of the honest middle. Take a `LessonStudyRepository` interface with exactly one implementation, `LocalLessonStudyRepository`; counted alone, that pair looks like the anti-pattern above. What makes it a boundary is the contract: it is written in the study feature's vocabulary — mark a Lesson studied, unmark it, ask whether one is studied, read the studied Lessons in a stated order — and it names no database type at all, so the entire storage mechanism can change without a consumer being edited. The point is not the example itself; it is that the number of implementations was never the test, and the shape of the contract always was."
                 },
                 {
                   "type": "paragraph",
@@ -12745,7 +12745,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "This repository is a direct example. `LessonStudyRepository` sits beside the study feature that consumes it, `LocalLessonStudyRepository` sits under `data/local`, no Room type is visible above that package, and both compile in the same `:shared` module. The boundary is real, has a direction, and the module count is one. Android's own guidance points the same way when it says small apps may place data-layer types in \"a `data` package or module\", and the modularization guide is blunt about the other direction: \"It doesn't always make sense to modularize your project\", and every module \"brings a certain amount of overhead in the form of increased build complexity and boilerplate code\". So: not every layer needs a module, not every feature needs one, and more modules is not better architecture any more than more layers is. When and how to draw build boundaries is the build and modularization curriculum's subject, and this unit stops here."
+                  "text": "The previous lesson's example is a direct case. A `LessonStudyRepository` sits beside the study feature that consumes it, a `LocalLessonStudyRepository` sits under `data/local`, no Room type is visible above that package, and both compile in the same shared module. The boundary is real, has a direction, and the module count is one. Android's own guidance points the same way when it says small apps may place data-layer types in \"a `data` package or module\", and the modularization guide is blunt about the other direction: \"It doesn't always make sense to modularize your project\", and every module \"brings a certain amount of overhead in the form of increased build complexity and boilerplate code\". So: not every layer needs a module, not every feature needs one, and more modules is not better architecture any more than more layers is. When and how to draw build boundaries is the build and modularization curriculum's subject, and this unit stops here."
                 },
                 {
                   "type": "paragraph",
@@ -12899,7 +12899,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The fourth row is where a state holder that is not a `ViewModel` shows up, and this repository has five of them. `StudyProgressStateHolder`, `ProgressStateHolder`, `MistakeReviewStateHolder`, `InterviewHistoryStateHolder` and `SavedQuestionStateHolder` are plain classes in shared code, each holding exactly the responsibility named above — a current value published for the UI, one place it changes, results read back from a repository — with no framework base class anywhere. They exist because their state is shared by several destinations and has to survive one of them being destroyed, which is a lifetime requirement no screen-level owner can satisfy. The class is a consequence of the lifetime, not the other way round."
+                  "text": "The fourth row is where a state holder that is not a `ViewModel` shows up. Picture an application with several of them — a study-progress holder, a progress holder, a mistake-review holder, an interview-history holder and a saved-question holder — plain classes in shared code, each holding exactly the responsibility named above — a current value published for the UI, one place it changes, results read back from a repository — with no framework base class anywhere. They exist because their state is shared by several destinations and has to survive one of them being destroyed, which is a lifetime requirement no screen-level owner can satisfy. The class is a consequence of the lifetime, not the other way round."
                 },
                 {
                   "type": "paragraph",
@@ -12912,7 +12912,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "How either object is actually constructed and handed to the screen — by a factory, by a container, by the caller — is a separate decision with its own trade-offs, and the dependency-injection curriculum owns it. This application happens to supply both kinds through a container; that is a fact about the application, not part of what a state holder is."
+                  "text": "How either object is actually constructed and handed to the screen — by a factory, by a container, by the caller — is a separate decision with its own trade-offs, and the dependency-injection curriculum owns it. An application may well supply both kinds through the same container; that is a fact about its wiring, not part of what a state holder is."
                 },
                 {
                   "type": "paragraph",
@@ -13105,7 +13105,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "**Which owner exists is a property of the host, not of shared code.** This matters here because the `ViewModel` class in this repository genuinely is shared code: the resolved `androidx.lifecycle:lifecycle-viewmodel` sources behind the `org.jetbrains.androidx.lifecycle` artifacts this project declares at **2.11.0-beta01** put `ViewModel`, `ViewModelStore` and `ViewModelStoreOwner` in `commonMain`, and all fifteen of this app's ViewModels live in shared code. Sharing the class does not share the lifetime, and the hosts differ:"
+                  "text": "**Which owner exists is a property of the host, not of shared code.** This matters because in a Compose Multiplatform project the `ViewModel` class genuinely can be shared code: the `androidx.lifecycle:lifecycle-viewmodel` sources behind the `org.jetbrains.androidx.lifecycle` artifacts put `ViewModel`, `ViewModelStore` and `ViewModelStoreOwner` in `commonMain` at **2.11.0-beta01**, so every ViewModel in such a project can live in shared code. Sharing the class does not share the lifetime, and the hosts differ:"
                 },
                 {
                   "type": "bullet_list",
@@ -13118,7 +13118,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "This application installs it. `App.kt` passes `rememberSaveableStateHolderNavEntryDecorator()` and then `rememberViewModelStoreNavEntryDecorator()` to its `NavDisplay`, which is what gives each back-stack entry its own `ViewModelStore`. That is why rungs four and five in the table have different answers here: navigating forward leaves the entry alive and therefore its store, while popping the entry destroys it and therefore clears the store. Neither answer would follow from the shared class by itself, and an application that did not install the decorator would get different ones."
+                  "text": "An application installs it explicitly. Passing `rememberSaveableStateHolderNavEntryDecorator()` and then `rememberViewModelStoreNavEntryDecorator()` to a `NavDisplay` is what gives each back-stack entry its own `ViewModelStore`. That is why rungs four and five in the table have different answers once it is installed: navigating forward leaves the entry alive and therefore its store, while popping the entry destroys it and therefore clears the store. Neither answer would follow from the shared class by itself, and an application that did not install the decorator would get different ones."
                 },
                 {
                   "type": "callout",
@@ -13169,7 +13169,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Saved-state mechanisms are the answer to the last rung specifically, and this lesson names them and stops. There is a mechanism for handing a small amount of information to the system so a screen can be reconstructed after the process is gone — `SavedStateHandle` on the ViewModel side, `rememberSaveable` on the Composition side — and there is ordinary application storage for data of any size. Which to use, what fits, and the API surface of either belong to the lifecycle-and-navigation curriculum and to the persistence curriculum respectively. What belongs here is only the architectural consequence: **persistence is a separate responsibility with a separate owner, and a state holder that has not been given one does not have it.** This repository is a fair illustration of the boundary and not of the mechanism — it uses `rememberSaveable` for small UI flags and does not use `SavedStateHandle` in production code at all, so nothing here demonstrates saved state for a screen owner."
+                  "text": "Saved-state mechanisms are the answer to the last rung specifically, and this lesson names them and stops. There is a mechanism for handing a small amount of information to the system so a screen can be reconstructed after the process is gone — `SavedStateHandle` on the ViewModel side, `rememberSaveable` on the Composition side — and there is ordinary application storage for data of any size. Which to use, what fits, and the API surface of either belong to the lifecycle-and-navigation curriculum and to the persistence curriculum respectively. What belongs here is only the architectural consequence: **persistence is a separate responsibility with a separate owner, and a state holder that has not been given one does not have it.** Plenty of applications illustrate the boundary without illustrating the mechanism — they use `rememberSaveable` for small UI flags and never reach for `SavedStateHandle` at all, so nothing in them demonstrates saved state for a screen owner."
                 },
                 {
                   "type": "callout",
@@ -13307,7 +13307,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Neither column wins. The sealed hierarchy is better wherever the screen genuinely has modes that exclude each other, and the data class is better wherever facts are genuinely independent and can be true at the same time. Those are properties of the product, so a codebase can correctly contain both — this repository does. Most of its sixteen UI-state types are sealed hierarchies, because most of its screens either show content or do not. `PracticeBuilderUiState` is a data class, and reading the type says why: it is a configuration screen whose fields — scope, question count, levels, source, availability — are simultaneously true and independently editable, and nothing about it has modes. Its own documentation makes a different point about the same shape, and it is the one the next section is built on: the screen \"never decides whether a level may be deselected, whether a source may be chosen, or whether Start is allowed\", because \"an invariant a Composable enforces is one that a second Composable can break\"."
+                  "text": "Neither column wins. The sealed hierarchy is better wherever the screen genuinely has modes that exclude each other, and the data class is better wherever facts are genuinely independent and can be true at the same time. Those are properties of the product, so a codebase can correctly contain both. Take an application whose UI-state types are mostly sealed hierarchies, because most of its screens either show content or do not. A `PracticeBuilderUiState` in the same codebase is a data class, and reading the type says why: it is a configuration screen whose fields — scope, question count, levels, source, availability — are simultaneously true and independently editable, and nothing about it has modes. A second point about the same shape is the one the next section is built on: such a screen never decides whether a level may be deselected, whether a source may be chosen, or whether Start is allowed, because an invariant a Composable enforces is one that a second Composable can break."
                 },
                 {
                   "type": "paragraph",
@@ -13351,7 +13351,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The rule the nesting expresses is a scoping rule: **a failure is modelled at the level of the thing that failed.** This repository does exactly this and records the reason in the code. `LearningLessonUiState.Content` carries a nested `studyState` rather than a fourth screen state, because the learner's study record and the lesson document fail independently — an unreadable record costs the studied indicator and the mark control, while the lesson still reads perfectly well. Promoting it, the comment says, \"would turn a missing indicator into a page the learner cannot read at all\". That is the partial-state decision stated as a consequence rather than as a preference."
+                  "text": "The rule the nesting expresses is a scoping rule: **a failure is modelled at the level of the thing that failed.** A worked example does exactly this and records the reason in the code. A `LearningLessonUiState.Content` carries a nested `studyState` rather than a fourth screen state, because the reader's study record and the lesson document fail independently — an unreadable record costs the studied indicator and the mark control, while the lesson still reads perfectly well. Promoting it would turn a missing indicator into a page the reader cannot read at all. That is the partial-state decision stated as a consequence rather than as a preference."
                 },
                 {
                   "type": "paragraph",
@@ -13631,13 +13631,13 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "`viewModelScope` is the concrete instance of owner-scoped work in this stack, and it is worth being accurate about what it is, because it is often described as more than it is. In the resolved `androidx.lifecycle` sources behind the `org.jetbrains.androidx.lifecycle` artifacts this project declares at **2.11.0-beta01**, it is a `commonMain` extension property on `ViewModel` that lazily creates one scope, registers it with the ViewModel as a closeable resource, and hands back the same instance afterwards. Three facts follow from how it is built:"
+                  "text": "`viewModelScope` is the concrete instance of owner-scoped work in this stack, and it is worth being accurate about what it is, because it is often described as more than it is. In the `androidx.lifecycle` sources behind the `org.jetbrains.androidx.lifecycle` artifacts at **2.11.0-beta01**, it is a `commonMain` extension property on `ViewModel` that lazily creates one scope, registers it with the ViewModel as a closeable resource, and hands back the same instance afterwards. Three facts follow from how it is built:"
                 },
                 {
                   "type": "bullet_list",
                   "items": [
                     "Its context is a `SupervisorJob`, so one failing operation does not cancel its siblings.",
-                    "It attempts `Dispatchers.Main.immediate`, and where the main dispatcher is unavailable — the source names Native environments and JVM desktop environments such as Swing — it falls back to an empty context, so the coroutine runs in the caller's context instead. **It is not true that `viewModelScope` always runs on the main dispatcher.** This repository supplies `kotlinx-coroutines-swing` to its desktop application, which is what makes a main dispatcher available on that target.",
+                    "It attempts `Dispatchers.Main.immediate`, and where the main dispatcher is unavailable — the source names Native environments and JVM desktop environments such as Swing — it falls back to an empty context, so the coroutine runs in the caller's context instead. **It is not true that `viewModelScope` always runs on the main dispatcher.** Supplying `kotlinx-coroutines-swing` to a desktop application is what makes a main dispatcher available on that target.",
                     "It is registered under a key, so clearing the ViewModel closes it, and closing it cancels its context. Cancellation is not a separate arrangement someone has to remember; it is what being owned means."
                   ]
                 },
@@ -13721,7 +13721,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "This repository is a worked example of exactly that. It defines an `AppCoroutineScope` — a distinct type wrapping a scope with a `SupervisorJob`, deliberately named so that injecting it is unambiguous — and its documentation states the architectural reason in its own words: the caches built on it \"are shared by several screens and survive a navigation entry being destroyed, so they cannot belong to a `viewModelScope`\". The five state holders from the first lesson of this unit are the components that receive it. The lifetime requirement came first; the scope, the type and the injection are the consequences."
+                  "text": "Here is a worked example of exactly that. An application defines an `AppCoroutineScope` — a distinct type wrapping a scope with a `SupervisorJob`, deliberately named so that injecting it is unambiguous — for a stated architectural reason: the caches built on it are shared by several screens and survive a navigation entry being destroyed, so they cannot belong to a `viewModelScope`. The shared state holders from the first lesson of this unit are the components that receive it. The lifetime requirement came first; the scope, the type and the injection are the consequences."
                 },
                 {
                   "type": "paragraph",
@@ -13952,11 +13952,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "This application is useful evidence for the boundary and poor evidence for the coordination. It has five repository interfaces — `AssessmentRepository`, `CurriculumRepository`, `LessonStudyRepository`, `SavedQuestionRepository` and `LearningContentRepository` — each declared in the package of the feature that consumes it, and each implemented somewhere its consumers never name. Four of the implementations sit under `data/local`, over the database; the fifth, `BundledLearningContentRepository`, sits under `curriculum/learning/content`, because the learning document it serves is a bundled file rather than a table. That split is itself the point — the implementations are grouped by the source they work with, and the consumers are unaffected by which one that is. No DAO is used anywhere above `data/local`, so the entry-point rule holds here as a fact rather than as an intention."
+                  "text": "A small worked codebase is useful evidence for the boundary and poor evidence for the coordination. Take an application with five repository interfaces — `AssessmentRepository`, `CurriculumRepository`, `LessonStudyRepository`, `SavedQuestionRepository` and `LearningContentRepository` — each declared in the package of the feature that consumes it, and each implemented somewhere its consumers never name. Four of the implementations sit under `data/local`, over the database; the fifth, a `BundledLearningContentRepository`, sits beside the content feature, because the learning document it serves is a bundled file rather than a table. That split is itself the point — the implementations are grouped by the source they work with, and the consumers are unaffected by which one that is. No DAO is used anywhere above `data/local`, so the entry-point rule holds there as a fact rather than as an intention."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The limits matter as much as the finding. This application is small and entirely local-first: there is no network layer at all, no fact with a second source, and therefore no conflict for any repository here to resolve. What its repositories own is a data contract and the translation from stored rows into application types — which is enough to justify the boundary and nothing like the full list. The coordination the next lesson works through cannot be shown from this codebase, and that lesson says so and builds its example deliberately."
+                  "text": "The limits matter as much as the finding. That application is small and entirely local-first: there is no network layer at all, no fact with a second source, and therefore no conflict for any of its repositories to resolve. What its repositories own is a data contract and the translation from stored rows into application types — which is enough to justify the boundary and nothing like the full list. The coordination the next lesson works through cannot be shown from a codebase like that, so that lesson says so and builds its example deliberately."
                 },
                 {
                   "type": "callout",
@@ -14307,11 +14307,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "This application's own version of the idea is much simpler, and is worth reading as a limit rather than as a model. `StudyProgressStateHolder` publishes the studied-lesson state that every Learn surface renders, and its documentation is explicit that it is not the truth: \"[repository] remains the source of truth. Nothing is stored here that the database does not already hold: this is the in-memory projection the UI observes, read back from the repository after every mutation rather than assembled independently.\" That is a cache named correctly — one authority, one projection, no second writer, and a stated reason for the projection to exist at all."
+                  "text": "A much simpler version of the idea is worth reading as a limit rather than as a model. A `StudyProgressStateHolder` publishes the studied-lesson state that every study surface renders, and it is explicit that it is not the truth: the repository remains the source of truth, nothing is stored in the holder that the database does not already hold, and what the holder offers is the in-memory projection the UI observes, read back from the repository after every mutation rather than assembled independently. That is a cache named correctly — one authority, one projection, no second writer, and a stated reason for the projection to exist at all."
                 },
                 {
                   "type": "paragraph",
-                  "text": "It is also no evidence whatsoever for the reasoning above. With no network layer, no fact in this application has two candidate authorities, so nothing here has ever had to resolve a conflict or choose between a device and a service. It demonstrates the vocabulary being used precisely. The decision this lesson teaches is demonstrated by the hypothetical library service, and saying which is which is part of using a codebase as evidence honestly."
+                  "text": "It is also no evidence whatsoever for the reasoning above. With no network layer, no fact in such an application has two candidate authorities, so nothing in it has ever had to resolve a conflict or choose between a device and a service. It demonstrates the vocabulary being used precisely. The decision this lesson teaches is demonstrated by the hypothetical library service, and saying which example shows which is part of using a codebase as evidence honestly."
                 },
                 {
                   "type": "callout",
@@ -14340,7 +14340,7 @@
         {
           "id": "lesson_observable_or_one_shot_api",
           "title": "An Observable API, or a One-Shot Read?",
-          "summary": "Whether a repository exposes a stream or a suspending read is decided by what its consumer must observe, not by whether the underlying data can change. This lesson compares both shapes on the same feature, states what each one costs the caller, and uses this application's entirely one-shot repositories — beside the observable state it still provides — as a counterexample to the rule that a modern repository always returns Flow.",
+          "summary": "Whether a repository exposes a stream or a suspending read is decided by what its consumer must observe, not by whether the underlying data can change. This lesson compares both shapes on the same feature, states what each one costs the caller, and uses a codebase with entirely one-shot repositories — beside the observable state it still provides — as a counterexample to the rule that a modern repository always returns Flow.",
           "primarySubtopicIds": [
             "repository_pattern"
           ],
@@ -14480,11 +14480,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "This learning application is the sharpest available counterexample to the stream default, and it is worth reading carefully because it is a real design with a real reason. **Every repository method in this application is a one-shot `suspend` function; no repository here returns a `Flow`** — across all five interfaces and their implementations. And yet the application has observable studied-lesson state on every Learn surface, updating the Topic and Unit screens behind the reader while they mark a lesson in the reader."
+                  "text": "A sharp counterexample to the stream default is worth working through, because it is a real design with a real reason. **Consider an application in which every repository method is a one-shot `suspend` function and no repository returns a `Flow`** — across all five of its interfaces and their implementations. And yet it has observable studied-lesson state on every study surface, updating the topic and unit screens behind the reader while they mark a lesson as studied."
                 },
                 {
                   "type": "paragraph",
-                  "text": "It obtains that one level up. `StudyProgressStateHolder` reads from `LessonStudyRepository`, publishes a `StateFlow` of the resulting projection, and re-reads from the repository after every mutation. The repository stays one-shot; the observation and the projection belong to a holder that outlives any one navigation entry."
+                  "text": "It obtains that one level up. A `StudyProgressStateHolder` reads from the `LessonStudyRepository`, publishes a `StateFlow` of the resulting projection, and re-reads from the repository after every mutation. The repository stays one-shot; the observation and the projection belong to a holder that outlives any one navigation entry."
                 },
                 {
                   "type": "comparison",
@@ -14494,7 +14494,7 @@
                   ],
                   "rows": [
                     [
-                      "Repositories keep a small one-shot contract, and the projection several screens share is assembled in one place — which this application needed anyway, because that state has to survive any single destination being destroyed",
+                      "Repositories keep a small one-shot contract, and the projection several screens share is assembled in one place — which that application needed anyway, because the state has to survive any single destination being destroyed",
                       "Every writer must go through the same coordination path, because the published projection is only current if the holder re-reads after the write. A write that reached the database by another route would leave the visible state stale with nothing to notice"
                     ],
                     [
@@ -14505,7 +14505,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Neither arrangement is better in general. An observable repository moves the obligation in the right-hand column into the data layer, which is exactly what you want when several independent consumers each need their own observation of one fact. This application's consumers needed one shared projection instead, so it put the observation where the sharing already was. That is the same decision the lesson opened with, answered from this product's requirements — which is the only way it can be answered."
+                  "text": "Neither arrangement is better in general. An observable repository moves the obligation in the right-hand column into the data layer, which is exactly what you want when several independent consumers each need their own observation of one fact. The consumers in that example needed one shared projection instead, so the observation went where the sharing already was. That is the same decision the lesson opened with, answered from one product's requirements — which is the only way it can be answered."
                 },
                 {
                   "type": "callout",
@@ -14584,7 +14584,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Three types and two mapping functions, and the differences between them are not spelling. The payload carries a date as text because that is what the wire says. The entity carries epoch milliseconds and a synchronisation flag that exists only because the device stores things and can be offline. The application type carries a date, a renewal *allowance* the application computed from a limit the service never sends, and an id type nothing outside this app would recognise. Each is shaped by a different set of constraints, which is the strongest case for their being three."
+                  "text": "Three types and two mapping functions, and the differences between them are not spelling. The payload carries a date as text because that is what the wire says. The entity carries epoch milliseconds and a synchronisation flag that exists only because the device stores things and can be offline. The application type carries a date, a renewal *allowance* the application computed from a limit the service never sends, and an id type nothing outside the application would recognise. Each is shaped by a different set of constraints, which is the strongest case for their being three."
                 },
                 {
                   "type": "comparison",
@@ -14634,7 +14634,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "This application demonstrates the small version of the boundary. `LocalLessonStudyRepository` maps `StudiedLessonEntity` to `StudiedLesson`, and no Room type is visible anywhere above `data/local`. It is two fields, so the mapping cost is a handful of lines and completely visible, and what it buys is equally visible: the study feature's types carry no storage annotations, and the persistence layer can be changed without the feature noticing. It is also not a rule the application applies everywhere — `LearningContentRepository` returns the learning document's own types directly, because that document already is the application's representation and there is nothing to translate. One codebase, both answers, each following from its own change rates."
+                  "text": "A worked example demonstrates the small version of the boundary. A `LocalLessonStudyRepository` maps a `StudiedLessonEntity` to a `StudiedLesson`, and no Room type is visible anywhere above `data/local`. It is two fields, so the mapping cost is a handful of lines and completely visible, and what it buys is equally visible: the study feature's types carry no storage annotations, and the persistence layer can be changed without the feature noticing. It need not be a rule the same codebase applies everywhere — a `LearningContentRepository` beside it can return the learning document's own types directly, because that document already is the application's representation and there is nothing to translate. One codebase, both answers, each following from its own change rates."
                 },
                 {
                   "type": "paragraph",
@@ -14896,7 +14896,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "This repository is a small piece of evidence for the same separation. It has no package named `domain` and no layer named one, and it does have application behaviour that is neither presentation nor storage — services that orchestrate, policies that decide, derivations that compute — all of it sitting in the feature packages that consume it rather than in a layer created to receive it. The next lesson reads those types closely. Here they show only that the behaviour and the layer are separate decisions, which is evidence about placement rather than a design to copy or a claim that a larger application would be wrong to create the layer."
+                  "text": "A small worked codebase is evidence for the same separation. It has no package named `domain` and no layer named one, and it does have application behaviour that is neither presentation nor storage — services that orchestrate, policies that decide, derivations that compute — all of it sitting in the feature packages that consume it rather than in a layer created to receive it. The next lesson reads those types closely. Here they show only that the behaviour and the layer are separate decisions, which is a point about placement rather than a design to copy or a claim that a larger application would be wrong to create the layer."
                 },
                 {
                   "type": "paragraph",
@@ -15101,7 +15101,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "This repository is useful evidence here precisely because it did not adopt the convention. **There is no class named `UseCase` or `Interactor` anywhere in it**, and no base class or `invoke` idiom standing in for one. What it does have is application behaviour with several different names, chosen by what each type owns."
+                  "text": "That same codebase is useful evidence here precisely because it did not adopt the convention. **There is no class named `UseCase` or `Interactor` anywhere in it**, and no base class or `invoke` idiom standing in for one. What it does have is application behaviour with several different names, chosen by what each type owns."
                 },
                 {
                   "type": "bullet_list",
@@ -15117,7 +15117,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "It is tempting to relabel those types as \"really use cases\", and the comparison is fair only as far as the responsibilities go. `MistakeReviewService` coordinates repositories and applies a rule for several callers, which is exactly the responsibility this lesson says earns an operation a type; `ContinueLearningPolicy` is a rule with one caller that still deserves its own home, which is the single-caller case the reuse-only test gets wrong. Those are useful illustrations. What they are not is a claim about the code's identity: nothing in this repository is named a use case, and calling it one would be reading the lesson back into the codebase rather than reading the codebase."
+                  "text": "It is tempting to relabel those types as \"really use cases\", and the comparison is fair only as far as the responsibilities go. `MistakeReviewService` coordinates repositories and applies a rule for several callers, which is exactly the responsibility this lesson says earns an operation a type; `ContinueLearningPolicy` is a rule with one caller that still deserves its own home, which is the single-caller case the reuse-only test gets wrong. Those are useful illustrations. What they are not is a claim about the code's identity: nothing in that codebase is named a use case, and calling it one would be reading the lesson back into the code rather than reading the code."
                 },
                 {
                   "type": "paragraph",
@@ -15291,7 +15291,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "This repository supplies one small piece of local evidence, and its limits are worth stating with it. `ContinueLearningPolicy` decides which lesson a reader should study next from current content and the reader's studied identities and — as its own documentation insists — from nothing else: no clock, no repository, no navigation history, no persistence. That constraint is what makes it the same answer everywhere it is asked, and it names no platform type, so nothing about where it can run depends on a framework. It is a genuine example of a rule stated in the application's own vocabulary. It is not evidence about a business domain: this application's \"policy\" is about a curriculum rather than about lending, and the renewal scenario above is a worked design rather than something lifted from this codebase."
+                  "text": "One small example supplies local evidence, and its limits are worth stating with it. A `ContinueLearningPolicy` decides which lesson a reader should study next from current content and the reader's studied identities and — as its own documentation insists — from nothing else: no clock, no repository, no navigation history, no persistence. That constraint is what makes it the same answer everywhere it is asked, and it names no platform type, so nothing about where it can run depends on a framework. It is a genuine example of a rule stated in an application's own vocabulary. It is not evidence about a business domain: that policy is about a curriculum rather than about lending, and the renewal scenario above is a worked design rather than something lifted from the same codebase."
                 },
                 {
                   "type": "paragraph",
@@ -15451,7 +15451,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "This repository is a worked instance of arrangement B, and it is worth checking rather than assuming, because package names prove nothing on their own. `LessonStudyRepository` is declared in `lesson_study/repository`, beside the study feature that consumes it, and its contract is written in that feature's vocabulary — mark a lesson studied, unmark it, ask whether one is studied, read the studied lessons in a stated order — with no database type in it. `LocalLessonStudyRepository` sits under `data/local/lesson_study/repository` and imports `lesson_study.StudiedLesson` and `lesson_study.repository.LessonStudyRepository` in order to implement it. No feature in the shared module imports anything from `data.local`: the detail names the policy, and the policy names no detail. The only code outside `data/local` that names it at all is each platform's composition root, which imports the data modules in order to register the implementations — wiring rather than a source dependency from policy to detail, which is the distinction the last section of this lesson draws. All five of the application's repository interfaces are arranged that way, and all of it compiles inside one Gradle module — which is the cleanest available refutation of the idea that inverting a dependency requires a separate build unit."
+                  "text": "Here is a worked instance of arrangement B, and it is worth checking rather than assuming, because package names prove nothing on their own. `LessonStudyRepository` is declared in `lesson_study/repository`, beside the study feature that consumes it, and its contract is written in that feature's vocabulary — mark a lesson studied, unmark it, ask whether one is studied, read the studied lessons in a stated order — with no database type in it. `LocalLessonStudyRepository` sits under `data/local/lesson_study/repository` and imports `lesson_study.StudiedLesson` and `lesson_study.repository.LessonStudyRepository` in order to implement it. No feature in the shared module imports anything from `data.local`: the detail names the policy, and the policy names no detail. The only code outside `data/local` that names it at all is each platform's composition root, which imports the data modules in order to register the implementations — wiring rather than a source dependency from policy to detail, which is the distinction the last section of this lesson draws. All five of that application's repository interfaces are arranged that way, and all of it compiles inside one Gradle module — which is the cleanest available refutation of the idea that inverting a dependency requires a separate build unit."
                 },
                 {
                   "type": "callout",
@@ -15694,7 +15694,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Modules are the last thing to keep separate. An architectural boundary may be expressed inside one build unit or across several, and the dependency rule is about source dependencies either way. Aligning a layer with a Gradle module makes the direction enforceable rather than conventional, and costs build complexity and configuration; this repository holds five consumer-owned repository contracts with implementations depending inward, and compiles all of them in one module. The module graph, convention plugins, build performance and whether to organise modules by feature or by layer belong to the build and modularization curriculum, which this unit names once and leaves alone."
+                  "text": "Modules are the last thing to keep separate. An architectural boundary may be expressed inside one build unit or across several, and the dependency rule is about source dependencies either way. Aligning a layer with a Gradle module makes the direction enforceable rather than conventional, and costs build complexity and configuration; the worked example in this unit holds five consumer-owned repository contracts with implementations depending inward, and compiles all of them in one module. The module graph, convention plugins, build performance and whether to organise modules by feature or by layer belong to the build and modularization curriculum, which this unit names once and leaves alone."
                 },
                 {
                   "type": "paragraph",
@@ -16496,11 +16496,11 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "This repository supplies a useful piece of evidence for the whole argument. `LessonScrollStateReducer` takes raw scroll positions and turns them into a `LessonScrollUiState` describing whether the reading chrome should be shown — a transition function, named a reducer, in an application nobody would describe as MVI. It is also instructive about how loosely the word travels: it is not a pure function of a state and an input, because it accumulates scroll distance across calls in its own fields. Both observations point the same way. An architectural technique — an explicit transition, a state value, a closed input type — is available to any design that finds it useful, and using one does not enrol a codebase in a pattern. **This is evidence that techniques travel independently of labels; it is not evidence that this application \"uses MVI\", and reading it that way would be exactly the inference this unit rejects.**"
+                  "text": "One more piece of evidence for the whole argument. A `LessonScrollStateReducer` takes raw scroll positions and turns them into a `LessonScrollUiState` describing whether the reading chrome should be shown — a transition function, named a reducer, in an application nobody would describe as MVI. It is also instructive about how loosely the word travels: it is not a pure function of a state and an input, because it accumulates scroll distance across calls in its own fields. Both observations point the same way. An architectural technique — an explicit transition, a state value, a closed input type — is available to any design that finds it useful, and using one does not enrol a codebase in a pattern. **This is evidence that techniques travel independently of labels; it is not evidence that the application \"uses MVI\", and reading it that way would be exactly the inference this unit rejects.**"
                 },
                 {
                   "type": "paragraph",
-                  "text": "The same codebase's own practice-configuration screen is a live instance of design A. `PracticeBuilderViewModel` holds one immutable `PracticeBuilderUiState` data class, exposes it read-only, takes named callbacks — select a count, toggle a level, select a source, retry — holds no reference to any UI instance, derives whether Start is allowed from the state rather than accepting it from a caller, and sends its one outward occurrence through a separate channel because a request to start a session is not a description of what the screen currently is. There is no action type and no reducer. Classified by the six answers it is unambiguous; labelled, it is whatever the team says, and the label would change nothing about how it behaves."
+                  "text": "A practice-configuration screen from the same codebase is a live instance of design A. `PracticeBuilderViewModel` holds one immutable `PracticeBuilderUiState` data class, exposes it read-only, takes named callbacks — select a count, toggle a level, select a source, retry — holds no reference to any UI instance, derives whether Start is allowed from the state rather than accepting it from a caller, and sends its one outward occurrence through a separate channel because a request to start a session is not a description of what the screen currently is. There is no action type and no reducer. Classified by the six answers it is unambiguous; labelled, it is whatever the team says, and the label would change nothing about how it behaves."
                 },
                 {
                   "type": "paragraph",
@@ -16712,11 +16712,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The conclusion is a design rule worth stating plainly: **if the product requires history, current state is not enough, and the requirement has to name the occurrences worth preserving as recorded facts in their own right.** \"Show the reader their last five practice sessions and how each was scored\" is not satisfied by holding the latest score better; it is satisfied by deciding that each scored session is a fact the application keeps. That is a modelling decision with a cost — more records, a retention policy, a decision about what counts as the same session — and it is made deliberately, for a stated requirement. It is emphatically not a reason to record every change to everything and derive all current state from the log; that is an architecture of its own, with consequences this curriculum does not teach and this app's requirements do not ask for."
+                  "text": "The conclusion is a design rule worth stating plainly: **if the product requires history, current state is not enough, and the requirement has to name the occurrences worth preserving as recorded facts in their own right.** \"Show the reader their last five practice sessions and how each was scored\" is not satisfied by holding the latest score better; it is satisfied by deciding that each scored session is a fact the application keeps. That is a modelling decision with a cost — more records, a retention policy, a decision about what counts as the same session — and it is made deliberately, for a stated requirement. It is emphatically not a reason to record every change to everything and derive all current state from the log; that is an architecture of its own, with consequences this curriculum does not teach and most products do not ask for."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Hold the two dimensions together one last time, because the useful quadrant is the one the three-way comparison hides. Requirements A and B are the *same* kind of thing at two retentions, and a fact that is both current state and durable is the ordinary case rather than a special one: the scored session, the list of loans, the reader's studied lessons. This repository is a plain example — a studied lesson is a durable fact in the database and a current truth projected in memory for the screens that render it, and its own documentation is careful to say which of the two is authoritative. What varies across the three requirements is not the nature of the fact but what the product promised about it, and that is the only input the decision ever had."
+                  "text": "Hold the two dimensions together one last time, because the useful quadrant is the one the three-way comparison hides. Requirements A and B are the *same* kind of thing at two retentions, and a fact that is both current state and durable is the ordinary case rather than a special one: the scored session, the list of loans, the reader's studied lessons. A plain example: a studied lesson is a durable fact in the database and a current truth projected in memory for the screens that render it, and a codebase that models it this way should be careful to say which of the two is authoritative. What varies across the three requirements is not the nature of the fact but what the product promised about it, and that is the only input the decision ever had."
                 },
                 {
                   "type": "callout",
@@ -17001,11 +17001,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "**Three — the studied-lesson and progress projections several screens share.** Now the requirement changes shape. More than one destination renders the same truth, those destinations are simultaneously alive on a back stack, and a change made in one must be visible in the others when the reader navigates back. Notice first what does **not** force the rung, because this is where the argument is most often waved through. Several screens needing one fact is not enough on its own: destination-scoped owners that each observe an *observable* source all receive the change as it happens, keep their own derived state, and none of them goes stale — which is the arrangement the data-ownership unit describes and the ordinary answer. The rung is forced only when there is no such source to observe, so that a change made in one destination reaches another only if something above both of them is holding the result. That is this repository's situation, which is why it is a worked example rather than a general rule."
+                  "text": "**Three — the studied-lesson and progress projections several screens share.** Now the requirement changes shape. More than one destination renders the same truth, those destinations are simultaneously alive on a back stack, and a change made in one must be visible in the others when the reader navigates back. Notice first what does **not** force the rung, because this is where the argument is most often waved through. Several screens needing one fact is not enough on its own: destination-scoped owners that each observe an *observable* source all receive the change as it happens, keep their own derived state, and none of them goes stale — which is the arrangement the data-ownership unit describes and the ordinary answer. The rung is forced only when there is no such source to observe, so that a change made in one destination reaches another only if something above both of them is holding the result. That is the situation the example below is in, which is why it is a worked example rather than a general rule."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Its `AppCoroutineScope` is a distinct type wrapping a scope with a `SupervisorJob`, deliberately named so that injecting it is unambiguous, and the reason it exists is stated in its own documentation rather than inferred: the caches built on it \"are shared by several screens and survive a navigation entry being destroyed, so they cannot belong to a `viewModelScope`\". Five state holders receive it. That is the argument in the right order — a requirement about what must survive a navigation entry being destroyed, and then a scope chosen to match. It is worth adding what makes it defensible *here*, and the decisive detail is the one the previous paragraph named: **every repository in this application exposes one-shot suspending reads and none of them returns a `Flow`**, verified across every interface and implementation. There is therefore no observable source for a destination-scoped owner to subscribe to, and the shared projection exists to supply what an observable repository would otherwise have supplied — it is read back from the repository after every mutation and republished, with the database remaining the source of truth. The application is also local-first with no network layer. **Application scope is not the generic answer**, and it is not earned by the number of screens reading a fact; it was earned here by a data-layer shape that leaves nothing else to observe. Change that shape and this rung stops being the right one."
+                  "text": "In that example an `AppCoroutineScope` is a distinct type wrapping a scope with a `SupervisorJob`, deliberately named so that injecting it is unambiguous, and the reason it exists is stated rather than inferred: the caches built on it are shared by several screens and survive a navigation entry being destroyed, so they cannot belong to a `viewModelScope`. Five state holders receive it. That is the argument in the right order — a requirement about what must survive a navigation entry being destroyed, and then a scope chosen to match. It is worth adding what makes it defensible *there*, and the decisive detail is the one the previous paragraph named: **every repository in that application exposes one-shot suspending reads and none of them returns a `Flow`**, across every interface and implementation. There is therefore no observable source for a destination-scoped owner to subscribe to, and the shared projection exists to supply what an observable repository would otherwise have supplied — it is read back from the repository after every mutation and republished, with the database remaining the source of truth. That application is also local-first with no network layer. **Application scope is not the generic answer**, and it is not earned by the number of screens reading a fact; it was earned there by a data-layer shape that leaves nothing else to observe. Change that shape and this rung stops being the right one."
                 },
                 {
                   "type": "paragraph",

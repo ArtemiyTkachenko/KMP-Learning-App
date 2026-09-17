@@ -3823,3 +3823,792 @@ Unit 2 ∩ Unit 6 containment, the premature Unit 1 reach of the synthesis Quest
 `architecture_paging_ownership` in Unit 1. All three would be removed by splitting `state_ownership`
 and `architecture_tradeoffs`, which is a question-bank taxonomy change and belongs to whichever issue
 is authorised to make one. **E26-09 is not started by this issue.**
+
+## Closure outcomes for E26-09
+
+Verified on 2026-09-17 against the production bundles after E26-01 through E26-08. Every figure below
+was derived from `learning_curriculum.json`, `initial_curriculum.json`, the production resolvers and
+the repository's own source, rather than carried forward from the sections above. Where a claim was
+only inspected rather than executed, this section says so.
+
+### Final curriculum shape
+
+The `architecture` Topic contains **6 Units / 29 Lessons**, all ACTIVE, in this production order:
+
+1. `unit_architecture_responsibilities_and_boundaries` — Architecture as Responsibilities and Boundaries — 5 Lessons
+2. `unit_screen_state_holders_and_ui_state` — Screen State Holders, ViewModel and UI State — 5 Lessons
+3. `unit_repositories_and_data_ownership` — Repositories, Data Ownership and Single Source of Truth — 5 Lessons
+4. `unit_domain_logic_and_dependency_direction` — Domain Logic, Use Cases and Dependency Direction — 5 Lessons
+5. `unit_responsibility_models_mvp_mvvm_mvi` — MVP, MVVM and MVI Responsibility Models — 5 Lessons
+6. `unit_state_events_lifetime_and_selection` — State, Events, Lifetime and Architecture Selection — 4 Lessons
+
+The whole learning document ships **24 active Units / 101 active Lessons** — 12 Units / 43 Lessons in
+`android_ui`, 6 / 29 in `async_reactive`, 6 / 29 in `architecture`. All 101 Lesson ids are unique, every
+Unit and Lesson is ACTIVE, and every Unit and Lesson identity matches the one this plan reserved. The
+issue's expected numbers were derived rather than trusted and **no discrepancy was found**. The
+authored order is pinned by exact Lesson id *and* exact Lesson title for all six Units in
+`BundledLearningCurriculumTest`, and independently by the six Unit ids and the `5, 5, 5, 5, 5, 4`
+Lesson counts in `LearningUnitPracticeIntegrationTest`.
+
+E26 authored **680 blocks** — 457 paragraphs, 84 callouts, 67 code blocks, 40 bullet lists and 32
+comparisons — carrying **79 Source references over 28 distinct URLs**.
+
+### Cross-Unit semantic review
+
+All 29 Lessons were read in final learner order as one continuous curriculum rather than as six
+batches. The sequence is one argument and each transition was checked for available prerequisites,
+compatible terminology, contradiction, and re-teaching rather than application.
+
+- **Unit 1 → Unit 2.** L2.1 opens by naming the previous unit's test and applying it — "Ask the
+  question that unit built: what is that thing responsible for, what does it own, how long must it
+  live, and what does having it cost?" — and derives five responsibilities *before* naming a class.
+  Responsibility and boundary reasoning leads into choosing a screen-state owner rather than into a
+  framework type: "the name for it is a **screen-level state holder**", and `ViewModel` arrives as
+  "one platform-provided implementation" chosen by lifetime. Nothing in Unit 2 re-derives cohesion,
+  dependency direction or boundary cost.
+- **Unit 2 → Unit 3.** Kept distinct, and stated in both directions rather than once. L2.1's Senior
+  section closes the Unit's scope explicitly — "this responsibility is about *presentation state*,
+  not about what is true for the application … A state holder that quietly acquired a caching policy
+  has not become more powerful; it has acquired a second reason to change." L3.3 completes the pair
+  and names both violations: "A repository that starts deciding what the fine's label says when it is
+  zero has taken on a rendering decision … a state holder that starts deciding when the cached fine
+  is too old to show has taken on a source policy that the next screen will implement differently."
+  Screen-state ownership and authority over application data are never conflated.
+- **Unit 3 → Unit 4.** The domain boundary grows from responsibilities and stays optional. L4.1 opens
+  from the state Unit 3 left the feature in — "That is two owners with one boundary between them" —
+  and asks "does a third owner belong in the middle?", calling it "the first one in this subject whose
+  honest answer is often no". The four earning conditions are evidence rather than a quota, and the
+  Lesson works a feature with none of them, a feature with all four, and an honest middle case whose
+  verdict is "not yet" with the observable evidence that would change it.
+- **Unit 4 → Unit 5.** Orthogonal, and said so twice. L4.5 closes the Unit by handing over without
+  collapsing the axes — "MVP, MVVM and MVI describe the same reasoning in three competing
+  vocabularies". L5.5's Senior section states the separation directly: the patterns "are **not
+  alternatives to Clean Architecture** … They answer different questions at different scales, so a
+  codebase can perfectly coherently have inward-pointing dependencies in the Clean Architecture
+  sense, an MVVM-style presentation arrangement, and MVI-style explicit transitions inside some of
+  its state owners." Dependency direction is never presented as a pattern choice, and no pattern is
+  presented as deciding a layer.
+- **Unit 5 → Unit 6.** Unit 6 stops reasoning from labels and starts from the requirement. L6.1 opens
+  "with a product requirement and nothing built" and runs the four-step order — represent, guarantee,
+  lifetime, proportion. L6.4's Senior section makes the break explicit: "Notice which question was
+  never asked: whether either feature is MVVM or MVI. That is deliberate … the resemblance is a
+  **description of the result** rather than an input to it." L6.2's whole content is the ordering
+  requirement → guarantees → owner → mechanism, stated against the inversion it replaces
+  ("something called an event → a stream type").
+
+**Refinements are marked as refinements.** L2.4 re-states unidirectional data flow at the application
+boundary and says why rather than assuming: "This is the same rule one level out … and the reasons are
+not identical, which is why it is worth stating again rather than assuming." L5.3 tells the reader they
+have already built the arrangement — "the state-holder unit designed an owner that … did so without
+using the word MVVM once" — so the Lesson adds vocabulary rather than design. L6.1 applies the Compose
+state/occurrence contrast explicitly "rather than re-deriving it". No later Lesson contradicts an
+earlier one.
+
+### Terminology audit
+
+Audited across all 29 Lessons together, by reading and by phrase sweep over the 951 text units
+(summaries, paragraphs, callouts, bullets, code, table rows and headers). Every term the issue names is
+used consistently.
+
+- **Responsibility** stays "something a component has a reason to own and change for". L1.2 fixes it
+  as "a statement about why the code would have to change", and it is never reduced to a class, a
+  package or a framework type — L4.2 rejects all four of the usual proxies in one list (a suffix,
+  `operator fun invoke`, a base class, a folder), and L1.1 and L5.3 each refute the folder reading with
+  two trees and one architecture.
+- **Ownership** is used in four contexts and every use names what is owned: screen state (L2.1, L2.4),
+  authority over application data (L3.3), the owner of work and its lifetime (L2.5, L6.3), and the
+  owner of a pending-or-acknowledged fact (L6.2). L3.3 and L2.1 each state the boundary between the
+  first two explicitly, so no use is ambiguous about its object.
+- **Lifetime** means the actual ending condition of the owner. L2.2 refuses the shorthand by name —
+  "the sentence that causes the trouble is 'the ViewModel survives the screen', and the reason it causes
+  trouble is that it names the wrong subject" — and grounds every answer in `ViewModelStore` /
+  `ViewModelStoreOwner`. L6.3 repeats the correction rather than relaxing it: a ViewModel "has the
+  lifetime of its `ViewModelStoreOwner`". **No Lesson regresses to "the ViewModel survives the
+  screen".**
+- **Persistence** stays separate from lifetime everywhere. L2.2: "**In-memory retention across a
+  host's recreation is not persistence, and the two are separated by exactly one event.**" L6.2 lists
+  every in-memory carrier that dies with the process — `StateFlow`, `SharedFlow`, `Channel`, a state
+  holder, a ViewModel — and L6.3 states that an application scope "still ends with the process". No
+  Lesson implies any of them is durable for outliving a UI owner.
+- **State** consistently means something currently true, and durability is a retention dimension
+  placed on it rather than a third kind. L6.1 states it as a rule — "**Durable is a point on the second
+  dimension, not a third kind**" — and its Requirements A and B are the same fact at two retentions.
+- **Intention / action** is used for input toward an owner. L2.4 separates it from an instruction:
+  "'The reader chose the overdue filter' is a report; 'set the filter field to Overdue' is an
+  instruction."
+- **Occurrence** is used where delivery and handling requirements are live, and L6.1 preserves the
+  distinction from current consequence: "the past occurrence is not the important representation; the
+  **current consequence** is."
+- **Delivery** is kept separate from handling throughout L6.2: "A mechanism describes *delivery*; a
+  requirement describes *handling*; and no description of delivery answers a question about handling."
+- Also checked and consistent: boundary, source of truth, repository, data source, state holder,
+  ViewModel, use case, policy, detail, architecture, layer, pattern, and acknowledgement. Two are worth
+  naming because a sloppier curriculum would blur them: **layer against module** is separated in L1.5,
+  L4.1, L4.5 and L4.4 as logical against physical, and **source of truth against cache** is fixed in
+  L3.3 ("when a cache disagrees with the source of truth, the cache is what is wrong").
+
+### The event / effect collision
+
+Swept mechanically as well as by reading. **"Effect" occurs five times in all 680 blocks** and not once
+as a bare word for an MVI side output or an application occurrence: twice stating the collision and the
+qualification rule in L5.4, once as "side effects" in the purity sense in L4.3, once as the labelled
+"**Side-effect execution**" claim in L6.2, and once in the L5.4 interview callout. L5.4 states the
+discipline itself — "That word is already taken in this curriculum … Whenever the MVI sense is meant
+here it is qualified — an *MVI-style side output*, or *a one-off output sometimes called an effect in
+MVI literature* — and the bare word is never used for either" — and the sweep confirms the rule holds
+across the whole epic, including the two Units authored after it.
+
+**"Event" occurs 25 times**, and every occurrence is one of four legitimate uses: a lifecycle or ending
+event (L2.1, L2.2, L2.5, L6.3 — "what event is allowed to end it"), a verbatim quotation from a cited
+source (the Android UI-events page in L6.2, Staltz in L5.4, the UDF sentence in L5.3), an explicit
+rejection of the ambiguous universal category (L6.2's "something called an event → a stream type", and
+its callout on slogans "of the form 'this stream type is for state and that one is for events'"), or
+"a single real event in the world" in L6.1. **"Event" is nowhere introduced as a universal architecture
+category**, and Compose effect APIs, MVI-style side outputs, application occurrences and
+lifetime-ending events are never conflated. No wording needed correcting.
+
+### Architectural misconception sweep
+
+Every claim on the issue's list was searched for as a direct statement and as wording that could imply
+it. All are rejected or properly qualified, and each rejection is a named correction rather than an
+omission.
+
+| Misconception | Where E26 rejects it |
+| --- | --- |
+| Architecture = folders / packages | L1.1 (two trees, one architecture; the `ui`/`domain`/`data` project whose imports say otherwise), L5.3, L5.5 |
+| Every interface creates decoupling | L1.4 ("An interface is a language feature. A boundary is a property of an arrangement"), L4.4 |
+| Every feature needs a repository | L3.1 — the reminder preference's boundary is "**none yet**", and the recommendation is quoted with its own "recommendations and not strict requirements" caveat |
+| Every repository needs an interface | L3.1's four conditions, "Where none of them holds, the interface is one more file that changes in the same commit as its only implementation" |
+| The database is always the source of truth | L3.3 — three facts, three owners, one of them in memory; the offline-first recommendation quoted with its condition |
+| Repositories should always expose Flow | L3.4 — "'Modern repositories should expose Flow' replaces a decision with a default, and the tell is that it can be said without knowing the requirement" |
+| Every feature needs a domain layer | L4.1 — optional, four earning conditions, a worked "not yet" |
+| Every repository method needs a use case | L4.2 — named as "a convention presented as a rule", with the team-uniformity option priced honestly |
+| Clean Architecture means three layers | L4.5 and L1.5 — the article's own "The circles are schematic … There's no rule that says you must always have just these four" |
+| ViewModel means MVVM | L5.3 — "A `ViewModel` that holds a view interface is a presenter" |
+| MVVM means many streams / MVI means one | L5.3 and L5.5 — falsified against designs A and C rather than asserted |
+| MVI is MVVM plus sealed intents | L5.4's common-mistake callout and L5.5's worked `onAction` counterexample |
+| MVI reduces recompositions | L5.4 and L5.5 — and the honest reverse: one large value "can cause a composable that reads the whole value to re-execute for changes it does not care about" |
+| ViewModel provides persistence | L2.2, L6.2, L6.3 |
+| Production state belongs in the ViewModel | L2.1 — "A screen with nothing left local is usually a screen that stopped asking the question and started following a convention"; L6.3's filter sheet is wrong in the other direction |
+| App scope is safer because it lives longer | L2.5, L6.3 — five named costs, and "Application scope is a deliberate lifetime, not an escape from cancellation" |
+| SharedFlow is for events | L6.2 — answered as a guarantee question and deliberately not as a type comparison |
+| Successful emission means delivery | L6.2 — "on an unbuffered shared flow with no subscriber it reports success and the value is gone in the same instant" |
+| Replay means handled once | L6.2 — "a retention window changes what a subscriber arriving later can recover, and that is all it changes" |
+| A durable record guarantees exactly-once side effects | L6.2 — the three senses of "exactly once", and the window where the action happened and the record did not |
+| More architecture is safer or more senior | L1.5, L4.1, L6.4 — "Over-architecture is boundaries with no independent change behind them" |
+
+The phrase sweep found 198 text units containing an absolute ("always", "never", "every", "all
+state"), and reading them confirms the pattern E25-09 recorded: each is either a refutation or a
+precisely scoped claim. The single occurrence of "safer" in the epic is the refutation itself — "a
+longer-lived owner is a decision with a cost rather than a safer default".
+
+### E23 / E24 / E25 integration: applying rather than re-teaching
+
+- **E23 — Compose state and execution.** E26 relies on state ownership, hoisting, the immutable screen
+  value and UDF, and re-teaches none of the mechanics. `remember`, `rememberSaveable`, recomposition
+  mechanics, snapshot mechanics and stability inference appear only as named prerequisites with a link
+  back: L1.2 cites `lesson_state_hoisting` for "the full ownership argument" at a smaller scale; L2.3
+  closes by stating that why an immutable value integrates cleanly with Compose "is already taught in
+  the Compose curriculum; this lesson takes it as given"; L2.2 names `rememberSaveable` as the
+  Composition-side saved-state mechanism and teaches no API. "Recomposition" occurs five times in the
+  whole epic, and every occurrence is either a correct negative (L2.2: "Recomposition is not a lifetime
+  event for anything outside the Composition") or the refutation of the MVI performance claim.
+- **E24 — Coroutines and Flow.** E26 applies scope ownership, cancellation, `StateFlow`, `SharedFlow`,
+  replay and the delivery limits, and re-teaches no operator, no stream mechanics, no exception
+  mechanics, no dispatcher mechanics and no buffering algorithm. The deferrals are explicit: L2.4 —
+  "the coroutines curriculum owns what those stream types are and how they behave"; L2.5 — "How scopes,
+  jobs, structured concurrency and cancellation actually work is taught in the coroutines curriculum
+  and applied here rather than re-derived"; L3.4 — "Cold and hot streams, collection, conflation, and
+  the operators that turn one into the other are the coroutines and Flow curriculum's"; L6.2 — the
+  replay and emission conclusions "apply immediately and are not re-derived here". What E26 adds is
+  the ownership and lifetime decision those contracts feed.
+- **E25 — Compose effects and production screen state.** The most important integration, and the one
+  checked against E25's original wording rather than against E26's summary of it. E25's own
+  "E26 owns application architecture" section and its L7.3, L7.4, L8.1, L8.3, L8.4 and L12.3
+  exclusions were re-read in `docs/content/compose-units-7-12-plan.md`, and every item in them is
+  disposed of in the ledger below. E25's two load-bearing conclusions are carried forward without
+  weakening: `lesson_screen_state_owner_boundary` already says "Saying 'the ViewModel survives' without
+  naming the event and the owner is incomplete", which L2.2 extends rather than relaxes; and
+  `lesson_transient_effect_delivery`'s negative result is where L6.2 begins.
+
+### The complete E25 → E26 handoff ledger, disposed of
+
+Checked against E25's original text, not against Part 3's summary of it. Seventeen rows; **fourteen
+fully answered at E26 scope, three still deferred with a named owner.**
+
+| E25 deferral, as E25 worded it | Answered by | Complete at E26 scope? |
+| --- | --- | --- |
+| The production screen pipeline behind the owner (former L8.1) | Unit 2 (the owner), Unit 3 (the data side), **L6.4** (the whole pipeline chosen proportionally) | Yes |
+| Why a screen-level owner exists at all (L7.4's stated stop) | **L2.1** — five responsibilities derived before a class is named | Yes |
+| What the owner owns, receives, and must not know (L7.4 Exclude) | **L2.1** (owns, receives, must-not-know list) and **L2.4** (the public surface that makes ownership true) | Yes |
+| How the owner is layered (L7.4 Exclude) | **Unit 1** and **L4.1** | Yes |
+| How the owner is constructed and injected (L7.4 Exclude) | Named and deferred in L2.1 ("the dependency-injection curriculum owns it") and L4.4 | **No — E27** |
+| `UiState` modelling: sealed against nullable-field data class, partial states, error representation (former L8.3, L7.3 Exclude) | **L2.3** — both shapes on one screen, the six-row requirement comparison, the nested region for partial failure, and the screen-side error | Yes |
+| Application-level unidirectional data flow, distinct from the composable tree (L7.3's boundary) | **L2.4** | Yes |
+| Controlled write paths and read-only exposure at the application boundary | **L2.4** — three named costs of exposing the mutable container | Yes |
+| Detailed state-holder design (E26-owns list) | **Unit 2** entire | Yes |
+| `viewModelScope` as the answer to "where does work that outlives the composition go" (L7.3 narrowing, "the `viewModelScope` answer is E26's") | **L2.5** — what it actually is, read from the resolved 2.11.0-beta01 sources — with the lifetime-selection half in **L6.3** | Yes |
+| Work whose required lifetime exceeds the Composition, and what owner it needs (L10.3, L12.3 negative result) | **L6.3**'s four-rung ladder, and **L2.5**'s owner test | Yes at E26 scope; **background APIs remain deferred** |
+| The consumable-event-channel against acknowledged-state trade-off (former L8.4) | **L6.2** — acknowledgement as state somebody owns | Yes |
+| Application-level occurrence modelling (L12.3 Exclude) | **L6.1** and **L6.2** | Yes |
+| Durable against transient occurrence architecture (L12.3 Exclude) | **L6.1** (retention as a dimension) and **L6.2** (the fifth question) | Yes |
+| `Channel` against `SharedFlow` as a ViewModel event design (L12.3 Exclude, "**E26**") | **L6.2** — reframed as requirement, guarantee and owner first, and **deliberately not answered as a stream-type comparison**: "the argument in this lesson never needed to compare two stream types, and why comparing them is the wrong first move" | Yes, by reframing, as planned |
+| Acknowledgement and queueing architecture (E26-owns list) | **L6.2** for acknowledgement | Split: acknowledgement yes; **queueing excluded, not missing** |
+| `SavedStateHandle` as a state-production mechanism (E26-owns list) | Bounded context in **L2.2** only, which names it and stops | **No — lifecycle and navigation curriculum** |
+| MVC, MVP, MVVM, MVI, MVVM-against-MVI, reducers | **Unit 5** entire | Yes |
+| Layered architecture | **L1.5**, **L3.5**, **L4.5** | Yes |
+| The repository pattern | **Unit 3** | Yes |
+| Use cases | **Unit 4** (L4.1 the layer, L4.2 the individual operation) | Yes |
+| Single source of truth as an architecture | **L3.3** | Yes |
+| Clean Architecture | **L4.5** | Yes |
+| The seven concepts as **primary** rather than supporting-only | All seven are primary in E26 and now carry Unit practice | Yes |
+| GAP-U7-C — what changes when a piece of state's owner moves outside the Composition | **L2.2** teaches exactly this; E26-08 carried its architecture-side assessment on `owner_chosen_from_the_required_lifetime` | Yes |
+
+**Reason for each remaining deferral.** Construction and injection are E27's subject and E26 teaches
+inversion and ownership rather than graph assembly, so answering it here would be the scope creep the
+epic goal excludes. `SavedStateHandle` is an API whose behaviour belongs with process-state
+restoration; E26 needs only the architectural consequence that persistence is a separate
+responsibility with a separate owner, and L2.2 is explicit that this repository "does not use
+`SavedStateHandle` in production code at all, so nothing here demonstrates saved state for a screen
+owner". Queue and delivery infrastructure is named and refused in L6.2 as "a different project", which
+is a bounded conclusion rather than an unfinished one.
+
+**E26 does not promise a universal stream answer anywhere else.** L3.4 refuses the same default from
+the data side, and its Senior section shows this application's entirely one-shot repositories as the
+counterexample.
+
+### Cross-links
+
+All **91** E26 `relatedLessonIds` resolve: **67 internal to E26, 15 into `android_ui` (E23 and E25),
+9 into `async_reactive` (E24)**. No E26 Lesson links forward to a later Lesson anywhere in the
+document. The intended graph in
+[Cross-linking rules](#cross-linking-rules-and-the-intended-link-graph) is realised exactly, and each
+of the six Units has its own link assertion in `BundledLearningCurriculumTest`.
+
+The sixteen distinct shipped anchors E26 reaches are, by epic: **E23** —
+`lesson_state_down_events_up`, `lesson_state_hoisting`, `lesson_remember_saveable`,
+`lesson_immutability_vs_stability`; **E25** — `lesson_screen_state_owner_boundary`,
+`lesson_classes_of_screen_state`, `lesson_screen_state_and_ui_events`,
+`lesson_remember_coroutine_scope`, `lesson_who_owns_the_trigger`, `lesson_transient_ui_effects`,
+`lesson_transient_effect_delivery`; **E24** — `lesson_coroutine_scope_ownership`, `lesson_why_flow`,
+`lesson_state_flow`, `lesson_shared_flow`, `lesson_choosing_a_stream_abstraction`.
+
+**Both directions, as issue #369 asks.** No shipped E23, E24 or E25 Lesson carries a `relatedLessonId`
+into `architecture`, and that is the recorded decision rather than an omission: a forward link would
+not have resolved when those Lessons shipped, so the earlier curricula point forward **in prose**, and
+`BundledLearningCurriculumTest` already asserts that no Lesson authored before a given architecture
+Unit was edited to receive a reciprocal link. The forward direction was therefore verified as prose
+rather than as links, and **seventeen forward pointers into "the architecture curriculum" were found
+and each one is now fulfilled** — among them `lesson_screen_state_and_ui_events` ("Detailed state
+modelling belongs to later architecture curriculum" → L2.3), `lesson_who_owns_the_trigger` ("Choosing
+and designing that owner belongs to later architecture curriculum" → L2.5 and L6.3),
+`lesson_transient_ui_effects` (whether an occurrence is "carried in the screen's state, recorded
+somewhere as handled, or delivered in some other way" → exactly the three options L6.1 and L6.2
+supply), `lesson_transient_effect_delivery` ("which owner that is, how the occurrence is recorded, how
+handling is marked and how the UI consumes it" → L6.2 and L6.3), `lesson_coroutine_scope_ownership`
+("what a view model should contain" → L2.1), and `lesson_exception_propagation` together with
+`lesson_flow_failure_and_completion` (an expected failure as a value rather than an exception → L3.5's
+three shapes). **The two Lessons this plan told E26-09 to re-read —
+`lesson_screen_state_owner_boundary` and `lesson_transient_effect_delivery` — were re-read in full and
+both still read correctly now that the Units ship. Neither needed an edit, and no backward link was
+added to either**, because their prose already resolves and adding one would have been the
+graph-completeness work the issue rules out.
+
+**Link duplication.** Each cross-link was checked for whether E26 applies the referenced concept or
+repeats it. Every one applies: L1.2 cites `lesson_state_hoisting` and scales its writer test up
+rather than restating it; L2.3 takes Compose integration "as given"; L2.5 asks one architectural
+question "on top of" E24's scope mechanics; L3.4 links the three stream Lessons and teaches none of
+their mechanics; L6.2 cites `lesson_transient_effect_delivery`'s negative result and starts from it.
+**No content was trimmed**, because no substantial repetition was found, and the bridge context each
+Lesson keeps is what makes it readable on its own.
+
+### Code-block review
+
+All **67** authored code blocks were read against their surrounding prose — **43 Kotlin and 24 `text`
+diagrams**. Syntax is plausible throughout, names are consistent with the prose that discusses them,
+the code and the explanation agree, and no snippet claims a stronger guarantee than it implements. The
+E26-08 standard for overstated guarantees was applied to every snippet and **no code defect was
+found**.
+
+Two specific checks, because they are the ones a careless epic fails. **No platform-only type is
+presented as common KMP architecture:** a mechanical scan for `android.`, `androidx.`, `java.`,
+`UIView`, `NSObject`, `@Composable`, `Activity`, `Context` and `Fragment` inside code found exactly two
+hits, and both are correct — `Activity` appears in L2.2's ownership diagram as one example of a
+`ViewModelStoreOwner`, and `android.net.Uri` appears in L4.3 as the **deliberate counterexample** the
+Lesson diagnoses ("A platform type restricts where the rule can live"). And **no snippet hides an
+undeclared requirement behind pseudocode:** the bodies that are elided carry a comment saying what
+they would do, and L6.2's `enum class ConfirmationState` is explicitly labelled "Not a queue and not a
+delivery mechanism: a fact with an owner" so it cannot be read as an implementation.
+
+**Snippets were not compiled.** The repository has no snippet-compilation tooling for learning content
+and building one was not justified by any concrete gap, so the review is a reading against the prose
+and against the production types the snippets refer to, and it is reported as that rather than as a
+compiler result.
+
+### Claims about this repository, re-checked against the source
+
+E26 uses this codebase as evidence in twelve places. Every claim was verified against the current
+source rather than trusted, because a stale claim is exactly the defect a closure pass exists to catch.
+
+| Claim | Verified |
+| --- | --- |
+| Five repository interfaces: `AssessmentRepository`, `CurriculumRepository`, `LessonStudyRepository`, `SavedQuestionRepository`, `LearningContentRepository` (L3.1, L4.4, L4.5) | Exactly those five, each declared in its consumer's package |
+| Five plain-class state holders: `StudyProgressStateHolder`, `ProgressStateHolder`, `MistakeReviewStateHolder`, `InterviewHistoryStateHolder`, `SavedQuestionStateHolder` (L2.1, L2.5, L6.3) | Exactly those five |
+| Fifteen ViewModels, all in shared code (L2.2) | Fifteen files declare `: ViewModel()`, all under `commonMain` |
+| Sixteen UI-state types (L2.3) | Sixteen `*UiState` declarations in `commonMain` |
+| **Every repository method is a one-shot `suspend` function; none returns `Flow`** (L3.4, L6.3) | 26 `suspend fun` declarations across the five interfaces, **zero** occurrences of `Flow` |
+| No class named `UseCase` or `Interactor`, and no `domain` package (L4.2, L4.1) | Zero occurrences of either identifier anywhere in the repository; zero directories named `domain` |
+| The named services, policies and derivations (L4.2) | All eleven types exist at the stated responsibilities |
+| No Room type and no DAO used above `data/local` (L3.1, L3.5) | No `androidx.room` import outside `data/local`; the only `Dao` mention above it is a comment in `RecentPerformancePolicy` citing the persistence ordering, not a usage |
+| `App.kt` installs `rememberSaveableStateHolderNavEntryDecorator()` then `rememberViewModelStoreNavEntryDecorator()` (L2.2) | Both, in that order, at `App.kt:123–124` |
+| `AppCoroutineScope`'s documented reason, quoted (L2.5, L6.3) | Verbatim |
+| `StudyProgressStateHolder`'s "[repository] remains the source of truth" passage (L3.3) | Verbatim |
+| `LearningLessonUiState.Content`'s nested `studyState` and its "missing indicator … a page the learner cannot read at all" comment (L2.3) | Verbatim |
+| `LessonScrollStateReducer` is a reducer that is not a pure function of state and input (L5.5) | Exists, and accumulates scroll distance in its own fields as described |
+| `PracticeBuilderViewModel` — one immutable state, read-only `StateFlow`, named callbacks, a `Channel` for its one outward occurrence, `isStartEnabled` derived (L5.5) | All five, and the four callbacks are `selectQuestionCount`, `toggleLevel`, `selectSource`, `retryAvailability` |
+| `LessonStudyRepository`'s contract in the study feature's vocabulary with no database type (L1.4, L4.4) | Four operations, exactly as described, no database type |
+| Configured versions: Kotlin 2.4.10, Compose Multiplatform 1.11.1, lifecycle 2.11.0-beta01, coroutines 1.11.0; `kotlinx-coroutines-swing` supplied to desktop (L2.2, L2.5) | All match `gradle/libs.versions.toml` |
+
+**Two claims did not survive the check, and both are fixed.** They are the only content changes in
+this issue and each is recorded with the defect that justified it below.
+
+### Source review
+
+All **79** Source references over **28 distinct URLs** were inspected, and every one was **exercised
+through the production reader and the app's own URI boundary**: the existing data-driven journey
+`LearningProductionContentJourneyTest.everyShippedUnitsAuthoredBlocksRenderInTheReader` reads every
+shipped Unit, clicks every authored Source, and asserts the exact authored URL reaches the host's
+`UriHandler`. That is stronger than a regex and it is where the verification comes from.
+
+Hosts: `developer.android.com` 13, `martinfowler.com` 7, `kotlinlang.org` 5, `blog.cleancoder.com` 2,
+`staltz.com` 1. Every choice remains appropriate to what it is cited for, and the review confirmed the
+four distinctions the epic depends on. The **primary Clean Architecture sources are still used only for
+the claims they support** — the Dependency Rule's own wording, the framework-independence property,
+the flow-of-control-against-source-dependencies observation, and decisively the "circles are schematic"
+statement L1.5 and L4.5 are built on. **Practitioner terminology sources are presented as evidence of
+practitioner usage rather than as specifications**: L5.1 opens by stating that "there is no single
+normative specification governing modern use of these four names" and cites Fowler for the variance
+itself, and L5.4 labels Cycle.js as the origin while stating that "**No adaptation is canonical**".
+**Android-specific guidance is not silently generalised to KMP**: L3.3 quotes the offline-first
+recommendation with its condition attached, L4.1 and L4.5 quote the "recommendations and not strict
+requirements" caveat, and L1.5 quotes the domain layer's optionality with the conditions that earn it.
+**KMP ViewModel and lifecycle claims remain accurately qualified**: L2.2 names the host per target,
+quotes JetBrains on iOS having "no built-in `ViewModelStoreOwner`" and on Navigation 3 entries not
+being scoped by default, and then says which of those this application installs.
+
+`blog.cleancoder.com` remains narrowly justified. It is cited twice, for the two claims for which no
+vendor page is authoritative, and `InitialCurriculumContentQualityTest`'s `APPROVED_SOURCE_HOSTS`
+comment already records the limit of the precedent. **No approved host was broadened**, because no
+source failed.
+
+**The 28 URLs were not re-fetched.** The configured versions are unchanged since E26-08's same-day
+sweep, E26-09 changed no Source, and closure found no reason to suspect drift — which is the condition
+the issue set for reusing that verification. The liveness of the pages is therefore carried from
+E26-08 and is not claimed as observed here; what is claimed, and was observed, is that every authored
+URL reaches the app's URI boundary unchanged.
+
+One convention was observed rather than corrected: two URLs carry more than one title across the epic
+(`.../ui-layer` as "UI layer", "UI layer: define UI state" and "UI layer: unidirectional data flow",
+and `.../ui-layer/stateholders` as "State holders and UI state" and "UI layer: state holders"). This is
+a document-wide, pre-existing device for pointing a reader at the relevant section of a long page —
+fourteen URLs across all three curricula do it — and the authoring contract requires only a non-blank,
+non-placeholder title. It is recorded here so a later session does not read it as drift, and it was
+deliberately not "fixed", which would have been a document-wide stylistic change outside this issue.
+
+### Reader journey
+
+Exercised through the real reader rather than inspected. The existing production journey derives every
+active Unit from the bundle, so it already traverses E26: in a 400 × 900 phone-shaped window it reads
+all 24 shipped Units and 101 Lessons, including **every one of E26's 680 authored blocks**, asserting
+that each one renders, that the reading column stays inside the window, that genuinely wide code
+scrolls inside its own box, and that each Source is operable and emits its authored URL. Every block
+type E26 uses is covered, because that suite's `when` over the sealed `LearningBlock` is exhaustive and
+the block count is asserted against the bundle.
+
+**Tables.** E26 authors 32 comparisons — 21 with three columns, 9 with four, 2 with two. At 400dp every
+comparison renders as the compact stack, and the table renderer is covered separately by
+`theWidestAuthoredComparisonStaysInsideTheReadingColumnAsATable`, which derives the document's widest
+comparison and reads it at 1100 × 1000, asserting it is the table form rather than the stack, that its
+content scrolls inside its own box, and that the reading column does not widen. The widest authored
+comparison is still E25's six-column `lesson_choosing_a_compose_mechanism` table, so E26's widest
+four-column tables are strictly narrower than the case already proven contained. **No new rendering
+test was added for tables**, because no table defect was found and adding one would have duplicated a
+derived check.
+
+**Related-Lesson navigation could not be exercised, and this is a product fact rather than a gap.**
+`relatedLessonIds` is authoring and validation metadata: it is consumed by
+`LearningCurriculumValidator` and by nothing in the UI. `LearningLessonUiState.Content` carries
+`previousLesson`, `nextLesson`, `sections`, `sources` and `studyState`, and no related-Lesson
+affordance exists in the reader. Resolution is therefore verified — all 91 links resolve, globally by
+the validator and per Unit by six assertions — and *navigation* has nothing to exercise. Adjacent
+Lesson navigation forwards and back **is** exercised over every shipped Unit by the production journey.
+
+### Progress journey
+
+Exercised through the production reader, the production ViewModels and the real study repository, not
+by inspecting database logic. `LearningUnitPracticeIntegrationTest.existingLearnerTraversesTheExpansionWithLiveParentProgressAndDurableIdentities`
+walks the whole document with the parent ViewModels held alive throughout: for each of the six
+architecture Units it opens every Lesson in the real reader, toggles it studied, and waits for the Unit
+counter to reach `index + 1 of n` and the `architecture` Topic counter to reach the new total.
+
+- **Unit progress.** Marking one Lesson increments its Unit; marking more advances it; completion state
+  is reached at `n of n` for all six Units with their real counts 5, 5, 5, 5, 5, 4.
+- **Topic progress.** The `architecture` Topic denominator is read from the bundle rather than written
+  down, and it is **29**. The Topic advances **0 → 29** one Lesson at a time and reaches **29/29**.
+- **Unmark and re-mark.** Reversal is exercised at the same 29-Lesson scale through the same
+  ViewModels on the `async_reactive` Topic — 29 → 28 → 29, with its Unit counter moving 5/5 → 4/5 → 5/5
+  and Continue Learning returning to the unmarked Lesson — and again on an earlier `android_ui` Lesson.
+  **The architecture Topic itself is walked up to 29/29 and not back down**, and no
+  architecture-specific reversal assertion was added: the derivation is Topic-agnostic, it is already
+  reversed at the same scale through the same production path in the same test, and
+  `StudyProgressDerivationTest` covers reversal directly. Duplicating it would be the padding this
+  epic's test philosophy rules out. This is recorded as a deliberate choice rather than as coverage.
+- The `android_ui` Topic's own progress is asserted unaffected by the architecture Units, which is what
+  keeps Topic progress per Topic rather than global.
+
+### Continue Learning journey
+
+Verified against production order through the production resolver and the running shell, in the same
+traversal. Continue Learning advances within each architecture Unit and crosses **all five** internal
+E26 Unit boundaries, because `awaitNext(unit.id, lesson.id)` is asserted before every single one of the
+29 Lessons is opened. It also crosses **`async_reactive` → E26 Unit 1**, from the last coroutines
+Lesson into `lesson_what_architecture_decides`, which is what proves E26 extends the path rather than
+replacing it.
+
+E26 is **not** the end of the document's completion contract by being the current epic; it is the end
+because the resolver walks the whole authored document in authored order and the architecture Units are
+last in it. `ContinueLearningUiModel.Complete` is produced only once **all 101** authored Lessons are
+studied — the test reaches `Complete` after the 29th architecture Lesson and not before — and
+unstudying any earlier Lesson, in any Topic, returns Continue Learning to it. The whole-document
+contract E24-09 established and E25-09 re-verified is unchanged, and **completion was not redefined**.
+
+### Topic Detail
+
+The `architecture` Topic Detail was driven through the real `TopicDetailViewModel` across the whole
+traversal: six Units resolved from the bundle in exact authored order with Lesson counts
+`5, 5, 5, 5, 5, 4`, progress labels moving with every mark, and completed and incomplete states
+reached. The practice entry is exercised from both handoffs — the Unit overview's
+`LearningUnitPracticeButtonTag` and the reader's `LearningLessonPracticeButtonTag` — and the longer
+Unit titles caused no layout regression: the production journey asserts reading-column containment for
+every Lesson of every Unit at 400dp, and the Unit rows are reached by scrolling the real lazy list to
+each card. **No UI functionality was added.** One coverage boundary is recorded honestly:
+`TopicDetailLearningContentTest`'s row-mapping assertion (`unitId`, `title`, `activeLessonCount`,
+non-blank summary) covers `android_ui` only, and that has been true since E21-02 — `async_reactive` has
+no equivalent either, and E24-09 and E25-09 both closed without adding one. The mapping is
+Topic-agnostic and the architecture Units' order and counts are pinned twice elsewhere, so no copy was
+added.
+
+### Unit practice journey
+
+Resolved through the production `PracticeTargetResolver` and the production Practice Builder, never
+compared against generated documentation. The final reach, with levels:
+
+| Unit | Primary concepts | Pool | F / A / Adv |
+| --- | --- | --- | --- |
+| 1 | `separation_of_concerns`, `dependency_direction`, `interface_boundaries`, `layered_architecture`, `architecture_tradeoffs` | 11 | 1 / 9 / 1 |
+| 2 | `state_ownership`, `unidirectional_data_flow` | 10 | 3 / 6 / 1 |
+| 3 | `repository_pattern`, `single_source_of_truth`, `layered_architecture`, `error_modeling` | 10 | 1 / 9 / 0 |
+| 4 | `use_cases`, `clean_architecture`, `dependency_direction`, `interface_boundaries` | 9 | 0 / 9 / 0 |
+| 5 | `mvc`, `mvp`, `mvvm`, `mvi`, `mvvm_vs_mvi` | 5 | 1 / 4 / 0 |
+| 6 | `state_ownership`, `architecture_tradeoffs` | 10 | 2 / 6 / 2 |
+
+Every pool matches the issue's expectation exactly, by set of ids as well as by count, and all six are
+pinned by exact id in `LearningUnitPracticeIntegrationTest`. The nine verification points the issue
+lists all hold: Topic Detail and the reader both start practice for the intended Unit; the existing
+production assessment route is used; only primary mappings configure the scope; supporting concepts
+contribute nothing — **no non-architecture Question enters any E26 pool**, and nine supporting-only
+concepts that hold ACTIVE Questions of their own broaden nothing; DEPRECATED Questions are excluded, so
+none of the four retired architecture Questions reaches a pool; and **no architecture-specific hack
+exists** — the builder, the resolver, the taking engine and the result flow are the shipped generic
+ones. **Assessment UX was not changed.**
+
+Questions rendering and the answer flow were the one thing no suite had ever done over shipped content,
+and they are now exercised end to end — see *Tests added* below. The run answers Unit 6's whole
+ten-Question pool through the running assessment UI, takes the incorrect branch once and the correct
+branch nine times, and completes into the existing Results screen scored 9 / 10.
+
+### Practice semantic fairness
+
+The six pools were re-read in learner order against what a learner knows by the Unit where each
+Question appears. Every Question is fair at its Unit except the three cases the shared taxonomy
+forces, all three already recorded by E26-08 and re-confirmed here rather than rediscovered. **No
+additional unexpectedly premature Question was found.** Unit 5's pool was checked specifically, as the
+issue asks: after E26-08 moved `viewmodel_vs_repository_responsibility` and
+`architecture_ui_event_consumption` out, all five remaining Questions assess what Unit 5 teaches —
+classifying by responsibilities, the MVP view contract, the observed-state arrangement against a class
+or folder, the transition against the input spelling, and MVI's single state — which is true
+semantically as well as structurally.
+
+### Known structural routing limitations, re-confirmed
+
+Documented rather than repaired, as the issue requires. **No Subtopic split, Lesson re-map, Question
+re-map, Question deletion or new Question was attempted**, and no taxonomy change of any kind was made.
+
+1. **Unit 2 ∩ Unit 6 — 8 Questions**, all through the shared `state_ownership` concept:
+   `state_ownership_001`, `architecture_state_holder_taxonomy`, `durable_state_vs_one_off_event`,
+   `viewmodel_activity_reference_lifetime`, `ui_state_shape_from_the_screens_requirements`,
+   `architecture_ui_event_consumption`, `occurrence_guarantee_before_mechanism`,
+   `owner_chosen_from_the_required_lifetime`. Four of those are Unit-6-oriented and are therefore
+   premature for a learner who has just finished Unit 2 —
+   `durable_state_vs_one_off_event`, `architecture_ui_event_consumption`,
+   `occurrence_guarantee_before_mechanism` and `owner_chosen_from_the_required_lifetime`. The real fix
+   is splitting the broad Subtopic, which E26-09 is not authorised to do.
+2. **Unit 1 ∩ Unit 6 — 2 Questions**, both through the shared `architecture_tradeoffs` concept:
+   `smallest_structure_that_satisfies_the_requirements` and
+   `added_layer_must_isolate_an_independent_change`. The synthesis Question therefore appears in Unit 1
+   before the learner has completed Units 2–6. It was **not weakened or removed** to purify Unit 1,
+   because the assessment it carries is the epic's closing reasoning and the taxonomy is what cannot
+   express the distinction.
+3. **`architecture_paging_ownership` still reaches Unit 1** through `layered_architecture`, although
+   its strongest semantic home is Unit 3, which it also reaches. E26-08 found no honest alternative
+   mapping that was better, and closure confirmed that: the Question is about which layer owns
+   pagination, so `layered_architecture` is a true mapping even where it is not the most useful one.
+
+All three are asserted as sets in `LearningUnitPracticeIntegrationTest`, so none can drift silently.
+
+### Assessment state, re-derived from production
+
+E26-08's final state is intact and unchanged. Every figure below was derived from
+`initial_curriculum.json` and the production resolver in this session.
+
+- **460** total Questions; **419 ACTIVE**, **41 DEPRECATED**.
+- **44** architecture Questions: **40 ACTIVE**, **4 DEPRECATED** (`repository_pattern_001`,
+  `dependency_direction_001`, `architecture_tradeoffs_001`, `repository_vs_data_source_responsibility`,
+  all still DEPRECATED).
+- Architecture ACTIVE levels: **7 FOUNDATION / 31 APPLIED / 2 ADVANCED**.
+- **0** architecture primary Subtopics without an ACTIVE Question — all 18 architecture Subtopics hold
+  at least one.
+- **39 of 40** ACTIVE architecture Questions are reachable through E26 Unit practice. The one outside
+  every pool is `architecture_solid_dependency_substitution`, because `solid` is supporting-only across
+  the whole epic by design and dependency inversion is assessed under the concept where the decision is
+  actually made. **The exclusion is intentional and was preserved.**
+
+**The two E26-08 re-maps are preserved**, because closure uncovered no factual defect in either:
+`architecture_ui_event_consumption` remains `state_ownership` (delivery and acknowledgement, Unit 6
+L6.2, not MVI transition modelling), and `viewmodel_vs_repository_responsibility` remains
+`repository_pattern` (repository and data responsibility, Unit 3, not MVVM pattern definition).
+`architecture_paging_ownership` remains `layered_architecture`, and
+`dependency_direction_domain_framework_types` remains **APPLIED** — no rubric defect was found, so
+neither decision was reopened.
+
+`explicit_transition_is_not_the_input_spelling` remains **PARTIALLY_VERIFIED**. No new authoritative
+evidence appeared: no vendor or primary source normatively defines MVI, so the stem still defines the
+transition property it asks about. **It was deliberately not upgraded to clean up the report.**
+
+**Audit-log integrity.** `docs/content/question-audit-log.yml` holds nine reviews, newest first, with
+E26-08 prepended. Compared against the commit that last touched it before E26-08, the file has **322
+insertions and 0 deletions**: no historical entry was overwritten, reformatted or reordered. All
+eighteen new Question ids are present in the bank and reach the pools E26-08 recorded; both re-mapped
+Questions retain their ids and their AnswerOption ids; the four DEPRECATED Questions remain DEPRECATED.
+**No history was altered for stylistic consistency.**
+
+**Generated coverage.** `docs/content/learning-question-coverage.md` was regenerated because the two
+content corrections changed the learning document's fingerprint, and the **only** change in the 2,126
+line file is that one SHA-256 — the mappings, counts and tables are byte-identical.
+`python3 tools/learning_question_coverage.py --check` then reports the snapshot current, and the 21
+coverage-tool unit tests pass.
+
+### Final semantic pass
+
+Each of the issue's twelve questions, answered from the shipped prose and the shipped practice.
+
+| Can the learner… | Yes / no | Where it is taught and assessed |
+| --- | --- | --- |
+| 1. Explain architecture before naming patterns? | Yes | Units 1–4 make every decision without a pattern name; L5.1 says so explicitly. Assessed by `architecture_package_move_changes_nothing`, `separation_of_concerns_reason_to_change_test` |
+| 2. Distinguish screen-state ownership from data authority? | Yes | L2.1's scope statement and L3.3's two-directional boundary. Assessed by `viewmodel_vs_repository_responsibility`, `authoritative_owner_is_chosen_per_fact` |
+| 3. Explain ViewModel lifetime without calling it persistence? | Yes | L2.2's owner chain and six-event table; the three-idea table separating ownership, lifetime and persistence. Assessed by `viewmodel_activity_reference_lifetime`, `durable_state_vs_one_off_event` |
+| 4. Justify or reject a repository? | Yes | L3.1's six decisions, and the reminder preference whose boundary is "none yet". Assessed by `repository_boundary_needs_a_decision_to_own` |
+| 5. Choose a source of truth from requirements? | Yes | L3.3's three facts with three different owners, one of them in memory. Assessed by `authoritative_owner_is_chosen_per_fact`, `single_source_of_truth_001` |
+| 6. Justify or reject a domain or use-case layer? | Yes | L4.1's four conditions and its honest middle case; L4.2's twin types. Assessed by `domain_layer_is_earned_by_the_feature`, `domain_layer_passthrough_cost`, `architecture_use_case_reuse` |
+| 7. Trace dependency direction and inversion separately? | Yes | L1.3 separates source dependency, call direction and data flow; L4.4 asks who defines the abstraction and traces two import lists. Assessed by `dependency_direction_callback_does_not_reverse_it`, `architecture_interface_boundary_ownership`, `dependency_rule_constrains_direction_not_layer_count` |
+| 8. Classify MVP, MVVM and MVI by responsibilities rather than folder names? | Yes | L5.1's five questions, L5.5's three unlabelled designs and four falsified claims. Assessed by `classify_a_screen_by_its_responsibilities`, `observed_state_arrangement_is_not_a_class_or_a_folder` |
+| 9. Distinguish current state from an occurrence? | Yes | L6.1's two dimensions, and the facts that became true at a moment and are still state. Assessed by `durable_state_vs_one_off_event` |
+| 10. Reason about delivery before choosing a stream mechanism? | Yes | L6.2's five questions and its requirement → guarantee → owner → mechanism order. Assessed by `occurrence_guarantee_before_mechanism` (ADVANCED) |
+| 11. Choose an owner from the required lifetime? | Yes | L6.3's four-rung ladder, with one screen owner wrong in both directions. Assessed by `owner_chosen_from_the_required_lifetime` |
+| 12. Choose the smallest sufficient architecture for a feature? | Yes | L6.4's two features designed end to end, then designed wrongly by swapping their structures. Assessed by `smallest_structure_that_satisfies_the_requirements` (ADVANCED) |
+
+**No answer is "no", and no content was added**, because no phrasing improvement was mistaken for a
+missing Lesson.
+
+### Remaining deferrals
+
+Recorded explicitly so E26 does not appear to promise material owned elsewhere. Each is named inside
+the curriculum at the point a reader would otherwise expect it.
+
+- **E27 — dependency injection.** Dagger, Hilt, Koin, graph construction, binding, scopes and
+  qualifiers, service locator against DI mechanics, and runtime wiring. E26 teaches dependency
+  inversion and ownership and stops: L4.4 separates the two decisions in a four-row table and says the
+  container "decides which object is handed over; it does not change a single import". L2.1 defers
+  construction by name.
+- **E29 — build and modularization.** Gradle module-graph design, convention plugins, build-speed
+  trade-offs, physical feature or layer modules, and enforcement through modules. E26 teaches logical
+  dependency boundaries and never equates them with Gradle modules: L1.3, L1.5, L4.1, L4.4 and L4.5
+  each draw the logical-against-physical line, and L4.4 and L4.5 use this repository's single module as
+  the refutation that inverting a dependency needs a separate build unit.
+- **E31 — testing.** Architecture tests, unit-test strategy, mocks, fakes, test doubles and testing
+  frameworks. E26 mentions testability only as a consequence of a boundary and shows no test: L1.4
+  ("which is why this lesson deliberately shows no test"), L1.5, L4.3 and L4.5 each state the
+  ordering — the boundary is the cause, easier exercise is the consequence, and no layer count
+  substitutes for it.
+- **KMP curriculum / E33.** Source-set design, `expect`/`actual`, platform service abstractions,
+  detailed iOS ownership integration and sharing-policy implementation. E26 uses KMP constraints to
+  keep its claims honest — L2.2's per-host ownership, L4.3's one bounded sentence on shared policy —
+  and teaches no implementation.
+- **Lifecycle, navigation and persistence.** The `SavedStateHandle` API, detailed navigation ownership
+  APIs, process-state restoration mechanics and persistence implementation. L2.2 names the mechanisms
+  and stops; L6.3 states that how a back stack is built and how entries are scoped "belong to the
+  lifecycle and navigation curriculum"; L3.2 hands eviction, scheduling and merge algorithms to the
+  persistence curriculum.
+- **Background work.** WorkManager and API selection, scheduler configuration, constraints, retries and
+  OS background-execution mechanics. E26 decides when an in-process owner is insufficient and stops:
+  L2.5, L6.2 and L6.3 each reach that conclusion and name the curriculum that owns the mechanism.
+- **Queue and delivery infrastructure.** Durable queues, event buses, outboxes, distributed delivery
+  protocols and general exactly-once processing. L6.2 names all five and refuses them: "The decision
+  this lesson exists to teach is complete when you can say which guarantee is missing, which fact would
+  have to exist, and who would own it. Building a messaging infrastructure is a different project."
+
+### Content corrections made in E26-09
+
+Two, and both are factual claims about this repository that did not survive being checked. Nothing else
+in the 680 blocks was edited: no prose was polished, no wording was improved for style, and no
+structural or editorial change was made.
+
+| Lesson | The defect | The correction |
+| --- | --- | --- |
+| `lesson_dependency_inversion_in_practice` (L4.4) | The prose claimed that "Searching the shared module for imports of `data.local` from anywhere outside `data/local` returns nothing at all", introduced with "it is worth checking rather than assuming". Checking it finds **24 such imports** across four per-platform composition roots — `AndroidLocalData.kt`, `DesktopLocalData.kt`, `IosLocalData.kt` and `WebLocalData.kt` — each importing the Koin data modules and `CurriculumDataInitializer` in order to register the implementations. The architectural claim is sound; the absolute form of it is false, which matters most in the one Lesson that tells the reader to verify rather than trust | Narrowed to what is true and turned into evidence for the Lesson's own argument: no *feature* imports anything from `data.local`, and the only code outside it that names it is each platform's composition root — wiring rather than a source dependency from policy to detail, which is exactly the inversion-against-injection distinction the same Lesson's Senior section draws |
+| `lesson_modelling_ui_state` (L2.3) | The prose attributed a claim to a source that does not make it: "`PracticeBuilderUiState` is a data class, and **its own documentation says why**: it is a configuration screen whose fields … are simultaneously true and independently editable". The field list and the simultaneity are true of the type, but the KDoc says something different — that the screen "never decides whether a level may be deselected, whether a source may be chosen, or whether Start is allowed", because "an invariant a Composable enforces is one that a second Composable can break". This is the same standard E26-08 applied to overstated Question guarantees: the cited source has to support the claim | Attributed correctly — reading the *type* says why the shape is a data class — and the documentation's actual point is quoted for what it does support, which is the invariant-ownership argument the Lesson's next section is built on |
+
+Both corrections change the learning document's fingerprint, which is why the generated coverage
+snapshot was regenerated. **No `relatedLessonId`, Source URL, Lesson id, Unit id, mapping, Question,
+level or taxonomy entry was changed**, and no rendering defect, progress defect, Continue Learning
+defect or practice-selection bug was found to fix.
+
+### Tests added
+
+One, for the one verification the issue asks for that no existing suite performed.
+
+| Test | The gap it closes |
+| --- | --- |
+| `LearningProductionContentJourneyTest.shippedArchitectureQuestionsAreAnsweredThroughTheRunningAssessmentUi` | **No authored Question had ever been rendered through the screen a learner answers it on.** `LearningUnitPracticeIntegrationTest` resolves pools and drives runs through the `AssessmentTakingViewModel`, which proves routing and persistence and renders nothing; `FocusedLearningJourneyIntegrationTest` drives the assessment UI over a fixture catalogue of short invented Questions; and the builder journey reaches an enabled Start button and deliberately never presses it. The failures that hid there are real: an authored stem or option long enough to clip or widen the page, or an explanation that never reaches the screen after submission |
+
+The test starts Unit 6's practice from the Unit overview in the running shell and answers the Unit's
+**whole ten-Question pool** — chosen because it carries both of the architecture bank's ADVANCED
+Questions, `occurrence_guarantee_before_mechanism` and
+`smallest_structure_that_satisfies_the_requirements`, which have the Topic's longest stems and options.
+For each Question it asserts the pinned progress meter, the stem, and **every authored option** as
+displayed, enabled and contained inside a 400dp window; it selects, submits, and asserts the authored
+explanation reaches the screen on **both** the incorrect and the correct branch, with the authored key
+shown on the incorrect one; and it asserts the pool was covered by set of ids rather than by count, so
+it cannot pass having answered one Question. It then asserts the product's actual completion contract:
+practice completes itself after its final feedback rather than showing the finish step Interview uses,
+so the learner arrives at the existing Results screen, scored 9 / 10 over the authored keys. The
+candidates are derived from the Unit's own primary concepts the way the resolver derives them and the
+Question on screen is recognised by its authored stem, so a re-map changes what the journey reads
+rather than breaking it. The harness's postcondition that reading creates no attempt became a
+parameter, so every reading journey still asserts zero and only this one states the single attempt it
+means to create.
+
+**The first version of this test was green locally and failed on CI**, and the correction is recorded
+here because the failure was instructive rather than incidental. It drove its two navigation taps with
+a coordinate `performClick()` after scrolling the control into a lazy list, which is exactly the
+hazard `openShippedUnit` already documents and already guards against — a late progress refresh can
+replace the list and move what was just scrolled to, so the tap lands somewhere that is no longer the
+control and silently does nothing. The journey now invokes the click contract as a semantics action,
+re-scrolls and re-taps up to the suite's existing attempt limit, and only taps while the node actually
+carries a click action, so a control that is still disabled is waited through instead of being tapped
+into nothing. Submit is deliberately *not* retried: after feedback the same control becomes Next, so a
+retry there would skip a Question rather than recover one, and it instead waits for the control to
+become clickable and taps once.
+
+Two honest limits on that diagnosis. **The original CI failure was not reproduced locally**, so the
+fix is justified by the hazard the suite already documents and by the corrected journey passing
+repeatedly, not by a reproduced red-to-green. And one candidate cause was **checked and rejected**
+rather than assumed: the practice control was measured at the phone-shaped window and sits flush above
+the floating navigation bar — its bottom edge and the bar's top edge are both at 824dp — but its
+centre, where a coordinate tap lands, is 20dp clear of it, so interception by the navigation bar is
+not what happened and is not claimed.
+
+**Tests deliberately not added, because existing coverage already proves the criterion:**
+
+- **The full E26 authored-order assertion** — `BundledLearningCurriculumTest` already pins all six
+  Units' Lesson ids *and* Lesson titles, plus their primary mappings, and
+  `LearningUnitPracticeIntegrationTest` pins the Unit ids and the `5, 5, 5, 5, 5, 4` counts.
+- **E25 → E26 cross-link resolution** — six per-Unit link tests already assert that every E26 link
+  resolves to a shipped anchor and that no link points forward, and `LearningCurriculumValidatorTest`
+  validates related-Lesson resolution globally.
+- **Architecture Topic progress 0 → 29 → 28 → 29** — 0 → 29 is already walked through the production
+  reader and ViewModels; the reversal is already exercised at the same 29-Lesson scale through the same
+  path on `async_reactive`, and directly by `StudyProgressDerivationTest`.
+- **Continue Learning traversal across all six Units** — already asserted before each of the 29
+  Lessons, including the `async_reactive` → E26 handover and whole-document `Complete`.
+- **The post-E26-08 exact practice pools** — already pinned by exact id for all six Units, with the
+  three overlaps asserted as sets.
+- **Representative reader rendering for architecture tables, code and Sources** — already covered by
+  two data-driven journeys that read every authored block of every shipped Unit and derive the
+  document's widest comparison.
+
+### Validation performed
+
+Run sequentially rather than as one parallel invocation.
+
+| Command | Result |
+| --- | --- |
+| `./gradlew :shared:jvmTest --rerun-tasks --tests '*LearningCurriculumValidatorTest' --tests '*BundledLearningCurriculumTest' --tests '*LearningContentEndToEndTest' --tests '*LearningUnitPracticeIntegrationTest' --tests '*InitialCurriculumContentQualityTest' --tests '*InitialCurriculumSmokeTest'` | Passed — 118 tests, 0 failures |
+| `./gradlew :shared:jvmTest --rerun-tasks --tests '*LearningProductionContentJourneyTest' --tests '*ProgressLearningJourneyIntegrationTest' --tests '*LearningReaderJourneyIntegrationTest' --tests '*ContinueLearningPolicyTest' --tests '*ContinueStudyingResolverTest' --tests '*StudyProgress*' --tests '*TopicDetailLearningContentTest' --tests '*LearningNavigationIntegrationTest'` | Passed — 79 tests, 0 failures |
+| `python3 tools/learning_question_coverage.py --check` (before the corrections) | Reported stale, correctly — the fingerprint had changed |
+| `python3 tools/learning_question_coverage.py --write` | Rewrote `docs/content/learning-question-coverage.md`, 2,126 lines; the only diff is the learning fingerprint |
+| `python3 tools/learning_question_coverage.py --check` | Snapshot current |
+| `python3 -m unittest discover -s tools -p 'test_*.py'` | 21 tests, OK |
+| `./gradlew :shared:jvmTest --rerun-tasks` | Passed — **1,403 tests, 0 failures, 0 skipped**, 114 classes |
+| `./gradlew :shared:check` | Passed |
+| `./gradlew :shared:iosSimulatorArm64Test --rerun-tasks` | Passed — 448 tests, 0 failures |
+| `./gradlew :androidApp:assembleDebug :desktopApp:assemble` | Passed |
+| `./gradlew :webApp:assemble` | Passed — webpack's two pre-existing bundle-size warnings remain |
+| `git diff --check` | Clean |
+| `git status --short` and a full diff review | Three files changed, no generated build or cache output in the diff |
+
+Per-target results inside `:shared:check`, taken from the freshly written result files:
+`testAndroidHostTest` 448 tests / 0 failures, `jsBrowserTest` 448 / 0, `wasmJsBrowserTest` 448 / 0,
+and `iosSimulatorArm64Test` 448 / 0 from its own forced run. The pre-existing `runSkikoComposeUiTest`
+deprecation warnings remain and are unrelated to this issue.
+
+### Platform limitations, stated precisely
+
+- **Validated locally:** JVM, Android host, JS, WasmJS, `iosSimulatorArm64`, the Android debug
+  assembly, and the desktop and web distributions.
+- **`iosArm64` was not compiled locally and is not compiled on CI.** The epic has recorded this
+  consistently and it is still true. This issue changes shared JSON data and one JVM test source and
+  introduces no target-specific code, so no target-specific claim rests on it — the limitation is
+  reported because it remains true of the epic.
+- **No iOS device validation is claimed.**
+- **No passing CI run is claimed, and no merge is claimed.** One CI failure was reported back
+  during this issue — the first version of the new assessment journey, whose correction is
+  recorded under *Tests added* — and it was relayed rather than observed here: no GitHub
+  Actions run was viewed from this session, and no green CI result is asserted.
+- **Backlog validation could not be run**: `PyYAML` is unavailable in this environment. Neither
+  `.github/project/backlog.yml` nor `docs/content/question-audit-log.yml` was modified by this issue;
+  both were read as text, and the audit log's integrity was established with `git diff --numstat`
+  against the commit before E26-08 rather than by parsing.
+- **The 28 Source URLs were not re-fetched**, for the reasons given above. Their liveness is carried
+  from E26-08's same-day sweep and is not claimed as observed here.
+- **Code snippets were not compiled.** No snippet-compilation tooling exists for learning content and
+  no concrete gap justified building one.
+- **Whether a Lesson teaches enough to answer the Questions routed to it is a judgement**, recorded as
+  one above. The routing tests prove which Questions a learner reaches, never that the prose suffices.
+
+### Closure verdict
+
+**E26 is closed from the curriculum's perspective.** E26-01 planned the curriculum; E26-02 through
+E26-07 authored all six Units; E26-08 completed assessment coverage; E26-09 completed integration
+verification. The six Units read as one continuous argument from responsibility and boundary through
+screen-state ownership, data authority, optional domain policy and dependency direction, and
+presentation-pattern classification, to requirement → guarantee → lifetime → proportional
+architecture, with no conceptual jump that depends on material not yet taught. Terminology is
+consistent across all 29 Lessons and with the three shipped curricula; every responsibility E25
+deferred is either answered by a shipped Lesson or recorded above as still deferred with its owner and
+its reason; the curriculum applies rather than re-teaches Compose, coroutine, Flow and effect
+mechanics; and study progress, Continue Learning, Topic Detail and Unit practice all integrate through
+the existing product flows with **no unrelated product behaviour changed**. Two factual claims about
+this repository were corrected, one genuine test gap was closed, and the three structural routing
+limitations that remain are taxonomy limits recorded and asserted rather than editorial debts. **E27 is
+not started by this issue.**

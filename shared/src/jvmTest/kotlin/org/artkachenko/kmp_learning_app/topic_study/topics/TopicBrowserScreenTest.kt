@@ -1088,6 +1088,64 @@ internal class TopicBrowserScreenTest {
         assertEquals(1, clicks)
     }
 
+    /**
+     * Settings is reachable from the app's home surface without becoming part of the catalogue.
+     * It is an app-bar action beside the heading, so it is present while browsing and while
+     * searching, unlike the content entries below the header.
+     */
+    @Test
+    fun settingsIsReachableFromTheLearnHeaderAsOneTarget() = runComposeUiTest {
+        var clicks = 0
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                    onSettingsClick = { clicks += 1 },
+                )
+            }
+        }
+
+        onNodeWithTag(TopicBrowserSettingsTag)
+            .assertHasClickAction()
+            .assertTouchHeightIsEqualTo(MinimumTouchTarget)
+            .assertTouchWidthIsEqualTo(MinimumTouchTarget)
+            .performClick()
+
+        assertEquals(1, clicks)
+        // Named for assistive technology, since the gear carries no label.
+        onNodeWithContentDescription("Settings").assertIsDisplayed()
+    }
+
+    /**
+     * Everything the header already did still works with the action beside the heading: the title,
+     * the subtitle, the search field, and the catalogue underneath.
+     */
+    @Test
+    fun theSettingsActionLeavesTheHeaderSearchAndCatalogueIntact() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                    onSearchQueryChange = {},
+                )
+            }
+        }
+
+        onNodeWithTag(TopicBrowserHeaderTag).assertIsDisplayed()
+        onNodeWithText("Pick a topic to study or practise.").assertIsDisplayed()
+        onNodeWithTag(TopicBrowserSearchFieldTag).assertIsDisplayed()
+        onNodeWithText("Kotlin").assertIsDisplayed()
+        onNodeWithTag(TopicBrowserSavedQuestionsTag).performScrollTo().assertIsDisplayed()
+    }
+
     @Test
     fun theSavedQuestionsEntryIsAbsentFromSearchResults() = runComposeUiTest {
         setContent {

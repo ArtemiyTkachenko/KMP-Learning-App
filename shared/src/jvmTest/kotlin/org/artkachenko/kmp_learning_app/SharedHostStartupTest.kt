@@ -43,6 +43,11 @@ import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionContentReso
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsViewModel
 import org.artkachenko.kmp_learning_app.saved_questions.repository.SavedQuestionRepository
+import org.artkachenko.kmp_learning_app.settings.AppPreferenceStorage
+import org.artkachenko.kmp_learning_app.settings.AppearanceStateHolder
+import org.artkachenko.kmp_learning_app.settings.ThemePreferenceStore
+import org.artkachenko.kmp_learning_app.settings.appearanceModule
+import org.artkachenko.kmp_learning_app.settings.jvmAppearanceModule
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonViewModel
 import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitViewModel
@@ -88,6 +93,8 @@ internal class SharedHostStartupTest {
                 savedQuestionDataModule,
                 lessonStudyDataModule,
                 topicStudyPresentationModule,
+                appearanceModule,
+                jvmAppearanceModule,
             )
         }
 
@@ -161,6 +168,17 @@ internal class SharedHostStartupTest {
             assertIs<LearningLessonViewModel>(
                 koin.get<LearningLessonViewModel> { parametersOf("unit", "lesson") },
             )
+            // The appearance preference spans the same two-module split: the platform key-value
+            // store comes from the host's module and everything above it from the shared one.
+            assertIs<AppPreferenceStorage>(koin.get<AppPreferenceStorage>())
+            assertIs<ThemePreferenceStore>(koin.get<ThemePreferenceStore>())
+            // Exactly one holder, because it is the application's theme: a second instance would
+            // mean the startup screens and the shell could disagree about light or dark.
+            assertEquals(
+                koin.get<AppearanceStateHolder>(),
+                koin.get<AppearanceStateHolder>(),
+            )
+
             // AssessmentTakingViewModel is deliberately not resolved here: it starts a real
             // assessment from its initializer, which needs seeded curriculum content rather
             // than the empty database this graph check uses. TopicStudyPresentationModuleTest
@@ -199,6 +217,11 @@ internal class SharedHostStartupTest {
                             savedQuestionDataModule,
                             lessonStudyDataModule,
                             topicStudyPresentationModule,
+                            // AppRoot resolves the appearance preference through this, so a host
+                            // that forgot it would start under the system theme with no way to
+                            // change it. The platform module is the host's own half.
+                            appearanceModule,
+                            jvmAppearanceModule,
                         )
                     }.koin
 

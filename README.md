@@ -1,7 +1,14 @@
-# KMP-Learning-App
+# Android Engineering Lab
 
 An app for preparing for Android/KMP/Compose interviews, built as a Kotlin Multiplatform
 learning and portfolio project.
+
+The repository, the Gradle project, and every package and bundle identifier keep the
+original `KMP-Learning-App` spelling: they are stable technical identities, and the rename
+to the visible product name was deliberately visible-only. The product version and build
+number live in `product.properties` at the repository root, and Android, Desktop, iOS, and
+the in-app About section all derive from it — see
+[docs/development/versioning.md](docs/development/versioning.md).
 
 Android, Desktop, iOS, and both web targets all run the same shared Compose application.
 Each host starts the shared Koin graph, initializes the bundled curriculum through its

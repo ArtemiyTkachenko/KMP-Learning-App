@@ -4,11 +4,15 @@ How the application is composed, which hosts run it, and how curriculum content 
 
 Sibling notes: [assessment](assessment.md) · [progress](progress.md) · [practice selection](practice-selection.md) · [recommendations](recommendations.md) · [practice builder](practice-builder.md) · [persistence](persistence.md) · [study progress](study-progress.md)
 
+The product's visible identity, its version contract, and the application icon are in
+[product identity and versioning](../development/versioning.md).
+
 ## Application Composition
 
-`App()` wraps `AppShell()` in `AppTheme` and takes no dependencies of its own;
+`App()` wraps `AppShell()` in `AppearanceTheme` and takes no dependencies of its own;
 everything the shell needs is either navigation state it owns or a ViewModel
-resolved from Koin at a destination boundary.
+resolved from Koin at a destination boundary. `AppearanceTheme` is the application's
+single theme decision — see [Appearance](#appearance) below.
 
 The local curriculum data graph uses Koin because E07 introduced concrete
 runtime dependencies that need platform-aware composition: `CurriculumDatabase`,
@@ -40,7 +44,9 @@ enum constant, the back-stack key, and the `TopicBrowser` classes would have bee
 churn with no product value. Saved Questions is deliberately not a fifth: it is
 `AppRoute.SavedQuestions`, a detail pushed onto the Learn stack from a static entry in
 the Topic Browser, because saved Questions are learner-curated curriculum content and
-belong beside Topic detail and the Practice Builder.
+belong beside Topic detail and the Practice Builder. `AppRoute.Settings` is the same shape
+for the same reason: it is pushed onto the Learn stack from an app-bar action on the Learn
+home surface, so the product still has exactly four areas.
 
 `AppNavigator` owns navigation state and gives **each area its own back stack**. A
 single shared stack meant switching away from a detail discarded it, so returning to
@@ -52,7 +58,7 @@ the app. Re-selecting the area already shown returns it to its root.
 Which screens keep the navigation control is decided by `AppRoute.showsAreaNavigation()`,
 and the rule is one sentence: **normal application mode everywhere except while a question
 is actually being answered.** Browsing, reading, configuring, and reviewing are all normal
-mode — including the topic and progress-topic details, Saved Questions, the Practice
+mode — including the topic and progress-topic details, Saved Questions, Settings, the Practice
 Builder, the Learning Unit and Lesson study destinations, and both result screens — because
 hiding the control on every detail trapped the learner inside an area until they pressed
 back. Focus mode is the two assessment-taking routes and their in-progress attempts, where
@@ -93,24 +99,26 @@ All runtime hosts share `AppRoot(initialize)` in shared `commonMain`. It owns th
 startup loading, failure, and retry states around the platform initializer and
 then enters `App()`. Hosts start Koin before composition and supply only their
 own initializer, so a failed initialization cannot leave a host without
-content. `App()` keeps its own `MaterialTheme` so it remains usable directly in
-tests and previews that bypass `AppRoot`.
+content. `App()` keeps its own theme call so it remains usable directly in
+tests and previews that bypass `AppRoot` — both go through `AppearanceTheme`, so the two
+are one decision rather than two that happen to agree.
 
 ### Runtime Host Coverage
 
 `App()` and the common product graph are used by every configured runtime host:
 
-| Host | Koin graph started by | Database builder | Runnable |
-| --- | --- | --- | --- |
-| Android | `KmpLearningApplication` -> `startAndroidLocalDataGraph` | `CurriculumDatabase.android.kt` | yes |
-| Desktop (JVM) | `desktopApp/main.kt` -> `startDesktopLocalDataGraph` | `CurriculumDatabase.jvm.kt` | yes |
-| iOS | `MainViewController` -> `startIosLocalDataGraph` | `CurriculumDatabase.ios.kt`, bundled SQLite | yes |
-| Web JS | `webApp/main.kt` -> `startWebLocalDataGraph` | `CurriculumDatabase.web.kt`, SQLite worker/OPFS | yes |
-| Web Wasm | `webApp/main.kt` -> `startWebLocalDataGraph` | `CurriculumDatabase.web.kt`, SQLite worker/OPFS | yes |
+| Host | Koin graph started by | Database builder | Preference storage | Runnable |
+| --- | --- | --- | --- | --- |
+| Android | `KmpLearningApplication` -> `startAndroidLocalDataGraph` | `CurriculumDatabase.android.kt` | `SharedPreferences` | yes |
+| Desktop (JVM) | `desktopApp/main.kt` -> `startDesktopLocalDataGraph` | `CurriculumDatabase.jvm.kt` | `~/.kmp-learning-app/preferences.properties` | yes |
+| iOS | `MainViewController` -> `startIosLocalDataGraph` | `CurriculumDatabase.ios.kt`, bundled SQLite | `NSUserDefaults` | yes |
+| Web JS | `webApp/main.kt` -> `startWebLocalDataGraph` | `CurriculumDatabase.web.kt`, SQLite worker/OPFS | `localStorage` | yes |
+| Web Wasm | `webApp/main.kt` -> `startWebLocalDataGraph` | `CurriculumDatabase.web.kt`, SQLite worker/OPFS | `localStorage` | yes |
 
 Each startup function installs `curriculumDataModule`, `learningContentModule`,
-`assessmentDataModule`, `savedQuestionDataModule`, and
-`topicStudyPresentationModule` plus exactly one platform database module.
+`assessmentDataModule`, `savedQuestionDataModule`, `lessonStudyDataModule`,
+`topicStudyPresentationModule`, and `appearanceModule`, plus exactly one platform database
+module and one platform appearance module.
 The host then composes its thin platform root, which delegates initialization to
 the common `AppRoot` state machine. Database creation and platform storage stay
 below the shared repository boundary; `App()` does not start Koin or select a
@@ -127,6 +135,45 @@ COEP headers; production hosting must do the same.
 Kotlin/Native iOS compilations remain disabled on the Linux CI runner. iOS
 framework linking and simulator runtime verification are therefore local macOS
 checks rather than Linux CI guarantees.
+
+## Appearance
+
+The one user-facing setting, and the only application-level preference the product has.
+
+```text
+platform key-value store (AppPreferenceStorage)
+          -> ThemePreferenceStore        owns the key and the two tokens
+          -> AppearanceStateHolder       Koin single, application lifetime
+          -> AppearanceTheme             the one effective-theme decision
+          <- SettingsDestination         sends the learner's choice back
+```
+
+`ThemePreference` has three states, because "the app is dark" and "the learner asked for
+dark" are different facts: `System` is the absence of a choice, and `Light` and `Dark` are
+explicit overrides. `ThemePreference.resolveDarkTheme(systemInDarkTheme)` is the single
+pure function that turns one into an effective theme, and it consults the system value only
+for `System`. An installation that has never opened Settings therefore keeps following the
+operating system exactly as it did before the preference existed.
+
+`AppearanceStateHolder` is a Koin `single`, so the preference outlives the Settings entry
+that changes it — a Settings-scoped ViewModel would take the application's theme with it
+when popped. It reads storage **once, synchronously, in its constructor**, while the host
+is building its graph: the preference is therefore already in memory before anything
+composes, which is what avoids both a light-to-dark flash and an asynchronous startup step
+in `AppRoot`. Its write is likewise undispatched, because it is one small key-value write
+and a closing app must not lose the choice to a coroutine that never ran.
+
+`AppearanceTheme` resolves the holder from the running application graph and tolerates its
+absence: a preview or an isolated screen test has no graph, and then the system value
+stands exactly as before. `AppRoot` and `App()` both call it, so the startup screens and
+the shell cannot disagree about light or dark, and nesting it is idempotent.
+
+Persistence is the smallest thing that works on all five configured targets: a two-method
+`AppPreferenceStorage` over each platform's own small key-value store. No Room migration,
+no settings framework, and no new dependency — the storage key `appearance.theme` and the
+`light`/`dark` tokens are defined once, in common code. The Settings UI shows a single
+switch reflecting the *effective* theme; there is no UI action for returning to automatic
+mode, which is why nothing writes `System` back.
 
 ## Curriculum Content Model
 

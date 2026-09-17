@@ -62,6 +62,9 @@ internal fun AppRoute.showsAreaNavigation(): Boolean =
         // Browsing saved Questions is review, not an assessment: there is nothing in progress to
         // interrupt, so switching areas from here costs the learner nothing.
         is AppRoute.SavedQuestions,
+        // Settings is ordinary browsing too: nothing is in progress, and a learner who has just
+        // changed the theme should be able to go straight back to what they were doing.
+        is AppRoute.Settings,
         // Setting practice up is not yet doing it: nothing has been started, so leaving costs the
         // learner nothing and the bar stays, exactly as on the Topic this was opened from.
         is AppRoute.PracticeBuilderTopic,

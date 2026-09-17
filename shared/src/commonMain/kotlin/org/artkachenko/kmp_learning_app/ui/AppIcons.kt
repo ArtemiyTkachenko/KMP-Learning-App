@@ -6,6 +6,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathBuilder
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
+import kotlin.math.cos
+import kotlin.math.sin
 
 /**
  * The small set of Material symbols this product actually uses.
@@ -107,6 +109,22 @@ internal object AppIcons {
             moveTo(14f, 3f); verticalLineTo(5f); horizontalLineTo(17.59f); lineTo(7.76f, 14.83f)
             lineTo(9.17f, 16.24f); lineTo(19f, 6.41f); verticalLineTo(10f); horizontalLineTo(21f)
             verticalLineTo(3f); close()
+        }
+    }
+
+    /**
+     * The standard Material `settings` gear: a toothed ring around a hole.
+     *
+     * Eight teeth as trapezoids around a ring, rather than the single 40-command path Material
+     * ships, because the shape is regular and stating it as geometry is what lets the next reader
+     * check it. Declared here for the reason the rest of this file exists: a settings glyph is not
+     * worth an icon dependency.
+     */
+    val Settings: ImageVector by lazy {
+        icon("Settings") {
+            gear(centerX = 12f, centerY = 12f, outerRadius = 10.5f, innerRadius = 8f, teeth = 8)
+            circle(12f, 12f, 8f)
+            circle(12f, 12f, 3.2f, cutOut = true)
         }
     }
 
@@ -367,6 +385,48 @@ internal object AppIcons {
         }
     }
 }
+
+/**
+ * A toothed ring: [teeth] trapezoids spaced evenly around the circle of radius [innerRadius],
+ * each reaching out to [outerRadius]. The caller fills the ring itself, so the teeth only have to
+ * overlap it.
+ */
+private fun PathBuilder.gear(
+    centerX: Float,
+    centerY: Float,
+    outerRadius: Float,
+    innerRadius: Float,
+    teeth: Int,
+) {
+    // Half-widths in radians: the tooth narrows towards its tip, which is what makes it read as a
+    // tooth rather than a spoke.
+    val baseHalfAngle = (PI / teeth) * 0.42f
+    val tipHalfAngle = (PI / teeth) * 0.26f
+    repeat(teeth) { index ->
+        val angle = 2f * PI * index / teeth
+        moveToPolar(centerX, centerY, innerRadius - 0.5f, angle - baseHalfAngle)
+        lineToPolar(centerX, centerY, outerRadius, angle - tipHalfAngle)
+        lineToPolar(centerX, centerY, outerRadius, angle + tipHalfAngle)
+        lineToPolar(centerX, centerY, innerRadius - 0.5f, angle + baseHalfAngle)
+        close()
+    }
+}
+
+private const val PI = 3.14159265f
+
+private fun PathBuilder.moveToPolar(
+    centerX: Float,
+    centerY: Float,
+    radius: Float,
+    angle: Float,
+) = moveTo(centerX + radius * cos(angle), centerY + radius * sin(angle))
+
+private fun PathBuilder.lineToPolar(
+    centerX: Float,
+    centerY: Float,
+    radius: Float,
+    angle: Float,
+) = lineTo(centerX + radius * cos(angle), centerY + radius * sin(angle))
 
 /**
  * Axis-aligned rectangle.

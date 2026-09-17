@@ -35,6 +35,20 @@ internal sealed interface AppRoute : NavKey {
     @Serializable
     data object SavedQuestions : AppRoute
 
+    /**
+     * Application settings: appearance, and what this build of the product is.
+     *
+     * A detail destination inside Topics, like [SavedQuestions] and for the same structural
+     * reason: the product has four areas, and settings is not a fifth place to browse. It is
+     * reached from the Learn home surface, so back returns there through the existing stack.
+     *
+     * The route carries nothing. The appearance preference is application state read from its
+     * app-scoped owner on arrival, never a value serialized into the back stack — a stored
+     * "dark" in a restored entry could otherwise contradict what the learner has since chosen.
+     */
+    @Serializable
+    data object Settings : AppRoute
+
     @Serializable
     data class Topic(
         val topicId: String,

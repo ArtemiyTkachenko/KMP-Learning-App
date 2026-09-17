@@ -24,6 +24,7 @@ import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultDest
 import org.artkachenko.kmp_learning_app.progress.ProgressDestination
 import org.artkachenko.kmp_learning_app.progress.ProgressTopicDestination
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsDestination
+import org.artkachenko.kmp_learning_app.settings.SettingsDestination
 import org.artkachenko.kmp_learning_app.topic_study.focused_practice.FocusedPracticeDestination
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultDestination
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonDestination
@@ -34,12 +35,15 @@ import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toPracticeB
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailDestination
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserDestination
 import org.artkachenko.kmp_learning_app.ui.selection.SelectableContent
-import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
+import org.artkachenko.kmp_learning_app.ui.theme.AppearanceTheme
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun App() {
-    AppTheme {
+    // The same theme entry point AppRoot uses, so composing App() directly — a test, a preview —
+    // follows the saved appearance exactly as the running application does, rather than making a
+    // second, independent decision from isSystemInDarkTheme().
+    AppearanceTheme {
         AppShell()
     }
 }
@@ -167,7 +171,16 @@ private fun AppShell(
                             onSavedQuestions = {
                                 navigator.push(AppRoute.SavedQuestions)
                             },
+                            // Also a detail of Topics, for the same reason: the product has four
+                            // areas and settings is not a fifth. It is offered here because this is
+                            // the app's home surface, so back returns to it.
+                            onSettings = {
+                                navigator.push(AppRoute.Settings)
+                            },
                         )
+                    }
+                    entry<AppRoute.Settings> {
+                        SettingsDestination(onBack = { popBack() })
                     }
                     entry<AppRoute.SavedQuestions> {
                         SavedQuestionsDestination(

@@ -7,6 +7,8 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.curriculumDataModu
 import org.artkachenko.kmp_learning_app.data.local.curriculum.iosCurriculumDataModule
 import org.artkachenko.kmp_learning_app.data.local.lesson_study.lessonStudyDataModule
 import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
+import org.artkachenko.kmp_learning_app.settings.appearanceModule
+import org.artkachenko.kmp_learning_app.settings.iosAppearanceModule
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.koin.core.context.startKoin
 import org.koin.mp.KoinPlatform
@@ -22,7 +24,9 @@ public fun startIosLocalDataGraph() {
             savedQuestionDataModule,
             lessonStudyDataModule,
             topicStudyPresentationModule,
+            appearanceModule,
             iosCurriculumDataModule,
+            iosAppearanceModule,
         )
     }
 }

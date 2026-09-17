@@ -8,12 +8,18 @@ dependencies. For module and source-set semantics see [KMP](kmp.md); for the com
 
 - Modules are declared in `settings.gradle.kts`: `:androidApp`, `:desktopApp`, `:shared`,
   `:sqliteWasmWorker`, `:webApp`.
-- The root `build.gradle.kts` only centralizes plugin aliases with `apply false`.
+- The root `build.gradle.kts` centralizes plugin aliases with `apply false`, and loads
+  `product.properties` once so `:androidApp`, `:desktopApp`, and `:shared` read the same
+  product name, version, and build number. See
+  [versioning](versioning.md).
 - Dependency and plugin versions live in `gradle/libs.versions.toml`.
 - `:shared` applies Kotlin Multiplatform, the Android KMP library plugin, Room, Compose
   Multiplatform, the Compose compiler, KSP, and kotlinx.serialization. Room schemas are
   written to `shared/schemas`, and the Room compiler is registered per KSP target.
 - `:androidApp` applies the Android application plugin and the Compose compiler.
+- `:shared:generateProductMetadata` writes `ProductMetadata` into a generated `commonMain`
+  source directory, so shared UI reads the canonical product name and version rather than
+  restating them.
 - Gradle properties enable the configuration cache and build cache.
 
 ## Rules
@@ -21,6 +27,9 @@ dependencies. For module and source-set semantics see [KMP](kmp.md); for the com
 - Keep versions centralized in `gradle/libs.versions.toml`. Module build files consume
   catalog aliases such as `libs.compose.ui` or `libs.plugins.kotlinMultiplatform`, never
   literal versions.
+- Keep the *product* version in `product.properties`. A module reads
+  `rootProject.extra["productVersion"]` or `["productBuildNumber"]`; it never declares a
+  `versionName`, `versionCode`, or `packageVersion` of its own.
 - Add a dependency only to the module and source set that actually needs it, and keep
   platform-specific dependencies out of `commonMain`.
 - Verify that a source-set dependency matches the target that consumes it.

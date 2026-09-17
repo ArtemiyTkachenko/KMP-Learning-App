@@ -61,6 +61,7 @@ import kmp_learning_app.shared.generated.resources.recommended_next_weak_area_ac
 import kmp_learning_app.shared.generated.resources.recommended_next_weak_area_action_generic
 import kmp_learning_app.shared.generated.resources.recommended_next_weak_area_reason
 import kmp_learning_app.shared.generated.resources.recommended_next_weak_area_reason_generic
+import kmp_learning_app.shared.generated.resources.settings_open
 import kmp_learning_app.shared.generated.resources.saved_questions_entry_subtitle
 import kmp_learning_app.shared.generated.resources.saved_questions_title
 import kmp_learning_app.shared.generated.resources.topic_browser_empty
@@ -109,6 +110,7 @@ import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 import org.artkachenko.kmp_learning_app.ui.theme.appListContentPadding
 
 internal const val TopicBrowserLoadingTag = "topic_browser_loading"
+/** The header's heading row: the product heading and the settings action beside it. */
 internal const val TopicBrowserHeaderTag = "topic_browser_header"
 internal const val TopicBrowserViewportTag = "topic_browser_viewport"
 internal const val TopicBrowserSearchFieldTag = "topic_browser_search_field"
@@ -119,6 +121,7 @@ internal const val TopicBrowserContinueStudyingTag = "topic_browser_continue_stu
 internal const val TopicBrowserRecommendedNextTag = "topic_browser_recommended_next"
 internal const val TopicBrowserContinueLearningTag = "topic_browser_continue_learning"
 internal const val TopicBrowserSavedQuestionsTag = "topic_browser_saved_questions"
+internal const val TopicBrowserSettingsTag = "topic_browser_settings"
 
 /** The deliberate no-match state, so a test can tell it from a merely empty catalogue. */
 internal const val TopicBrowserNoResultsTag = "topic_browser_no_results"
@@ -151,6 +154,7 @@ internal fun TopicBrowserScreen(
     onRecommendedNextClick: (LearningRecommendationTarget) -> Unit = {},
     onContinueLearningClick: (ContinueLearningTarget) -> Unit = {},
     onSavedQuestionsClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
 ) {
     // Hoisted so the pinned header above can ask whether anything has scrolled beneath it. One
     // state per list rather than one shared: browsing and search results are different lists with
@@ -183,6 +187,7 @@ internal fun TopicBrowserScreen(
             showsSearch = state is TopicBrowserUiState.Content,
             scrolledUnder = scrolledUnderHeader,
             onSearchQueryChange = onSearchQueryChange,
+            onSettingsClick = onSettingsClick,
         )
         Box(
             modifier = Modifier
@@ -280,6 +285,7 @@ private fun TopicBrowserHeader(
     showsSearch: Boolean,
     scrolledUnder: Boolean,
     onSearchQueryChange: (String) -> Unit,
+    onSettingsClick: () -> Unit,
 ) {
     Surface(color = MaterialTheme.colorScheme.background) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -288,12 +294,33 @@ private fun TopicBrowserHeader(
                     .padding(horizontal = LocalAppContentMargin.current)
                     .padding(top = TopicBrowserHeaderSpacing),
             ) {
-                Text(
-                    text = stringResource(Res.string.topic_browser_title),
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
+                // The heading keeps the width it had; the settings action sits in the trailing
+                // corner beside it, which is where a screen-level action belongs on the app's home
+                // surface. The subtitle and search field below are unchanged.
+                Row(
+                    // The tag names the heading *row*, which starts exactly where the heading text
+                    // used to: the action beside it is taller than the headline, so anchoring the
+                    // tag to the text would move with the row's vertical centring rather than
+                    // reporting where the header begins.
                     modifier = Modifier.testTag(TopicBrowserHeaderTag),
-                )
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(Res.string.topic_browser_title),
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(
+                        onClick = onSettingsClick,
+                        modifier = Modifier.testTag(TopicBrowserSettingsTag),
+                    ) {
+                        Icon(
+                            imageVector = AppIcons.Settings,
+                            contentDescription = stringResource(Res.string.settings_open),
+                        )
+                    }
+                }
                 Text(
                     text = stringResource(Res.string.topic_browser_subtitle),
                     style = MaterialTheme.typography.bodyMedium,

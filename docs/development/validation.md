@@ -54,6 +54,16 @@ is the broadest shared check and is by far the longest-running task in the repos
 Use `./gradlew build` only when full assembly is genuinely needed; it includes the Android
 release build, web production bundles, iOS framework linking, and tests.
 
+## Product Metadata And Icon Assets
+
+```sh
+python3 tools/icon/render_app_icons.py     # regenerate every host icon from the one master
+```
+
+Authoring tooling, not part of the build. The version contract and the assets it writes are
+described in [versioning](versioning.md); `ProductMetadataContractTest` and
+`AppIconAssetTest` in `:shared:jvmTest` check that the hosts still point at them.
+
 ## Backlog Data
 
 ```sh

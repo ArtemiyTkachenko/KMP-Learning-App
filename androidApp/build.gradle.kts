@@ -10,6 +10,12 @@ kotlin {
         jvmTarget = JvmTarget.JVM_11
     }
 }
+
+// The canonical release metadata, read from product.properties by the root build. The Android
+// application no longer keeps a versionCode/versionName pair of its own.
+val productVersion = rootProject.extra["productVersion"] as String
+val productBuildNumber = rootProject.extra["productBuildNumber"] as Int
+
 dependencies {
     implementation(project(":shared"))
 
@@ -27,8 +33,8 @@ android {
         applicationId = "org.artkachenko.kmp_learning_app"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = productBuildNumber
+        versionName = productVersion
     }
     packaging {
         resources {

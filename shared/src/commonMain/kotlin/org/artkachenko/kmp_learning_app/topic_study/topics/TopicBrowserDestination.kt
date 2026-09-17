@@ -16,6 +16,7 @@ internal fun TopicBrowserDestination(
     onRecommendedNext: (LearningRecommendationTarget) -> Unit,
     onContinueLearning: (ContinueLearningTarget) -> Unit,
     onSavedQuestions: () -> Unit,
+    onSettings: () -> Unit,
     viewModel: TopicBrowserViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -36,5 +37,8 @@ internal fun TopicBrowserDestination(
         // A static entry: the screen never learns how many Questions are saved, so nothing here
         // reads saved state to decide whether the destination exists.
         onSavedQuestionsClick = onSavedQuestions,
+        // An app-bar action rather than screen content: settings is a destination the learner
+        // reaches occasionally, so it stays out of the catalogue they came here to read.
+        onSettingsClick = onSettings,
     )
 }

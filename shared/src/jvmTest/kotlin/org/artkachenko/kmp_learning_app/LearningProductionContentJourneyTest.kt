@@ -49,6 +49,11 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
+import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentProgressMeterTag
+import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingFinishTag
+import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingSubmitTag
+import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
+import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.content.BundledCurriculumSource
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningBlock
@@ -71,6 +76,7 @@ import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLess
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonReadingColumnTag
 import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitPracticeButtonTag
 import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitStudyProgressTag
+import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultPracticeAgainTag
 import org.artkachenko.kmp_learning_app.topic_study.learning_unit.learningLessonRowTag
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderAvailabilityTag
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderStartButtonTag
@@ -413,6 +419,128 @@ internal class LearningProductionContentJourneyTest {
             waitForText(ShippedUnit.lessons.first().title)
         }
 
+    /**
+     * The other end of that handoff: shipped Questions answered through the running assessment UI.
+     *
+     * Every other suite stops short of this. `LearningUnitPracticeIntegrationTest` resolves a Unit's
+     * pool through the production resolver and drives a run through the `AssessmentTakingViewModel`,
+     * which proves the routing and the persistence but renders nothing;
+     * `FocusedLearningJourneyIntegrationTest` drives the assessment UI but over a fixture
+     * catalogue of short, invented Questions; and
+     * [readingFlowsIntoTheUnitBuilderWhichStaysConfigurationAndKeepsAreaNavigation] reaches an
+     * enabled Start button and deliberately never presses it. So no authored Question had ever
+     * been seen through the screen a learner answers it on, and the failure that hides is a real
+     * one: an authored stem or option long enough to clip or to widen the page, or an explanation
+     * that never reaches the screen after submission.
+     *
+     * The synthesis Unit is used because its pool carries both of the architecture bank's ADVANCED
+     * Questions, which have the longest stems and options in the Topic. Nothing here restates the
+     * pool: the candidates are derived from the Unit's own primary concepts exactly as the resolver
+     * derives them, and the Question on screen is recognised by its authored stem, so a re-mapping
+     * changes what this journey reads rather than breaking it.
+     *
+     * The first Question is answered wrongly on purpose. Submission is one-way, so it is the only
+     * place the incorrect branch can be reached, and both branches have to put the authored
+     * explanation on screen.
+     */
+    @Test
+    fun shippedArchitectureQuestionsAreAnsweredThroughTheRunningAssessmentUi() =
+        runProductionJourneyTest(expectedAttempts = 1) {
+            val unit = ArchitectureSynthesisUnit
+            val candidates = architecturePracticeCandidates(unit)
+            assertTrue(
+                candidates.any { it.level == QuestionLevel.ADVANCED },
+                "The synthesis Unit's concepts no longer reach an ADVANCED Question, " +
+                    "so this journey no longer reads the longest authored stems.",
+            )
+
+            openShippedUnit(unit)
+            // The practice control sits above the Lesson list, and `openShippedUnit` leaves the
+            // lazy list scrolled down to the first Lesson row, so it has to be brought back.
+            onNode(hasScrollAction()).performScrollToNode(hasTestTag(LearningUnitPracticeButtonTag))
+            onNodeWithTag(LearningUnitPracticeButtonTag).performClick()
+            waitForText("Learning unit: ${unit.title}")
+            onNodeWithTag(PracticeBuilderStartButtonTag).performScrollTo().performClick()
+
+            val rootWidth = onNodeWithTag(WindowTag).fetchSemanticsNode().boundsInRoot.width
+            val answered = mutableSetOf<String>()
+            while (true) {
+                waitForIdle()
+                // The progress meter is pinned outside the scrolling content and renders only
+                // while a Question is on screen, so its absence is the end of the run — which
+                // arrives straight after the last answer, because practice completes itself
+                // rather than stopping on a finish step.
+                if (onAllNodesWithTag(AssessmentProgressMeterTag, useUnmergedTree = true)
+                        .fetchSemanticsNodes().isEmpty()
+                ) {
+                    break
+                }
+
+                // The lazy list keeps the scroll position the previous Question's explanation
+                // left it at, so the new stem is off screen and uncomposed until the header it
+                // shares an item with is scrolled back into view.
+                onNode(hasScrollAction())
+                    .performScrollToNode(hasText("Question ", substring = true))
+                val question = candidates.firstOrNull { candidate ->
+                    candidate.id !in answered &&
+                        onAllNodesWithText(candidate.text).fetchSemanticsNodes().isNotEmpty()
+                }
+                assertNotNull(
+                    question,
+                    "The taking screen showed no unanswered authored stem from the Unit's own pool.",
+                )
+                val firstQuestion = answered.isEmpty()
+
+                // How far through the run the learner is stays on screen beside the stem.
+                onNodeWithTag(AssessmentProgressMeterTag).assertIsDisplayed()
+                assertReadableWithin(question.text, rootWidth)
+                // Every authored option, including the long ones, is on screen and selectable.
+                question.answers.forEach { answer ->
+                    assertReadableWithin(answer.text, rootWidth)
+                    answerRow(answer.text).assertIsEnabled()
+                }
+
+                // The first Question takes the incorrect branch; the rest take the correct one.
+                val chosen = question.answers.first {
+                    (it.id in question.correctAnswerIds) != firstQuestion
+                }
+                answerRow(chosen.text).performClick()
+                takingAction().performClick()
+
+                // Feedback names the outcome and carries the authored explanation either way.
+                waitForText(
+                    if (firstQuestion) {
+                        "Not quite. Review the correct answer below."
+                    } else {
+                        "Correct. Nice work."
+                    },
+                )
+                assertReadableWithin(question.explanation, rootWidth)
+                if (firstQuestion) {
+                    val key = question.answers.single { it.id in question.correctAnswerIds }
+                    assertReadableWithin("Correct answer: ${key.text}", rootWidth)
+                }
+
+                answered += question.id
+                takingAction().performClick()
+            }
+
+            // The run covered the Unit's whole pool rather than stopping after one Question.
+            assertEquals(candidates.map { it.id }.toSet(), answered)
+            // Practice completes itself after its final feedback rather than showing the finish
+            // step Interview uses, so the learner arrives at the existing Results screen directly.
+            assertEquals(
+                0,
+                onAllNodesWithTag(AssessmentTakingFinishTag, useUnmergedTree = true)
+                    .fetchSemanticsNodes().size,
+                "Unit practice stopped on a finish step that this product deliberately skips.",
+            )
+            waitForTag(FocusedResultPracticeAgainTag)
+            // Scored over the authored keys: one deliberate wrong answer out of the whole pool.
+            onNodeWithText("Practice complete").assertIsDisplayed()
+            onNodeWithText("Score: ${candidates.size - 1} / ${candidates.size}").assertIsDisplayed()
+        }
+
     /** The Unit overview offers the same handoff, so practice is not a Lesson-only affair. */
     @Test
     fun theUnitOverviewOffersTheSameHandoffIntoTheBuilder() = runProductionJourneyTest {
@@ -542,6 +670,10 @@ private fun ComposeUiTest.assertOverflowScrollsInternally(tag: String, rootWidth
 private fun runProductionJourneyTest(
     windowWidth: Dp = WindowWidth,
     windowHeight: Dp = WindowHeight,
+    // Reading must start nothing, so zero is the default and every reading journey keeps it. The
+    // one journey that presses Start states the single attempt it means to create, which is what
+    // stops an accidental run elsewhere from passing as ordinary reading.
+    expectedAttempts: Int = 0,
     block: suspend ComposeUiTest.(openedUris: List<String>) -> Unit,
 ) {
     synchronized(appIntegrationMainDispatcherLock) {
@@ -591,7 +723,7 @@ private fun runProductionJourneyTest(
                 }
 
                 block(openedUris)
-                assertEquals(0, db.assessmentAttemptDao().countTestAttempts())
+                assertEquals(expectedAttempts, db.assessmentAttemptDao().countTestAttempts())
                 assertTrue(db.studiedLessonDao().getAll().isEmpty(), "Reading must not mark Lessons studied.")
             }
         } finally {
@@ -752,6 +884,62 @@ private suspend fun ComposeUiTest.waitForTag(tag: String) {
     }
 }
 
+/**
+ * A text the learner has to be able to read, on screen and inside the window.
+ *
+ * The taking screen is a lazy list, so the node has to be scrolled into composition before it can
+ * be found at all. Long authored prose wraps, so it is matched by a leading snippet rather than by
+ * the whole string, and then checked for containment: a stem, an option or an explanation wide
+ * enough to exceed the window would push the control this journey clicks off screen.
+ */
+@OptIn(ExperimentalTestApi::class)
+private fun ComposeUiTest.assertReadableWithin(text: String, rootWidth: Float) {
+    val snippet = text.take(TextSnippetLength)
+    onNode(hasScrollAction()).performScrollToNode(hasText(snippet, substring = true))
+    val node = onAllNodesWithText(snippet, substring = true)[0]
+    node.assertIsDisplayed()
+    val width = node.fetchSemanticsNode().boundsInRoot.width
+    assertTrue(width <= rootWidth, "\"$snippet\" was $width wide in a $rootWidth window.")
+}
+
+/** One answer row, scrolled into the lazy list and matched by the text it carries. */
+@OptIn(ExperimentalTestApi::class)
+private fun ComposeUiTest.answerRow(answerText: String): SemanticsNodeInteraction {
+    val matcher = hasText(answerText.take(TextSnippetLength), substring = true) and hasClickAction()
+    onNode(hasScrollAction()).performScrollToNode(matcher)
+    return onNode(matcher)
+}
+
+/** Submit, then Next: one control that changes its label, at the end of the lazy list. */
+@OptIn(ExperimentalTestApi::class)
+private fun ComposeUiTest.takingAction(): SemanticsNodeInteraction {
+    onNode(hasScrollAction()).performScrollToNode(hasTestTag(AssessmentTakingSubmitTag))
+    return onNodeWithTag(AssessmentTakingSubmitTag)
+}
+
+/** The Unit whose practice pool carries the architecture bank's ADVANCED Questions. */
+private val ArchitectureSynthesisUnit: LearningUnit by lazy {
+    runBlocking {
+        requireNotNull(BundledLearningContentRepository().getUnitById(ArchitectureSynthesisUnitId)) {
+            "The bundled learning document no longer contains $ArchitectureSynthesisUnitId."
+        }
+    }
+}
+
+/**
+ * The Questions a Unit's practice can reach, derived the way the resolver derives them.
+ *
+ * Primary concepts only, ACTIVE only, deduplicated — which is the production rule rather than a
+ * copy of a pool. `LearningUnitPracticeIntegrationTest` owns the claim about *which* ids that
+ * produces; this only needs the authored stems, keys and explanations to read from the screen.
+ */
+private fun architecturePracticeCandidates(unit: LearningUnit): List<Question> {
+    val concepts = unit.lessons.flatMap { it.primarySubtopicIds }.toSet()
+    return runBlocking { BundledCurriculumSource.load() }.questions
+        .filter { it.status == ContentStatus.ACTIVE && it.subtopicId in concepts }
+        .distinctBy { it.id }
+}
+
 private class RecordingUriHandler(private val opened: MutableList<String>) : UriHandler {
     override fun openUri(uri: String) {
         opened += uri
@@ -784,3 +972,4 @@ private const val ShippedUnitId = "unit_thinking_in_compose"
 private const val UiTopicId = "android_ui"
 private const val UiTopicName = "UI — Views & Jetpack Compose"
 private const val ShippedUnitBuilderLabel = "Learning unit: Thinking in Compose"
+private const val ArchitectureSynthesisUnitId = "unit_state_events_lifetime_and_selection"

@@ -2255,6 +2255,95 @@ epics:
         size: "M"
         initial_status: "Backlog"
 
+      - key: E13-06
+        title: "Establish product identity, versioning, app icon and appearance settings"
+
+        issue: >
+          The application is now a substantial Android engineering learning and
+          interview-preparation product, but its visible identity and packaging
+          still reflect the original project scaffold. The visible product name
+          is still KMP-Learning-App even though Kotlin Multiplatform is an
+          implementation choice rather than the subject of the product, and each
+          host hard-codes its own version metadata: Android versionCode 1 and
+          versionName 1.0, Desktop packageVersion 1.0.0, iOS
+          CURRENT_PROJECT_VERSION 1 and MARKETING_VERSION 1.0. Application icon
+          support is incomplete and inconsistent across hosts, and there is no
+          user-facing place for basic application settings or product and
+          version information. AppTheme already contains complete light and dark
+          schemes and follows isSystemInDarkTheme() by default, but the user
+          cannot explicitly select and persist a preferred appearance.
+
+        approach: >
+          Establish a coherent product identity under the visible name
+          "Android Engineering Lab" and the first intentional pre-1.0 version
+          0.1.0 with build number 1. This is a product-identity and
+          release-metadata change, not a package or bundle migration: the
+          repository name, Kotlin namespace, Android applicationId, iOS bundle
+          identifier, and persisted stable IDs remain unchanged, and a technical
+          identifier may keep the old name where changing it provides no
+          user-visible benefit. Create one canonical repository-level version
+          definition from which Android versionName/versionCode, the Desktop
+          package version, the iOS marketing and build versions, and the in-app
+          About value are derived, using a mechanism that fits the existing
+          Gradle and Xcode structure rather than a heavy release plugin or a
+          custom Gradle plugin. Audit the user-visible product name across the
+          Android application label, Desktop window and package display name,
+          iOS PRODUCT_NAME, the Web document title, shared UI text, and
+          product-facing documentation. Design one original icon that works
+          without text, stays recognizable at launcher and favicon size, fits
+          the existing visual language, and avoids Android robot or Kotlin logo
+          branding; prefer one checked-in master design from which host assets
+          are derived, update the existing iOS AppIcon.appiconset rather than
+          adding a competing asset, provide Android launcher and adaptive-icon
+          resources, and use the icon for the Desktop window and distribution
+          metadata and the Web favicon without introducing PWA scope. Add a
+          small shared Settings destination as a secondary destination pushed
+          inside the Learn/home stack with stable typed Navigation 3 routes,
+          not a fifth top-level area, containing only an Appearance section with
+          a light/dark switch and a compact About section. Own the appearance
+          preference at application lifetime through a small repository or
+          state-holder contract that the application theme observes, reusing the
+          existing AppTheme palettes, persisting the explicit override with the
+          smallest durable cross-platform preference mechanism rather than a
+          Room migration or a settings framework, and preserving system-theme
+          behavior when nothing has been saved. Check the startup path so the
+          persisted preference does not create nested themes or an avoidable
+          light-to-dark flash in AppRoot and App(), and document any unavoidable
+          startup limitation instead of hiding it. Document the minimal
+          versioning policy in existing development or build documentation:
+          MAJOR.MINOR.PATCH starting at 0.1.0, a monotonically increasing build
+          number starting at 1, minor for backwards-compatible additions, patch
+          for fixes, and 1.0.0 reserved for a deliberately declared stable
+          release, without release automation, tags, changelogs, or publishing.
+
+        acceptance_criteria:
+          - "'Android Engineering Lab' is the current user-visible product name across Android, Desktop, iOS, and Web where each host exposes a product title."
+          - "Repository, module, package, application, and bundle identifiers are not renamed merely to match the visible product name."
+          - "A coherent original application icon is checked in and used by Android, iOS, Desktop, and Web where supported by each current host."
+          - "Android launcher assets use the appropriate current launcher and adaptive-icon mechanism."
+          - "The existing iOS AppIcon.appiconset is updated rather than duplicated."
+          - "Desktop and Web expose the same product visual identity through their supported icon surfaces."
+          - "One canonical repository-level version contract defines product version 0.1.0 and build number 1."
+          - "Android versionName and versionCode, the Desktop package version, the iOS marketing and build versions, and the in-app About value derive from that canonical version contract rather than independently maintained literals."
+          - "The minimal SemVer and build-number policy is documented."
+          - "A shared Settings destination exists without becoming a fifth top-level navigation area."
+          - "Settings is reachable from an appropriate existing product surface and Back returns through the existing stack."
+          - "Settings contains an Appearance section with a light/dark theme switch."
+          - "With no saved override, the existing system-theme default behavior is preserved where practical."
+          - "An explicit light or dark choice updates the application immediately and persists across restart and reconstruction."
+          - "The theme preference is owned at application lifetime rather than by the Settings screen."
+          - "The existing AppTheme light and dark palettes are reused and no duplicate theme system is introduced."
+          - "Settings contains an About section displaying 'Android Engineering Lab' and the canonical application version."
+          - "No avoidable startup theme inconsistency or nested-theme conflict is introduced."
+          - "Existing four-area navigation, assessment, learning, progress, and persistence behavior remains unchanged."
+          - "Focused tests cover Settings navigation, theme preference behavior and persistence, product metadata display, and the unchanged top-level destination contract."
+          - "Relevant Android, Desktop, Web, and shared validation passes, and iOS validation status is reported accurately."
+          - "No unrelated curriculum, architecture, package-identifier, release-publishing, or product behavior changes are introduced."
+
+        priority: "P1"
+        size: "L"
+        initial_status: "Ready"
+
   - key: E14
     github_title: "EPIC-14 Coverage & Learning Analytics"
 

@@ -1,9 +1,11 @@
-# KMP Learning App — Agent Guide
+# Android Engineering Lab — Agent Guide
 
-An Android interview preparation app built as a Kotlin Multiplatform learning and
-portfolio project: shared Compose Multiplatform UI, Koin, Room, and Navigation 3 in
-`:shared`, hosted by thin Android, Desktop, iOS, and web shells. Generated changes should
-support learning — keep decisions visible, reviewable, and explainable.
+An Android interview preparation app built as a Kotlin
+Multiplatform learning and portfolio project: shared Compose Multiplatform UI, Koin, Room,
+and Navigation 3 in `:shared`, hosted by thin Android, Desktop, iOS, and web shells. The
+repository, Gradle project, and package identifiers keep the original `KMP-Learning-App`
+spelling on purpose; see [versioning](docs/development/versioning.md). Generated changes
+should support learning — keep decisions visible, reviewable, and explainable.
 
 This file is an index. Load a linked document only when the task touches its subject.
 
@@ -17,7 +19,8 @@ This file is an index. Load a linked document only when the task touches its sub
 | `iosApp/` | Xcode shell embedding the `:shared` framework. |
 | `.github/` | CI workflows and backlog automation. Has its own `AGENTS.md`. |
 | `docs/` | Canonical project documentation (see below). |
-| `tools/` | Repository authoring tooling. Not part of the application build. |
+| `tools/` | Repository authoring tooling, including the app-icon generator. Not part of the application build. |
+| `product.properties` | Canonical product name, version, and build number, read by Gradle and Xcode. |
 | `.codex/skills/`, `.claude/skills/` | Repository skills. |
 
 ## Critical Rules
@@ -30,6 +33,9 @@ This file is an index. Load a linked document only when the task touches its sub
   never the reverse. See [KMP boundaries](docs/development/kmp.md).
 - **Versions live in `gradle/libs.versions.toml`.** No literal versions in module build
   files. See [Gradle](docs/development/gradle.md).
+- **The product version lives in `product.properties`.** No host keeps release metadata of
+  its own, and no Kotlin file states a version literal. See
+  [versioning](docs/development/versioning.md).
 - **Narrowest visibility** for new and touched Kotlin declarations. See
   [Kotlin style](docs/development/kotlin.md).
 - **Compose UI follows Material 3** and the theme scales in `ui/theme/`, never literal
@@ -75,7 +81,7 @@ does not cover: [CI](docs/workflows/ci.md).
 
 **Architecture** — what the code currently does:
 
-- [Overview](docs/architecture/overview.md): app composition, Koin, Navigation 3, runtime hosts, curriculum content model.
+- [Overview](docs/architecture/overview.md): app composition, Koin, Navigation 3, runtime hosts, appearance preference, curriculum content model.
 - [Adaptive layout](docs/architecture/adaptive-layout.md): window size classes, content widths, which screens compose two panes, the lesson reading measure and outline.
 - [Assessment](docs/architecture/assessment.md): assessment configuration, selection, taking, scoring, retakes, and the interview-simulation features deliberately not built.
 - [Progress](docs/architecture/progress.md): derived accuracy, coverage, recent performance, learning context on study surfaces.
@@ -91,6 +97,7 @@ does not cover: [CI](docs/workflows/ci.md).
 [Material Design 3](docs/development/material-design.md) ·
 [KMP boundaries](docs/development/kmp.md) ·
 [Gradle](docs/development/gradle.md) ·
+[versioning](docs/development/versioning.md) ·
 [testing](docs/development/testing.md) ·
 [validation](docs/development/validation.md)
 

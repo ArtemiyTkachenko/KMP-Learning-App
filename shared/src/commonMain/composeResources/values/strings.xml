@@ -313,6 +313,13 @@
         <item quantity="one">%1$d of %2$d lesson studied</item>
         <item quantity="other">%1$d of %2$d lessons studied</item>
     </plurals>
+    <string name="settings_title">Settings</string>
+    <string name="settings_open">Settings</string>
+    <string name="settings_appearance_title">Appearance</string>
+    <string name="settings_dark_theme_label">Dark theme</string>
+    <string name="settings_dark_theme_supporting">Use the dark colour scheme instead of the light one.</string>
+    <string name="settings_about_title">About</string>
+    <string name="settings_about_version">Version %1$s (%2$s)</string>
     <string name="app_startup_loading">Preparing local curriculum</string>
     <string name="app_startup_error">Local curriculum could not be initialized</string>
     <string name="selection_copied_snackbar">Copied to clipboard</string>

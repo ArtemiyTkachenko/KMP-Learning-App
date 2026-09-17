@@ -1,7 +1,15 @@
+// PRODUCT_NAME, MARKETING_VERSION and CURRENT_PROJECT_VERSION come from the repository's
+// canonical product metadata, which is valid xcconfig as well as Java Properties, so Xcode
+// reads the same definition Gradle does rather than keeping release values of its own.
+#include "../../product.properties"
+
 TEAM_ID=
 
-PRODUCT_NAME=KMP-Learning-App
+// The bundle identifier is deliberately unchanged by the rename: it is the app's stable
+// technical identity, and it no longer follows PRODUCT_NAME.
 PRODUCT_BUNDLE_IDENTIFIER=org.artkachenko.kmp_learning_app.KMP-Learning-App$(TEAM_ID)
 
-CURRENT_PROJECT_VERSION=1
-MARKETING_VERSION=1.0
+// CFBundleName is what GENERATE_INFOPLIST_FILE derives from PRODUCT_NAME, and Home Screen
+// prefers CFBundleDisplayName when it exists. Stating it keeps the full product name visible
+// rather than letting a long CFBundleName be abbreviated.
+INFOPLIST_KEY_CFBundleDisplayName=$(PRODUCT_NAME)

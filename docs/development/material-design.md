@@ -153,6 +153,10 @@ short or heterogeneous lists, flat divider rows for the long ones.
   with `partiallyCorrectContainer`: one saturated card reads as emphasis, six in a column
   read as an alarm wall in which nothing stands out. Never use the error palette for an
   ordinary navigation or continuation action.
+- **A settings row is one toggle, not a row containing one.** The appearance row in
+  Settings takes `Modifier.toggleable(role = Role.Switch)` and gives its `Switch`
+  `onCheckedChange = null`, so the whole two-line row is the target and the accessible node
+  — one switch to announce, not a clickable row beside a separate switch.
 - **A toggle looks like a state, not a command.** The saved-Question control is a bookmark
   whose fill, shape, and word all change together, and publishes `stateDescription` plus
   `toggleableState` beside its action label, so assistive technology hears both what

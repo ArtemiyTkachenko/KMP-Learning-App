@@ -23,7 +23,7 @@ import kmp_learning_app.shared.generated.resources.app_startup_error
 import kmp_learning_app.shared.generated.resources.app_startup_loading
 import kmp_learning_app.shared.generated.resources.app_retry
 import org.jetbrains.compose.resources.stringResource
-import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
+import org.artkachenko.kmp_learning_app.ui.theme.AppearanceTheme
 
 internal const val AppStartupLoadingTag = "app_startup_loading"
 internal const val AppStartupRetryTag = "app_startup_retry"
@@ -50,9 +50,13 @@ public fun AppRoot(initialize: suspend () -> Unit) {
         }
     }
 
-    // AppRoot themes its startup UI. App() retains its theme so direct test and preview
-    // composition keeps the same presentation defaults.
-    AppTheme {
+    // AppRoot themes its startup UI, and App() retains its theme so direct test and preview
+    // composition keeps the same presentation defaults. Both go through AppearanceTheme, which is
+    // the application's one theme decision: the loading, error and ready screens cannot disagree
+    // about light or dark, and an explicit choice reaches all of them at once. The preference is
+    // already in memory before this composes — see AppearanceStateHolder — so there is no
+    // light-to-dark flash at startup and nothing here waits on storage.
+    AppearanceTheme {
         when (state) {
             AppStartupState.Loading -> AppStartupLoading()
             AppStartupState.Ready -> App()

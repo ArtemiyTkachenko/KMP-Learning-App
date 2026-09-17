@@ -11,6 +11,65 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
 }
 
+// The canonical product metadata, read from product.properties by the root build.
+val productName = rootProject.extra["productName"] as String
+val productVersion = rootProject.extra["productVersion"] as String
+val productBuildNumber = rootProject.extra["productBuildNumber"] as Int
+
+/**
+ * Generates the single Kotlin view of the canonical product metadata.
+ *
+ * The shared About section needs the product name and version at runtime, and the Desktop host
+ * needs the name for its window title. Generating them from `product.properties` is what keeps the
+ * in-app value and the four hosts' package metadata the same value rather than five literals that
+ * happen to agree. It is a task rather than a resource because the values are build inputs, so a
+ * changed `product.properties` re-runs this and nothing else.
+ */
+val generateProductMetadata = tasks.register("generateProductMetadata") {
+    val outputDirectory = layout.buildDirectory.dir("generated/productMetadata/commonMain/kotlin")
+    // Read into locals here, at configuration time, so the execution-time action captures three
+    // plain values rather than this build script. Declaring them as inputs is what makes the task
+    // up to date exactly while the canonical values are.
+    val name = productName
+    val version = productVersion
+    val buildNumber = productBuildNumber
+    inputs.property("productName", name)
+    inputs.property("productVersion", version)
+    inputs.property("productBuildNumber", buildNumber)
+    outputs.dir(outputDirectory)
+
+    doLast {
+        val packageDirectory = outputDirectory.get().asFile
+            .resolve("org/artkachenko/kmp_learning_app/product")
+        packageDirectory.mkdirs()
+        packageDirectory.resolve("ProductMetadata.kt").writeText(
+            """
+            package org.artkachenko.kmp_learning_app.product
+
+            /**
+             * The product's visible identity and release metadata.
+             *
+             * Generated from `product.properties` by `:shared:generateProductMetadata`. Do not edit,
+             * and do not restate these values anywhere: the About section, the Desktop window title,
+             * the Android versionName/versionCode, the Desktop package version and the iOS marketing
+             * and build versions all come from that one file.
+             */
+            public object ProductMetadata {
+                /** The user-visible product name. */
+                public const val NAME: String = "$name"
+
+                /** The MAJOR.MINOR.PATCH product version. */
+                public const val VERSION: String = "$version"
+
+                /** The monotonically increasing build number. */
+                public const val BUILD_NUMBER: Int = $buildNumber
+            }
+
+            """.trimIndent(),
+        )
+    }
+}
+
 kotlin {
     listOf(
         iosArm64(),
@@ -55,6 +114,11 @@ kotlin {
     }
     
     sourceSets {
+        commonMain {
+            // The generated ProductMetadata, compiled into commonMain so every host and the
+            // shared About section read the same canonical values.
+            kotlin.srcDir(generateProductMetadata)
+        }
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.uiTooling)

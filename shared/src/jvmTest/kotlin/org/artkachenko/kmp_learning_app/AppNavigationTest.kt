@@ -403,6 +403,82 @@ internal class AppNavigationTest {
     }
 
     /**
+     * The structural rule for E13-06: adding Settings must not add a place to navigate to. It is a
+     * detail of Topics, reached the way Saved Questions is, and the four product areas are still
+     * exactly the four they were.
+     */
+    @Test
+    fun settingsIsATopicsDetailAndNotAFifthArea() {
+        assertEquals(
+            listOf(
+                AppTopLevelDestination.TOPICS,
+                AppTopLevelDestination.INTERVIEW,
+                AppTopLevelDestination.PROGRESS,
+                AppTopLevelDestination.MISTAKES,
+            ),
+            AppTopLevelDestination.entries,
+        )
+        assertNull(AppTopLevelDestination.forRoute(AppRoute.Settings))
+
+        val navigator = navigator()
+        navigator.push(AppRoute.Settings)
+
+        assertEquals(AppTopLevelDestination.TOPICS, navigator.area)
+        assertEquals(AppRoute.Settings, navigator.currentRoute)
+    }
+
+    @Test
+    fun settingsKeepsAreaNavigationAndBackReturnsToTheLearnHome() {
+        // Browsing, not an assessment in progress: changing the theme and going straight back to
+        // another area costs the learner nothing.
+        assertTrue(AppRoute.Settings.showsAreaNavigation())
+
+        val navigator = navigator()
+        navigator.push(AppRoute.Settings)
+        navigator.popBack()
+
+        assertEquals(AppRoute.Topics, navigator.currentRoute)
+        assertEquals(AppTopLevelDestination.TOPICS, navigator.area)
+    }
+
+    /**
+     * Opened from a Topic rather than from the catalogue root, back returns to that Topic: it is an
+     * ordinary secondary route on whatever stack it was pushed onto, with no stack of its own.
+     */
+    @Test
+    fun backFromSettingsReturnsThroughTheExistingStack() {
+        val navigator = navigator()
+        navigator.push(AppRoute.Topic("android_ui"))
+        navigator.push(AppRoute.Settings)
+
+        assertTrue(navigator.popBack())
+        assertEquals(AppRoute.Topic("android_ui"), navigator.currentRoute)
+    }
+
+    @Test
+    fun switchingAreasFromSettingsLeavesItWhereItWas() {
+        val navigator = navigator()
+        navigator.push(AppRoute.Settings)
+
+        navigator.select(AppTopLevelDestination.PROGRESS)
+        assertEquals(AppRoute.Progress, navigator.currentRoute)
+
+        navigator.select(AppTopLevelDestination.TOPICS)
+        assertEquals(AppRoute.Settings, navigator.currentRoute)
+    }
+
+    /**
+     * The appearance preference is application state, so the route carries none of it. A restored
+     * entry holding "dark" could otherwise contradict what the learner has since chosen.
+     */
+    @Test
+    fun theSettingsRouteCarriesNoPreferenceState() {
+        val route: AppRoute = AppRoute.Settings
+
+        assertSame(AppRoute.Settings, route)
+    }
+
+    /**
      * The Learn stack EPIC-21 builds: catalogue, Topic, Unit, Lesson. Each step is a push onto the
      * area's existing stack, so no new area appears and back unwinds it one destination at a time.
      */

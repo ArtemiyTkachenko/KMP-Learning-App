@@ -1,4 +1,4 @@
-# KMP Learning App — Claude Code Guide
+# Android Engineering Lab — Claude Code Guide
 
 `AGENTS.md` is the authoritative agent guide for this repository and applies in full to
 Claude Code. It is imported below, so it is already in context — do not read it again.

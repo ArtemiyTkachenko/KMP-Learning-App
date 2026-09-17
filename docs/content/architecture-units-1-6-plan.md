@@ -4508,6 +4508,26 @@ rather than breaking it. The harness's postcondition that reading creates no att
 parameter, so every reading journey still asserts zero and only this one states the single attempt it
 means to create.
 
+**The first version of this test was green locally and failed on CI**, and the correction is recorded
+here because the failure was instructive rather than incidental. It drove its two navigation taps with
+a coordinate `performClick()` after scrolling the control into a lazy list, which is exactly the
+hazard `openShippedUnit` already documents and already guards against — a late progress refresh can
+replace the list and move what was just scrolled to, so the tap lands somewhere that is no longer the
+control and silently does nothing. The journey now invokes the click contract as a semantics action,
+re-scrolls and re-taps up to the suite's existing attempt limit, and only taps while the node actually
+carries a click action, so a control that is still disabled is waited through instead of being tapped
+into nothing. Submit is deliberately *not* retried: after feedback the same control becomes Next, so a
+retry there would skip a Question rather than recover one, and it instead waits for the control to
+become clickable and taps once.
+
+Two honest limits on that diagnosis. **The original CI failure was not reproduced locally**, so the
+fix is justified by the hazard the suite already documents and by the corrected journey passing
+repeatedly, not by a reproduced red-to-green. And one candidate cause was **checked and rejected**
+rather than assumed: the practice control was measured at the phone-shaped window and sits flush above
+the floating navigation bar — its bottom edge and the bar's top edge are both at 824dp — but its
+centre, where a coordinate tap lands, is 20dp clear of it, so interception by the navigation bar is
+not what happened and is not claimed.
+
 **Tests deliberately not added, because existing coverage already proves the criterion:**
 
 - **The full E26 authored-order assertion** — `BundledLearningCurriculumTest` already pins all six
@@ -4561,7 +4581,10 @@ deprecation warnings remain and are unrelated to this issue.
   introduces no target-specific code, so no target-specific claim rests on it — the limitation is
   reported because it remains true of the epic.
 - **No iOS device validation is claimed.**
-- **No CI run is claimed.** Nothing here was observed on GitHub Actions, and no merge is claimed.
+- **No passing CI run is claimed, and no merge is claimed.** One CI failure was reported back
+  during this issue — the first version of the new assessment journey, whose correction is
+  recorded under *Tests added* — and it was relayed rather than observed here: no GitHub
+  Actions run was viewed from this session, and no green CI result is asserted.
 - **Backlog validation could not be run**: `PyYAML` is unavailable in this environment. Neither
   `.github/project/backlog.yml` nor `docs/content/question-audit-log.yml` was modified by this issue;
   both were read as text, and the audit log's integrity was established with `git diff --numstat`

@@ -457,10 +457,19 @@ internal class LearningProductionContentJourneyTest {
             openShippedUnit(unit)
             // The practice control sits above the Lesson list, and `openShippedUnit` leaves the
             // lazy list scrolled down to the first Lesson row, so it has to be brought back.
-            onNode(hasScrollAction()).performScrollToNode(hasTestTag(LearningUnitPracticeButtonTag))
-            onNodeWithTag(LearningUnitPracticeButtonTag).performClick()
-            waitForText("Learning unit: ${unit.title}")
-            onNodeWithTag(PracticeBuilderStartButtonTag).performScrollTo().performClick()
+            val builderLabel = "Learning unit: ${unit.title}"
+            tapUntil(LearningUnitPracticeButtonTag, arrived = { isDisplayingText(builderLabel) }) {
+                onNode(hasScrollAction())
+                    .performScrollToNode(hasTestTag(LearningUnitPracticeButtonTag))
+            }
+            waitForText(builderLabel)
+
+            // Start is disabled until the builder's availability preflight settles, so the tap is
+            // retried rather than assumed to have landed on an enabled control.
+            tapUntil(PracticeBuilderStartButtonTag, arrived = { isDisplayingTag(AssessmentProgressMeterTag) }) {
+                onNodeWithTag(PracticeBuilderStartButtonTag).performScrollTo()
+            }
+            waitForTag(AssessmentProgressMeterTag)
 
             val rootWidth = onNodeWithTag(WindowTag).fetchSemanticsNode().boundsInRoot.width
             val answered = mutableSetOf<String>()
@@ -470,9 +479,7 @@ internal class LearningProductionContentJourneyTest {
                 // while a Question is on screen, so its absence is the end of the run — which
                 // arrives straight after the last answer, because practice completes itself
                 // rather than stopping on a finish step.
-                if (onAllNodesWithTag(AssessmentProgressMeterTag, useUnmergedTree = true)
-                        .fetchSemanticsNodes().isEmpty()
-                ) {
+                if (!isDisplayingTag(AssessmentProgressMeterTag)) {
                     break
                 }
 
@@ -504,17 +511,25 @@ internal class LearningProductionContentJourneyTest {
                 val chosen = question.answers.first {
                     (it.id in question.correctAnswerIds) != firstQuestion
                 }
-                answerRow(chosen.text).performClick()
-                takingAction().performClick()
+                answerRow(chosen.text).performSemanticsAction(SemanticsActions.OnClick)
 
                 // Feedback names the outcome and carries the authored explanation either way.
-                waitForText(
-                    if (firstQuestion) {
-                        "Not quite. Review the correct answer below."
-                    } else {
-                        "Correct. Nice work."
-                    },
-                )
+                val verdict = if (firstQuestion) {
+                    "Not quite. Review the correct answer below."
+                } else {
+                    "Correct. Nice work."
+                }
+                onNode(hasScrollAction())
+                    .performScrollToNode(hasTestTag(AssessmentTakingSubmitTag))
+                // Submit is disabled until the selection above has been applied, and it is not
+                // re-tapped once it fires: after feedback the same control becomes Next, so a
+                // retry here would skip a Question rather than recover anything.
+                waitUntil(timeoutMillis = JourneyTimeoutMillis) {
+                    isClickable(AssessmentTakingSubmitTag)
+                }
+                onNodeWithTag(AssessmentTakingSubmitTag)
+                    .performSemanticsAction(SemanticsActions.OnClick)
+                waitForText(verdict)
                 assertReadableWithin(question.explanation, rootWidth)
                 if (firstQuestion) {
                     val key = question.answers.single { it.id in question.correctAnswerIds }
@@ -522,7 +537,10 @@ internal class LearningProductionContentJourneyTest {
                 }
 
                 answered += question.id
-                takingAction().performClick()
+                // The same control, now labelled Next and always enabled while feedback is shown.
+                onNode(hasScrollAction()).performScrollToNode(hasTestTag(AssessmentTakingSubmitTag))
+                onNodeWithTag(AssessmentTakingSubmitTag)
+                    .performSemanticsAction(SemanticsActions.OnClick)
             }
 
             // The run covered the Unit's whole pool rather than stopping after one Question.
@@ -885,6 +903,59 @@ private suspend fun ComposeUiTest.waitForTag(tag: String) {
 }
 
 /**
+ * Tap a control and keep tapping until the screen it opens is on screen.
+ *
+ * A single coordinate tap on a control in a lazy list is not reliable, and this is the hazard
+ * [openShippedUnit] already documents and guards against the same way: a late progress refresh can
+ * replace the list and move what was just scrolled to, so the tap lands somewhere that is no longer
+ * the control and does nothing. A control whose screen is still settling can also be disabled when
+ * the tap arrives, which drops it just as quietly. So the click contract is invoked as a semantics
+ * action rather than by coordinate, the node is re-scrolled and re-tapped, and a tap is attempted
+ * only while the node actually carries a click action — which is what lets a disabled control be
+ * waited through instead of throwing.
+ *
+ * Only safe for a control that leaves its own screen: once it has, the tag is gone and the
+ * remaining attempts find nothing to tap.
+ */
+@OptIn(ExperimentalTestApi::class)
+private suspend fun ComposeUiTest.tapUntil(
+    tag: String,
+    arrived: () -> Boolean,
+    scrollIntoView: () -> Unit,
+) {
+    repeat(NavigationAttempts) {
+        if (arrived()) return
+        // Scrolling has to come first: in a lazy list the control does not exist in the semantics
+        // tree until it has been scrolled into it, so checking for it beforehand would find
+        // nothing and never tap. It is allowed to fail because the screen it belongs to may have
+        // already been left, or may not have finished loading it yet — both are states this loop
+        // exists to wait through rather than to fail on.
+        runCatching { scrollIntoView() }
+        if (isClickable(tag)) {
+            onNodeWithTag(tag).performSemanticsAction(SemanticsActions.OnClick)
+        }
+        waitForIdle()
+    }
+    // Nothing arrived after several attempts, so let the ordinary wait produce the failure and its
+    // message rather than throwing something less informative from here.
+    waitUntil(timeoutMillis = JourneyTimeoutMillis) { arrived() }
+}
+
+@OptIn(ExperimentalTestApi::class)
+private fun ComposeUiTest.isClickable(tag: String): Boolean =
+    onAllNodesWithTag(tag).fetchSemanticsNodes().firstOrNull()
+        ?.config
+        ?.getOrElseNullable(SemanticsActions.OnClick) { null } != null
+
+@OptIn(ExperimentalTestApi::class)
+private fun ComposeUiTest.isDisplayingText(text: String): Boolean =
+    onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+
+@OptIn(ExperimentalTestApi::class)
+private fun ComposeUiTest.isDisplayingTag(tag: String): Boolean =
+    onAllNodesWithTag(tag, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+
+/**
  * A text the learner has to be able to read, on screen and inside the window.
  *
  * The taking screen is a lazy list, so the node has to be scrolled into composition before it can
@@ -908,13 +979,6 @@ private fun ComposeUiTest.answerRow(answerText: String): SemanticsNodeInteractio
     val matcher = hasText(answerText.take(TextSnippetLength), substring = true) and hasClickAction()
     onNode(hasScrollAction()).performScrollToNode(matcher)
     return onNode(matcher)
-}
-
-/** Submit, then Next: one control that changes its label, at the end of the lazy list. */
-@OptIn(ExperimentalTestApi::class)
-private fun ComposeUiTest.takingAction(): SemanticsNodeInteraction {
-    onNode(hasScrollAction()).performScrollToNode(hasTestTag(AssessmentTakingSubmitTag))
-    return onNodeWithTag(AssessmentTakingSubmitTag)
 }
 
 /** The Unit whose practice pool carries the architecture bank's ADVANCED Questions. */

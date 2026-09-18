@@ -19569,6 +19569,1295 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "unit_dagger_compile_time_object_graphs",
+      "topicId": "dependency_injection",
+      "title": "Dagger: Compile-Time Object Graphs",
+      "summary": "The previous two units made every decision a dependency graph requires, and made all of them without a library: who constructs an object, which edges exist beneath it, which instances must be shared and which owner bounds their lifetime, which values only exist once the program is running, which key a consumer actually means, and when an unsatisfied edge becomes visible. This unit asks one question of each of them — how does Dagger encode that? — and introduces no annotation before the decision it answers. Constructible bindings and the assembly code generated from them; the declaration forms for everything a constructor cannot express; components as assembled graphs with a declared public surface, and the visibility difference between nesting one inside another and publishing a surface between two; scopes read as reuse inside a component instance, which is the owner the previous unit insisted on naming; qualifiers and multibindings as two ways of changing what a key is. It closes where the tool's reputation is made and most often overstated: on exactly what the build verified, and on a graph that compiles perfectly and is still the wrong design. Dagger is a curriculum subject here — the examples are authored to be read, not configured.",
+      "status": "ACTIVE",
+      "lessons": [
+        {
+          "id": "lesson_dagger_constructs_what_it_can_see",
+          "title": "What Dagger Can Construct on Its Own",
+          "summary": "Unit 1 wrote the assembly by hand and Unit 2 traced the graph underneath it; both had already been described by the constructors themselves. This lesson introduces Dagger as a tool that is told it may call those constructors, and writes the assembly code the reader was writing. It says exactly what marking a constructor declares, what gets generated and when, why nothing is discovered by reflection at run time, and — with equal care — why \"no reflection\" means predictable rather than free.",
+          "primarySubtopicIds": [
+            "dagger_fundamentals"
+          ],
+          "supportingSubtopicIds": [
+            "constructor_injection",
+            "manual_di",
+            "composition_root",
+            "dependency_graphs"
+          ],
+          "relatedLessonIds": [
+            "lesson_one_place_that_knows_how_to_build",
+            "lesson_from_one_dependency_to_a_graph"
+          ],
+          "sources": [
+            {
+              "title": "Dagger Dev Guide",
+              "url": "https://dagger.dev/dev-guide/"
+            },
+            {
+              "title": "Dagger Dev Guide — Basic Usage",
+              "url": "https://dagger.dev/dev-guide/basic-usage"
+            }
+          ],
+          "status": "ACTIVE",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "By the end of the last unit the reader was doing two jobs by hand. One was deciding things: which implementation satisfies an abstraction, which nodes must be one shared object, how long each of those must stay valid. The other was typing: writing out the constructor calls in the right order so that every argument existed before it was needed. Only the first job is interesting, and it is the only one a graph on paper records. The second is clerical, it grows with the graph, and it was named as the specific cost that eventually makes a tool worth its price."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Dagger is one answer to the clerical half. It is an annotation processor: it reads the declarations in your source, works out the graph they describe, and writes the assembly code as ordinary source that is compiled alongside your own. Everything in this unit is a way of telling it something the reader already decided in Units 1 and 2, which is why no annotation here arrives before the question it answers."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The first question was the unit-1 one: **who constructs this object?** Take the controller whose graph the last two units traced. Nothing about it has to change for Dagger to build it:"
+                },
+                {
+                  "type": "code",
+                  "code": "class StudySessionController(\n    private val repository: QuestionRepository,\n    private val clock: SystemClock,\n)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This constructor already says what the assembler needs to know. It names two required collaborators, it names their types, and — because the class takes them rather than building them — it leaves the choice of what to supply to whoever constructs it. That was the whole argument of the first unit. The only thing missing is permission:"
+                },
+                {
+                  "type": "code",
+                  "code": "class StudySessionController @Inject constructor(\n    private val repository: QuestionRepository,\n    private val clock: SystemClock,\n)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`@Inject` on a constructor declares two things and nothing else. First, that this type **has a constructible binding** — Dagger is allowed to build a `StudySessionController` by calling this constructor. Second, that the constructor's parameters are the **dependency keys** it needs first: to build one of these, Dagger must first obtain a `QuestionRepository` and a `SystemClock`. The parameters are the outgoing edges of this node, exactly as the graph drawing in the previous unit had them."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "`@Inject` on a constructor is not a way of creating objects magically, and it does not make a class injectable that was not already. The constructor existed and was already the class's statement of what it requires. The annotation grants permission to call it and marks its parameters as the edges to satisfy first."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Nothing has been decided about *which* `QuestionRepository` is supplied, or whether two consumers get the same one. Those are the second and third questions of Unit 2, and they need declarations this lesson has not introduced. What has been settled is only construction: for this type, Dagger can do the typing."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**What generation actually replaces.** Put the hand-written assembly beside it. In Unit 1 the composition root read something like this, and grew a line every time the graph did:"
+                },
+                {
+                  "type": "code",
+                  "code": "// the composition root, written by hand\nfun main() {\n    val clock = SystemClock()\n    val dataSource = BundledQuestionDataSource(ProductionCatalogConfig)\n    val repository = LocalQuestionRepository(dataSource)\n    val controller = StudySessionController(\n        repository = repository,\n        clock = clock,\n    )\n\n    startStudyApplication(controller)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "With constructible bindings declared, the equivalent construction is generated. The shape of what the generated code does for the controller is no more exotic than the line it replaces:"
+                },
+                {
+                  "type": "code",
+                  "code": "// conceptually, what generated construction performs\nStudySessionController(\n    repository = repositoryProvider.get(),\n    clock = clockProvider.get(),\n)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Each parameter is obtained from whatever satisfies that key, and those satisfiers were generated the same way from their own constructors. Dagger's documentation states the design goal directly: the aim is \"to generate code that mimics the code that a user might have hand-written\". That sentence is the honest description of the tool. The reader is not getting a new capability — Unit 1 already expressed every one of these arrangements by hand — they are getting the same code written for them, from declarations, without the transcription errors."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Where that code comes from.** Dagger runs during the build. The processor reads the annotated declarations and emits source files, and the documentation describes those files by example — names \"like `CoffeeMaker_Factory.java`\" — while being explicit that they are implementation details. Treat them that way. It is worth knowing that a per-binding factory type exists, because it explains what appears in a stack trace; it is not worth learning the naming scheme, and no application code should ever reference one by name."
+                },
+                {
+                  "type": "callout",
+                  "kind": "NOTE",
+                  "text": "That a build step exists is the whole of what this unit says about the build. Which annotation-processing mechanism runs it, how it is configured, what it costs and how it behaves on an incremental build are build-engineering questions with their own curriculum, and none of them changes a single graph decision in this unit."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Why no reflection is involved.** A reflective container would have to answer, while the program is running, questions like *what constructors does this class have* and *what types do they need* — reading metadata about the program from inside it. Dagger answers those questions during the build instead, and writes down the answers as code. The precise claim is this: **runtime construction executes generated code rather than discovering the dependency graph through runtime reflection.** A call arrives at a generated function that calls a constructor with arguments obtained from other generated functions. There is nothing left to discover, because the discovery already happened and its result was compiled."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That has one consequence worth stating before any performance claim: **an unsatisfied edge is a compiler error rather than something the program finds out about later.** Unit 2 treated *when a broken graph tells you* as a property of how the graph is written down and what checks it; this is the case where the answer is \"before the program runs at all\". The final lesson of this unit says exactly what that check covers, and, more importantly, what it does not."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Hearing \"no reflection\" and concluding \"no cost\". Generated code is ordinary code: it allocates objects, it calls constructors, scoped bindings consult and populate a field, and a requested object still causes everything beneath it to be built. What avoiding reflection buys is that the work is **predictable, inspectable and paid for in the ordinary way** — not that it is free. \"Zero overhead\", \"no allocations\" and \"faster than every other approach\" are all stronger claims than anything the tool documents, and the last one is not even the right shape of claim, because it depends entirely on what is being compared and on what the graph does."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**What is still yours.** Generation removed the typing and none of the decisions. Dagger cannot know that `QuestionRepository` should be satisfied by `LocalQuestionRepository`, because an interface has no constructor to annotate. It cannot know that two consumers must observe one repository rather than two. It cannot know that a value only exists once a reader has tapped something. Each of those is a declaration the next lessons introduce, and each is a Unit 2 decision the reader already knows how to make."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**The design goal has observable consequences, which is why it is worth knowing.** \"Code that mimics what a person would have written\" is not marketing; it is a constraint that shows up in three places a working engineer actually stands."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**In a stack trace.** Construction failures pass through ordinary generated frames with ordinary names, so the path from the request to the constructor that threw is readable. Nothing is hidden behind a reflective invoke.",
+                    "**In a debugger.** The generated implementation is source compiled with the application, so it can be stepped into like any other code when the question is genuinely \"what is this graph doing\".",
+                    "**In the error report.** A graph mistake is reported by the compiler against the declaration that caused it, rather than surfacing as a failure at the moment some screen first asks for something."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The bounded version of that is the useful one. Knowing the generated code is ordinary JVM source and can be read is senior; being able to recite what it contains is not, and the shape of generated output is explicitly an implementation detail that the library is free to change. The objective of this unit is the graph decision, not the reverse engineering of a code generator."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**The trade being made here is timing, not capability.** Every arrangement in this unit was expressible in Unit 1 without a library. Moving the work to the build buys the removal of clerical assembly and the early detection of a specific class of mistake; it costs a build-time step and a body of generated code that has to be produced whenever the declarations change. Being able to state both halves in one breath is most of what separates a considered answer from an enthusiastic one."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked how Dagger produces an instance, do not begin with the annotation. Say that the constructor already declared the dependencies, that `@Inject` tells the tool it may call it and that the parameters are the keys to satisfy first, and that the processor writes a factory for that binding and an implementation of the component during the build. Then make the precise claim: at run time the program executes generated code rather than discovering the graph by reflection, which is why a missing edge is a compile error. Finish with the honesty that carries the answer — predictable, inspectable, compiler-checked construction is what that buys, not zero cost."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "lesson_declaring_the_rest_of_the_graph",
+          "title": "Declaring the Rest of the Graph",
+          "summary": "An annotated constructor covers the types you own and can build by calling. Three kinds of node are left over: a class you did not write, an abstraction that has no constructor at all, and a value that has to be worked out rather than constructed. This lesson works all three on one graph, derives the selection rule from what each declaration form can express rather than from preference, and fixes what a module is — a grouping of binding declarations that owns neither the graph, nor a lifetime, nor a build boundary.",
+          "primarySubtopicIds": [
+            "dagger_modules",
+            "dagger_bindings"
+          ],
+          "supportingSubtopicIds": [
+            "dagger_fundamentals",
+            "interface_boundaries",
+            "dependency_direction"
+          ],
+          "relatedLessonIds": [
+            "lesson_when_an_interface_is_a_boundary",
+            "lesson_dagger_constructs_what_it_can_see"
+          ],
+          "sources": [
+            {
+              "title": "Dagger Dev Guide — Basic Usage",
+              "url": "https://dagger.dev/dev-guide/basic-usage"
+            },
+            {
+              "title": "Dagger Dev Guide",
+              "url": "https://dagger.dev/dev-guide/"
+            }
+          ],
+          "status": "ACTIVE",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A constructible binding requires a constructor you can annotate and a construction that is nothing more than calling it. Plenty of a real graph fails one of those. Take the reading application from the last unit — a signed-in reader's session, an HTTP client configured for the reader's own library, a repository over it — and ask of each node whether an annotated constructor is available:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**A class you do not own.** The HTTP client comes from a library. You cannot add an annotation to its constructor, and it is usually not built by calling a constructor at all but by configuring a builder.",
+                    "**An abstraction.** `LibraryRepository` is an interface. It has no constructor to annotate, and the whole point of it is that more than one thing could satisfy it — so the graph has to be told which one does.",
+                    "**A value that is worked out.** A configuration object assembled from a couple of decisions is not constructed so much as computed, and the computation has to live somewhere."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Dagger's answer to all three is the same place and two different declaration forms. The place is a **module**: a type annotated `@Module` that holds binding declarations. It is worth being exact about what that sentence does and does not say, because this word is the most over-read one in the subject. A module **groups binding declarations**. That is the entire job."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The two forms it can hold are these:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**`@Provides`** — an ordinary method with a body. Its return type is the key it satisfies, and its parameters are that binding's own dependency keys, obtained from the graph exactly as a constructor's would be. It runs, so it can do whatever obtaining the value requires.",
+                    "**`@Binds`** — an abstract method with one parameter and no body. Its return type is the key being satisfied and its parameter is what satisfies it, so it says: *when this abstraction is requested, use that already-constructible implementation.* Dagger never calls it; the declaration is the whole of it."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "The two forms are not two syntaxes for one idea. `@Provides` supplies executable logic for obtaining a value. `@Binds` supplies no logic at all — it redirects one key to another binding that already exists. Which one a situation allows is decided by whether there is anything to execute."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**Case A — a type you do not own.** The reading application's client is built by a third-party builder, from a base URL and a timeout. No annotation can be added to code you do not control, and even if it could, the construction is not a constructor call. There is code to run, so the declaration has to be able to run code:"
+                },
+                {
+                  "type": "code",
+                  "code": "@Module\nobject NetworkModule {\n\n    @Provides\n    fun httpClient(config: CatalogueConfig): HttpClient =\n        HttpClient.Builder()\n            .baseUrl(config.host)\n            .callTimeout(config.timeout)\n            .build()\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read the signature as a graph node and it is the familiar shape: the return type `HttpClient` is the key this declaration satisfies, and the parameter `CatalogueConfig` is an edge Dagger must satisfy before it can run the method. A `@Provides` method is a node whose construction happens to be written out rather than inferred."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Case B — an abstraction whose implementation is already constructible.** The reading application talks to the network for the reader's library today and is expected to read from a local cache tomorrow, which is the condition the architecture material sets for an interface earning its place. So there is a genuine boundary:"
+                },
+                {
+                  "type": "code",
+                  "code": "interface LibraryRepository {\n    suspend fun shelves(): List<Shelf>\n}\n\nclass NetworkLibraryRepository @Inject constructor(\n    private val client: ReaderLibraryClient,\n) : LibraryRepository {\n    override suspend fun shelves(): List<Shelf> = client.fetchShelves()\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`NetworkLibraryRepository` is already constructible — it has an annotated constructor and Dagger can build it. Nothing needs to happen when a `LibraryRepository` is requested except *using that one*. There is no logic, so there is nothing for a method body to do:"
+                },
+                {
+                  "type": "code",
+                  "code": "@Module\ninterface LibraryModule {\n\n    @Binds\n    fun libraryRepository(impl: NetworkLibraryRepository): LibraryRepository\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Written as `@Provides` instead, the body would be `= impl`, and that is the tell. A method whose only possible body is to return its own parameter is not expressing construction; it is expressing a redirection, and `@Binds` is the form that says so. Dagger's documentation states the reason to prefer it where it applies, and it is a property of the tool rather than a matter of taste: \"Using `@Binds` is the preferred way to declare this kind of binding because Dagger only needs the module at compile time, and can avoid class loading the module at runtime.\""
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Reading that preference as \"always use `@Binds` instead of `@Provides`\". It applies only where the binding's shape can be expressed by `@Binds` at all — one parameter, already constructible, nothing to execute. A client that has to be built by a builder cannot be written that way, and no amount of preference makes it possible. The rule is not a ranking of two interchangeable options; it is a tie-break inside the one case where both are available."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Case C — a value that has to be worked out.** `CatalogueConfig`, which Case A depended on, is chosen rather than constructed: the host depends on which environment the build targets, and a page size may be overridden. There is real logic here, so this is a `@Provides` regardless of who owns the type:"
+                },
+                {
+                  "type": "code",
+                  "code": "@Provides\nfun catalogueConfig(environment: ReaderEnvironment): CatalogueConfig {\n    val host = if (environment.isStaging) StagingHost else ProductionHost\n    return CatalogueConfig(\n        host = host,\n        pageSize = environment.pageSizeOverride ?: DefaultPageSize,\n    )\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is the case that stops the rule from collapsing into \"do you own the type?\". `CatalogueConfig` is an application type with an ordinary constructor. It still needs a provider method, because a branch and a fallback have to execute somewhere, and neither an annotated constructor nor an abstract redirection can execute anything."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Put together, the three cases produce one selection rule, decided by expressiveness:"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Situation",
+                    "Declaration",
+                    "Why nothing else can express it"
+                  ],
+                  "rows": [
+                    [
+                      "You own the type and construction is just calling the constructor",
+                      "`@Inject` constructor",
+                      "No declaration is needed anywhere — the constructor is the binding, and a module would only restate it"
+                    ],
+                    [
+                      "The abstraction requested is satisfied by an implementation Dagger can already build",
+                      "Ordinary one-parameter `@Binds`",
+                      "There is no logic to run. A provider method here has a body that returns its own parameter, and needs the module at run time to do it"
+                    ],
+                    [
+                      "Construction needs logic, configuration, a builder, or a type you cannot annotate",
+                      "`@Provides`",
+                      "Something has to execute. An abstract declaration has no body and cannot branch, build or configure"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Where the two forms live in Kotlin.** A module holding only abstract declarations is naturally an interface, and a module holding only provider methods is naturally an `object`. When one logical grouping needs both, the documented shape is an interface carrying the abstract declarations with its companion object carrying the executable ones:"
+                },
+                {
+                  "type": "code",
+                  "code": "@Module\ninterface LibraryModule {\n\n    @Binds\n    fun libraryRepository(impl: NetworkLibraryRepository): LibraryRepository\n\n    companion object {\n        @Provides\n        fun readerLibraryClient(\n            client: HttpClient,\n            session: ReaderSession,\n        ): ReaderLibraryClient = ReaderLibraryClient(client, session.credentials)\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is one supported layout rather than the only one, and it is worth recognising because it is common in real code — not worth treating as a rule. The interesting content of the snippet is still which declaration each binding got and why."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Treating a Dagger module as a Gradle module. The word is badly overloaded and the two meanings are unrelated: a `@Module` is a source-level grouping of binding declarations, and a Gradle module is a build and source-dependency boundary with its own compilation. One file can hold several `@Module` types; one `@Module` can be used by several graphs. Build modularisation is a separate subject and this unit does not enter it."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**A module contributes edges and owns nothing.** This is the distinction that makes the rest of the unit readable, and it is easiest to state as a list of things a module is regularly assumed to be and is not:"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "A module is often assumed to…",
+                    "What is actually true"
+                  ],
+                  "rows": [
+                    [
+                      "own the graph its bindings appear in",
+                      "It declares bindings. Which graph they participate in is decided by the component that installs the module, and the same module can be installed in more than one"
+                    ],
+                    [
+                      "determine how long its objects live",
+                      "It can carry a scope annotation on a binding, but the reuse that annotation describes belongs to a component instance, not to the module. The next two lessons are about exactly this"
+                    ],
+                    [
+                      "be an architectural layer",
+                      "Nothing enforces that. A module can group by layer, by feature or by nothing much, and grouping is an organisational choice with no effect on the graph"
+                    ],
+                    [
+                      "correspond to a feature or a build module",
+                      "Neither follows. The correspondence is a convention some projects adopt and many do not"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The consequence worth carrying forward is the first one. Because a module owns nothing, a module can be perfectly correct on its own and still be unusable in a particular graph — its declarations may depend on keys that graph cannot satisfy. That is not a flaw in the module, and it is why Dagger checks the relationships between bindings where the graph is assembled rather than where the declarations are written. The next lesson is about that place."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**One reference note on `@Binds`, kept separate on purpose.** Current Dagger documentation notes that `@Binds` \"can also be used with zero parameters to explicitly declare a binding for a class with an `@Inject` constructor\". That is a different thing from the abstraction binding taught above: it takes no parameter, and it declares a binding that would otherwise be implicit rather than redirecting one key to another. It is listed here so the form is recognisable in code that uses it. It is not a third mechanism to carry into a decision, and nothing in this curriculum's selection rule depends on it."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked to choose between `@Provides` and `@Binds`, refuse the premise that it is a style question and give the expressiveness rule. An annotated constructor whenever construction is just calling one; an ordinary one-parameter `@Binds` when an abstraction is satisfied by an implementation that is already constructible, because there is nothing to execute and the module is then needed only at compile time; `@Provides` whenever something has to run — a builder, a branch, a computed value, a type you cannot annotate. Then, if there is room, say what a module is: a grouping of binding declarations, which is not a graph, not a lifetime and not a Gradle module."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "lesson_which_graph_owns_this_binding",
+          "title": "Which Graph Owns This Binding?",
+          "summary": "Bindings declared in modules are not yet a graph, and a declaration existing somewhere does not mean every graph can use it. A component is where the declarations become one assembled graph with a stated public surface: it names what may be requested, names which declarations participate, and is generated into an implementation the program holds an instance of. This lesson reads one component as a graph, traces a request through it, works out what \"reachable\" means, and keeps the component carefully distinct from the composition-root responsibility it serves.",
+          "primarySubtopicIds": [
+            "dagger_components"
+          ],
+          "supportingSubtopicIds": [
+            "dagger_modules",
+            "composition_root",
+            "dependency_graphs",
+            "dagger_bindings"
+          ],
+          "relatedLessonIds": [
+            "lesson_one_place_that_knows_how_to_build",
+            "lesson_declaring_the_rest_of_the_graph"
+          ],
+          "sources": [
+            {
+              "title": "Dagger Dev Guide — Basic Usage",
+              "url": "https://dagger.dev/dev-guide/basic-usage"
+            },
+            {
+              "title": "Dagger Core Semantics",
+              "url": "https://dagger.dev/semantics/"
+            }
+          ],
+          "status": "ACTIVE",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "So far the reader has declarations: constructors Dagger may call, provider methods that execute, abstract bindings that redirect. What is missing is the thing Unit 2 actually drew — an assembled graph, with a root somebody asks at. A **component** is that. It is one type doing four jobs at once, and most confusion about components comes from noticing only one of them."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**A declaration of what may be requested.** The methods on the component interface are its public surface: the keys the rest of the program is allowed to ask for.",
+                    "**A configuration of which declarations participate.** The `modules` it names, and everything reachable through them, decide what is available to satisfy those requests.",
+                    "**A generated implementation.** Dagger writes a class implementing the interface, which is where the assembly code from the first lesson ends up.",
+                    "**A concrete graph instance at run time.** The program creates one and holds it. That instance is the graph; two of them are two graphs."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Here is one, for the reading application:"
+                },
+                {
+                  "type": "code",
+                  "code": "@Component(modules = [NetworkModule::class, LibraryModule::class])\ninterface ReaderComponent {\n    fun readerHome(): ReaderHome\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The interesting question is not what the annotation is called. It is: **what must Dagger satisfy in order to implement `readerHome()`?** Answering that is exactly the graph-tracing the previous unit taught, performed against declarations instead of against a drawing."
+                },
+                {
+                  "type": "code",
+                  "code": "readerHome(): ReaderHome            ← the requested key\n  └─ ReaderHome                      @Inject constructor\n      └─ LibraryRepository           @Binds  ← NetworkLibraryRepository\n          └─ NetworkLibraryRepository @Inject constructor\n              └─ ReaderLibraryClient  @Provides\n                  ├─ HttpClient       @Provides\n                  │   └─ CatalogueConfig  @Provides\n                  │       └─ ReaderEnvironment  ← must come from somewhere\n                  └─ ReaderSession    @Inject constructor",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Every edge in that trace has to be satisfiable or the component cannot be generated. Notice that the last line is not yet answered: `ReaderEnvironment` is required and nothing shown declares it. That is a real hole, and the final lesson of this unit is about when the reader finds out about holes like it."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A component is an interface with an API, and the modules are how that API gets satisfied. Read it from its methods downward, not from its module list across. The question a component answers is \"what can be requested here, and can everything beneath those requests be built?\""
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**Adding a request changes the graph's obligations.** Suppose the application also needs a settings screen's state owner and an object that reports diagnostics:"
+                },
+                {
+                  "type": "code",
+                  "code": "@Component(modules = [NetworkModule::class, LibraryModule::class])\ninterface ReaderComponent {\n    fun readerHome(): ReaderHome\n    fun settingsHome(): SettingsHome\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Nothing else changed, and yet the component now has to satisfy everything beneath `SettingsHome` as well. If `SettingsHome` needs a `PreferenceStore` that no module declares and no annotated constructor provides, this component stops being generatable — because of a method added to an interface. That is the sense in which a component's method list is a contract rather than a convenience: **each entry point commits the graph to everything under it.**"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**What \"reachable\" means, precisely.** A binding declaration existing in the source tree does not make it available here. Dagger's documentation lists what a component may use, and the list is worth knowing because almost every \"why can't it find my binding\" question is answered by it:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Bindings declared by `@Provides` methods in modules the component names directly, or that those modules pull in transitively through `@Module.includes`.",
+                    "Any type with an `@Inject` constructor that is unscoped, or whose scope matches one this component declares.",
+                    "**The component provision methods of the component's dependencies** — the published surface of another component, which the next lesson is about.",
+                    "The component itself, builders for subcomponents it installs, and `Provider` or `Lazy` wrappers around any of the above."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two consequences follow immediately. A module written and compiled but installed in no component contributes nothing anywhere. And a binding that *is* installed but that nothing under any entry point asks for is simply unreachable — it is not an error, it is just a declaration nobody used, and the generated implementation has no reason to contain it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Where the program crosses into the graph.** The component is the boundary. On one side is code that knows nothing about Dagger — `ReaderHome`, `LibraryRepository`, `NetworkLibraryRepository` all take their collaborators as constructor parameters and would be equally happy assembled by hand. On the other side is the generated implementation. The crossing looks like this:"
+                },
+                {
+                  "type": "code",
+                  "code": "fun main() {\n    val component = DaggerReaderComponent.create()\n    startReaderApplication(component.readerHome())\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One place creates the graph, asks it for a root object, and hands that object to the program. Everything downstream receives what it needs and asks the component for nothing — which is the distinction the first unit drew between being handed a collaborator and going to fetch one, preserved exactly."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Reading a component as a bag of modules. The module list is configuration; it says what is available, not what the component is for. Two components naming an identical module list but exposing different entry points are different graphs with different obligations, and a component with no entry points at all obliges nothing regardless of how many modules it names."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**A component is not the composition root — it serves it.** The first unit defined the composition root as a *responsibility*: assembling the object graph, located as close to the program's entry point as possible, and the one place allowed to name concrete implementations. That responsibility still exists here and it is still discharged by code you write. What changed is how much of it you write by hand."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Concern",
+                    "Composition root",
+                    "Dagger component"
+                  ],
+                  "rows": [
+                    [
+                      "What it is",
+                      "A responsibility, and a location: assembling the graph near the entry point",
+                      "A declared graph API and the generated implementation of it"
+                    ],
+                    [
+                      "Who provides it",
+                      "You do, in whatever form suits the program",
+                      "You declare the interface; the tool generates the implementation"
+                    ],
+                    [
+                      "Relationship",
+                      "The composition root can create and hold the component, configure it, and ask it for an entry point",
+                      "The component represents the graph the composition root is responsible for"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Keeping these apart matters in an interview, because \"the component is the composition root\" sounds fluent and closes off the follow-up question. The accurate sentence is that the application's composition root can create and hold the component, and the component is the graph API Dagger generated for it to use."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**Why validation happens here and not in the module.** Dagger's documentation is explicit about the split: \"While `@Inject`, `@Module` and `@Provides` annotations are validated individually, all validation of the relationship between bindings happens at the `@Component` level.\" That is not an implementation convenience — it follows from what a module is. A module contributes edges and owns no graph, so nothing about it in isolation can say whether its edges are satisfiable. Only an assembled graph with declared roots has enough information."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The practical form of that is a situation worth recognising: **a module can be entirely correct and still unusable in a particular component.** `LibraryModule` redirects `LibraryRepository` to `NetworkLibraryRepository`, which needs a `ReaderLibraryClient`. Install it in a component that declares no way to obtain that client and the module has not become wrong — it is the same declaration it always was — but this graph cannot be built. The error belongs to the component, and that is where it is reported."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**The component is also where the graph's public surface is chosen, which is a design decision and not a mechanical one.** Every entry point added is a promise that the graph can satisfy that key, and every one is a thing some other part of the program may now reach for. A component exposing one root object per screen states a narrow, readable contract. A component exposing forty assorted types has quietly become a registry that anything can ask anything of — which is the shape the first unit argued against, reappearing with a generated implementation. The mechanism does not decide this; the list of methods does."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked what a Dagger component is, do not answer \"a collection of modules\". Say it declares the graph's entry points, configures which bindings participate, and is generated into an implementation the program instantiates and holds — so the component instance is the graph. Show that you read it from its methods: each entry point commits the graph to everything beneath it, which is why relationship validation happens at the component rather than per module. If asked how it relates to a composition root, keep them distinct: the composition root is the responsibility and the place, and it can create the component and ask it for a root object."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "lesson_child_graph_or_separate_graph",
+          "title": "A Child Graph, or a Separate Graph?",
+          "summary": "A feature needs some of another graph's objects. Dagger offers two relationships for that, and they are routinely compared on the wrong axis — as convenience against modularity, or as old against new. The real difference is visibility: a nested graph inherits its ancestors' whole binding key space, and an independent graph that names another as a dependency sees only what that graph publishes on its interface. This lesson models one feature both ways, shows visibility flowing one way only, and separates a graph boundary from a build boundary once and clearly.",
+          "primarySubtopicIds": [
+            "dagger_components"
+          ],
+          "supportingSubtopicIds": [
+            "dagger_scopes",
+            "dependency_graphs",
+            "layered_architecture",
+            "module_dependency_direction"
+          ],
+          "relatedLessonIds": [
+            "lesson_which_graph_owns_this_binding"
+          ],
+          "sources": [
+            {
+              "title": "Dagger Dev Guide — Subcomponents",
+              "url": "https://dagger.dev/dev-guide/subcomponents"
+            },
+            {
+              "title": "Dagger Dev Guide — Basic Usage",
+              "url": "https://dagger.dev/dev-guide/basic-usage"
+            }
+          ],
+          "status": "ACTIVE",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The reading application grows an annotation editor. It is entered from a book, it needs the reader's session and the library repository that the application graph already has, and it has objects of its own that exist only while the editor is open. The question is how its graph relates to the application's."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Dagger has two answers, and the honest way to compare them is to ask what the new graph can **see**."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**A subcomponent is a nested graph.**"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "It inherits its ancestors' bindings. The documentation puts it plainly: \"An object bound in a subcomponent can depend on any object that is bound in its parent component or any ancestor component, in addition to objects that are bound in its own modules.\"",
+                    "It may add bindings of its own, and a shorter-lived scope beneath the parent's.",
+                    "Its parent cannot see into it, and neither can its siblings."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**A component dependency is a separate graph that names another as a dependency.**"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "It is an independent component. The other component is supplied to it as something it depends on.",
+                    "It gains access only to the keys that component **publishes as provision methods on its interface** — the same entry-point list the previous lesson read as a public surface.",
+                    "Everything else in the other graph, however many bindings it has, remains invisible."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "The decision is not \"which is simpler\" or \"which is more modular\". It is: **should this graph inherit the other graph's binding key space, or should it see only an explicitly published surface?** Everything else — how much declaring it takes, how easy it is to extend, how well it resists misuse — follows from that one answer."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**The editor as a nested graph.** The parent installs it by declaring a factory method that returns it:"
+                },
+                {
+                  "type": "code",
+                  "code": "@Subcomponent(modules = [AnnotationModule::class])\ninterface AnnotationComponent {\n    fun annotationEditor(): AnnotationEditor\n\n    @Subcomponent.Factory\n    interface Factory {\n        fun create(): AnnotationComponent\n    }\n}\n\n@Component(modules = [NetworkModule::class, LibraryModule::class])\ninterface ReaderComponent {\n    fun readerHome(): ReaderHome\n    fun annotationComponent(): AnnotationComponent.Factory\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`AnnotationEditor` may now depend on `LibraryRepository`, on `ReaderSession`, on `HttpClient`, on `CatalogueConfig` — on anything the application graph binds — without any of it being declared again. It may also depend on `DraftAnnotation`, bound in its own module, which the application graph knows nothing about."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**The editor as a separate graph.** The relationship is declared the other way round:"
+                },
+                {
+                  "type": "code",
+                  "code": "@Component(modules = [NetworkModule::class, LibraryModule::class])\ninterface ReaderComponent {\n    fun readerHome(): ReaderHome\n\n    // the published surface: exactly what a dependent component may use\n    fun libraryRepository(): LibraryRepository\n    fun readerSession(): ReaderSession\n}\n\n@Component(\n    dependencies = [ReaderComponent::class],\n    modules = [AnnotationModule::class],\n)\ninterface AnnotationComponent {\n    fun annotationEditor(): AnnotationEditor\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`AnnotationEditor` may now depend on `LibraryRepository` and `ReaderSession`, because those are published. It may **not** depend on `HttpClient` or `CatalogueConfig`, even though `ReaderComponent` binds both and its own modules are sitting right there. Making one of them available is a deliberate, visible edit: adding a method to `ReaderComponent`."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Saying that a component dependency \"inherits the other component's graph\". It does not inherit anything. What it gains is the other component's **provision methods** — the published API — and nothing behind them. That single sentence is the difference between the two relationships, and getting it backwards makes every subsequent comparison wrong."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Concern",
+                    "Subcomponent",
+                    "Component dependency"
+                  ],
+                  "rows": [
+                    [
+                      "What the new graph can use",
+                      "Every binding in the parent and any ancestor, plus its own",
+                      "Only the keys the other component publishes as provision methods, plus its own"
+                    ],
+                    [
+                      "What has to be declared to share one more type",
+                      "Nothing — it is already visible",
+                      "A provision method on the other component's interface"
+                    ],
+                    [
+                      "What happens when the other graph gains a binding",
+                      "It becomes available here automatically",
+                      "Nothing changes here until it is published"
+                    ],
+                    [
+                      "Relationship between the graphs",
+                      "Nested: the child is created from the parent and cannot exist without it",
+                      "Independent: each is its own component, one supplied to the other"
+                    ],
+                    [
+                      "Scopes",
+                      "A child may hold a shorter-lived scope beneath the parent's, and may not repeat an ancestor's scope",
+                      "Each component declares its own scopes as an independent graph"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Visibility flows one way.** The property that makes nesting safe is that a parent cannot reach into a child. The documentation states both halves: \"Objects bound in parent components can't depend on those bound in subcomponents; nor can objects bound in one subcomponent depend on objects bound in sibling subcomponents.\""
+                },
+                {
+                  "type": "code",
+                  "code": "ReaderComponent                    can see: its own bindings only\n  │\n  ├── AnnotationComponent          can see: its own + ReaderComponent's\n  │        DraftAnnotation         ← invisible to the parent\n  │                                ← invisible to the sibling\n  └── SearchComponent              can see: its own + ReaderComponent's\n           SearchQueryHistory      ← invisible to the parent\n                                   ← invisible to the sibling",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is the property to reach for when explaining why nesting is not simply \"the wide option\". A shared binding is visible downward to every descendant, and a feature-local binding is genuinely local: the editor's draft cannot leak into search, and the application graph cannot accidentally come to depend on something that only exists while an editor is open. The isolation that usually motivated splitting the graph is already there."
+                },
+                {
+                  "type": "callout",
+                  "kind": "NOTE",
+                  "text": "A component boundary is an **object-graph** boundary: it decides which bindings are visible to which requests. A Gradle module boundary is a **build and source** boundary: it decides which code can be compiled against which other code. Some projects design the two together and many do not, and neither implies the other. Build modularisation is a separate subject; this lesson is about visibility inside one program's graph."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**Choosing the narrow surface is an architecture decision, and it should be made for architectural reasons.** Publishing a type on a component interface is a line of code somebody writes and somebody reviews. That is the entire mechanism, and it is enough, because it converts \"the feature reached into the application graph\" from something invisible into something that appears in a diff. The cost is symmetrical and should be stated: every genuinely shared type needs that line, and a graph relationship maintained by hand is a graph relationship that can be neglected."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So the question to ask is about the relationship rather than the mechanism: *is this new graph part of the same program, expected to use its objects freely — or is it something that should be able to name only an agreed list?* The first is a nested graph. The second is an independent one with a published surface. A feature that is developed separately, or that a team wants to keep from drifting into using whatever it finds, is the case where the declaring cost buys something real."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Why the scope rules differ, briefly.** A nested graph is constrained by its ancestors — it may add a shorter-lived scope, and it may not reuse a scope an ancestor already represents. That restriction only makes sense once scopes are understood as belonging to component instances, which is the next lesson. Independent components have no such relationship to work out: each declares its own scopes, because neither is inside the other."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked to compare a subcomponent with a component dependency, do not answer with two slogans. Frame it as visibility: a subcomponent is a nested graph that can use every binding of its parent and any ancestor, while a component dependency is an independent graph that can use only the keys the other component publishes as provision methods. Add that visibility flows one way — a parent cannot see a child's bindings and siblings cannot see each other's — so nesting already gives feature isolation. Then give the decision in one sentence: inherit the whole key space, or agree an explicit published surface. If the interviewer moves to multi-module builds, say plainly that a component boundary is not a Gradle module boundary."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "lesson_dagger_scopes_and_component_instances",
+          "title": "A Scope Is a Promise the Component Keeps",
+          "summary": "The previous unit separated three things the word \"scope\" is collapsed into: the lifetime a requirement needs, the owner that actually retains an instance, and the reuse rule written inside that owner. Dagger encodes all three, and the middle one is the one people lose. This lesson names the owner explicitly — the component instance — counts instances across two components rather than reading them off an annotation, corrects what `@Singleton` is heard to promise, and explains the nested-scope restriction as a statement about ownership rather than as a rule to memorise.",
+          "primarySubtopicIds": [
+            "dagger_scopes"
+          ],
+          "supportingSubtopicIds": [
+            "di_scopes",
+            "dagger_components",
+            "state_ownership"
+          ],
+          "relatedLessonIds": [
+            "lesson_scope_is_a_rule_owner_is_a_lifetime",
+            "lesson_which_graph_owns_this_binding"
+          ],
+          "sources": [
+            {
+              "title": "Dagger Dev Guide — Basic Usage",
+              "url": "https://dagger.dev/dev-guide/basic-usage"
+            },
+            {
+              "title": "Dagger Dev Guide — Subcomponents",
+              "url": "https://dagger.dev/dev-guide/subcomponents"
+            }
+          ],
+          "status": "ACTIVE",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The reading application needs every destination to observe one signed-in reader. That is a lifetime requirement stated in product language: **one `ReaderSession` identity, valid from sign-in until sign-out.** The previous unit's rule was that such a requirement is satisfied by choosing an owner whose own lifetime matches it, and only then writing a reuse rule inside that owner. Dagger does not change that order. It provides notation for the third step."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Start with the question that keeps the notation honest:"
+                },
+                {
+                  "type": "code",
+                  "code": "Who actually retains this instance?",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For an ordinary Dagger scope the answer is exact: **the component instance.** The documentation is unusually direct about it — \"Since Dagger 2 associates scoped instances in the graph with instances of component implementations, the components themselves need to declare which scope they intend to represent.\" The generated component holds the instance; the annotation says it should."
+                },
+                {
+                  "type": "code",
+                  "code": "@Singleton\nclass ReaderSession @Inject constructor(\n    private val credentialStore: CredentialStore,\n)\n\n@Singleton\n@Component(modules = [NetworkModule::class, LibraryModule::class])\ninterface ReaderComponent {\n    fun readerHome(): ReaderHome\n    fun settingsHome(): SettingsHome\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Both annotations are load-bearing and they say different things. On the binding, it means *reuse one result for this key*. On the component, it declares *this graph is the one that represents that scope* — which is to say, this is the object that will hold the instance. A scoped binding with no component representing its scope is not a shortcut; it is an error, because there is nowhere to put the instance."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So the chain from the previous unit survives intact, with Dagger supplying the last line:"
+                },
+                {
+                  "type": "code",
+                  "code": "the lifetime a requirement needs\n        ↓   choose an owner whose lifetime matches\nthe component instance held for that long\n        ↓   express reuse inside that owner\na matching scope annotation on the binding",
+                  "language": "text"
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A scope annotation creates no owner and no lifetime. It says which requests served by an owner receive the same instance. The owner here is the component instance, and how long the instance actually survives is decided by how long the program keeps that component — which is a decision made in ordinary code, not in an annotation."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**Count the instances.** This is the exercise that separates people who read the annotation from people who read the graph. Take the `@Singleton ReaderSession` above and do three things:"
+                },
+                {
+                  "type": "code",
+                  "code": "val first = DaggerReaderComponent.create()\nval a1 = first.readerHome().session      // resolve from `first`\nval a2 = first.settingsHome().session    // resolve from `first` again\n\nval second = DaggerReaderComponent.create()\nval b1 = second.readerHome().session     // resolve from a second component",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "How many distinct `ReaderSession` objects exist? Reason it out from ownership:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "`a1` and `a2` are requests served by the **same component instance**, and the binding is scoped to a scope that component represents. The component holds one result and hands it to both. `a1 === a2`.",
+                    "`b1` is served by a **different component instance**. It has its own storage for its own scoped bindings, and nothing connects the two. `b1` is a second object."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The answer is **two**, and the annotation is called `@Singleton`. That is not a trick; it is the whole point. The annotation never promised one instance in the program, because it has no way to express such a thing — it is a rule about reuse inside an owner, and the program created two owners."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Reading `@Singleton` as immortal, process-global, or one-per-application. It means none of those. It is an ordinary scope annotation whose name is unfortunate: one instance **per component instance that represents that scope**, for as long as that component instance is retained. An application usually gets application-wide behaviour from it because the application usually creates exactly one such component and holds it for the process — and that is the application's doing, not the annotation's."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The correction has a useful positive half. Because the component instance is the owner, **releasing the component releases what it retained**: drop the reference and its scoped objects become collectable like anything else. A scope is not a leak and not a permanent registration. It is a field on an object whose lifetime you control."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Scope names carry no meaning to the tool.** `@Singleton` is a scope annotation that arrives in the box; a custom one is declared the same way and behaves identically:"
+                },
+                {
+                  "type": "code",
+                  "code": "@Scope\n@Retention(AnnotationRetention.RUNTIME)\nannotation class ReaderScope",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Applied to a component and to a binding, `@ReaderScope` does exactly what `@Singleton` does: one instance per component instance representing it. What differs is only what a reader of the code understands by the name. That is a real benefit — `@ReaderScope` invites the question \"which component represents this, and how long is it held?\" where `@Singleton` invites an assumption — but it is a benefit to humans, not a change in behaviour."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Why a nested graph may not repeat an ancestor's scope.** The documentation states the rule: \"No subcomponent may be associated with the same scope as any ancestor component.\" Read from ownership, it is not arbitrary at all. Ancestor and descendant are two owners, one living inside the other. If both represented `@ReaderScope`, then a `@ReaderScope` binding would have two candidate owners and the question *which object retains this instance* would have no answer — the parent's storage or the child's, differing in how long the object survives and in how many exist. The restriction removes the ambiguity rather than expressing a preference. (The same documentation notes that two subcomponents which cannot reach each other may share a scope, for the identical reason: there is no ambiguity about where to store it.)"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "What you want to be true",
+                    "What actually makes it true"
+                  ],
+                  "rows": [
+                    [
+                      "One reader session observed by every destination until sign-out",
+                      "A component held for exactly that long, representing a scope, with the binding scoped to it"
+                    ],
+                    [
+                      "A fresh draft annotation each time the editor opens",
+                      "An unscoped binding, or a shorter-lived component created when the editor opens"
+                    ],
+                    [
+                      "An object surviving the process",
+                      "Nothing in this list. Nothing held in memory survives process death, and durability is a storage decision with storage tools"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**The failure mode this framing prevents is over-scoping, and it is the expensive one.** Ask \"how long must this identity stay valid?\" and the answer picks a component. Ask \"which annotation should I put here?\" and the honest answer is that there is nothing to reason from, so the widest scope available looks safest — it cannot produce a missing instance, and it makes the graph compile. Every consequence of that choice shows up later and somewhere else: a draft from one book appearing in another, memory held for a screen nobody is on, a test that passes alone and fails in a suite. The previous unit priced both directions of getting the owner wrong; Dagger does not change the price, it only makes the wrong version equally easy to write."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**One reference note, deliberately bounded.** Dagger has a `@Reusable` scope for a case that is neither \"shared\" nor \"fresh\": avoiding repeated allocation where identity does not matter. Its documented properties are the important part. It is not associated with any single component, and there is no guarantee that a binding will be called only once — it may cache a result or it may not, and different components may hold different instances. The documentation's own guidance is that it is safe \"for immutable objects that you would leave unscoped if you didn't care how many times they were allocated\", and that applying it \"to bindings that return mutable objects, or objects where it's important to refer to the same instance, is dangerous\"."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So it is not a third ordinary option sitting between unscoped and scoped. It is an allocation optimisation that explicitly declines to promise identity, which makes it wrong for every requirement expressed as *these consumers must observe one state* — the exact requirement that motivates sharing in the first place. Recognise it; reach for it only when the requirement is genuinely \"building this twice is wasteful\" and never when it is \"these must be the same object\"."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked what a Dagger scope does, answer with the owner, not the annotation. Scoped instances are associated with component instances, so the component instance retains the object and the scope expresses which requests it serves receive the same one. Then demonstrate it: two component instances representing the same scope produce two instances, which is why `@Singleton` does not mean process-global or immortal. Be ready to give the actual lifetime sentence — how long the object lives is how long the program holds that component — and to explain the nested-scope restriction as the removal of an ambiguity about which graph would store the instance."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "lesson_when_the_type_is_not_the_key",
+          "title": "When the Type Is Not the Key",
+          "summary": "Two lessons ago in the previous unit, a consumer asked for an `HttpClient` when two existed and the request could not say which it meant. Dagger's answer is that a key was never only a type: it is a type and an optional qualifier, so a qualifier makes two bindings into two keys. The same lesson then runs the idea backwards — a multibinding makes one key an aggregate that independently written contributors add to, which is a dependency-direction tool rather than a convenient way to build a collection.",
+          "primarySubtopicIds": [
+            "dagger_qualifiers",
+            "dagger_multibindings"
+          ],
+          "supportingSubtopicIds": [
+            "dagger_bindings",
+            "dependency_graphs",
+            "dependency_direction",
+            "feature_modularization"
+          ],
+          "relatedLessonIds": [
+            "lesson_two_dependencies_of_the_same_type",
+            "lesson_dependency_inversion_in_practice"
+          ],
+          "sources": [
+            {
+              "title": "Dagger Dev Guide — Basic Usage",
+              "url": "https://dagger.dev/dev-guide/basic-usage"
+            },
+            {
+              "title": "Dagger Dev Guide — Multibindings",
+              "url": "https://dagger.dev/dev-guide/multibindings"
+            },
+            {
+              "title": "Dagger Core Semantics",
+              "url": "https://dagger.dev/semantics/"
+            }
+          ],
+          "status": "ACTIVE",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The previous unit left a collision unresolved on purpose. The reading application talks to its server two ways — the public catalogue, which must work before anybody signs in, and the reader's own library, which carries their credentials and must never send them anywhere else. Both are HTTP clients, configured differently. A consumer asks for one:"
+                },
+                {
+                  "type": "code",
+                  "code": "class LibraryRepository @Inject constructor(\n    private val client: HttpClient,\n)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "and the request is ambiguous. Two bindings match the key `HttpClient`, they are not interchangeable, and **nothing in the request says which was meant**. The previous unit's first answer still stands and is often the better one: if these represent different responsibilities, give them different types, so that the rule \"this one must never carry credentials\" lives in the type system. The case this lesson is about is the other one — where the two genuinely are one concept configured twice, and the distinction belongs on the key rather than in a new type."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Dagger's core semantics defines a key as a pair: **a type and an optional qualifier**. A qualifier is any annotation that is itself annotated `@Qualifier`. Adding one does not label a binding; it changes the key, so these are two different keys entirely:"
+                },
+                {
+                  "type": "code",
+                  "code": "HttpClient                       ← one key\n@Authenticated HttpClient        ← a different key\n\ntwo bindings, two keys, one candidate each → no ambiguity",
+                  "language": "text"
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A qualifier is part of the binding key, not a name attached to a provider. That is why it has to appear on both sides: the declaration says which key it satisfies, and the consumer's parameter says which key it is asking for. A qualifier on only one side does not narrow a request — it creates a key nobody asks for, and leaves the original request as ambiguous, or as unsatisfiable, as it was."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The qualifier annotation is declared once, and `javax.inject` supplies `@Qualifier` itself for the purpose:"
+                },
+                {
+                  "type": "code",
+                  "code": "@Qualifier\n@Retention(AnnotationRetention.RUNTIME)\nannotation class Authenticated\n\n@Qualifier\n@Retention(AnnotationRetention.RUNTIME)\nannotation class PublicCatalogue",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Then it appears on the declarations, and on every request that means one of them:"
+                },
+                {
+                  "type": "code",
+                  "code": "@Module\nobject NetworkModule {\n\n    @Provides\n    @PublicCatalogue\n    fun catalogueClient(config: CatalogueConfig): HttpClient =\n        HttpClient.Builder().baseUrl(config.host).build()\n\n    @Provides\n    @Authenticated\n    fun libraryClient(config: CatalogueConfig, session: ReaderSession): HttpClient =\n        HttpClient.Builder()\n            .baseUrl(config.host)\n            .credentials(session.credentials)\n            .build()\n}\n\nclass LibraryRepository @Inject constructor(\n    @Authenticated private val client: HttpClient,\n)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`LibraryRepository` now states its requirement rather than leaving it to be guessed, and that is the real gain — the same gain the previous unit got from two distinct types, obtained more cheaply and with less protection. Be able to say which one a situation needs. A qualifier disambiguates; it does not prevent the credentialed client being supplied for the `@PublicCatalogue` key by a provider method that was written carelessly. Where the rule is one somebody must not be able to break, the type system is still the stronger answer."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Annotating the provider and forgetting the consumer, then concluding that qualifiers \"don't work\". The consumer's request is what selects a binding. An unqualified parameter asks for the unqualified key, and if every declaration is now qualified, that key has no binding at all — which is why this mistake often surfaces as a missing binding rather than as the ambiguity it replaced."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Now run the idea in reverse.** Qualifiers split one key into several. The opposite problem is several independent contributors that should arrive as **one** dependency. The reading application has grown features — the annotation editor, offline sync, search indexing — each developed separately, and each needing to do some work at start-up. Something has to run them all."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The shape to avoid is the obvious one:"
+                },
+                {
+                  "type": "code",
+                  "code": "class StartupRunner @Inject constructor(\n    private val annotations: AnnotationStartup,\n    private val sync: OfflineSyncStartup,\n    private val search: SearchIndexStartup,\n)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This works and it inverts nothing. The coordinator names every feature, so adding a feature edits the coordinator, removing one edits it again, and a component that is supposed to know about start-up ordering has become a component that knows about annotations, sync and search. A multibinding lets several bindings — declared in different modules, written by people who never met — contribute elements into one collection that the consumer injects as a whole:"
+                },
+                {
+                  "type": "code",
+                  "code": "// each feature's own module, independent of every other\n@Module\nobject AnnotationModule {\n    @Provides\n    @IntoSet\n    fun annotationStartup(editor: AnnotationEditor): StartupContributor =\n        AnnotationStartup(editor)\n}\n\n@Module\nobject SyncModule {\n    @Provides\n    @IntoSet\n    fun syncStartup(repository: LibraryRepository): StartupContributor =\n        OfflineSyncStartup(repository)\n}\n\n// the consumer, which names no contributor at all\nclass StartupRunner @Inject constructor(\n    private val contributors: Set<@JvmSuppressWildcards StartupContributor>,\n) {\n    fun run() = contributors.forEach { it.onStart() }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`@IntoSet` says that this declaration contributes **an element** of `Set<StartupContributor>` rather than providing the set itself. Dagger collects every such contribution reachable in the component and satisfies the set key with all of them. The documentation's summary of why this exists is the useful one: it \"allows you to bind several objects into a collection even when the objects are bound in different modules\", so application code can inject the collection \"without depending directly on the individual bindings\"."
+                },
+                {
+                  "type": "callout",
+                  "kind": "NOTE",
+                  "text": "Adding or removing a feature is now a change to which modules a component installs, and nothing in `StartupRunner` moves. That is the property worth remembering; the annotation name is not. Dagger also supports contributing entries to an injectable **map** when contributions need to be looked up by a key known at compile time, which is worth recognising in code and is not needed for the reasoning here."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**A multibinding is a dependency-direction tool that happens to produce a collection.** Compare the two arrangements as arrows rather than as code:"
+                },
+                {
+                  "type": "code",
+                  "code": "without:   StartupRunner ──→ AnnotationStartup\n                         ──→ OfflineSyncStartup\n                         ──→ SearchIndexStartup\n\nwith:      AnnotationStartup ─┐\n           OfflineSyncStartup ─┼──→ Set<StartupContributor> ──→ StartupRunner\n           SearchIndexStartup ─┘",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The arrows reversed. In the first, the coordinator depends on each feature. In the second, the coordinator depends only on an abstraction it owns, and each feature depends on that abstraction and on the graph mechanism for contributing to it. This is the inversion the architecture material described, applied to a fan-in — and it is why the pattern shows up wherever a system is plugin-shaped."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Two honest limits, because this is easy to over-sell.** First, a multibinding does not by itself make an architecture modular. The contributors still have to be genuinely independent, and whether they live in separate build modules is a separate decision made with separate tools; a set multibinding inside one tangled module inverts one arrow and nothing else. Second, the aggregate is a `Set`, with everything that implies: no ordering is promised, so a contributor that must run before another is a requirement this mechanism does not express, and the coordinator still owns what happens when one of them is slow or throws. Inverting *who knows about whom* does not hand over responsibility for *what happens when they run*."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**What the two halves of this lesson share.** Both are statements about keys. A qualifier makes one type into several keys so that each consumer can say which it means; a multibinding makes one key an aggregate so that several contributors can satisfy it together. Neither is a selection rule applied after the fact, which is the thing the previous unit ruled out — declaration order, most recent registration, most specific match. The key is settled before anything is resolved, and both mechanisms work by changing what the key is."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "For same-type ambiguity, lead with the key model: a Dagger key is a type plus an optional qualifier, so a qualifier makes two bindings into two distinct keys and every consumer must state which key it is asking for. Say why the consumer side is not optional. For multibindings, do not lead with `@IntoSet`. Lead with the problem — several independently developed contributors must satisfy one dependency without the consumer knowing any of them — then name the mechanism, then state the consequence: the consumer depends on the aggregate, the contributors depend on the graph, and adding a feature edits no consumer. Finishing with a limit, such as the set promising no ordering, is what makes it sound like experience rather than a feature list."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "lesson_what_the_dagger_compiler_checked",
+          "title": "What the Dagger Compiler Actually Checked",
+          "summary": "A build that succeeds feels like a verdict, and it is worth knowing exactly how narrow a verdict it is. This lesson states precisely what Dagger verifies before the program runs — every reachable key satisfied by exactly one binding, checked where the graph is assembled — walks a missing binding and an ambiguous one, and is careful about the cycle rule rather than rounding it off. It closes the unit on a graph that compiles perfectly and is wrong, which is the distinction between a structurally valid graph and a defensible design.",
+          "primarySubtopicIds": [
+            "dagger_fundamentals"
+          ],
+          "supportingSubtopicIds": [
+            "dependency_graphs",
+            "di_framework_tradeoffs",
+            "dagger_components",
+            "kotlin_gradle_plugin"
+          ],
+          "relatedLessonIds": [
+            "lesson_scope_is_a_rule_owner_is_a_lifetime",
+            "lesson_when_a_broken_graph_tells_you",
+            "lesson_dagger_scopes_and_component_instances"
+          ],
+          "sources": [
+            {
+              "title": "Dagger Dev Guide — Basic Usage",
+              "url": "https://dagger.dev/dev-guide/basic-usage"
+            },
+            {
+              "title": "Dagger Core Semantics",
+              "url": "https://dagger.dev/semantics/"
+            },
+            {
+              "title": "Dagger Dev Guide",
+              "url": "https://dagger.dev/dev-guide/"
+            }
+          ],
+          "status": "ACTIVE",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The previous unit asked when a broken graph tells you, and answered that it depends on how the graph is written down and what checks it. Dagger is the case where the answer is \"before the program runs\". This lesson says exactly what is being checked, because the claim is both stronger and narrower than it is usually reported."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The check happens where the graph is assembled. Dagger's documentation draws the line itself: \"While `@Inject`, `@Module` and `@Provides` annotations are validated individually, all validation of the relationship between bindings happens at the `@Component` level.\" That follows from what a module is. A module declares edges and owns no graph, so nothing about it alone can say whether its edges can be satisfied."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What the component is checked against is well-formedness, and Dagger's core semantics states it as a property of keys rather than of annotations. For the graph a component can reach, **every key must contain exactly one binding**. The two ways of failing that are the two errors everybody meets:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**A missing binding** — a key contains zero bindings. Something reachable from an entry point requires it, and nothing declares it.",
+                    "**A duplicate binding** — a key contains more than one binding. Two declarations satisfy the same key, and a request for it cannot be resolved."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "The guarantee is about assembly: every key the component can reach has exactly one binding, so the described graph can be constructed. That is a real and complete guarantee about a specific class of mistake. It is not a statement about whether the graph should look like this."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**A missing binding, traced.** The component from earlier in this unit had a hole in it, and it is worth following the path rather than reading the error:"
+                },
+                {
+                  "type": "code",
+                  "code": "ReaderComponent\n  └─ readerHome(): ReaderHome         ← entry point: the graph must satisfy this\n      └─ LibraryRepository            ← @Binds → NetworkLibraryRepository\n          └─ ReaderLibraryClient      ← @Provides in LibraryModule\n              └─ HttpClient           ← @Provides in NetworkModule\n                  └─ CatalogueConfig  ← @Provides in NetworkModule\n                      └─ ReaderEnvironment\n                             ↑\n                    no @Inject constructor, no @Provides,\n                    no component dependency publishing it\n                    → this key has zero bindings",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The build fails, and the useful skill is the trace rather than the message: an entry point requires a binding, that binding requires a key, and that key has nothing satisfying it. The fix is to add the missing edge — declare how a `ReaderEnvironment` is obtained, or supply it into the graph when the component is created. It is never to adjust a setting, and it is never to install more modules in the hope that one of them contains it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**An ambiguous binding, traced.** This is the previous unit's collision, now reported by a compiler:"
+                },
+                {
+                  "type": "code",
+                  "code": "@Provides fun catalogueClient(...): HttpClient = ...   // key: HttpClient\n@Provides fun libraryClient(...): HttpClient = ...     // key: HttpClient\n\nLibraryRepository requires HttpClient\n        → this key contains two bindings → the graph is not well-formed",
+                  "language": "text"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The answer is the one the previous lesson gave, and it is worth noticing that the compiler has not solved the design problem — it has refused to guess at it. Either the two are different responsibilities and deserve different types, or they are one concept configured twice and the key needs a qualifier. What the build will not do is pick one, and that refusal is the feature."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Looking for a rule that breaks the tie — which module was installed first, which declaration appears earlier, which one is \"more specific\". The previous unit rejected all of those as design answers because they settle a consumer's meaning somewhere the consumer cannot see. Dagger does not offer them either: the key either has exactly one binding or the graph is not well-formed."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**A note on cycles, kept accurate.** It is tempting to round the rule off to \"Dagger rejects circular dependencies\", and that is not quite what the semantics say. The rule is that a well-formed graph has no cycles, **with an exception**: a cycle is permitted if it contains an edge whose dependency key was wrapped in `Provider` or `Lazy`. That indirection changes what the edge means, and the mechanism behind it is outside what this unit needs. Missing and duplicate bindings are enough to carry the argument — so state the cycle rule with its exception or leave it out, rather than trading accuracy for a tidier sentence."
+                },
+                {
+                  "type": "callout",
+                  "kind": "NOTE",
+                  "text": "Performing generation and validation during the build means the build does work and carries tooling it would not otherwise need. That is a genuine cost and belongs in any honest comparison. How large it is, how it behaves incrementally and how the processing is configured are build-engineering questions with their own curriculum, and nothing in this unit depends on their answers."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**Say both halves.** This is the strongest property of the tool and the most over-claimed, and the interview version of the answer needs the guarantee and its boundary in the same breath. Here is the guarantee, phrased no more strongly than the documentation supports:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Every dependency key reachable from the component's entry points is satisfiable under Dagger's graph rules.",
+                    "A key satisfied by zero bindings, or by more than one, does not survive the build.",
+                    "The declarations, bindings and components satisfy Dagger's structural constraints, checked where the graph is assembled rather than per module."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "And here is what a successful build does not establish. None of this is checked at all:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "that the dependency direction is right, or that a boundary belongs where it was drawn;",
+                    "that an abstraction is one this consumer should ever have known about;",
+                    "that the lifetime requirement was identified correctly, or that a scope was not widened past it;",
+                    "that a component boundary matches any product boundary;",
+                    "that the program behaves correctly, or that a dependency should exist at all."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**A graph that compiles and is wrong.** Take the reading application's draft annotation — the per-destination object from the previous unit, holding the text a reader is part-way through writing about the book in front of them. Suppose it is declared like this:"
+                },
+                {
+                  "type": "code",
+                  "code": "@Singleton\nclass DraftAnnotation @Inject constructor() {\n    var text: String = \"\"\n}\n\n@Singleton\n@Component(modules = [NetworkModule::class, LibraryModule::class])\ninterface ReaderComponent {\n    fun annotationEditor(): AnnotationEditor\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Every binding exists. The key has exactly one binding. The scoped binding's scope is represented by a component, which is the rule the previous lesson gave. There are no cycles, nothing is ambiguous, and the build succeeds without a warning — because every one of those is a structural property and every one of them holds."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The application is still broken, and a user finds out rather than a compiler. The component representing that scope is the one the application holds for the process, so **one** `DraftAnnotation` exists for the whole application. Open a book, type half a sentence, go back, open a different book: the half-sentence is still there, attached to the wrong book. The requirement was per-destination and the owner chosen retains it far longer, which is exactly the over-sharing failure the previous unit priced. The diagnosis needs the vocabulary from that unit — a lifetime requirement, an owner, a reuse rule inside it — and Dagger checked none of those three, because none of them is a structural property of a graph."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A second example, different in kind and just as invisible to the build: a state owner declared to depend on `NetworkLibraryRepository` rather than on `LibraryRepository`. The graph builds — it is a constructible type with an annotated constructor — and the boundary the interface existed to create has quietly been bypassed. No key is missing and no key is duplicated, so nothing about it is a Dagger problem."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Question",
+                    "Answered by the build?"
+                  ],
+                  "rows": [
+                    [
+                      "Can every reachable key be satisfied unambiguously?",
+                      "Yes, completely"
+                    ],
+                    [
+                      "Will this graph assemble without a wiring failure at run time?",
+                      "Yes, for the class of failure it checks"
+                    ],
+                    [
+                      "Is this object shared more widely than its requirement asked for?",
+                      "No"
+                    ],
+                    [
+                      "Should this consumer be allowed to name this type?",
+                      "No"
+                    ],
+                    [
+                      "Does the program do the right thing?",
+                      "No"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Neither caricature is worth carrying.** \"Compile-time dependency injection means no runtime problems\" is false — it eliminates one class of failure, and the second-last row of that table is where most real dependency-injection bugs live. But \"compile-time validation is marketing\" is equally false: eliminating an entire class of failure before execution, completely rather than probabilistically, is a real engineering result, and it is why an unsatisfied edge in a Dagger graph is a build failure on somebody's machine instead of a crash on somebody's phone. The accurate position is that the guarantee is total within its subject and silent outside it — and knowing where that boundary runs is most of what this unit was for."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked what Dagger's compile-time validation gives you, be precise on both sides. It checks the relationships between bindings at the component level, and requires every reachable key to have exactly one binding — so a missing binding and a duplicate binding are build failures rather than runtime ones. Then volunteer the limit before you are asked for it: a graph that compiles has been shown to be constructible, not well designed. Have the concrete example ready — a screen-lived mutable object scoped to a component the application retains compiles perfectly and ships a bug a user will find — because it proves you can separate a structurally valid graph from a defensible one, which is the distinction the whole unit was built to give you."
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ]
 }

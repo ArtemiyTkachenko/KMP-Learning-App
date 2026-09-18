@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `a6a4bd57c8607e930052004305d0e429daa6997f463029eaf981830884582520` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `40c06b1087b866589b9eb04313d47473c7211370a01c0585a6968aad8cbf31d8` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `3da78c289e4ab49b9771390d1e3ba1bd9b32b9506b1bba8a89f71bb5de28736d` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,13 +68,13 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 26 |
-| Active lessons in those units | 113 |
-| Distinct primary subtopics | 56 |
-| Distinct supporting subtopics | 103 |
-| Unique active questions reached through primary mappings | 137 |
-| Primary subtopics with at least one active question | 56 |
-| Primary subtopics with no active question | 0 |
+| Active learning units | 27 |
+| Active lessons in those units | 120 |
+| Distinct primary subtopics | 63 |
+| Distinct supporting subtopics | 108 |
+| Unique active questions reached through primary mappings | 145 |
+| Primary subtopics with at least one active question | 62 |
+| Primary subtopics with no active question | 1 |
 | Active questions in the bank | 419 |
 | Deprecated questions excluded from this report | 41 |
 
@@ -117,6 +117,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | State, Events, Lifetime and Architecture Selection (`unit_state_events_lifetime_and_selection`) | 4 | 2 | 2 | 6 | 2 | 10 |
 | Dependency Injection as Object Construction (`unit_dependency_injection_as_object_construction`) | 6 | 5 | 4 | 1 | 0 | 5 |
 | Object Graphs, Lifetimes and Scopes (`unit_object_graphs_lifetimes_and_scopes`) | 6 | 2 | 2 | 0 | 0 | 2 |
+| Dagger: Compile-Time Object Graphs (`unit_dagger_compile_time_object_graphs`) | 7 | 7 | 5 | 3 | 0 | 8 |
 
 ## Unit and lesson detail
 
@@ -2319,6 +2320,140 @@ Supporting context — not primary coverage:
 | `dagger_fundamentals` — Dagger fundamentals | 1 | `dependency_injection` — Dependency Injection |
 | `kotlin_gradle_plugin` — Kotlin Gradle plugin | 1 | `build_delivery` — Build System, Modularization & Delivery |
 
+### Dagger: Compile-Time Object Graphs (`unit_dagger_compile_time_object_graphs`)
+
+Home topic: `dependency_injection` — Dependency Injection.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 5 | `dagger_component_graph_root`, `dagger_generated_factory_no_reflection`, `dagger_inject_provides_binds_selection`, `dagger_scope_component_instance_lifetime`, `dagger_subcomponent_parent_binding_inheritance` |
+| APPLIED | 3 | `dagger_component_dependency_vs_subcomponent`, `dagger_multibinding_into_set`, `dagger_qualifier_same_type_bindings` |
+| ADVANCED | 0 | — |
+
+#### What Dagger Can Construct on Its Own (`lesson_dagger_constructs_what_it_can_see`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `dagger_fundamentals` — Dagger fundamentals | 1 | 0 | 0 | 1 | `dagger_generated_factory_no_reflection` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `constructor_injection` — Constructor injection | 1 | `dependency_injection` — Dependency Injection |
+| `manual_di` — Manual dependency injection | 1 | `dependency_injection` — Dependency Injection |
+| `composition_root` — Composition root | 1 | `dependency_injection` — Dependency Injection |
+| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
+
+#### Declaring the Rest of the Graph (`lesson_declaring_the_rest_of_the_graph`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `dagger_modules` — Dagger modules | 0 | 0 | 0 | 0 | — |
+| `dagger_bindings` — @Provides and @Binds | 1 | 0 | 0 | 1 | `dagger_inject_provides_binds_selection` |
+| **Lesson total (unique)** | 1 | 0 | 0 | 1 | `dagger_inject_provides_binds_selection` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `dagger_fundamentals` — Dagger fundamentals | 1 | `dependency_injection` — Dependency Injection |
+| `interface_boundaries` — Interface boundaries | 2 | `architecture` — Application Architecture & Design Principles |
+| `dependency_direction` — Dependency direction and inversion | 2 | `architecture` — Application Architecture & Design Principles |
+
+#### Which Graph Owns This Binding? (`lesson_which_graph_owns_this_binding`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `dagger_components` — Components and subcomponents | 2 | 1 | 0 | 3 | `dagger_component_dependency_vs_subcomponent`, `dagger_component_graph_root`, `dagger_subcomponent_parent_binding_inheritance` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `dagger_modules` — Dagger modules | 0 | `dependency_injection` — Dependency Injection |
+| `composition_root` — Composition root | 1 | `dependency_injection` — Dependency Injection |
+| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
+| `dagger_bindings` — @Provides and @Binds | 1 | `dependency_injection` — Dependency Injection |
+
+#### A Child Graph, or a Separate Graph? (`lesson_child_graph_or_separate_graph`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `dagger_components` — Components and subcomponents | 2 | 1 | 0 | 3 | `dagger_component_dependency_vs_subcomponent`, `dagger_component_graph_root`, `dagger_subcomponent_parent_binding_inheritance` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `dagger_scopes` — Dagger scopes | 1 | `dependency_injection` — Dependency Injection |
+| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
+| `layered_architecture` — Layered architecture | 2 | `architecture` — Application Architecture & Design Principles |
+| `module_dependency_direction` — Module dependency direction | 1 | `build_delivery` — Build System, Modularization & Delivery |
+
+#### A Scope Is a Promise the Component Keeps (`lesson_dagger_scopes_and_component_instances`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `dagger_scopes` — Dagger scopes | 1 | 0 | 0 | 1 | `dagger_scope_component_instance_lifetime` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `di_scopes` — Scopes and lifetimes | 1 | `dependency_injection` — Dependency Injection |
+| `dagger_components` — Components and subcomponents | 3 | `dependency_injection` — Dependency Injection |
+| `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
+
+#### When the Type Is Not the Key (`lesson_when_the_type_is_not_the_key`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `dagger_qualifiers` — Qualifiers | 0 | 1 | 0 | 1 | `dagger_qualifier_same_type_bindings` |
+| `dagger_multibindings` — Multibindings | 0 | 1 | 0 | 1 | `dagger_multibinding_into_set` |
+| **Lesson total (unique)** | 0 | 2 | 0 | 2 | `dagger_multibinding_into_set`, `dagger_qualifier_same_type_bindings` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `dagger_bindings` — @Provides and @Binds | 1 | `dependency_injection` — Dependency Injection |
+| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
+| `dependency_direction` — Dependency direction and inversion | 2 | `architecture` — Application Architecture & Design Principles |
+| `feature_modularization` — Feature modularization | 1 | `build_delivery` — Build System, Modularization & Delivery |
+
+#### What the Dagger Compiler Actually Checked (`lesson_what_the_dagger_compiler_checked`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `dagger_fundamentals` — Dagger fundamentals | 1 | 0 | 0 | 1 | `dagger_generated_factory_no_reflection` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
+| `di_framework_tradeoffs` — DI framework trade-offs | 0 | `dependency_injection` — Dependency Injection |
+| `dagger_components` — Components and subcomponents | 3 | `dependency_injection` — Dependency Injection |
+| `kotlin_gradle_plugin` — Kotlin Gradle plugin | 1 | `build_delivery` — Build System, Modularization & Delivery |
+
 ## Primary assessment gaps
 
 Primary concepts of active lessons that currently have no active question.
@@ -2329,7 +2464,9 @@ subtopic taxonomy is deliberately finer-grained than the bank — see
 from subtopics that are empty on purpose. This report surfaces the gap; whether it
 matters is editorial judgement.
 
-Every primary concept of every active lesson has at least one active question.
+| Primary subtopic | Owning topic |
+|---|---|
+| `dagger_modules` — Dagger modules | `dependency_injection` — Dependency Injection |
 
 ## Semantic review reminder
 

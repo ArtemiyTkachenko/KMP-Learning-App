@@ -1791,8 +1791,11 @@ which is what lets Units 3–5 present their keywords as notation.
   `QuestionSession(repository, clock)` followed by `session.questionId = selectedId`, tied back
   to L1.2 rather than reteaching it. The correct shape is a `QuestionSessionFactory` holding the
   graph dependencies and taking the runtime value, with the note that a lambda is the same
-  arrangement. No assisted-injection annotation, saved-state API or container parameter syntax
-  appears, and navigation is named as the likely origin of the value without any navigation API.
+  arrangement. SENIOR then places the boundary precisely: the factory is a node of the graph the
+  composition root assembles ahead of any request, and the session is the root of a small graph
+  built per request, which is the same shape L2.1 gave the per-use summary builder. No
+  assisted-injection annotation, saved-state API or container parameter syntax appears, and
+  navigation is named as the likely origin of the value without any navigation API.
 - **L2.5** opens on the design question before any mechanism, gives the distinct-types answer
   with its cost stated, then the `(type, distinction)` key with the concept separated from every
   framework's notation, then four named non-answers: declaration order, inclusion order,
@@ -1811,7 +1814,7 @@ which is what lets Units 3–5 present their keywords as notation.
 
 #### Corrections found during editorial review
 
-Four, all made before validation was reported.
+Five. The first four were made before validation was reported; the fifth came from code review.
 
 1. **L2.1's assembly silently changed a shipped function's arity.** The first draft dropped
    L1.6's per-use `SessionSummaryBuilder`, so `startStudyApplication` took two arguments where
@@ -1830,6 +1833,24 @@ Four, all made before validation was reported.
    "a mechanism may instead define".
 4. **A line count became false.** L2.1's SENIOR said the composition root above it "is eleven
    lines", which correction 1 made wrong. Replaced with a claim that does not depend on a count.
+5. **L2.4 contradicted L2.1's own definition of a graph.** Raised in review. Two paragraphs said
+   the runtime-created `QuestionSession` "is not in the graph at all" and that
+   `QuestionSessionFactory` "is inside the graph and `QuestionSession` is outside it". By L2.1's
+   definition that is simply false: the session has edges to the repository and the clock, so it
+   is a node with a graph beneath it — and L2.1 had already, correctly, called the on-demand
+   `SessionSummaryBuilder` "a small graph root of its own". A Unit whose purpose is fixing
+   vocabulary cannot use "in the graph" for two different things in two Lessons. Both paragraphs
+   now distinguish **the graph assembled ahead of the request** from **a graph rooted in the
+   request**: the factory is a node of the first, the session is the root of the second, its edges
+   are satisfied by the factory when the request arrives, and the factory is the seam where one
+   becomes the other. The replacement is a better teaching point than the sentence it replaces,
+   and it makes L2.4 agree with L2.1 instead of quietly undercutting it.
+
+   **Why the terminology sweep missed it.** The §78-style sweep searched for ambiguous shorthand —
+   "screen scope", "app singleton", "the scope owns it" — and for the overloaded terms one at a
+   time. It had no check for a term used **consistently within each Lesson but inconsistently
+   across two**, which is the shape of this defect. A later authoring issue in this epic should
+   read each of the register's terms across the whole Unit in one pass rather than per Lesson.
 
 #### Source decisions
 

@@ -1368,6 +1368,34 @@ Each is defeated by reasoning in place rather than collected into a myths list.
 | Hiding a large constructor behind a container fixes an over-responsible class | L1.2's second `COMMON_MISTAKE` |
 | Manual DI is only for toy projects | L1.6's `COMMON_MISTAKE` and its recommendation-versus-rule reading |
 
+**Two defects found in review and corrected.** Both were in L1.3 and L1.6, and both were real
+rather than stylistic.
+
+1. **The four-combination table's *not injected, inverted* row refuted itself.** It was authored as
+   "the consumer owns the contract and the class still constructs the implementation itself", and
+   its own explanation admitted that constructing the implementation requires importing it, which
+   restores the arrow the interface removed. By the Lesson's own import test that arrangement is
+   therefore **not** inverted, so the row claimed a combination it did not demonstrate. It is now
+   the consumer-owned contract with the implementation **fetched from a registry** — version B of
+   L1.1 behind an owned interface. The consumer names its own contract and the registry and never
+   the implementation package, so the source arrow holds; nothing supplied the collaborator, so
+   nothing was injected. The paragraph after the table now also says what occupies that row, which
+   strengthens rather than weakens the warning it already carried.
+2. **L1.3's closing callout said "give one example of each without the other".** The second example
+   it then gave — a consumer-owned interface constructed in `main` — is inverted **and** injected by
+   hand, which is the very reading §22 of the issue forbids. The callout now asks the learner to
+   show the two decisions coming apart, and labels that example as inverted and hand-injected,
+   making the point it was always meant to make: inversion needs no container, not no injection.
+3. **L1.6 claimed manual wiring defers graph errors to run time.** One cost-list item read
+   "Validating the graph before the program runs becomes valuable enough to pay for, because a
+   missing or ambiguous edge is currently found by running the program." That is false for the
+   hand-written wiring this Unit teaches and contradicts both L1.1's and L1.5's comparison rows,
+   which correctly say a missing constructor argument is a compile error at the construction site —
+   and it would have handed a learner a false reason to adopt a container. It is replaced by a
+   hazard hand-wiring genuinely has: several values of the same type circulating in one assembly,
+   where passing the wrong one type-checks. The replacement restates the compile-time guarantee
+   explicitly, so the item now reinforces the Unit's thesis instead of undercutting it.
+
 Two further corrections the issue asked for are handled as wording rather than as misconceptions.
 **Injection is defined by who supplies the dependency, not by the constructor signature**: L1.1
 SENIOR states the preferred form and then explicitly refuses the narrow definition, so Unit 4's

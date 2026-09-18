@@ -17862,14 +17862,14 @@
                     [
                       "No",
                       "Yes",
-                      "The consumer owns the contract and the class still constructs the implementation itself",
-                      "Self-defeating and rare: the class must import the implementation package in order to construct it, which restores the arrow the interface removed"
+                      "The consumer owns the contract and fetches an implementation of it from a registry instead of receiving one",
+                      "Version B of the first lesson, behind a consumer-owned interface. `session` names its own contract and the registry, never `data.local`, so the source arrow still points inward — and nothing supplied the collaborator, so nothing was injected. The implementation is named only where it is registered. Inverted, not injected, and it pays every cost the fifth lesson prices"
                     ]
                   ]
                 },
                 {
                   "type": "paragraph",
-                  "text": "One row of that table needs a warning, because getting it wrong would undo the lesson. It is tempting to label shape two \"not injected, because there was no framework\". That is false. `main` passing a repository to a constructor **is** dependency injection, performed by hand, and shape two sits in the *injected and inverted* row. What shape two demonstrates is that inversion does not require a **container** — not that it happens without injection. Injection and framework use are not the same axis, and nothing in this unit permits them to be collapsed into one."
+                  "text": "One row of that table needs a warning, because getting it wrong would undo the lesson. It is tempting to label shape two \"not injected, because there was no framework\". That is false. `main` passing a repository to a constructor **is** dependency injection, performed by hand, and shape two sits in the *injected and inverted* row. What shape two demonstrates is that inversion does not require a **container** — not that it happens without injection. The *not injected* row is occupied by something else entirely: a class that owns its contract and still goes and fetches an implementation. Injection and framework use are not the same axis, and nothing in this unit permits them to be collapsed into one."
                 }
               ]
             },
@@ -17891,7 +17891,7 @@
                 {
                   "type": "callout",
                   "kind": "INTERVIEW_FOCUS",
-                  "text": "Asked to distinguish dependency injection from dependency inversion, give one example of each without the other. A constructor-injected concrete database inside a use case is injected and not inverted; a consumer-owned interface whose implementation is constructed in `main` is inverted with no container in the program. Then state the rule that generates both: injection is decided at the construction site, inversion in the import list."
+                  "text": "Asked to distinguish dependency injection from dependency inversion, show them coming apart. A constructor-injected concrete database inside a use case is injected and not inverted. A consumer-owned interface whose implementation is constructed in `main` is inverted and injected by hand — which answers the follow-up that usually arrives next, because it shows inversion needs no container rather than no injection. Then state the rule that generates both: injection is decided at the construction site, inversion in the import list."
                 }
               ]
             }
@@ -18343,7 +18343,7 @@
                     "Lifetime-specific scopes proliferate — several kinds of bounded lifetime, each with objects that must be created and released with it, tracked by hand.",
                     "Many independent contributors need to join the graph, so that one central file becomes a place every team edits and every change conflicts.",
                     "The same configuration is repeated across several entry points often enough that keeping them consistent becomes recurring work.",
-                    "Validating the graph before the program runs becomes valuable enough to pay for, because a missing or ambiguous edge is currently found by running the program."
+                    "Several values of the same type circulate in the assembly — two repositories, two clients, two configurations — so passing the wrong one type-checks and is wrong. A missing argument is still a compile error, which is the guarantee hand-written wiring keeps; what it cannot check is that the argument you passed is the one you meant."
                   ]
                 },
                 {

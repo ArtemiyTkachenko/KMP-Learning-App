@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `c409fdaffb0dfbc283ac863eb4fd7f85cab61d862a8f512b14020c8e32a8c509` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `a6a4bd57c8607e930052004305d0e429daa6997f463029eaf981830884582520` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `3da78c289e4ab49b9771390d1e3ba1bd9b32b9506b1bba8a89f71bb5de28736d` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,12 +68,12 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 25 |
-| Active lessons in those units | 107 |
-| Distinct primary subtopics | 54 |
-| Distinct supporting subtopics | 97 |
-| Unique active questions reached through primary mappings | 135 |
-| Primary subtopics with at least one active question | 54 |
+| Active learning units | 26 |
+| Active lessons in those units | 113 |
+| Distinct primary subtopics | 56 |
+| Distinct supporting subtopics | 103 |
+| Unique active questions reached through primary mappings | 137 |
+| Primary subtopics with at least one active question | 56 |
 | Primary subtopics with no active question | 0 |
 | Active questions in the bank | 419 |
 | Deprecated questions excluded from this report | 41 |
@@ -116,6 +116,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | MVP, MVVM and MVI Responsibility Models (`unit_responsibility_models_mvp_mvvm_mvi`) | 5 | 5 | 1 | 4 | 0 | 5 |
 | State, Events, Lifetime and Architecture Selection (`unit_state_events_lifetime_and_selection`) | 4 | 2 | 2 | 6 | 2 | 10 |
 | Dependency Injection as Object Construction (`unit_dependency_injection_as_object_construction`) | 6 | 5 | 4 | 1 | 0 | 5 |
+| Object Graphs, Lifetimes and Scopes (`unit_object_graphs_lifetimes_and_scopes`) | 6 | 2 | 2 | 0 | 0 | 2 |
 
 ## Unit and lesson detail
 
@@ -2205,6 +2206,118 @@ Supporting context — not primary coverage:
 | `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
 | `di_framework_tradeoffs` — DI framework trade-offs | 0 | `dependency_injection` — Dependency Injection |
 | `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 2 | `architecture` — Application Architecture & Design Principles |
+
+### Object Graphs, Lifetimes and Scopes (`unit_object_graphs_lifetimes_and_scopes`)
+
+Home topic: `dependency_injection` — Dependency Injection.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 2 | `dagger_compile_time_graph_validation`, `di_scopes_001` |
+| APPLIED | 0 | — |
+| ADVANCED | 0 | — |
+
+#### From One Dependency to a Graph (`lesson_from_one_dependency_to_a_graph`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `dependency_graphs` — Dependency graphs | 1 | 0 | 0 | 1 | `dagger_compile_time_graph_validation` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `composition_root` — Composition root | 1 | `dependency_injection` — Dependency Injection |
+| `manual_di` — Manual dependency injection | 1 | `dependency_injection` — Dependency Injection |
+| `constructor_injection` — Constructor injection | 1 | `dependency_injection` — Dependency Injection |
+| `layered_architecture` — Layered architecture | 2 | `architecture` — Application Architecture & Design Principles |
+
+#### One Instance, or a New One Each Time? (`lesson_one_instance_or_a_new_one`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `di_scopes` — Scopes and lifetimes | 1 | 0 | 0 | 1 | `di_scopes_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
+| `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 2 | `architecture` — Application Architecture & Design Principles |
+
+#### A Scope Is a Rule; an Owner Is a Lifetime (`lesson_scope_is_a_rule_owner_is_a_lifetime`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `di_scopes` — Scopes and lifetimes | 1 | 0 | 0 | 1 | `di_scopes_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
+| `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
+| `android_process_model` — Application and process model | 2 | `android_platform` — Android Platform & Application Model |
+| `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+
+#### A Value the Graph Cannot Know (`lesson_runtime_input_is_not_a_dependency`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `dependency_graphs` — Dependency graphs | 1 | 0 | 0 | 1 | `dagger_compile_time_graph_validation` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `di_scopes` — Scopes and lifetimes | 1 | `dependency_injection` — Dependency Injection |
+| `constructor_injection` — Constructor injection | 1 | `dependency_injection` — Dependency Injection |
+| `navigation_fundamentals` — Navigation and back-stack fundamentals | 4 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
+
+#### Two Dependencies of the Same Type (`lesson_two_dependencies_of_the_same_type`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `dependency_graphs` — Dependency graphs | 1 | 0 | 0 | 1 | `dagger_compile_time_graph_validation` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `dagger_qualifiers` — Qualifiers | 1 | `dependency_injection` — Dependency Injection |
+| `interface_boundaries` — Interface boundaries | 2 | `architecture` — Application Architecture & Design Principles |
+| `constructor_injection` — Constructor injection | 1 | `dependency_injection` — Dependency Injection |
+
+#### When Does a Broken Graph Tell You? (`lesson_when_a_broken_graph_tells_you`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `dependency_graphs` — Dependency graphs | 1 | 0 | 0 | 1 | `dagger_compile_time_graph_validation` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `di_framework_tradeoffs` — DI framework trade-offs | 0 | `dependency_injection` — Dependency Injection |
+| `dagger_fundamentals` — Dagger fundamentals | 1 | `dependency_injection` — Dependency Injection |
+| `kotlin_gradle_plugin` — Kotlin Gradle plugin | 1 | `build_delivery` — Build System, Modularization & Delivery |
 
 ## Primary assessment gaps
 

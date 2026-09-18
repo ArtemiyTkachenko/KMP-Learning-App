@@ -1617,3 +1617,498 @@ assessment, theme, icon or application-identity code was touched — the change 
 two test files and documentation.
 
 ---
+
+### E27-03 authoring outcomes
+
+**Issue #387, `task/E27-03`. Authored 2026-09-18.** Units 1 and 2 ship; Units 3–6 remain
+unauthored.
+
+#### What shipped
+
+**One Unit, `unit_object_graphs_lifetimes_and_scopes`, titled "Object Graphs, Lifetimes and
+Scopes", home Topic `dependency_injection`.** It is appended after Unit 1, which keeps the
+document's Topic grouping and the within-Topic Unit order the blueprint derives. Read from
+production after the change: **26 active Units and 113 active Lessons**, up from 25 and 107,
+and the `dependency_injection` Topic now exposes exactly two Learning Units, in order —
+Dependency Injection as Object Construction, then Object Graphs, Lifetimes and Scopes — with
+six Lessons each.
+
+| # | Lesson id | Title | Primary | Supporting |
+| --- | --- | --- | --- | --- |
+| L2.1 | `lesson_from_one_dependency_to_a_graph` | From One Dependency to a Graph | `dependency_graphs` | `composition_root`, `manual_di`, `constructor_injection`, `layered_architecture` |
+| L2.2 | `lesson_one_instance_or_a_new_one` | One Instance, or a New One Each Time? | `di_scopes` | `dependency_graphs`, `state_ownership`, `architecture_tradeoffs` |
+| L2.3 | `lesson_scope_is_a_rule_owner_is_a_lifetime` | A Scope Is a Rule; an Owner Is a Lifetime | `di_scopes` | `dependency_graphs`, `state_ownership`, `android_process_model`, `viewmodel_lifecycle` |
+| L2.4 | `lesson_runtime_input_is_not_a_dependency` | A Value the Graph Cannot Know | `dependency_graphs` | `di_scopes`, `constructor_injection`, `navigation_fundamentals`, `state_ownership` |
+| L2.5 | `lesson_two_dependencies_of_the_same_type` | Two Dependencies of the Same Type | `dependency_graphs` | `dagger_qualifiers`, `interface_boundaries`, `constructor_injection` |
+| L2.6 | `lesson_when_a_broken_graph_tells_you` | When Does a Broken Graph Tell You? | `dependency_graphs` | `di_framework_tradeoffs`, `dagger_fundamentals`, `kotlin_gradle_plugin` |
+
+**Every identity is the planned one**, unchanged in id, title, order, primary concept and
+supporting set. No Lesson was added, removed, split or merged, and **no supporting concept was
+promoted to primary to improve the practice pool** — which is the decision that keeps
+`dagger_qualifiers` and `dagger_fundamentals` from routing Dagger Questions into a Unit that
+teaches no Dagger.
+
+#### Deviations from the plan
+
+Four, all small, and none touching an identity or a mapping.
+
+1. **Example A gains `AttemptStore` as well as the planned `AttemptRecorder`.** Part 4 names
+   only the recorder. A recorder with no dependencies of its own would have been a leaf, and
+   L2.1 needs branching *beneath* a non-root node to show depth and a second path to the clock.
+   `AttemptRecorder` is not a new name — shipped L1.2 already lists `attempts: AttemptRecorder`
+   in its nine-parameter constructor — and the assembly uses L1.2's parameter name.
+2. **The shared node demonstrated is `QuestionRepository`, which L1.6 already shipped**, rather
+   than a new shared subtree under the recorder. Two consumers, the controller and the browser,
+   receive one repository because one `val` is passed twice; `SystemClock` is the second shared
+   node, reached both directly and through the recorder. Using shipped code for the Unit's first
+   new idea was preferred to inventing a subtree for it.
+3. **Example B is introduced with exactly two objects**, `ReaderSession` and `DraftAnnotation`
+   in L2.2, plus two configurations of one `HttpClient` in L2.5. The rest of Part 4's Example B
+   — startup contributors, the rotation requirement, the screen-hierarchy sharing — is
+   deliberately not introduced, because no Lesson in this Unit has a requirement that needs it.
+4. **Two backward links beyond the plan's minimum**, plus one intra-Unit link per Lesson from
+   L2.2 onwards, following E27-02's precedent. The additions are L2.5 →
+   `lesson_when_an_interface_is_a_boundary`, which is the shipped test L2.5 applies rather than
+   re-argues when it asks whether a second type earns its place, and L2.3 →
+   `lesson_state_holder_responsibility`, which the plan's link table lists for L2.2/L2.3 as a
+   group. Every link is backward and resolvable; nothing points forward.
+
+Nothing else departed from the plan, and **no contradiction between the plan and shipped Unit 1
+was found**, so neither this document's identities nor the blueprint's Unit map needed editing.
+
+#### Content structure
+
+Every Lesson carries CORE, PRACTICAL and SENIOR sections, 23–30 blocks and roughly 1,380–1,880
+words, which sits alongside Unit 1's 20–26 blocks and 1,290–1,660 words and inside Rule 8's
+5–10 minute target. Each carries two to four Sources, a `KEY_TAKEAWAY` closing CORE, one
+`COMMON_MISTAKE` in PRACTICAL and an `INTERVIEW_FOCUS` closing SENIOR; L2.3 carries the Unit's
+only `NOTE`, which is the coroutine-scope disambiguation. Sixteen authored code and diagram
+blocks carry the evidence — text graphs where graph shape is the point, Kotlin where a
+construction site is the point — and comparison tables are used eight times, each for a
+comparison a table genuinely makes clearer.
+
+#### Example A, as continued
+
+L2.1 grows the shipped graph by one branch and traces it from two roots:
+
+```text
+main()                                    ← the composition root, unchanged from L1.4/L1.6
+
+QuestionBrowser                           ← a second graph root
+ └─ QuestionRepository
+
+StudySessionController                    ← the graph root L2.1 traces
+ ├─ QuestionRepository                      one object: a LocalQuestionRepository (as L1.3
+ │                                           made it), requested as the interface
+ │   └─ BundledQuestionDataSource
+ │       └─ QuestionCatalogConfig
+ ├─ AttemptRecorder                         (new in L2.1)
+ │   ├─ AttemptStore                        (new in L2.1)
+ │   └─ SystemClock
+ └─ SystemClock
+```
+
+The assembly in L2.1 keeps L1.6's `startStudyApplication(controller, browser,
+newSummaryBuilder)` signature and L1.6's per-use `SessionSummaryBuilder` lambda, so no shipped
+snippet's shape was changed. `SystemClock` stays concrete; `QuestionRepository` stays an
+interface with `LocalQuestionRepository` beneath it; `ProductionCatalogConfig` is used exactly
+as L1.4 introduced it. L2.4 extends the same example with `QuestionSession`,
+`QuestionSessionFactory` and a `SelectedQuestion` holder shown as the wrong answer, and L2.6
+re-uses the data source and repository for its missing-edge demonstration.
+
+#### Example B, as introduced
+
+| Object | Lesson | Why it exists |
+| --- | --- | --- |
+| `ReaderSession` | L2.2, L2.3 | The application-lifetime identity requirement: every destination observes one signed-in reader until sign-out |
+| `DraftAnnotation` | L2.2, L2.3 | The per-destination requirement, and the over-sharing failure |
+| `HttpClient` with two configurations | L2.5 | The same-type ambiguity, one carrying reader credentials and one that must not |
+| `PublicCatalogueClient` / `ReaderLibraryClient` | L2.5 | The distinct-types answer to that ambiguity |
+| `LibraryRepository` | L2.5 | The consumer whose request is ambiguous |
+
+Each exists because a requirement in the Lesson it appears in needs it. Nothing was added
+because a future annotation will need something to demonstrate.
+
+#### The terminology contract, as actually authored
+
+L2.3 fixes the three-way separation the epic depends on, in a table whose third column is *who
+decides it*:
+
+| Term | As authored | Decided by |
+| --- | --- | --- |
+| **Lifetime requirement** | How long product behaviour needs a particular object identity, or the state inside it, to stay valid. Stated in product language, before any code | The product |
+| **Owner** | The object or context that actually holds the instance and hands it out. Its own lifetime bounds everything it exclusively retains | The program's structure |
+| **Scope** | A rule about reuse and identity *inside* an owner: which requests served by that owner receive the same instance | Whoever writes the configuration |
+
+The order is authored as a one-way arrow — requirement, then owner, then scope — and the Lesson
+states directly that running it the other way makes nothing true.
+
+**The circular definition is refused by name.** L2.3 quotes "a scope determines how long an
+object lives", says why it is circular, and replaces it with: *a scope says which requests
+within an owning context receive the same instance, and the reuse it describes cannot outlast
+the owner retaining it.* This is the wording E27-08 has to weigh `di_scopes_001` against.
+
+**Scope-creates-no-owner is demonstrated rather than asserted.** Two owner classes hold
+identical declarations of one `DraftAnnotation`; one is created with the application and one
+when a destination is entered. The Lesson's conclusion is that the declaration is identical and
+the lifetime came entirely from which owner it was written in. The Android manual
+dependency-injection guide supplies the non-library evidence that owners really are created and
+released this way — a flow's container "created when the user enters the flow and cleared when
+the back stack entry is popped".
+
+**"Singleton" is treated as an overloaded word rather than defined.** L2.3 gives the honest
+phrasing — one instance for that owner, for as long as that owner exists — and a four-row table
+refuting what the word is heard to mean: one instance everywhere, existing from start-up,
+living forever, and the value being saved. No framework's `@Singleton` or `single` is named.
+
+**Process durability is one bounded paragraph.** The claim made is only that nothing held in
+memory survives the process being destroyed, sourced to "Unlike saved state, ViewModels are
+destroyed during a system-initiated process death" and to the process-lifecycle page's
+statement that a process runs "until the system needs to reclaim its memory". No saved-state
+API, Room, DataStore or process-recreation mechanism appears; durability is named as a separate
+decision with separate tools.
+
+**Unit 1's terminology is carried forward unchanged.** Injection remains a question about who
+supplies; the composition root remains a responsibility and a location distinct from a
+container; manual dependency injection is never retroactively described as incapable of
+anything — L2.1's hand-written assembly expresses sharing, per-use construction and ordering,
+and L2.6 credits it with a compile-time completeness guarantee that this Unit had no reason to
+take away. The service-locator argument is not revisited.
+
+**Two collisions are disarmed explicitly.** L2.3's `NOTE` separates a dependency-injection
+scope from a `CoroutineScope`, naming the coroutines curriculum as the owner of the second. The
+word "scope" appears in this Unit **only in L2.3** — L2.2 makes every reuse decision without it,
+which is what lets Units 3–5 present their keywords as notation.
+
+#### Runtime input, same-type ambiguity and graph validation, as authored
+
+- **L2.4** defines the distinction by when and from where a value becomes known, explicitly not
+  by object against primitive, and gives the test as a question rather than a rule with the
+  start-up-configuration case flagged as sitting on the line. The worked example is a
+  `QuestionSession` needing a repository, a clock and a tapped question id. Both bad answers are
+  shown failing concretely: a `SelectedQuestion` holder retained for the application, walked
+  through a back-stack sequence where a live session ends up reading a later screen's id; and
+  `QuestionSession(repository, clock)` followed by `session.questionId = selectedId`, tied back
+  to L1.2 rather than reteaching it. The correct shape is a `QuestionSessionFactory` holding the
+  graph dependencies and taking the runtime value, with the note that a lambda is the same
+  arrangement. SENIOR then places the boundary precisely: the factory is a node of the graph the
+  composition root assembles ahead of any request, and the session is the root of a small graph
+  built per request, which is the same shape L2.1 gave the per-use summary builder. No
+  assisted-injection annotation, saved-state API or container parameter syntax appears, and
+  navigation is named as the likely origin of the value without any navigation API.
+- **L2.5** opens on the design question before any mechanism, gives the distinct-types answer —
+  with the difference placed *inside* the types so the credential rule is unbreakable, and with a
+  paragraph separating that from a thin wrapper, which disambiguates a request without
+  constraining what is put in it — then its cost, then the `(type, distinction)` key with the
+  concept separated from every framework's notation, then four named non-answers: declaration order, inclusion order,
+  first/last registered, "most specific", and "whichever the tool picks". SENIOR separates two
+  implementations of a consumer-owned abstraction from two configurations of one technical type,
+  cross-linking the architecture boundary test instead of re-arguing it.
+- **L2.6** teaches detection timing as a property of the representation, in a three-row table:
+  explicit construction checked by the compiler at the call site, a registered configuration
+  checked whenever something checks it, and a description analysed ahead of execution. The
+  manual-DI correction is made in CORE and repeated as the Lesson's `COMMON_MISTAKE`, sourced to
+  the Kotlin documentation's own `Error: No value passed for parameter 'message'`. The ambiguous
+  edge is walked through the same three representations, and the row where explicit construction
+  *loses* is stated plainly. SENIOR lists four things a passing check does not establish —
+  arrow direction, lifetimes, boundary placement, a per-session requirement — and prices earlier
+  checking as a trade rather than a free win.
+
+#### Corrections found during editorial review
+
+Seven. The first four were made before validation was reported; the last three came from code review.
+
+1. **L2.1's assembly silently changed a shipped function's arity.** The first draft dropped
+   L1.6's per-use `SessionSummaryBuilder`, so `startStudyApplication` took two arguments where
+   the shipped Lesson passes three. The lambda is restored exactly as L1.6 wrote it, and a
+   sentence now says why the builder is absent from the diagram above it: it is produced on
+   request rather than assembled, so it is a small graph root of its own.
+2. **One object had two names across two Lessons.** L2.2 introduced `DraftAnnotation` and L2.3
+   used `DraftAnnotationStore` for the same thing. Unified to `DraftAnnotation`.
+3. **L2.6's warning against category-wide claims was itself making them.** The paragraph read
+   "several do not, several reject duplicates outright, and at least one defines an explicit
+   precedence rule" — three unsourced quantified claims about unnamed tools, in the very
+   paragraph arguing that inventing shared behaviour for a category is how a curriculum acquires
+   wrong claims. It now says that what happens on a duplicate key is a decision each mechanism
+   takes and documents, and that the answer is in that mechanism's reference rather than in a
+   general rule. The adjacent table cell was softened from "some mechanisms instead define" to
+   "a mechanism may instead define".
+4. **A line count became false.** L2.1's SENIOR said the composition root above it "is eleven
+   lines", which correction 1 made wrong. Replaced with a claim that does not depend on a count.
+5. **L2.4 contradicted L2.1's own definition of a graph.** Raised in review. Two paragraphs said
+   the runtime-created `QuestionSession` "is not in the graph at all" and that
+   `QuestionSessionFactory` "is inside the graph and `QuestionSession` is outside it". By L2.1's
+   definition that is simply false: the session has edges to the repository and the clock, so it
+   is a node with a graph beneath it — and L2.1 had already, correctly, called the on-demand
+   `SessionSummaryBuilder` "a small graph root of its own". A Unit whose purpose is fixing
+   vocabulary cannot use "in the graph" for two different things in two Lessons. Both paragraphs
+   now distinguish **the graph assembled ahead of the request** from **a graph rooted in the
+   request**: the factory is a node of the first, the session is the root of the second, its edges
+   are satisfied by the factory when the request arrives, and the factory is the seam where one
+   becomes the other. The replacement is a better teaching point than the sentence it replaces,
+   and it makes L2.4 agree with L2.1 instead of quietly undercutting it.
+
+   **Why the terminology sweep missed it.** The §78-style sweep searched for ambiguous shorthand —
+   "screen scope", "app singleton", "the scope owns it" — and for the overloaded terms one at a
+   time. It had no check for a term used **consistently within each Lesson but inconsistently
+   across two**, which is the shape of this defect. A later authoring issue in this epic should
+   read each of the register's terms across the whole Unit in one pass rather than per Lesson.
+6. **L2.5's distinct types did not enforce the rule they were justified by.** Raised in review.
+   The two types were authored as thin wrappers, `class PublicCatalogueClient(private val http:
+   HttpClient)` and the same for the reader client, and the Lesson then claimed that a reviewer
+   "can see that the catalogue screen never receives a credentialed client". That claim is false:
+   both wrappers accept any `HttpClient`, so `PublicCatalogueClient(readerClient)` compiles and
+   sends credentials through the client that must not carry them. The narrow claim about the
+   consumer edge was true — `LibraryRepository` genuinely cannot be handed the catalogue client —
+   but the Lesson had motivated the whole move with a **security rule** and then implied the type
+   system was carrying it, which is precisely the false comfort L2.6 warns against elsewhere in
+   this Unit. The snippet now gives `ReaderLibraryClient` a `credentials` constructor parameter
+   that `PublicCatalogueClient` does not have, so no `PublicCatalogueClient` carrying credentials
+   can be constructed at all, and a new paragraph separates the two strengths explicitly: a thin
+   wrapper **disambiguates without constraining**, while putting the difference inside the type is
+   what makes a rule unbreakable. Both remain legitimate answers and the Lesson now says which
+   situation needs which. The correction improves the Lesson: it turns an overclaim into the
+   distinction a senior answer actually has to make.
+7. **L2.1's diagram invented a node and inflated the depth.** Raised in review. The trace placed
+   `QuestionRepository` and `LocalQuestionRepository` on successive levels, which by the Lesson's
+   own definitions is wrong twice over — a node is "an object that has to exist" and those are one
+   object, and an edge is a construction obligation while choosing an implementation constructs
+   nothing. It also disagreed with the assembly code directly beneath it, which builds a single
+   `LocalQuestionRepository` and ascribes the interface type to the `val`. The diagram now carries
+   one repository node annotated with both names, the prose says why it appears once, and the two
+   depth claims calibrated to the inflated diagram — "four levels separate the controller from the
+   catalogue configuration" and "a catalogue path four levels down" — are corrected to three
+   edges. The node count now agrees with shipped L1.6's "four nodes from the entry point down to
+   the configuration value".
+
+#### Source decisions
+
+Every source was opened and the specific claim read on 2026-09-18; none was carried over from
+E27-01 or E27-02 on trust. Sources are attached per claim.
+
+| Source | Claims it settles | Used by |
+| --- | --- | --- |
+| [Manual dependency injection](https://developer.android.com/training/dependency-injection/manual) | That a hand-written container is a real object with a real creation and release — "created when the user enters the flow and cleared when the back stack entry is popped", application-wide dependencies "placed in a common place all activities can use", and "you also have to manage the scope and lifecycle of the containers yourself"; the per-flow instance requirement, "you don't want to persist data from an old login flow from a different user"; and the factory shape that holds a dependency and creates an object on request | L2.1, L2.2, L2.3, L2.4 |
+| [Dependency injection in Android](https://developer.android.com/training/dependency-injection) | The generic assembler-and-consumer framing this Unit reasons in, carried forward from Unit 1 rather than re-argued | L2.2, L2.4, L2.5 |
+| [Composition Root](https://blog.ploeh.dk/2011/07/28/CompositionRoot/) | That at the entry point "the entire object graph" is "finally composed" — the sentence L2.1's graph-root against composition-root distinction rests on | L2.1 |
+| [Inversion of Control Containers and the Dependency Injection pattern](https://martinfowler.com/articles/injection.html) | The **assembler** as the separate thing that populates a consumer, and "the configuration of services is separated from their use", which is what makes edge responsibility a real responsibility | L2.1 |
+| [Save UI states](https://developer.android.com/topic/libraries/architecture/saving-states) | "Unlike saved state, ViewModels are destroyed during a system-initiated process death" | L2.3 |
+| [Processes and app lifecycle](https://developer.android.com/guide/components/activities/process-lifecycle) | That a process "remains running until the system needs to reclaim its memory for use by other applications" | L2.3 |
+| [ViewModel overview](https://developer.android.com/topic/libraries/architecture/viewmodel) | That an in-memory holder "remains in memory until the `ViewModelStoreOwner` to which it is scoped disappears" — the owner-bounds-lifetime fact, applied rather than retaught | L2.3 |
+| [Dagger Core Semantics](https://dagger.dev/semantics/) | That a binding key is a type "optionally qualified" and two keys are identical only with the same type *and* qualifier; and that a graph is well-formed when every key holds exactly one binding, so a graph that is not cannot have its implementation generated | L2.5, L2.6 |
+| [Koin: Verifying your Koin configuration](https://insert-koin.io/docs/reference/koin-test/verify/) | That a registered configuration can be checked by a step that will "verify all constructor classes and crosscheck with the Koin configuration to know if there is a component declared for this dependency" | L2.6 |
+| [Kotlin functions: default and named arguments](https://kotlinlang.org/docs/functions.html) | That a parameter without a default is required, illustrated by the documentation's own `Error: No value passed for parameter 'message'` — the evidence for L2.6's correction | L2.6 |
+
+**Four source decisions worth recording.**
+
+1. **No framework's definition of "scope" became the curriculum's definition.** Fowler's paper
+   states outright that lifecycle behaviour is outside its scope, and the Android guidance uses
+   "scope" loosely for both a container's lifetime and a flow's boundary. The three-part model
+   is therefore authored as a pedagogical terminology contract, with each underlying *factual*
+   claim grounded separately: owners bound retained lifetime (ViewModel overview, manual DI),
+   memory does not survive the process (Save UI states, process lifecycle), and specific
+   frameworks later bind reuse to specific owners (deferred to Units 3–5). Where a source uses
+   the word more loosely, the Lesson does not quote it as a contradiction.
+2. **Framework documentation is cited only for detection regimes and for the binding-key
+   concept**, never to define a generic idea. Dagger's semantics page appears in L2.5 and L2.6,
+   Koin's verification page in L2.6, and in both Lessons the surrounding prose states the generic
+   conclusion first and the citation illustrates one mechanism's instance of it.
+3. **The compile-time claim is sourced to the language, not to a library.** L2.6's correction of
+   "manual DI means runtime errors" rests on the Kotlin documentation rather than on an argument
+   about containers, which is the only grounding that makes the claim general.
+4. **No source was needed for the graph vocabulary itself.** Node, edge, transitive closure,
+   root and cycle are stated in the Lesson's own voice, and the Lesson says explicitly that
+   nothing beyond them is needed — no traversal algorithm, no complexity claim, no topological
+   ordering proof.
+
+No framework-marketing page, tutorial aggregator or forum answer was consulted or cited, and no
+Hilt documentation was needed, because this Unit makes no Hilt claim.
+
+#### Cross-links
+
+All backward, all resolving, no forward link anywhere. The four later Units do not exist, so a
+forward `relatedLessonIds` entry would fail `UNKNOWN_RELATED_LESSON`; forward pointing is done
+in prose, naming the Unit.
+
+| Lesson | Links to |
+| --- | --- |
+| L2.1 | `lesson_one_place_that_knows_how_to_build` |
+| L2.2 | `lesson_choosing_the_owner_by_lifetime`, `lesson_viewmodel_lifetime_and_persistence`, L2.1 |
+| L2.3 | `lesson_choosing_the_owner_by_lifetime`, `lesson_viewmodel_lifetime_and_persistence`, `lesson_state_holder_responsibility`, L2.2 |
+| L2.4 | `lesson_a_dependency_should_be_visible`, L2.1 |
+| L2.5 | `lesson_when_an_interface_is_a_boundary`, L2.1 |
+| L2.6 | `lesson_when_wiring_it_yourself_is_enough`, L2.5 |
+
+**No shipped Lesson was edited**, including the six Lessons of Unit 1. Unit 1 has no valid
+forward links because Unit 2 did not exist when it was authored, and no defect in Unit 1 was
+uncovered that would have justified touching it. The three E26 arguments this Unit consumes —
+owner selection from the ending event, ViewModel lifetime against persistence, and the state
+holder as a responsibility — are cited and applied, and L2.3 states in as many words that it
+applies that conclusion instead of re-deriving it.
+
+#### Practice pool, resolved through production
+
+`LearningUnitPracticeIntegrationTest.theObjectGraphUnitPractisesOnlyItsTwoPrimaryConcepts`
+drives the real Practice Builder, the real resolver and the real selector against the imported
+bank. **Expected two, resolved two**, and the scope is exactly the two primary concepts:
+
+| Question | Subtopic | Level |
+| --- | --- | --- |
+| `dagger_compile_time_graph_validation` | `dependency_graphs` | FOUNDATION |
+| `di_scopes_001` | `di_scopes` | FOUNDATION |
+
+**2 FOUNDATION, 0 APPLIED, 0 ADVANCED**, matching [Part 6](#part-6--unit-practice-routing-modelled-now)
+exactly. No supporting concept contributes — the test asserts that all fourteen supporting-only
+Subtopics, including `dagger_qualifiers`, `dagger_fundamentals`, `di_framework_tradeoffs` and
+`kotlin_gradle_plugin`, reach nothing — and the intersection with Unit 1's pool is empty, since
+no Subtopic is primary in both Units.
+
+#### Semantic review of the two Questions the Unit now reaches
+
+Both were re-read in full against the **finished** prose.
+
+- **`di_scopes_001` — partly answerable, and in direct terminology tension with L2.3.** Three of
+  its four options are settled by the finished Unit. Its second keyed option, that incorrect
+  scoping "can create leaks or unintended shared state", is exactly L2.2's two-directional
+  failure and L2.3's two grades of over-long ownership. Its distractor that a scope "guarantees
+  a new instance at each injection point" is refused by L2.2's baseline-and-departure framing,
+  and its distractor that "a longer-lived component can safely hold a shorter-lived dependency"
+  is refused word for word by L2.3's serious grade of over-long ownership. **The conflict is its
+  first keyed option**, "A scope controls the lifetime and sharing boundary of provided
+  instances". L2.3 retires that sentence by name as circular and teaches that the owner bounds
+  the lifetime while the scope expresses reuse within it — so a reader who understood the Lesson
+  has a live reason to reject half of a keyed option and be marked wrong for it. The option is
+  defensible on a loose reading, where the scope declaration is *where* lifetime and sharing are
+  expressed rather than what decides them, but the Lesson was deliberately not weakened to make
+  that reading the natural one. **Its distractors remain fair** — both are false, both are
+  plausible, and both are now actively taught against. **And it is definitional where the Unit
+  teaches decisions**: it asks the reader to recognise true statements about scopes, never to
+  choose a reuse policy from a requirement or to name the owner a requirement implies, which is
+  the whole of L2.2 and L2.3. GAP-U2-A and GAP-U2-B are therefore untouched by it.
+- **`dagger_compile_time_graph_validation` — structurally reachable, and not answerable from
+  Unit 2 alone.** L2.6 genuinely helps: the stem describes exactly the two faults the Lesson
+  names, "unqualified" is L2.5's key-without-a-distinction, and L2.6's third representation —
+  a description a tool analyses ahead of execution — is the regime the keyed option describes,
+  cited to Dagger's own semantics document. A careful reader can get from the generic model to
+  "reported before the program runs". **What the Unit does not supply is the rest of the
+  Question.** It never teaches what a component is, that Dagger generates a component
+  implementation at build time, what a binding or a qualifier is as Dagger defines them, or what
+  R8 and process recreation do — and refuting the three distractors rests on those facts. This
+  outcome therefore does **not** claim semantic coverage on the strength of L2.6 discussing
+  detection time. Unit 2 practice is not semantically clean, and the honest statement is that
+  L2.6 is a strong bridge toward this Question and not coverage of it.
+
+#### Known premature Dagger routing
+
+`dagger_compile_time_graph_validation` maps to `dependency_graphs`, which is primary in four of
+this Unit's six Lessons, so it enters Unit 2 practice two Units before Dagger is taught. This is
+E27-01's recorded finding and it was **not** repaired here: the four primary mappings are
+correct and unchanged, Unit practice was not disabled, the Question was not re-mapped, re-levelled
+or edited, and Dagger was not taught early to close the gap. The limitation is pinned by an
+assertion in the practice test, so E27-08 has to re-state it rather than silently repair it — and
+E27-01's consequence still holds: re-mapping it to `dagger_fundamentals` leaves `dependency_graphs`,
+a four-Lesson primary, with **no ACTIVE Question at all** unless GAP-U2-E is authored in the same
+change. The two decisions are inseparable.
+
+#### `di_scopes_001` terminology conflict — status
+
+**Confirmed and sharpened, not resolved.** E27-01 recorded the wording as a correction candidate
+on the strength of the plan; the finished L2.3 makes the tension concrete, because the Lesson now
+retires the Question's keyed phrasing by name rather than merely preferring a different one. The
+Lesson was not weakened to fit the Question, and the Question was not touched. E27-08 owns the
+decision, and it has three options worth distinguishing: re-word the keyed option so that the
+owner bounds the lifetime, leave it and accept that a strong reader meets a contradiction, or
+retire it in favour of a decision Question that closes GAP-U2-A or GAP-U2-B. The third is the
+only one that also closes a gap.
+
+#### GAP-U2-A … GAP-U2-F after authoring
+
+E27-08 owns disposition. Recorded here is only what finished authoring changed about each.
+
+| Gap | Status after authoring |
+| --- | --- |
+| GAP-U2-A — choose an instance-reuse policy from a stated requirement | **Still open as planned, and now has taught material to assess.** L2.2 ships three named reuse requirements, a five-row requirement-to-decision table and one node whose answer flips between two products with no code change. A Question can now pose a requirement and ask for the policy, against reasoning the Lesson actually teaches |
+| GAP-U2-B — a scope declaration creates no owner; name the owner that must last | **Still open, and it is the widest gap in the Unit by a distance.** L2.3 ships the identical-declaration-under-two-owners example, the four ordered questions that turn a requirement into an owner, and the refusal of the circular definition — none of it reached by any ACTIVE Question, generic or otherwise. The example is a ready-made stem shape |
+| GAP-U2-C — runtime input against graph dependency, generically | **Still open, and now has three referents.** L2.4 ships the origin-not-type test, the shared-holder failure walked through a back-stack sequence, the half-built object, and the factory shape. Distractors can be drawn from the two failures rather than invented |
+| GAP-U2-D — same-type ambiguity as a design decision before a mechanism | **Still open, and better supplied than the plan expected.** L2.5 ships both honest answers with the condition on each and four explicitly named non-answers, which are unusually good distractor material for a Question about a decision rather than a definition |
+| GAP-U2-E — graph-error detection timing, generically | **Still open, and authoring strengthened the case for writing it generically.** L2.6's three-representation table is the reasoning, framed by mechanism rather than by library, which is exactly the shape GAP-U6-A also needs — so the plan's instruction to coordinate the two rather than write two Questions is confirmed. It is also the gap whose closure the Dagger re-map depends on |
+| GAP-U2-F — trace a transitive graph and name construction responsibility per edge | **Still open, and now poseable as the reading task the plan asked for.** L2.1 ships a six-row edge-responsibility table over a traced graph, so a Question can hand the reader a graph and ask who must supply a named argument, rather than asking for a definition of "object graph". Priority unchanged: lower than A–E |
+
+**No Question was authored, changed, re-mapped, re-levelled or deprecated, and no AnswerOption
+was touched.** The `dependency_injection` Topic still holds 27 Questions — 23 ACTIVE (14
+FOUNDATION, 9 APPLIED, 0 ADVANCED) and 4 DEPRECATED — and no taxonomy entry was added, removed
+or edited.
+
+#### Tests changed, and why
+
+| File | Change | Why production data made it necessary |
+| --- | --- | --- |
+| `BundledLearningCurriculumTest` | Unit id, title and home-Topic lists extended by one; Lesson id/title order and primary mappings added for the new Unit; three new tests — `objectGraphUnitKeepsItsPlannedBridgesOutOfPrimaryPractice`, `objectGraphUnitLinksBackwardsOnlyToShippedOwnershipAnchorsAndTheFirstUnit` and `objectGraphUnitFixesItsVocabularyWithoutAFrameworkNotation` | The document gains a Unit, so every positional list moves. The supporting mappings are where `dagger_qualifiers` and `dagger_fundamentals` would silently become practice, and the framework-free test is the acceptance criterion about notation expressed as a check |
+| `LearningUnitPracticeIntegrationTest` | `existingLearnerTraversesTheExpansionWithLiveParentProgressAndDurableIdentities` now expects two Units in the `dependency_injection` Topic and a final studied-record count of 112, up from 106; new test `theObjectGraphUnitPractisesOnlyItsTwoPrimaryConcepts` | Continue Learning walks the whole document, so a second Unit in the fourth home Topic changes the traversal. The Unit is deliberately **not** in the shared expectation table, for the same reason Unit 1 is not: the table's loop cannot state that one of the two resolved Questions is semantically premature, and the bespoke test pins the two ids, the FOUNDATION-only distribution and that limitation |
+
+The framework-free test inspects **authored code blocks only**, and additionally asserts two
+positive properties that a token blocklist cannot express: that L2.3 disambiguates
+`CoroutineScope` and that it contains the Unit's central correction. Policing prose would flag
+the bounded forward sentences the plan explicitly permits — this Unit's whole purpose is to name
+what Units 3–5 encode, so it has to be able to say so. No test was added that only restates
+schema validation `LearningCurriculumValidatorTest` already performs, and the data-driven suites
+— the reader journey over every shipped Unit, Topic Detail's Unit rows, the end-to-end
+repository path — needed no edit because they read the document rather than list it.
+
+#### Generated coverage
+
+`python3 tools/learning_question_coverage.py --write` then `--check`; the snapshot reports **26
+active units, 113 active lessons**, the new Unit's pool as 2 FOUNDATION and nothing else, and
+**0 primary subtopics with no active question**. The generated per-Lesson tables expose the
+premature routing plainly: `dagger_compile_time_graph_validation` is the only Question listed
+under four of the six Lessons, which is the routing finding stated as data. Nothing in the file
+was edited by hand.
+
+#### Validation performed
+
+| Command | Result |
+| --- | --- |
+| `python3` structural pre-check over both bundled JSON documents | Unit and Lesson ids unique across the whole document, every primary and supporting id an ACTIVE Subtopic, no primary/supporting overlap, every `relatedLessonIds` target resolvable and backward in document order, every Lesson sourced with valid `http(s)` URLs. No defect in the new Unit |
+| `python3` framework-notation scan over every block of the new Unit | **Zero occurrences of 29 Dagger, Hilt and Koin tokens** — the 27 the regression test pins, plus `KSP` and `kapt` — in code, prose, bullets, table cells, headers or summaries. Framework **names** occur in eight places in total: two bounded forward sentences in L2.1, one "no library name appeared here" sentence in L2.2, one notation-deferral sentence in L2.5, two source-citing sentences in L2.6, one forward sentence in L2.6's SENIOR, and the Unit summary. **L2.3 and L2.4 name no framework at all** |
+| `python3` terminology sweep over scope / lifetime / singleton / global / owner / container / graph / root / runtime input / binding / validation | Every flagged phrase is a deliberate correction read in context: the circular definition quoted in order to retire it, "it lives forever" as a table row being refuted, and leak language used only where L2.3 establishes actual unintended retention and explicitly denied for the milder case. "Scope" occurs only in L2.3 |
+| `./gradlew :shared:jvmTest --tests "*BundledLearningCurriculumTest*" --tests "*LearningUnitPracticeIntegrationTest*" --tests "*LearningCurriculumValidatorTest*"` | 108 tests, 0 failures |
+| `./gradlew :shared:jvmTest --tests "*LearningProductionContentJourneyTest*" --tests "*LearningContentEndToEndTest*"` | 16 tests, 0 failures — including the journey suite that renders every authored block of the new Unit in the real reader and opens its Source links through the app's own URI boundary |
+| `./gradlew :shared:jvmTest --rerun-tasks` | **1,465 tests, 0 failures, 0 skipped** |
+| `python3 tools/learning_question_coverage.py --write` then `--check` | Snapshot regenerated and reported current |
+| `cd tools && python3 -m unittest test_learning_question_coverage.py` | 21 tests, OK |
+| `./gradlew :shared:check` | **BUILD SUCCESSFUL** — `jvmTest`, `testAndroidHostTest`, `jsTest`/`jsBrowserTest`, `wasmJsTest`/`wasmJsBrowserTest` and `allTests`, each reporting 462 common tests with 0 failures on its target |
+| `./gradlew :shared:iosSimulatorArm64Test --rerun-tasks` | **BUILD SUCCESSFUL**, 462 tests, 0 failures. Re-run explicitly because the task reported UP-TO-DATE inside `:shared:check` against results predating the change — the same precaution E27-02 recorded |
+| `./gradlew :androidApp:assembleDebug --rerun-tasks` | **BUILD SUCCESSFUL** |
+| `git diff --check` and `git status --short` | Five files changed — the bundled learning document, two jvm test files, the generated coverage snapshot and this plan — with no build or cache output and no whitespace defects |
+
+#### Not validated
+
+- **`iosArm64` is not compiled locally or on CI**, unchanged from E23–E27-02. `iosSimulatorArm64Test`
+  was run and passed; the device target was not. This Unit is bundled content with no
+  target-specific code and makes no platform claim beyond the bounded process-lifetime sentence,
+  so nothing in its prose depends on that target — but the limitation remains true of the
+  repository and is reported rather than glossed.
+- **No platform-specific behaviour is claimed from compilation.** The JS, Wasm, Android-host and
+  iOS-simulator results prove the document decodes and the common suites pass on those targets.
+  They are not evidence about rendering on any device, and the Unit was not read on a running
+  Android, iOS, desktop or web host.
+- **No CI run is claimed.** Nothing here was observed on GitHub Actions.
+- **Backlog validation was not run**: `PyYAML` is unavailable in this environment, so
+  `.github/project/backlog.yml` was read as text rather than parsed. **`gh` is not installed**, so
+  issue #387 was read from the backlog entry — whose `issue`, `approach` and twelve
+  `acceptance_criteria` are the same text — rather than from GitHub directly.
+- **The prose itself is editorial.** No automated check can confirm that a Lesson teaches what it
+  claims. The semantic review above, and the judgement that a reader of Units 1 and 2 can answer
+  the twenty-six questions this Unit's argument implies without any framework knowledge, are
+  judgements, as Rule 10 of the authoring contract requires.
+
+#### Production code untouched
+
+**No production dependency-injection change of any kind.** No Koin module, host `startKoin`
+function, `koinViewModel()` call site, service construction or state-holder lifetime was edited;
+the Koin version in `gradle/libs.versions.toml` is unchanged at 4.2.2; and no Dagger, Hilt or other
+dependency-injection dependency was added to any module. No UI, navigation, progress,
+assessment, theme, icon or application-identity code was touched — the change is bundled
+content, two test files and documentation.
+
+---

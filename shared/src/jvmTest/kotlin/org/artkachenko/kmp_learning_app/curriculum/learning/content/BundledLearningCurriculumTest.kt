@@ -60,6 +60,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_responsibility_models_mvp_mvvm_mvi",
                 "unit_state_events_lifetime_and_selection",
                 "unit_dependency_injection_as_object_construction",
+                "unit_object_graphs_lifetimes_and_scopes",
             ),
             units().map { it.id },
         )
@@ -91,6 +92,7 @@ internal class BundledLearningCurriculumTest {
                 "MVP, MVVM and MVI Responsibility Models",
                 "State, Events, Lifetime and Architecture Selection",
                 "Dependency Injection as Object Construction",
+                "Object Graphs, Lifetimes and Scopes",
             ),
             units().map { it.title },
         )
@@ -123,6 +125,7 @@ internal class BundledLearningCurriculumTest {
                 "architecture",
                 "architecture",
                 "architecture",
+                "dependency_injection",
                 "dependency_injection",
             ),
             units().map { it.topicId },
@@ -580,6 +583,30 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_dependency_injection_as_object_construction").lessons.map { it.title },
         )
+
+        assertEquals(
+            listOf(
+                "lesson_from_one_dependency_to_a_graph",
+                "lesson_one_instance_or_a_new_one",
+                "lesson_scope_is_a_rule_owner_is_a_lifetime",
+                "lesson_runtime_input_is_not_a_dependency",
+                "lesson_two_dependencies_of_the_same_type",
+                "lesson_when_a_broken_graph_tells_you",
+            ),
+            unit("unit_object_graphs_lifetimes_and_scopes").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "From One Dependency to a Graph",
+                "One Instance, or a New One Each Time?",
+                "A Scope Is a Rule; an Owner Is a Lifetime",
+                "A Value the Graph Cannot Know",
+                "Two Dependencies of the Same Type",
+                "When Does a Broken Graph Tell You?",
+            ),
+            unit("unit_object_graphs_lifetimes_and_scopes").lessons.map { it.title },
+        )
     }
 
     @Test
@@ -903,6 +930,24 @@ internal class BundledLearningCurriculumTest {
                 listOf("manual_di"),
             ),
             unit("unit_dependency_injection_as_object_construction").lessons.map { it.primarySubtopicIds },
+        )
+
+        // E27-03. Six Lessons, two distinct primary concepts, which is deliberate rather than thin:
+        // `dependency_graphs` carries the structural reasoning — tracing a graph, routing a value
+        // that is not part of one, an edge with two candidates, and when a broken edge is reported —
+        // while `di_scopes` carries the two Lessons about instance identity and the owner that bounds
+        // it. Promoting any supporting concept to widen the pair would claim practice coverage for
+        // material later Units own.
+        assertEquals(
+            listOf(
+                listOf("dependency_graphs"),
+                listOf("di_scopes"),
+                listOf("di_scopes"),
+                listOf("dependency_graphs"),
+                listOf("dependency_graphs"),
+                listOf("dependency_graphs"),
+            ),
+            unit("unit_object_graphs_lifetimes_and_scopes").lessons.map { it.primarySubtopicIds },
         )
     }
 
@@ -2097,6 +2142,196 @@ internal class BundledLearningCurriculumTest {
                 )
             }
         }
+    }
+
+    @Test
+    fun objectGraphUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        // Eleven concepts are supporting-only across this Unit, and the ones that matter are the
+        // framework Subtopics. `dagger_qualifiers` is supporting in the same-type Lesson because the
+        // generic idea — a key that is more than a type — has no framework-independent
+        // Subtopic in the taxonomy, and `dagger_fundamentals` is supporting where a broken graph's
+        // detection timing is taught generically. Promoting either would route Dagger Questions into
+        // a Unit that teaches no Dagger, which is the opposite of what the plan asks for.
+        assertEquals(
+            listOf(
+                listOf("composition_root", "manual_di", "constructor_injection", "layered_architecture"),
+                listOf("dependency_graphs", "state_ownership", "architecture_tradeoffs"),
+                listOf(
+                    "dependency_graphs",
+                    "state_ownership",
+                    "android_process_model",
+                    "viewmodel_lifecycle",
+                ),
+                listOf("di_scopes", "constructor_injection", "navigation_fundamentals", "state_ownership"),
+                listOf("dagger_qualifiers", "interface_boundaries", "constructor_injection"),
+                listOf("di_framework_tradeoffs", "dagger_fundamentals", "kotlin_gradle_plugin"),
+            ),
+            unit("unit_object_graphs_lifetimes_and_scopes").lessons.map { it.supportingSubtopicIds },
+        )
+
+        // No Lesson lists a concept as both primary and supporting, and the two Lessons that own
+        // instance identity are the only ones taking `di_scopes` as primary — the Lesson on
+        // runtime input names it as supporting because it borrows the vocabulary without teaching it.
+        val lessons = unit("unit_object_graphs_lifetimes_and_scopes").lessons
+        lessons.forEach { lesson ->
+            assertTrue(
+                lesson.primarySubtopicIds.none { it in lesson.supportingSubtopicIds },
+                "${lesson.id} lists a concept as both primary and supporting",
+            )
+        }
+        assertEquals(
+            listOf("lesson_one_instance_or_a_new_one", "lesson_scope_is_a_rule_owner_is_a_lifetime"),
+            lessons.filter { "di_scopes" in it.primarySubtopicIds }.map { it.id },
+        )
+        assertTrue(
+            "di_scopes" in lessons.single { it.id == "lesson_runtime_input_is_not_a_dependency" }
+                .supportingSubtopicIds,
+        )
+    }
+
+    @Test
+    fun objectGraphUnitLinksBackwardsOnlyToShippedOwnershipAnchorsAndTheFirstUnit() = runTest {
+        val unitId = "unit_object_graphs_lifetimes_and_scopes"
+        val lessons = unit(unitId).lessons.associateBy { it.id }
+
+        // `docs/content/dependency-injection-units-1-6-plan.md` names the required backward links:
+        // the graph Lesson consumes the composition root, the two reuse Lessons apply the shipped
+        // owner-selection and ViewModel-lifetime arguments rather than re-deriving them, and the
+        // runtime-input Lesson consumes the constructor-injection guarantees it refuses to reteach.
+        assertEquals(
+            listOf("lesson_one_place_that_knows_how_to_build"),
+            lessons.getValue("lesson_from_one_dependency_to_a_graph").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_choosing_the_owner_by_lifetime",
+                "lesson_viewmodel_lifetime_and_persistence",
+                "lesson_from_one_dependency_to_a_graph",
+            ),
+            lessons.getValue("lesson_one_instance_or_a_new_one").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_choosing_the_owner_by_lifetime",
+                "lesson_viewmodel_lifetime_and_persistence",
+                "lesson_state_holder_responsibility",
+                "lesson_one_instance_or_a_new_one",
+            ),
+            lessons.getValue("lesson_scope_is_a_rule_owner_is_a_lifetime").relatedLessonIds,
+        )
+        assertEquals(
+            listOf("lesson_a_dependency_should_be_visible", "lesson_from_one_dependency_to_a_graph"),
+            lessons.getValue("lesson_runtime_input_is_not_a_dependency").relatedLessonIds,
+        )
+        assertEquals(
+            listOf("lesson_when_an_interface_is_a_boundary", "lesson_from_one_dependency_to_a_graph"),
+            lessons.getValue("lesson_two_dependencies_of_the_same_type").relatedLessonIds,
+        )
+        assertEquals(
+            listOf("lesson_when_wiring_it_yourself_is_enough", "lesson_two_dependencies_of_the_same_type"),
+            lessons.getValue("lesson_when_a_broken_graph_tells_you").relatedLessonIds,
+        )
+
+        // Every link points backwards. The four later dependency-injection Units do not exist yet, so
+        // a forward `relatedLessonIds` entry would not resolve at all; forward pointing is prose.
+        val order = units().flatMap { it.lessons.map { lesson -> lesson.id } }
+        lessons.values.forEach { lesson ->
+            lesson.relatedLessonIds.forEach { related ->
+                assertTrue(
+                    order.indexOf(related) < order.indexOf(lesson.id),
+                    "${lesson.id} -> $related is not a backward link",
+                )
+            }
+        }
+
+        // No earlier Lesson was edited to receive a reciprocal link, including the six Lessons of the
+        // first dependency-injection Unit: they point forward in prose only, which is what the plan
+        // recorded and what keeps shipped study-progress identities untouched.
+        val ownIds = lessons.keys
+        units()
+            .takeWhile { it.id != unitId }
+            .flatMap { it.lessons }
+            .forEach { lesson ->
+                assertTrue(
+                    lesson.relatedLessonIds.none { it in ownIds },
+                    "${lesson.id} links forward into the object-graph Unit",
+                )
+            }
+    }
+
+    @Test
+    fun objectGraphUnitFixesItsVocabularyWithoutAFrameworkNotation() = runTest {
+        // E27-03's acceptance criterion that no framework scope annotation or container API defines a
+        // concept in this Unit. Only authored code is inspected: this Unit's whole purpose is to name
+        // the concepts the three framework Units later encode, so its prose must be free to say that a
+        // later Unit encodes them, and policing prose would flag exactly those sentences.
+        val frameworkSyntax = listOf(
+            "@Inject",
+            "@Provides",
+            "@Binds",
+            "@Module",
+            "@Component",
+            "@Subcomponent",
+            "@Singleton",
+            "@Reusable",
+            "@Qualifier",
+            "@Named",
+            "@AssistedInject",
+            "@ActivityScoped",
+            "@ViewModelScoped",
+            "@ActivityRetainedScoped",
+            "@InstallIn",
+            "@AndroidEntryPoint",
+            "@HiltViewModel",
+            "startKoin",
+            "koinViewModel",
+            "koinInject",
+            "single {",
+            "factory {",
+            "module {",
+            "viewModel {",
+            "by inject",
+            "parametersOf",
+            "SavedStateHandle",
+        )
+        val unit = unit("unit_object_graphs_lifetimes_and_scopes")
+        val authoredCode = unit
+            .lessons
+            .flatMap { lesson -> lesson.sections.flatMap { it.blocks } }
+            .filterIsInstance<LearningBlock.Code>()
+
+        assertTrue(authoredCode.size >= 10, "Expected the Unit to argue from code and graphs it shows.")
+        authoredCode.forEach { block ->
+            frameworkSyntax.forEach { token ->
+                assertFalse(
+                    block.code.contains(token),
+                    "Unit 2 code contains framework syntax '$token'.",
+                )
+            }
+        }
+
+        // The reuse decision has to be makeable before any notation exists, so the Lesson that teaches
+        // it names no framework at all in any authored text, and the Lesson that fixes the scope
+        // vocabulary states the coroutines collision explicitly rather than leaving "scope" ambiguous.
+        fun textOf(lessonId: String): String {
+            val lesson = unit.lessons.single { it.id == lessonId }
+            return lesson.sections
+                .flatMap { it.blocks }
+                .joinToString(" ") { block ->
+                    when (block) {
+                        is LearningBlock.Paragraph -> block.text
+                        is LearningBlock.BulletList -> block.items.joinToString(" ")
+                        is LearningBlock.Callout -> block.text
+                        is LearningBlock.Code -> block.code
+                        is LearningBlock.Comparison ->
+                            (block.headers + block.rows.flatten()).joinToString(" ")
+                    }
+                }
+        }
+
+        val scopeLesson = textOf("lesson_scope_is_a_rule_owner_is_a_lifetime")
+        assertTrue(scopeLesson.contains("CoroutineScope"), "The coroutines collision is not disambiguated.")
+        assertTrue(scopeLesson.contains("A scope creates nothing"), "The central correction is missing.")
     }
 
     @Test

@@ -38,6 +38,7 @@ import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
 import org.artkachenko.kmp_learning_app.assessment.start.StartAssessmentResult
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingUiState
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingViewModel
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.content.BundledCurriculumSource
 import org.artkachenko.kmp_learning_app.curriculum.learning.content.BundledLearningContentRepository
 import org.artkachenko.kmp_learning_app.lesson_study.repository.LessonStudyRepository
@@ -263,13 +264,21 @@ internal class LearningUnitPracticeIntegrationTest {
                 }
             }
             // E27-02 added a fourth home Topic, and the handover happens once more: exhausting
-            // the architecture Units leads into the dependency-injection Unit, not to Complete.
+            // the architecture Units leads into the dependency-injection Units, not to Complete.
+            // E27-03 added the second of those Units, and the traversal walks both in order without
+            // any special case in production code.
             val diUnits = BundledLearningContentRepository().getActiveUnitsByTopic("dependency_injection")
-            assertEquals(listOf("unit_dependency_injection_as_object_construction"), diUnits.map { it.id })
-            // Six Lessons, because the Unit carries six separately learnable ideas —
-            // `docs/content/dependency-injection-units-1-6-plan.md` derives the count rather
-            // than assigning it.
-            assertEquals(listOf(6), diUnits.map { it.lessons.size })
+            assertEquals(
+                listOf(
+                    "unit_dependency_injection_as_object_construction",
+                    "unit_object_graphs_lifetimes_and_scopes",
+                ),
+                diUnits.map { it.id },
+            )
+            // Six Lessons each, because each Unit carries six separately learnable ideas —
+            // `docs/content/dependency-injection-units-1-6-plan.md` derives the counts rather
+            // than assigning them.
+            assertEquals(listOf(6, 6), diUnits.map { it.lessons.size })
             val diTopic = topic("dependency_injection")
             val diParents = diUnits.associate { it.id to unit(it.id) }
             val diLessonCount = diUnits.sumOf { it.lessons.size }
@@ -351,9 +360,9 @@ internal class LearningUnitPracticeIntegrationTest {
             val rebuilt = LocalLessonStudyRepository(database)
             assertFalse(rebuilt.isStudied(earlierLesson.id))
             // 43 `android_ui` Lessons, 29 in the coroutines and Flow Units, 29 in the six
-            // architecture Units and 6 in the dependency-injection Unit, less the one that was
-            // just un-studied.
-            assertEquals(106, rebuilt.getStudiedLessons().size)
+            // architecture Units and 12 in the two dependency-injection Units, less the one that
+            // was just un-studied.
+            assertEquals(112, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -1363,6 +1372,103 @@ internal class LearningUnitPracticeIntegrationTest {
             // Lesson takes a `dependency_injection` Subtopic as primary.
             val foundationsBuilder =
                 builder(PracticeBuilderTarget.LearningUnit("unit_architecture_responsibilities_and_boundaries"))
+            foundationsBuilder.settled()
+            foundationsBuilder.selectQuestionCount(
+                assertIs<PracticeAvailability.Available>(foundationsBuilder.uiState.value.availability)
+                    .eligibleQuestionCount,
+            )
+            foundationsBuilder.settled()
+            val foundations = selectedQuestions(foundationsBuilder.start()).map { it.id }.toSet()
+            assertEquals(emptySet(), foundations intersect questionIds)
+            assertEquals(0, attemptCount())
+        }
+
+    /**
+     * E27-03. The object-graph Unit's practice, resolved through the production Practice Builder.
+     *
+     * Two primary concepts across six Lessons, and they reach two Questions between them. The Unit is
+     * kept out of the shared expectation table for the same reason the first dependency-injection Unit
+     * is: the table's loop can assert that the resolved Subtopics equal the Unit's primaries, and it
+     * cannot say that one of the two resolved Questions is about a framework this Unit refuses to
+     * teach.
+     *
+     * `dagger_compile_time_graph_validation` is mapped to `dependency_graphs`, which is primary in four
+     * of these six Lessons, so a reader who has finished this Unit is handed a Question whose stem names
+     * a component and whose every option names Dagger behaviour. `docs/content/dependency-injection-units-1-6-plan.md`
+     * records the mapping as honest — compile-time validation genuinely is a fact about a dependency
+     * graph — and leaves the re-map to E27-08, where it has to be decided together with GAP-U2-E,
+     * because moving it would leave `dependency_graphs` with no ACTIVE Question at all. It is asserted
+     * here so the limitation has to be re-stated rather than quietly repaired: this test says the
+     * Question is *reachable*, never that this Unit teaches it.
+     */
+    @Test
+    fun theObjectGraphUnitPractisesOnlyItsTwoPrimaryConcepts() =
+        runUnitPracticeTest {
+            val unitId = "unit_object_graphs_lifetimes_and_scopes"
+            val unit = assertNotNull(BundledLearningContentRepository().getUnitById(unitId))
+            val builder = builder(PracticeBuilderTarget.LearningUnit(unitId))
+            val settled = builder.settled()
+
+            assertEquals(unit.title, settled.scope.name)
+            val available = assertIs<PracticeAvailability.Available>(settled.availability)
+            assertEquals(2, available.eligibleQuestionCount)
+            builder.selectQuestionCount(available.eligibleQuestionCount)
+            builder.settled()
+
+            val config = builder.start()
+            val concepts = setOf("dependency_graphs", "di_scopes")
+            assertEquals(AssessmentScope.Subtopics(concepts), config.scope)
+
+            val questions = selectedQuestions(config)
+            val questionIds = questions.map { it.id }.toSet()
+            assertEquals(
+                setOf("dagger_compile_time_graph_validation", "di_scopes_001"),
+                questionIds,
+            )
+            assertEquals(concepts, questions.map { it.subtopicId }.toSet())
+            assertEquals(2, questions.size)
+            // FOUNDATION only, which is the whole distribution rather than a sample of it.
+            assertEquals(setOf(QuestionLevel.FOUNDATION), questions.map { it.level }.toSet())
+
+            // The recorded premature routing, pinned rather than repaired. E27-08 owns the re-map to
+            // `dagger_fundamentals`; until it is taken, this Question is structurally reachable and
+            // taught by no Lesson of this Unit.
+            assertEquals(
+                "dependency_graphs",
+                questions.single { it.id == "dagger_compile_time_graph_validation" }.subtopicId,
+            )
+
+            // Supporting concepts never broaden a Unit's practice, and here that is load-bearing in
+            // both directions. `dagger_qualifiers` and `dagger_fundamentals` are supporting because the
+            // generic ideas they bridge to have no framework-independent Subtopic; were either primary,
+            // the Unit would practise Dagger two Units before Dagger is taught. The architecture,
+            // lifecycle, platform and build bridges are equally excluded, which is what keeps every
+            // shipped Unit's pool unchanged.
+            val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
+            assertTrue(
+                setOf(
+                    "dagger_qualifiers",
+                    "dagger_fundamentals",
+                    "di_framework_tradeoffs",
+                    "kotlin_gradle_plugin",
+                    "composition_root",
+                    "manual_di",
+                    "constructor_injection",
+                    "layered_architecture",
+                    "state_ownership",
+                    "architecture_tradeoffs",
+                    "android_process_model",
+                    "viewmodel_lifecycle",
+                    "navigation_fundamentals",
+                    "interface_boundaries",
+                ).all { it in supportingOnly },
+            )
+            assertTrue(questions.none { it.subtopicId in supportingOnly })
+
+            // The first dependency-injection Unit's pool is untouched by this one: no Subtopic is
+            // primary in both, so the two Units share no Question.
+            val foundationsBuilder =
+                builder(PracticeBuilderTarget.LearningUnit("unit_dependency_injection_as_object_construction"))
             foundationsBuilder.settled()
             foundationsBuilder.selectQuestionCount(
                 assertIs<PracticeAvailability.Available>(foundationsBuilder.uiState.value.availability)

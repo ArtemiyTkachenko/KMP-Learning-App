@@ -62,6 +62,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_dependency_injection_as_object_construction",
                 "unit_object_graphs_lifetimes_and_scopes",
                 "unit_dagger_compile_time_object_graphs",
+                "unit_hilt_android_lifecycle_integration",
             ),
             units().map { it.id },
         )
@@ -95,6 +96,7 @@ internal class BundledLearningCurriculumTest {
                 "Dependency Injection as Object Construction",
                 "Object Graphs, Lifetimes and Scopes",
                 "Dagger: Compile-Time Object Graphs",
+                "Hilt: Android Lifecycle-Aware Dagger",
             ),
             units().map { it.title },
         )
@@ -127,6 +129,7 @@ internal class BundledLearningCurriculumTest {
                 "architecture",
                 "architecture",
                 "architecture",
+                "dependency_injection",
                 "dependency_injection",
                 "dependency_injection",
                 "dependency_injection",
@@ -636,6 +639,30 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_dagger_compile_time_object_graphs").lessons.map { it.title },
         )
+
+        assertEquals(
+            listOf(
+                "lesson_hilt_is_dagger_with_decisions_made",
+                "lesson_which_android_component_owns_this",
+                "lesson_when_android_owns_construction",
+                "lesson_hilt_viewmodels_and_runtime_input",
+                "lesson_which_graph_does_this_binding_join",
+                "lesson_hilt_or_hand_written_dagger",
+            ),
+            unit("unit_hilt_android_lifecycle_integration").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "Hilt Is Dagger With the Decisions Already Made",
+                "Which Android Component Owns This?",
+                "When Android Owns Construction",
+                "ViewModels, Their Component, and the Values That Arrive Late",
+                "Which Graph Does This Binding Join?",
+                "Hilt, or Components You Write Yourself?",
+            ),
+            unit("unit_hilt_android_lifecycle_integration").lessons.map { it.title },
+        )
     }
 
     @Test
@@ -995,6 +1022,18 @@ internal class BundledLearningCurriculumTest {
                 listOf("dagger_fundamentals"),
             ),
             unit("unit_dagger_compile_time_object_graphs").lessons.map { it.primarySubtopicIds },
+        )
+
+        assertEquals(
+            listOf(
+                listOf("hilt_fundamentals"),
+                listOf("hilt_components"),
+                listOf("hilt_fundamentals"),
+                listOf("hilt_viewmodels"),
+                listOf("hilt_modules"),
+                listOf("hilt_vs_dagger"),
+            ),
+            unit("unit_hilt_android_lifecycle_integration").lessons.map { it.primarySubtopicIds },
         )
     }
 
@@ -2594,6 +2633,155 @@ internal class BundledLearningCurriculumTest {
             scopes.contains("A scope annotation creates no owner"),
             "The carried-forward correction from the object-graph Unit is missing.",
         )
+    }
+
+    @Test
+    fun hiltUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        assertEquals(
+            listOf(
+                listOf("hilt_vs_dagger", "dagger_components", "dagger_fundamentals", "activity_lifecycle"),
+                listOf(
+                    "di_scopes",
+                    "dagger_scopes",
+                    "activity_lifecycle",
+                    "configuration_changes",
+                    "android_process_model",
+                ),
+                listOf("constructor_injection", "service_locator_vs_di", "activity_lifecycle", "hilt_components"),
+                listOf(
+                    "hilt_components",
+                    "viewmodel_lifecycle",
+                    "saved_state",
+                    "state_ownership",
+                    "dependency_graphs",
+                ),
+                listOf("dagger_modules", "hilt_components", "dagger_scopes", "di_scopes"),
+                listOf("hilt_components", "dagger_components", "di_framework_tradeoffs", "architecture_tradeoffs"),
+            ),
+            unit("unit_hilt_android_lifecycle_integration").lessons.map { it.supportingSubtopicIds },
+        )
+
+        val primary = unit("unit_hilt_android_lifecycle_integration")
+            .lessons
+            .flatMap { it.primarySubtopicIds }
+            .toSet()
+        assertEquals(
+            setOf("hilt_fundamentals", "hilt_components", "hilt_viewmodels", "hilt_modules", "hilt_vs_dagger"),
+            primary,
+        )
+        unit("unit_hilt_android_lifecycle_integration").lessons.forEach { lesson ->
+            assertTrue(lesson.primarySubtopicIds.none { it in lesson.supportingSubtopicIds }, lesson.id)
+        }
+    }
+
+    @Test
+    fun hiltUnitLinksOnlyToShippedPrerequisites() = runTest {
+        val unitId = "unit_hilt_android_lifecycle_integration"
+        val lessons = unit(unitId).lessons.associateBy { it.id }
+
+        assertEquals(
+            listOf("lesson_which_graph_owns_this_binding", "lesson_dagger_scopes_and_component_instances"),
+            lessons.getValue("lesson_hilt_is_dagger_with_decisions_made").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_scope_is_a_rule_owner_is_a_lifetime",
+                "lesson_choosing_the_owner_by_lifetime",
+                "lesson_viewmodel_lifetime_and_persistence",
+                "lesson_dagger_scopes_and_component_instances",
+            ),
+            lessons.getValue("lesson_which_android_component_owns_this").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_a_dependency_should_be_visible",
+                "lesson_asking_for_it_or_being_given_it",
+                "lesson_lifecycle_aware_collection",
+                "lesson_hilt_is_dagger_with_decisions_made",
+            ),
+            lessons.getValue("lesson_when_android_owns_construction").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_runtime_input_is_not_a_dependency",
+                "lesson_viewmodel_lifetime_and_persistence",
+                "lesson_screen_state_owner_boundary",
+                "lesson_which_android_component_owns_this",
+            ),
+            lessons.getValue("lesson_hilt_viewmodels_and_runtime_input").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_declaring_the_rest_of_the_graph",
+                "lesson_which_android_component_owns_this",
+                "lesson_which_graph_owns_this_binding",
+            ),
+            lessons.getValue("lesson_which_graph_does_this_binding_join").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_child_graph_or_separate_graph",
+                "lesson_smallest_sufficient_architecture",
+                "lesson_hilt_is_dagger_with_decisions_made",
+                "lesson_which_android_component_owns_this",
+            ),
+            lessons.getValue("lesson_hilt_or_hand_written_dagger").relatedLessonIds,
+        )
+
+        val order = units().flatMap { it.lessons.map { lesson -> lesson.id } }
+        lessons.values.forEach { lesson ->
+            lesson.relatedLessonIds.forEach { related ->
+                assertTrue(order.indexOf(related) < order.indexOf(lesson.id), "${lesson.id} -> $related")
+            }
+        }
+    }
+
+    @Test
+    fun hiltUnitProtectsItsLifetimeConstructionAndBuildBoundaries() = runTest {
+        val unit = unit("unit_hilt_android_lifecycle_integration")
+
+        fun textOf(lessonId: String): String = unit.lessons
+            .single { it.id == lessonId }
+            .sections
+            .flatMap { it.blocks }
+            .joinToString(" ") { block ->
+                when (block) {
+                    is LearningBlock.Paragraph -> block.text
+                    is LearningBlock.BulletList -> block.items.joinToString(" ")
+                    is LearningBlock.Callout -> block.text
+                    is LearningBlock.Code -> block.code
+                    is LearningBlock.Comparison -> (block.headers + block.rows.flatten()).joinToString(" ")
+                }
+            }
+
+        val lifetime = textOf("lesson_which_android_component_owns_this")
+        listOf(
+            "SingletonComponent",
+            "ActivityRetainedComponent",
+            "ViewModelComponent",
+            "ActivityComponent",
+            "does not mean durable across process death",
+        ).forEach { claim -> assertTrue(lifetime.contains(claim), claim) }
+
+        val construction = textOf("lesson_when_android_owns_construction")
+        assertTrue(construction.contains("application does not own construction"))
+        assertTrue(construction.contains("should still prefer constructor injection"))
+        assertTrue(construction.contains("ContentProvider"))
+        assertTrue(construction.contains("architectural cost"))
+
+        val viewModels = textOf("lesson_hilt_viewmodels_and_runtime_input")
+        assertTrue(viewModels.contains("does **not** mean Hilt owns the ViewModel lifetime"))
+        assertTrue(viewModels.contains("not automatically UI state"))
+        assertTrue(viewModels.contains("does not become durable"))
+
+        val installation = textOf("lesson_which_graph_does_this_binding_join")
+        assertTrue(installation.contains("does not by itself say"))
+        assertTrue(installation.contains("Nothing about visibility changed. Only identity changed."))
+
+        val allText = unit.lessons.joinToString(" ") { textOf(it.id) }
+        listOf("kapt", "KSP", "build.gradle", "annotationProcessor", "plugins {", "startKoin", "koinViewModel")
+            .forEach { token -> assertFalse(allText.contains(token), token) }
+        assertFalse(allText.contains("@HiltAndroidApp"), "The Unit turns root integration into setup instruction.")
     }
 
     @Test

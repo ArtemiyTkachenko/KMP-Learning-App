@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `40c06b1087b866589b9eb04313d47473c7211370a01c0585a6968aad8cbf31d8` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `8ea41b8414a50fe96ae4690d6828233e1aec4943f570fc2556622ffc87fdc717` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `3da78c289e4ab49b9771390d1e3ba1bd9b32b9506b1bba8a89f71bb5de28736d` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,12 +68,12 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 27 |
-| Active lessons in those units | 120 |
-| Distinct primary subtopics | 63 |
-| Distinct supporting subtopics | 108 |
-| Unique active questions reached through primary mappings | 145 |
-| Primary subtopics with at least one active question | 62 |
+| Active learning units | 28 |
+| Active lessons in those units | 126 |
+| Distinct primary subtopics | 68 |
+| Distinct supporting subtopics | 111 |
+| Unique active questions reached through primary mappings | 151 |
+| Primary subtopics with at least one active question | 67 |
 | Primary subtopics with no active question | 1 |
 | Active questions in the bank | 419 |
 | Deprecated questions excluded from this report | 41 |
@@ -118,6 +118,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Dependency Injection as Object Construction (`unit_dependency_injection_as_object_construction`) | 6 | 5 | 4 | 1 | 0 | 5 |
 | Object Graphs, Lifetimes and Scopes (`unit_object_graphs_lifetimes_and_scopes`) | 6 | 2 | 2 | 0 | 0 | 2 |
 | Dagger: Compile-Time Object Graphs (`unit_dagger_compile_time_object_graphs`) | 7 | 7 | 5 | 3 | 0 | 8 |
+| Hilt: Android Lifecycle-Aware Dagger (`unit_hilt_android_lifecycle_integration`) | 6 | 5 | 2 | 4 | 0 | 6 |
 
 ## Unit and lesson detail
 
@@ -2453,6 +2454,123 @@ Supporting context — not primary coverage:
 | `di_framework_tradeoffs` — DI framework trade-offs | 0 | `dependency_injection` — Dependency Injection |
 | `dagger_components` — Components and subcomponents | 3 | `dependency_injection` — Dependency Injection |
 | `kotlin_gradle_plugin` — Kotlin Gradle plugin | 1 | `build_delivery` — Build System, Modularization & Delivery |
+
+### Hilt: Android Lifecycle-Aware Dagger (`unit_hilt_android_lifecycle_integration`)
+
+Home topic: `dependency_injection` — Dependency Injection.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 2 | `di_hilt_viewmodel_scope`, `hilt_install_in_binding_visibility` |
+| APPLIED | 4 | `dagger_assisted_injection_viewmodel`, `hilt_activity_retained_component_lifetime`, `hilt_entry_point_manual_access`, `hilt_vs_dagger_convention_tradeoff` |
+| ADVANCED | 0 | — |
+
+#### Hilt Is Dagger With the Decisions Already Made (`lesson_hilt_is_dagger_with_decisions_made`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `hilt_fundamentals` — Hilt fundamentals | 0 | 1 | 0 | 1 | `hilt_entry_point_manual_access` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `hilt_vs_dagger` — Hilt vs raw Dagger | 1 | `dependency_injection` — Dependency Injection |
+| `dagger_components` — Components and subcomponents | 3 | `dependency_injection` — Dependency Injection |
+| `dagger_fundamentals` — Dagger fundamentals | 1 | `dependency_injection` — Dependency Injection |
+| `activity_lifecycle` — Activity lifecycle | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+
+#### Which Android Component Owns This? (`lesson_which_android_component_owns_this`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `hilt_components` — Hilt components and lifecycle scopes | 0 | 1 | 0 | 1 | `hilt_activity_retained_component_lifetime` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `di_scopes` — Scopes and lifetimes | 1 | `dependency_injection` — Dependency Injection |
+| `dagger_scopes` — Dagger scopes | 1 | `dependency_injection` — Dependency Injection |
+| `activity_lifecycle` — Activity lifecycle | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `configuration_changes` — Configuration changes | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `android_process_model` — Application and process model | 2 | `android_platform` — Android Platform & Application Model |
+
+#### When Android Owns Construction (`lesson_when_android_owns_construction`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `hilt_fundamentals` — Hilt fundamentals | 0 | 1 | 0 | 1 | `hilt_entry_point_manual_access` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `constructor_injection` — Constructor injection | 1 | `dependency_injection` — Dependency Injection |
+| `service_locator_vs_di` — Service locator vs dependency injection | 1 | `dependency_injection` — Dependency Injection |
+| `activity_lifecycle` — Activity lifecycle | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `hilt_components` — Hilt components and lifecycle scopes | 1 | `dependency_injection` — Dependency Injection |
+
+#### ViewModels, Their Component, and the Values That Arrive Late (`lesson_hilt_viewmodels_and_runtime_input`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `hilt_viewmodels` — Hilt ViewModels | 1 | 1 | 0 | 2 | `dagger_assisted_injection_viewmodel`, `di_hilt_viewmodel_scope` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `hilt_components` — Hilt components and lifecycle scopes | 1 | `dependency_injection` — Dependency Injection |
+| `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `saved_state` — Saved-state mechanisms | 4 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
+| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
+
+#### Which Graph Does This Binding Join? (`lesson_which_graph_does_this_binding_join`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `hilt_modules` — Hilt modules and InstallIn | 1 | 0 | 0 | 1 | `hilt_install_in_binding_visibility` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `dagger_modules` — Dagger modules | 0 | `dependency_injection` — Dependency Injection |
+| `hilt_components` — Hilt components and lifecycle scopes | 1 | `dependency_injection` — Dependency Injection |
+| `dagger_scopes` — Dagger scopes | 1 | `dependency_injection` — Dependency Injection |
+| `di_scopes` — Scopes and lifetimes | 1 | `dependency_injection` — Dependency Injection |
+
+#### Hilt, or Components You Write Yourself? (`lesson_hilt_or_hand_written_dagger`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `hilt_vs_dagger` — Hilt vs raw Dagger | 0 | 1 | 0 | 1 | `hilt_vs_dagger_convention_tradeoff` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `hilt_components` — Hilt components and lifecycle scopes | 1 | `dependency_injection` — Dependency Injection |
+| `dagger_components` — Components and subcomponents | 3 | `dependency_injection` — Dependency Injection |
+| `di_framework_tradeoffs` — DI framework trade-offs | 0 | `dependency_injection` — Dependency Injection |
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 2 | `architecture` — Application Architecture & Design Principles |
 
 ## Primary assessment gaps
 

@@ -2592,3 +2592,383 @@ bundled content, two test files and documentation, and the bundled question bank
 `initial_curriculum.json` is byte-for-byte unchanged.
 
 ---
+
+### E27-05 authoring outcomes
+
+**Issue #389, `task/E27-05`. Authored 2026-09-18.** Unit 4 ships; Units 5–6 remain
+unauthored. The public issue body was fetched from the GitHub API and matched the synchronized
+`E27-05` backlog entry.
+
+#### What shipped
+
+**One Unit, `unit_hilt_android_lifecycle_integration`, titled "Hilt: Android
+Lifecycle-Aware Dagger", home Topic `dependency_injection`.** Read from production after the
+change: **28 active Units and 126 active Lessons**, up from 27 and 120. Dependency Injection now
+contains four Units with six, six, seven and six Lessons.
+
+| # | Lesson id | Title | Primary | Supporting |
+| --- | --- | --- | --- | --- |
+| L4.1 | `lesson_hilt_is_dagger_with_decisions_made` | Hilt Is Dagger With the Decisions Already Made | `hilt_fundamentals` | `hilt_vs_dagger`, `dagger_components`, `dagger_fundamentals`, `activity_lifecycle` |
+| L4.2 | `lesson_which_android_component_owns_this` | Which Android Component Owns This? | `hilt_components` | `di_scopes`, `dagger_scopes`, `activity_lifecycle`, `configuration_changes`, `android_process_model` |
+| L4.3 | `lesson_when_android_owns_construction` | When Android Owns Construction | `hilt_fundamentals` | `constructor_injection`, `service_locator_vs_di`, `activity_lifecycle`, `hilt_components` |
+| L4.4 | `lesson_hilt_viewmodels_and_runtime_input` | ViewModels, Their Component, and the Values That Arrive Late | `hilt_viewmodels` | `hilt_components`, `viewmodel_lifecycle`, `saved_state`, `state_ownership`, `dependency_graphs` |
+| L4.5 | `lesson_which_graph_does_this_binding_join` | Which Graph Does This Binding Join? | `hilt_modules` | `dagger_modules`, `hilt_components`, `dagger_scopes`, `di_scopes` |
+| L4.6 | `lesson_hilt_or_hand_written_dagger` | Hilt, or Components You Write Yourself? | `hilt_vs_dagger` | `hilt_components`, `dagger_components`, `di_framework_tradeoffs`, `architecture_tradeoffs` |
+
+Every identity, title, order and mapping is the planned one. No Question, Question mapping,
+Question level, status or taxonomy entry changed. Units 1–3 are byte-for-byte untouched in the
+production learning document; no reciprocal-link or symmetry edits were made.
+
+#### Deviations and editorial corrections
+
+There is **no identity, ordering, mapping or Lesson-boundary deviation**. One source-context
+finding advances E27-01's record: the current Android documentation no longer reads best as one
+five-component page against a separate eight-component Hilt model. Android Developers now has a
+general/Compose-oriented Hilt page with five components and a dedicated Views page with the wider
+Fragment/View hierarchy. `dagger.dev/hilt/components` also carries the wider hierarchy. These are
+different documentation surfaces for different UI contexts, not incompatible component models.
+
+Two editorial choices narrowed the plan without changing it:
+
+1. Fragment and View components are acknowledged once from the Views/full-hierarchy sources, but
+   do not become a catalogue. The four components needed for the Unit's core reasoning are
+   `SingletonComponent`, `ActivityRetainedComponent`, `ViewModelComponent` and
+   `ActivityComponent`; `ServiceComponent` appears as a sibling branch and one selection-scenario
+   input.
+2. The Activity timing claim is deliberately type-specific: generated Activity integration has
+   injected fields through the `super.onCreate()` path before subsequent Activity code uses them.
+   The Lesson explicitly refuses to generalize that timing to every supported owner.
+
+No technical contradiction in Units 1–3 was found.
+
+#### Content structure and Example B
+
+Every Lesson carries CORE, PRACTICAL and SENIOR sections, authoritative Sources, diagrams or code,
+a `KEY_TAKEAWAY`, a `COMMON_MISTAKE` and an `INTERVIEW_FOCUS`. The Unit uses 95 authored blocks,
+including 18 code/diagram blocks and five comparison tables. It is an Android-Hilt curriculum
+example and nowhere implies that the learning application uses Hilt.
+
+Example B evolves from Unit 3's Dagger graph into one Android reading scenario:
+
+```text
+LibraryRepository              stable graph dependency
+ReaderSession                  one retained Activity identity
+ReaderActivity                 Android-created entry owner
+ReaderViewModel                ViewModelStore-owned state holder
+BookParser                     per-ViewModel or retained-shared by requirement
+bookId                         runtime/navigation input, not a graph binding
+```
+
+L4.1 compares hand-written component creation with Hilt's generated hierarchy. L4.2 chooses
+`ActivityRetainedComponent` for `ReaderSession` from its requirement. L4.3 connects the
+framework-created Activity and a `ContentProvider` boundary. L4.4 chooses between
+ViewModel-scoped and retained-shared dependencies and routes `bookId`. L4.5 installs parser/API
+bindings while separating visibility from reuse. L4.6 reuses the same lifetime shapes in the
+Hilt-versus-custom-Dagger decision.
+
+#### Hilt-over-Dagger thesis
+
+The opening Lesson states the structural fact, not the slogan: **Hilt generates and uses Dagger
+components and bindings.** Constructor injection, modules, bindings, components, scopes, generated
+construction and component-level graph validation remain Dagger. Hilt contributes a predefined
+Android component hierarchy, standard lifecycle-aligned scope names, default Android bindings and
+generated integration for framework-created owners.
+
+The raw-Dagger/Hilt comparison names the decisions Hilt standardizes: which Android-oriented
+components exist, how they nest, which owners create and retain their instances, which standard
+scopes correspond to them, and how supported framework owners enter the graph. Raw Dagger can
+model the same lifetimes; the trade is convention and generated integration against custom
+component-structure control. "Less boilerplate" appears only as an outcome of removed decisions.
+
+#### Component hierarchy, lifetime and scope treatment
+
+The hierarchy actually taught is:
+
+```text
+SingletonComponent
+    ├─ ActivityRetainedComponent
+    │     ├─ ViewModelComponent
+    │     └─ ActivityComponent
+    └─ ServiceComponent
+```
+
+The current lifetime table relied upon is:
+
+| Component | Creation/destruction boundary used | Scope |
+| --- | --- | --- |
+| `SingletonComponent` | Application startup to Application/process destruction | `@Singleton` |
+| `ActivityRetainedComponent` | First Activity creation to final destruction of that retained Activity identity; spans configuration recreation | `@ActivityRetainedScoped` |
+| `ViewModelComponent` | ViewModel creation to ViewModel destruction | `@ViewModelScoped` |
+| `ActivityComponent` | One concrete Activity instance's creation to destruction | `@ActivityScoped` |
+| `ServiceComponent` | Service creation to Service destruction | `@ServiceScoped` |
+
+The carried-forward terminology is explicit: **the component instance bounds the lifetime; the
+scope expresses reuse within it.** Bindings are unscoped by default. A matching scope requests one
+result per corresponding component instance. The Lesson rejects annotation-first reasoning and
+explains that a scope must match the component into which its module is installed because owner and
+reuse rule must tell one consistent story.
+
+`@Singleton` is corrected directly: it is reuse within the in-memory `SingletonComponent`; the
+graph and its objects disappear with the process, so it provides no process-death durability.
+Scoping cost is also explicit: scoped results remain retained until their component ends, so
+identity/state, synchronization or measured construction cost must justify them.
+
+The required worked scenario compares `ActivityComponent`, `ActivityRetainedComponent` and
+`SingletonComponent` for a session shared through configuration recreation but not process-wide.
+The retained component wins from the requirement; the Activity component is too short and the
+singleton component too wide.
+
+Fragment/View components are not used for core reasoning. Their existence and position below the
+Activity branch are acknowledged from the Android Views and full Hilt sources because existing
+Questions refer to them. `ServiceComponent` is included in the verified table and final scenario,
+but no Service lifecycle mechanics are taught.
+
+#### Framework-owned construction and entry points
+
+L4.3 presents one construction story:
+
+```text
+application owns construction  -> constructor injection
+Android owns construction      -> generated integration / field injection
+unsupported unmanaged owner    -> explicit entry point at the integration edge
+```
+
+`@AndroidEntryPoint` is a declaration that a supported Android owner participates in Hilt's
+generated component hierarchy, not merely an instruction to fill fields. For the Activity example,
+the generated base-class path injects around `super.onCreate()`. Injected fields cannot be private
+because generated code assigns them, and code must not use them before the documented injection
+point. The Lesson is honest that this boundary has weaker formedness semantics than an injected
+constructor.
+
+Constructor injection is reaffirmed for every class the application or graph constructs. The
+claim that field injection is preferable because it shortens constructors is rejected: hiding a
+requirement creates half-built state and does not repair an over-responsible class.
+
+The supported-owner boundary names Activities, Fragments, Views, Services and
+BroadcastReceivers, with ViewModels on `@HiltViewModel`. It does not teach each owner's callback.
+The `ContentProvider` example uses a small `@EntryPoint` plus
+`@InstallIn(SingletonComponent::class)` and the currently documented
+`EntryPointAccessors.fromApplication(...)` retrieval. The architectural cost is stated: boundary
+code manually exposes graph access, couples to Hilt APIs and loses normal injection ergonomics.
+That cost is acceptable at a legitimate integration edge, not in ordinary feature/business code.
+
+#### ViewModel and runtime-input treatment
+
+`@HiltViewModel` plus an `@Inject` constructor is taught as graph construction through Hilt's
+ViewModel factory. The Lesson separately states that the `ViewModelStoreOwner` and store mechanism
+retain and clear the ViewModel; Hilt does not own its lifetime. Direct Dagger requests are rejected
+because construction must remain inside that owner/store mechanism.
+
+Dependencies may come from `ViewModelComponent` or parent components. `@ViewModelScoped` reuses
+one result across dependencies in one ViewModel graph; another ViewModel receives a different
+instance. `@ActivityRetainedScoped` is the wider option when several ViewModels associated with one
+retained Activity genuinely need one shared object. It is not automatically preferable.
+
+The retained dependency is distinguished from a ViewModel by responsibility and release: a
+ViewModel is a lifecycle-aware state holder obtained and cleared through ViewModelStore semantics;
+an ActivityRetained-scoped dependency is a graph object retained and released by Hilt's component,
+not automatically UI state and not retrieved as a ViewModel.
+
+The runtime example keeps `LibraryRepository` in the graph and `bookId` at the creation boundary.
+`SavedStateHandle` is presented only as one Android route for suitable state/navigation-derived
+input; no navigation, serialization or saved-state API is taught. The current Hilt assisted form is
+shown with `@HiltViewModel(assistedFactory = ...)`, `@AssistedInject`, `@Assisted` and an
+`@AssistedFactory`. Assisted input is not durable, and the ViewModel owner's memoization means a
+later creation callback neither reconstructs the same ViewModel nor updates assisted parameters.
+
+#### `@InstallIn`, visibility and reuse
+
+L4.5 defines `@InstallIn` as the declaration of which generated Hilt component receives a standard
+Dagger module. A concrete trace shows a binding installed in `SingletonComponent` visible in its
+retained, ViewModel and Activity descendants, while an Activity-installed binding is not visible
+upward or sideways.
+
+The same retained-component binding is then shown unscoped and
+`@ActivityRetainedScoped`. Visibility is identical; the unscoped declaration creates a fresh
+result per request, while the scoped declaration reuses one per retained component instance. This
+is the acceptance-critical separation between graph placement and identity/lifetime. Module
+organization, build-module policy and test replacement are excluded.
+
+#### Hilt or hand-written Dagger
+
+Scenario A is a new Android application whose process, retained-Activity, ViewModel, Activity and
+Service requirements map naturally to Hilt and would otherwise repeat framework integration.
+Scenario B is a credible mature Dagger graph with concurrent account, workspace and hardware
+session owners that do not map neatly to the predefined hierarchy and whose migration would add
+adapters without removing enough existing work. Neither is constructed to force a universal
+winner.
+
+Official Android recommendation of Hilt is reported as meaningful evidence about typical Android
+applications, then tested by asking which assumptions match the project. One custom requirement is
+likewise not proof against Hilt; the decision asks whether exceptions remain bounded or become the
+dominant graph shape.
+
+#### Current official source findings
+
+All pages were reopened on 2026-09-18.
+
+| Documentation surface | Claims used |
+| --- | --- |
+| `developer.android.com/training/dependency-injection/hilt-android` | Current Compose/general supported-owner list, root `ComponentActivity` as UI entry point, five-component hierarchy and lifetimes, unscoped/scoped behavior, memory-cost warning, ContentProvider entry-point example, current accessor API, Hilt recommendation and Hilt-over-Dagger integration claims |
+| `developer.android.com/topic/architecture/views/dependency-injection/hilt-android-views` | Fragment/View supported owners and the wider Android Views hierarchy and lifetime context |
+| `dagger.dev/hilt/components` | Full standard hierarchy, ancestor visibility, lifetime bounds, default unscoped behavior and scope/component consistency |
+| `dagger.dev/hilt/android-entry-point` | Supported Android owners and generated owner integration |
+| `dagger.dev/hilt/modules` | Hilt modules as Dagger modules plus `@InstallIn`, and descendant visibility |
+| `dagger.dev/hilt/view-model` | ViewModel construction, provider/store requirement, ViewModelComponent parents/defaults, ViewModel against retained scopes, current assisted API, durability and memoization nuance |
+| `dagger.dev/hilt/entry-points` | Entry point as the managed/unmanaged boundary and its component/interface semantics |
+
+E27-01's source-freshness concern **changed in framing, not substance**. The earlier record said
+the Android page documented five components while Hilt documented eight. The current source review
+adds the dedicated Android Views page, which documents the wider hierarchy too. The correct record
+is a Compose/general versus Views/full documentation-context difference. No official sources make
+incompatible component or lifetime claims.
+
+#### Cross-links
+
+All links are backward and resolve. No earlier Lesson was edited.
+
+| Lesson | Related Lessons |
+| --- | --- |
+| L4.1 | `lesson_which_graph_owns_this_binding`, `lesson_dagger_scopes_and_component_instances` |
+| L4.2 | `lesson_scope_is_a_rule_owner_is_a_lifetime`, `lesson_choosing_the_owner_by_lifetime`, `lesson_viewmodel_lifetime_and_persistence`, `lesson_dagger_scopes_and_component_instances` |
+| L4.3 | `lesson_a_dependency_should_be_visible`, `lesson_asking_for_it_or_being_given_it`, `lesson_lifecycle_aware_collection`, L4.1 |
+| L4.4 | `lesson_runtime_input_is_not_a_dependency`, `lesson_viewmodel_lifetime_and_persistence`, `lesson_screen_state_owner_boundary`, L4.2 |
+| L4.5 | `lesson_declaring_the_rest_of_the_graph`, L4.2, `lesson_which_graph_owns_this_binding` |
+| L4.6 | `lesson_child_graph_or_separate_graph`, `lesson_smallest_sufficient_architecture`, L4.1, L4.2 |
+
+Lifecycle, configuration recreation, ViewModel ownership and process death are applied through
+these conclusions and links; callbacks, ViewModelStore mechanics and restoration are not retaught.
+
+#### Practice pool and semantic review
+
+Resolved through the real Practice Builder and selector: **six ACTIVE Questions, exactly the six
+modelled by E27-01; 2 FOUNDATION, 4 APPLIED, 0 ADVANCED.**
+
+| Question | Level | Finished-Lesson review |
+| --- | --- | --- |
+| `hilt_entry_point_manual_access` | APPLIED | Answerable from L4.3's ContentProvider boundary, small entry-point interface, matching `@InstallIn` and current `fromApplication` accessor. The provider-startup detail remains in the Question rather than being expanded into the Lesson |
+| `hilt_activity_retained_component_lifetime` | APPLIED | Answerable from L4.2's three-owner worked scenario. The Lesson deliberately does not repeat the explanation's imprecise "same retention mechanism as ViewModels" shorthand; it uses documented first-creation/final-destruction semantics |
+| `di_hilt_viewmodel_scope` | FOUNDATION | Answerable from L4.4's separation of `@HiltViewModel` construction, ViewModel ownership and each dependency's own component/scope; parent-component dependencies may be wider-lived |
+| `dagger_assisted_injection_viewmodel` | APPLIED | Answerable from L4.4's graph-known repository/caller-known ID split, current Hilt assisted factory form and SavedStateHandle alternative, with no half-built state |
+| `hilt_install_in_binding_visibility` | FOUNDATION | Answerable from L4.5's generic descendant-visibility rule and visibility-versus-reuse comparison; Fragment/View memorization is unnecessary |
+| `hilt_vs_dagger_convention_tradeoff` | APPLIED | Answerable from L4.1 and L4.6: Hilt predefines Android component structure while raw Dagger preserves custom design; both remain compile-time Dagger underneath |
+
+`hilt_field_injection_framework_classes` remains mapped to `constructor_injection`, remains in
+Unit 1's pool and is **absent from Unit 4's pool**. L4.3 teaches its reasoning fully; E27-08 owns
+the probable re-map paired with generic constructor-injection coverage. No workaround mapping was
+added.
+
+The three E27-01 source-freshness candidates remain frozen:
+
+- `hilt_activity_retained_component_lifetime`: technically sound; its retained semantics are
+  current, but E27-08 should tighten the explanation shorthand and source context.
+- `hilt_install_in_binding_visibility`: technically sound; Fragment/View descendants are supported
+  by the Views/full hierarchy, but its Source should point to a page that contains them.
+- `hilt_vs_dagger_convention_tradeoff`: technically sound; its full-hierarchy nouns need a
+  Views/full-hierarchy Source rather than the general Compose-oriented page alone.
+
+#### Unit-4 assessment gaps
+
+| Gap | Status after authoring |
+| --- | --- |
+| GAP-U4-A — choose ViewModel scope against retained Activity scope from sharing requirements | **Open.** L4.4 now teaches and demonstrates it; no current Question requires the choice. E27-08 owns coverage |
+| GAP-U4-B — field injection exists because Android owns construction, while constructor injection remains normal | **Taught; routing gap remains.** `hilt_field_injection_framework_classes` assesses it in Unit 1. The probable re-map can close this without a duplicate |
+| GAP-U4-C — singleton component is in-memory/process-bounded, not durable | **Open.** L4.2 teaches it directly; no Hilt Question assesses it. E27-08 owns coverage |
+
+#### Tests changed and generated coverage
+
+`BundledLearningCurriculumTest` adds exact Unit/Lesson identity, order, title, primary and
+supporting mappings; exact backward links; and focused lifetime, construction, ViewModel,
+installation and build-boundary checks. The lifetime check protects the four core components and
+the process-durability correction without pinning the whole hierarchy as prose.
+
+`LearningUnitPracticeIntegrationTest` extends Continue Learning traversal from three to four
+Dependency Injection Units and from 19 to 25 Lessons, updating the final studied-record count from
+119 to 125. Its new production-resolver test pins the exact six Questions, 2/4/0 distribution,
+supporting-only exclusions and deliberate absence of `hilt_field_injection_framework_classes`.
+
+`python3 tools/learning_question_coverage.py --write` generated the snapshot; `--check` reports it
+current. It reports **28 active Units, 126 active Lessons**, the Hilt Unit's six unique Questions
+at **2 FOUNDATION / 4 APPLIED / 0 ADVANCED**, and the existing `dagger_modules` primary gap. No
+coverage row was edited manually.
+
+#### Editorial sweeps
+
+- **Lifetime sweep:** every use of scope, lifetime, retained, singleton, process, component,
+  ViewModel and owner was reviewed. No sentence makes a scope create an owner, makes
+  `@Singleton` durable, equates a retained dependency with a ViewModel, gives Hilt ViewModel
+  ownership, or makes `@InstallIn` set lifetime.
+- **Construction sweep:** constructor injection, field injection, `@Inject`,
+  `@AndroidEntryPoint` and entry point form one consistent ownership story. Activity timing stays
+  Activity-specific and the private-field restriction remains a consequence, not an objective.
+- **ViewModel sweep:** construction and store ownership are separate; parent-component dependencies
+  may be wider; `@ViewModelScoped` is per ViewModel graph; retained scope is requirement-driven;
+  runtime ID, SavedStateHandle, assisted input and durability remain distinct.
+- **Source sweep:** every component/lifetime claim is supported by a current official page named
+  above. The documentation-context difference is recorded rather than described as disagreement.
+- **Forward-scope sweep:** no Koin API, framework-selection comparison, testing API, migration
+  tutorial, Hilt setup, Gradle plugin, KSP or kapt instruction appears.
+
+#### Validation performed
+
+| Command | Result |
+| --- | --- |
+| Direct GitHub API fetch for issue #389 | Open issue body read; matched `E27-05` backlog issue, approach and fourteen criteria |
+| `jq` production structure/count checks and related-link resolution | Valid JSON; 28 ACTIVE Units; 126 ACTIVE Lessons; exact six Lesson ids; every related target resolves |
+| Focused editorial `jq`/`rg` lifetime, construction and ViewModel sweep | 180 matched lines reviewed; no forbidden ownership or durability assertion found |
+| `./gradlew :shared:jvmTest --tests '*BundledLearningCurriculumTest*' --tests '*LearningUnitPracticeIntegrationTest*' --tests '*LearningCurriculumValidatorTest*'` | **BUILD SUCCESSFUL** |
+| `./gradlew :shared:jvmTest --tests '*LearningProductionContentJourneyTest*' --tests '*LearningContentEndToEndTest*'` | **BUILD SUCCESSFUL** |
+| `./gradlew :shared:jvmTest --rerun-tasks` | **BUILD SUCCESSFUL; 1,473 tests, 0 failures, 0 skipped** |
+| `python3 tools/learning_question_coverage.py --write` then `--check` | Snapshot regenerated and current |
+| `cd tools && python3 -m unittest test_learning_question_coverage.py` | 21 tests, OK |
+| `./gradlew :shared:check` | **BUILD SUCCESSFUL**; Android host, JVM, JS, Wasm, aggregate tests and iOS simulator task passed/up-to-date in the observed run |
+| `./gradlew :shared:iosSimulatorArm64Test --rerun-tasks` | **BUILD SUCCESSFUL** |
+| `./gradlew :androidApp:assembleDebug --rerun-tasks` | **BUILD SUCCESSFUL** |
+| `python3 .github/project/validate_backlog.py .github/project/backlog.yml` | **Unavailable:** `ModuleNotFoundError: yaml`; PyYAML is not installed |
+| `git diff --check` | Passed after the final outcomes placement |
+
+Known non-fatal output was unchanged: Kotlin expect/actual beta warnings, existing Compose test API
+deprecations and Android packaging's inability to strip two native libraries. The first invocation
+of the coverage-tool unit tests used the repository root and failed import discovery; rerunning from
+`tools/`, as the prior outcome precedent specifies, passed all 21 tests.
+
+#### Limitations and production audit
+
+- `iosArm64` device compilation was not run and remains outside local/CI coverage; the explicit
+  iOS simulator suite passed.
+- No CI run, device rendering, emulator run or live Source-link HTTP navigation is claimed.
+- Hilt/Dagger snippets are curriculum text and were not compiled against a production Hilt
+  dependency, because adding that dependency is explicitly forbidden.
+- The prose and semantic Question review remain editorial judgements; automated checks establish
+  structure, decoding, routing and integration, not teaching quality by themselves.
+- Backlog YAML parsing was not validated because PyYAML is unavailable. The file was read directly,
+  and the public issue body was independently fetched.
+
+The final diff contains the bundled learning document, two JVM test files, generated coverage and
+this outcomes section only. `initial_curriculum.json` is unchanged: no Question text, option,
+answer, explanation, Source, mapping, level or status changed. No taxonomy, UI, navigation,
+production Kotlin, KMP boundary, build file, version catalog or application shell changed. No Hilt
+or Dagger dependency, Hilt plugin, processor, KSP/kapt configuration, production
+`@AndroidEntryPoint`, production `@HiltViewModel`, production module or `@InstallIn` was added.
+The production Koin graph is unchanged.
+
+#### Acceptance criteria
+
+| # | Criterion | Status |
+| ---: | --- | --- |
+| 1 | All six planned Lessons meet the authoring contract and production format | **Satisfied** |
+| 2 | Hilt taught as generated convention over Dagger, not a separate graph model | **Satisfied** |
+| 3 | Android component hierarchy and lifetimes current and verified | **Satisfied** |
+| 4 | Field injection explained from framework-owned construction, not shorter constructors | **Satisfied** |
+| 5 | Constructor injection reaffirmed wherever application/graph code owns construction | **Satisfied** |
+| 6 | Singleton/process-durability misconception defeated | **Satisfied** |
+| 7 | Retained-scope object distinguished from a ViewModel by owner and responsibility | **Satisfied** |
+| 8 | ViewModel construction, ownership, dependency lifetime and runtime input distinguished | **Satisfied** |
+| 9 | Modules and `@InstallIn` taught as graph placement, separate from reuse | **Satisfied** |
+| 10 | Entry points taught as a bounded escape hatch with architectural cost | **Satisfied** |
+| 11 | Hilt and hand-written Dagger compared without a context-free verdict | **Satisfied** |
+| 12 | Lifecycle mechanics applied and cross-linked rather than retaught | **Satisfied** |
+| 13 | No production Hilt dependency/plugin/processor/code or implication of project usage | **Satisfied** |
+| 14 | Unit practice mappings contain only primary concepts | **Satisfied** |
+
+---

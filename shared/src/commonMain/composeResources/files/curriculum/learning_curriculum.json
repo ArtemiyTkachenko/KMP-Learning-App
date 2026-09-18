@@ -20858,6 +20858,295 @@
           ]
         }
       ]
+    },
+    {
+      "id": "unit_hilt_android_lifecycle_integration",
+      "topicId": "dependency_injection",
+      "title": "Hilt: Android Lifecycle-Aware Dagger",
+      "summary": "See how Hilt generates Dagger components around Android owners, then choose component lifetimes, integration boundaries, ViewModel construction, module placement, and custom Dagger structure from requirements.",
+      "status": "ACTIVE",
+      "lessons": [
+        {
+          "id": "lesson_hilt_is_dagger_with_decisions_made",
+          "title": "Hilt Is Dagger With the Decisions Already Made",
+          "summary": "Separate Dagger's object-graph model from the Android component hierarchy and lifecycle integration Hilt standardizes.",
+          "status": "ACTIVE",
+          "primarySubtopicIds": ["hilt_fundamentals"],
+          "supportingSubtopicIds": ["hilt_vs_dagger", "dagger_components", "dagger_fundamentals", "activity_lifecycle"],
+          "relatedLessonIds": ["lesson_which_graph_owns_this_binding", "lesson_dagger_scopes_and_component_instances"],
+          "sources": [
+            {"title": "Dependency injection with Hilt", "url": "https://developer.android.com/training/dependency-injection/hilt-android"},
+            {"title": "Hilt components", "url": "https://dagger.dev/hilt/components.html"}
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {"type": "paragraph", "text": "Unit 3 put the engineer in charge of a Dagger graph: declare components, decide their relationships, attach scopes to component instances, expose entry methods, and choose modules and bindings. Hilt does not replace that graph model. **Hilt generates and uses Dagger components and Dagger bindings.** Dagger still validates the reachable graph and generates the calls that construct it."},
+                {"type": "paragraph", "text": "What changes is who makes several Android-specific structural decisions. With raw Dagger, the application has to decide which component types exist, how they nest, which Android owner creates or retains each component instance, which scopes correspond to those owners, and how an Activity or another framework-created class enters the graph. Hilt supplies conventions and generated integration for those decisions."},
+                {"type": "code", "code": "Raw Dagger\nApplication composition root\n    ↓ creates\nRootComponent\n    ↓ creates or retains\nScreenComponent / other nested components\n    ↓ application code connects them to\nAndroid owners\n\nHilt\npredefined generated Dagger hierarchy\n    ↓ framework integration creates and retains\ncomponent instances at Android lifecycle boundaries\n    ↓ generated entry integration connects\nAndroid owners to the graph", "language": "text"},
+                {"type": "paragraph", "text": "Both paths can produce the same objects. Raw Dagger is capable of lifecycle-aware Android graphs; Hilt is not more powerful by definition. Hilt standardizes a recurring structure and generates the Android glue that a raw-Dagger application would otherwise design and maintain itself."},
+                {"type": "bullet_list", "items": ["Bindings, modules, constructor injection, scopes and compile-time graph validation are Dagger concepts Hilt continues to use.", "The predefined Android component hierarchy, its standard scope names and generated owner integration are Hilt's conventions.", "Less handwritten plumbing is an outcome. Removing or standardizing graph-structure and lifecycle decisions is the mental model."]},
+                {"type": "callout", "kind": "KEY_TAKEAWAY", "text": "Hilt is not a second dependency-injection graph model. It generates Dagger components and bindings while deciding a standard Android-oriented component structure and the integration that keeps its instances aligned with Android owners."}
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {"type": "paragraph", "text": "Continue the reading graph from Unit 3. `LibraryRepository` is still a Dagger binding, and `ReaderSession` still needs a deliberate owner. The difference is visible at the component edge. A raw-Dagger design might define and retain its own application and reader components:"},
+                {"type": "code", "code": "@Singleton\n@Component(modules = [LibraryModule::class])\ninterface ReaderRootComponent {\n    fun readerComponentFactory(): ReaderComponent.Factory\n}\n\n@ReaderScope\n@Subcomponent\ninterface ReaderComponent {\n    fun inject(activity: ReaderActivity)\n\n    @Subcomponent.Factory\n    interface Factory {\n        fun create(): ReaderComponent\n    }\n}", "language": "kotlin"},
+                {"type": "paragraph", "text": "That declaration is only half the job. Application code must create `ReaderRootComponent`, decide when to create and retain `ReaderComponent`, reconnect it after configuration recreation if required, and arrange injection at an Activity lifecycle boundary. Those choices may be excellent; they are simply choices the team owns."},
+                {"type": "code", "code": "SingletonComponent\n    ├─ ActivityRetainedComponent\n    │     ├─ ViewModelComponent\n    │     └─ ActivityComponent\n    └─ ServiceComponent", "language": "text"},
+                {"type": "paragraph", "text": "Hilt starts from this predefined hierarchy. The application contributes ordinary Dagger bindings to generated components, and Hilt's Android integration manages their instances. A root `ComponentActivity` is the Android entry point for a Compose UI hierarchy; individual composables do not each acquire a component or need `@AndroidEntryPoint`."},
+                {"type": "comparison", "headers": ["Decision", "Hand-written Dagger", "Hilt"], "rows": [["Which component types exist?", "The engineer defines them", "A standard Android hierarchy is generated"], ["How are components related?", "The engineer declares subcomponents or dependencies", "Standard parent-child relationships are predefined"], ["Who creates and retains instances?", "Application integration code", "Generated Android lifecycle integration"], ["What constructs objects?", "Generated Dagger code", "Generated Dagger code"], ["Who chooses bindings and required reuse?", "The engineer", "The engineer"]]},
+                {"type": "callout", "kind": "COMMON_MISTAKE", "text": "Describing Hilt only as 'less boilerplate'. That names a symptom and hides the trade. Hilt removes repeated integration work by standardizing component structure and Android ownership decisions; accepting those decisions also reduces freedom to design a different structure."}
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {"type": "paragraph", "text": "An opinionated layer is valuable when its assumptions match the problem. Android applications commonly need process-level, retained-Activity, ViewModel, concrete-Activity and Service ownership. Naming these once across an ecosystem improves consistency and keeps every team from rebuilding the same lifecycle bridge."},
+                {"type": "paragraph", "text": "The same opinion becomes a cost when a product lifetime does not match the hierarchy. Hilt can be extended and escaped at boundaries, but enough adapters or manual entry points are evidence that the project is paying to resist the convention. That does not make Hilt weak or custom Dagger superior; it makes lifecycle fit the question to measure."},
+                {"type": "callout", "kind": "INTERVIEW_FOCUS", "text": "Explain Hilt by naming both layers. Dagger supplies bindings, components, scopes, generated construction and graph validation. Hilt supplies a predefined Android component hierarchy, standard lifecycle-aligned scopes and generated integration for framework-created owners. Then name the trade: fewer structure decisions and less Android glue in exchange for accepting that hierarchy."}
+              ]
+            }
+          ]
+        },
+        {
+          "id": "lesson_which_android_component_owns_this",
+          "title": "Which Android Component Owns This?",
+          "summary": "Choose a generated Hilt component from an Android lifetime requirement, then apply scope as reuse inside that owner.",
+          "status": "ACTIVE",
+          "primarySubtopicIds": ["hilt_components"],
+          "supportingSubtopicIds": ["di_scopes", "dagger_scopes", "activity_lifecycle", "configuration_changes", "android_process_model"],
+          "relatedLessonIds": ["lesson_scope_is_a_rule_owner_is_a_lifetime", "lesson_choosing_the_owner_by_lifetime", "lesson_viewmodel_lifetime_and_persistence", "lesson_dagger_scopes_and_component_instances"],
+          "sources": [
+            {"title": "Dependency injection with Hilt", "url": "https://developer.android.com/training/dependency-injection/hilt-android"},
+            {"title": "Dependency injection with Hilt (Views)", "url": "https://developer.android.com/topic/architecture/views/dependency-injection/hilt-android-views"},
+            {"title": "Hilt components", "url": "https://dagger.dev/hilt/components.html"}
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {"type": "paragraph", "text": "A Hilt component name is not the starting point. Carry Unit 2's reasoning forward unchanged:"},
+                {"type": "code", "code": "product lifetime requirement\n        ↓\nactual Android owner / generated component lifetime\n        ↓\nscope and reuse rule inside that component instance", "language": "text"},
+                {"type": "paragraph", "text": "The owner comes before the scope. Hilt creates and destroys generated component instances around Android owners. A binding is unscoped by default, so each request produces a new result. A matching scope asks Dagger to reuse one result within one instance of that generated component. **The component instance bounds the lifetime; the scope expresses reuse within it.**"},
+                {"type": "comparison", "headers": ["Generated component", "Created and retained for", "Matching scope"], "rows": [["SingletonComponent", "The in-memory Application/process graph: created with Application startup and gone when the process is destroyed", "@Singleton"], ["ActivityRetainedComponent", "One retained Activity identity: first Activity creation through final destruction, spanning configuration recreation", "@ActivityRetainedScoped"], ["ViewModelComponent", "One ViewModel: created and destroyed with that ViewModel", "@ViewModelScoped"], ["ActivityComponent", "One concrete Activity instance: created and destroyed with that instance", "@ActivityScoped"], ["ServiceComponent", "One Service instance: created and destroyed with that Service", "@ServiceScoped"]]},
+                {"type": "paragraph", "text": "`ActivityRetainedComponent` needs exact language. It survives configuration recreation of an Activity, but it is not the Activity instance, not a ViewModel, and not process durable. The first Activity instance can be destroyed and replaced while the retained component continues; final destruction of that retained Activity identity ends it."},
+                {"type": "callout", "kind": "KEY_TAKEAWAY", "text": "Choose a Hilt component by matching the required lifetime to the Android owner Hilt follows. Only then decide whether repeated requests inside that component need the same identity."}
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {"type": "paragraph", "text": "Example B now has a precise requirement. `ReaderSession` must be shared by a reading Activity and the objects used beneath it. It must remain the same session when Android recreates the Activity for a configuration change, but it must end when that retained reading Activity is permanently finished. It must not become shared across unrelated Activities or the whole process."},
+                {"type": "comparison", "headers": ["Candidate owner", "What happens", "Verdict"], "rows": [["ActivityComponent", "A new component is created for the replacement Activity instance", "Too short: the session identity is lost across configuration recreation"], ["ActivityRetainedComponent", "The same retained component spans the old and replacement Activity instances", "Matches the requirement"], ["SingletonComponent", "The session can be shared across every Activity for the process", "Too wide: unrelated owners can observe the same mutable session"]]},
+                {"type": "code", "code": "@ActivityRetainedScoped\nclass ReaderSession @Inject constructor() {\n    var currentBookId: String? = null\n}\n\n// The retained component, not the annotation text, is the owner\n// that bounds this reuse.", "language": "kotlin"},
+                {"type": "paragraph", "text": "The answer came from three events in the requirement: share beneath one Activity identity, survive configuration recreation, stop before process-wide ownership. Annotation names merely encode the result. This is why `@ActivityScoped` is not 'almost right': its ActivityComponent ends with each concrete Activity instance."},
+                {"type": "paragraph", "text": "Now apply the same test to `@Singleton`. It requests reuse inside `SingletonComponent`, an in-memory graph attached to the Application/process lifetime. When the operating-system process disappears, the graph and every object retained in it disappear. **`@Singleton` does not mean durable across process death.** Restoring or persisting information is a separate responsibility, covered by the existing process and saved-state material."},
+                {"type": "callout", "kind": "COMMON_MISTAKE", "text": "Choosing the longest available scope 'to be safe'. A longer-lived component retains identity and memory longer and lets more consumers share it. That can leak owner-specific state across unrelated work even when no Android object is leaked. Reuse is a requirement, not a default."}
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {"type": "paragraph", "text": "Official guidance warns that scoped bindings remain in memory until their component is destroyed. Identity-bearing state, synchronization and measured construction cost can justify that retention. Habit cannot. An inexpensive stateless formatter installed high in the hierarchy usually remains unscoped; installation makes it visible, while each request may still receive a fresh value."},
+                {"type": "paragraph", "text": "The general Android/Compose documentation presents the application, retained-Activity, ViewModel, Activity and Service branches used here. The dedicated Views documentation and Hilt library documentation also describe Fragment and View components beneath the Activity branch. Those components remain real, but memorizing the full catalogue would not improve this requirement. Read any component's documented creation and destruction points, then compare them with the product lifetime."},
+                {"type": "callout", "kind": "INTERVIEW_FOCUS", "text": "For an object shared through configuration recreation but not process-wide, compare all three plausible owners aloud. ActivityComponent ends with the concrete Activity instance; SingletonComponent is unnecessarily wide; ActivityRetainedComponent spans from the first creation to the final destruction of the retained Activity identity. Then add that its matching scope reuses one value per retained component instance rather than persisting anything."}
+              ]
+            }
+          ]
+        },
+        {
+          "id": "lesson_when_android_owns_construction",
+          "title": "When Android Owns Construction",
+          "summary": "Explain field injection and Hilt entry points from the construction boundary imposed by Android framework owners.",
+          "status": "ACTIVE",
+          "primarySubtopicIds": ["hilt_fundamentals"],
+          "supportingSubtopicIds": ["constructor_injection", "service_locator_vs_di", "activity_lifecycle", "hilt_components"],
+          "relatedLessonIds": ["lesson_a_dependency_should_be_visible", "lesson_asking_for_it_or_being_given_it", "lesson_lifecycle_aware_collection", "lesson_hilt_is_dagger_with_decisions_made"],
+          "sources": [
+            {"title": "Dependency injection with Hilt", "url": "https://developer.android.com/training/dependency-injection/hilt-android"},
+            {"title": "Android entry points", "url": "https://dagger.dev/hilt/android-entry-point.html"},
+            {"title": "Hilt entry points", "url": "https://dagger.dev/hilt/entry-points.html"}
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {"type": "paragraph", "text": "Unit 1's normal form was simple: when application code owns construction, put required dependencies in the constructor. The caller supplies them, the class is fully formed immediately, and its requirements are visible in its type. That remains the default inside a Hilt application."},
+                {"type": "code", "code": "class ReaderController @Inject constructor(\n    private val repository: LibraryRepository,\n    private val session: ReaderSession,\n)", "language": "kotlin"},
+                {"type": "paragraph", "text": "An Activity is different because Android constructs it. Application code does not call `ReaderActivity(repository, session)`, so there is no application-owned constructor call at which graph dependencies can be passed. This is a construction-responsibility constraint, not a preference for shorter constructors."},
+                {"type": "code", "code": "application owns construction\n        ↓\nconstructor injection\n\nAndroid framework owns construction\n        ↓\ngenerated lifecycle integration and members/field injection\n\nunsupported or unmanaged owner\n        ↓\nexplicit Hilt entry point at the integration boundary", "language": "text"},
+                {"type": "paragraph", "text": "`@AndroidEntryPoint` declares that a supported Android framework owner participates in Hilt's generated component hierarchy. For an Activity, generated integration obtains the appropriate component and injects members through the generated base-class lifecycle path around `super.onCreate()`. It is more than an annotation that 'fills fields': it connects an Android-created owner to a generated Dagger component at the lifecycle point Hilt documents."},
+                {"type": "callout", "kind": "KEY_TAKEAWAY", "text": "Field injection appears at the Android boundary because the application does not own construction of the framework class. Ordinary classes that application or graph code constructs should still prefer constructor injection."}
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {"type": "code", "code": "@AndroidEntryPoint\nclass ReaderActivity : ComponentActivity() {\n    @Inject lateinit var readerController: ReaderController\n\n    override fun onCreate(savedInstanceState: Bundle?) {\n        super.onCreate(savedInstanceState)\n        readerController.openReader()\n    }\n}", "language": "kotlin"},
+                {"type": "paragraph", "text": "For this Activity, injection has occurred through the generated `super.onCreate()` path before the following line uses `readerController`. That exact timing must not be copied to every supported Android type: Hilt integrates Activities, Fragments, Views, Services and BroadcastReceivers at type-appropriate points, while ViewModels use the separate `@HiltViewModel` API. Code must not treat an injected field as available before its documented injection point."},
+                {"type": "paragraph", "text": "Hilt-injected fields cannot be private because generated integration has to assign them. The `lateinit` field also exposes a weaker formedness boundary than constructor injection: Android first constructs the Activity, and Hilt completes graph integration later at a documented lifecycle point. That boundary is necessary here; it is not a reason to copy field injection into classes whose construction the application controls."},
+                {"type": "callout", "kind": "COMMON_MISTAKE", "text": "Choosing field injection because it makes a constructor shorter. A shorter signature hides requirements and creates a period in which the object exists before the field is ready. Framework-owned construction can force that boundary; an over-responsible ordinary class is still over-responsible after its parameters are hidden."},
+                {"type": "paragraph", "text": "Some framework owners are not directly supported. A `ContentProvider` is the canonical example in current Android guidance. It is still created outside the application graph, but it cannot gain ordinary `@AndroidEntryPoint` integration. A small explicit Hilt entry point defines where that unmanaged code crosses into a generated component:"},
+                {"type": "code", "code": "class CatalogProvider : ContentProvider() {\n    @EntryPoint\n    @InstallIn(SingletonComponent::class)\n    interface CatalogProviderEntryPoint {\n        fun libraryRepository(): LibraryRepository\n    }\n\n    override fun onCreate(): Boolean {\n        val appContext = requireNotNull(context).applicationContext\n        val entryPoint = EntryPointAccessors.fromApplication(\n            appContext,\n            CatalogProviderEntryPoint::class.java,\n        )\n        entryPoint.libraryRepository().warmCatalog()\n        return true\n    }\n}", "language": "kotlin"},
+                {"type": "paragraph", "text": "`@EntryPoint` makes the generated component implement the small access interface; `@InstallIn(SingletonComponent::class)` says which component exposes it; and `fromApplication` matches that component holder. This is deliberate manual graph access at an integration edge, not an invitation for a domain object to retrieve its own hidden dependencies."}
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {"type": "paragraph", "text": "An entry point has a real architectural cost. Boundary code now names Hilt access APIs, exposes graph access manually and loses the normal ergonomics of constructor or generated field injection. The cost is justified when unmanaged code genuinely has to enter the graph. Finding the same pattern in an ordinary feature or business class is a signal that construction responsibility has leaked inward."},
+                {"type": "paragraph", "text": "This is Unit 1's service-locator nuance made concrete. Both an entry-point call and a global locator call return an object, but the important question is which code performs the lookup and why. An Android integration boundary crossing from an unsupported owner into the graph is not the same design as a reusable domain object concealing its own requirements."},
+                {"type": "callout", "kind": "INTERVIEW_FOCUS", "text": "Start with construction ownership. Android creates the Activity, so application-controlled constructor injection is unavailable; `@AndroidEntryPoint` connects it to Hilt's generated hierarchy and generated code injects fields at the documented lifecycle point. Constructor injection remains normal for objects the graph can construct. Use `@EntryPoint` only where unsupported or unmanaged code must cross into the graph, and name the coupling cost."}
+              ]
+            }
+          ]
+        },
+        {
+          "id": "lesson_hilt_viewmodels_and_runtime_input",
+          "title": "ViewModels, Their Component, and the Values That Arrive Late",
+          "summary": "Keep ViewModel construction, ViewModel ownership, dependency scope, and runtime input as four separate decisions.",
+          "status": "ACTIVE",
+          "primarySubtopicIds": ["hilt_viewmodels"],
+          "supportingSubtopicIds": ["hilt_components", "viewmodel_lifecycle", "saved_state", "state_ownership", "dependency_graphs"],
+          "relatedLessonIds": ["lesson_runtime_input_is_not_a_dependency", "lesson_viewmodel_lifetime_and_persistence", "lesson_screen_state_owner_boundary", "lesson_which_android_component_owns_this"],
+          "sources": [
+            {"title": "Hilt ViewModels", "url": "https://dagger.dev/hilt/view-model.html"},
+            {"title": "Dependency injection with Hilt", "url": "https://developer.android.com/training/dependency-injection/hilt-android"},
+            {"title": "ViewModel overview", "url": "https://developer.android.com/topic/libraries/architecture/viewmodel"}
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {"type": "paragraph", "text": "A Hilt ViewModel returns to constructor injection because Hilt participates in its creation through the platform's ViewModel integration. The graph supplies stable dependencies in the constructor:"},
+                {"type": "code", "code": "@HiltViewModel\nclass ReaderViewModel @Inject constructor(\n    private val repository: LibraryRepository,\n) : ViewModel()", "language": "kotlin"},
+                {"type": "paragraph", "text": "`@HiltViewModel` makes the ViewModel available to Hilt's ViewModel factory and Dagger constructs it from its bindings. It does **not** mean Hilt owns the ViewModel lifetime. The ViewModel must still be obtained through ViewModel APIs so it participates in the `ViewModelStoreOwner` and store mechanism. Requesting it directly from Dagger could create a second instance outside that ownership, so Hilt rejects that shape."},
+                {"type": "paragraph", "text": "Hilt supplies ViewModel dependencies from `ViewModelComponent` and its parent components. The component follows the ViewModel's lifetime. It also provides `SavedStateHandle` and `ViewModelLifecycle` as default bindings; this Lesson needs only the first as one route for state or navigation-derived values."},
+                {"type": "comparison", "headers": ["Thing", "Owner and responsibility", "How it ends"], "rows": [["ViewModel", "A lifecycle-aware state holder obtained through a ViewModelStore owner; may expose UI state and behavior", "The owner/store clears it according to ViewModel semantics"], ["@ViewModelScoped dependency", "A graph object reused inside one ViewModelComponent instance", "Released with that ViewModel component"], ["@ActivityRetainedScoped dependency", "A graph object reused inside one retained Activity component and shareable across its ViewModels", "Released when the retained Activity component ends"]]},
+                {"type": "callout", "kind": "KEY_TAKEAWAY", "text": "Hilt changes how a ViewModel is constructed and which graph can supply it. The ViewModelStore owner still determines the ViewModel's actual lifetime, and each injected dependency follows its own component and scope."}
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {"type": "paragraph", "text": "Suppose `ReaderViewModel` and `NotesViewModel` each need a parser. If each ViewModel should have an independent parser identity, install the binding in `ViewModelComponent` and use `@ViewModelScoped`:"},
+                {"type": "code", "code": "@ViewModelScoped\nclass BookParser @Inject constructor(\n    private val repository: LibraryRepository,\n)\n\n@HiltViewModel\nclass ReaderViewModel @Inject constructor(\n    private val parser: BookParser,\n    private val indexer: ChapterIndexer, // can receive the same parser\n) : ViewModel()", "language": "kotlin"},
+                {"type": "paragraph", "text": "Within one ViewModel graph, every dependency that asks for `BookParser` receives the same scoped instance. A different ViewModel gets a different `ViewModelComponent`, so it receives another parser. If the requirement instead says several ViewModels associated with one retained Activity must coordinate through one `ReaderSession`, then `ActivityRetainedComponent` and `@ActivityRetainedScoped` are the wider fit. `@Singleton` would be wider again and needs a process-wide requirement."},
+                {"type": "callout", "kind": "COMMON_MISTAKE", "text": "Calling an ActivityRetained-scoped dependency 'basically a ViewModel'. Their lifetimes may overlap, but their roles and owners do not. A ViewModel is a state holder owned and cleared through ViewModelStore mechanisms. A retained-scoped object is a graph object retained and released by Hilt's component; it is not automatically UI state and is not retrieved as a ViewModel."},
+                {"type": "paragraph", "text": "Now add a value the graph cannot know. `LibraryRepository` is stable graph knowledge, but `bookId` is selected at navigation time. Registering every possible ID as an application binding would confuse runtime input with a dependency. One Android route is to read a suitable state/navigation-derived key from the `SavedStateHandle` available in `ViewModelComponent`:"},
+                {"type": "code", "code": "@HiltViewModel\nclass ReaderViewModel @Inject constructor(\n    private val repository: LibraryRepository,\n    savedStateHandle: SavedStateHandle,\n) : ViewModel() {\n    private val bookId: String = checkNotNull(savedStateHandle[\"bookId\"])\n}", "language": "kotlin"},
+                {"type": "paragraph", "text": "This Lesson does not choose navigation argument APIs or teach saved-state serialization. The point is narrower: a runtime value can arrive through a platform state channel without becoming an ordinary graph binding. Whether that value is restorable depends on the surrounding saved-state contract, not on Hilt injection itself."},
+                {"type": "paragraph", "text": "When the caller owns a creation-time value that is not naturally a `SavedStateHandle` value, Hilt's supported assisted ViewModel form encodes the same split as Unit 2:"},
+                {"type": "code", "code": "@HiltViewModel(assistedFactory = ReaderViewModel.Factory::class)\nclass ReaderViewModel @AssistedInject constructor(\n    private val repository: LibraryRepository,\n    @Assisted private val bookId: String,\n) : ViewModel() {\n    @AssistedFactory\n    interface Factory {\n        fun create(bookId: String): ReaderViewModel\n    }\n}\n\n// graph knows repository\n// caller knows bookId\n// assisted factory combines them through ViewModel creation integration", "language": "kotlin"}
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {"type": "paragraph", "text": "Assisted input is tied to construction; it does not become durable merely because it entered a ViewModel. Hilt does not persist an assisted `bookId` to disk. Saved-state restoration and durable storage remain separate contracts, just as a ViewModel instance surviving configuration recreation is not the same as surviving process death."},
+                {"type": "paragraph", "text": "The creation callback is also not an update channel. ViewModel instances are memoized by their ViewModel owner. While the same ViewModel lifetime continues, repeated creation attempts do not reconstruct the instance or replace assisted values. Changing the selected book inside one long-lived ViewModel therefore needs an explicit state or event design, not another factory callback."},
+                {"type": "callout", "kind": "INTERVIEW_FOCUS", "text": "Separate four questions: Hilt/Dagger constructs the ViewModel; the ViewModelStore owner retains and clears it; the binding's own component and scope decide each dependency's reuse; and runtime input arrives from the caller or an Android state channel rather than becoming a global binding. Choose ViewModel scope versus retained Activity scope from the sharing requirement, not from which object sounds more lifecycle-aware."}
+              ]
+            }
+          ]
+        },
+        {
+          "id": "lesson_which_graph_does_this_binding_join",
+          "title": "Which Graph Does This Binding Join?",
+          "summary": "Read @InstallIn as graph placement and keep visibility separate from scoped identity and lifetime.",
+          "status": "ACTIVE",
+          "primarySubtopicIds": ["hilt_modules"],
+          "supportingSubtopicIds": ["dagger_modules", "hilt_components", "dagger_scopes", "di_scopes"],
+          "relatedLessonIds": ["lesson_declaring_the_rest_of_the_graph", "lesson_which_android_component_owns_this", "lesson_which_graph_owns_this_binding"],
+          "sources": [
+            {"title": "Hilt modules", "url": "https://dagger.dev/hilt/modules.html"},
+            {"title": "Hilt components", "url": "https://dagger.dev/hilt/components.html"},
+            {"title": "Dependency injection with Hilt", "url": "https://developer.android.com/training/dependency-injection/hilt-android"}
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {"type": "paragraph", "text": "Unit 3 already established what a Dagger module does: it contributes binding declarations the graph cannot obtain from constructor injection alone. A Hilt module remains a standard Dagger module. The new question is where those declarations join Hilt's predefined hierarchy."},
+                {"type": "code", "code": "@Module\n@InstallIn(SingletonComponent::class)\nobject LibraryModule {\n    @Provides\n    fun provideLibraryApi(client: HttpClient): LibraryApi =\n        HttpLibraryApi(client)\n}", "language": "kotlin"},
+                {"type": "paragraph", "text": "`@InstallIn(SingletonComponent::class)` answers **which generated Hilt component receives these binding declarations?** It does not create the component, and it does not by itself say that `LibraryApi` is a singleton. Hilt installs the Dagger module in the generated component; normal Dagger visibility then applies."},
+                {"type": "code", "code": "SingletonComponent       LibraryApi visible here\n    ↓                         and below\nActivityRetainedComponent   ← visible\n    ├─ ViewModelComponent   ← visible\n    └─ ActivityComponent    ← visible\n\nA binding installed in ActivityComponent is visible there\nbut cannot be requested upward by ActivityRetainedComponent\nor sideways by ViewModelComponent.", "language": "text"},
+                {"type": "paragraph", "text": "A binding available in a component may be consumed by bindings in that component and child components. Visibility flows down the hierarchy, never up or sideways. This is graph placement. Identity and reuse are a second decision."},
+                {"type": "callout", "kind": "KEY_TAKEAWAY", "text": "`@InstallIn` decides which generated graph receives a module and therefore where its bindings are visible. Scope decides whether requests within one matching component instance reuse the same result."}
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {"type": "paragraph", "text": "Place an unscoped parser binding in `ActivityRetainedComponent`. Both a ViewModel below it and an Activity below it can request the parser, but each request receives a new result:"},
+                {"type": "code", "code": "@Module\n@InstallIn(ActivityRetainedComponent::class)\nobject ReaderModule {\n    @Provides\n    fun provideBookParser(\n        repository: LibraryRepository,\n    ): BookParser = BookParser(repository)\n}", "language": "kotlin"},
+                {"type": "paragraph", "text": "Now add the component's matching scope to the same binding:"},
+                {"type": "code", "code": "@Module\n@InstallIn(ActivityRetainedComponent::class)\nobject ReaderModule {\n    @Provides\n    @ActivityRetainedScoped\n    fun provideBookParser(\n        repository: LibraryRepository,\n    ): BookParser = BookParser(repository)\n}", "language": "kotlin"},
+                {"type": "comparison", "headers": ["Declaration", "Visibility", "Result identity"], "rows": [["Installed in ActivityRetainedComponent, unscoped", "Retained component and its ViewModel/Activity children", "A new result per request"], ["Installed in ActivityRetainedComponent, @ActivityRetainedScoped", "Exactly the same", "One result per retained component instance"]]},
+                {"type": "paragraph", "text": "Nothing about visibility changed. Only identity changed. Conversely, moving the unscoped module to `ActivityComponent` changes who can request it while leaving it unscoped. These controlled comparisons are the clean reason not to read installation as lifetime."},
+                {"type": "callout", "kind": "COMMON_MISTAKE", "text": "Assuming installation high in the hierarchy automatically creates one long-lived object. An unscoped binding installed in SingletonComponent is broadly visible but still returns a new result per request. Broad visibility and broad reuse are separate risks and require separate decisions."}
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {"type": "paragraph", "text": "A scoped binding's scope must match the component where its module is installed. `@ActivityScoped` in a module installed in `SingletonComponent` would tell two incompatible ownership stories: reuse per ActivityComponent, but no ActivityComponent owns the declaration. Hilt rejects that mismatch rather than guessing which owner was intended."},
+                {"type": "paragraph", "text": "Reading installations is therefore an architectural diagnostic. They reveal where a team believes a binding must be visible; scope annotations reveal which consumers must share identity within that owner. Neither proves the product requirement was right, but keeping the declarations separate makes the assumption inspectable."},
+                {"type": "callout", "kind": "INTERVIEW_FOCUS", "text": "Define `@InstallIn` with a graph sentence: it installs a standard Dagger module into one or more generated Hilt components, making its bindings available there and below. Then separate reuse: unscoped means a fresh result per request; the matching component scope means one result per component instance. A lower binding is not visible upward."}
+              ]
+            }
+          ]
+        },
+        {
+          "id": "lesson_hilt_or_hand_written_dagger",
+          "title": "Hilt, or Components You Write Yourself?",
+          "summary": "Choose between Hilt conventions and custom Dagger components by comparing lifecycle fit, integration value, and migration cost.",
+          "status": "ACTIVE",
+          "primarySubtopicIds": ["hilt_vs_dagger"],
+          "supportingSubtopicIds": ["hilt_components", "dagger_components", "di_framework_tradeoffs", "architecture_tradeoffs"],
+          "relatedLessonIds": ["lesson_child_graph_or_separate_graph", "lesson_smallest_sufficient_architecture", "lesson_hilt_is_dagger_with_decisions_made", "lesson_which_android_component_owns_this"],
+          "sources": [
+            {"title": "Dependency injection with Hilt", "url": "https://developer.android.com/training/dependency-injection/hilt-android"},
+            {"title": "Hilt components", "url": "https://dagger.dev/hilt/components.html"},
+            {"title": "Dagger core semantics", "url": "https://dagger.dev/semantics/"}
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {"type": "paragraph", "text": "Hilt versus hand-written Dagger is not a contest between two dependency-injection capabilities. Hilt uses Dagger's bindings, scopes, modules, generated construction and compile-time validation. The main choice is **who designs the component structure and its Android integration**."},
+                {"type": "code", "code": "requirements fit standard Android owners\n        ↓\nHilt hierarchy removes repeated structural decisions\n\nrequirements need materially different owners\n        ↓\ncustom Dagger components preserve structural freedom", "language": "text"},
+                {"type": "paragraph", "text": "The key question is: **do the project's ownership and lifetime requirements fit Hilt's predefined Android hierarchy well enough that accepting the convention is cheaper than designing and maintaining custom Dagger components?** Every useful comparison axis follows from that question."},
+                {"type": "bullet_list", "items": ["Lifecycle fit: do application, retained Activity, ViewModel, Activity and Service owners express the important lifetimes?", "Integration gained: how much framework-created Android plumbing would otherwise be repeated?", "Existing structure: is there already a substantial, understood custom Dagger hierarchy?", "Customization cost: would the convention require many custom components, entry points or adapters?", "Migration and team cost: what must be learned, rewritten and maintained?", "Platform context: is the graph primarily Android-oriented, where Hilt's conventions carry their intended value?"]},
+                {"type": "callout", "kind": "KEY_TAKEAWAY", "text": "Hilt buys standard Android ownership and generated integration. Hand-written Dagger buys control over component boundaries and lifetimes. Choose by lifecycle fit and total maintenance cost, not by ranking framework names."}
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {"type": "paragraph", "text": "**Scenario A: the convention fits.** A new Android reading application needs process-level networking, one session across an Activity's configuration recreation, per-ViewModel parsers, per-Activity UI integrations and a background Service dependency. Android creates the framework owners, and the team would otherwise write the same component creation and retention plumbing around them."},
+                {"type": "paragraph", "text": "Hilt is plausible here because the product requirements already map to `SingletonComponent`, `ActivityRetainedComponent`, `ViewModelComponent`, `ActivityComponent` and `ServiceComponent`. Generated entry integration removes real repeated work, and accepting the hierarchy does not distort an important lifetime. This is a project-specific argument for Hilt, not proof that every Android graph should use it."},
+                {"type": "paragraph", "text": "**Scenario B: custom structure remains plausible.** A mature Android product already has a substantial Dagger graph organized around logged-in account sessions, concurrent document workspaces and hardware connection sessions. Several owners can outlive an Activity, several instances can coexist, and those lifetimes do not map cleanly to one retained Activity or process component. The team understands its factories and component relationships, and a migration would introduce adapters and manual access points without removing much existing integration work."},
+                {"type": "paragraph", "text": "Raw Dagger remains plausible because its custom components express product owners directly. That does not mean Hilt cannot coexist with or extend its hierarchy, nor that migration is impossible. It means the benefit has to exceed the new translation layer and migration cost. An established custom graph is not automatically sacred; it is evidence to price."},
+                {"type": "comparison", "headers": ["Question", "Evidence favoring Hilt", "Evidence favoring custom Dagger"], "rows": [["Do lifetimes fit?", "Most map directly to standard Android owners", "Core product owners are independent, concurrent or differently retained"], ["What integration is removed?", "Repeated Android component creation and entry plumbing", "Little, because mature integration already exists"], ["What structure is surrendered?", "No valuable custom structure", "Well-understood boundaries that encode product semantics"], ["What is migration buying?", "Consistency and lower ongoing integration cost", "Too little relative to adapters, retraining and churn"]]},
+                {"type": "callout", "kind": "COMMON_MISTAKE", "text": "Treating generated integration as proof of universal superiority, or custom requirements as proof Hilt is unsuitable. Both skip measurement. State the lifetime and ownership assumptions first, then show which option expresses them with less enduring cost."}
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {"type": "paragraph", "text": "Official Android guidance recommends Hilt for typical Android dependency injection. That recommendation is meaningful evidence: it reflects common Android owner shapes, ecosystem integration and a standard supported path. It is still an input rather than a proof. A senior decision asks which assumptions behind the recommendation match the project and identifies any important one that does not."},
+                {"type": "paragraph", "text": "The reverse argument deserves the same discipline. Needing one custom lifetime does not automatically justify owning an entirely custom hierarchy; Hilt supports extension and bounded entry points. The question is whether the exception stays bounded or becomes the dominant shape. A useful decision records the expected owners, the integration removed, the escape hatches required and the migration cost so it can be revisited when those facts change."},
+                {"type": "callout", "kind": "INTERVIEW_FOCUS", "text": "Refuse a context-free winner. Describe one Android project whose lifetimes naturally match Hilt and one credible mature graph whose product lifetimes or migration cost keep custom Dagger reasonable. Underline that both use Dagger underneath; the choice is convention and generated lifecycle integration versus component-structure control."}
+              ]
+            }
+          ]
+        }
+      ]
     }
   ]
 }

@@ -262,6 +262,50 @@ internal class LearningUnitPracticeIntegrationTest {
                     }
                 }
             }
+            // E27-02 added a fourth home Topic, and the handover happens once more: exhausting
+            // the architecture Units leads into the dependency-injection Unit, not to Complete.
+            val diUnits = BundledLearningContentRepository().getActiveUnitsByTopic("dependency_injection")
+            assertEquals(listOf("unit_dependency_injection_as_object_construction"), diUnits.map { it.id })
+            // Six Lessons, because the Unit carries six separately learnable ideas —
+            // `docs/content/dependency-injection-units-1-6-plan.md` derives the count rather
+            // than assigning it.
+            assertEquals(listOf(6), diUnits.map { it.lessons.size })
+            val diTopic = topic("dependency_injection")
+            val diParents = diUnits.associate { it.id to unit(it.id) }
+            val diLessonCount = diUnits.sumOf { it.lessons.size }
+            suspend fun awaitDiTopic(count: Int) {
+                diTopic.uiState.await { state ->
+                    state is TopicDetailUiState.Content &&
+                        (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
+                        StudyProgressSummary.Progress(count, diLessonCount)
+                }
+            }
+            awaitDiTopic(0)
+            var diStudiedCount = 0
+            diUnits.forEach { diUnit ->
+                diUnit.lessons.forEachIndexed { index, lesson ->
+                    awaitNext(diUnit.id, lesson.id)
+                    val diReader = lesson(diUnit.id, lesson.id)
+                    diReader.uiState.await { state ->
+                        state is LearningLessonUiState.Content &&
+                            (state.studyState as? StudyProgressUiState.Available)?.value?.isStudied == false
+                    }
+                    diReader.toggleStudied()
+                    diReader.uiState.await { state ->
+                        state is LearningLessonUiState.Content &&
+                            (state.studyState as? StudyProgressUiState.Available)?.value?.let {
+                                it.isStudied && !it.isPending
+                            } == true
+                    }
+                    diStudiedCount += 1
+                    awaitDiTopic(diStudiedCount)
+                    diParents.getValue(diUnit.id).uiState.await { state ->
+                        state is LearningUnitUiState.Content &&
+                            (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
+                            StudyProgressSummary.Progress(index + 1, diUnit.lessons.size)
+                    }
+                }
+            }
             browser.uiState.await { state ->
                 state is TopicBrowserUiState.Content && state.continueLearning == ContinueLearningUiModel.Complete
             }
@@ -306,9 +350,10 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             val rebuilt = LocalLessonStudyRepository(database)
             assertFalse(rebuilt.isStudied(earlierLesson.id))
-            // 43 `android_ui` Lessons, 29 in the coroutines and Flow Units and 29 in the
-            // six architecture Units, less the one that was just un-studied.
-            assertEquals(100, rebuilt.getStudiedLessons().size)
+            // 43 `android_ui` Lessons, 29 in the coroutines and Flow Units, 29 in the six
+            // architecture Units and 6 in the dependency-injection Unit, less the one that was
+            // just un-studied.
+            assertEquals(106, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -1221,6 +1266,111 @@ internal class LearningUnitPracticeIntegrationTest {
             assertFalse("stream_choice_cannot_supply_a_delivery_guarantee" in questionIds)
             assertFalse("shared_flow_try_emit_true_is_not_delivery" in questionIds)
             assertFalse("background_api_selection_criteria" in questionIds)
+            assertEquals(0, attemptCount())
+        }
+
+    /**
+     * E27-02: the first dependency-injection Unit's pool, and the one routing limitation in it.
+     *
+     * The Unit is deliberately not in the expectation table above, because the table's loop asserts
+     * that the resolved Subtopics equal the Unit's primary concepts — and this Unit's five primaries
+     * do not all hold an ACTIVE Question yet. `di_fundamentals` reaches one, `constructor_injection`
+     * reaches one, and `composition_root`, `service_locator_vs_di` and `manual_di` reach one each,
+     * which is five Questions across five concepts and a pool small enough to name outright.
+     *
+     * What a count cannot state is that one of the five is semantically premature.
+     * `hilt_field_injection_framework_classes` is mapped to `constructor_injection`, and its stem,
+     * options and explanation are entirely about Hilt — so a reader who has finished this Unit, and
+     * has met no framework at all, is handed a Hilt Question three Units early.
+     * `docs/content/dependency-injection-units-1-6-plan.md` records this as the Topic's clearest
+     * mapping mismatch and leaves the re-map to E27-08, paired with GAP-U1-E. It is asserted here so
+     * that the limitation has to be re-stated rather than quietly repaired: this test says the
+     * Question is *reachable*, never that this Unit teaches it.
+     */
+    @Test
+    fun theDependencyInjectionFoundationsUnitPractisesOnlyItsFivePrimaryConcepts() =
+        runUnitPracticeTest {
+            val unitId = "unit_dependency_injection_as_object_construction"
+            val unit = assertNotNull(BundledLearningContentRepository().getUnitById(unitId))
+            val builder = builder(PracticeBuilderTarget.LearningUnit(unitId))
+            val settled = builder.settled()
+
+            assertEquals(unit.title, settled.scope.name)
+            val available = assertIs<PracticeAvailability.Available>(settled.availability)
+            assertEquals(5, available.eligibleQuestionCount)
+            builder.selectQuestionCount(available.eligibleQuestionCount)
+            builder.settled()
+
+            val config = builder.start()
+            val concepts = setOf(
+                "di_fundamentals",
+                "constructor_injection",
+                "composition_root",
+                "service_locator_vs_di",
+                "manual_di",
+            )
+            assertEquals(AssessmentScope.Subtopics(concepts), config.scope)
+
+            val questions = selectedQuestions(config)
+            val questionIds = questions.map { it.id }.toSet()
+            assertEquals(
+                setOf(
+                    "di_constructor_injection_testability",
+                    "hilt_field_injection_framework_classes",
+                    "composition_root_001",
+                    "service_locator_vs_di_001",
+                    "manual_di_graph_growth_cost",
+                ),
+                questionIds,
+            )
+            // Every primary concept reaches exactly one Question, which is why the pool is five.
+            assertEquals(concepts, questions.map { it.subtopicId }.toSet())
+            assertEquals(5, questions.size)
+
+            // The recorded premature routing, pinned rather than repaired. E27-08 owns the re-map
+            // to `hilt_fundamentals`; until it is taken, this Question is structurally reachable
+            // and not taught by any Lesson of this Unit.
+            assertEquals(
+                "constructor_injection",
+                questions.single { it.id == "hilt_field_injection_framework_classes" }.subtopicId,
+            )
+
+            // Supporting concepts never broaden a Unit's practice. The two that matter here are
+            // `test_doubles` and `test_di`: this Unit argues testability from an explicit
+            // dependency and teaches no testing, so neither may contribute a Question. The
+            // architecture bridges are equally excluded, which is what keeps E26's pools unchanged.
+            val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
+            assertTrue(
+                setOf(
+                    "test_doubles",
+                    "test_di",
+                    "interface_boundaries",
+                    "dependency_direction",
+                    "solid",
+                    "separation_of_concerns",
+                    "layered_architecture",
+                    "architecture_tradeoffs",
+                    "dependency_graphs",
+                    "di_framework_tradeoffs",
+                ).all { it in supportingOnly },
+            )
+            assertTrue(questions.none { it.subtopicId in supportingOnly })
+            assertFalse("architecture_solid_dependency_substitution" in questionIds)
+            assertFalse("interface_with_one_implementation_is_not_a_boundary" in questionIds)
+
+            // The one deliberate overlap, calculated in the plan rather than discovered: nothing
+            // this Unit reaches belongs to a shipped architecture Unit's pool, because no shipped
+            // Lesson takes a `dependency_injection` Subtopic as primary.
+            val foundationsBuilder =
+                builder(PracticeBuilderTarget.LearningUnit("unit_architecture_responsibilities_and_boundaries"))
+            foundationsBuilder.settled()
+            foundationsBuilder.selectQuestionCount(
+                assertIs<PracticeAvailability.Available>(foundationsBuilder.uiState.value.availability)
+                    .eligibleQuestionCount,
+            )
+            foundationsBuilder.settled()
+            val foundations = selectedQuestions(foundationsBuilder.start()).map { it.id }.toSet()
+            assertEquals(emptySet(), foundations intersect questionIds)
             assertEquals(0, attemptCount())
         }
 

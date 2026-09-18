@@ -17331,6 +17331,1073 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "unit_dependency_injection_as_object_construction",
+      "topicId": "dependency_injection",
+      "title": "Dependency Injection as Object Construction",
+      "summary": "Dependency injection is usually met as a library somebody added to the build file, which leaves the question it answers invisible. This unit starts one level below that: a class needs a collaborator, and the collaborator has to come from somewhere. There are three possible answers — construct it, fetch it, receive it — and only the third is injection. From there the unit follows one small object graph as it grows: what a constructor parameter makes true that a later assignment does not, why injection and dependency inversion are separate decisions that are constantly confused, where construction knowledge belongs once classes stop constructing their own collaborators, what a registry lookup hides and when resolving one is legitimate anyway, and when wiring the whole graph by hand is already the right production answer. No Dagger, Hilt or Koin syntax appears anywhere in it, because every conclusion here can be reached without a container.",
+      "lessons": [
+        {
+          "id": "lesson_who_constructs_this_object",
+          "title": "Who Constructs This Object?",
+          "summary": "A class that needs a collaborator can obtain it in exactly three ways: construct it itself, fetch it from somewhere it can reach, or be handed it by whoever constructs the class. This lesson writes one controller all three ways and names what each version makes true — which implementation was chosen, who chose it, how long it lives, and what a caller can see. The third version is dependency injection, and nothing in it requires a library.",
+          "primarySubtopicIds": [
+            "di_fundamentals"
+          ],
+          "supportingSubtopicIds": [
+            "constructor_injection",
+            "manual_di",
+            "service_locator_vs_di",
+            "separation_of_concerns"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Start with a class that has work to do rather than with a library. Consider a `StudySessionController` that runs one study session: it needs the questions that session will ask, and it needs to know what time it is so that it can record when the session began. Neither is something the controller can produce out of itself, so both are **dependencies** — objects it needs in order to do its own job."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A dependency is not a special kind of object. It is an ordinary collaborator, called a dependency only because of the relationship: this class cannot work without it. The interesting question is never what the collaborator is. It is where it comes from."
+                },
+                {
+                  "type": "code",
+                  "language": "text",
+                  "code": "StudySessionController\n    ├── QuestionRepository\n    └── SystemClock"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There are exactly three answers to that question, and every dependency-injection framework ever written is an elaboration of one of them. The Android documentation lists the same three:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Construct it.** The class creates the collaborator itself, in its own body.",
+                    "**Fetch it.** The class asks something else for the collaborator — a global registry, a static accessor, an ambient context object.",
+                    "**Receive it.** Whoever constructs the class supplies the collaborator, as a constructor parameter or as an argument to the function that needs it."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The third one is dependency injection. That is the entire definition, and the Android guide puts it in one line immediately after listing the same three options: \"The third option is dependency injection.\" There is no annotation in that definition, no container, no generated code and no interface. A class that takes what it needs as a constructor parameter is doing dependency injection whether or not the project has ever added a library."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The word repays a little precision, because it sounds more mechanical than it is. *Injection* names the **direction of the handover**, not a mechanism: the object does not go and get its collaborator, the collaborator arrives. Everything that comes later in this curriculum — bindings, modules, scopes, generated factories — is machinery for arranging that arrival at scale, and none of it changes what the word means."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A dependency is a collaborator a class needs in order to work. It can be constructed, fetched, or received, and *received* is dependency injection. The definition is about who supplies the object — not about which library arranged the supply, and not about what the collaborator's type looks like."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Here is the same controller three times. Only the way the two collaborators arrive changes, and what changes with it is who decides."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Version A — construct it.** The controller builds what it needs."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "class StudySessionController {\n\n    private val repository = QuestionRepository()\n    private val clock = SystemClock()\n\n    suspend fun start(): StudySession =\n        StudySession(\n            questions = repository.loadQuestions(),\n            startedAtMillis = clock.nowMillis(),\n        )\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The controller has now made three decisions nobody asked it to make. It decided **which implementation** it collaborates with, because the type is written into its body. It decided **how that implementation is built**, so the day `QuestionRepository` needs a constructor argument, this file is edited. And it quietly decided **lifetime and sharing**: one repository per controller, created with the controller and discarded with it, shared with nothing. None of that is visible from outside the class, and none of it can be changed from outside the class."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Version B — fetch it.** The collaborators move out of the class into something the class can reach."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "object Registry {\n    lateinit var questionRepository: QuestionRepository\n    lateinit var clock: SystemClock\n}\n\nclass StudySessionController {\n\n    private val repository = Registry.questionRepository\n    private val clock = Registry.clock\n\n    suspend fun start(): StudySession =\n        StudySession(\n            questions = repository.loadQuestions(),\n            startedAtMillis = clock.nowMillis(),\n        )\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Something genuinely improved: the controller no longer decides how the repository is built, and a different repository can be installed without editing this file. Now look at what the class says about itself. `StudySessionController()` is its complete construction surface. A reader of that expression cannot tell that two objects must already exist for it to work; a caller cannot supply anything different; and a missing registration is not a compile error but an exception on the first line that reads the registry. The requirement did not go away. It stopped being visible — and the consuming class, not its caller, still performs the act of obtaining the collaborator. This shape has a name and its own lesson later in this unit."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Version C — receive it.**"
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "class StudySessionController(\n    private val repository: QuestionRepository,\n    private val clock: SystemClock,\n) {\n\n    suspend fun start(): StudySession =\n        StudySession(\n            questions = repository.loadQuestions(),\n            startedAtMillis = clock.nowMillis(),\n        )\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Nothing was added. Two lines left the body, two parameters appeared in the signature, and three decisions left the class with them. Which implementation, how it is built, and how long it lives now belong to whoever constructs the controller — and the class states its requirements in the one place every caller is already obliged to read."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Question",
+                    "A — constructs it",
+                    "B — fetches it",
+                    "C — receives it"
+                  ],
+                  "rows": [
+                    [
+                      "Who chooses the implementation",
+                      "The class itself",
+                      "Whoever filled the registry",
+                      "The caller"
+                    ],
+                    [
+                      "Who knows how it is built",
+                      "The class itself",
+                      "Whoever filled the registry",
+                      "The caller"
+                    ],
+                    [
+                      "Who decides lifetime and sharing",
+                      "The class itself, by implication",
+                      "Whoever filled the registry",
+                      "The caller"
+                    ],
+                    [
+                      "What `StudySessionController(…)` tells a reader",
+                      "That nothing is required",
+                      "That nothing is required",
+                      "That both collaborators are required"
+                    ],
+                    [
+                      "Can one caller supply something different",
+                      "No, not without editing the class",
+                      "Only by changing state every caller shares",
+                      "Yes, by passing it"
+                    ],
+                    [
+                      "When a missing collaborator is noticed",
+                      "Never — one is always constructed",
+                      "At run time, when the lookup executes",
+                      "At compile time, at the construction site"
+                    ],
+                    [
+                      "Is this dependency injection",
+                      "No",
+                      "No",
+                      "Yes"
+                    ]
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"We do not use dependency injection — we never added a library.\" A codebase that writes version C is using dependency injection in every one of those classes. What it has not added is a *container*: a tool that automates the supplying. Those are different things, and treating them as one is what makes the whole subject look like a build-file decision instead of a design decision."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Dagger, Hilt and Koin each offer a way to automate and organise exactly these construction decisions, and later units in this curriculum examine what each of them actually does. None of them appears again in this unit, because none of them is needed to reach any conclusion in it."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The reason version C matters is control, not convenience. Typing `QuestionRepository()` inside a class is not hard work, and deleting it saves nobody any keystrokes. What deleting it does is **relocate a decision**. In version A the choice of implementation is distributed — it lives in every class that constructs something, scattered wherever construction happens, and changing it means finding all of them. In version C the same choice is made once, by whoever assembles the objects. That relocation is the point of the technique; substitutability, configurability and testability are consequences of it rather than separate benefits."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The paper that gave the pattern its name states the underlying principle directly: \"The important issue in all of this is to ensure that the configuration of services is separated from their use.\" Version A fuses the two, because the controller both configures its collaborator and uses it. Version C separates them and leaves the class holding only the half that was ever its own."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One piece of precision to carry forward, because it is easy to overstate. In the form this curriculum prefers for objects an application constructs itself, the requirement is visible directly in the constructor signature, and the next lesson argues for that form in detail. But the definition of dependency injection is about *who supplies the dependency*, not about which member of the class it lands on. Where a framework owns construction and the application never gets to call the constructor at all, a collaborator that the framework assigns to a field is still supplied from outside — still injection, with different mechanics and a weaker set of guarantees. Defining injection as \"a constructor parameter\" would make that later material read as a contradiction; defining it as \"the caller supplies it\" does not."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked what dependency injection is, do not begin with a library. Say that a class needing a collaborator can construct it, fetch it, or be given it; that being given it is dependency injection; and that the value is the relocation of the implementation, construction and lifetime decisions to the caller. Then say precisely what a framework adds — not the injection, which a constructor parameter already performs, but the automation of supplying at scale."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_state_holder_responsibility"
+          ],
+          "sources": [
+            {
+              "title": "Dependency injection in Android",
+              "url": "https://developer.android.com/training/dependency-injection"
+            },
+            {
+              "title": "Inversion of Control Containers and the Dependency Injection pattern",
+              "url": "https://martinfowler.com/articles/injection.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_a_dependency_should_be_visible",
+          "title": "A Dependency Should Be Visible",
+          "summary": "Receiving a collaborator is injection whichever member it lands on, but where an application owns construction one form is better than the rest. A required collaborator taken as a constructor parameter is visible to every caller, cannot be forgotten, can be held immutably, and leaves no half-built object. This lesson makes each of those concrete, injects a concrete class with no interface in sight, and reads a nine-parameter constructor as information about the class rather than as an argument for hiding it.",
+          "primarySubtopicIds": [
+            "constructor_injection"
+          ],
+          "supportingSubtopicIds": [
+            "di_fundamentals",
+            "interface_boundaries",
+            "dependency_direction",
+            "test_doubles"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The previous lesson settled that receiving a collaborator is dependency injection. This one asks a narrower question. When the application owns the construction of a class — which is the ordinary case for everything except types a framework instantiates — what does taking a **required** collaborator as a constructor parameter buy, compared with any other way of getting it in there?"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Four things, worth separating because they have different consequences."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**The requirement is visible.** It is part of the type. Anyone who can call the constructor can see what the class needs without opening its body.",
+                    "**The requirement cannot be skipped.** The compiler refuses to construct the object without it, at every construction site, with no discipline required from anybody.",
+                    "**The object is fully formed the instant it exists.** There is no window in which it has been constructed but is not yet usable, and no initialise-me call for somebody to forget.",
+                    "**The reference can be immutable.** A constructor parameter can be held in a `val`, so no later code can swap the collaborator underneath an object that is already running."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Every one of those is a property of the language rather than of a tool. Nothing generated them, nothing has to be configured for them to hold, and they are equally true in a project with no dependency-injection library of any kind. That is the reason the technique transfers unchanged between frameworks: the frameworks arrange for the arguments to be present at the construction site, and the guarantees come from the constructor, which was already there."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "For a required collaborator in a class the application constructs, a constructor parameter makes the requirement visible, mandatory, satisfied before first use, and immutable. Those four guarantees come from the constructor itself, which is why they hold with no library present — and why no library can take credit for them."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**A concrete dependency, injected.** The controller needs to know the time. Here is the collaborator that tells it:"
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "import kotlin.time.Clock\n\nclass SystemClock {\n    fun nowMillis(): Long = Clock.System.now().toEpochMilliseconds()\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`SystemClock` is a class. Not an interface, not a `ClockImpl` behind a `Clock`, not a type extracted so that something could be swapped later. It is the ordinary concrete thing that reads the platform clock. And the controller takes it:"
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "class StudySessionController(\n    private val repository: QuestionRepository,\n    private val clock: SystemClock,\n)"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is dependency injection, and there is no interface anywhere in it. The controller does not construct the clock, does not know how the clock was built, and has no say in how long it lives; whoever constructed the controller decided all three and handed the result over. All four guarantees hold: the requirement is in the signature, the compiler enforces it, the object is complete the moment it exists, and the reference is a `val`."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"Dependency injection requires interfaces, so every injected type needs an `Everything` and an `EverythingImpl`.\" It does not. Injection decides who supplies the object; an interface decides whether a consumer needs to state its requirement independently of who meets it. Those are separate questions with separate answers, and a concrete collaborator supplied from outside is fully injected."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So when *does* a second type earn its place? That question already has an answer, and re-answering it here would be a worse answer than the one that exists. The architecture curriculum's lesson on when an interface is a boundary gives the test: a contract earns its existence when a consumer must state what it needs independently of who meets it, when the two sides genuinely change at different times, or when somebody else is writing the implementation. Until one of those holds, an interface adds a name, a file, a hop and a contract to keep in sync. `SystemClock` is injected concretely here because none of them holds yet. The next lesson shows what changes at a boundary where one does."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**What the alternative costs.** Compare the same controller with its collaborators assigned after construction instead of taken at it:"
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "class StudySessionController {\n\n    lateinit var repository: QuestionRepository\n    lateinit var clock: SystemClock\n\n    suspend fun start(): StudySession =\n        StudySession(\n            questions = repository.loadQuestions(),\n            startedAtMillis = clock.nowMillis(),\n        )\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two guarantees are gone. The object can now exist in a state where it cannot work, so there is a window between `StudySessionController()` and the two assignments in which calling `start()` throws `UninitializedPropertyAccessException` — a failure that surfaces at first use rather than at construction, and only on the code path that reaches it. And the properties are `var`s, so any code holding the controller may replace its repository at any moment; answering \"which repository did this session use?\" now means reading every line that touches the object instead of one construction site. Some situations force this shape, and the unit on Hilt meets the one that matters on Android, where the platform constructs the object and the application never gets to call its constructor. *Choosing* it while the constructor is available trades both guarantees for nothing."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**A constructor that has grown.** Suppose the same controller accumulates work over a few releases:"
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "class StudySessionController(\n    private val repository: QuestionRepository,\n    private val clock: SystemClock,\n    private val attempts: AttemptRecorder,\n    private val scores: ScoreCalculator,\n    private val streaks: StreakTracker,\n    private val reminders: ReminderScheduler,\n    private val analytics: AnalyticsReporter,\n    private val settings: StudySettings,\n    private val sessionId: String,\n)"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The reflex is to read this as a rule violation and to start looking for a way to make the list shorter. Resist both halves of the reflex. There is no number at which a constructor becomes wrong — nine is not a threshold, and neither is five or twelve — and the list is not the defect. It is **information**, and it exists only because the dependencies were made visible. The same class reaching into a registry for each of these needs exactly as much and announces none of it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So read it, because it supports four different questions with four different answers:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Does this class own too much behaviour?** Nine collaborators usually means nine things being coordinated. Recording attempts, calculating scores and scheduling reminders may each belong to something the controller calls rather than to the controller itself.",
+                    "**Is a missing collaborator hiding in the list?** Parameters that are always used together often indicate a responsibility that should be one object, which the controller would then take instead of the group.",
+                    "**Are some of these not dependencies at all?** `sessionId` is a value known only when a particular session starts, not a collaborator the application assembles in advance. It belongs to the call that starts the session, or to a factory for the controller, rather than to the object graph — and the unit on graphs and lifetimes treats that distinction properly.",
+                    "**Would an abstraction genuinely help here?** Sometimes, and it is the boundary test again, applied one collaborator at a time. What decides it is whether some consumer needs to state a requirement independently of how it is met, never the length of the list."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Shrinking a large constructor by having the class fetch its collaborators from a container. The class still needs all nine; its signature has merely stopped saying so. Nothing about the responsibility changed, and the one diagnostic that made the responsibility visible has been deleted."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Optional collaborators.** Some behaviour genuinely is optional — a build might ship with no analytics reporter at all. The honest encodings stay explicit: a default value in the constructor, or an implementation that does nothing supplied like any other collaborator. What is not honest is making a *required* collaborator nullable, or moving it to a setter, in order to shorten a parameter list. Both take a requirement the compiler was enforcing and turn it into a run-time possibility every reader has to remember."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**Substitution, and where this topic stops.** One consequence follows straight from the signature and is worth stating exactly once. Because the caller supplies the collaborator, a *different* caller can supply something different; the controller was never consulted about which repository it collaborates with, so a caller that wants another one simply passes it. That is what makes the testability argument true, and notice what the argument actually rests on — the dependency being explicit, not the number of interfaces in the codebase. A class with nine explicit concrete dependencies is straightforwardly substitutable. A class with nine interfaces resolved from a registry is not, because a caller has nothing to pass. Which substitutes to write and how to build them belongs to the testing curriculum and is deliberately not taught here."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Why the technique is framework-independent.** Constructor injection is not a Dagger feature, a Hilt feature or a Koin feature. It is a way of writing a class, described as one of the forms of injection in the paper that named the pattern — alongside setter and interface injection — and it works in a file with no annotations in a project with no dependency-injection library. What a framework does is **encode or automate** it: arrange for the arguments to be present at the construction site, generate or interpret the construction, and give the arrangement a configuration language. Automating a technique is not the same as defining it, and the practical evidence is that replacing one framework with another leaves every constructor in the codebase untouched."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Why the visibility argument keeps winning.** A signature is the only part of a class that every caller is forced to read. Documentation drifts, comments rot, a body has to be opened deliberately; a parameter list is checked by the compiler at every construction site and shown by every editor. Putting a requirement there gives the cheapest possible discovery to anyone who needs to know it, and the earliest possible failure to anyone who forgot it. Every argument in this lesson, including the one about the nine-parameter constructor, is a variation on that single point."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked why constructor injection is preferred, answer with the four guarantees and where they come from: the requirement is in the type, the compiler enforces it, the object is usable the moment it exists, and the reference can be immutable — all of it from the constructor, none of it from a framework. Then take the follow-up seriously. A long parameter list is a report on the class's responsibilities, so the move is to examine the responsibilities, not to hide the report."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_when_an_interface_is_a_boundary",
+            "lesson_who_constructs_this_object"
+          ],
+          "sources": [
+            {
+              "title": "Dependency injection in Android",
+              "url": "https://developer.android.com/training/dependency-injection"
+            },
+            {
+              "title": "Inversion of Control Containers and the Dependency Injection pattern",
+              "url": "https://martinfowler.com/articles/injection.html"
+            },
+            {
+              "title": "Properties: late-initialized properties and variables",
+              "url": "https://kotlinlang.org/docs/properties.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_injected_inverted_or_both",
+          "title": "Injected, Inverted, or Both?",
+          "summary": "Two decisions are taken about the same collaborator and are constantly treated as one. Injection asks who supplies the object; inversion asks which side owns the contract, and therefore which way the source dependency points. They are independent, and this lesson proves it both ways: a fully constructor-injected dependency whose source arrow still points straight at a storage detail, and a fully inverted one assembled by four lines in a `main` function with no container anywhere in the program.",
+          "primarySubtopicIds": [
+            "di_fundamentals"
+          ],
+          "supportingSubtopicIds": [
+            "dependency_direction",
+            "interface_boundaries",
+            "solid",
+            "constructor_injection"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Two sentences that sound like the same sentence, said about the same collaborator:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "\"The repository is injected into the controller.\"",
+                    "\"The controller's dependency on the repository is inverted.\""
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "They answer different questions, and an arrangement can satisfy either one without the other."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Decision",
+                    "The question it answers",
+                    "Where it is visible",
+                    "Who takes it"
+                  ],
+                  "rows": [
+                    [
+                      "Dependency **injection**",
+                      "Who supplies this object to the class that needs it?",
+                      "The construction site — a constructor call, a factory, a container",
+                      "Whoever assembles the objects"
+                    ],
+                    [
+                      "Dependency **inversion**",
+                      "Which side declares the contract, and therefore which way does the source dependency point?",
+                      "The import list — which file names which",
+                      "Whoever designs the boundary"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The architecture curriculum already taught the second one in full, and this lesson does not re-derive it. What decides whether anything was inverted is which side defines the abstraction, and the check is mechanical: open the files and read the imports. Clean Architecture's dependency rule states the same thing from the outside in: \"source code dependencies can only point inwards\", and \"Nothing in an inner circle can know anything at all about something in an outer circle\". What is missing, and what this lesson supplies, is the comparison from the injection side."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Injection is about supply; inversion is about which side owns the contract in source. Injection is visible at the construction site, inversion in the import list. Neither implies the other, and all four combinations occur in real code."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**Shape one: injected, and not inverted.** An operation loads the questions a session needs. The class that stores them is a SQL-backed store belonging to the data implementation."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "// study/data/sql/SqlQuestionDatabase.kt — the storage detail\npackage com.example.study.data.sql\n\ninternal class SqlQuestionDatabase(private val connection: SqlConnection)\n\n// study/session/LoadQuestions.kt — the consumer\npackage com.example.study.session\n\nimport com.example.study.data.sql.SqlQuestionDatabase   // ← the policy names the detail\n\ninternal class LoadQuestions(\n    private val database: SqlQuestionDatabase,\n)"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Every property of injection holds here. `LoadQuestions` does not construct the database, does not know how it was built, and has no say in its lifetime. The requirement is visible in the signature, the compiler enforces it, and one caller can supply a different `SqlQuestionDatabase` than another. This is constructor injection, correctly done."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "And nothing was inverted. Read the import. `session` names `data.sql`, so the higher-level operation cannot be compiled, read or moved without the storage implementation, and when the storage changes shape the operation changes with it. Supplying the object from outside relocated the **construction** decision; it did not touch the **source** decision, because the source decision is made by which file names which, and no constructor parameter has ever changed an import."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"We added a dependency-injection framework, so our dependencies are inverted now.\" The architecture curriculum already states the consequence exactly: the container decides which object is handed over, \"it does not change a single import, and imports are what the architecture decision is made of\". A codebase can inject every collaborator in every class and have inverted nothing."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Shape two: inverted, with nothing but a `main` function.** Now a boundary genuinely earns a contract. The session side needs to state what it requires of question storage in its own vocabulary, and the storage side is expected to change independently of it — which is the test the architecture curriculum set. So the consumer declares the contract:"
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "// study/session/QuestionRepository.kt — declared by the side that needs it\npackage com.example.study.session\n\ninternal interface QuestionRepository {\n    suspend fun loadQuestions(): List<Question>\n}\n\ninternal class StudySessionController(\n    private val repository: QuestionRepository,\n    private val clock: SystemClock,\n)\n\n// study/data/local/LocalQuestionRepository.kt — the implementation\npackage com.example.study.data.local\n\nimport com.example.study.session.Question\nimport com.example.study.session.QuestionRepository   // ← the detail names the policy\n\ninternal class LocalQuestionRepository(\n    private val dataSource: BundledQuestionDataSource,\n) : QuestionRepository {\n\n    override suspend fun loadQuestions(): List<Question> = dataSource.readAll()\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "and the whole program assembles it like this:"
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "fun main() {\n    val dataSource = BundledQuestionDataSource()\n    val repository = LocalQuestionRepository(dataSource)\n    val controller = StudySessionController(\n        repository = repository,\n        clock = SystemClock(),\n    )\n\n    startStudyApplication(controller)\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There is no container in that program, no configuration language, no annotation and no generated code. The arrow nevertheless points where the design wanted it: `data.local` imports `session`, and `session` imports nothing from `data`. The inversion was achieved by **who declared the interface**, and the four lines in `main` only supply the object — which is the other decision, taken separately, by hand."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Notice what happened to the running example on the way through. Until now `QuestionRepository` has been a concrete class, injected concretely, exactly as `SystemClock` still is. It became an interface at the one point where a real boundary appeared: a consumer with a requirement to state in its own words, and an implementation side expected to change on its own schedule. `SystemClock` did not meet that test and is still a class, still injected. Injection was never what required the interface."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Injected?",
+                    "Inverted?",
+                    "The arrangement",
+                    "How to recognise it"
+                  ],
+                  "rows": [
+                    [
+                      "No",
+                      "No",
+                      "The class constructs a concrete collaborator itself",
+                      "Version A of the first lesson: one class owns the implementation choice, the construction and the import"
+                    ],
+                    [
+                      "Yes",
+                      "No",
+                      "The collaborator is supplied from outside, and the consumer's source still names the implementation",
+                      "Shape one above — real injection, unchanged source direction"
+                    ],
+                    [
+                      "Yes",
+                      "Yes",
+                      "The collaborator is supplied from outside, behind a contract the consumer owns",
+                      "Shape two above, and the arrangement most designs are actually aiming at"
+                    ],
+                    [
+                      "No",
+                      "Yes",
+                      "The consumer owns the contract and the class still constructs the implementation itself",
+                      "Self-defeating and rare: the class must import the implementation package in order to construct it, which restores the arrow the interface removed"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One row of that table needs a warning, because getting it wrong would undo the lesson. It is tempting to label shape two \"not injected, because there was no framework\". That is false. `main` passing a repository to a constructor **is** dependency injection, performed by hand, and shape two sits in the *injected and inverted* row. What shape two demonstrates is that inversion does not require a **container** — not that it happens without injection. Injection and framework use are not the same axis, and nothing in this unit permits them to be collapsed into one."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**Why this particular confusion is expensive.** A team that believes the framework inverted their dependencies stops looking at the arrows. The wiring looks excellent — every collaborator arrives from somewhere central, every class takes constructor parameters, no feature calls a constructor on infrastructure — and meanwhile the domain package imports the networking client and the use case imports the database row type. The tidiness is real and worth having; it is simply evidence about supply being read as evidence about structure. The only check that answers the structural question is the one the architecture curriculum gave, and it costs nothing: read the imports."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Why they are nevertheless neighbours.** They are separate decisions that meet, because inverting a dependency creates the supply problem. Once the consumer owns the contract, something has to decide which implementation satisfies it and where that decision is made — and the further that decision moves away from the consumer, the more the next lesson's subject matters. Fowler's paper places the two side by side for exactly this reason, describing the separation of configuration from use as \"a fundamental design principle that sits *with* the separation of interfaces from implementation\". Sits with, not is."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**The costs are not comparable, which is why the decisions should not be taken together.** Injection costs a parameter and a construction site. It applies to any collaborator, concrete ones included, and it is close to free. Inversion costs a contract that has to be designed, owned, kept in the consumer's vocabulary and maintained as both sides move, which is why the interface question is answered per boundary rather than adopted as a house style. A team that treats the two as one decision ends up paying the second cost every time it wants the first benefit."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked to distinguish dependency injection from dependency inversion, give one example of each without the other. A constructor-injected concrete database inside a use case is injected and not inverted; a consumer-owned interface whose implementation is constructed in `main` is inverted with no container in the program. Then state the rule that generates both: injection is decided at the construction site, inversion in the import list."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_dependency_inversion_in_practice",
+            "lesson_dependency_direction_and_boundaries",
+            "lesson_a_dependency_should_be_visible"
+          ],
+          "sources": [
+            {
+              "title": "Inversion of Control Containers and the Dependency Injection pattern",
+              "url": "https://martinfowler.com/articles/injection.html"
+            },
+            {
+              "title": "The Clean Architecture",
+              "url": "https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_one_place_that_knows_how_to_build",
+          "title": "One Place That Knows How to Build",
+          "summary": "Push construction out of every class and the work does not disappear — it moves. A composition root is the responsibility of assembling the object graph, located as close to the program's entry point as possible, and it is the one place allowed to name every concrete implementation. This lesson assembles the unit's graph by hand, grows it, finds the same knowledge leaking into a feature class, and keeps the responsibility separate from the mechanisms that can help with it.",
+          "primarySubtopicIds": [
+            "composition_root"
+          ],
+          "supportingSubtopicIds": [
+            "manual_di",
+            "dependency_graphs",
+            "service_locator_vs_di",
+            "separation_of_concerns",
+            "layered_architecture"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Every lesson so far has taken something away from a class: the choice of implementation, the knowledge of how it is built, the decision about how long it lives. That work did not evaporate. Objects do not assemble themselves, and somewhere in the program there has to be code that knows `LocalQuestionRepository` is the repository, that it is built from a data source, and that the data source needs a catalogue path. The question this lesson answers is where that code belongs."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The answer is a **composition root**: \"a (preferably) unique location in an application where modules are composed together\", placed \"as close as possible to the application's entry point\". Two words in that definition carry the weight. *Location*, because it is a place and a responsibility rather than a type — no class has to be called `AppContainer`, and a `main` function is a perfectly good composition root. And *entry point*, because the rule is about distance: assembly belongs where the program starts, so that everything the program then runs has already been handed what it needs."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "What makes the location valuable is what it is permitted to do. It is the one place in the program allowed to name every concrete implementation, and that permission is the mechanism rather than a concession. Concrete knowledge has to live somewhere; concentrating it in a single reviewable place is precisely what lets every other place be written against a requirement instead of against an implementation."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A composition root is a responsibility — assembling the object graph — and a location, as close to the entry point as the program allows. It is the one place that may name concrete implementations, which is what keeps every other place ignorant of them. It is not a class name, and it is not a library."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Here is the unit's graph, assembled by hand. This is the whole of the construction knowledge in the program:"
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "fun main() {\n    val clock = SystemClock()\n    val dataSource = BundledQuestionDataSource()\n    val repository = LocalQuestionRepository(dataSource)\n    val controller = StudySessionController(\n        repository = repository,\n        clock = clock,\n    )\n\n    startStudyApplication(controller)\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read what that function is and is not. Four objects, three edges, and every concrete type name in the graph appears here and in no feature file. The order is not stylistic — it is forced by the graph, because a node cannot be constructed before the nodes it needs, so reading the function downwards is reading the graph upwards from its leaves. And `StudySessionController` is the only object `main` actually hands onward; the rest exist solely so that it can be built."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now let the graph grow, which is the point of showing it rather than drawing it. The bundled data source turns out to need to know which catalogue to read and which schema version to expect, so a configuration object joins:"
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "fun main() {\n    val clock = SystemClock()\n    val config = QuestionCatalogConfig(\n        catalogPath = \"questions/android-core.json\",\n        schemaVersion = 3,\n    )\n    val dataSource = BundledQuestionDataSource(config)\n    val repository = LocalQuestionRepository(dataSource)\n    val controller = StudySessionController(\n        repository = repository,\n        clock = clock,\n    )\n\n    startStudyApplication(controller)\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A new node appeared two levels down from the controller, and the edit landed here. That is the arrangement working: the controller's file did not change, the repository's file did not change, and the decision about which catalogue this build reads is stated once, where a reviewer looking for it would look. Whether that stays cheap as the graph keeps growing is the closing lesson's question; what matters here is that the growth is visible in one file, so it can be judged at all."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Construction knowledge that leaks.** Now a feature class in the middle of the program does this:"
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "internal class ReviewScreenPresenter(\n    private val clock: SystemClock,\n) {\n\n    private val repository: QuestionRepository = LocalQuestionRepository(\n        BundledQuestionDataSource(\n            QuestionCatalogConfig(\n                catalogPath = \"questions/android-core.json\",\n                schemaVersion = 3,\n            ),\n        ),\n    )\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Nothing here is broken, and that is what makes it worth looking at. The class works. What it has become is a class with two responsibilities: presenting a review screen, and assembling part of the application. It names three concrete implementations that no feature was supposed to know about, so a change to any of them now reaches a presenter. It re-states the catalogue decision, so the program has two answers to \"which catalogue does this build read?\" and nothing keeps them equal. And it cannot be reused against a different catalogue or a different repository at all, because the choice is welded into its body — which is version A of the first lesson, reappearing one level up."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The diagnosis is the useful part: **this class now owns both its feature responsibility and part of application assembly.** Say that, rather than \"it should have been injected\", because the second sentence describes the fix without naming the problem."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Looking for the composition root by looking for a class called `AppContainer`. The root is a responsibility and a location, so a program can have one with no such type anywhere — a `main` function that builds four objects is a composition root. The corresponding error is the reverse: a type named `AppContainer` that every class reaches into is not a composition root at all, because things are asking it for objects rather than being given them."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**More than one entry point.** The rule is not \"a program has exactly one of these\". Real programs are entered in several ways — an application launch, a background entry that runs without a user interface, a test harness that assembles the same objects differently on purpose — and each of those is a legitimate place where construction begins. What they share is arranged deliberately rather than duplicated:"
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "internal fun buildStudySessionController(\n    config: QuestionCatalogConfig,\n): StudySessionController {\n    val dataSource = BundledQuestionDataSource(config)\n    return StudySessionController(\n        repository = LocalQuestionRepository(dataSource),\n        clock = SystemClock(),\n    )\n}\n\nfun main() {\n    startStudyApplication(buildStudySessionController(ProductionCatalogConfig))\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So the principle is about placement rather than about a count: construction knowledge belongs at legitimate entry and integration points, and should not be recreated arbitrarily through feature code. A second entry point that assembles the graph is a composition root doing its job. A presenter that assembles part of the graph is feature code that has taken on a second responsibility, and the difference between those two is not how many assembly sites exist but whether the site is a place where the program actually begins."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**Why \"as close to the entry point as possible\" is the real rule.** Every layer of code between the program's start and the place where assembly happens is a layer that has been given an opportunity to make a construction decision of its own — to construct one collaborator \"just here\", to read one configuration value \"only this once\". Keeping assembly at the entry point removes those opportunities by construction rather than by discipline, because a class that has already been handed everything it needs has nothing to decide. The distance is the mechanism; the location is only where the distance is smallest."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**What the root gives a reader.** A composition root is the one place where the shape of the program is knowable. Open it and the answer to \"what does this application actually consist of, and how do the pieces fit\" is one file long, with the concrete names in it. That is worth more than it first appears: the same question asked of a program that constructs collaborators throughout requires reading every class, and the answer is never complete because the next class might construct something too. Reviewability is not a side benefit of the pattern, it is most of the pattern."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**What the root must not turn into.** There is a failure mode that looks like success. Assembly is centralised, an object called something like `AppComponents` holds the constructed graph, and then classes start reaching into it for what they need instead of receiving it. The construction knowledge is still in one place, so the arrangement passes a superficial inspection — and every class that reaches in has gone back to hiding its own requirements. That is a different pattern with a different name, and it is the next lesson's subject."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**A container is not a composition root.** The two are routinely spoken of as the same thing and they belong to different categories. A composition root is a responsibility and a place: something assembles this graph, and it does so here. A container is a mechanism that can participate in construction and resolution — it can hold definitions, decide reuse, and produce objects on request. A program can have a composition root and no container at all, which is exactly what the `main` function above is; a program can also have a container that is started from its composition root, which is what the unit on Koin examines. Keeping the categories apart is what makes it possible to ask, later, what a container is actually buying — a question that cannot even be posed if the container *is* the definition."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked what a composition root is, answer with responsibility and location before mechanism: it is where the object graph is assembled, as close to the entry point as the program allows, and it is the one place permitted to name concrete implementations. Then be ready for the two follow-ups. A program may have several entry points and therefore several assembly sites, and the principle is that construction knowledge stays at entry and integration points rather than being recreated in feature code. And a container is a mechanism, not the root — a `main` function with four `val`s is a composition root."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_what_architecture_decides",
+            "lesson_who_constructs_this_object"
+          ],
+          "sources": [
+            {
+              "title": "Composition Root",
+              "url": "https://blog.ploeh.dk/2011/07/28/CompositionRoot/"
+            },
+            {
+              "title": "Manual dependency injection",
+              "url": "https://developer.android.com/training/dependency-injection/manual"
+            },
+            {
+              "title": "Inversion of Control Containers and the Dependency Injection pattern",
+              "url": "https://martinfowler.com/articles/injection.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_asking_for_it_or_being_given_it",
+          "title": "Asking For It, or Being Given It",
+          "summary": "A registry lookup and an injected parameter both end with the object in hand, so the difference has to be found somewhere other than the result. It is in what the consuming class's own construction surface says, and in which code performs the resolution. This lesson has the unit's controller look its collaborators up instead, names four concrete things that changed, and then draws the line the rest of this curriculum depends on — between a class hiding its own requirements and integration code connecting a framework-owned lifetime to a graph already described elsewhere.",
+          "primarySubtopicIds": [
+            "service_locator_vs_di"
+          ],
+          "supportingSubtopicIds": [
+            "di_fundamentals",
+            "composition_root",
+            "constructor_injection",
+            "test_di"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A **service locator** is a registry that classes reach into for their collaborators. It is not a mistake anybody makes by accident; it is a deliberate answer to the same question this unit opened with, and it works. Both designs end with the collaborator in hand and the program running, which is exactly why the comparison has to be made somewhere other than the result."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "import kotlin.reflect.KClass\n\nobject ServiceRegistry {\n\n    private val services = mutableMapOf<KClass<*>, Any>()\n\n    fun <T : Any> register(type: KClass<T>, service: T) {\n        services[type] = service\n    }\n\n    @Suppress(\"UNCHECKED_CAST\")\n    fun <T : Any> resolve(type: KClass<T>): T =\n        services[type] as? T ?: error(\"No service registered for $type\")\n}\n\ninternal class StudySessionController {\n\n    private val repository = ServiceRegistry.resolve(QuestionRepository::class)\n    private val clock = ServiceRegistry.resolve(SystemClock::class)\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Compare that with the injected controller, which is the same class with the same two collaborators. Four things are different, and all four are consequences of the same move:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**The construction surface no longer reveals the collaborators.** `StudySessionController()` takes nothing, so the type says it needs nothing.",
+                    "**A caller cannot tell what must already have been registered.** Constructing the controller is legal at any point in the program; whether it will work depends on state established somewhere else, at some earlier time, by code the caller never sees.",
+                    "**A missing registration is discovered when the lookup runs, not when the object is built.** In this class that is at construction; move either lookup into a method and the discovery moves to the first call of that method, on the paths that reach it.",
+                    "**The class now knows that a resolution mechanism exists.** It depends on `ServiceRegistry` in addition to its two real collaborators, so the mechanism has become part of what this class needs in order to compile and run."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Fowler's paper, which named both patterns, puts the practical half of the difference in one sentence: \"With dependency injector you can just look at the injection mechanism, such as the constructor, and see the dependencies. With the service locator you have to search the source code for calls to the locator.\" The Android documentation names the same consequences from the other side, including that with a locator, dependencies \"are encoded in the class implementation, not in the API surface\"."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Both patterns hand the object over. The difference is that with injection the class declares what it needs and the caller resolves it, and with a locator the class resolves it and declares nothing. The cost is paid in visibility and in when a missing collaborator is noticed — not in whether the object arrives."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Put the two versions of the same class side by side, and read the rows rather than the verdict:"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Property",
+                    "Located version",
+                    "Injected version"
+                  ],
+                  "rows": [
+                    [
+                      "What the type declares it needs",
+                      "Nothing",
+                      "A `QuestionRepository` and a `SystemClock`"
+                    ],
+                    [
+                      "Who performs the resolution",
+                      "The controller itself",
+                      "Whoever constructs the controller"
+                    ],
+                    [
+                      "Where to look to find its collaborators",
+                      "Every line of its body, including lines added later",
+                      "Its constructor"
+                    ],
+                    [
+                      "What a caller can vary",
+                      "Nothing, without changing shared registry state",
+                      "Either collaborator, per construction site"
+                    ],
+                    [
+                      "When a missing collaborator surfaces",
+                      "When the lookup executes",
+                      "At compile time, at the construction site"
+                    ],
+                    [
+                      "What the class depends on besides its collaborators",
+                      "The registry, and the fact that somebody filled it first",
+                      "Nothing"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Be careful with the failure-timing row, because it is the one most often over-stated. What is demonstrated here is that *this* design defers discovery to the moment of lookup. Other registry designs behave differently — one that validates its registrations at start-up narrows the window considerably, and one that resolves lazily inside rarely-taken branches widens it. The claim worth carrying is the general one: a requirement that is not in the signature cannot be checked by the compiler at the construction site, so *something else* has to check it, at some later time that the design chooses."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Now the qualification, and it is the reason this lesson exists rather than a caveat on the end of it.** Not every call that obtains an object from a graph is the design above. Consider code that a user-interface framework constructs itself — the application never calls the constructor, cannot add a parameter to it, and receives the object already built:"
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "// The framework instantiates this type and calls onAttached() itself.\ninternal class ReviewScreen : PlatformScreen() {\n\n    private lateinit var controller: StudySessionController\n\n    override fun onAttached() {\n        controller = applicationComponents.studySessionController\n    }\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That line looks like the registry call above and is a different design. `ReviewScreen` is integration code: its whole job is to connect a lifetime the framework owns to a graph that was described somewhere else, and the object it obtains is a **complete** object the composition root already assembled. It is not hiding its own requirements from a caller, because it has no caller that could have supplied them — the framework is the caller and it accepts no arguments."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The deciding question, then, is not whether a lookup appears in the source. It is this:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Does a business, domain or feature object hide **its own** requirements by reaching into a registry, so that its callers and its readers can no longer see what it needs? That is the service-locator shape, and its costs are the four above.",
+                    "Or is integration code at a boundary the application does not construct connecting an externally owned lifetime to an already-described graph, and obtaining a finished object there? That is a different design, taken for a different reason, and confined to the edge."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This distinction is not bookkeeping. Without it, the later units of this curriculum contradict this one: the unit on Hilt covers classes the Android platform instantiates, where the framework supplies collaborators to an object nobody could pass arguments to, and the unit on Koin covers resolving a screen-level owner at a Compose boundary. Taught as \"lookup is bad\", this lesson would turn both of those into defects. Taught as \"which code hides whose requirements\", it explains them."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Two categorical claims that both fail. The first is that any call to a framework's resolution API is service-locator architecture and therefore wrong — it is not, and where the call sits and what it obtains decide the question. The second is labelling whole libraries: a library is not a service locator or an injector, because the architectural question is who performs the resolution, for what reason, and whether the consuming code's requirements remain explicit. Any library can be used either way, and this curriculum compares their mechanisms and their trade-offs rather than awarding them labels."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**Why the pattern keeps returning despite the costs.** It is the cheapest way to reach a graph from code somebody else constructs. When a framework, a platform or a plugin host owns instantiation, the constructor is closed and the options narrow to a small set: the framework supports supplying collaborators itself, or something already-built has to be reachable from inside. A locator is the second option with no infrastructure at all, which is why it appears in every codebase that has a framework-instantiated class and no framework support for injecting into it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**What has to be true for that trade to be acceptable.** Roughly four things, and they are the criteria the framework units later apply rather than new material: the code performing the lookup is integration code at a boundary the application genuinely does not construct; it obtains a complete object rather than assembling one out of parts; the requirement remains stated explicitly somewhere a reader can find — typically in the constructor of the object being obtained; and the surface is small and lives at the edge, so that the number of places requiring this treatment is countable. When those hold, the visibility cost is bounded to the boundary. When they do not, the same call inside a domain class buys nothing and pays all four costs."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**And why the location matters more than the syntax.** Nothing about the characters `resolve(...)` is harmful. What is harmful is a class whose readers cannot discover what it needs, whose callers cannot supply anything, and whose failure arrives late — and a class can achieve all three with a registry, with a static accessor, with an ambient singleton, or with a framework API, just as it can avoid all three while using any of them at an integration boundary. Judge the design by what the consuming type still declares, then decide."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked to compare service locator with dependency injection, refuse the \"one is bad\" framing and answer with visibility and resolution responsibility: with injection the class declares its requirements and the caller resolves them; with a locator the class resolves them and declares nothing, so its requirements leave the API surface and a missing one is found when the lookup runs. Then volunteer the qualification, because it is what shows you have thought about real frameworks — integration code at a lifetime the application does not own, obtaining a finished object, is a different design from a domain class consulting a registry."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_who_constructs_this_object",
+            "lesson_a_dependency_should_be_visible",
+            "lesson_one_place_that_knows_how_to_build"
+          ],
+          "sources": [
+            {
+              "title": "Inversion of Control Containers and the Dependency Injection pattern",
+              "url": "https://martinfowler.com/articles/injection.html"
+            },
+            {
+              "title": "Dependency injection in Android",
+              "url": "https://developer.android.com/training/dependency-injection"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_when_wiring_it_yourself_is_enough",
+          "title": "When Wiring It Yourself Is the Right Answer",
+          "summary": "Manual dependency injection is a complete technique, not a stage on the way to a real one. Constructor parameters plus one place that assembles them already express abstraction bindings, shared instances and fresh-per-use instances; what grows with a graph is clerical work rather than capability. This lesson names those costs precisely, judges the unit's own graph against them, reports the official Android recommendation together with the conditions it rests on, and identifies the specific changes that would make another mechanism worth its price.",
+          "primarySubtopicIds": [
+            "manual_di"
+          ],
+          "supportingSubtopicIds": [
+            "composition_root",
+            "dependency_graphs",
+            "di_framework_tradeoffs",
+            "architecture_tradeoffs"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The graph in this unit has been wired by hand from the beginning, and no conclusion so far has needed anything else. That is not a teaching device that gets put away now. Writing the constructor calls yourself — **manual dependency injection** — is a production technique that expresses everything the subject is about."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Specifically, a composition root written by hand already expresses all of this:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Constructor injection**, which is the technique itself and needs nothing but a constructor call.",
+                    "**Binding an abstraction to an implementation**, which is one line choosing which type to construct for a declared contract.",
+                    "**A shared instance**, which is one `val` constructed once and passed to several consumers.",
+                    "**A fresh instance per use**, which is construction at the point of use, or a function that constructs one on request.",
+                    "**Explicit assembly order**, which the graph fixes: a node cannot be built before the nodes it needs."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Here the graph has grown two more consumers — a browser that lists questions outside a session, and a builder that produces a summary when a session ends — so that sharing and per-use construction each have something to be visible in:"
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "fun main() {\n    val dataSource = BundledQuestionDataSource(ProductionCatalogConfig)\n\n    // One repository, shared by both consumers.\n    val repository: QuestionRepository = LocalQuestionRepository(dataSource)\n\n    val controller = StudySessionController(repository, SystemClock())\n    val browser = QuestionBrowser(repository)\n\n    // A new summary builder each time one is asked for.\n    val newSummaryBuilder = { SessionSummaryBuilder(SystemClock()) }\n\n    startStudyApplication(controller, browser, newSummaryBuilder)\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The difference between the shared repository and the per-use summary builder is a `val` and a lambda. *Which* of those a given dependency should be, and what decides it, is a requirement in its own right that the next unit teaches properly; the only claim here is that expressing either one needs no library. What grows as a graph gets larger is the clerical work of maintaining these lines — not the range of arrangements that can be expressed."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Manual dependency injection loses no capability. Constructor parameters plus one assembling place express bindings, sharing, per-use construction and ordering. What a container removes is the clerical work of writing and maintaining that assembly, which is a real cost worth measuring — and a different thing from an ability the hand-written version lacks."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**The costs, stated as things that actually happen.** Vague claims about scaling are useless for a decision, so here is the work itself:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Adding a dependency deep in the graph edits every construction site above it — the new parameter has to be threaded through each intermediate factory or builder that constructs the node beneath it.",
+                    "The assembly becomes long, and order-sensitive in a way a reader has to hold in their head, because a `val` cannot be used before the line that creates it.",
+                    "Reuse decisions become something a human remembers: whether two consumers got the same instance is visible only by reading which variable was passed where.",
+                    "Every additional entry point repeats part of the arrangement, so a change to shared construction has to be applied consistently to each of them.",
+                    "A graph that changes often produces a steady stream of mechanical edits that carry no design content, which is exactly the work that gets done carelessly."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The first of those is the one that grows fastest, and it is worth seeing rather than believing. Suppose `BundledQuestionDataSource` acquires a cache, and the program has three entry points that each build a controller. The data source's own file changes once; the three assembly sites change as well, because each of them constructs the data source; and if any of them builds it through an intermediate helper, that helper's signature changes too. None of those edits expresses a decision. They are the cost of having written the graph out by hand, and they recur every time the graph moves."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**What the official guidance says, and what it does not say.** The Android manual dependency-injection guide describes the technique fully and then names its own limits directly: as an application grows, \"you will start seeing that you write a lot of boilerplate code (such as factories), which can be error-prone\", and \"you also have to manage the scope and lifecycle of the containers yourself\". The page also carries a recommendation: \"When possible, it's recommended to use Hilt rather than manual dependency injection.\""
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read that the way it is written. It is a recommendation with a condition attached — *when possible* — published for Android applications, by the platform that publishes the library being recommended, and stated in the same document that explains how to do the manual technique properly. It is strong evidence about a trade-off: the costs above are real, common enough to warrant a default, and a library removes them. It is not a statement that hand-written wiring is incorrect, and it does not report what a particular graph costs, because no general recommendation can. A recommendation is an argument compressed into an instruction; the useful move is to decompress it and check whether its premises describe your program."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"Manual dependency injection is what you do until the project gets serious.\" It is a complete technique whose output is the same object graph a container would produce, and treating it as a beginner's stage causes two specific errors: adding a container to a program that has nothing for it to remove, and — worse — concluding that capabilities such as sharing or scoping arrived with the library, which makes the library's behaviour impossible to reason about later."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Judging the unit's own graph.** Half a dozen objects, one configuration value, one entry point, one shared node, and a shape that has changed three times across this unit. Read against the cost list, almost none of it has bitten: there is one assembly site, the deepest chain runs four nodes from the entry point down to the configuration value, the single reuse decision is visible in the line that makes it, and the whole arrangement is legible on one screen. The conclusion for this graph is that explicit construction is easier to understand than any additional configuration mechanism would be, and that adding one would cost a dependency, a vocabulary and a failure mode in exchange for removing about a dozen lines."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So the decision is not \"never\" — it is \"not yet, and here is what would change it\". The changes that would, stated as observable events rather than as a size:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "The graph grows substantially in depth, so that new dependencies are threaded through several construction sites rather than appearing at one.",
+                    "Lifetime-specific scopes proliferate — several kinds of bounded lifetime, each with objects that must be created and released with it, tracked by hand.",
+                    "Many independent contributors need to join the graph, so that one central file becomes a place every team edits and every change conflicts.",
+                    "The same configuration is repeated across several entry points often enough that keeping them consistent becomes recurring work.",
+                    "Validating the graph before the program runs becomes valuable enough to pay for, because a missing or ambiguous edge is currently found by running the program."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "None of those is a count of dependencies, and no such count exists. \"More than N dependencies means use a framework\" is a rule with no mechanism behind it: ten independent objects assembled once are trivial, and four objects with three bounded lifetimes and two entry points may not be."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**The honest framing is a curve, not a threshold.** Every project pays some combination of two costs: the wiring cost of maintaining assembly by hand, and the cost of a framework — a dependency, a configuration language to learn and keep correct, build tooling in some cases, a failure mode to understand, and the constraints the tool imposes on how the graph may be expressed. The first grows with graph size, depth, rate of change and the number of entry points. The second is paid mostly up front and then flattens. The question for any particular project is where those two curves cross, and it is genuinely a different point for a small application with one entry point than for a modular one with several teams contributing bindings."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**What that framing rules out in both directions.** It rules out \"manual wiring does not scale\", which names no cost and predicts nothing. It also rules out \"a framework removes boilerplate\", which is the same sentence with the sign flipped and is just as unhelpful — the useful statement is *which* work is removed, and the answer here is the clerical work above, not the design decisions, which the configuration still has to express somewhere. Completing the comparison across the actual frameworks requires knowing what each of them does, which is what the units on Dagger, Hilt and Koin supply, and the closing unit of this curriculum is where the crossing point is estimated rather than asserted."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**The proportionality argument, applied to wiring.** The architecture curriculum closes on a test: structure is proportionate when every element traces to a stated requirement, and the smallest structure that satisfies the requirements is the correct one rather than an unfinished version of a larger one. A construction mechanism is structure. It earns its place by removing a cost the project is actually paying — which means the argument for adding one is a sentence naming the work it removes, and the argument for keeping hand-written assembly is that no such sentence is currently true. Both of those are defensible answers, and only one of them is ever available for a given program."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked when manual dependency injection is sufficient, avoid both \"for small apps\" and \"never in production\". Say that it expresses everything a container expresses — constructor injection, bindings, sharing, per-use construction — and that what grows is clerical: threading new dependencies through construction sites, keeping a long ordered assembly correct, and repeating it at every entry point. Then name the specific change that would make you adopt a container for the program in front of you, and be able to report the official recommendation together with the condition attached to it rather than as a rule."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_smallest_sufficient_architecture",
+            "lesson_layers_and_their_cost",
+            "lesson_one_place_that_knows_how_to_build"
+          ],
+          "sources": [
+            {
+              "title": "Manual dependency injection",
+              "url": "https://developer.android.com/training/dependency-injection/manual"
+            },
+            {
+              "title": "Dependency injection in Android",
+              "url": "https://developer.android.com/training/dependency-injection"
+            },
+            {
+              "title": "Inversion of Control Containers and the Dependency Injection pattern",
+              "url": "https://martinfowler.com/articles/injection.html"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
     }
   ]
 }

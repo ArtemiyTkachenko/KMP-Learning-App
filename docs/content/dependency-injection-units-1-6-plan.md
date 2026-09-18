@@ -1261,6 +1261,331 @@ Each authoring issue appends its outcomes here, following the precedent of
 review, claims that were verified rather than reasoned about, source decisions, the semantic
 review of the Questions the Unit now reaches, and the cross-links and validation performed.
 
-E27-02 is the first to append here.
+### E27-02 authoring outcomes
+
+**Issue #386, `task/E27-02`. Authored 2026-09-18.** Unit 1 ships; Units 2–6 remain unauthored.
+
+#### What shipped
+
+**One Unit, `unit_dependency_injection_as_object_construction`, titled "Dependency Injection as
+Object Construction", home Topic `dependency_injection`.** It is appended after the six
+architecture Units, which keeps the document's Topic grouping and matches the Topic order in
+`initial_curriculum.json`. Read from production after the change: **25 active Units and 107
+active Lessons**, up from 24 and 101, and the `dependency_injection` Topic now exposes exactly
+one Learning Unit with six Lessons.
+
+| # | Lesson id | Title | Primary | Supporting |
+| --- | --- | --- | --- | --- |
+| L1.1 | `lesson_who_constructs_this_object` | Who Constructs This Object? | `di_fundamentals` | `constructor_injection`, `manual_di`, `service_locator_vs_di`, `separation_of_concerns` |
+| L1.2 | `lesson_a_dependency_should_be_visible` | A Dependency Should Be Visible | `constructor_injection` | `di_fundamentals`, `interface_boundaries`, `dependency_direction`, `test_doubles` |
+| L1.3 | `lesson_injected_inverted_or_both` | Injected, Inverted, or Both? | `di_fundamentals` | `dependency_direction`, `interface_boundaries`, `solid`, `constructor_injection` |
+| L1.4 | `lesson_one_place_that_knows_how_to_build` | One Place That Knows How to Build | `composition_root` | `manual_di`, `dependency_graphs`, `service_locator_vs_di`, `separation_of_concerns`, `layered_architecture` |
+| L1.5 | `lesson_asking_for_it_or_being_given_it` | Asking For It, or Being Given It | `service_locator_vs_di` | `di_fundamentals`, `composition_root`, `constructor_injection`, `test_di` |
+| L1.6 | `lesson_when_wiring_it_yourself_is_enough` | When Wiring It Yourself Is the Right Answer | `manual_di` | `composition_root`, `dependency_graphs`, `di_framework_tradeoffs`, `architecture_tradeoffs` |
+
+**Every identity is the planned one**, unchanged in id, title, order, primary concept and
+supporting set. No Lesson was added, removed, split or merged, and no supporting concept was
+promoted to primary.
+
+#### Deviations from the plan
+
+Two, both small and both additive.
+
+1. **Example A's clock is authored as a concrete `SystemClock`** rather than as the plan
+   diagram's generic `Clock` node. The concrete name is what makes "injection does not require
+   interfaces" demonstrable instead of asserted — L1.2 injects it by class, with no abstraction
+   anywhere — and the type is defined in the snippet that introduces it, so nothing depends on a
+   platform type of the same name.
+2. **Three backward links were added beyond the four the plan's link table requires**, plus the
+   intra-Unit links. The plan's table names L1.2, L1.3, L1.4 and L1.6 links into shipped
+   architecture Lessons; all four ship as specified. The additions are L1.1 →
+   `lesson_state_holder_responsibility`, which is the shipped Lesson whose deferral of
+   construction the E26 handoff ledger assigns to L1.1, and one intra-Unit link per Lesson from
+   L1.2 onwards to the Lesson whose conclusion it consumes. Every one is backward and resolvable;
+   nothing points forward.
+
+Nothing else departed from the plan. No Lesson boundary was found to be wrong, so neither this
+document's identities nor the blueprint's Unit map needed editing.
+
+#### Content structure
+
+Every Lesson carries CORE, PRACTICAL and SENIOR sections, 20–26 blocks and roughly
+1,350–1,750 words, which sits inside the range the shipped E23–E26 Lessons occupy and inside
+Rule 8's 5–10 minute target. Each carries two to three Sources, a `KEY_TAKEAWAY` in CORE, at
+least one `COMMON_MISTAKE` in PRACTICAL and an `INTERVIEW_FOCUS` closing SENIOR. Comparison
+tables are used five times, each for a comparison that is genuinely clearer in a table: the
+three construction options, the injection-against-inversion decisions, the four
+injected/inverted combinations, and the located-against-injected class.
+
+#### Example A, as actually authored
+
+One graph, evolved across the six Lessons rather than restated:
+
+```text
+main
+ └─ StudySessionController
+     ├─ QuestionRepository   (concrete class in L1.1–L1.2; an interface from L1.3)
+     │    └─ LocalQuestionRepository → BundledQuestionDataSource → QuestionCatalogConfig
+     └─ SystemClock          (concrete throughout)
+```
+
+- **L1.1** introduces `StudySessionController`, `QuestionRepository` and `SystemClock`, all
+  concrete, and writes the controller three ways.
+- **L1.2** injects `SystemClock` by class, then shows the same controller with nine constructor
+  parameters as a design signal.
+- **L1.3** is where `QuestionRepository` becomes an interface, at the one point a boundary is
+  earned, with `LocalQuestionRepository` and `BundledQuestionDataSource` appearing beneath it.
+  `SystemClock` deliberately stays concrete, which is the comparison the Lesson needs.
+- **L1.4** assembles the graph in `main`, then grows it with `QuestionCatalogConfig` two levels
+  down, then shows a `ReviewScreenPresenter` that rebuilds the same chain internally.
+- **L1.5** replaces the controller's constructor with `ServiceRegistry.resolve(...)` calls
+  against the same two collaborators.
+- **L1.6** adds `QuestionBrowser` and a per-use `SessionSummaryBuilder` so that sharing and
+  fresh-per-use construction are both visible, then judges this graph.
+
+A consistency pass was run over every snippet: type names, constructor shapes, parameter order,
+`suspend` placement, visibility modifiers and the point at which the interface appears all agree
+across the six Lessons. The only secondary micro-example is L1.3's
+`LoadQuestions`/`SqlQuestionDatabase` pair, which exists because the "injected but not inverted"
+shape needs a consumer whose source names a storage package; its packages
+(`com.example.study.session`, `com.example.study.data.sql`) were chosen not to collide with the
+architecture curriculum's own worked example.
+
+#### Misconception coverage
+
+Each is defeated by reasoning in place rather than collected into a myths list.
+
+| Misconception | Where it is defeated |
+| --- | --- |
+| Dependency injection requires a framework | L1.1 CORE definition and its `COMMON_MISTAKE`; reinforced by L1.6's whole argument |
+| Dependency injection requires interfaces | L1.2's concrete `SystemClock` injection and its `COMMON_MISTAKE` |
+| Constructor injection is a Dagger feature | L1.2 SENIOR, "Why the technique is framework-independent" |
+| Injection and inversion are the same thing | L1.3 entire, with an example of each without the other |
+| A DI framework fixes dependency direction | L1.3's `COMMON_MISTAKE`, citing `lesson_dependency_inversion_in_practice` |
+| Every class should resolve from a container | L1.5's four costs, and L1.4's warning about a centralised graph classes reach into |
+| Service locator and injection are equivalent because both return objects | L1.5 CORE opens on exactly that and moves the comparison off the result |
+| More interfaces automatically improve testability | L1.2 SENIOR: substitution rests on the dependency being explicit, not on interface count |
+| Hiding a large constructor behind a container fixes an over-responsible class | L1.2's second `COMMON_MISTAKE` |
+| Manual DI is only for toy projects | L1.6's `COMMON_MISTAKE` and its recommendation-versus-rule reading |
+
+Two further corrections the issue asked for are handled as wording rather than as misconceptions.
+**Injection is defined by who supplies the dependency, not by the constructor signature**: L1.1
+SENIOR states the preferred form and then explicitly refuses the narrow definition, so Unit 4's
+field injection will not contradict Unit 1. And **the four-combination table cannot be read as
+"framework-free means not injected"**: the paragraph after it says so directly, and places the
+inverted-without-a-container shape in the *injected and inverted* row.
+
+#### Source decisions
+
+Every source was re-opened on 2026-09-18 and the specific claim re-read; none was carried over
+from E27-01 on trust. Sources are attached per claim rather than one general DI page per Lesson.
+
+| Source | Claims it settles | Used by |
+| --- | --- | --- |
+| [Dependency injection in Android](https://developer.android.com/training/dependency-injection) | The three ways a class gets an object and "The third option is dependency injection"; constructor against field injection and that framework classes are instantiated by the system; the service-locator comparison, including that dependencies "are encoded in the class implementation, not in the API surface" | L1.1, L1.2, L1.5, L1.6 |
+| [Manual dependency injection](https://developer.android.com/training/dependency-injection/manual) | The container placed at the application entry point; the named costs — "a lot of boilerplate code (such as factories), which can be error-prone" and "manage the scope and lifecycle of the containers yourself"; the recommendation "When possible, it's recommended to use Hilt rather than manual dependency injection" | L1.4, L1.6 |
+| [Inversion of Control Containers and the Dependency Injection pattern](https://martinfowler.com/articles/injection.html) | The name of the pattern and its three forms, which is what supports constructor injection being framework-independent; "the configuration of services is separated from their use"; the assembler; and the service-locator comparison, verbatim on searching the source for calls to the locator | L1.1, L1.2, L1.3, L1.4, L1.5, L1.6 |
+| [Composition Root](https://blog.ploeh.dk/2011/07/28/CompositionRoot/) | "a (preferably) unique location in an application where modules are composed together", "as close as possible to the application's entry point", and that a DI container should only be referenced from it — which is the container-is-not-the-root distinction | L1.4 |
+| [The Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html) | The dependency rule, reused from E26 rather than re-argued | L1.3 |
+| [Kotlin properties: late-initialized properties](https://kotlinlang.org/docs/properties.html) | That a `lateinit` property accessed before initialisation throws `UninitializedPropertyAccessException`, which is the formedness failure L1.2 makes concrete | L1.2 |
+
+**Three claims were narrowed rather than sourced as planned.**
+
+1. **The constructor-injection chronology claim was dropped.** The blueprint's L1.2 Senior layer
+   proposed that constructor injection "predates every library in this curriculum and is
+   specified by an independent standard the frameworks adopt rather than define". Establishing
+   either half cleanly would need historical or specification sourcing that does not carry its
+   weight for the pedagogical point, so L1.2 makes the stronger and simpler claim instead:
+   constructor injection is a framework-independent technique that the frameworks **encode or
+   automate rather than define**, supported by Fowler's description of it as one of the pattern's
+   three forms and by the observable fact that swapping frameworks leaves constructors untouched.
+   No history is taught.
+2. **The Android recommendation is reported with its condition and its publisher.** L1.6 quotes
+   "When possible" and says who publishes both the page and the library it recommends, then
+   reads it as strong evidence about a trade-off rather than as a rule. The official guidance is
+   neither contradicted nor converted into a requirement.
+3. **The service-locator failure-timing claim is scoped to the demonstrated design.** L1.5 states
+   explicitly that a registry validating registrations at start-up narrows the window and one
+   resolving lazily widens it, and carries forward only the general claim that a requirement
+   absent from the signature cannot be checked by the compiler at the construction site.
+
+No framework-marketing page, tutorial aggregator or forum answer was consulted or cited, and no
+Koin, Dagger or Hilt documentation was needed, because Unit 1 makes no framework claim.
+
+#### Cross-links
+
+All backward, all resolving, no forward link anywhere — the five later Units do not exist, so a
+forward `relatedLessonIds` entry would fail `UNKNOWN_RELATED_LESSON`. Forward pointing is done in
+prose, naming the Unit.
+
+| Lesson | Links to |
+| --- | --- |
+| L1.1 | `lesson_state_holder_responsibility` |
+| L1.2 | `lesson_when_an_interface_is_a_boundary`, L1.1 |
+| L1.3 | `lesson_dependency_inversion_in_practice`, `lesson_dependency_direction_and_boundaries`, L1.2 |
+| L1.4 | `lesson_what_architecture_decides`, L1.1 |
+| L1.5 | L1.1, L1.2, L1.4 |
+| L1.6 | `lesson_smallest_sufficient_architecture`, `lesson_layers_and_their_cost`, L1.4 |
+
+**No shipped Lesson was edited.** No reciprocal link was added for symmetry, and the three
+shipped Lessons that point at this curriculum in prose were left alone; E27-09 re-reads them.
+**No contradiction with any E26 Lesson was found.** The two E26 conclusions this Unit carries
+forward — that a container changes no import, and that structure earns its cost — are cited and
+applied rather than re-derived, and L1.2 cites the interface boundary test instead of re-arguing
+it.
+
+#### Practice pool, resolved through production
+
+`LearningUnitPracticeIntegrationTest.theDependencyInjectionFoundationsUnitPractisesOnlyItsFivePrimaryConcepts`
+drives the real Practice Builder, the real resolver and the real selector against the imported
+bank. **Expected five, resolved five**, and the scope is exactly the five primary concepts:
+
+| Question | Subtopic | Level |
+| --- | --- | --- |
+| `di_constructor_injection_testability` | `di_fundamentals` | FOUNDATION |
+| `hilt_field_injection_framework_classes` | `constructor_injection` | FOUNDATION |
+| `composition_root_001` | `composition_root` | FOUNDATION |
+| `service_locator_vs_di_001` | `service_locator_vs_di` | FOUNDATION |
+| `manual_di_graph_growth_cost` | `manual_di` | APPLIED |
+
+**4 FOUNDATION, 1 APPLIED, 0 ADVANCED**, matching the plan's model exactly. No supporting concept
+contributes — the test asserts that `test_doubles`, `test_di` and the six architecture bridges
+reach nothing — and the intersection with the architecture foundations Unit's pool is empty, which
+is the plan's prediction that no shipped Unit's practice changes.
+
+#### Semantic review of the five Questions the Unit now reaches
+
+Each was re-read in full against the **finished** prose, not against the mappings.
+
+- **`di_constructor_injection_testability` — answerable.** Its three keyed options map onto
+  L1.2's four guarantees: visibility in the type, full formedness with no init call, and
+  substitution by a caller supplying something else. Its sharpest distractor — that a framework
+  could build the class with nothing declaring how the collaborators are provided — is
+  refused by L1.2 SENIOR, which says a framework arranges for the arguments to be present and
+  does not define the technique, and by L1.4's container-is-not-the-root distinction. Its other
+  distractor, that collaborators become optional, is refused by the "cannot be skipped" guarantee
+  and by L1.2's refusal to make a required dependency nullable. Immutability is taught as the
+  fourth guarantee and again in the `lateinit` contrast. **Routing note, unchanged:** the Question
+  sits on `di_fundamentals`, so it is reached through L1.1 and L1.3 rather than through L1.2,
+  which is the Lesson that teaches it.
+- **`composition_root_001` — answerable.** L1.4 CORE gives the keyed answer in its own words
+  (assembly centralised near the entry point) and kills all three distractors explicitly: the
+  queried registry is named as the opposite design in the same Lesson's `COMMON_MISTAKE` and
+  taught in full by L1.5, scoping and lifetime are named as a separate decision deferred to
+  Unit 2, and caching never appears as part of the definition. The Question remains definitional
+  where the Lesson teaches a judgement; it was not rewritten and the Lesson was not narrowed to
+  match it.
+- **`service_locator_vs_di_001` — answerable.** Its keyed option is L1.5's first and third
+  named cost verbatim in substance. The Lesson deliberately goes further, adding the
+  integration-boundary qualification the Question does not pose, and was **not** weakened to
+  match: a reader who has understood L1.5 answers this Question easily, and also knows the
+  qualification the Question omits.
+- **`manual_di_graph_growth_cost` — answerable from first principles.** Its keyed option is the
+  first item in L1.6's cost list, worked through concretely with three entry points and an
+  intermediate helper. All three distractors are refused by the Lesson's opening argument that
+  manual wiring loses no capability: scoping and sharing without a generator, constructor
+  injection that does not give way, and a shared instance between two consumers shown as one
+  `val`. L1.6 makes the argument in its own vocabulary and does not reuse the Question's wording.
+- **`hilt_field_injection_framework_classes` — structurally reachable, not taught by this Unit.**
+  Its stem, options and explanation are entirely about Hilt and `@AndroidEntryPoint`. Unit 1
+  names no framework API at all, so a reader who has finished it cannot reason to the keyed
+  answer from what was taught. What Unit 1 does give is the adjacent generic reasoning — L1.1
+  SENIOR's statement that injection is about who supplies rather than which member it lands on,
+  and L1.5's integration-boundary qualification — which is a bridge toward the Question, not
+  coverage of it. **Unit 1 practice is therefore not semantically clean, and this outcome does
+  not claim it is.**
+
+#### Known premature Hilt routing
+
+`hilt_field_injection_framework_classes` maps to `constructor_injection`, which is L1.2's primary
+concept, so it enters Unit 1 practice three Units before Hilt exists. This is E27-01's recorded
+finding and it was **not** repaired here: L1.2's primary mapping is correct and unchanged, Unit
+practice was not removed, the Question was not re-mapped or altered, and Hilt was not taught
+prematurely to close the gap. The limitation is pinned by an assertion in the practice test, so
+E27-08's re-map to `hilt_fundamentals` — which must be decided together with GAP-U1-E — has to
+re-state it rather than silently repair it.
+
+#### GAP-U1-A … GAP-U1-E after authoring
+
+E27-08 owns disposition. Recorded here is only what finished authoring changed about each.
+
+| Gap | Status after authoring |
+| --- | --- |
+| GAP-U1-A — injected against inverted in one graph | **Still open as planned, and instructionally sharper.** L1.3 ships both shapes explicitly and adds a four-combination table, so a Question can now be written against a specific taught arrangement rather than against a definition. The one authoring addition E27-08 should exploit: the Lesson warns against reading "framework-free" as "not injected", which is a plausible distractor axis |
+| GAP-U1-B — choosing construct / fetch / receive from a stated requirement | **Still open as planned.** L1.1's comparison table gives seven properties that distinguish the three, which is a ready-made basis for a decision Question; nothing about authoring reduced the gap |
+| GAP-U1-C — recognising construction knowledge leaking outside the composition root | **Still open as planned, and now has a worked referent.** L1.4 ships the leaking `ReviewScreenPresenter` and the diagnosis sentence, so the gap can be closed with a locate-the-responsibility Question rather than another definition |
+| GAP-U1-D — hidden lookup against legitimate integration-boundary resolution | **Still open as planned, and it is the gap authoring most strengthened.** L1.5 now teaches the deciding question and four acceptability criteria, so a two-call judgement Question has explicit taught criteria to assess. It remains the gap most specific to this curriculum's argument |
+| GAP-U1-E — generic constructor injection reachable from the Lesson that teaches it | **Still open, and unchanged in shape.** L1.2 genuinely teaches the reasoning `di_constructor_injection_testability` assesses, while that Question sits on `di_fundamentals` and `constructor_injection`'s only ACTIVE Question is the Hilt one. Authoring confirms the mismatch is real rather than theoretical; the two re-maps still have to be decided together |
+
+**No Question was authored, changed, re-mapped, re-levelled or deprecated, and no AnswerOption was
+touched.** The `dependency_injection` Topic still holds 27 Questions — 23 ACTIVE (14 FOUNDATION,
+9 APPLIED, 0 ADVANCED) and 4 DEPRECATED — and no taxonomy entry was added, removed or edited.
+
+#### Tests changed, and why
+
+| File | Change | Why production data made it necessary |
+| --- | --- | --- |
+| `BundledLearningCurriculumTest` | Unit id, title and home-Topic lists extended by one; Lesson id/title order and primary mappings added for the new Unit; three new tests — `dependencyInjectionFoundationsUnitKeepsItsPlannedBridgesOutOfPrimaryPractice`, `dependencyInjectionFoundationsUnitLinksBackwardsOnlyToShippedArchitectureAnchors` and `dependencyInjectionFoundationsUnitTeachesEveryConclusionWithoutAFramework` | The document now spans four home Topics. The supporting mappings are where `test_doubles` and `test_di` would silently become practice, and the framework-free test is the acceptance criterion about syntax expressed as a check |
+| `LearningUnitPracticeIntegrationTest` | `existingLearnerTraversesTheExpansionWithLiveParentProgressAndDurableIdentities` extended to walk the dependency-injection Unit before Continue Learning may report Complete, and its final studied-record count raised from 100 to 106; new test `theDependencyInjectionFoundationsUnitPractisesOnlyItsFivePrimaryConcepts` | Continue Learning walks the whole document, so a fourth home Topic changes the traversal. The Unit is deliberately **not** in the shared expectation table, because that table's loop cannot state which of the five resolved Questions is semantically premature — the bespoke test pins the exact five ids and that limitation instead |
+
+The framework-free test inspects **authored code blocks only**. Policing prose would flag the
+forward sentences the plan explicitly permits, which is the brittleness E27-02's brief warned
+against. No test was added that only restates schema validation `LearningCurriculumValidatorTest`
+already performs, and the data-driven suites — the reader journey over every shipped Unit, Topic
+Detail's Unit rows, the end-to-end repository path — needed no edit because they read the
+document rather than list it.
+
+#### Generated coverage
+
+`python3 tools/learning_question_coverage.py --write` then `--check`; the snapshot reports
+**25 active units, 107 active lessons**, the new Unit's pool as 4 FOUNDATION and 1 APPLIED, and
+**0 primary subtopics with no active question** — all five of this Unit's primaries hold one. The
+generated per-Lesson tables expose the premature routing plainly: L1.2's only primary Question is
+`hilt_field_injection_framework_classes`, and `di_constructor_injection_testability` appears
+under L1.1 and L1.3 instead. Nothing in the file was edited by hand.
+
+#### Validation performed
+
+| Command | Result |
+| --- | --- |
+| `python3` structural pre-check over both bundled JSON documents | Unit and Lesson ids unique across the whole document, every primary and supporting id an ACTIVE Subtopic, no primary/supporting overlap, every `relatedLessonIds` target resolvable, non-self and backward in document order, no forward link. No defect |
+| `python3` framework-syntax scan over every block of the new Unit | Zero occurrences of Dagger, Hilt or Koin syntax in code, prose, bullets or table cells. Framework **names** occur in seven paragraphs in total, all of them forward-reference prose: exactly one bounded statement in L1.1, two in L1.2, one each in L1.4 and L1.5, and two in L1.6 — one of which is the quoted Android recommendation. L1.3 names no framework at all |
+| `./gradlew :shared:jvmTest --tests "*BundledLearningCurriculumTest*"` | 45 tests, 0 failures |
+| `./gradlew :shared:jvmTest --tests "*LearningUnitPracticeIntegrationTest*"` | 15 tests, 0 failures |
+| `./gradlew :shared:jvmTest --tests "*LearningProductionContentJourneyTest*" --tests "*LearningContentEndToEndTest*" --tests "*LearningCurriculumValidatorTest*"` | Passed, including the journey suite that renders every authored block of the new Unit in the real reader, checks the reading column never widens, and opens authored Source links through the app's own URI boundary |
+| `./gradlew :shared:jvmTest --rerun-tasks` | **1,461 tests, 0 failures, 0 skipped** |
+| `python3 tools/learning_question_coverage.py --write` then `--check` | Snapshot regenerated and reported current |
+| `cd tools && python3 -m unittest test_learning_question_coverage.py` | 21 tests, OK |
+| `./gradlew :shared:check` | **BUILD SUCCESSFUL** — `jvmTest`, `testAndroidHostTest`, `jsTest`/`jsBrowserTest`, `wasmJsTest`/`wasmJsBrowserTest` and `allTests` |
+| `./gradlew :shared:iosSimulatorArm64Test --rerun-tasks` | **BUILD SUCCESSFUL.** Re-run explicitly because the task reported UP-TO-DATE inside `:shared:check` against results predating this change |
+| `./gradlew :androidApp:assembleDebug` | **BUILD SUCCESSFUL** |
+| `git diff --check` and `git status --short` | Four files changed — the bundled learning document, two jvm test files and the generated coverage snapshot, plus this plan — with no build or cache output and no whitespace defects |
+
+#### Not validated
+
+- **`iosArm64` is not compiled locally or on CI**, unchanged from E23–E26. `iosSimulatorArm64Test`
+  was run and passed; the device target was not. Unit 1 is bundled content with no
+  target-specific code and makes no platform claim, so nothing in its prose depends on that
+  target, but the limitation is reported because it remains true of the repository.
+- **No platform-specific behaviour is claimed from compilation.** The JS, Wasm and Android host
+  results above prove the document decodes and the suites pass on those targets; they are not
+  evidence about rendering on any device, and the Unit was not read on a running Android, iOS or
+  web host.
+- **No CI run is claimed.** Nothing here was observed on GitHub Actions.
+- **Backlog validation was not run**: `PyYAML` is unavailable in this environment, so
+  `.github/project/backlog.yml` was read as text rather than parsed. **`gh` is not installed**, so
+  issue #386 was read from the backlog entry — whose `issue`, `approach` and twelve
+  `acceptance_criteria` are the same text — rather than from GitHub directly.
+- **The prose itself is editorial.** No automated check can confirm that a Lesson teaches what it
+  claims; the semantic review above is a judgement, as Rule 10 of the authoring contract requires.
+
+#### Production code untouched
+
+**No production dependency-injection change of any kind.** No Koin module, host `startKoin`
+function, `koinViewModel()` call site, service construction or state-holder lifetime was edited;
+the Koin version in `gradle/libs.versions.toml` is unchanged at 4.2.2; and no Dagger, Hilt or
+other dependency-injection dependency was added to any module. No UI, navigation, progress,
+assessment, theme, icon or application-identity code was touched — the change is bundled content,
+two test files and documentation.
 
 ---

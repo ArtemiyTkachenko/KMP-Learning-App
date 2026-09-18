@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `bcac326ca5aa925805e65d87d755fe1086cc7682764e951bc6eed355b00feae7` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `c7213af0604f89fa5a1b3b0e7cbadecf838c24aa08e8ffe783b7699b4f14c337` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `3da78c289e4ab49b9771390d1e3ba1bd9b32b9506b1bba8a89f71bb5de28736d` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,12 +68,12 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 24 |
-| Active lessons in those units | 101 |
-| Distinct primary subtopics | 49 |
-| Distinct supporting subtopics | 90 |
-| Unique active questions reached through primary mappings | 130 |
-| Primary subtopics with at least one active question | 49 |
+| Active learning units | 25 |
+| Active lessons in those units | 107 |
+| Distinct primary subtopics | 54 |
+| Distinct supporting subtopics | 97 |
+| Unique active questions reached through primary mappings | 135 |
+| Primary subtopics with at least one active question | 54 |
 | Primary subtopics with no active question | 0 |
 | Active questions in the bank | 419 |
 | Deprecated questions excluded from this report | 41 |
@@ -115,6 +115,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Domain Logic, Use Cases and Dependency Direction (`unit_domain_logic_and_dependency_direction`) | 5 | 4 | 0 | 9 | 0 | 9 |
 | MVP, MVVM and MVI Responsibility Models (`unit_responsibility_models_mvp_mvvm_mvi`) | 5 | 5 | 1 | 4 | 0 | 5 |
 | State, Events, Lifetime and Architecture Selection (`unit_state_events_lifetime_and_selection`) | 4 | 2 | 2 | 6 | 2 | 10 |
+| Dependency Injection as Object Construction (`unit_dependency_injection_as_object_construction`) | 6 | 5 | 4 | 1 | 0 | 5 |
 
 ## Unit and lesson detail
 
@@ -2088,6 +2089,122 @@ Supporting context — not primary coverage:
 | `repository_pattern` — Repository pattern | 4 | `architecture` — Application Architecture & Design Principles |
 | `layered_architecture` — Layered architecture | 2 | `architecture` — Application Architecture & Design Principles |
 | `clean_architecture` — Clean Architecture | 2 | `architecture` — Application Architecture & Design Principles |
+
+### Dependency Injection as Object Construction (`unit_dependency_injection_as_object_construction`)
+
+Home topic: `dependency_injection` — Dependency Injection.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 4 | `composition_root_001`, `di_constructor_injection_testability`, `hilt_field_injection_framework_classes`, `service_locator_vs_di_001` |
+| APPLIED | 1 | `manual_di_graph_growth_cost` |
+| ADVANCED | 0 | — |
+
+#### Who Constructs This Object? (`lesson_who_constructs_this_object`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `di_fundamentals` — Dependency injection fundamentals | 1 | 0 | 0 | 1 | `di_constructor_injection_testability` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `constructor_injection` — Constructor injection | 1 | `dependency_injection` — Dependency Injection |
+| `manual_di` — Manual dependency injection | 1 | `dependency_injection` — Dependency Injection |
+| `service_locator_vs_di` — Service locator vs dependency injection | 1 | `dependency_injection` — Dependency Injection |
+| `separation_of_concerns` — Separation of concerns | 3 | `architecture` — Application Architecture & Design Principles |
+
+#### A Dependency Should Be Visible (`lesson_a_dependency_should_be_visible`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `constructor_injection` — Constructor injection | 1 | 0 | 0 | 1 | `hilt_field_injection_framework_classes` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `di_fundamentals` — Dependency injection fundamentals | 1 | `dependency_injection` — Dependency Injection |
+| `interface_boundaries` — Interface boundaries | 2 | `architecture` — Application Architecture & Design Principles |
+| `dependency_direction` — Dependency direction and inversion | 2 | `architecture` — Application Architecture & Design Principles |
+| `test_doubles` — Test doubles | 1 | `testing` — Testing & Testability |
+
+#### Injected, Inverted, or Both? (`lesson_injected_inverted_or_both`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `di_fundamentals` — Dependency injection fundamentals | 1 | 0 | 0 | 1 | `di_constructor_injection_testability` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `dependency_direction` — Dependency direction and inversion | 2 | `architecture` — Application Architecture & Design Principles |
+| `interface_boundaries` — Interface boundaries | 2 | `architecture` — Application Architecture & Design Principles |
+| `solid` — SOLID principles | 1 | `architecture` — Application Architecture & Design Principles |
+| `constructor_injection` — Constructor injection | 1 | `dependency_injection` — Dependency Injection |
+
+#### One Place That Knows How to Build (`lesson_one_place_that_knows_how_to_build`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `composition_root` — Composition root | 1 | 0 | 0 | 1 | `composition_root_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `manual_di` — Manual dependency injection | 1 | `dependency_injection` — Dependency Injection |
+| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
+| `service_locator_vs_di` — Service locator vs dependency injection | 1 | `dependency_injection` — Dependency Injection |
+| `separation_of_concerns` — Separation of concerns | 3 | `architecture` — Application Architecture & Design Principles |
+| `layered_architecture` — Layered architecture | 2 | `architecture` — Application Architecture & Design Principles |
+
+#### Asking For It, or Being Given It (`lesson_asking_for_it_or_being_given_it`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `service_locator_vs_di` — Service locator vs dependency injection | 1 | 0 | 0 | 1 | `service_locator_vs_di_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `di_fundamentals` — Dependency injection fundamentals | 1 | `dependency_injection` — Dependency Injection |
+| `composition_root` — Composition root | 1 | `dependency_injection` — Dependency Injection |
+| `constructor_injection` — Constructor injection | 1 | `dependency_injection` — Dependency Injection |
+| `test_di` — Dependency replacement/injection in tests | 1 | `testing` — Testing & Testability |
+
+#### When Wiring It Yourself Is the Right Answer (`lesson_when_wiring_it_yourself_is_enough`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `manual_di` — Manual dependency injection | 0 | 1 | 0 | 1 | `manual_di_graph_growth_cost` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `composition_root` — Composition root | 1 | `dependency_injection` — Dependency Injection |
+| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
+| `di_framework_tradeoffs` — DI framework trade-offs | 0 | `dependency_injection` — Dependency Injection |
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 2 | `architecture` — Application Architecture & Design Principles |
 
 ## Primary assessment gaps
 

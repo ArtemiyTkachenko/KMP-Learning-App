@@ -122,6 +122,8 @@ does not cover: [CI](docs/workflows/ci.md).
 [Coroutines and Flow Units 1-6 plan](docs/content/coroutines-flow-units-1-6-plan.md) ·
 [Architecture learning blueprint](docs/content/architecture-learning-blueprint.md) ·
 [Architecture Units 1-6 plan](docs/content/architecture-units-1-6-plan.md) ·
+[Dependency Injection learning blueprint](docs/content/dependency-injection-learning-blueprint.md) ·
+[Dependency Injection Units 1-6 plan](docs/content/dependency-injection-units-1-6-plan.md) ·
 [learning-to-question coverage](docs/content/learning-question-coverage.md)
 
 ## Skills

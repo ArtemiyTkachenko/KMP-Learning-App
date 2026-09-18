@@ -3,10 +3,12 @@ package org.artkachenko.kmp_learning_app.curriculum.learning.content
 import kotlinx.coroutines.test.runTest
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.content.BundledCurriculumSource
+import org.artkachenko.kmp_learning_app.curriculum.learning.LearningBlock
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
 import org.artkachenko.kmp_learning_app.curriculum.learning.validation.LearningCurriculumValidator
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -57,6 +59,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_domain_logic_and_dependency_direction",
                 "unit_responsibility_models_mvp_mvvm_mvi",
                 "unit_state_events_lifetime_and_selection",
+                "unit_dependency_injection_as_object_construction",
             ),
             units().map { it.id },
         )
@@ -87,12 +90,13 @@ internal class BundledLearningCurriculumTest {
                 "Domain Logic, Use Cases and Dependency Direction",
                 "MVP, MVVM and MVI Responsibility Models",
                 "State, Events, Lifetime and Architecture Selection",
+                "Dependency Injection as Object Construction",
             ),
             units().map { it.title },
         )
 
         // A Unit's home Topic decides where it is browsed, so it is asserted per Unit
-        // rather than as one value: the document now spans three home Topics.
+        // rather than as one value: the document now spans four home Topics.
         assertEquals(
             listOf(
                 "android_ui",
@@ -119,6 +123,7 @@ internal class BundledLearningCurriculumTest {
                 "architecture",
                 "architecture",
                 "architecture",
+                "dependency_injection",
             ),
             units().map { it.topicId },
         )
@@ -546,6 +551,35 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_state_events_lifetime_and_selection").lessons.map { it.title },
         )
+
+        // E27-02. The order is the argument the Unit makes, and each Lesson consumes the
+        // previous one's answer: where a collaborator can come from, what taking it as a
+        // constructor parameter makes true, why supplying it is not the same decision as
+        // inverting the dependency, who assembles the graph once classes stop doing it, what
+        // a lookup hides, and whether this graph needs anything more than a `main` function.
+        assertEquals(
+            listOf(
+                "lesson_who_constructs_this_object",
+                "lesson_a_dependency_should_be_visible",
+                "lesson_injected_inverted_or_both",
+                "lesson_one_place_that_knows_how_to_build",
+                "lesson_asking_for_it_or_being_given_it",
+                "lesson_when_wiring_it_yourself_is_enough",
+            ),
+            unit("unit_dependency_injection_as_object_construction").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "Who Constructs This Object?",
+                "A Dependency Should Be Visible",
+                "Injected, Inverted, or Both?",
+                "One Place That Knows How to Build",
+                "Asking For It, or Being Given It",
+                "When Wiring It Yourself Is the Right Answer",
+            ),
+            unit("unit_dependency_injection_as_object_construction").lessons.map { it.title },
+        )
     }
 
     @Test
@@ -851,6 +885,24 @@ internal class BundledLearningCurriculumTest {
                 listOf("architecture_tradeoffs"),
             ),
             unit("unit_state_events_lifetime_and_selection").lessons.map { it.primarySubtopicIds },
+        )
+
+        // E27-02. Six Lessons, five distinct primary concepts: `di_fundamentals` is primary
+        // twice because naming the three ways a collaborator can arrive and separating
+        // injection from inversion are both statements about what injection *is*, taught at
+        // different depths. Every primary is a `dependency_injection` Subtopic, which is what
+        // keeps this Unit from altering any other Topic's practice, and the five together are
+        // exactly the concepts Unit practice may resolve.
+        assertEquals(
+            listOf(
+                listOf("di_fundamentals"),
+                listOf("constructor_injection"),
+                listOf("di_fundamentals"),
+                listOf("composition_root"),
+                listOf("service_locator_vs_di"),
+                listOf("manual_di"),
+            ),
+            unit("unit_dependency_injection_as_object_construction").lessons.map { it.primarySubtopicIds },
         )
     }
 
@@ -1891,6 +1943,160 @@ internal class BundledLearningCurriculumTest {
                     "${lesson.id} links forward into the synthesis Unit",
                 )
             }
+    }
+
+    @Test
+    fun dependencyInjectionFoundationsUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        // Twelve concepts are supporting-only across this Unit. Four of them are the other
+        // Lessons' primaries, named where one Lesson needs the next one's vocabulary without
+        // claiming to teach it; the rest bridge to `architecture`, which already owns them.
+        // `test_doubles` and `test_di` are the two that matter most: substitution is named as a
+        // consequence of an explicit dependency and nothing else, because the testing curriculum
+        // owns test doubles and test graphs, and promoting either would claim practice coverage
+        // for material this Unit deliberately refuses to teach.
+        assertEquals(
+            listOf(
+                listOf("constructor_injection", "manual_di", "service_locator_vs_di", "separation_of_concerns"),
+                listOf("di_fundamentals", "interface_boundaries", "dependency_direction", "test_doubles"),
+                listOf("dependency_direction", "interface_boundaries", "solid", "constructor_injection"),
+                listOf(
+                    "manual_di",
+                    "dependency_graphs",
+                    "service_locator_vs_di",
+                    "separation_of_concerns",
+                    "layered_architecture",
+                ),
+                listOf("di_fundamentals", "composition_root", "constructor_injection", "test_di"),
+                listOf("composition_root", "dependency_graphs", "di_framework_tradeoffs", "architecture_tradeoffs"),
+            ),
+            unit("unit_dependency_injection_as_object_construction").lessons.map { it.supportingSubtopicIds },
+        )
+
+        // `di_framework_tradeoffs` is supporting in the closing Lesson and primary in three
+        // Lessons of the Unit that compares the frameworks, which does not ship yet. Promoting
+        // it here would claim the comparison this Unit explicitly defers.
+        val lessons = unit("unit_dependency_injection_as_object_construction").lessons.associateBy { it.id }
+        val closing = lessons.getValue("lesson_when_wiring_it_yourself_is_enough")
+        assertEquals(listOf("manual_di"), closing.primarySubtopicIds)
+        assertTrue("di_framework_tradeoffs" in closing.supportingSubtopicIds)
+    }
+
+    @Test
+    fun dependencyInjectionFoundationsUnitLinksBackwardsOnlyToShippedArchitectureAnchors() = runTest {
+        val unitId = "unit_dependency_injection_as_object_construction"
+        val lessons = unit(unitId).lessons.associateBy { it.id }
+
+        // `docs/content/dependency-injection-units-1-6-plan.md` names four required backward
+        // links into the shipped architecture Units, and each of them is load-bearing rather
+        // than decorative: the boundary test this Unit refuses to re-argue, the inversion
+        // argument it applies from the injection side, what architecture decides, and the
+        // proportionality test the closing Lesson reuses for wiring. The intra-Unit links are
+        // the Lessons whose conclusions the current one consumes.
+        assertEquals(
+            listOf("lesson_state_holder_responsibility"),
+            lessons.getValue("lesson_who_constructs_this_object").relatedLessonIds,
+        )
+        assertEquals(
+            listOf("lesson_when_an_interface_is_a_boundary", "lesson_who_constructs_this_object"),
+            lessons.getValue("lesson_a_dependency_should_be_visible").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_dependency_inversion_in_practice",
+                "lesson_dependency_direction_and_boundaries",
+                "lesson_a_dependency_should_be_visible",
+            ),
+            lessons.getValue("lesson_injected_inverted_or_both").relatedLessonIds,
+        )
+        assertEquals(
+            listOf("lesson_what_architecture_decides", "lesson_who_constructs_this_object"),
+            lessons.getValue("lesson_one_place_that_knows_how_to_build").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_who_constructs_this_object",
+                "lesson_a_dependency_should_be_visible",
+                "lesson_one_place_that_knows_how_to_build",
+            ),
+            lessons.getValue("lesson_asking_for_it_or_being_given_it").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_smallest_sufficient_architecture",
+                "lesson_layers_and_their_cost",
+                "lesson_one_place_that_knows_how_to_build",
+            ),
+            lessons.getValue("lesson_when_wiring_it_yourself_is_enough").relatedLessonIds,
+        )
+
+        // Every link points backwards: to a Lesson shipped before this epic, or to an earlier
+        // Lesson of this Unit. The five later dependency-injection Units do not exist yet, so a
+        // forward link would not resolve at all.
+        val order = units().flatMap { it.lessons.map { lesson -> lesson.id } }
+        lessons.values.forEach { lesson ->
+            lesson.relatedLessonIds.forEach { related ->
+                assertTrue(
+                    order.indexOf(related) < order.indexOf(lesson.id),
+                    "${lesson.id} -> $related is not a backward link",
+                )
+            }
+        }
+
+        // No Lesson authored before this Unit was edited to receive a reciprocal link. The three
+        // shipped Lessons that point at this curriculum do so in prose, which is what the plan
+        // recorded, so nothing in the earlier document names a Lesson of this Unit.
+        val ownIds = lessons.keys
+        units()
+            .takeWhile { it.id != unitId }
+            .flatMap { it.lessons }
+            .forEach { lesson ->
+                assertTrue(
+                    lesson.relatedLessonIds.none { it in ownIds },
+                    "${lesson.id} links forward into the dependency-injection Unit",
+                )
+            }
+    }
+
+    @Test
+    fun dependencyInjectionFoundationsUnitTeachesEveryConclusionWithoutAFramework() = runTest {
+        // E27-02's acceptance criterion that no Dagger, Hilt or Koin syntax appears beyond a
+        // brief forward reference. Only authored code is inspected, because that is where the
+        // criterion is about syntax: prose may name a framework in a forward sentence, and
+        // policing prose here would flag the very sentences the plan permits.
+        val frameworkSyntax = listOf(
+            "@Inject",
+            "@Provides",
+            "@Binds",
+            "@Module",
+            "@Component",
+            "@Subcomponent",
+            "@Singleton",
+            "@AndroidEntryPoint",
+            "@HiltAndroidApp",
+            "@HiltViewModel",
+            "startKoin",
+            "koinViewModel",
+            "koinInject",
+            "single {",
+            "factory {",
+            "module {",
+            "viewModel {",
+            "by inject",
+        )
+        val authoredCode = unit("unit_dependency_injection_as_object_construction")
+            .lessons
+            .flatMap { lesson -> lesson.sections.flatMap { it.blocks } }
+            .filterIsInstance<LearningBlock.Code>()
+
+        assertTrue(authoredCode.size >= 6, "Expected the Unit to argue from code it actually shows.")
+        authoredCode.forEach { block ->
+            frameworkSyntax.forEach { token ->
+                assertFalse(
+                    block.code.contains(token),
+                    "Unit 1 code contains framework syntax '$token'.",
+                )
+            }
+        }
     }
 
     @Test

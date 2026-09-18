@@ -805,7 +805,15 @@ private fun ComposeUiTest.scrollToLearningUnit(unitId: String) {
 private suspend fun ComposeUiTest.openTopicFromBrowser(topicName: String = UiTopicName) {
     waitForTag(TopicBrowserSearchFieldTag)
     onNodeWithTag(TopicBrowserSearchFieldTag).performTextReplacement(topicName)
-    waitForText(topicName)
+    waitUntil(
+        conditionDescription = "Clickable Topic result $topicName appears after search",
+        timeoutMillis = JourneyTimeoutMillis,
+    ) {
+        onAllNodesWithText(topicName).fetchSemanticsNodes().any { node ->
+            node.config.getOrElseNullable(SemanticsProperties.EditableText) { null } == null &&
+                node.config.getOrElseNullable(SemanticsActions.OnClick) { null } != null
+        }
+    }
     repeat(NavigationAttempts) {
         val browserVisible = onAllNodesWithTag(TopicBrowserSearchFieldTag, useUnmergedTree = true)
             .fetchSemanticsNodes().isNotEmpty()
@@ -820,15 +828,23 @@ private suspend fun ComposeUiTest.openTopicFromBrowser(topicName: String = UiTop
         // a node-not-found instead of retrying, turning a slow frame into a failure about the
         // test's own timing rather than about the content under test.
         val matches = onAllNodesWithText(topicName)
-        if (browserVisible && matches.fetchSemanticsNodes().size > 1) {
-            // The first match is the search field's editable value; the second is the result row.
-            matches[1].performClick()
+        val resultIndex = matches.fetchSemanticsNodes().indexOfFirst { node ->
+            node.config.getOrElseNullable(SemanticsProperties.EditableText) { null } == null &&
+                node.config.getOrElseNullable(SemanticsActions.OnClick) { null } != null
+        }
+        if (browserVisible && resultIndex >= 0) {
+            // Search rows animate into place. Invoke their click contract instead of tapping a
+            // coordinate that may have moved between the semantics lookup and input dispatch.
+            matches[resultIndex].performSemanticsAction(SemanticsActions.OnClick)
         }
         waitForIdle()
     }
     // Nothing arrived after several attempts, so let the ordinary wait produce the failure and its
     // message rather than throwing something less informative from here.
-    waitUntil(timeoutMillis = JourneyTimeoutMillis) {
+    waitUntil(
+        conditionDescription = "Topic $topicName opens from its search result",
+        timeoutMillis = JourneyTimeoutMillis,
+    ) {
         onAllNodesWithTag(TopicBrowserSearchFieldTag, useUnmergedTree = true)
             .fetchSemanticsNodes().isEmpty() &&
             onAllNodesWithTag(TopicStudyListTag, useUnmergedTree = true)

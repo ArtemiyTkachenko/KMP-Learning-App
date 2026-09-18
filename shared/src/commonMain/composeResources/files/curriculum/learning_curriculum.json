@@ -18398,6 +18398,1173 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "unit_object_graphs_lifetimes_and_scopes",
+      "topicId": "dependency_injection",
+      "title": "Object Graphs, Lifetimes and Scopes",
+      "summary": "One injected constructor is not a graph. Ask a real program for a single object and a whole structure has to exist beneath it — some of whose nodes must be the same object for two consumers, while others may safely be rebuilt every time. This unit turns that structure into reasoning a framework can later encode: the transitive graph under a requested object and who is responsible for every edge in it, the requirement that decides whether an instance is shared or fresh, and the three separate ideas the word \"scope\" is routinely collapsed into — a lifetime requirement, the owner that actually retains an instance, and the reuse rule written inside that owner. It closes on two things a graph can fail to express: a value the assembler cannot know because it only exists once the program is running, and an edge with no candidate or with two. Every conclusion is reached without a framework, because Dagger, Hilt and Koin are later notations for exactly these decisions.",
+      "lessons": [
+        {
+          "id": "lesson_from_one_dependency_to_a_graph",
+          "title": "From One Dependency to a Graph",
+          "summary": "A dependency has dependencies of its own, so asking for one object commits you to everything beneath it. This lesson traces the transitive graph under a requested object and names who is responsible for satisfying every edge, separates the graph root from the composition root — two different ideas sharing a word — and lets a shared node and an impossible cycle appear as the design information they are.",
+          "primarySubtopicIds": [
+            "dependency_graphs"
+          ],
+          "supportingSubtopicIds": [
+            "composition_root",
+            "manual_di",
+            "constructor_injection",
+            "layered_architecture"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The previous unit ended with a controller that receives two collaborators and a `main` function that supplies them. That is the whole subject at its smallest size, and real programs are not that size. The reason is not simply that they contain more classes. It is that **a dependency has dependencies of its own**."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The example already showed it happening. `StudySessionController` needs a `QuestionRepository`; the implementation chosen for that contract, `LocalQuestionRepository`, needs a `BundledQuestionDataSource`; that data source needs a `QuestionCatalogConfig`. Nobody asked for a catalogue configuration. It has to exist because a controller was asked for, four steps further up. A dependency's dependencies are the requester's dependencies too, **transitively**, all the way down to whatever needs nothing."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Five words are worth fixing before going further, because the rest of this unit and the three framework units after it all use them:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Node** — an object that has to exist.",
+                    "**Edge** — the fact that one node cannot be constructed without another. It is directed, pointing from the object that needs to the object that is needed.",
+                    "**Object graph** — the transitive closure of a node and every edge reachable from it: everything that must exist, directly and indirectly.",
+                    "**Graph root** — the object that was actually requested, and from which the rest of the graph is reached.",
+                    "**Graph assembly** — satisfying every edge, in an order the edges themselves force rather than an order somebody chose."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "One of those needs guarding immediately, because the word *root* is about to be used for two different things in the same curriculum:"
+                },
+                {
+                  "type": "code",
+                  "language": "text",
+                  "code": "composition root   main()                    — a place in the program, where assembly happens\ngraph root         StudySessionController    — an object in a request, whose construction needs the rest"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The previous unit defined a composition root as a responsibility and a location: the place, as close to the entry point as possible, where the program concentrates construction knowledge, and where — as the pattern's original description puts it — \"the entire object graph\" is \"finally composed\". A graph root is not a place at all. It is the object somebody asked for, and its request is the reason every node beneath it has to be built. A program usually has very few composition roots and may have many graph roots, one for each top-level object its entry points ask for."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Keeping them apart costs one sentence now and saves a great deal later, because the words converge. The unit on Dagger introduces a type that is simultaneously a declaration of a graph and the thing objects are requested from, and a reader who has fused *root the place* with *root the requested object* cannot say which half of it is doing what."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A dependency's dependencies are dependencies. The object graph is the transitive closure of everything a requested object needs, directly and indirectly; that requested object is the graph root; assembling the graph means satisfying every edge in an order the edges force. The composition root is a different idea with a similar name — a place in the program, not an object in a request."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**Tracing one graph.** The running example ends the previous unit with a session controller, a repository behind an interface, a data source, a configuration value, a clock, and a browser that lists questions outside a session. Give the controller one more responsibility — recording each answered attempt, which needs somewhere to put the record and the time it happened — and the structure is finally large enough to read:"
+                },
+                {
+                  "type": "code",
+                  "language": "text",
+                  "code": "QuestionBrowser                          ← a second graph root\n └─ QuestionRepository\n\nStudySessionController                   ← the graph root traced here\n ├─ QuestionRepository                     (the interface the controller asks for)\n │   └─ LocalQuestionRepository            (the implementation chosen for it)\n │       └─ BundledQuestionDataSource\n │           └─ QuestionCatalogConfig\n ├─ AttemptRecorder\n │   ├─ AttemptStore\n │   └─ SystemClock\n └─ SystemClock"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read it as a set of obligations rather than as a picture. Every line asserts that something cannot exist until something else does. Four levels separate the controller from the catalogue configuration, and there is no shortcut past any of them: the configuration is not optional and not somebody else's problem, because the data source's constructor requires it and the repository's constructor requires the data source."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Naming the responsibility at each edge.** An arrow on its own says very little. The question worth asking at every edge is *who must supply this constructor argument*, and the answer is never \"the graph\" — it is a specific piece of code, which has to know a specific thing in order to answer:"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Edge",
+                    "The argument",
+                    "Who must supply it",
+                    "What that code therefore knows"
+                  ],
+                  "rows": [
+                    [
+                      "`StudySessionController` → `QuestionRepository`",
+                      "`repository`",
+                      "Whoever constructs the controller — here, `main`",
+                      "Which implementation satisfies the contract"
+                    ],
+                    [
+                      "`LocalQuestionRepository` → `BundledQuestionDataSource`",
+                      "`dataSource`",
+                      "Whoever constructs the repository — `main`",
+                      "That this implementation reads bundled data"
+                    ],
+                    [
+                      "`BundledQuestionDataSource` → `QuestionCatalogConfig`",
+                      "`config`",
+                      "Whoever constructs the data source — `main`",
+                      "Which catalogue this build reads"
+                    ],
+                    [
+                      "`StudySessionController` → `AttemptRecorder`",
+                      "`attempts`",
+                      "`main`",
+                      "That attempts are recorded, and by what"
+                    ],
+                    [
+                      "`AttemptRecorder` → `AttemptStore`, `SystemClock`",
+                      "`store`, `clock`",
+                      "Whoever constructs the recorder — `main`",
+                      "Nothing beyond the two class names"
+                    ],
+                    [
+                      "`StudySessionController` → `SystemClock`",
+                      "`clock`",
+                      "`main`",
+                      "Nothing beyond the class name"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Every answer in the third column is the same, which is what a composition root is *for* rather than a coincidence. The third column is where the responsibility actually sits; the fourth is what that responsibility costs in knowledge, and it is the column that explains why concentrating the work is worth doing. And notice what the table proves about the diagram above it: the graph is **not** a picture of imports. `StudySessionController` names none of `BundledQuestionDataSource`, `QuestionCatalogConfig` or `AttemptStore` in its source, and cannot be constructed without all three. A graph describes what must exist before the requested object can exist."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Assembly follows the edges.** Written out, the order is forced rather than chosen:"
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "fun main() {\n    val clock = SystemClock()\n    val dataSource = BundledQuestionDataSource(ProductionCatalogConfig)\n    val repository: QuestionRepository = LocalQuestionRepository(dataSource)\n    val recorder = AttemptRecorder(AttemptStore(), clock)\n\n    val controller = StudySessionController(\n        repository = repository,\n        clock = clock,\n        attempts = recorder,\n    )\n    val browser = QuestionBrowser(repository)\n    val newSummaryBuilder = { SessionSummaryBuilder(SystemClock()) }\n\n    startStudyApplication(controller, browser, newSummaryBuilder)\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read upwards and that is the graph, leaves first. No line can move above the line that creates what it uses, and the constraint came from the edges rather than from anybody's style rule. The per-use summary builder from the previous unit is still there and is deliberately absent from the diagram above: it is constructed on request rather than assembled in advance, so it is a small graph root of its own rather than part of the controller's. Fowler's description of the pattern names this work directly — an **assembler** is the separate thing that populates a consumer with an implementation, and the principle behind it is \"to ensure that the configuration of services is separated from their use\". The function above is that assembler, and the graph is what it is assembling."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**A shared node.** Two objects in that assembly need a `QuestionRepository`: the controller and the browser. They received the same one, because one `val` was passed twice. Notice how quietly that was decided — it is a property of which variable name appears where, nothing in either class asked for it, and nobody would find it by reading either class."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "It also raises a question the graph itself cannot answer. Does the product require the controller and the browser to hold **the same repository object**, or merely a repository built the same way? If a catalogue read once is meant to stay read, the answer is the same object. If nothing depends on their identity, either arrangement behaves identically and the choice is about cost. A graph is what makes the question askable, by showing that two paths reach one node; which answer is correct comes from a requirement, and that is the next lesson's entire subject."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Reading a graph diagram as a picture of imports, or as the package structure with arrows drawn on. It is neither. `StudySessionController` names no data source, no catalogue configuration and no attempt store, and cannot be constructed without all three. The graph describes construction obligations; the import graph describes source coupling; and the previous unit's lesson on injection against inversion is where those two come apart."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Edges that admit no order.** Occasionally the edges describe something that cannot be constructed at all:"
+                },
+                {
+                  "type": "code",
+                  "language": "text",
+                  "code": "AttemptRecorder ──► ScoreCalculator ──► StreakTracker ──► AttemptRecorder"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Each of those three takes the next as a constructor parameter, and the last takes the first. No order satisfies that with ordinary construction, by hand or otherwise: whichever object you try to create first, its argument does not exist yet. That is not a wiring problem with a wiring answer. It is the graph reporting that three objects have been defined as mutually indispensable, which usually means a responsibility sits in the wrong one of them — the streak information the recorder wants back is state something else should own, or the calculation never needed the recorder."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Mechanisms exist that defer one edge so that such a graph can be constructed anyway, and the unit on Dagger names one at the point where the mechanism is actually in front of the reader. Reaching for one first is the mistake worth naming here: **a tool can detect a cycle; it cannot tell you the design is coherent.**"
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**Why a graph rather than a list.** \"Class A depends on B, C and D\" is a true sentence and a poor model, because nearly every interesting question about construction is a question about relationships *between* edges rather than about any single class. A per-class list cannot express:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Shared nodes.** Two consumers reaching one node is invisible in two separate lists and obvious in a graph. Every reuse and lifetime decision in this unit starts there.",
+                    "**Several paths to one node.** The clock is reached from the controller directly and again through the recorder beneath it. Two lists report the fact twice and the relationship never.",
+                    "**Cycles.** Unrepresentable in a list, because a list has no notion of following an edge onwards.",
+                    "**Depth.** The distance from the requested object to the thing that actually changes — a catalogue path four levels down — is what makes \"add one parameter\" expensive, and depth is not a property any single class has.",
+                    "**Ambiguity.** Two nodes of one type reaching a single consumer is a collision between edges, which a per-class list cannot express at all."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is the whole justification for the vocabulary, and it is also its limit. Nothing in this curriculum needs graph theory: no traversal algorithm, no complexity claim, no proof about topological ordering. Node, edge, transitive closure, root and cycle are enough to state every remaining question in this unit, and past that it is a different subject being taught for its own sake."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**What a reader actually reacts to in an assembly.** The composition root above is short enough to take in at a glance, and the previous unit judged this graph as one that is cheaper to write by hand than to configure. Worth noticing is *what* a reader reads it for. Not its content — which implementation, which order — but its **shape**: how deep it goes, how many nodes are shared, how many places would have to change if one leaf acquired a parameter. When a composition root stops being readable it is almost always the shape that became unreadable rather than the length, and shape is information about the graph rather than about the wiring style."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked to explain an object graph, do not define it as \"the dependencies of a class\". Say that a dependency's dependencies are dependencies transitively, so the graph is the closure of everything reachable from the requested object; that the requested object is the graph root while the composition root is the place in the program where assembly happens; and that every edge is an obligation on some specific piece of code to supply that constructor argument. Then be ready for the follow-up that separates a memorised definition from a working model — what a shared node, a repeated path and a cycle each tell you about the design."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_one_place_that_knows_how_to_build"
+          ],
+          "sources": [
+            {
+              "title": "Composition Root",
+              "url": "https://blog.ploeh.dk/2011/07/28/CompositionRoot/"
+            },
+            {
+              "title": "Inversion of Control Containers and the Dependency Injection pattern",
+              "url": "https://martinfowler.com/articles/injection.html"
+            },
+            {
+              "title": "Manual dependency injection",
+              "url": "https://developer.android.com/training/dependency-injection/manual"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_one_instance_or_a_new_one",
+          "title": "One Instance, or a New One Each Time?",
+          "summary": "Request the same graph twice and a question appears that the graph cannot answer: which nodes must be the same object, and which may simply be built again? Reuse is something a requirement asks for — state several consumers must observe as one state, an identity something depends on, or a construction cost that was measured — and where nothing asks, a fresh instance is the simpler answer. This lesson decides node by node from stated requirements, and shows what sharing too widely and sharing too little each look like to a user.",
+          "primarySubtopicIds": [
+            "di_scopes"
+          ],
+          "supportingSubtopicIds": [
+            "dependency_graphs",
+            "state_ownership",
+            "architecture_tradeoffs"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Take the graph from the previous lesson and ask for it twice. A second study session starts; a second destination opens a browser. Which of the nodes beneath those requests must be **the same objects** as the first time, and which may simply be built again?"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Nothing in the graph answers that. The edges say what must exist, not how many of each. The answer comes from outside the graph entirely — from what the product requires — and the discipline this lesson is about is asking for the requirement before reaching for an answer."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Start from the baseline, which is the step people skip. **Constructing a new instance per request is the default.** It needs no coordination, no decision about how long anything lives and no reasoning about who else might be holding the object. It is not a beginner's answer and not a wasteful one; it is what you get when nothing requires otherwise, and most nodes in most graphs are exactly there."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Reuse is then a departure from that baseline, and three requirements genuinely produce it:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**State that must be one state.** The object holds something mutable that several consumers have to observe as the same value. Two instances would mean two answers to a question the product says has one.",
+                    "**Identity something else depends on.** Another part of the system compares, registers, counts or keys by the object itself — a subscriber list, an open connection, a lock. A second instance is not an equivalent copy; it is a second thing.",
+                    "**Construction cost that has been shown to matter.** Building it does measurable work: reading and parsing a file, opening a connection, warming a cache. The requirement here is a measurement, not an intuition."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Where none of those holds, the reuse decision is **semantically irrelevant** — both answers behave identically — and what is left is a small cost question with a boring answer. Saying that out loud is useful, because it separates the nodes where the decision matters from the ones where it does not, and the first group is always much smaller than people expect."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Construction per request is the baseline; reuse is a departure from it that some requirement has to ask for. The three requirements that ask are state several consumers must share, an identity something else depends on, and a construction cost that was measured rather than assumed. Where none applies, both answers behave identically and the choice is about cost rather than about behaviour."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**The same graph, two different answers.** Nothing about the classes changes between the readings below. Only the requirement does:"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Node",
+                    "What the product requires",
+                    "Decision, and why"
+                  ],
+                  "rows": [
+                    [
+                      "`QuestionCatalogConfig`",
+                      "Every part of the build reads one catalogue, fixed at start-up",
+                      "Reuse. It is one immutable value, and a second copy would be a second answer to a settled question"
+                    ],
+                    [
+                      "`QuestionRepository`",
+                      "The decoded catalogue is read once and kept, so opening the browser after a session does not re-read it",
+                      "Reuse — decided by the caching requirement, not by the word \"repository\""
+                    ],
+                    [
+                      "`QuestionRepository`, in a product with no cache",
+                      "Every read goes to the data source anyway; nothing is retained between calls",
+                      "Either. Behaviour is identical, so this one is a cost decision and should be defended as one"
+                    ],
+                    [
+                      "`SessionSummaryBuilder`",
+                      "A summary accumulates one session's answers and is produced when that session ends",
+                      "Fresh per use. A reused builder carries the previous session's answers into the next summary"
+                    ],
+                    [
+                      "`SystemClock`",
+                      "It reads the platform clock and holds nothing",
+                      "Either, and the honest answer is that it does not matter"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The third row is the one worth staring at. Two products, one class name, opposite answers — because the requirement changed and the type did not. Any rule of the form \"repositories are shared and builders are not\" is that observation running backwards: it is right often enough to feel like a principle, it explains nothing, and the first unusual case defeats it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**A second worked example, introduced only as far as it is needed.** Consider a different application: a reading app with a signed-in reader, several destinations, and a catalogue it fetches over the network. It carries requirements the study-session example does not, and later units grow it rather than inventing it all at once. Two of its objects are enough here, and both of them hold mutable state, so neither decision is a cost question:"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Object",
+                    "What the requirement says must be true",
+                    "Decision"
+                  ],
+                  "rows": [
+                    [
+                      "`ReaderSession` — who is signed in, and the credentials that prove it",
+                      "Every destination observes one signed-in reader, and signing out ends it everywhere at once",
+                      "One instance, shared by everything that asks"
+                    ],
+                    [
+                      "`DraftAnnotation` — the note being typed about the passage currently open",
+                      "Each destination has its own note, and leaving the destination discards it",
+                      "One per destination, discarded with it"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Both requirements were stated in product language before any code existed, and neither sentence contains a technical term. That is the order this unit is arguing for."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Sharing too widely.** Suppose the draft is treated like the session, and one instance is handed to every destination. Nothing crashes. The reader opens a passage, types half a note and navigates to a second passage — and the second screen opens with the first passage's half-written note already in it. Worse, typing there changes what the first screen shows when they navigate back. Two destinations that were never meant to be related now are: either can change what the other displays, and no line of code in either of them says so."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is the actual cost of over-sharing, and naming it precisely matters because the usual complaint — memory — is the least of it. Two consumers sharing a mutable object are **coupled through that object**: a change to how one of them uses it becomes a change in the other's behaviour, discoverable only by someone who already knows they share. A second consequence follows in the next lesson: a shared object has to be retained by something, and that something now has to live at least as long as the widest consumer of it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Sharing too little.** Now the opposite error, on the session. The reader signs in on the library destination, so a `ReaderSession` is constructed for it; they open a passage, and that destination constructs its own. The result is a handful of small, confusing bugs rather than a crash:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "The second destination has no signed-in reader, so it either asks the reader to sign in again or quietly shows the signed-out view.",
+                    "Signing out on one destination ends a session no other destination was holding, so the rest stay signed in.",
+                    "Anything the first session had obtained — the fetched catalogue, a refreshed credential — is obtained again, so work the product paid for once is paid for repeatedly and the cache never caches."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Both directions produce wrong behaviour, and they produce different *kinds* of wrong behaviour. Over-sharing shows up as state appearing where it was not expected; under-sharing shows up as state disappearing where it was expected. Neither announces itself as a construction problem, which is exactly why the reuse decision deserves to be made deliberately rather than inherited from whichever example was copied."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"Share it — it is cheaper.\" That is a measurement claim, and the people making it have usually not measured. It is sometimes true and it is never the first question: a shared instance costs a lifetime decision, something that retains it, and the coupling above, while a per-request instance of a small object costs an allocation. Decide from the requirement; and if cost really is the only argument available, say what was measured."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Notice what has not appeared in this lesson. No annotation, no keyword, no configuration file and no library name — because every decision above was made from a product requirement and is therefore complete before any of those exist. The Android guide to hand-written dependency containers makes the same two decisions in the same terms, reusing one repository across features while giving each flow its own container because \"you don't want to persist data from an old login flow from a different user\". Dagger, Hilt and Koin each offer a way to write these decisions down, and each writes them down differently. What is being written down is this."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**Stateless objects, honestly.** A class with no mutable state, and no identity anything depends on, can be shared or not shared with no observable difference whatsoever. Both of the usual slogans are wrong about it. \"Share it, allocation is expensive\" is a claim about a cost that is frequently negligible and was rarely measured; \"construct it fresh, it is cleaner\" is a claim about a cleanliness that cannot exist when nothing can be dirty. The useful answer is that the decision is free either way, so it should be made once, applied consistently, and not argued about — and that a long argument about one of these objects is a reliable sign that it is not actually stateless."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Reuse is about identity, not about count.** \"How many instances exist\" is a consequence; \"do these two consumers hold the same object\" is the question that decides anything. Framing it as identity keeps two confusions out. A class with one instance that is rebuilt whenever a destination opens is **not** shared — its count is one at any moment and its identity is not shared across time, which is precisely the under-sharing failure above. And an object held by two consumers who never interact through it is shared in an uninteresting way, because nothing depends on the identity; the requirement it satisfies is cost, and it should be defended as a cost decision rather than dressed up as a design one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**What choosing reuse commits you to.** Reuse is not a keyword, it is three obligations accepted at once. Something has to retain the instance. That something has to exist for at least as long as every consumer expecting to share it. And when that something stops existing, whatever it exclusively retained stops being reachable. Those three sentences are not any framework's rules — they are properties of any program that keeps an object around — and they are what the next lesson is entirely about."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked when a dependency should be a shared instance, refuse the default-shaped answer in both directions. Say that per-request construction is the baseline and that reuse needs a requirement: state several consumers must observe as one state, an identity something else depends on, or a construction cost that was measured. Then price the mistake in both directions — over-sharing couples consumers through state that appears where it was not expected, under-sharing resets state that was expected to persist — and finish by naming what reuse commits you to: something that retains the instance and lives at least as long as the consumers meant to share it."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_choosing_the_owner_by_lifetime",
+            "lesson_viewmodel_lifetime_and_persistence",
+            "lesson_from_one_dependency_to_a_graph"
+          ],
+          "sources": [
+            {
+              "title": "Manual dependency injection",
+              "url": "https://developer.android.com/training/dependency-injection/manual"
+            },
+            {
+              "title": "Dependency injection in Android",
+              "url": "https://developer.android.com/training/dependency-injection"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_scope_is_a_rule_owner_is_a_lifetime",
+          "title": "A Scope Is a Rule; an Owner Is a Lifetime",
+          "summary": "\"Scope\" is one word doing three jobs, and collapsing them is the most expensive vocabulary mistake in this subject. This lesson separates the lifetime a requirement needs, the owner that actually retains an instance, and the reuse rule written inside that owner — in that order, because each is chosen from the one before. It shows one reuse rule producing two different lifetimes under two different owners, prices both directions of getting the owner wrong, and says plainly why a retained instance is neither immortal, nor global, nor durable.",
+          "primarySubtopicIds": [
+            "di_scopes"
+          ],
+          "supportingSubtopicIds": [
+            "dependency_graphs",
+            "state_ownership",
+            "android_process_model",
+            "viewmodel_lifecycle"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Three different things are routinely called \"the scope\", and a sentence meaning one of them is read as though it meant another. Separate them once, here, and the rest of this curriculum becomes readable:"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Term",
+                    "What it is",
+                    "Who decides it"
+                  ],
+                  "rows": [
+                    [
+                      "**Lifetime requirement**",
+                      "How long product behaviour needs a particular object identity, or the state inside it, to stay valid. Stated in product language, before any code",
+                      "The product"
+                    ],
+                    [
+                      "**Owner**",
+                      "The object or context that actually holds the instance and hands it out. Its own lifetime bounds everything it exclusively retains",
+                      "The program's structure: what exists, and for how long"
+                    ],
+                    [
+                      "**Scope**",
+                      "A rule about reuse and identity *inside* an owner: which requests served by that owner receive the same instance",
+                      "Whoever writes the configuration"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The order of the three is the lesson. The reasoning runs downwards and never upwards:"
+                },
+                {
+                  "type": "code",
+                  "language": "text",
+                  "code": "the lifetime the requirement needs\n            ↓\nan owner that exists for at least that long\n            ↓\na reuse rule inside that owner"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Run it the other way and nothing is true. Writing a reuse rule does not produce an owner, and naming one does not make an owner live longer. A scope is a label on a rule; the rule is applied by something; and that something is the owner. **A scope creates nothing.**"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is why the sentence \"a scope determines how long an object lives\" deserves to be retired, even though it is repeated everywhere. It is circular in practice: the scope is a rule that an owner applies, so the answer it appears to give — how long — was already settled one step earlier by which owner is applying it. The precise version is longer and worth the words: **a scope says which requests within an owning context receive the same instance, and the reuse it describes cannot outlast the owner retaining it.** Which owner that is came from the requirement."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Requirement, then owner, then scope. The requirement says how long an identity must stay valid; the owner is the thing that actually retains the instance and whose lifetime bounds it; the scope is a reuse rule applied inside that owner. Declaring a scope creates no owner and grants no lifetime — it describes what an owner already capable of living that long should do with the instances it holds."
+                },
+                {
+                  "type": "callout",
+                  "kind": "NOTE",
+                  "text": "\"Scope\" is also a coroutines word, and the two meanings are unrelated. A `CoroutineScope` is an owner for structured concurrency: it bounds the lifetime of the coroutines started in it and cancels them when it ends. A dependency-injection scope is a reuse rule about object identity inside an owner. The coroutines curriculum owns the first; this unit means only the second, and neither is used unqualified in a sentence where both could be read."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**Start in product language.** Take the reading application's requirement from the previous lesson and state it the way a product person would: *the same signed-in reader must be observed by every destination in the app until the reader signs out.* There is no construction vocabulary in that sentence, and there should not be. Four questions turn it into a decision, in order:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**What identity must stay the same?** The `ReaderSession` — the object holding who is signed in and the credentials that prove it.",
+                    "**For how long, and what ends it?** From signing in until signing out. Signing out is the ending event; navigating between destinations is not.",
+                    "**What already exists for at least that long?** Something that outlives every destination. The object representing the running application is the obvious candidate — and the shortest owner that satisfies the requirement is the right one, rather than the longest one available.",
+                    "**How should that owner hold it?** Construct one when the reader signs in, hand the same one to everything that asks it, and release it at sign-out."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Only the fourth answer is scope-shaped, and notice what it actually is: a sentence about what one particular owner does with one particular object. The architecture curriculum already taught how to pick an owner from the ending event a requirement names, and this lesson applies that conclusion instead of re-deriving it. What construction adds is the part that curriculum did not need: **the thing that retains the instance is itself an object that somebody has to own**, so its lifetime becomes a ceiling on everything inside it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**One rule, two owners, two lifetimes.** Here is the claim that a scope creates nothing, made concrete. The rule is identical in both cases — *construct one, and hand the same one to everybody who asks this owner* — and the results are not comparable:"
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "// One owner: created with the application, released when the application ends.\nclass ApplicationGraph {\n    val draft: DraftAnnotation = DraftAnnotation()\n}\n\n// A different owner: created when a destination is entered, released when it is left.\nclass DestinationGraph {\n    val draft: DraftAnnotation = DraftAnnotation()\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Both properties say exactly the same thing: one instance, reused by every request this owner serves. Read the actual lifetimes and they have nothing in common. The first lives as long as the application object holds it, so every destination that ever opens receives that one draft, and a note typed about one passage is visible on the next. The second lives as long as one destination remains on the back stack; entering another destination produces a different owner and therefore a different draft, and leaving discards it. **The declaration is identical. The lifetime came entirely from which owner it was written in.**"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "None of that requires a library. The Android guide to hand-written dependency containers describes the same arrangement in the same terms: a flow's container is \"created when the user enters the flow and cleared when the back stack entry is popped\", while application-wide dependencies are \"placed in a common place all activities can use\". The same page is equally direct about the price — \"you also have to manage the scope and lifecycle of the containers yourself, optimizing and discarding containers that are no longer needed in order to free up memory\". The owner is a real object with a real creation and a real release, and somebody is responsible for both."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Reading a reuse declaration as a lifetime guarantee — \"it is declared shared, so it will still be there\". It will be there exactly as long as the owner retaining it, and not a moment longer. If two consumers that must share are served by different owners, declaring the same rule in both gives them two instances, and the declaration will look correct in both places. The question that catches this is never \"what is it scoped to\" but \"which object is holding it, and when does that object go away\"."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**\"Singleton\" is several claims wearing one word.** The honest phrasing is *one instance for that owner, for as long as that owner exists*, and that is genuinely useful. What the word is routinely heard to mean is a list of things that do not follow from it:"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Heard as",
+                    "Actually true?"
+                  ],
+                  "rows": [
+                    [
+                      "One instance for the whole program, everywhere",
+                      "Only if exactly one owner applies the rule. Two owners applying the same rule produce two instances, which is the normal case in an application with per-destination owners"
+                    ],
+                    [
+                      "It exists from start-up",
+                      "No. It exists from the first time the owner is asked for it, unless something deliberately builds it earlier"
+                    ],
+                    [
+                      "It lives forever",
+                      "It lives as long as its owner. An owner released at sign-out, or on leaving a destination, takes what it exclusively retained with it"
+                    ],
+                    [
+                      "The value is saved",
+                      "No. Reuse is about object identity in memory and says nothing at all about storage"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The last row deserves one plain sentence rather than a section, because durability is a different subject with its own curriculum. **Nothing held only in memory survives the operating-system process being destroyed.** Android states this flatly for the most familiar in-memory holder — \"Unlike saved state, ViewModels are destroyed during a system-initiated process death\" — and the process itself \"remains running until the system needs to reclaim its memory for use by other applications\". A reused instance is therefore not a persistence mechanism and never claimed to be one; making a value durable is a separate decision with separate tools."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**When the owner lives too long.** This failure has two grades, and giving them the same name is why it is so often mis-diagnosed."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The mild grade is an object shared more widely than the requirement asked for: two destinations receive one `DraftAnnotation` because it was retained by the application object rather than by each destination. Nothing is being kept alive that should have died — the draft is an ordinary object — but the two destinations are now coupled through it, which is the previous lesson's over-sharing failure arriving through the owner rather than through the rule. Calling that a memory leak is imprecise and sends the next reader looking for the wrong thing."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The serious grade is different in kind: a long-lived owner retains something that **references a short-lived thing**. An object held for the application's lifetime that keeps a reference to a destination's state holder keeps that destination's whole object reachable after the destination is gone — it cannot be collected, its state is still there to be read, and whatever reads it believes it is current. That is unintended retention, and calling it a leak is accurate. The distinction matters because the fixes differ: the mild case needs a narrower owner, and the serious case needs the reference not to exist."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**When the owner does not live long enough.** The opposite error usually produces no crash and no memory symptom at all, which is how it survives review. The owner is released and recreated more often than the requirement allows, so an identity the product treats as continuous silently restarts: a session meant to span the app resets per destination, a cache is rebuilt often enough that it never caches, an expensive initialisation repeats, and consumers that were supposed to be talking about one object each hold their own. Every symptom presents as a behaviour bug in some feature, and none of them points at the owner that caused it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**The graph's own lifetime is not exempt.** A container or graph object obeys every rule above: it is an object, something holds it, and what it retains cannot outlive it. That makes one question worth asking of any arrangement, hand-written or configured — *what holds the thing that holds my instances, and what ends that?* In a hand-written program the answer is visible: the `val` in `main`, or the object created when a destination is entered. Configuration languages make the question easy to stop asking, which is exactly why the habit is worth fixing here, before any of them appear."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked what a scope is, answer in three moves and in this order: the lifetime requirement in product terms, the owner that must exist for at least that long, and the reuse rule inside that owner. Then defuse both follow-ups deliberately. Declaring a scope creates no owner — the same rule written in two differently lived owners yields two different lifetimes — and a single retained instance means one instance for that owner while that owner exists, which is not global, not immortal and not durable. Name the owner, every time. An answer that names a scope without naming what holds it has not answered the question."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_choosing_the_owner_by_lifetime",
+            "lesson_viewmodel_lifetime_and_persistence",
+            "lesson_state_holder_responsibility",
+            "lesson_one_instance_or_a_new_one"
+          ],
+          "sources": [
+            {
+              "title": "Manual dependency injection",
+              "url": "https://developer.android.com/training/dependency-injection/manual"
+            },
+            {
+              "title": "Save UI states",
+              "url": "https://developer.android.com/topic/libraries/architecture/saving-states"
+            },
+            {
+              "title": "Processes and app lifecycle",
+              "url": "https://developer.android.com/guide/components/activities/process-lifecycle"
+            },
+            {
+              "title": "ViewModel overview",
+              "url": "https://developer.android.com/topic/libraries/architecture/viewmodel"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_runtime_input_is_not_a_dependency",
+          "title": "A Value the Graph Cannot Know",
+          "summary": "An object can need a repository, a clock and the identifier of the thing the reader just tapped, and only two of those are things a graph can supply. This lesson separates a graph dependency from a runtime input by when and from where the value becomes known rather than by its type, shows both bad answers failing concretely — a mutable current value made available to everyone, and an object built incomplete and finished afterwards — and lands on the generic shape that routes each kind correctly.",
+          "primarySubtopicIds": [
+            "dependency_graphs"
+          ],
+          "supportingSubtopicIds": [
+            "di_scopes",
+            "constructor_injection",
+            "navigation_fundamentals",
+            "state_ownership"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Everything so far has assumed that whatever an object needs is something an assembler knows how to produce. Most of what an object needs is. Some of it is not, and the difference stops being subtle the moment it is named."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A **graph dependency** is something construction logic can supply because the graph describes how to obtain it: a repository, a clock, a data source, a parser, a configuration value fixed at start-up. The assembler either has an instance or knows how to build one, before anybody asks."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A **runtime input** is a value that only becomes known from something that happens while the program runs: the identifier of the question the reader tapped, the argument a destination was opened with, the text somebody typed, the identifier of the attempt being reviewed. No amount of construction knowledge produces it, because it did not exist when the program was assembled."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The distinction is emphatically **not** object against primitive. `QuestionCatalogConfig` from the previous unit is a value object holding a string and a number, and it is a perfectly ordinary graph dependency because the build decides it and it never changes afterwards. A selected `Question` is not a graph dependency even though it is an object, because which one is selected depends on a tap. What separates them is **when the value becomes known, and who is in a position to know it**."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A usable test, phrased as a question rather than as a rule: *could the composition root have known the correct value before this particular request existed?* If yes, it is construction knowledge and belongs in the graph. If no — if the right answer depends on which screen the reader opened or what they chose — it is data, and it arrives with the request. Treat that as a reliable heuristic rather than a formal definition: values read once at start-up sit right on the line, and they belong wherever the person who has to keep them correct can see them."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A graph dependency is something construction logic knows how to supply; a runtime input is a value that only exists once the program is running and somebody has acted. The test is when and from where the value becomes known, not whether it is an object or a primitive. Graph dependencies come from construction; runtime inputs come from the caller, at the moment of the call."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**One object, both kinds.** A `QuestionSession` runs a single question: it loads the question, records when the reader started, and grades the answer. It needs a repository, a clock, and the identifier of the question that was tapped."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "class QuestionSession(\n    private val questionId: QuestionId,\n    private val repository: QuestionRepository,\n    private val clock: SystemClock,\n)"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Two of those three can be answered by the composition root before the application has drawn anything. The first cannot be answered at all until a reader has opened a list and tapped a row. Every wrong arrangement that follows comes from treating the first parameter like the other two."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Wrong answer one: put the value in the graph.** The selected identifier is made available the way a dependency would be — one holder that everything can read, written by whoever selects:"
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "// Retained for the application's lifetime, written by whoever selects a question.\nclass SelectedQuestion {\n    var id: QuestionId? = null\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Follow one realistic sequence. The reader taps question 12, so the holder is set to 12 and a session is built that reads it. They navigate back and open question 30; the holder is now 30. They return to the first session — still on the back stack, still alive, still reading the holder — and it is showing question 30 under question 12's timer. Nothing threw. Later, a screen constructed before anything has been selected reads an identifier left over from an earlier flow and loads a question the reader never asked for."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Those are not bugs in the holder. They are the arrangement working as specified: **a value that varies per request was given an identity and a lifetime, so every consumer now shares one answer to a question that has several.** It also destroys the visibility the previous unit argued for — `QuestionSession`'s constructor no longer says it needs a question, so nothing can tell a caller they forgot one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Wrong answer two: build it incomplete and finish it afterwards.** The second reflex keeps the value out of the graph and pays for it in a different currency:"
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "val session = QuestionSession(repository, clock)\nsession.questionId = selectedId   // only now is it usable"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This is the half-built object from the lesson on constructor injection, reconstructed deliberately. Between those two lines the session exists and cannot work; `questionId` has to be a `var`, so anything holding the session may change which question it is about after it has started; and the requirement has left the constructor, so nothing enforces it at the construction site. That lesson priced all three, and the value arriving late changes none of the prices."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**The shape that is correct.** Keep the runtime value in the constructor where it belongs, and give the caller something that supplies everything else:"
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "class QuestionSessionFactory(\n    private val repository: QuestionRepository,\n    private val clock: SystemClock,\n) {\n\n    fun create(questionId: QuestionId): QuestionSession =\n        QuestionSession(\n            questionId = questionId,\n            repository = repository,\n            clock = clock,\n        )\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read what moved. The **factory** is an ordinary graph dependency: it needs only things the assembler knows how to build, so it is constructed once and injected like anything else. The **session** is not in the graph at all — it is produced on demand by a caller holding the one piece of information nobody else has. Every parameter is still required and still visible, the object is complete the instant it exists, and the composition root never learns a question identifier. The Android guide to hand-written dependency injection reaches the same shape without any library: a factory holds the dependency it was given and creates the object on request."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A function is enough wherever a class would be ceremony — a lambda closing over the two graph dependencies and taking the runtime value is the same arrangement with less typing, and the previous unit already used one for per-use construction. What matters is the split, not the shape: **construction logic supplies what it knows; the caller supplies what only it can know.**"
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Deciding by type instead of by origin — \"strings and identifiers are runtime input, objects are dependencies\". Both halves are false. A catalogue path fixed by the build is a string and belongs in the graph; a selected item is usually an object and does not. Ask when the correct value becomes known and who is in a position to know it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Where the runtime value came from is deliberately left open here. In an Android application it is very often an argument carried by the destination the reader opened, and that is the right mental image — but how a route declares an argument and how a destination receives it belongs to the navigation and lifecycle material and is not needed to make this distinction. All this lesson requires is that the value arrived from an interaction rather than from assembly."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**Why the distinction outlives every framework.** A graph is a description of *how to build things*; a runtime input is *data*. A description is written once, at assembly time, by somebody who cannot see the future; data arrives continuously from a running program. Putting data into a description forces the description to acquire an identity and a lifetime it was never meant to have, which is exactly what the shared holder produced. That is why each of the three frameworks in this curriculum grew a separate mechanism for this case rather than treating it as an ordinary binding: it is not an ordinary binding, and no configuration language can make it one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**The factory is the graph's edge with the running program.** Notice where the boundary actually falls: `QuestionSessionFactory` is inside the graph and `QuestionSession` is outside it. That gives a useful reading of any object whose construction mixes the two kinds — the part construction can decide is a node, the part the caller decides is an argument, and the factory is the seam between them. When a class is hard to place in a graph, it is usually because those two halves have not been separated yet."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**The same mistake at a longer lifetime.** The holder above is wrong because a per-request value was given an owner, and the general form is broader than the example: any time a value that varies per request is retained by something spanning many requests, the last writer wins and every reader gets an answer belonging to somebody else. Recognising the shape is more useful than remembering the example, because it reappears under different names — a \"current user id\", a \"current screen\", a \"last selected item\" — and fails the same way every time."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked how to pass a screen's argument into an object that also needs dependencies, do not answer with a mechanism. Separate the two kinds first — what construction knows how to build, and what only the caller can know — and say the test is when the value becomes known rather than what type it is. Then name both failures concretely: making the value available as a dependency hands the wrong request's value to a live consumer, and constructing the object without it recreates the half-built state constructor injection removed. The generic answer is a factory that takes the runtime parameters and resolves everything else, and every framework's version of this is a notation for it."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_a_dependency_should_be_visible",
+            "lesson_from_one_dependency_to_a_graph"
+          ],
+          "sources": [
+            {
+              "title": "Manual dependency injection",
+              "url": "https://developer.android.com/training/dependency-injection/manual"
+            },
+            {
+              "title": "Dependency injection in Android",
+              "url": "https://developer.android.com/training/dependency-injection"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_two_dependencies_of_the_same_type",
+          "title": "Two Dependencies of the Same Type",
+          "summary": "An assembler picks what to supply by matching a request against a key, and a key is essentially a type — so two different things of one type are a question it cannot answer. This lesson reads the collision as information about the design before it is a configuration problem: sometimes the two things deserve different types, sometimes they genuinely are one concept configured twice and the key needs something extra, and the answers that feel available — declaration order, the most recent registration, the most specific match — are not answers at all.",
+          "primarySubtopicIds": [
+            "dependency_graphs"
+          ],
+          "supportingSubtopicIds": [
+            "dagger_qualifiers",
+            "interface_boundaries",
+            "constructor_injection"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Every arrangement in this unit resolves a request the same way: something asks for a `QuestionRepository`, and something else works out what to supply. The matching is done on a **binding key**, and in the simplest and most common form a key is just a type. That works exactly as long as one type means one thing."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Consider the reading application again. It talks to a server in two different ways. Browsing the public catalogue must work before anybody has signed in; everything about the reader's own library requires their credentials, and those credentials must never be sent anywhere else. Both are HTTP clients, configured differently:"
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "class HttpClient(\n    private val baseUrl: String,\n    private val authorization: AuthorizationPolicy,\n)\n\nval publicClient = HttpClient(CatalogueBaseUrl, AuthorizationPolicy.None)\nval readerClient = HttpClient(LibraryBaseUrl, AuthorizationPolicy.ReaderCredentials)"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now a consumer declares what it needs:"
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "class LibraryRepository(\n    private val client: HttpClient,\n)"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "and the assembler has a genuine problem. Two instances match the key `HttpClient`, they are not interchangeable, and **nothing in the request says which one was meant**. That is worth locating precisely, because the fault is easy to mis-assign: the assembler is not being unhelpful and the configuration is not incomplete. The consumer asked for a thing of which there are two different kinds, in a vocabulary that cannot express the difference."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "An assembler matches a request against a key, and a key is essentially a type. Two semantically different instances of one type therefore collide, and the collision is not a configuration accident — it is the type failing to say what the consumer actually needs. Read it as information about the design before reaching for any mechanism."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**Ask the design question first.** Before naming any way to disambiguate, ask whether these are one concept or two: *do these two dependencies represent different responsibilities, in which case they should have different types — or are they genuinely the same thing configured twice?*"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For the two clients, the honest answer is usually \"different responsibilities\". One of them may carry the reader's credentials and the other must not, which is a rule about what each client is **for**; and a rule that important, living in a constructor argument, is a rule nobody can see. Giving them different types moves it into the type system:"
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "class PublicCatalogueClient(private val http: HttpClient)\n\nclass ReaderLibraryClient(private val http: HttpClient)\n\nclass LibraryRepository(\n    private val client: ReaderLibraryClient,\n)"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The ambiguity is gone, and it did not go away because a mechanism resolved it — it went away because the question stopped being ambiguous. The consumer now states which kind of access it needs, a reviewer can see that the catalogue screen never receives a credentialed client, and supplying the wrong one no longer compiles."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That is not free, and the trade-off should be stated rather than assumed. Two wrapper types are two more names, two more files, and two more things to keep aligned with the client they wrap; if the only real difference between them is a base URL, the wrappers are ceremony. The test is the familiar one from the architecture material: a second type earns its place when a consumer needs to state a requirement the existing type cannot express. \"Must never carry credentials\" is such a requirement. \"Points at a different host\" usually is not."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**When they genuinely are one thing twice.** Suppose instead an application needs two identically-behaving caches, one for images and one for parsed documents, differing only in a size limit. There is no responsibility to separate — a cache is a cache — and wrapping each in a type that adds nothing would be inventing a distinction to placate the assembler. Here the honest fix is to make the key carry the distinction:"
+                },
+                {
+                  "type": "code",
+                  "language": "text",
+                  "code": "key = (type)                 → ambiguous: two candidates match\nkey = (type, distinction)    → two different keys, one candidate each\n\n                                (Cache, \"images\")\n                                (Cache, \"documents\")"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The distinction becomes a second component of the key. Whether it is written as a name, a label or a dedicated marker type is a notation question that every framework answers its own way; Dagger's own description of its semantics states the generic shape plainly, defining a key as a type \"optionally qualified\" and treating two keys as identical only when they share the same type *and* the same qualifier. The concept is what matters here: the key stopped being the type alone, so two bindings of one type became two distinct keys and each request names the one it meant."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**The answers that are not answers.** When two candidates match one key, several selection rules suggest themselves, and none of them is a design answer:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Declaration order**, or the order in which groups of declarations were included — the meaning of a consumer's requirement would then depend on the order of unrelated lines in unrelated files.",
+                    "**The first registered**, or **the last registered** — a new contributor anywhere in the configuration silently changes which client an existing consumer receives.",
+                    "**The most specific one** — \"most specific\" is undefined for two instances of a single type, and where it can be defined at all it answers a different question from the one the consumer asked.",
+                    "**Whichever the tool happens to pick** — even where a particular tool does define a rule, relying on it means the consumer's requirement is documented in that tool's manual rather than in the consumer."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The common defect is that all four leave the *consumer's* meaning to be settled somewhere the consumer cannot see. The construction contract has to distinguish what the consumer means, and both honest answers above do exactly that — one by changing the type, the other by extending the key. Where a specific framework defines an override or precedence rule, that is a fact about the tool, to be learnt when the tool arrives; it is not the design answer, and it is a poor thing to be leaning on beforehand."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Treating a same-type collision as a configuration error to be settled in the configuration. Very often it is the first honest signal that one type is doing two jobs. Settling it by attaching a name keeps both jobs on the one type and pushes the distinction out of the consumer's signature — which is right when the two really are one thing twice, and wrong surprisingly often."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**Two situations that look alike and are not.** The senior version of this decision is telling them apart:"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "The situation",
+                    "What it usually is",
+                    "Where it is decided"
+                  ],
+                  "rows": [
+                    [
+                      "Two implementations of one abstraction the consumer owns — a remote and a local source behind the same contract",
+                      "A boundary question. The consumer declared a contract precisely so that more than one thing could satisfy it, and which one arrives is a composition decision",
+                      "The architecture material's boundary test decides whether the abstraction exists at all; the composition root decides which implementation is supplied"
+                    ],
+                    [
+                      "Two configured instances of one technical type — two clients, two caches, two executors",
+                      "A keying question. There is one concept and two configurations of it, and the consumer needs a way to say which",
+                      "The construction contract, either by giving the configurations distinct types or by extending the key"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Conflating them produces both of the bad outcomes. Treating a real boundary as a keying problem leaves the consumer depending on a technical type it should never have named, with a label attached explaining which one. Treating a configuration difference as a boundary produces an interface with one implementation per configuration, which the architecture curriculum already identified as an abstraction earning nothing."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Ambiguity is a property of the request, not of the definitions.** Nothing is wrong with having two clients. Two configured instances of one type is an ordinary and often correct arrangement, and the collision exists only because some consumer asked in a way that cannot tell them apart. That reframing is practically useful, because it says where the fix belongs: at the request — a more specific type, or a more specific key. Fixing it at the definitions instead, by deleting one or by promoting one to \"the default\", is usually the start of a second bug."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked what happens when two dependencies share a type, do not start with a mechanism. Say that an assembler matches on a key that is essentially a type, so two semantically different instances of one type make the request ambiguous. Then give both honest answers with the condition on each: different types where the two represent different responsibilities — the better answer whenever a rule like \"this one must never carry credentials\" is at stake — and an extra component on the key where they genuinely are one concept configured twice. Finish by rejecting the selection rules that feel available, because declaration and registration order put the consumer's meaning somewhere the consumer cannot see."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_when_an_interface_is_a_boundary",
+            "lesson_from_one_dependency_to_a_graph"
+          ],
+          "sources": [
+            {
+              "title": "Dagger Core Semantics",
+              "url": "https://dagger.dev/semantics/"
+            },
+            {
+              "title": "Dependency injection in Android",
+              "url": "https://developer.android.com/training/dependency-injection"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_when_a_broken_graph_tells_you",
+          "title": "When Does a Broken Graph Tell You?",
+          "summary": "A graph can be missing an edge or have two candidates for one, and when you find out depends on how the graph is written down and what checks it — not on whether a library was involved. This lesson walks the same two faults through explicit construction, a registered configuration and a description checked ahead of execution, then makes the correction the unit exists for: a graph that assembles is a graph whose edges were satisfiable, which is a much smaller claim than \"the design is right\".",
+          "primarySubtopicIds": [
+            "dependency_graphs"
+          ],
+          "supportingSubtopicIds": [
+            "di_framework_tradeoffs",
+            "dagger_fundamentals",
+            "kotlin_gradle_plugin"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Two things can be structurally wrong with a graph, quite apart from whether the design is any good:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**A missing edge.** Something needs a collaborator and nothing in the arrangement can supply it.",
+                    "**An ambiguous edge.** Something needs a collaborator and two candidates match the request equally — the previous lesson's collision, seen from the assembler's side."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Both are statements about whether every requirement in the graph has exactly one way to be met. The interesting question is not what they are but **when you find out**, and the answer is a property of how the graph is represented and what checks that representation — not of the word \"manual\", and not of any library's name."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "How the graph is written down",
+                    "What holds the information",
+                    "When a missing edge is reported"
+                  ],
+                  "rows": [
+                    [
+                      "Explicit construction in code — every object built at a call site",
+                      "The compiler, because a constructor call missing a required argument is not a legal program",
+                      "At compile time, at the construction site"
+                    ],
+                    [
+                      "A registered configuration resolved on request — declarations added to something that produces objects on demand",
+                      "Whatever examines the registrations, and whenever that runs",
+                      "It depends on the mechanism: at a verification step if one exists and is run, when the configuration is created if it validates then, otherwise the first time that path is resolved"
+                    ],
+                    [
+                      "A description checked before it is used — the graph is declared, and a tool analyses it ahead of execution",
+                      "The tool, before the program runs",
+                      "Before execution, as a failure of that check"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read the first row carefully, because it is the one most often stated wrongly. Hand-written assembly does **not** defer missing dependencies to run time. Kotlin will not compile a call that omits a required argument — the language documentation's own illustration of the failure is exactly this, `Error: No value passed for parameter 'message'` — so a graph written out as constructor calls has its completeness checked by the compiler, at every site, for free. Whatever reasons exist for adopting a container, \"it would catch missing dependencies\" is not one of them against explicit construction."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Detection time follows the mechanism. Explicit construction is checked by the compiler at the construction site; a registered configuration is checked whenever something checks it, which may be at a verification step, at creation, or at first resolution; a description analysed ahead of execution fails before the program runs. \"Manual means runtime errors\" and \"a framework means compile-time safety\" are both wrong as general statements — the representation decides, not the label."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**One missing edge, three times.** Take the study-session graph and remove one thing: the data source loses its catalogue configuration. Written out explicitly, there is nothing to discover:"
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "val dataSource = BundledQuestionDataSource()          // does not compile\nval repository = LocalQuestionRepository(dataSource)"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The build stops, on that line, naming the parameter. No part of the program ran, and the failure is as local as a failure can be."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Written as registrations — in a deliberately generic notation rather than any library's — the same fault looks like this:"
+                },
+                {
+                  "type": "code",
+                  "language": "text",
+                  "code": "register QuestionRepository as LocalQuestionRepository(resolve QuestionDataSource)\nregister QuestionDataSource as BundledQuestionDataSource(resolve QuestionCatalogConfig)\n                                                                ↑\n                                        nothing registers QuestionCatalogConfig"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Now the moment of discovery is a property of the mechanism rather than of the mistake. If the mechanism offers a check over the whole configuration and somebody runs it, the gap is reported then — Koin documents exactly such a check, which will \"verify all constructor classes and crosscheck with the Koin configuration to know if there is a component declared for this dependency\". If the mechanism validates when the configuration is created, it is reported at start-up. If it does neither, the gap surfaces the first time something resolves a repository, which may be on a screen a small fraction of readers ever open."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Written as a description a tool analyses before the program runs, the gap is a failure of that analysis. Dagger's semantics document states the model generically enough to be worth reading as a shape rather than as a feature: a graph is well-formed when every key contains exactly one binding and there are no cycles, and a graph that is not well-formed cannot have its implementation generated. The consequence is that the build stops — for the same class of fault the compiler caught in the first version, reached by a different route, over a graph nobody wrote out by hand."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**The ambiguous edge, the same way.** Two candidates for one request behave differently under each representation too, and here the first row loses rather than wins:"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Representation",
+                    "Two candidates for one request"
+                  ],
+                  "rows": [
+                    [
+                      "Explicit construction",
+                      "Not a question the compiler can ask. Both clients are `HttpClient`, so passing the wrong one type-checks and is silently wrong — the hazard the previous unit named as the cost hand-written assembly genuinely carries"
+                    ],
+                    [
+                      "Registered configuration",
+                      "Reported by whatever examines the registrations: a duplicate key may be rejected when the configuration is created, at a verification step, or at resolution, and a mechanism may instead define an explicit override rule. The behaviour is defined by the tool, so it has to be read rather than guessed"
+                    ],
+                    [
+                      "Description checked ahead of execution",
+                      "A key with more than one binding fails the check for the same reason a key with none does: the requirement is exactly one"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "That table is the reason this lesson refuses to generalise. It is tempting to write \"runtime containers silently pick one\" — which would be a claim about a whole category of tools made without reading any of them. What happens on a duplicate key is a decision each mechanism takes and documents, whether that is rejecting the configuration, defining an explicit override rule, or something else again, so the answer for the mechanism in front of you is in its reference rather than in a general rule. Inventing a shared behaviour for a category of tools is how a curriculum acquires claims that are wrong about every member it never checked."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"Manual dependency injection means you find out at run time.\" False, and expensively so, because it is usually offered as the argument for adopting a container. A missing constructor argument in explicit Kotlin is a compile error. What hand-written assembly cannot check is that the argument you passed is the one you meant — a different weakness, and the honest one to state."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**What a successful check actually established.** Take the strongest case: a graph analysed before the program runs and reported as valid. Exactly this is now known — every requirement reachable from the declared roots had exactly one candidate, and an order exists in which everything can be constructed. That is a real and valuable guarantee, and it is a statement about **edges**."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Here is the same result read as what it does not establish:"
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "**Not that the arrows point the right way.** A domain class can receive a storage row type through a perfectly satisfiable edge. The graph describes construction; source direction is decided by which file names which, and the previous unit showed a fully injected program with every arrow wrong.",
+                    "**Not that the lifetimes are right.** An owner spanning the application can retain a destination's state holder without a single ambiguity anywhere. The check counts candidates per key; it has nothing to say about which owner should have been holding what.",
+                    "**Not that the boundaries are in the right place.** A consumer depending directly on a concrete technical type is an ordinary, satisfiable edge.",
+                    "**Not that a per-session requirement is honoured.** Two destinations sharing one instance the product said must be per-destination is a graph the checker is perfectly happy with, and a bug the reader will find."
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "So the honest summary of any such check is that **it proves what that mechanism checks, which is the structural completeness and unambiguity of the edges.** \"It compiles, therefore the architecture is right\" is a category error of the kind the architecture curriculum already named — evidence about one property read as evidence about another — and it is more seductive here than usual, because the check really is thorough about the thing it checks."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Why checking early costs something.** Earlier detection is not free and deserves to be priced rather than assumed. A description that can be analysed ahead of execution has to be *written down as a description*, which means the configuration is expressed in a form some tool can read rather than in ordinary code, with whatever that form cannot express becoming a constraint on the design. That trade-off — what the graph must be written as, what writing it that way costs, and what the earlier check buys — is the axis the closing unit of this curriculum compares the frameworks along, and the unit on Dagger is where one system that performs this analysis during compilation is examined properly. Neither is needed to hold the generic conclusion: **the moment a graph error becomes visible is chosen by how the graph is represented, and every representation is a trade.**"
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked when dependency-graph errors are caught, do not answer with a library. Name the two faults — a missing edge and an ambiguous one — and then say that detection time follows the representation: explicit construction is checked by the compiler at the call site, a registered configuration is checked whenever something checks it, and a description analysed ahead of execution fails before the program runs. Correct the common claim that hand-written wiring defers these to run time. Then make the point that separates a strong answer: a graph that validates has satisfiable, unambiguous edges, which says nothing about direction, lifetimes, boundaries or whether the design is right."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_when_wiring_it_yourself_is_enough",
+            "lesson_two_dependencies_of_the_same_type"
+          ],
+          "sources": [
+            {
+              "title": "Kotlin functions: default and named arguments",
+              "url": "https://kotlinlang.org/docs/functions.html"
+            },
+            {
+              "title": "Dagger Core Semantics",
+              "url": "https://dagger.dev/semantics/"
+            },
+            {
+              "title": "Koin: Verifying your Koin configuration",
+              "url": "https://insert-koin.io/docs/reference/koin-test/verify/"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
     }
   ]
 }

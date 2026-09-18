@@ -18478,11 +18478,11 @@
                 {
                   "type": "code",
                   "language": "text",
-                  "code": "QuestionBrowser                          ← a second graph root\n └─ QuestionRepository\n\nStudySessionController                   ← the graph root traced here\n ├─ QuestionRepository                     (the interface the controller asks for)\n │   └─ LocalQuestionRepository            (the implementation chosen for it)\n │       └─ BundledQuestionDataSource\n │           └─ QuestionCatalogConfig\n ├─ AttemptRecorder\n │   ├─ AttemptStore\n │   └─ SystemClock\n └─ SystemClock"
+                  "code": "QuestionBrowser                          ← a second graph root\n └─ QuestionRepository\n\nStudySessionController                   ← the graph root traced here\n ├─ QuestionRepository                     ← one object: a LocalQuestionRepository,\n │                                            requested as the interface\n │   └─ BundledQuestionDataSource\n │       └─ QuestionCatalogConfig\n ├─ AttemptRecorder\n │   ├─ AttemptStore\n │   └─ SystemClock\n └─ SystemClock"
                 },
                 {
                   "type": "paragraph",
-                  "text": "Read it as a set of obligations rather than as a picture. Every line asserts that something cannot exist until something else does. Four levels separate the controller from the catalogue configuration, and there is no shortcut past any of them: the configuration is not optional and not somebody else's problem, because the data source's constructor requires it and the repository's constructor requires the data source."
+                  "text": "Read it as a set of obligations rather than as a picture. Every line asserts that something cannot exist until something else does, and every line is one **object** — which is why the repository appears once rather than twice. `QuestionRepository` and `LocalQuestionRepository` are not two nodes stacked on each other; they are one object, named by the contract the controller asks for and by the class the composition root chose to satisfy it. A node is a thing that has to be constructed, and choosing an implementation constructs nothing. Three edges separate the controller from the catalogue configuration, and there is no shortcut past any of them: the configuration is not optional and not somebody else's problem, because the data source's constructor requires it and the repository's constructor requires the data source."
                 },
                 {
                   "type": "paragraph",
@@ -18597,7 +18597,7 @@
                     "**Shared nodes.** Two consumers reaching one node is invisible in two separate lists and obvious in a graph. Every reuse and lifetime decision in this unit starts there.",
                     "**Several paths to one node.** The clock is reached from the controller directly and again through the recorder beneath it. Two lists report the fact twice and the relationship never.",
                     "**Cycles.** Unrepresentable in a list, because a list has no notion of following an edge onwards.",
-                    "**Depth.** The distance from the requested object to the thing that actually changes — a catalogue path four levels down — is what makes \"add one parameter\" expensive, and depth is not a property any single class has.",
+                    "**Depth.** The distance from the requested object to the thing that actually changes — a catalogue path three edges below the controller — is what makes \"add one parameter\" expensive, and depth is not a property any single class has.",
                     "**Ambiguity.** Two nodes of one type reaching a single consumer is a collision between edges, which a per-class list cannot express at all."
                   ]
                 },
@@ -19265,15 +19265,19 @@
                 {
                   "type": "code",
                   "language": "kotlin",
-                  "code": "class PublicCatalogueClient(private val http: HttpClient)\n\nclass ReaderLibraryClient(private val http: HttpClient)\n\nclass LibraryRepository(\n    private val client: ReaderLibraryClient,\n)"
+                  "code": "class PublicCatalogueClient(\n    private val baseUrl: String,\n)\n\nclass ReaderLibraryClient(\n    private val baseUrl: String,\n    private val credentials: ReaderCredentials,\n)\n\nclass LibraryRepository(\n    private val client: ReaderLibraryClient,\n)"
                 },
                 {
                   "type": "paragraph",
-                  "text": "The ambiguity is gone, and it did not go away because a mechanism resolved it — it went away because the question stopped being ambiguous. The consumer now states which kind of access it needs, a reviewer can see that the catalogue screen never receives a credentialed client, and supplying the wrong one no longer compiles."
+                  "text": "The ambiguity is gone, and it did not go away because a mechanism resolved it — it went away because the question stopped being ambiguous. `LibraryRepository` now states which kind of access it needs, and handing it the catalogue client does not compile."
                 },
                 {
                   "type": "paragraph",
-                  "text": "That is not free, and the trade-off should be stated rather than assumed. Two wrapper types are two more names, two more files, and two more things to keep aligned with the client they wrap; if the only real difference between them is a base URL, the wrappers are ceremony. The test is the familiar one from the architecture material: a second type earns its place when a consumer needs to state a requirement the existing type cannot express. \"Must never carry credentials\" is such a requirement. \"Points at a different host\" usually is not."
+                  "text": "Now notice **what carries the guarantee**, because there is a weaker version of this move that is easy to mistake for the strong one. The rule that mattered was *this client may carry the reader's credentials and that one may not*, and it holds here because credentials are a constructor parameter of one type and absent from the other: there is no way to build a `PublicCatalogueClient` that has them. Had the two types instead been thin wrappers around one shared client — `class PublicCatalogueClient(private val http: HttpClient)` — the consumer's request would still be unambiguous, which was the problem this lesson opened on, but nothing would stop the composition root wrapping the credentialed client in the public type. That version **disambiguates without constraining**. Both are legitimate and they buy different things, so be able to say which one a situation needs: a naming problem is served by the wrapper, and a rule somebody must not be able to break is only served by putting the difference inside the type."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Neither version is free, and the trade-off should be stated rather than assumed. Two types are two more names, two more files and two more things to keep in step with whatever they are built from; if the only real difference between them is a base URL, they are ceremony. The test is the familiar one from the architecture material: a second type earns its place when a consumer needs to state a requirement the existing type cannot express. \"Must never carry credentials\" is such a requirement. \"Points at a different host\" usually is not."
                 },
                 {
                   "type": "paragraph",

@@ -1698,10 +1698,10 @@ QuestionBrowser                           ← a second graph root
  └─ QuestionRepository
 
 StudySessionController                    ← the graph root L2.1 traces
- ├─ QuestionRepository                      (interface, as it became in L1.3)
- │   └─ LocalQuestionRepository
- │       └─ BundledQuestionDataSource
- │           └─ QuestionCatalogConfig
+ ├─ QuestionRepository                      one object: a LocalQuestionRepository (as L1.3
+ │                                           made it), requested as the interface
+ │   └─ BundledQuestionDataSource
+ │       └─ QuestionCatalogConfig
  ├─ AttemptRecorder                         (new in L2.1)
  │   ├─ AttemptStore                        (new in L2.1)
  │   └─ SystemClock
@@ -1796,9 +1796,11 @@ which is what lets Units 3–5 present their keywords as notation.
   built per request, which is the same shape L2.1 gave the per-use summary builder. No
   assisted-injection annotation, saved-state API or container parameter syntax appears, and
   navigation is named as the likely origin of the value without any navigation API.
-- **L2.5** opens on the design question before any mechanism, gives the distinct-types answer
-  with its cost stated, then the `(type, distinction)` key with the concept separated from every
-  framework's notation, then four named non-answers: declaration order, inclusion order,
+- **L2.5** opens on the design question before any mechanism, gives the distinct-types answer —
+  with the difference placed *inside* the types so the credential rule is unbreakable, and with a
+  paragraph separating that from a thin wrapper, which disambiguates a request without
+  constraining what is put in it — then its cost, then the `(type, distinction)` key with the
+  concept separated from every framework's notation, then four named non-answers: declaration order, inclusion order,
   first/last registered, "most specific", and "whichever the tool picks". SENIOR separates two
   implementations of a consumer-owned abstraction from two configurations of one technical type,
   cross-linking the architecture boundary test instead of re-arguing it.
@@ -1814,7 +1816,7 @@ which is what lets Units 3–5 present their keywords as notation.
 
 #### Corrections found during editorial review
 
-Five. The first four were made before validation was reported; the fifth came from code review.
+Seven. The first four were made before validation was reported; the last three came from code review.
 
 1. **L2.1's assembly silently changed a shipped function's arity.** The first draft dropped
    L1.6's per-use `SessionSummaryBuilder`, so `startStudyApplication` took two arguments where
@@ -1851,6 +1853,33 @@ Five. The first four were made before validation was reported; the fifth came fr
    time. It had no check for a term used **consistently within each Lesson but inconsistently
    across two**, which is the shape of this defect. A later authoring issue in this epic should
    read each of the register's terms across the whole Unit in one pass rather than per Lesson.
+6. **L2.5's distinct types did not enforce the rule they were justified by.** Raised in review.
+   The two types were authored as thin wrappers, `class PublicCatalogueClient(private val http:
+   HttpClient)` and the same for the reader client, and the Lesson then claimed that a reviewer
+   "can see that the catalogue screen never receives a credentialed client". That claim is false:
+   both wrappers accept any `HttpClient`, so `PublicCatalogueClient(readerClient)` compiles and
+   sends credentials through the client that must not carry them. The narrow claim about the
+   consumer edge was true — `LibraryRepository` genuinely cannot be handed the catalogue client —
+   but the Lesson had motivated the whole move with a **security rule** and then implied the type
+   system was carrying it, which is precisely the false comfort L2.6 warns against elsewhere in
+   this Unit. The snippet now gives `ReaderLibraryClient` a `credentials` constructor parameter
+   that `PublicCatalogueClient` does not have, so no `PublicCatalogueClient` carrying credentials
+   can be constructed at all, and a new paragraph separates the two strengths explicitly: a thin
+   wrapper **disambiguates without constraining**, while putting the difference inside the type is
+   what makes a rule unbreakable. Both remain legitimate answers and the Lesson now says which
+   situation needs which. The correction improves the Lesson: it turns an overclaim into the
+   distinction a senior answer actually has to make.
+7. **L2.1's diagram invented a node and inflated the depth.** Raised in review. The trace placed
+   `QuestionRepository` and `LocalQuestionRepository` on successive levels, which by the Lesson's
+   own definitions is wrong twice over — a node is "an object that has to exist" and those are one
+   object, and an edge is a construction obligation while choosing an implementation constructs
+   nothing. It also disagreed with the assembly code directly beneath it, which builds a single
+   `LocalQuestionRepository` and ascribes the interface type to the `val`. The diagram now carries
+   one repository node annotated with both names, the prose says why it appears once, and the two
+   depth claims calibrated to the inflated diagram — "four levels separate the controller from the
+   catalogue configuration" and "a catalogue path four levels down" — are corrected to three
+   edges. The node count now agrees with shipped L1.6's "four nodes from the entry point down to
+   the configuration value".
 
 #### Source decisions
 

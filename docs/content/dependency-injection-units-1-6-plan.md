@@ -2112,3 +2112,483 @@ assessment, theme, icon or application-identity code was touched — the change 
 content, two test files and documentation.
 
 ---
+
+### E27-04 authoring outcomes
+
+**Issue #388, `task/E27-04`. Authored 2026-09-18**, on a branch whose head is the merge of PR #396,
+so the final E27-03 Unit and its authoring outcomes were present before a line of this Unit was
+written. Units 1–3 ship; Units 4–6 remain unauthored.
+
+#### What shipped
+
+**One Unit, `unit_dagger_compile_time_object_graphs`, titled "Dagger: Compile-Time Object Graphs",
+home Topic `dependency_injection`.** It is appended after Unit 2, preserving the document's Topic
+grouping and the within-Topic Unit order. Read from production after the change: **27 active Units
+and 120 active Lessons**, up from 26 and 113, and the `dependency_injection` Topic now exposes
+exactly three Learning Units, in order — Dependency Injection as Object Construction, Object
+Graphs, Lifetimes and Scopes, then Dagger: Compile-Time Object Graphs — with six, six and seven
+Lessons.
+
+| # | Lesson id | Title | Primary | Supporting |
+| --- | --- | --- | --- | --- |
+| L3.1 | `lesson_dagger_constructs_what_it_can_see` | What Dagger Can Construct on Its Own | `dagger_fundamentals` | `constructor_injection`, `manual_di`, `composition_root`, `dependency_graphs` |
+| L3.2 | `lesson_declaring_the_rest_of_the_graph` | Declaring the Rest of the Graph | `dagger_modules`, `dagger_bindings` | `dagger_fundamentals`, `interface_boundaries`, `dependency_direction` |
+| L3.3 | `lesson_which_graph_owns_this_binding` | Which Graph Owns This Binding? | `dagger_components` | `dagger_modules`, `composition_root`, `dependency_graphs`, `dagger_bindings` |
+| L3.4 | `lesson_child_graph_or_separate_graph` | A Child Graph, or a Separate Graph? | `dagger_components` | `dagger_scopes`, `dependency_graphs`, `layered_architecture`, `module_dependency_direction` |
+| L3.5 | `lesson_dagger_scopes_and_component_instances` | A Scope Is a Promise the Component Keeps | `dagger_scopes` | `di_scopes`, `dagger_components`, `state_ownership` |
+| L3.6 | `lesson_when_the_type_is_not_the_key` | When the Type Is Not the Key | `dagger_qualifiers`, `dagger_multibindings` | `dagger_bindings`, `dependency_graphs`, `dependency_direction`, `feature_modularization` |
+| L3.7 | `lesson_what_the_dagger_compiler_checked` | What the Dagger Compiler Actually Checked | `dagger_fundamentals` | `dependency_graphs`, `di_framework_tradeoffs`, `dagger_components`, `kotlin_gradle_plugin` |
+
+**Every identity is the planned one**, unchanged in id, title, order, primary concept and supporting
+set. No Lesson was added, removed, split or merged, and **no supporting concept was promoted to
+primary to improve the practice pool** — the decision that matters here is that `dependency_graphs`
+stayed supporting in L3.7, which is what keeps the validation-Question routing problem visible
+instead of accidentally repaired.
+
+#### Deviations from the plan
+
+Three, none touching an identity, a mapping or an order.
+
+1. **Example B gains an abstraction.** Unit 2 shipped `LibraryRepository` as a concrete consumer of
+   a client. L3.2 needs a case where an abstraction is satisfied by an already-constructible
+   implementation, so `LibraryRepository` becomes an interface with `NetworkLibraryRepository`
+   beneath it, and the Lesson states the condition that earns it — the reader's library is read from
+   the network now and expected from a cache later. This is Example A's `QuestionRepository` /
+   `LocalQuestionRepository` shape, kept inside Example B so the Unit argues from one graph.
+2. **L3.1 uses Example A, not Example B.** The plan's Part 4 assigns Example B to Unit 3. L3.1's job
+   is to place generated construction beside the assembly the reader wrote by hand, and the graph
+   they wrote by hand is Example A's — so the Lesson reuses L1.4's `main()` verbatim and annotates
+   L1.4's two-parameter `StudySessionController`. Example B carries L3.2 to L3.7.
+3. **L3.2 mentions parameterless `@Binds` in one Reference paragraph.** The plan does not anticipate
+   it; current documentation does. See [current-doc findings](#current-documentation-findings-against-e27-01) below.
+
+#### Content structure
+
+Seven Lessons, each with substantive CORE, PRACTICAL and SENIOR sections — **178 blocks in total:
+104 paragraphs, 31 code blocks, 26 callouts, 11 bullet lists and 6 comparison tables.** Every Lesson
+carries exactly one `KEY_TAKEAWAY`, at least one `COMMON_MISTAKE` (eight across the Unit) and closes
+on an `INTERVIEW_FOCUS`; `NOTE` is used four times and only for a bounded deferral. Authored length
+runs 1,000–1,500 words of prose per Lesson before tables, which is the shipped Units' range and the
+contract's 5–10 minute target.
+
+#### Example B, as continued
+
+| Object | Lesson | Why it exists |
+| --- | --- | --- |
+| `LibraryRepository` (now an interface) | L3.2, L3.3, L3.4 | The abstraction-to-implementation binding case, and a published type in L3.4 |
+| `NetworkLibraryRepository` | L3.2, L3.7 | The already-constructible implementation, and L3.7's bypassed-boundary example |
+| `HttpClient`, `CatalogueConfig`, `ReaderEnvironment` | L3.2, L3.3, L3.6, L3.7 | The third-party case, the computed-value case, the same-type ambiguity, and L3.7's missing key |
+| `ReaderHome`, `SettingsHome` | L3.3 | Component entry points, and what adding one obliges |
+| `AnnotationComponent`, `AnnotationEditor`, `SearchComponent` | L3.4 | The two relationships modelled on one feature, and sibling isolation |
+| `ReaderSession` | L3.5 | The application-lifetime identity requirement Unit 2 stated, now scoped |
+| `StartupContributor`, `StartupRunner` and three feature contributors | L3.6 | The independent-contributor problem multibindings exist for |
+| `DraftAnnotation` | L3.7 | The graph that compiles and is wrong |
+
+Every object is one Unit 2 already introduced, or one a Lesson's own requirement needed. Nothing was
+added because an annotation needed demonstrating.
+
+#### The Dagger translation of the generic decisions
+
+The Unit's thesis is stated in its summary and carried in the learner-facing flow rather than only
+in a table: each Lesson opens on the generic question and reaches the mechanism as its answer.
+
+| Generic question, from Units 1–2 | Where it is asked | Dagger encoding taught |
+| --- | --- | --- |
+| Who constructs this object? | L3.1 CORE, naming it as Unit 1's question | `@Inject` constructor |
+| Construction needs logic, or a type you cannot annotate | L3.2 Case A and Case C | `@Provides` |
+| An already-constructible implementation satisfies an abstraction | L3.2 Case B | Ordinary one-parameter `@Binds` |
+| Where is the graph's declared request surface? | L3.3 CORE | Component |
+| Which parent bindings does a child graph inherit? | L3.4 CORE | Subcomponent |
+| Which bindings of another graph are intentionally exposed? | L3.4 CORE | Component dependency |
+| Which object actually retains a reused instance? | L3.5 CORE, as the opening question | Component instance plus a matching scope |
+| Which of two same-type bindings is meant? | L3.6 CORE, reopening L2.5's collision | Qualifier |
+| How do independent contributors satisfy one aggregate? | L3.6 PRACTICAL | Set multibinding |
+| When does an unsatisfied or ambiguous edge become visible? | L3.7 CORE | Component-level graph validation |
+
+#### Unit 2's terminology, carried forward unaltered
+
+L3.5 is the Lesson that had to carry it and it does so explicitly. Its opening move is the question
+*who actually retains this instance?*, and its answer names the component instance before any
+annotation appears. The three-step arrow is authored as a `text` diagram — required lifetime, then
+the component instance held for that long, then the scope annotation expressing reuse inside it —
+which is L2.3's order with Dagger supplying only the last line. The sentence "A scope annotation
+creates no owner and no lifetime" is the `KEY_TAKEAWAY`, and the terminology sweep below confirms no
+sentence anywhere in the Unit says a scope determines a lifetime.
+
+`@Singleton` is corrected rather than defined: the `COMMON_MISTAKE` names immortal, process-global
+and one-per-application as the three wrong readings, and the correction credits the application
+rather than the annotation — an application gets application-wide behaviour because it creates one
+such component and holds it for the process. No Hilt component semantics are imported.
+
+#### The instance-count exercise
+
+L3.5 resolves a `@Singleton ReaderSession` twice from one component and once from a second,
+independently created one, and asks for the count. The answer is reasoned from ownership in two
+bullets — same component instance plus same scoped binding gives one reused instance, a second
+component instance gives another — and the Lesson states plainly that the answer is **two** while
+the annotation is called `@Singleton`. Nothing is inferred from the annotation's name.
+
+#### `@Provides` against `@Binds`, as authored
+
+Three cases, each with a graph reason rather than a preference: a third-party client built by a
+builder (`@Provides`); `LibraryRepository` satisfied by an already-injectable
+`NetworkLibraryRepository` (ordinary one-parameter `@Binds`); and `CatalogueConfig`, an
+application-owned type whose provider branches on an environment and applies a fallback
+(`@Provides`). Case C exists specifically so the rule does not collapse into "do you own the type?".
+
+The preference is reported with its documented reason — Dagger "only needs the module at compile
+time, and can avoid class loading the module at runtime" — and immediately bounded by a
+`COMMON_MISTAKE` that refuses the generalisation to "always use `@Binds`": it applies only where the
+binding's shape can be expressed that way at all. The selection rule is a three-row table whose
+third column is *why nothing else can express it*, which is the form that makes the choice
+non-stylistic.
+
+**Parameterless `@Binds` is Reference depth only**, in one SENIOR paragraph of L3.2, explicitly
+distinguished from the abstraction binding as taking no parameter and declaring a binding that would
+otherwise be implicit, and explicitly marked as not entering the selection rule. No assessment gap
+requires it.
+
+#### Module responsibility, and the two boundaries it is confused with
+
+L3.2 fixes the meaning in CORE — "A module **groups binding declarations**. That is the entire job."
+— and its SENIOR section is a four-row table of what a module is assumed to be and is not: it does
+not own the graph, does not determine how long its objects live, is not an architectural layer, and
+corresponds to neither a feature nor a build module. The consequence carried into L3.3 is the useful
+one: because a module owns nothing, a module can be correct in isolation and unusable in a
+particular component, which is why validation happens where the graph is assembled.
+
+**The Dagger-module against Gradle-module correction is stated once**, as a `COMMON_MISTAKE` in
+L3.2, and is not repeated in L3.4 — which states the different correction it owns, that a component
+boundary is an object-graph boundary and a Gradle module boundary is a build and source boundary.
+Both name build modularisation as a separate subject and neither enters it.
+
+#### Component responsibility, and the composition-root distinction
+
+L3.3 teaches the component as four things at once — a declaration of what may be requested, a
+configuration of which declarations participate, a generated implementation, and a concrete graph
+instance at run time — and the `COMMON_MISTAKE` refuses the reduction to a module list. The entry
+point example is a `ReaderComponent` exposing `readerHome()`, followed by a nine-line `text` trace
+from the requested key down to a `ReaderEnvironment` that nothing declares; adding `settingsHome()`
+is then used to show that each entry point commits the graph to everything beneath it.
+
+**Reachability** is authored as the documented list — bindings from directly named or transitively
+included modules, `@Inject` constructors that are unscoped or scope-matched, the provision methods
+of component dependencies, the component itself, subcomponent builders, and `Provider`/`Lazy`
+wrappers — with two consequences drawn: a module installed nowhere contributes nothing, and an
+installed-but-unrequested binding is merely unreachable rather than an error.
+
+**The composition-root distinction is authored as a three-row table and a correction.** The Lesson
+never writes "the component is the composition root". It writes that the application's composition
+root can create and hold the component, configure it and ask it for an entry point, while the
+component is the graph API Dagger generated. E27-01's blueprint wording for L3.3 — "the component
+instance is the thing a program holds, which makes it the concrete form of L1.4's composition root"
+— was **narrowed in the final prose** rather than reproduced, because taken literally it contradicts
+Unit 1's definition of the composition root as a responsibility and a location. No shipped Lesson
+needed editing for this; the correction is entirely inside L3.3.
+
+#### Subcomponent against component dependency
+
+L3.4 frames the decision as visibility and says so directly: *should this graph inherit the other
+graph's binding key space, or should it see only an explicitly published surface?* The same feature
+— an annotation editor — is modelled both ways in two code blocks, and the difference is made
+concrete on named types: as a subcomponent the editor may depend on `HttpClient` and
+`CatalogueConfig`; as a dependent component it may not, and publishing one is a visible edit to
+`ReaderComponent`.
+
+**The inheritance claim is stated exactly.** The `COMMON_MISTAKE` refuses "a component dependency
+inherits the other component's graph" and replaces it with the provision-method surface. Subcomponent
+inheritance is quoted from the documentation rather than paraphrased, as is the one-way rule, and a
+`text` diagram shows a parent with two subcomponents and marks each child-only binding invisible to
+both the parent and the sibling. The five-row comparison table's axes are what each graph can use,
+what declaring a new shared type costs, what happens when the other graph gains a binding, the
+relationship between the graphs, and scopes — deliberately not "simple" against "modular".
+
+Only core Dagger sources were used for this claim. Hilt's own `subcomponents-vs-deps` discussion was
+**not** cited, because the normative definition of raw Dagger's relationship is the dev guide's and
+the Hilt page is that library's design argument.
+
+#### Qualifiers and multibindings
+
+L3.6 opens on L2.5's unresolved collision using the same `HttpClient`, `LibraryRepository` and
+credentials framing Unit 2 shipped, and re-states Unit 2's first answer — distinct types, where the
+two represent different responsibilities — before introducing a qualifier as the answer for the case
+where the two genuinely are one concept configured twice. The key model is authored from core
+semantics: a key is a type and an optional qualifier, shown as a `text` block where `HttpClient` and
+`@Authenticated HttpClient` are two keys. Syntax arrives only after the ambiguity.
+
+**Both sides are made load-bearing.** The `KEY_TAKEAWAY` states that a qualifier is part of the key
+rather than a name on a provider, and the `COMMON_MISTAKE` explains why annotating only the provider
+usually surfaces as a *missing* binding rather than as the ambiguity it replaced. The honest limit
+is kept: a qualifier disambiguates without constraining, so where the rule is one nobody may break,
+the type system remains the stronger answer.
+
+Multibinding is motivated by the planned independent startup contributors. The Lesson first shows
+the coordinator naming every feature, names what is wrong with it, then shows two independent
+feature modules contributing with `@IntoSet` and a `StartupRunner` injecting
+`Set<@JvmSuppressWildcards StartupContributor>`. SENIOR draws the dependency-direction consequence as
+a before-and-after arrow diagram and then states **two limits**: a multibinding does not by itself
+make an architecture modular — build boundaries are a separate decision with separate tools — and
+the aggregate is a `Set`, so no ordering is promised and the coordinator still owns what happens when
+a contributor is slow or throws. Map multibindings are one `NOTE` sentence. `@Multibinds`, custom map
+keys, provider-valued maps and `@ElementsIntoSet` do not appear.
+
+#### Validation, its guarantee and its limit
+
+L3.7 quotes the component-level validation split and authors well-formedness from core semantics as
+a property of keys: every key contains exactly one binding, so zero is a missing binding and more
+than one is a duplicate. Both are traced as `text` diagrams on Example B — the `ReaderEnvironment`
+hole L3.3 deliberately left, and the two unqualified `HttpClient` providers — and the duplicate case
+is connected back to L2.5 and forward to L3.6's qualifier. The `COMMON_MISTAKE` refuses
+declaration-order and most-specific tie-breaks.
+
+**Cycles are stated with their exception rather than rounded off.** The Lesson says the rule is that
+a well-formed graph has no cycles *with an exception* for a cycle containing an edge whose dependency
+key was wrapped in `Provider` or `Lazy`, names the mechanism as outside the Unit, and says explicitly
+that missing and duplicate bindings are enough to carry the argument — so accuracy is not traded for
+a tidier sentence. No absolute "Dagger rejects all cycles" claim appears anywhere.
+
+The guarantee is a three-item list phrased no more strongly than the documentation supports, and the
+limit is a five-item list covering dependency direction, boundary placement, the abstraction a
+consumer should know about, lifetime requirement and scope width, component-against-product
+boundaries, and whether a dependency should exist at all.
+
+**The compile-but-wrong example is the required one.** A `@Singleton DraftAnnotation` — the
+per-destination mutable draft Unit 2 introduced — installed in the component the application retains.
+The Lesson states that every binding exists, the key has exactly one binding, the scope is
+represented by a component, there are no cycles and the build succeeds without a warning, then walks
+the user-visible failure: open a book, type half a sentence, open a different book, and the
+half-sentence is attached to the wrong book. It names the diagnosis as requiring L2.3's vocabulary
+and states that Dagger checked none of the three. A second, different-in-kind example follows: a
+state owner depending on `NetworkLibraryRepository` rather than `LibraryRepository`, which builds
+fine and bypasses the boundary the interface existed to create. A five-row table then separates what
+the build answers from what it does not, and the closing paragraph refuses both caricatures by name.
+
+**The build cost is one `NOTE` and one clause.** Generation and validation during the build mean the
+build does work and carries tooling; how large, how incremental and how configured are named as
+build-engineering questions with their own curriculum. Nothing is quantified and no processing
+mechanism is compared.
+
+#### Source decisions
+
+All Dagger sources were re-opened on **2026-09-18**, during authoring, rather than relied on from
+E27-01's Part 8.
+
+| Page | Used for |
+| --- | --- |
+| `dagger.dev/dev-guide/` | The generated-code design goal quoted in L3.1 |
+| `dagger.dev/dev-guide/basic-usage` | `@Inject` constructors and generated factory naming; `@Provides`; ordinary and parameterless `@Binds` and the preference reason; component roots and provision methods; the full available-bindings list; scoped instances associated with component instances; `@Reusable`'s warnings; component-level compile-time validation; `@Qualifier` and that `javax.inject` supplies it |
+| `dagger.dev/dev-guide/subcomponents` | Ancestor binding inheritance; the one-way parent/child and sibling rule; the ancestor-scope restriction and the mutually-unreachable exception |
+| `dagger.dev/dev-guide/multibindings` | Independent modules contributing to one collection; `@IntoSet`; injecting the resulting set without depending on individual bindings; the map form |
+| `dagger.dev/semantics/` | Binding key as a type and an optional qualifier; well-formedness as every key containing exactly one binding; missing and duplicate bindings; the cycle rule and its `Provider`/`Lazy` exception |
+
+Each Lesson carries two or three of these as its `sources`, chosen to support that Lesson's specific
+claims. **No Dagger version is named anywhere**, because no Dagger version is configured in any
+module and inventing one would be a claim nothing supports. No blog, tutorial or aggregator was used
+for any API behaviour claim, and `dagger.dev/dev-guide/kotlin` returned 404 — the Kotlin module
+layout claim rests on the dev-guide material and is authored as "one supported layout rather than the
+only one" accordingly.
+
+#### Current-documentation findings against E27-01
+
+Every Part 8 Dagger finding **held**. Two things current documentation says that E27-01 did not
+record:
+
+1. **Parameterless `@Binds` exists.** Basic Usage states that `@Binds` "can also be used with zero
+   parameters to explicitly declare a binding for a class with an `@Inject` constructor". E27-01's
+   Part 8 records only the one-parameter form. Handled as Reference depth in L3.2's SENIOR, clearly
+   separated from the abstraction binding, and kept out of the selection rule.
+2. **The cycle rule has a documented exception.** Core semantics permits a cycle containing an edge
+   whose dependency key was wrapped in `Provider` or `Lazy`. E27-01 does not mention cycles at all.
+   L3.7 therefore qualifies the claim rather than asserting that all cycles are rejected.
+
+Neither required a shipped Lesson to change, and neither altered a mapping.
+
+#### Cross-links
+
+All seven Lessons link backwards only; the Unit adds no forward link and edits no shipped Lesson.
+
+| Lesson | Links to | Why |
+| --- | --- | --- |
+| L3.1 | `lesson_one_place_that_knows_how_to_build`, `lesson_from_one_dependency_to_a_graph` | The planned pair. The hand-written assembly it places generation beside, and the transitive graph it re-reads as edges |
+| L3.2 | `lesson_when_an_interface_is_a_boundary`, L3.1 | Case B declines to re-argue when an interface earns its place, and the Lesson opens where L3.1 stopped |
+| L3.3 | `lesson_one_place_that_knows_how_to_build`, L3.2 | The composition-root distinction defers its definition rather than restating it |
+| L3.4 | L3.3 | The published surface it narrows is L3.3's entry-point list |
+| L3.5 | `lesson_scope_is_a_rule_owner_is_a_lifetime`, L3.3 | The planned link, plus the component whose instance it names as the owner |
+| L3.6 | `lesson_two_dependencies_of_the_same_type`, `lesson_dependency_inversion_in_practice` | The planned link, plus the inversion argument SENIOR applies to a fan-in rather than re-deriving |
+| L3.7 | `lesson_scope_is_a_rule_owner_is_a_lifetime`, `lesson_when_a_broken_graph_tells_you`, L3.5 | The planned link, plus the two Lessons the compile-but-wrong example applies directly |
+
+The three additional links beyond the four the plan requires each replace a re-derivation the Lesson
+would otherwise have had to perform. **Units 1 and 2 were not edited**, for reciprocal links or for
+anything else: the learning document's diff is 1,289 insertions and **zero deletions**.
+
+#### Practice pool, resolved through production
+
+Resolved through the real Practice Builder and question selector, not counted from the taxonomy.
+**Eight ACTIVE Questions, exactly the eight E27-01 modelled**, with the modelled level distribution
+of **5 FOUNDATION and 3 APPLIED, 0 ADVANCED**.
+
+| Question | Subtopic | Level | Reached through |
+| --- | --- | --- | --- |
+| `dagger_generated_factory_no_reflection` | `dagger_fundamentals` | FOUNDATION | L3.1, L3.7 |
+| `dagger_inject_provides_binds_selection` | `dagger_bindings` | FOUNDATION | L3.2 |
+| `dagger_component_graph_root` | `dagger_components` | FOUNDATION | L3.3, L3.4 |
+| `dagger_subcomponent_parent_binding_inheritance` | `dagger_components` | FOUNDATION | L3.3, L3.4 |
+| `dagger_component_dependency_vs_subcomponent` | `dagger_components` | APPLIED | L3.3, L3.4 |
+| `dagger_scope_component_instance_lifetime` | `dagger_scopes` | FOUNDATION | L3.5 |
+| `dagger_qualifier_same_type_bindings` | `dagger_qualifiers` | APPLIED | L3.6 |
+| `dagger_multibinding_into_set` | `dagger_multibindings` | APPLIED | L3.6 |
+
+The three dependency-injection Units share no Question: no Subtopic is primary in more than one of
+them, which the integration test asserts in both directions.
+
+#### Semantic review of the eight Questions the Unit reaches
+
+Every Question was re-read in full — stem, all options, explanation and sources — against the
+finished prose, rather than judged by id or mapping.
+
+| Question | Verdict | Notes |
+| --- | --- | --- |
+| `dagger_generated_factory_no_reflection` | **Answerable** | L3.1 teaches all four things it discriminates on: build-time generation of a factory per `@Inject` constructor, a generated component implementation, that the runtime follows generated calls rather than discovering the graph reflectively, and that this is low predictable overhead rather than zero. The distractors — runtime annotation reading, bytecode rewriting, service-locator registration — are each refuted by the Lesson's own argument rather than by naming them |
+| `dagger_inject_provides_binds_selection` | **Answerable** | All four options map onto L3.2's three cases. The two correct ones are the Lesson's own rules; the third-party distractor is Case A stated backwards and the interface-instantiation distractor is refuted by the Lesson's opening list of what `@Inject` cannot cover |
+| `dagger_component_graph_root` | **Answerable**, with a mapping observation | L3.3 teaches considerably more than the Question asks. The stem is definitional — which responsibility belongs to a component rather than a module — and the Lesson's `COMMON_MISTAKE` against reading a component as a bag of modules answers it directly. The Lesson was **not** narrowed to match it |
+| `dagger_subcomponent_parent_binding_inheritance` | **Answerable** | L3.4 quotes the inheritance rule and the one-way visibility rule, and the diagram makes the parent-cannot-see-child distractor concrete. The "unrelated graph that duplicates every parent binding" distractor is refuted by the nested framing throughout |
+| `dagger_component_dependency_vs_subcomponent` | **Answerable**; one wording note | The correct option — a component dependency "exposes only the parent's declared provision methods" — is L3.4's central sentence. The Question's *explanation* says a subcomponent "inherits its parent's entire binding graph", which is looser than the documentation's phrasing about ancestor bindings that L3.4 quotes; this is a candidate for E27-08 to tighten and **was not changed here**, since the assessment bank is frozen for this issue |
+| `dagger_scope_component_instance_lifetime` | **Answerable** | The correct option is L3.5's thesis almost word for word, and all three distractors — global cache until process exit, module-instance caching, Activity caching — are refuted by the ownership argument and the instance-count exercise rather than by assertion |
+| `dagger_qualifier_same_type_bindings` | **Answerable** | L3.6 teaches the key model the correct option rests on, and requires the qualifier on both sides, which the option states. The order-based and parameter-name distractors are refuted in L3.6 and again in L3.7 |
+| `dagger_multibinding_into_set` | **Answerable** | The stem is the Lesson's own scenario — features contributing startup initialisers to an app module that must not know which are present. L3.6's SENIOR arrow diagram is the reasoning the correct option needs, and the qualifier, subcomponent and component-dependency distractors are each excluded by material the Unit teaches |
+
+No Lesson was written towards a distractor's wording, and no Lesson was narrowed to a Question's
+scope. L3.3, L3.5 and L3.6 deliberately teach past the Questions mapped to them.
+
+#### Level-review status of the two flagged Questions
+
+- **`dagger_inject_provides_binds_selection`** — E27-01 flagged its FOUNDATION level as a possible
+  re-level candidate because it requires several independent judgements. **Finished authoring
+  strengthens that finding.** L3.2 needs three worked cases, a three-column selection table and a
+  bounded preference rule to teach what the Question asks in one multi-select item, and the
+  Question's correct set requires the learner to hold the `@Inject`, `@Binds` and third-party
+  constraints simultaneously. It reads as APPLIED work. **The level was not changed**; E27-08 owns it.
+- **`dagger_scope_component_instance_lifetime`** — E27-01 flagged the same possibility. **Finished
+  authoring does not strengthen it.** The Question asks for the single fact L3.5's CORE establishes
+  before any example, and a reader who has the component-instance sentence can answer it without the
+  counting exercise. FOUNDATION looks defensible. **The level was not changed**; E27-08 owns it.
+
+The Lesson does make the learner count instances from component ownership rather than from the
+annotation name — that is the explicit purpose of the three-resolution exercise and of the answer
+being two under an annotation called `@Singleton`.
+
+#### `dagger_modules` zero coverage — GAP-U3-A
+
+`dagger_modules` is a primary concept of L3.2 and reaches **zero ACTIVE Questions**; its only
+Question, `dagger_module_binding_declarations`, is DEPRECATED and **was not restored, replaced or
+worked around**. The generated coverage snapshot reports it truthfully as the repository's single
+primary Subtopic with no active coverage, and the integration test asserts that no Question reaches
+it so that a later change cannot close the gap silently.
+
+**GAP-U3-A remains substantively open, and the Lesson now makes it assessable.** The question the gap
+names — *what does a module contribute, as distinct from what a component assembles and owns?* — is
+answerable from L3.2's CORE definition and its four-row SENIOR table, reinforced by L3.3's account of
+why relationship validation happens at the component. An author writing that Question now has the
+teaching material to write it against; E27-08 owns writing it.
+
+#### `dagger_compile_time_graph_validation` routing — status unchanged
+
+The Question remains mapped to `dependency_graphs`, so it is reachable from **Unit 2's** practice and
+not from Unit 3's, while **L3.7 teaches its reasoning in full**. Nothing was done about it here:
+`dependency_graphs` was not added as a primary concept to L3.7, the Question was not re-mapped, and
+no Unit 2 mapping was touched. Both integration tests now pin the situation from each side — Unit 2's
+asserts the Question is reachable there, Unit 3's asserts it is not reachable here — so the re-map
+E27-08 owns has to be taken deliberately, together with GAP-U2-E, because moving it would leave
+`dependency_graphs` with no ACTIVE Question at all.
+
+#### GAP-U3-B status
+
+**Open, and taught regardless.** The existing `dagger_compile_time_graph_validation` asks *when*
+graph failures surface; nothing assesses the limit of the guarantee. L3.7 teaches that limit as its
+closing argument — the three-item guarantee, the five-item list of what a successful build does not
+establish, two compile-but-wrong examples and the table separating the two. **No Question was
+written**, and nothing in L3.7 duplicates the existing Question's subject. E27-08 owns the
+assessment.
+
+#### Editorial sweeps performed
+
+| Sweep | Result |
+| --- | --- |
+| Misconception sweep, all fifteen from the issue | Each is defeated in place rather than in a myths list: runtime reflection and zero cost in L3.1; interchangeable declaration forms, a module owning the graph and Dagger-against-Gradle modules in L3.2; a component as a bag of modules in L3.3; component-dependency inheritance and two-way parent/child visibility in L3.4; a scope creating lifetime and `@Singleton` as immortal in L3.5; qualifiers as arbitrary labels and multibinding as collection syntax in L3.6; declaration order, compiling-means-correct and validation-eliminates-runtime-failure in L3.7 |
+| Graph-question sweep | Every mechanism taught answers a Unit-1 or Unit-2 question, and the question is asked in the learner-facing flow before the mechanism appears — recorded in the translation table above. No mechanism failed this test, so none was dropped |
+| Lifetime and ownership sweep over scope / lifetime / singleton / global / owner / retain / lives | 61 sentences reviewed. Two matched the dangerous shapes, and **both are the corrections themselves** — the `COMMON_MISTAKE` naming immortal and process-global as wrong readings, and the `INTERVIEW_FOCUS` restating why. No sentence asserts that a scope determines a lifetime without naming the component instance |
+| Build sweep over kapt / KSP / Gradle / processor / plugin / incremental / build performance | Zero occurrences of `kapt`, `KSP` and `annotationProcessor`. "Gradle" occurs five times, every one the module-boundary or component-boundary correction. "Processor" occurs three times, each definitional. "Incremental" occurs twice, both the explicit deferral. "Plugin" occurs once, in "plugin-shaped". No Gradle snippet, no setup, no cost analysis |
+| Hilt and Koin leak sweep over every block, not only code | **Zero occurrences** of `@AndroidEntryPoint`, `@HiltViewModel`, `@InstallIn`, `SingletonComponent`, `ActivityRetainedComponent`, `ViewModelComponent`, `@HiltAndroidApp`, `@EntryPoint`, `startKoin`, `koinViewModel`, `koinInject`, `single {`, `factory {`, and of the bare words "Hilt" and "Koin" in any casing. The Unit names no later framework at all |
+
+#### Tests changed, and why
+
+| File | Change | Why production data made it necessary |
+| --- | --- | --- |
+| `BundledLearningCurriculumTest` | Unit id, title and home-Topic lists extended by one; Lesson id/title order and primary mappings added for the new Unit; three new tests — `daggerUnitKeepsItsPlannedBridgesOutOfPrimaryPractice`, `daggerUnitLinksBackwardsOnlyToTheGenericDecisionsItEncodes` and `daggerUnitStaysInsideItsApiAndBuildBoundaries` | The document gains a Unit, so every positional list moves. The supporting-mapping test is where `dependency_graphs` and `di_scopes` would silently become practice, and it asserts both stay supporting. The boundary test expresses two acceptance criteria as checks: no Hilt or Koin material, and no build-configuration material |
+| `LearningUnitPracticeIntegrationTest` | The traversal test now expects three Units in the `dependency_injection` Topic with 6, 6 and 7 Lessons and a final studied-record count of 119, up from 112; new test `theDaggerUnitPractisesOnlyItsSevenPrimaryConcepts` | Continue Learning walks the whole document, so a third Unit in the fourth home Topic changes the traversal. The Unit is deliberately **not** in the shared expectation table, following both earlier Units: the table's loop cannot state that `dagger_modules` reaches nothing or that the validation Question is absent, and the bespoke test pins the eight ids, the 5/3 level distribution and both limitations |
+
+The boundary test asserts two positive properties a token blocklist cannot express: that L3.1
+contains the bounded no-reflection claim and the matching honesty about cost, and that L3.5 contains
+the component-instance anchor and the carried-forward correction. No test was added that only
+restates schema validation `LearningCurriculumValidatorTest` already performs, and the data-driven
+suites — the reader journey over every shipped Unit, Topic Detail's Unit rows, the end-to-end
+repository path — needed no edit because they read the document rather than list it.
+
+#### Generated coverage
+
+`python3 tools/learning_question_coverage.py --write` then `--check`. The snapshot reports **27
+active units, 120 active lessons**, the new Unit's pool as **5 FOUNDATION and 3 APPLIED across 8
+unique Questions**, and **one primary Subtopic with no active question** — `dagger_modules`, which is
+GAP-U3-A shown as data. Nothing in the file was edited by hand.
+
+#### Validation performed
+
+| Command | Result |
+| --- | --- |
+| `python3` structural pre-check over both bundled JSON documents | Unit and Lesson ids unique across the whole document, every primary and supporting id an ACTIVE Subtopic, no primary/supporting overlap, every `relatedLessonIds` target resolvable and backward in document order, every Lesson sourced with valid `http(s)` URLs. **No defect in the new Unit** — the pre-existing forward links the sweep reports are all in shipped Compose and coroutines Lessons and none is in this Unit |
+| `python3` misconception, graph-question, lifetime, build, and Hilt/Koin sweeps over every block | Reported in full above |
+| `./gradlew :shared:jvmTest --tests "*BundledLearningCurriculumTest*" --tests "*LearningUnitPracticeIntegrationTest*" --tests "*LearningCurriculumValidatorTest*"` | 112 tests, 0 failures. The first run failed with two `LearningContentLoadException`s — a blank comparison-table header in L3.3 and L3.4, which the loader's validation rejects — fixed by giving both tables a first-column heading |
+| `./gradlew :shared:jvmTest --tests "*LearningProductionContentJourneyTest*" --tests "*LearningContentEndToEndTest*"` | 16 tests, 0 failures — including the journey suite that renders every authored block of the new Unit in the real reader and opens its Source links through the app's own URI boundary |
+| `./gradlew :shared:jvmTest --rerun-tasks` | **1,469 tests, 0 failures, 0 skipped** |
+| `python3 tools/learning_question_coverage.py --write` then `--check` | Snapshot regenerated and reported current |
+| `cd tools && python3 -m unittest test_learning_question_coverage.py` | 21 tests, OK |
+| `./gradlew :shared:check` | **BUILD SUCCESSFUL** — `testAndroidHostTest`, `jsBrowserTest`, `wasmJsBrowserTest` and `allTests`, each reporting 462 common tests with 0 failures on its target |
+| `./gradlew :shared:iosSimulatorArm64Test --rerun-tasks` | **BUILD SUCCESSFUL**, 462 tests, 0 failures. Re-run explicitly because `:shared:check` did not re-execute it against the changed document — the same precaution E27-02 and E27-03 recorded |
+| `./gradlew :androidApp:assembleDebug --rerun-tasks` | **BUILD SUCCESSFUL** |
+| `git diff --check` and `git status --short` | Four files changed — the bundled learning document, two jvm test files and the generated coverage snapshot, plus this plan — with no build or cache output and no whitespace defects |
+
+#### Not validated
+
+- **`iosArm64` is not compiled locally or on CI**, unchanged from E23–E27-03. `iosSimulatorArm64Test`
+  was run and passed; the device target was not. This Unit is bundled content with no
+  target-specific code and makes no platform claim at all, so nothing in its prose depends on that
+  target — but the limitation remains true of the repository and is reported rather than glossed.
+- **No platform-specific behaviour is claimed from compilation.** The JS, Wasm, Android-host and
+  iOS-simulator results prove the document decodes and the common suites pass on those targets. They
+  are not evidence about rendering on any device, and the Unit was not read on a running Android,
+  iOS, desktop or web host.
+- **No CI run is claimed.** Nothing here was observed on GitHub Actions.
+- **No Dagger code in this Unit was compiled.** The snippets are curriculum content and no Dagger
+  dependency exists in any module, so their plausibility rests on the cited documentation and on
+  review, not on a compiler. This is the deliberate consequence of the curriculum-only constraint.
+- **Backlog and issue validation was not run**: `PyYAML` is unavailable in this environment, so
+  `.github/project/backlog.yml` was read as text rather than parsed, and **`gh` is not installed**,
+  so issue #388 was read from the backlog entry — whose `issue`, `approach` and twelve
+  `acceptance_criteria` are the same text — rather than from GitHub directly.
+- **The prose itself is editorial.** No automated check can confirm that a Lesson teaches what it
+  claims. The semantic review above, and the judgement that a reader of Units 1–3 can answer the
+  thirty-two questions the issue's final learner test lists without any Hilt knowledge, are
+  judgements, as Rule 10 of the authoring contract requires.
+
+#### Production code untouched
+
+**No Dagger dependency, plugin, annotation processor or production code of any kind was added.**
+`gradle/libs.versions.toml` is unchanged; no module's `build.gradle.kts` was touched; no
+KSP or kapt configuration exists or was created; no production Kotlin file imports anything from
+Dagger. **The production Koin graph is unchanged** — no Koin module, host `startKoin` function,
+`koinViewModel()` call site, service construction or state-holder lifetime was edited. No UI,
+navigation, progress, assessment, theme, icon or application-identity code was touched. The change is
+bundled content, two test files and documentation, and the bundled question bank
+`initial_curriculum.json` is byte-for-byte unchanged.
+
+---

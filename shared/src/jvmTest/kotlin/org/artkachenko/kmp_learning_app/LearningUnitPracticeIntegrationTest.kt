@@ -265,20 +265,22 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             // E27-02 added a fourth home Topic, and the handover happens once more: exhausting
             // the architecture Units leads into the dependency-injection Units, not to Complete.
-            // E27-03 added the second of those Units, and the traversal walks both in order without
-            // any special case in production code.
+            // E27-03 added the second of those Units and E27-04 the third, and the traversal walks
+            // all three in order without any special case in production code.
             val diUnits = BundledLearningContentRepository().getActiveUnitsByTopic("dependency_injection")
             assertEquals(
                 listOf(
                     "unit_dependency_injection_as_object_construction",
                     "unit_object_graphs_lifetimes_and_scopes",
+                    "unit_dagger_compile_time_object_graphs",
                 ),
                 diUnits.map { it.id },
             )
-            // Six Lessons each, because each Unit carries six separately learnable ideas —
-            // `docs/content/dependency-injection-units-1-6-plan.md` derives the counts rather
-            // than assigning them.
-            assertEquals(listOf(6, 6), diUnits.map { it.lessons.size })
+            // Six, six and seven Lessons, because each Unit carries that many separately learnable
+            // ideas — `docs/content/dependency-injection-units-1-6-plan.md` derives the counts
+            // rather than assigning them, and the Dagger Unit needs one per generic decision it
+            // encodes.
+            assertEquals(listOf(6, 6, 7), diUnits.map { it.lessons.size })
             val diTopic = topic("dependency_injection")
             val diParents = diUnits.associate { it.id to unit(it.id) }
             val diLessonCount = diUnits.sumOf { it.lessons.size }
@@ -360,9 +362,9 @@ internal class LearningUnitPracticeIntegrationTest {
             val rebuilt = LocalLessonStudyRepository(database)
             assertFalse(rebuilt.isStudied(earlierLesson.id))
             // 43 `android_ui` Lessons, 29 in the coroutines and Flow Units, 29 in the six
-            // architecture Units and 12 in the two dependency-injection Units, less the one that
+            // architecture Units and 19 in the three dependency-injection Units, less the one that
             // was just un-studied.
-            assertEquals(112, rebuilt.getStudiedLessons().size)
+            assertEquals(119, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -1477,6 +1479,124 @@ internal class LearningUnitPracticeIntegrationTest {
             foundationsBuilder.settled()
             val foundations = selectedQuestions(foundationsBuilder.start()).map { it.id }.toSet()
             assertEquals(emptySet(), foundations intersect questionIds)
+            assertEquals(0, attemptCount())
+        }
+
+    /**
+     * E27-04. The Dagger Unit's practice, resolved through the production Practice Builder.
+     *
+     * Seven primary concepts across seven Lessons, reaching eight Questions. This Unit is the first
+     * in the epic whose practice is about the material it actually teaches, which is worth asserting
+     * rather than assuming: every reached Question is a Dagger Question, and every one of them is
+     * about a mechanism one of these Lessons introduces.
+     *
+     * Two limitations are pinned here rather than repaired, because both are E27-08's to decide.
+     * `dagger_modules` is primary in the declaration Lesson and reaches **no** ACTIVE Question at
+     * all — its one Question is DEPRECATED — so the module-against-component distinction this Unit
+     * teaches is currently unassessed, which is GAP-U3-A. And `dagger_compile_time_graph_validation`
+     * is mapped to `dependency_graphs`, so the Question whose reasoning the closing Lesson teaches
+     * in full is reachable from the *previous* Unit and not from this one. Asserting its absence
+     * here means the routing problem has to be re-stated rather than quietly fixed by a mapping.
+     */
+    @Test
+    fun theDaggerUnitPractisesOnlyItsSevenPrimaryConcepts() =
+        runUnitPracticeTest {
+            val unitId = "unit_dagger_compile_time_object_graphs"
+            val unit = assertNotNull(BundledLearningContentRepository().getUnitById(unitId))
+            val builder = builder(PracticeBuilderTarget.LearningUnit(unitId))
+            val settled = builder.settled()
+
+            assertEquals(unit.title, settled.scope.name)
+            val available = assertIs<PracticeAvailability.Available>(settled.availability)
+            assertEquals(8, available.eligibleQuestionCount)
+            builder.selectQuestionCount(available.eligibleQuestionCount)
+            builder.settled()
+
+            val config = builder.start()
+            val concepts = setOf(
+                "dagger_fundamentals",
+                "dagger_modules",
+                "dagger_bindings",
+                "dagger_components",
+                "dagger_scopes",
+                "dagger_qualifiers",
+                "dagger_multibindings",
+            )
+            assertEquals(AssessmentScope.Subtopics(concepts), config.scope)
+
+            val questions = selectedQuestions(config)
+            val questionIds = questions.map { it.id }.toSet()
+            assertEquals(
+                setOf(
+                    "dagger_generated_factory_no_reflection",
+                    "dagger_inject_provides_binds_selection",
+                    "dagger_component_graph_root",
+                    "dagger_subcomponent_parent_binding_inheritance",
+                    "dagger_component_dependency_vs_subcomponent",
+                    "dagger_scope_component_instance_lifetime",
+                    "dagger_qualifier_same_type_bindings",
+                    "dagger_multibinding_into_set",
+                ),
+                questionIds,
+            )
+            assertEquals(8, questions.size)
+            assertEquals(
+                mapOf(QuestionLevel.FOUNDATION to 5, QuestionLevel.APPLIED to 3),
+                questions.groupingBy { it.level }.eachCount(),
+            )
+
+            // GAP-U3-A, pinned as data. `dagger_modules` is a primary concept of this Unit and
+            // reaches nothing, so the generated coverage snapshot reports a primary Subtopic with
+            // no ACTIVE coverage. E27-04 deliberately authored no Question to hide that.
+            assertTrue(
+                questions.none { it.subtopicId == "dagger_modules" },
+                "A Question now covers `dagger_modules`; GAP-U3-A needs re-stating.",
+            )
+
+            // The recorded routing problem. The closing Lesson teaches this Question's reasoning in
+            // full, and the Question is not reachable from this Unit, because its Subtopic is
+            // `dependency_graphs` — which stays supporting here precisely so that the mapping is a
+            // decision E27-08 takes rather than one this issue took by accident.
+            assertFalse("dagger_compile_time_graph_validation" in questionIds)
+
+            // Supporting concepts never broaden a Unit's practice. Here that keeps the generic
+            // reuse and graph Questions of the previous two Units out of this one entirely.
+            val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
+            assertTrue(
+                setOf(
+                    "dependency_graphs",
+                    "di_scopes",
+                    "composition_root",
+                    "manual_di",
+                    "constructor_injection",
+                    "interface_boundaries",
+                    "dependency_direction",
+                    "layered_architecture",
+                    "module_dependency_direction",
+                    "feature_modularization",
+                    "state_ownership",
+                    "di_framework_tradeoffs",
+                    "kotlin_gradle_plugin",
+                ).all { it in supportingOnly },
+            )
+            assertTrue(questions.none { it.subtopicId in supportingOnly })
+
+            // Neither shipped dependency-injection Unit shares a Question with this one: no
+            // Subtopic is primary in two of the three, so the three pools are disjoint.
+            listOf(
+                "unit_dependency_injection_as_object_construction",
+                "unit_object_graphs_lifetimes_and_scopes",
+            ).forEach { earlier ->
+                val earlierBuilder = builder(PracticeBuilderTarget.LearningUnit(earlier))
+                earlierBuilder.settled()
+                earlierBuilder.selectQuestionCount(
+                    assertIs<PracticeAvailability.Available>(earlierBuilder.uiState.value.availability)
+                        .eligibleQuestionCount,
+                )
+                earlierBuilder.settled()
+                val reached = selectedQuestions(earlierBuilder.start()).map { it.id }.toSet()
+                assertEquals(emptySet(), reached intersect questionIds, earlier)
+            }
             assertEquals(0, attemptCount())
         }
 

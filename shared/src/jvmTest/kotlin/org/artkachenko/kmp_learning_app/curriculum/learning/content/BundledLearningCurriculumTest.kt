@@ -61,6 +61,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_state_events_lifetime_and_selection",
                 "unit_dependency_injection_as_object_construction",
                 "unit_object_graphs_lifetimes_and_scopes",
+                "unit_dagger_compile_time_object_graphs",
             ),
             units().map { it.id },
         )
@@ -93,6 +94,7 @@ internal class BundledLearningCurriculumTest {
                 "State, Events, Lifetime and Architecture Selection",
                 "Dependency Injection as Object Construction",
                 "Object Graphs, Lifetimes and Scopes",
+                "Dagger: Compile-Time Object Graphs",
             ),
             units().map { it.title },
         )
@@ -125,6 +127,7 @@ internal class BundledLearningCurriculumTest {
                 "architecture",
                 "architecture",
                 "architecture",
+                "dependency_injection",
                 "dependency_injection",
                 "dependency_injection",
             ),
@@ -607,6 +610,32 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_object_graphs_lifetimes_and_scopes").lessons.map { it.title },
         )
+
+        assertEquals(
+            listOf(
+                "lesson_dagger_constructs_what_it_can_see",
+                "lesson_declaring_the_rest_of_the_graph",
+                "lesson_which_graph_owns_this_binding",
+                "lesson_child_graph_or_separate_graph",
+                "lesson_dagger_scopes_and_component_instances",
+                "lesson_when_the_type_is_not_the_key",
+                "lesson_what_the_dagger_compiler_checked",
+            ),
+            unit("unit_dagger_compile_time_object_graphs").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "What Dagger Can Construct on Its Own",
+                "Declaring the Rest of the Graph",
+                "Which Graph Owns This Binding?",
+                "A Child Graph, or a Separate Graph?",
+                "A Scope Is a Promise the Component Keeps",
+                "When the Type Is Not the Key",
+                "What the Dagger Compiler Actually Checked",
+            ),
+            unit("unit_dagger_compile_time_object_graphs").lessons.map { it.title },
+        )
     }
 
     @Test
@@ -948,6 +977,24 @@ internal class BundledLearningCurriculumTest {
                 listOf("dependency_graphs"),
             ),
             unit("unit_object_graphs_lifetimes_and_scopes").lessons.map { it.primarySubtopicIds },
+        )
+
+        // Two Lessons take two primary concepts each, which is what makes them one Lesson rather
+        // than two: a declaration form is chosen against the module it is declared in, and a key is
+        // narrowed or aggregated by the same key model. `dependency_graphs` is deliberately absent —
+        // it is supporting in the validation Lesson, and promoting it would route a Unit 2 Question
+        // into this Unit's practice rather than teaching anything more.
+        assertEquals(
+            listOf(
+                listOf("dagger_fundamentals"),
+                listOf("dagger_modules", "dagger_bindings"),
+                listOf("dagger_components"),
+                listOf("dagger_components"),
+                listOf("dagger_scopes"),
+                listOf("dagger_qualifiers", "dagger_multibindings"),
+                listOf("dagger_fundamentals"),
+            ),
+            unit("unit_dagger_compile_time_object_graphs").lessons.map { it.primarySubtopicIds },
         )
     }
 
@@ -2332,6 +2379,221 @@ internal class BundledLearningCurriculumTest {
         val scopeLesson = textOf("lesson_scope_is_a_rule_owner_is_a_lifetime")
         assertTrue(scopeLesson.contains("CoroutineScope"), "The coroutines collision is not disambiguated.")
         assertTrue(scopeLesson.contains("A scope creates nothing"), "The central correction is missing.")
+    }
+
+    @Test
+    fun daggerUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        assertEquals(
+            listOf(
+                listOf("constructor_injection", "manual_di", "composition_root", "dependency_graphs"),
+                listOf("dagger_fundamentals", "interface_boundaries", "dependency_direction"),
+                listOf("dagger_modules", "composition_root", "dependency_graphs", "dagger_bindings"),
+                listOf(
+                    "dagger_scopes",
+                    "dependency_graphs",
+                    "layered_architecture",
+                    "module_dependency_direction",
+                ),
+                listOf("di_scopes", "dagger_components", "state_ownership"),
+                listOf(
+                    "dagger_bindings",
+                    "dependency_graphs",
+                    "dependency_direction",
+                    "feature_modularization",
+                ),
+                listOf(
+                    "dependency_graphs",
+                    "di_framework_tradeoffs",
+                    "dagger_components",
+                    "kotlin_gradle_plugin",
+                ),
+            ),
+            unit("unit_dagger_compile_time_object_graphs").lessons.map { it.supportingSubtopicIds },
+        )
+
+        val lessons = unit("unit_dagger_compile_time_object_graphs").lessons
+        lessons.forEach { lesson ->
+            assertTrue(
+                lesson.primarySubtopicIds.none { it in lesson.supportingSubtopicIds },
+                "${lesson.id} lists a concept as both primary and supporting",
+            )
+        }
+
+        // The load-bearing one. `dagger_compile_time_graph_validation` is mapped to
+        // `dependency_graphs`, and the Lesson that teaches exactly its reasoning is the last one
+        // here. Promoting `dependency_graphs` to primary there would pull that Question into this
+        // Unit's practice without anybody deciding to re-map it, and would leave the honest routing
+        // problem `docs/content/dependency-injection-units-1-6-plan.md` records invisible. E27-08
+        // owns the re-map; until then the concept stays supporting in every Lesson of this Unit.
+        assertTrue(
+            lessons.none { "dependency_graphs" in it.primarySubtopicIds },
+            "`dependency_graphs` became primary in the Dagger Unit.",
+        )
+        assertTrue(
+            lessons.single { it.id == "lesson_what_the_dagger_compiler_checked" }
+                .supportingSubtopicIds.contains("dependency_graphs"),
+        )
+
+        // `di_scopes` is Unit 2's primary concept and stays supporting here, so the generic reuse
+        // Questions are not re-served by a Unit that teaches one framework's notation for them.
+        assertTrue(
+            lessons.none { "di_scopes" in it.primarySubtopicIds },
+            "`di_scopes` became primary in the Dagger Unit.",
+        )
+    }
+
+    @Test
+    fun daggerUnitLinksBackwardsOnlyToTheGenericDecisionsItEncodes() = runTest {
+        val unitId = "unit_dagger_compile_time_object_graphs"
+        val lessons = unit(unitId).lessons.associateBy { it.id }
+
+        // `docs/content/dependency-injection-units-1-6-plan.md` names four required backward links,
+        // one per Lesson that encodes a decision an earlier Unit made. The others are present only
+        // where the Lesson genuinely declines to re-argue something already shipped — the interface
+        // boundary test, the component the scope Lesson names as an owner, the inversion argument
+        // the multibinding reasoning rests on — rather than for symmetry.
+        assertEquals(
+            listOf(
+                "lesson_one_place_that_knows_how_to_build",
+                "lesson_from_one_dependency_to_a_graph",
+            ),
+            lessons.getValue("lesson_dagger_constructs_what_it_can_see").relatedLessonIds,
+        )
+        assertEquals(
+            listOf("lesson_when_an_interface_is_a_boundary", "lesson_dagger_constructs_what_it_can_see"),
+            lessons.getValue("lesson_declaring_the_rest_of_the_graph").relatedLessonIds,
+        )
+        assertEquals(
+            listOf("lesson_one_place_that_knows_how_to_build", "lesson_declaring_the_rest_of_the_graph"),
+            lessons.getValue("lesson_which_graph_owns_this_binding").relatedLessonIds,
+        )
+        assertEquals(
+            listOf("lesson_which_graph_owns_this_binding"),
+            lessons.getValue("lesson_child_graph_or_separate_graph").relatedLessonIds,
+        )
+        assertEquals(
+            listOf("lesson_scope_is_a_rule_owner_is_a_lifetime", "lesson_which_graph_owns_this_binding"),
+            lessons.getValue("lesson_dagger_scopes_and_component_instances").relatedLessonIds,
+        )
+        assertEquals(
+            listOf("lesson_two_dependencies_of_the_same_type", "lesson_dependency_inversion_in_practice"),
+            lessons.getValue("lesson_when_the_type_is_not_the_key").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_scope_is_a_rule_owner_is_a_lifetime",
+                "lesson_when_a_broken_graph_tells_you",
+                "lesson_dagger_scopes_and_component_instances",
+            ),
+            lessons.getValue("lesson_what_the_dagger_compiler_checked").relatedLessonIds,
+        )
+
+        // Every link points backwards. The Hilt and Koin Units do not exist yet, so a forward entry
+        // would not resolve at all; pointing forward is prose.
+        val order = units().flatMap { it.lessons.map { lesson -> lesson.id } }
+        lessons.values.forEach { lesson ->
+            lesson.relatedLessonIds.forEach { related ->
+                assertTrue(
+                    order.indexOf(related) < order.indexOf(lesson.id),
+                    "${lesson.id} -> $related is not a backward link",
+                )
+            }
+        }
+
+        // No earlier Lesson was edited to receive a reciprocal link, including the twelve Lessons of
+        // the two shipped dependency-injection Units.
+        val ownIds = lessons.keys
+        units()
+            .takeWhile { it.id != unitId }
+            .flatMap { it.lessons }
+            .forEach { lesson ->
+                assertTrue(
+                    lesson.relatedLessonIds.none { it in ownIds },
+                    "${lesson.id} links forward into the Dagger Unit",
+                )
+            }
+    }
+
+    @Test
+    fun daggerUnitStaysInsideItsApiAndBuildBoundaries() = runTest {
+        val unit = unit("unit_dagger_compile_time_object_graphs")
+
+        fun textOf(lessonId: String): String {
+            val lesson = unit.lessons.single { it.id == lessonId }
+            return lesson.sections
+                .flatMap { it.blocks }
+                .joinToString(" ") { block ->
+                    when (block) {
+                        is LearningBlock.Paragraph -> block.text
+                        is LearningBlock.BulletList -> block.items.joinToString(" ")
+                        is LearningBlock.Callout -> block.text
+                        is LearningBlock.Code -> block.code
+                        is LearningBlock.Comparison ->
+                            (block.headers + block.rows.flatten()).joinToString(" ")
+                    }
+                }
+        }
+
+        val authoredCode = unit
+            .lessons
+            .flatMap { lesson -> lesson.sections.flatMap { it.blocks } }
+            .filterIsInstance<LearningBlock.Code>()
+        assertTrue(authoredCode.size >= 20, "Expected the Unit to argue from code and graphs it shows.")
+
+        // Hilt is E27-05's, and the whole thesis of that Unit is that Hilt is Dagger with the
+        // Android decisions already made — which only lands if this Unit contains none of them.
+        // Scanned over every authored block, not only code, because a prose mention would leak the
+        // same forward material.
+        val hiltSyntax = listOf(
+            "@AndroidEntryPoint",
+            "@HiltViewModel",
+            "@InstallIn",
+            "SingletonComponent",
+            "ActivityRetainedComponent",
+            "ViewModelComponent",
+            "@HiltAndroidApp",
+            "@EntryPoint",
+        )
+        val koinSyntax = listOf("startKoin", "koinViewModel", "koinInject", "single {", "factory {")
+        unit.lessons.forEach { lesson ->
+            val text = textOf(lesson.id)
+            (hiltSyntax + koinSyntax).forEach { token ->
+                assertFalse(text.contains(token), "${lesson.id} leaks forward into ${token}.")
+            }
+        }
+
+        // E29 owns build engineering, and the plan allows this Unit to say only that a build step
+        // exists. No Gradle snippet, no annotation-processor configuration, no build-cost analysis.
+        val buildTokens = listOf("kapt", "KSP", "build.gradle", "annotationProcessor", "plugins {")
+        unit.lessons.forEach { lesson ->
+            val text = textOf(lesson.id)
+            buildTokens.forEach { token ->
+                assertFalse(text.contains(token), "${lesson.id} enters build configuration via ${token}.")
+            }
+        }
+
+        // The two positive properties a token blocklist cannot express. The generated-construction
+        // Lesson has to make the precise claim rather than the over-claim, and the scope Lesson has
+        // to name the owner Unit 2 insisted on naming rather than letting the annotation imply it.
+        val generation = textOf("lesson_dagger_constructs_what_it_can_see")
+        assertTrue(
+            generation.contains("rather than discovering the dependency graph through runtime reflection"),
+            "The bounded no-reflection claim is missing.",
+        )
+        assertTrue(
+            generation.contains("predictable, inspectable and paid for"),
+            "The matching honesty that no reflection is not no cost is missing.",
+        )
+
+        val scopes = textOf("lesson_dagger_scopes_and_component_instances")
+        assertTrue(
+            scopes.contains("associates scoped instances in the graph with instances of component"),
+            "The component-instance ownership anchor is missing.",
+        )
+        assertTrue(
+            scopes.contains("A scope annotation creates no owner"),
+            "The carried-forward correction from the object-graph Unit is missing.",
+        )
     }
 
     @Test

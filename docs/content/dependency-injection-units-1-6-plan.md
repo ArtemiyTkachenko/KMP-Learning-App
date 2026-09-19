@@ -3247,22 +3247,23 @@ snapshot was not edited manually.
 | JSON structure/count/link queries | Valid JSON; 29 ACTIVE Units; 131 ACTIVE Lessons; exact Unit/Lesson mappings; all related ids resolve |
 | `./gradlew :shared:jvmTest --tests '*BundledLearningCurriculumTest*' --tests '*LearningUnitPracticeIntegrationTest*' --tests '*LearningCurriculumValidatorTest*'` | **BUILD SUCCESSFUL** after one focused test exposed and prompted addition of literal host-root evidence |
 | `./gradlew :shared:jvmTest --tests '*LearningProductionContentJourneyTest*' --tests '*LearningContentEndToEndTest*'` | **BUILD SUCCESSFUL** |
-| `./gradlew :shared:jvmTest --rerun-tasks` | **Pending final outcome at time of this record's first draft** |
+| `./gradlew :shared:jvmTest --rerun-tasks` | **BUILD SUCCESSFUL; 1,477 tests, 0 failures, 0 ignored.** An earlier invocation was interrupted while Gradle stopped its test services; the complete rerun passed |
 | `python3 tools/learning_question_coverage.py --write` then `--check` | Snapshot regenerated and current |
 | `cd tools && python3 -m unittest test_learning_question_coverage.py` | 21 tests, OK; an unrelated local RVM `ps` permission message was non-fatal |
-| `./gradlew :shared:check` | Pending |
-| `./gradlew :shared:iosSimulatorArm64Test --rerun-tasks` | Pending |
-| `./gradlew :androidApp:assembleDebug --rerun-tasks` | Pending |
+| `./gradlew :shared:check` | **BUILD SUCCESSFUL**; Android host tests, JVM, JS browser tests, Wasm browser tests, aggregate tests and iOS simulator task passed or were up-to-date in the observed run |
+| `./gradlew :shared:iosSimulatorArm64Test --rerun-tasks` | **BUILD SUCCESSFUL**; simulator compilation, link and tests all executed |
+| `./gradlew :androidApp:assembleDebug --rerun-tasks` | **BUILD SUCCESSFUL**; Android debug application assembled |
 | `python3 .github/project/validate_backlog.py .github/project/backlog.yml` | **Unavailable:** `ModuleNotFoundError: yaml`; PyYAML is not installed |
-| `git diff --check` | Pending final diff |
+| `git diff --check` | Passed after the final outcomes and coverage update |
 
 The documentation claim and repository validation are intentionally separate. Official Koin 4.2
 pages describe core/KMP support across Android, iOS, JVM, JS and Wasm and give a separate Compose
-support status. Only the targets named by the completed Gradle tasks above are repository evidence.
-`iosArm64` device compilation is not claimed. No CI, emulator/device run or rendered UI validation
-is claimed. Curriculum snippets are content and were not migrated into or compiled as production
-Koin code. The semantic teaching review remains editorial judgement beyond automated structure,
-decoding, routing and integration checks.
+support status. Repository validation compiled/tested JVM, Android host, JS browser, Wasm browser
+and iOS Simulator Arm64 code, and assembled the Android debug host. `iosArm64` device compilation
+was not run and remains outside the claimed local validation. No CI, physical device/emulator run
+or rendered UI validation is claimed. Curriculum snippets are content and were not migrated into
+or compiled as production Koin code. The semantic teaching review remains editorial judgement
+beyond automated structure, decoding, routing and integration checks.
 
 #### Acceptance criteria
 

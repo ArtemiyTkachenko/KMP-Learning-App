@@ -21550,8 +21550,8 @@
                 {"type": "comparison", "headers": ["Decision step", "Project A trace"], "rows": [
                   ["Requirements", "One platform; stable graph; two visible entry paths; application and per-use lifetimes; small team"],
                   ["Valuable properties", "Direct visibility, low setup, ordinary compiler checking, explicit reuse"],
-                  ["Viable strategies", "All four could construct the objects; manual DI already supplies every required property"],
-                  ["Concrete eliminations", "Dagger generation, Hilt Android integration and Koin container configuration solve no stated problem here"],
+                  ["Viable strategies", "Manual DI, Dagger and Koin can construct the desktop graph; Hilt's generated integration is Android-specific and cannot serve this target"],
+                  ["Concrete eliminations", "Hilt is excluded by target compatibility; Dagger generation and Koin container configuration add machinery for no stated requirement"],
                   ["Plausible choice", "Manual constructor wiring in the composition root"],
                   ["Cost accepted", "The team edits the two explicit construction paths when a deep dependency changes"],
                   ["Revisit trigger", "Deep changes repeatedly touch many paths, lifecycle-specific owners are duplicated, independent features must contribute bindings, or whole-graph automated checking gains measurable review value"]

@@ -3409,10 +3409,12 @@ design is wrong. It links back to `lesson_what_the_dagger_compiler_checked` and
 
 **Project A — small stable desktop application.** Approximately twelve objects, one platform, two
 visible entry paths, simple application/per-use lifetimes, a three-person team and infrequent graph
-changes. All four strategies are capable. **Manual DI is selected** because explicit construction
-already satisfies every requirement. The accepted cost is editing the two paths when a deep
-dependency changes. Revisit triggers include repeated propagation across many paths, duplicated
-lifecycle-owner glue, independent graph contributors, recurring review burden or demonstrated value
+changes. Hilt is excluded first because its generated integration is Android-specific and cannot
+serve the desktop target. Manual DI, Dagger and Koin can construct the graph; **manual DI is
+selected** because explicit construction already satisfies every requirement without generated or
+container machinery. The accepted cost is editing the two paths when a deep dependency changes.
+Revisit triggers include repeated propagation across many paths, duplicated lifecycle-owner glue,
+independent graph contributors, recurring review burden or demonstrated value
 from earlier whole-graph checking.
 
 **Project B — growing Android-only application.** Framework-created Activities, Services and

@@ -3137,6 +3137,7 @@ internal class BundledLearningCurriculumTest {
         val scenarios = textOf("lesson_three_projects_three_answers")
         listOf(
             "Project A: a small stable application",
+            "Hilt is excluded by target compatibility",
             "Manual constructor wiring",
             "Project B: a growing Android-only application",
             "Hilt, because the predefined Android ownership model",

@@ -30,4 +30,5 @@ If local `PyYAML` is missing, report that instead of pretending validation passe
 
 How a backlog key drives an implementation task:
 [backlog workflow](../docs/workflows/backlog.md). What the workflows in this subtree do:
-[CI](../docs/workflows/ci.md).
+[CI](../docs/workflows/ci.md) and
+[agentic development](../docs/workflows/agentic-development.md).

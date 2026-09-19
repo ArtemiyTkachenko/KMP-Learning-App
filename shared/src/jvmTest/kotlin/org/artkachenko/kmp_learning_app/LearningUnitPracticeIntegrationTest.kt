@@ -265,22 +265,22 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             // E27-02 added a fourth home Topic, and the handover happens once more: exhausting
             // the architecture Units leads into the dependency-injection Units, not to Complete.
-            // E27-03 added the second of those Units and E27-04 the third, and the traversal walks
-            // all three in order without any special case in production code.
+            // E27-03 added the second of those Units, E27-04 the third and E27-05 the fourth. The
+            // traversal walks all four in order without any special case in production code.
             val diUnits = BundledLearningContentRepository().getActiveUnitsByTopic("dependency_injection")
             assertEquals(
                 listOf(
                     "unit_dependency_injection_as_object_construction",
                     "unit_object_graphs_lifetimes_and_scopes",
                     "unit_dagger_compile_time_object_graphs",
+                    "unit_hilt_android_lifecycle_integration",
                 ),
                 diUnits.map { it.id },
             )
-            // Six, six and seven Lessons, because each Unit carries that many separately learnable
-            // ideas — `docs/content/dependency-injection-units-1-6-plan.md` derives the counts
-            // rather than assigning them, and the Dagger Unit needs one per generic decision it
-            // encodes.
-            assertEquals(listOf(6, 6, 7), diUnits.map { it.lessons.size })
+            // The Unit plan derives these counts from separately learnable decisions rather than
+            // assigning a quota: six generic foundations, six graph decisions, seven Dagger
+            // encodings, then six Android/Hilt integration decisions.
+            assertEquals(listOf(6, 6, 7, 6), diUnits.map { it.lessons.size })
             val diTopic = topic("dependency_injection")
             val diParents = diUnits.associate { it.id to unit(it.id) }
             val diLessonCount = diUnits.sumOf { it.lessons.size }
@@ -362,9 +362,9 @@ internal class LearningUnitPracticeIntegrationTest {
             val rebuilt = LocalLessonStudyRepository(database)
             assertFalse(rebuilt.isStudied(earlierLesson.id))
             // 43 `android_ui` Lessons, 29 in the coroutines and Flow Units, 29 in the six
-            // architecture Units and 19 in the three dependency-injection Units, less the one that
+            // architecture Units and 25 in the four dependency-injection Units, less the one that
             // was just un-studied.
-            assertEquals(119, rebuilt.getStudiedLessons().size)
+            assertEquals(125, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -1597,6 +1597,83 @@ internal class LearningUnitPracticeIntegrationTest {
                 val reached = selectedQuestions(earlierBuilder.start()).map { it.id }.toSet()
                 assertEquals(emptySet(), reached intersect questionIds, earlier)
             }
+            assertEquals(0, attemptCount())
+        }
+
+    /**
+     * E27-05. The Hilt Unit's practice through the production resolver.
+     *
+     * Supporting lifecycle, Dagger and architecture concepts explain the Android ownership model
+     * but must not broaden practice. `hilt_field_injection_framework_classes` remains deliberately
+     * absent because its current primary Subtopic is `constructor_injection`; E27-08 owns that
+     * probable re-map together with generic constructor-injection coverage for Unit 1.
+     */
+    @Test
+    fun theHiltUnitPractisesOnlyItsFivePrimaryConcepts() =
+        runUnitPracticeTest {
+            val unitId = "unit_hilt_android_lifecycle_integration"
+            val unit = assertNotNull(BundledLearningContentRepository().getUnitById(unitId))
+            val builder = builder(PracticeBuilderTarget.LearningUnit(unitId))
+            val settled = builder.settled()
+
+            assertEquals(unit.title, settled.scope.name)
+            val available = assertIs<PracticeAvailability.Available>(settled.availability)
+            assertEquals(6, available.eligibleQuestionCount)
+            builder.selectQuestionCount(available.eligibleQuestionCount)
+            builder.settled()
+
+            val config = builder.start()
+            val concepts = setOf(
+                "hilt_fundamentals",
+                "hilt_components",
+                "hilt_viewmodels",
+                "hilt_modules",
+                "hilt_vs_dagger",
+            )
+            assertEquals(AssessmentScope.Subtopics(concepts), config.scope)
+
+            val questions = selectedQuestions(config)
+            val questionIds = questions.map { it.id }.toSet()
+            assertEquals(
+                setOf(
+                    "hilt_entry_point_manual_access",
+                    "hilt_activity_retained_component_lifetime",
+                    "di_hilt_viewmodel_scope",
+                    "dagger_assisted_injection_viewmodel",
+                    "hilt_install_in_binding_visibility",
+                    "hilt_vs_dagger_convention_tradeoff",
+                ),
+                questionIds,
+            )
+            assertEquals(6, questions.size)
+            assertEquals(
+                mapOf(QuestionLevel.FOUNDATION to 2, QuestionLevel.APPLIED to 4),
+                questions.groupingBy { it.level }.eachCount(),
+            )
+
+            assertFalse("hilt_field_injection_framework_classes" in questionIds)
+            val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
+            assertTrue(
+                setOf(
+                    "constructor_injection",
+                    "service_locator_vs_di",
+                    "dagger_components",
+                    "dagger_fundamentals",
+                    "dagger_modules",
+                    "dagger_scopes",
+                    "di_scopes",
+                    "dependency_graphs",
+                    "activity_lifecycle",
+                    "configuration_changes",
+                    "viewmodel_lifecycle",
+                    "saved_state",
+                    "android_process_model",
+                    "state_ownership",
+                    "di_framework_tradeoffs",
+                    "architecture_tradeoffs",
+                ).all { it in supportingOnly },
+            )
+            assertTrue(questions.none { it.subtopicId in supportingOnly })
             assertEquals(0, attemptCount())
         }
 

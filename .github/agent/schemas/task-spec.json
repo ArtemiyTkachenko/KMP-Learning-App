@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "objective": {"type": "string"},
+    "acceptanceCriteria": {
+      "type": "array",
+      "items": {"type": "string"},
+      "minItems": 1
+    },
+    "relevantAreas": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "existingPatternsToInspect": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "constraints": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "validationCommands": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "risksAndQuestions": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  },
+  "required": [
+    "objective",
+    "acceptanceCriteria",
+    "relevantAreas",
+    "existingPatternsToInspect",
+    "constraints",
+    "validationCommands",
+    "risksAndQuestions"
+  ]
+}

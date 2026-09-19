@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `8ea41b8414a50fe96ae4690d6828233e1aec4943f570fc2556622ffc87fdc717` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `1d4797eb3064628043584e2df469ce87930675b5a534ddc94dbb8741ed6d92a4` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `3da78c289e4ab49b9771390d1e3ba1bd9b32b9506b1bba8a89f71bb5de28736d` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,13 +68,13 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 28 |
-| Active lessons in those units | 126 |
-| Distinct primary subtopics | 68 |
-| Distinct supporting subtopics | 111 |
-| Unique active questions reached through primary mappings | 151 |
-| Primary subtopics with at least one active question | 67 |
-| Primary subtopics with no active question | 1 |
+| Active learning units | 29 |
+| Active lessons in those units | 131 |
+| Distinct primary subtopics | 73 |
+| Distinct supporting subtopics | 115 |
+| Unique active questions reached through primary mappings | 153 |
+| Primary subtopics with at least one active question | 69 |
+| Primary subtopics with no active question | 4 |
 | Active questions in the bank | 419 |
 | Deprecated questions excluded from this report | 41 |
 
@@ -119,6 +119,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Object Graphs, Lifetimes and Scopes (`unit_object_graphs_lifetimes_and_scopes`) | 6 | 2 | 2 | 0 | 0 | 2 |
 | Dagger: Compile-Time Object Graphs (`unit_dagger_compile_time_object_graphs`) | 7 | 7 | 5 | 3 | 0 | 8 |
 | Hilt: Android Lifecycle-Aware Dagger (`unit_hilt_android_lifecycle_integration`) | 6 | 5 | 2 | 4 | 0 | 6 |
+| Koin and Dependency Injection in KMP (`unit_koin_and_dependency_injection_in_kmp`) | 5 | 5 | 1 | 1 | 0 | 2 |
 
 ## Unit and lesson detail
 
@@ -2572,6 +2573,109 @@ Supporting context — not primary coverage:
 | `di_framework_tradeoffs` — DI framework trade-offs | 0 | `dependency_injection` — Dependency Injection |
 | `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 2 | `architecture` — Application Architecture & Design Principles |
 
+### Koin and Dependency Injection in KMP (`unit_koin_and_dependency_injection_in_kmp`)
+
+Home topic: `dependency_injection` — Dependency Injection.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 1 | `di_koin_factory_vs_single` |
+| APPLIED | 1 | `koin_multiplatform_common_module` |
+| ADVANCED | 0 | — |
+
+#### The Container, and the Modules That Fill It (`lesson_the_koin_container_and_its_modules`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `koin_fundamentals` — Koin fundamentals | 0 | 0 | 0 | 0 | — |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `composition_root` — Composition root | 1 | `dependency_injection` — Dependency Injection |
+| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
+| `koin_definitions` — single/factory definitions | 1 | `dependency_injection` — Dependency Injection |
+| `di_framework_tradeoffs` — DI framework trade-offs | 0 | `dependency_injection` — Dependency Injection |
+| `kmp_architecture` — KMP architecture | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
+
+#### Definitions, and the Reuse Requirement Behind Them (`lesson_koin_definitions_and_reuse`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `koin_definitions` — single/factory definitions | 1 | 0 | 0 | 1 | `di_koin_factory_vs_single` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `koin_fundamentals` — Koin fundamentals | 0 | `dependency_injection` — Dependency Injection |
+| `di_scopes` — Scopes and lifetimes | 1 | `dependency_injection` — Dependency Injection |
+| `constructor_injection` — Constructor injection | 1 | `dependency_injection` — Dependency Injection |
+| `interface_boundaries` — Interface boundaries | 2 | `architecture` — Application Architecture & Design Principles |
+| `service_locator_vs_di` — Service locator vs dependency injection | 1 | `dependency_injection` — Dependency Injection |
+
+#### Scopes, and the Owner That Has to Stay Alive (`lesson_koin_scopes_and_their_owners`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `koin_scopes` — Koin scopes | 0 | 0 | 0 | 0 | — |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `di_scopes` — Scopes and lifetimes | 1 | `dependency_injection` — Dependency Injection |
+| `koin_definitions` — single/factory definitions | 1 | `dependency_injection` — Dependency Injection |
+| `koin_fundamentals` — Koin fundamentals | 0 | `dependency_injection` — Dependency Injection |
+| `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
+
+#### Resolving a ViewModel at the Boundary (`lesson_resolving_viewmodels_at_the_boundary`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `koin_viewmodels` — Koin ViewModel integration | 0 | 0 | 0 | 0 | — |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `koin_definitions` — single/factory definitions | 1 | `dependency_injection` — Dependency Injection |
+| `service_locator_vs_di` — Service locator vs dependency injection | 1 | `dependency_injection` — Dependency Injection |
+| `kmp_lifecycle_viewmodel` — Multiplatform Lifecycle/ViewModel | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
+| `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
+
+#### One Graph, Several Platforms (`lesson_one_graph_across_platforms`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `koin_multiplatform` — Koin and Kotlin Multiplatform | 0 | 1 | 0 | 1 | `koin_multiplatform_common_module` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `koin_fundamentals` — Koin fundamentals | 0 | `dependency_injection` — Dependency Injection |
+| `expect_actual` — expect/actual | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
+| `platform_implementations` — Platform-specific implementations | 0 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
+| `kmp_architecture` — KMP architecture | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
+| `composition_root` — Composition root | 1 | `dependency_injection` — Dependency Injection |
+| `interface_boundaries` — Interface boundaries | 2 | `architecture` — Application Architecture & Design Principles |
+
 ## Primary assessment gaps
 
 Primary concepts of active lessons that currently have no active question.
@@ -2585,6 +2689,9 @@ matters is editorial judgement.
 | Primary subtopic | Owning topic |
 |---|---|
 | `dagger_modules` — Dagger modules | `dependency_injection` — Dependency Injection |
+| `koin_fundamentals` — Koin fundamentals | `dependency_injection` — Dependency Injection |
+| `koin_scopes` — Koin scopes | `dependency_injection` — Dependency Injection |
+| `koin_viewmodels` — Koin ViewModel integration | `dependency_injection` — Dependency Injection |
 
 ## Semantic review reminder
 

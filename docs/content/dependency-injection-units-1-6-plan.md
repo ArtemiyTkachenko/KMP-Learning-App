@@ -124,7 +124,7 @@ issue re-verifies rather than trusting this table.
 
 ---
 
-## E27-08 assessment outcomes
+## E27-08 detailed assessment audit
 
 **Issue #392, `task/E27-08`. Assessment and source review completed 2026-09-19.** E27-09 was
 not started. The finished production Lessons were treated as authoritative; the E27-01 ledger was
@@ -404,11 +404,22 @@ No shipped Lesson factual defect was discovered. No Lesson was edited to fit an 
 
 ### Validation and limitations
 
-Validation results are recorded here after the final narrow-to-broad run. Source verification is a
-semantic review, while deterministic tests prove structure, import and routing; neither substitutes
-for the other. GitHub issue #392 could not be fetched in this environment because `gh` is unavailable
-and the public page did not resolve, so the synchronized backlog entry and the user-supplied issue body
-were the issue authority. No CI or merge result is claimed.
+| Command or review | Result |
+| --- | --- |
+| Focused curriculum, validator, importer, journey and practice-routing JVM tests | **BUILD SUCCESSFUL** |
+| `./gradlew :shared:jvmTest` | **BUILD SUCCESSFUL** |
+| `./gradlew :shared:check` | **BUILD SUCCESSFUL**; JVM, Android host, JS browser, Wasm browser and configured iOS simulator checks passed or were up to date |
+| `./gradlew :shared:iosSimulatorArm64Test` | **BUILD SUCCESSFUL** |
+| `./gradlew :shared:compileKotlinIosArm64` | **BUILD SUCCESSFUL**; only the existing expect/actual beta warnings were emitted |
+| `./gradlew :androidApp:assembleDebug` | **BUILD SUCCESSFUL** |
+| `python3 tools/learning_question_coverage.py --write` then `--check` | Coverage regenerated and current |
+| `python3 -m unittest discover -s tools -p 'test_*.py'` | **21 tests, OK** |
+
+Source verification is a semantic review, while deterministic tests prove structure, import and
+routing; neither substitutes for the other. GitHub issue #392 could not be fetched in this
+environment because `gh` is unavailable and the public page did not resolve, so the synchronized
+backlog entry and the user-supplied issue body were the issue authority. No CI or merge result is
+claimed.
 
 E27-09 remains unstarted.
 
@@ -3884,5 +3895,30 @@ catalog, UI and navigation are unchanged. No Dagger, Hilt or other DI framework 
 | 9 | Capability differences use current official sources; reputation/marketing is not fact | **Satisfied** |
 | 10 | The learner can justify a concrete choice through requirement-to-decision reasoning | **Satisfied** |
 | 11 | Unit practice mappings contain only primary concepts | **Satisfied** |
+
+---
+
+## E27-08 assessment outcomes
+
+Issue **#392** was completed on `task/E27-08` on 2026-09-19. The full 23-ACTIVE / 4-DEPRECATED
+disposition record, independent answer checks, source decisions, intermediate pools, gap ledger and
+all 16 acceptance-criteria results are recorded in the
+[detailed assessment audit](#e27-08-detailed-assessment-audit).
+
+The DI bank moved from **27 total / 23 ACTIVE / 4 DEPRECATED** at **14 FOUNDATION / 9 APPLIED /
+0 ADVANCED** to **45 total / 41 ACTIVE / 4 DEPRECATED** at **14 FOUNDATION / 26 APPLIED /
+1 ADVANCED**. Eighteen substantive Questions were added. The only cross-Unit overlap remains the
+intentional `manual_di_graph_growth_cost` route through Units 1 and 6; no primary DI Subtopic remains
+at zero ACTIVE coverage.
+
+Final production-resolver pools are **Unit 1: 7 (3 F / 4 A)**, **Unit 2: 5 (1 F / 4 A)**,
+**Unit 3: 11 (6 F / 5 A)**, **Unit 4: 9 (3 F / 6 A)**, **Unit 5: 7 (1 F / 6 A)** and
+**Unit 6: 3 (2 A / 1 ADV)**. Hilt field injection no longer reaches Unit 1, Dagger validation no
+longer reaches Unit 2, and each now routes only after its framework is taught.
+
+Focused and full JVM tests, `:shared:check`, explicit iOS Simulator tests, `iosArm64` compilation,
+Android debug assembly, coverage write/check and all 21 coverage-tool tests passed. Unit and Lesson
+content/mappings, taxonomy, production DI code, build dependencies and all four DEPRECATED Question
+lifecycles are unchanged. E27-09 was not started.
 
 ---

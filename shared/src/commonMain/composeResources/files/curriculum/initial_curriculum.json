@@ -20598,7 +20598,7 @@
       "id": "di_strategy_smallest_sufficient_choice",
       "topicId": "dependency_injection",
       "subtopicId": "di_framework_tradeoffs",
-      "text": "A mature KMP product shares about forty frequently changed definitions across Android, iOS, desktop, and web. Its Koin classic graph already works and the team knows it well. Missing definitions have caused incidents, but Android lifecycle integration is not a problem and a framework migration would consume a quarter. Which decision is smallest while meeting the new requirement?",
+      "text": "A mature KMP product shares about forty frequently changed definitions across Android, iOS, desktop, and web. Its Koin classic graph already works, the team knows it well, and its toolchain supports the current Koin compiler plugin. Missing definitions have caused incidents, but Android lifecycle integration is not a problem and a framework migration would consume a quarter. Which decision is smallest while meeting the new requirement?",
       "answers": [
         {
           "id": "di_strategy_smallest_sufficient_choice_a",

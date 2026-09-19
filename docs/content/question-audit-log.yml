@@ -23,6 +23,205 @@
 # records are reserved for questions that were changed or flagged.
 
 audits:
+  - review: Dependency Injection and Object Graphs Units 1-6 assessment gaps (E27-08)
+    date: 2026-09-19
+    scope: >-
+      A semantic review of all 23 ACTIVE and all 4 DEPRECATED Questions in the
+      dependency_injection Topic against the 34 finished Lessons in the six E27 Units, plus
+      the cross-topic duplication guards recorded by E27-01. Eighteen Questions were authored,
+      three existing Questions were re-mapped, four received wording or explanation
+      corrections, and three Hilt Questions received source corrections. No Question was
+      deprecated or restored, no existing Question or AnswerOption identity changed, and the
+      other 433 pre-existing Questions were not re-reviewed.
+    reviewed: 45
+    active: 41
+    retired: 4
+    deterministic_checks: PASS
+    method: |
+      All six production Units were read before the bank was changed. Every existing DI
+      Question was then read whole - stem, every option, key, explanation, Sources, mapping,
+      level and status - and solved independently. Mapping, wording, source and level decisions
+      were completed before new authoring. The production resolver's intermediate pools were
+      recorded after that pass, then the remaining semantic gaps were authored.
+
+      Every changed and new Question was solved again from the final stem and options alone,
+      every distractor was tested for defensibility, and every cited claim was checked against
+      current official Android, Dagger/Hilt or Koin 4.2 documentation. Koin version 4.2.2 was
+      read from gradle/libs.versions.toml. Source verification was performed on 2026-09-19;
+      resolving URLs were not treated as sufficient without reading the relevant material.
+
+      The final production-resolver pools, gap-by-gap dispositions, cross-topic review,
+      independent answers and acceptance-criteria report are in the E27-08 assessment outcomes
+      appended to docs/content/dependency-injection-units-1-6-plan.md.
+    findings:
+      - id: hilt_field_injection_framework_classes
+        n: 85
+        status: FIXED
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        issues:
+          - It assessed Hilt's Android-owned construction boundary but routed through generic constructor_injection into Unit 1.
+        changes:
+          - Re-mapped to hilt_fundamentals; wording, options, key, explanation, level and identity are unchanged.
+
+      - id: di_constructor_injection_testability
+        n: 91
+        status: FIXED
+        severity: MINOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        issues:
+          - Its primary responsibility is constructor-injection guarantees, while it was mapped to broad di_fundamentals.
+        changes:
+          - Re-mapped to constructor_injection; all authored content and identities are unchanged.
+
+      - id: dagger_compile_time_graph_validation
+        n: 266
+        status: FIXED
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        issues:
+          - It tests Dagger component validation but routed into the framework-independent Unit 2 graph pool.
+        changes:
+          - Re-mapped to dagger_fundamentals; wording, key, level and identities are unchanged.
+
+      - id: di_scopes_001
+        n: 87
+        status: FIXED
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q15_EXPLANATION_CORRECT, Q17_EXPLANATION_CONSISTENT]
+        issues:
+          - The keyed option and explanation said a scope creates lifetime, contradicting the finished owner's-lifetime/scope's-reuse-rule model.
+        changes:
+          - Preserved option di_scopes_001_b's logical claim while making reuse conditional on a lived owner; corrected the explanation to say the owner bounds actual lifetime.
+
+      - id: di_hilt_viewmodel_scope
+        n: 89
+        status: FIXED
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q15_EXPLANATION_CORRECT, Q17_EXPLANATION_CONSISTENT]
+        issues:
+          - The keyed option said the scope annotation alone determines lifetime, omitting the Hilt component owner that bounds it.
+        changes:
+          - Preserved option identity and keyed responsibility while naming the matching component owner; corrected the explanation and source to the full Hilt component contract.
+
+      - id: di_koin_factory_vs_single
+        n: 90
+        status: FIXED
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q15_EXPLANATION_CORRECT, Q18_CURRENT]
+        issues:
+          - Its explanation described Koin as inherently runtime-only and without code generation.
+        changes:
+          - Scoped the runtime statement to this repository's classic DSL and acknowledged Koin 4.2 compiler-plugin validation without changing the question's single/factory responsibility.
+
+      - id: koin_multiplatform_common_module
+        n: 342
+        status: FIXED
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q15_EXPLANATION_CORRECT, Q18_CURRENT]
+        issues:
+          - Its explanation made a framework-wide runtime-failure claim that current Koin compiler safety disproves.
+        changes:
+          - Preserved the KMP candidacy key and qualified failure timing to the repository's unverified classic DSL configuration.
+
+      - id: hilt_activity_retained_component_lifetime
+        n: 339
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - The Android page citation was less direct than the Hilt library's complete component hierarchy for the named component lifetime.
+        changes:
+          - Replaced the source with dagger.dev/hilt/components.html; answer and explanation are unchanged.
+
+      - id: hilt_install_in_binding_visibility
+        n: 338
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - The cited Android anchor did not carry the full Fragment/View descendant hierarchy used by the explanation.
+        changes:
+          - Replaced the source with the full dagger.dev Hilt component hierarchy; no authored claim changed.
+
+      - id: hilt_vs_dagger_convention_tradeoff
+        n: 340
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER]
+        issues:
+          - The complete fixed component hierarchy is stated most directly by the Hilt library documentation.
+        changes:
+          - Replaced the source with dagger.dev/hilt/components.html; answer and explanation are unchanged.
+
+    passed:
+      source_verified:
+        - { n: 84, id: constructor_injection_001, retired: true }
+        - { n: 86, id: composition_root_001 }
+        - { n: 88, id: service_locator_vs_di_001 }
+        - { n: 92, id: di_framework_tradeoff_compile_vs_runtime, retired: true }
+        - { n: 93, id: dagger_multibinding_into_set }
+        - { n: 259, id: dagger_inject_provides_binds_selection }
+        - { n: 260, id: dagger_module_binding_declarations, retired: true }
+        - { n: 261, id: dagger_component_dependency_vs_subcomponent }
+        - { n: 262, id: dagger_component_graph_root }
+        - { n: 263, id: dagger_subcomponent_parent_binding_inheritance }
+        - { n: 264, id: dagger_graph_assembly_generated_component, retired: true }
+        - { n: 265, id: dagger_assisted_injection_viewmodel }
+        - { n: 267, id: dagger_qualifier_same_type_bindings }
+        - { n: 268, id: dagger_scope_component_instance_lifetime }
+        - { n: 337, id: hilt_entry_point_manual_access }
+        - { n: 341, id: manual_di_graph_growth_cost }
+        - { n: 343, id: dagger_generated_factory_no_reflection }
+        - { n: 461, id: injection_and_inversion_are_separate_decisions }
+        - { n: 462, id: construct_fetch_receive_responsibility }
+        - { n: 463, id: integration_boundary_resolution_vs_service_locator }
+        - { n: 464, id: scope_rule_requires_lived_owner }
+        - { n: 465, id: runtime_input_stays_out_of_graph }
+        - { n: 466, id: same_type_dependencies_need_distinct_keys }
+        - { n: 467, id: graph_error_timing_follows_wiring_mechanism }
+        - { n: 468, id: dagger_module_contributes_component_owns }
+        - { n: 469, id: dagger_compile_success_not_lifetime_proof }
+        - { n: 470, id: hilt_viewmodel_vs_activity_retained_owner }
+        - { n: 471, id: hilt_singleton_component_not_process_durable }
+        - { n: 472, id: koin_container_startup_composition_boundary }
+        - { n: 473, id: koin_interview_scope_owner }
+        - { n: 474, id: koin_viewmodel_construction_vs_ownership }
+        - { n: 475, id: koin_definition_from_reuse_requirement }
+        - { n: 476, id: koin_shared_and_platform_binding_split }
+        - { n: 477, id: di_graph_check_timing_by_mechanism }
+        - { n: 478, id: di_strategy_smallest_sufficient_choice }
+
+    systemic:
+      - >-
+        Structural routing had hidden two sequencing defects: a Hilt question appeared before
+        Hilt and a Dagger validation question stood in for generic graph reasoning. Correcting
+        the mappings before authoring exposed the real generic gaps and avoided duplicates.
+      - >-
+        Modern Koin cannot be classified as runtime-only by brand. This repository uses the
+        classic DSL without compiler safety, while Koin 4.2 separately supports compiler-plugin
+        graph and call-site validation; questions now name the configured mechanism.
+      - >-
+        No deprecated question was restored. Each retained useful history, but its responsibility
+        was either superseded or needed a new scenario rather than reactivation.
+
   - review: Application architecture Units 1-6 assessment gaps (E26-08)
     date: 2026-09-16
     scope: >-

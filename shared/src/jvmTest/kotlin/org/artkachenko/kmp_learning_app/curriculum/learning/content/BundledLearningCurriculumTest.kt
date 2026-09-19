@@ -64,6 +64,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_dagger_compile_time_object_graphs",
                 "unit_hilt_android_lifecycle_integration",
                 "unit_koin_and_dependency_injection_in_kmp",
+                "unit_choosing_a_dependency_injection_strategy",
             ),
             units().map { it.id },
         )
@@ -99,6 +100,7 @@ internal class BundledLearningCurriculumTest {
                 "Dagger: Compile-Time Object Graphs",
                 "Hilt: Android Lifecycle-Aware Dagger",
                 "Koin and Dependency Injection in KMP",
+                "Choosing a Dependency Injection Strategy",
             ),
             units().map { it.title },
         )
@@ -131,6 +133,7 @@ internal class BundledLearningCurriculumTest {
                 "architecture",
                 "architecture",
                 "architecture",
+                "dependency_injection",
                 "dependency_injection",
                 "dependency_injection",
                 "dependency_injection",
@@ -688,6 +691,26 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_koin_and_dependency_injection_in_kmp").lessons.map { it.title },
         )
+
+        assertEquals(
+            listOf(
+                "lesson_what_a_container_actually_buys",
+                "lesson_when_should_a_graph_error_surface",
+                "lesson_three_projects_three_answers",
+                "lesson_the_smallest_sufficient_strategy",
+            ),
+            unit("unit_choosing_a_dependency_injection_strategy").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "What a Container Actually Buys",
+                "When Should a Graph Error Surface?",
+                "Three Projects, Three Answers",
+                "The Smallest Sufficient Strategy",
+            ),
+            unit("unit_choosing_a_dependency_injection_strategy").lessons.map { it.title },
+        )
     }
 
     @Test
@@ -1070,6 +1093,16 @@ internal class BundledLearningCurriculumTest {
                 listOf("koin_multiplatform"),
             ),
             unit("unit_koin_and_dependency_injection_in_kmp").lessons.map { it.primarySubtopicIds },
+        )
+
+        assertEquals(
+            listOf(
+                listOf("di_framework_tradeoffs"),
+                listOf("di_framework_tradeoffs"),
+                listOf("di_framework_tradeoffs"),
+                listOf("manual_di", "di_framework_tradeoffs"),
+            ),
+            unit("unit_choosing_a_dependency_injection_strategy").lessons.map { it.primarySubtopicIds },
         )
     }
 
@@ -2988,6 +3021,143 @@ internal class BundledLearningCurriculumTest {
         val allText = unit.lessons.joinToString(" ") { textOf(it.id) }
         listOf("build.gradle", "plugins {", "koin-ksp-compiler", "@Singleton", "@KoinViewModel")
             .forEach { token -> assertFalse(allText.contains(token), token) }
+    }
+
+    @Test
+    fun strategyUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        val unit = unit("unit_choosing_a_dependency_injection_strategy")
+
+        assertEquals(
+            listOf(
+                listOf(
+                    "manual_di",
+                    "dagger_fundamentals",
+                    "hilt_fundamentals",
+                    "koin_fundamentals",
+                    "architecture_tradeoffs",
+                ),
+                listOf(
+                    "dagger_fundamentals",
+                    "koin_fundamentals",
+                    "dependency_graphs",
+                    "manual_di",
+                    "kotlin_gradle_plugin",
+                ),
+                listOf(
+                    "manual_di",
+                    "hilt_vs_dagger",
+                    "koin_multiplatform",
+                    "dagger_components",
+                    "kmp_architecture",
+                ),
+                listOf(
+                    "composition_root",
+                    "architecture_tradeoffs",
+                    "di_fundamentals",
+                    "constructor_injection",
+                ),
+            ),
+            unit.lessons.map { it.supportingSubtopicIds },
+        )
+
+        assertEquals(
+            setOf("manual_di", "di_framework_tradeoffs"),
+            unit.lessons.flatMap { it.primarySubtopicIds }.toSet(),
+        )
+        unit.lessons.forEach { lesson ->
+            assertTrue(lesson.primarySubtopicIds.none { it in lesson.supportingSubtopicIds }, lesson.id)
+        }
+    }
+
+    @Test
+    fun strategyUnitLinksBackwardToTheDecisionsItSynthesizes() = runTest {
+        val lessons = unit("unit_choosing_a_dependency_injection_strategy").lessons.associateBy { it.id }
+
+        assertEquals(
+            listOf(
+                "lesson_when_wiring_it_yourself_is_enough",
+                "lesson_what_the_dagger_compiler_checked",
+                "lesson_hilt_or_hand_written_dagger",
+                "lesson_the_koin_container_and_its_modules",
+            ),
+            lessons.getValue("lesson_what_a_container_actually_buys").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_when_a_broken_graph_tells_you",
+                "lesson_what_the_dagger_compiler_checked",
+                "lesson_the_koin_container_and_its_modules",
+                "lesson_scope_is_a_rule_owner_is_a_lifetime",
+            ),
+            lessons.getValue("lesson_when_should_a_graph_error_surface").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_hilt_or_hand_written_dagger",
+                "lesson_one_graph_across_platforms",
+                "lesson_when_wiring_it_yourself_is_enough",
+            ),
+            lessons.getValue("lesson_three_projects_three_answers").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_smallest_sufficient_architecture",
+                "lesson_when_wiring_it_yourself_is_enough",
+                "lesson_a_dependency_should_be_visible",
+            ),
+            lessons.getValue("lesson_the_smallest_sufficient_strategy").relatedLessonIds,
+        )
+
+        val order = units().flatMap { it.lessons.map { lesson -> lesson.id } }
+        lessons.values.forEach { lesson ->
+            lesson.relatedLessonIds.forEach { related ->
+                assertTrue(order.indexOf(related) < order.indexOf(lesson.id), "${lesson.id} -> $related")
+            }
+        }
+    }
+
+    @Test
+    fun strategyUnitCarriesThreeProjectsAndMechanismQualifiedValidation() = runTest {
+        val unit = unit("unit_choosing_a_dependency_injection_strategy")
+
+        fun textOf(lessonId: String): String = unit.lessons
+            .single { it.id == lessonId }
+            .sections
+            .flatMap { it.blocks }
+            .joinToString(" ") { block ->
+                when (block) {
+                    is LearningBlock.Paragraph -> block.text
+                    is LearningBlock.BulletList -> block.items.joinToString(" ")
+                    is LearningBlock.Callout -> block.text
+                    is LearningBlock.Code -> block.code
+                    is LearningBlock.Comparison -> (block.headers + block.rows.flatten()).joinToString(" ")
+                }
+            }
+
+        val scenarios = textOf("lesson_three_projects_three_answers")
+        listOf(
+            "Project A: a small stable application",
+            "Hilt is excluded by target compatibility",
+            "Manual constructor wiring",
+            "Project B: a growing Android-only application",
+            "Hilt, because the predefined Android ownership model",
+            "Project C: a Kotlin Multiplatform application",
+            "Koin classic DSL",
+        ).forEach { claim -> assertTrue(scenarios.contains(claim), claim) }
+
+        val validation = textOf("lesson_when_should_a_graph_error_surface")
+        listOf(
+            "how is this particular project's graph represented and verified?",
+            "required CredentialsProvider omitted",
+            "Koin 4.2 classic DSL without Compiler Plugin",
+            "Koin 4.2 with Compiler Plugin",
+            "structurally valid and architecturally wrong",
+        ).forEach { claim -> assertTrue(validation.contains(claim), claim) }
+
+        val closing = textOf("lesson_the_smallest_sufficient_strategy")
+        assertTrue(closing.contains("Manual DI is sufficient"))
+        assertTrue(closing.contains("Observable trigger for revisiting:"))
+        assertTrue(closing.contains("Constructor-first design is therefore a reversibility property"))
     }
 
     @Test

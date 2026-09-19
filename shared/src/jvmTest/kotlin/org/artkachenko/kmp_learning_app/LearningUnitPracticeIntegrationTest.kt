@@ -266,7 +266,8 @@ internal class LearningUnitPracticeIntegrationTest {
             // E27-02 added a fourth home Topic, and the handover happens once more: exhausting
             // the architecture Units leads into the dependency-injection Units, not to Complete.
             // E27-03 added the second of those Units, E27-04 the third, E27-05 the fourth and
-            // E27-06 the fifth. The traversal walks all five without a production special case.
+            // E27-06 the fifth and E27-07 the sixth. The traversal walks all six without a
+            // production special case.
             val diUnits = BundledLearningContentRepository().getActiveUnitsByTopic("dependency_injection")
             assertEquals(
                 listOf(
@@ -275,13 +276,15 @@ internal class LearningUnitPracticeIntegrationTest {
                     "unit_dagger_compile_time_object_graphs",
                     "unit_hilt_android_lifecycle_integration",
                     "unit_koin_and_dependency_injection_in_kmp",
+                    "unit_choosing_a_dependency_injection_strategy",
                 ),
                 diUnits.map { it.id },
             )
             // The Unit plan derives these counts from separately learnable decisions rather than
             // assigning a quota: six generic foundations, six graph decisions, seven Dagger
-            // encodings, six Android/Hilt decisions, then five Koin/KMP decisions.
-            assertEquals(listOf(6, 6, 7, 6, 5), diUnits.map { it.lessons.size })
+            // encodings, six Android/Hilt decisions, five Koin/KMP decisions, then four
+            // strategy decisions that synthesize the earlier Units.
+            assertEquals(listOf(6, 6, 7, 6, 5, 4), diUnits.map { it.lessons.size })
             val diTopic = topic("dependency_injection")
             val diParents = diUnits.associate { it.id to unit(it.id) }
             val diLessonCount = diUnits.sumOf { it.lessons.size }
@@ -363,9 +366,9 @@ internal class LearningUnitPracticeIntegrationTest {
             val rebuilt = LocalLessonStudyRepository(database)
             assertFalse(rebuilt.isStudied(earlierLesson.id))
             // 43 `android_ui` Lessons, 29 in the coroutines and Flow Units, 29 in the six
-            // architecture Units and 30 in the five dependency-injection Units, less the one that
+            // architecture Units and 34 in the six dependency-injection Units, less the one that
             // was just un-studied.
-            assertEquals(130, rebuilt.getStudiedLessons().size)
+            assertEquals(134, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -1719,6 +1722,39 @@ internal class LearningUnitPracticeIntegrationTest {
             assertTrue(questions.none { it.subtopicId == "koin_scopes" })
             assertTrue(questions.none { it.subtopicId == "koin_viewmodels" })
 
+            val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
+            assertTrue(questions.none { it.subtopicId in supportingOnly })
+            assertEquals(0, attemptCount())
+        }
+
+    /** E27-07. The synthesis Unit intentionally overlaps Unit 1 through `manual_di`. */
+    @Test
+    fun theStrategyUnitPractisesOnlyItsTwoPrimaryConcepts() =
+        runUnitPracticeTest {
+            val unitId = "unit_choosing_a_dependency_injection_strategy"
+            val unit = assertNotNull(BundledLearningContentRepository().getUnitById(unitId))
+            val builder = builder(PracticeBuilderTarget.LearningUnit(unitId))
+            val settled = builder.settled()
+
+            assertEquals(unit.title, settled.scope.name)
+            val available = assertIs<PracticeAvailability.Available>(settled.availability)
+            assertEquals(1, available.eligibleQuestionCount)
+            builder.selectQuestionCount(available.eligibleQuestionCount)
+            builder.settled()
+
+            val config = builder.start()
+            val concepts = setOf("manual_di", "di_framework_tradeoffs")
+            assertEquals(AssessmentScope.Subtopics(concepts), config.scope)
+
+            val questions = selectedQuestions(config)
+            assertEquals(setOf("manual_di_graph_growth_cost"), questions.map { it.id }.toSet())
+            assertEquals(1, questions.size)
+            assertEquals(
+                mapOf(QuestionLevel.APPLIED to 1),
+                questions.groupingBy { it.level }.eachCount(),
+            )
+
+            assertTrue(questions.none { it.subtopicId == "di_framework_tradeoffs" })
             val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
             assertTrue(questions.none { it.subtopicId in supportingOnly })
             assertEquals(0, attemptCount())

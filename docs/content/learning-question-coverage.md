@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `1d4797eb3064628043584e2df469ce87930675b5a534ddc94dbb8741ed6d92a4` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `5b00c12dc6b397cc99e760d9bc7541be47b286aea76a3c17e54b3512a4ac78e0` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `3da78c289e4ab49b9771390d1e3ba1bd9b32b9506b1bba8a89f71bb5de28736d` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,13 +68,13 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 29 |
-| Active lessons in those units | 131 |
-| Distinct primary subtopics | 73 |
-| Distinct supporting subtopics | 115 |
+| Active learning units | 30 |
+| Active lessons in those units | 135 |
+| Distinct primary subtopics | 74 |
+| Distinct supporting subtopics | 117 |
 | Unique active questions reached through primary mappings | 153 |
 | Primary subtopics with at least one active question | 69 |
-| Primary subtopics with no active question | 4 |
+| Primary subtopics with no active question | 5 |
 | Active questions in the bank | 419 |
 | Deprecated questions excluded from this report | 41 |
 
@@ -120,6 +120,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Dagger: Compile-Time Object Graphs (`unit_dagger_compile_time_object_graphs`) | 7 | 7 | 5 | 3 | 0 | 8 |
 | Hilt: Android Lifecycle-Aware Dagger (`unit_hilt_android_lifecycle_integration`) | 6 | 5 | 2 | 4 | 0 | 6 |
 | Koin and Dependency Injection in KMP (`unit_koin_and_dependency_injection_in_kmp`) | 5 | 5 | 1 | 1 | 0 | 2 |
+| Choosing a Dependency Injection Strategy (`unit_choosing_a_dependency_injection_strategy`) | 4 | 2 | 0 | 1 | 0 | 1 |
 
 ## Unit and lesson detail
 
@@ -2676,6 +2677,92 @@ Supporting context — not primary coverage:
 | `composition_root` — Composition root | 1 | `dependency_injection` — Dependency Injection |
 | `interface_boundaries` — Interface boundaries | 2 | `architecture` — Application Architecture & Design Principles |
 
+### Choosing a Dependency Injection Strategy (`unit_choosing_a_dependency_injection_strategy`)
+
+Home topic: `dependency_injection` — Dependency Injection.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 0 | — |
+| APPLIED | 1 | `manual_di_graph_growth_cost` |
+| ADVANCED | 0 | — |
+
+#### What a Container Actually Buys (`lesson_what_a_container_actually_buys`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `di_framework_tradeoffs` — DI framework trade-offs | 0 | 0 | 0 | 0 | — |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `manual_di` — Manual dependency injection | 1 | `dependency_injection` — Dependency Injection |
+| `dagger_fundamentals` — Dagger fundamentals | 1 | `dependency_injection` — Dependency Injection |
+| `hilt_fundamentals` — Hilt fundamentals | 1 | `dependency_injection` — Dependency Injection |
+| `koin_fundamentals` — Koin fundamentals | 0 | `dependency_injection` — Dependency Injection |
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 2 | `architecture` — Application Architecture & Design Principles |
+
+#### When Should a Graph Error Surface? (`lesson_when_should_a_graph_error_surface`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `di_framework_tradeoffs` — DI framework trade-offs | 0 | 0 | 0 | 0 | — |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `dagger_fundamentals` — Dagger fundamentals | 1 | `dependency_injection` — Dependency Injection |
+| `koin_fundamentals` — Koin fundamentals | 0 | `dependency_injection` — Dependency Injection |
+| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
+| `manual_di` — Manual dependency injection | 1 | `dependency_injection` — Dependency Injection |
+| `kotlin_gradle_plugin` — Kotlin Gradle plugin | 1 | `build_delivery` — Build System, Modularization & Delivery |
+
+#### Three Projects, Three Answers (`lesson_three_projects_three_answers`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `di_framework_tradeoffs` — DI framework trade-offs | 0 | 0 | 0 | 0 | — |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `manual_di` — Manual dependency injection | 1 | `dependency_injection` — Dependency Injection |
+| `hilt_vs_dagger` — Hilt vs raw Dagger | 1 | `dependency_injection` — Dependency Injection |
+| `koin_multiplatform` — Koin and Kotlin Multiplatform | 1 | `dependency_injection` — Dependency Injection |
+| `dagger_components` — Components and subcomponents | 3 | `dependency_injection` — Dependency Injection |
+| `kmp_architecture` — KMP architecture | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
+
+#### The Smallest Sufficient Strategy (`lesson_the_smallest_sufficient_strategy`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `manual_di` — Manual dependency injection | 0 | 1 | 0 | 1 | `manual_di_graph_growth_cost` |
+| `di_framework_tradeoffs` — DI framework trade-offs | 0 | 0 | 0 | 0 | — |
+| **Lesson total (unique)** | 0 | 1 | 0 | 1 | `manual_di_graph_growth_cost` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `composition_root` — Composition root | 1 | `dependency_injection` — Dependency Injection |
+| `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 2 | `architecture` — Application Architecture & Design Principles |
+| `di_fundamentals` — Dependency injection fundamentals | 1 | `dependency_injection` — Dependency Injection |
+| `constructor_injection` — Constructor injection | 1 | `dependency_injection` — Dependency Injection |
+
 ## Primary assessment gaps
 
 Primary concepts of active lessons that currently have no active question.
@@ -2692,6 +2779,7 @@ matters is editorial judgement.
 | `koin_fundamentals` — Koin fundamentals | `dependency_injection` — Dependency Injection |
 | `koin_scopes` — Koin scopes | `dependency_injection` — Dependency Injection |
 | `koin_viewmodels` — Koin ViewModel integration | `dependency_injection` — Dependency Injection |
+| `di_framework_tradeoffs` — DI framework trade-offs | `dependency_injection` — Dependency Injection |
 
 ## Semantic review reminder
 

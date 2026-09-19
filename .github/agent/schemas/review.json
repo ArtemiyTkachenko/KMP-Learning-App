@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "verdict": {
+      "type": "string",
+      "enum": ["PASS", "CHANGES_REQUIRED"]
+    },
+    "summary": {"type": "string"},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": ["BLOCKER", "IMPORTANT", "OPTIONAL"]
+          },
+          "file": {"type": "string"},
+          "line": {"type": "string"},
+          "category": {"type": "string"},
+          "problem": {"type": "string"},
+          "whyItMatters": {"type": "string"},
+          "requiredFix": {"type": "string"}
+        },
+        "required": [
+          "severity",
+          "file",
+          "line",
+          "category",
+          "problem",
+          "whyItMatters",
+          "requiredFix"
+        ]
+      }
+    },
+    "acceptanceCriteriaStatus": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "criterion": {"type": "string"},
+          "status": {
+            "type": "string",
+            "enum": ["SATISFIED", "NOT_SATISFIED", "NOT_VALIDATED"]
+          },
+          "evidence": {"type": "string"}
+        },
+        "required": ["criterion", "status", "evidence"]
+      }
+    },
+    "residualRisks": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  },
+  "required": [
+    "verdict",
+    "summary",
+    "findings",
+    "acceptanceCriteriaStatus",
+    "residualRisks"
+  ]
+}

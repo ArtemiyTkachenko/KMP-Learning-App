@@ -5453,7 +5453,7 @@
     {
       "id": "hilt_field_injection_framework_classes",
       "topicId": "dependency_injection",
-      "subtopicId": "constructor_injection",
+      "subtopicId": "hilt_fundamentals",
       "text": "An Activity cannot use constructor injection because the framework instantiates it. How does Hilt supply its dependencies?",
       "answers": [
         {
@@ -5532,7 +5532,7 @@
       "answers": [
         {
           "id": "di_scopes_001_b",
-          "text": "A scope controls the lifetime and sharing boundary of provided instances."
+          "text": "Within a lived owner, a scope controls which consumers reuse the same provided instance."
         },
         {
           "id": "di_scopes_001_e",
@@ -5553,15 +5553,15 @@
         "di_scopes_001_b",
         "di_scopes_001_d"
       ],
-      "explanation": "A scope defines how long a provided instance lives and which consumers share it, from per-request instances up to application singletons. Getting it wrong matters in both directions: too wide and short-lived objects such as an Activity are retained past their lifetime, too narrow and objects that should be shared are rebuilt. A long-lived holder retaining a short-lived dependency is the classic leak.",
+      "explanation": "A scope is a reuse rule inside a real owner or container: it decides which consumers receive the same provided instance. The owner bounds the actual lifetime, so writing a scope declaration does not create a lifetime by itself. Getting the rule wrong matters in both directions: too wide and a long-lived owner can retain short-lived state past its intended boundary; too narrow and collaborators that should be shared are rebuilt.",
       "sources": [
         {
           "title": "Dependency Injection with Hilt",
           "url": "https://developer.android.com/training/dependency-injection/hilt-android"
         },
         {
-          "title": "Hilt Component Scopes",
-          "url": "https://developer.android.com/training/dependency-injection/hilt-android#component-scopes"
+          "title": "Hilt Components",
+          "url": "https://dagger.dev/hilt/components.html"
         }
       ],
       "status": "ACTIVE"
@@ -5615,7 +5615,7 @@
         },
         {
           "id": "di_hilt_viewmodel_scope_b",
-          "text": "The scope annotation on the binding that provides the repository."
+          "text": "The binding's scope and the corresponding Hilt component owner that reuses it."
         },
         {
           "id": "di_hilt_viewmodel_scope_c",
@@ -5631,11 +5631,11 @@
       "correctAnswerIds": [
         "di_hilt_viewmodel_scope_b"
       ],
-      "explanation": "@HiltViewModel governs how the ViewModel itself is constructed and retained; the lifetime of what it receives is decided by that binding's own scope. An unscoped binding produces a new instance per injection, while @Singleton or @ActivityRetainedScoped shares one across a wider boundary. Conflating the two is the usual source of surprise, where a dependency expected to be per-screen is in fact shared process-wide.",
+      "explanation": "@HiltViewModel governs how the ViewModel itself is constructed and retained. A dependency's scope tells its matching Hilt component to reuse the binding result, while that component owner bounds the actual lifetime. An unscoped binding produces a new instance per request; @Singleton or @ActivityRetainedScoped reuses one within a wider owner. Conflating ViewModel construction with dependency ownership is how a dependency expected to be per-screen becomes shared much more widely.",
       "sources": [
         {
-          "title": "Dependency Injection with Hilt",
-          "url": "https://developer.android.com/training/dependency-injection/hilt-android"
+          "title": "Hilt Components",
+          "url": "https://dagger.dev/hilt/components.html"
         }
       ],
       "status": "ACTIVE"
@@ -5668,7 +5668,7 @@
       "correctAnswerIds": [
         "di_koin_factory_vs_single_b"
       ],
-      "explanation": "The two keywords choose an instance-creation strategy: single keeps one instance for the container's lifetime and hands the same object to every consumer, while factory builds a fresh one on each resolution. Both are declared in the same DSL and both resolve at runtime, since Koin builds its graph without code generation. Choosing single for something holding per-screen state is how unintended sharing appears.",
+      "explanation": "The two keywords choose an instance-creation strategy: single keeps one instance for the container's lifetime and hands the same object to every consumer, while factory builds a fresh one on each resolution. In the classic DSL used by this repository, the container executes those definitions when resolving dependencies. Koin 4.2 also offers a separate compiler plugin that can validate and transform DSL declarations, so runtime-only checking is not an inherent property of every modern Koin setup. Choosing single for something holding per-screen state is how unintended sharing appears.",
       "sources": [
         {
           "title": "Koin Definitions",
@@ -5680,7 +5680,7 @@
     {
       "id": "di_constructor_injection_testability",
       "topicId": "dependency_injection",
-      "subtopicId": "di_fundamentals",
+      "subtopicId": "constructor_injection",
       "text": "Which properties follow from taking required collaborators as constructor parameters? Select all that apply.",
       "answers": [
         {
@@ -12311,7 +12311,7 @@
     {
       "id": "dagger_compile_time_graph_validation",
       "topicId": "dependency_injection",
-      "subtopicId": "dependency_graphs",
+      "subtopicId": "dagger_fundamentals",
       "text": "A component requests Foo, but no binding can provide Foo; elsewhere two unqualified bindings provide the same Bar key. When are these problems reported?",
       "answers": [
         {
@@ -15064,8 +15064,8 @@
       "explanation": "@InstallIn attaches a module to one of Hilt's generated components, which is what decides visibility: bindings in ActivityComponent are injectable into an Activity and the Fragments and Views under it, but not into an application-wide singleton. Lifetime is a separate decision expressed by a scope annotation such as @ActivityScoped — an unscoped binding installed there still produces a new instance per request. Hilt's component hierarchy is fixed, and modules join it rather than creating components.",
       "sources": [
         {
-          "title": "Hilt component scopes",
-          "url": "https://developer.android.com/training/dependency-injection/hilt-android#component-scopes"
+          "title": "Hilt Components",
+          "url": "https://dagger.dev/hilt/components.html"
         }
       ],
       "status": "ACTIVE"
@@ -15101,8 +15101,8 @@
       "explanation": "Hilt's components mirror Android lifetimes. ActivityComponent is destroyed and recreated with the Activity instance, so anything scoped to it is lost on rotation, while ActivityRetainedComponent uses the same retention mechanism as ViewModels and spans configuration changes; @ActivityRetainedScoped is its scope. SingletonComponent would also survive but makes the dependency application-wide for the rest of the process. Bindings flow down the hierarchy, never up from a Fragment to its Activity.",
       "sources": [
         {
-          "title": "Hilt generated components",
-          "url": "https://developer.android.com/training/dependency-injection/hilt-android#generated-components"
+          "title": "Hilt Components",
+          "url": "https://dagger.dev/hilt/components.html"
         }
       ],
       "status": "ACTIVE"
@@ -15138,8 +15138,8 @@
       "explanation": "Hilt is Dagger with the Android graph decided in advance: a fixed hierarchy from SingletonComponent down to FragmentComponent and ViewComponent, with entry points and scopes already named. That removes most of the wiring boilerplate and makes multi-module setups consistent, and the price is fitting the app into that hierarchy instead of designing one. Underneath it is still compile-time Dagger, still uses modules, and still supports scoping and constructor injection.",
       "sources": [
         {
-          "title": "Dependency injection with Hilt",
-          "url": "https://developer.android.com/training/dependency-injection/hilt-android"
+          "title": "Hilt Components",
+          "url": "https://dagger.dev/hilt/components.html"
         }
       ],
       "status": "ACTIVE"
@@ -15209,7 +15209,7 @@
       "correctAnswerIds": [
         "koin_multiplatform_common_module_d"
       ],
-      "explanation": "Dagger and Hilt are annotation processors that emit JVM code, and Hilt is additionally tied to Android framework classes, so neither can process commonMain for an iOS target. Koin's modules are a plain Kotlin DSL evaluated at runtime, so they compile wherever Kotlin does — the trade-off being that a missing binding surfaces as a runtime failure rather than a compile error. Koin does not require a Context, does not generate per-platform containers, and does not rely on reflection to build its definitions.",
+      "explanation": "Dagger and Hilt generate JVM/Java graph code, and Hilt is additionally tied to Android framework classes, so neither serves as one shared commonMain graph for an iOS target. Koin's classic modules are ordinary Kotlin declarations available across Kotlin Multiplatform targets, which is why they can describe the shared graph. With the classic DSL used by this repository, an unverified missing definition can surface during startup or resolution; Koin 4.2's optional compiler plugin can instead add compile-time graph checks. Koin does not require a Context, does not generate one platform container from a shared schema, and does not rely on reflection to build its definitions.",
       "sources": [
         {
           "title": "Koin for Kotlin Multiplatform",
@@ -19921,6 +19921,724 @@
         {
           "title": "Architecture recommendations",
           "url": "https://developer.android.com/topic/architecture/recommendations"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "injection_and_inversion_are_separate_decisions",
+      "topicId": "dependency_injection",
+      "subtopicId": "di_fundamentals",
+      "text": "StudyController receives data.sql.SqlQuestionStore through its constructor. ReviewPolicy receives a Policy interface declared beside ReviewPolicy, while main constructs and supplies SqlReviewPolicy. Which analysis is correct?",
+      "answers": [
+        {
+          "id": "injection_and_inversion_are_separate_decisions_a",
+          "text": "Both designs are inverted because both collaborators arrive through constructors."
+        },
+        {
+          "id": "injection_and_inversion_are_separate_decisions_b",
+          "text": "The first is injected but not inverted; the second is both manually injected and inverted."
+        },
+        {
+          "id": "injection_and_inversion_are_separate_decisions_c",
+          "text": "The first is inverted but not injected; the second becomes injected only if a container supplies it."
+        },
+        {
+          "id": "injection_and_inversion_are_separate_decisions_d",
+          "text": "Neither design is injection because main, rather than a DI framework, constructs the implementations."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "injection_and_inversion_are_separate_decisions_b"
+      ],
+      "explanation": "Injection asks who supplies a collaborator; inversion asks which side owns the abstraction and therefore the source dependency. StudyController receives its store, so it is injected, but its source still names the outer SQL implementation. ReviewPolicy receives a caller-owned contract whose implementation main supplies, so it is both manually injected and inverted. A container is unnecessary for either decision.",
+      "sources": [
+        {
+          "title": "Dependency injection in Android",
+          "url": "https://developer.android.com/training/dependency-injection"
+        },
+        {
+          "title": "Guide to app architecture",
+          "url": "https://developer.android.com/topic/architecture"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "construct_fetch_receive_responsibility",
+      "topicId": "dependency_injection",
+      "subtopicId": "di_fundamentals",
+      "text": "A SessionCoordinator needs a Clock, and each caller must be able to choose the clock without changing shared global state. Which design meets that requirement and why?",
+      "answers": [
+        {
+          "id": "construct_fetch_receive_responsibility_a",
+          "text": "Construct SystemClock inside SessionCoordinator, so every caller gets the same explicit choice."
+        },
+        {
+          "id": "construct_fetch_receive_responsibility_b",
+          "text": "Fetch Clock from a global registry, so each caller supplies its choice through the coordinator's API."
+        },
+        {
+          "id": "construct_fetch_receive_responsibility_c",
+          "text": "Receive Clock as a constructor parameter, so the construction site chooses it for that coordinator."
+        },
+        {
+          "id": "construct_fetch_receive_responsibility_d",
+          "text": "Assign Clock to a mutable field after construction, so the coordinator is complete before it is configured."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "construct_fetch_receive_responsibility_c"
+      ],
+      "explanation": "Receiving the clock makes the requirement explicit and lets each construction site choose independently. Constructing it inside fixes the implementation in the consumer. Fetching it moves construction elsewhere but still hides the requirement and shares registry state. Assignment after construction creates a period in which the coordinator exists without a required collaborator.",
+      "sources": [
+        {
+          "title": "Dependency injection in Android",
+          "url": "https://developer.android.com/training/dependency-injection"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "integration_boundary_resolution_vs_service_locator",
+      "topicId": "dependency_injection",
+      "subtopicId": "service_locator_vs_di",
+      "text": "A domain use case calls GlobalContainer.get<Repository>() inside execute(). A Compose destination calls koinViewModel() once to obtain a fully constructed ViewModel owned by the host's ViewModelStore. Why is only the first the service-locator architecture shape?",
+      "answers": [
+        {
+          "id": "integration_boundary_resolution_vs_service_locator_a",
+          "text": "Only the first uses generics, and generic resolution hides the concrete implementation."
+        },
+        {
+          "id": "integration_boundary_resolution_vs_service_locator_b",
+          "text": "The use case hides its requirement; the destination connects an external owner to a complete graph object."
+        },
+        {
+          "id": "integration_boundary_resolution_vs_service_locator_c",
+          "text": "Only the first resolves at runtime; ViewModels are always generated and selected at compile time."
+        },
+        {
+          "id": "integration_boundary_resolution_vs_service_locator_d",
+          "text": "The first is a service locator because repositories may not be resolved, while ViewModels may be."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "integration_boundary_resolution_vs_service_locator_b"
+      ],
+      "explanation": "The architectural distinction is responsibility, not the presence of a lookup call. The use case has a caller that could supply its repository, yet it hides that requirement and resolves it itself. The destination is integration code at a lifetime the application does not construct; it asks the graph for one complete ViewModel and leaves the ViewModel's own collaborators explicit in its constructor. Runtime resolution and generic syntax do not decide the pattern.",
+      "sources": [
+        {
+          "title": "Dependency injection in Android",
+          "url": "https://developer.android.com/training/dependency-injection"
+        },
+        {
+          "title": "Koin for Compose",
+          "url": "https://insert-koin.io/docs/reference/koin-compose/compose/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "scope_rule_requires_lived_owner",
+      "topicId": "dependency_injection",
+      "subtopicId": "di_scopes",
+      "text": "InterviewSessionState must be shared across three screens in one interview, reset when that interview ends, and never be shared with the next interview. Which design matches the requirement?",
+      "answers": [
+        {
+          "id": "scope_rule_requires_lived_owner_a",
+          "text": "Declare it singleton; the singleton annotation creates an interview-length owner automatically."
+        },
+        {
+          "id": "scope_rule_requires_lived_owner_b",
+          "text": "Create it separately for every screen, then synchronize the three copies when navigation changes."
+        },
+        {
+          "id": "scope_rule_requires_lived_owner_c",
+          "text": "Let an interview owner create and close a scope that reuses one state instance within that owner."
+        },
+        {
+          "id": "scope_rule_requires_lived_owner_d",
+          "text": "Use one scoped declaration globally; its name alone resets the instance between interviews."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "scope_rule_requires_lived_owner_c"
+      ],
+      "explanation": "The product requirement first identifies an interview owner: it begins an interview, stays alive across its screens, and ends it. A scoped reuse rule inside that owner can return one state instance to all three screens, while closing the owner ends the actual lifetime. A singleton is too wide, per-screen construction is too narrow, and a scope declaration without a created and closed owner establishes no interview lifetime.",
+      "sources": [
+        {
+          "title": "Koin Scopes",
+          "url": "https://insert-koin.io/docs/reference/koin-core/scopes/"
+        },
+        {
+          "title": "Hilt Components",
+          "url": "https://dagger.dev/hilt/components.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "runtime_input_stays_out_of_graph",
+      "topicId": "dependency_injection",
+      "subtopicId": "dependency_graphs",
+      "text": "TopicDetailViewModel needs a QuestionRepository, a Clock, and the topicId selected in the current navigation entry. Which construction boundary is correct?",
+      "answers": [
+        {
+          "id": "runtime_input_stays_out_of_graph_a",
+          "text": "Register all three in the application graph, replacing its current topicId whenever navigation changes."
+        },
+        {
+          "id": "runtime_input_stays_out_of_graph_b",
+          "text": "Resolve the repository and clock from the graph, and pass topicId from the caller when creating this ViewModel."
+        },
+        {
+          "id": "runtime_input_stays_out_of_graph_c",
+          "text": "Pass all three from navigation, because a graph may contain only values known at compile time."
+        },
+        {
+          "id": "runtime_input_stays_out_of_graph_d",
+          "text": "Construct all three inside the ViewModel, because mixing graph values with caller values is invalid."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "runtime_input_stays_out_of_graph_b"
+      ],
+      "explanation": "The repository and clock are stable collaborators whose construction policy belongs to the object graph. The selected topicId is instance-specific runtime input known by the navigation caller, so that caller passes it at the creation boundary. Registering a mutable current ID globally turns concurrent or back-stacked destinations into consumers of shared changing state and gives the graph a value it cannot know in advance.",
+      "sources": [
+        {
+          "title": "Dagger Assisted Injection",
+          "url": "https://dagger.dev/dev-guide/assisted-injection"
+        },
+        {
+          "title": "Koin for Compose",
+          "url": "https://insert-koin.io/docs/reference/koin-compose/compose/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "same_type_dependencies_need_distinct_keys",
+      "topicId": "dependency_injection",
+      "subtopicId": "dependency_graphs",
+      "text": "A sync service needs two String values: the public API base URL and the upload API base URL. Passing either String in either position compiles. What should the graph design establish before choosing a framework-specific syntax?",
+      "answers": [
+        {
+          "id": "same_type_dependencies_need_distinct_keys_a",
+          "text": "A different semantic key for each value, using distinct types or an explicit distinguishing key."
+        },
+        {
+          "id": "same_type_dependencies_need_distinct_keys_b",
+          "text": "One shared String binding, with the service deciding which endpoint each call intended."
+        },
+        {
+          "id": "same_type_dependencies_need_distinct_keys_c",
+          "text": "A wider scope for the upload URL, because scope priority selects among values of one type."
+        },
+        {
+          "id": "same_type_dependencies_need_distinct_keys_d",
+          "text": "Module ordering, so the last String declaration silently replaces the earlier one."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "same_type_dependencies_need_distinct_keys_a"
+      ],
+      "explanation": "The graph has two different requirements that happen to share a language type. They need different semantic keys, expressed either as distinct domain types or as an explicit distinguishing key that consumers also request. Scope controls reuse rather than identity, while one binding, declaration order, or silent replacement leaves the graph unable to prove which endpoint a parameter means.",
+      "sources": [
+        {
+          "title": "Dagger Semantics: Keys",
+          "url": "https://dagger.dev/semantics/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "graph_error_timing_follows_wiring_mechanism",
+      "topicId": "dependency_injection",
+      "subtopicId": "dependency_graphs",
+      "text": "Three projects omit the binding needed to construct ReportController. One calls constructors explicitly, one uses an unverified dynamic registry, and one generates and validates a reachable graph during the build. Which comparison is accurate?",
+      "answers": [
+        {
+          "id": "graph_error_timing_follows_wiring_mechanism_a",
+          "text": "All three fail only when ReportController is first used, because every object graph is a runtime object."
+        },
+        {
+          "id": "graph_error_timing_follows_wiring_mechanism_b",
+          "text": "Explicit wiring and the generated graph fail during compilation; the unverified registry can fail when validated or resolved."
+        },
+        {
+          "id": "graph_error_timing_follows_wiring_mechanism_c",
+          "text": "Only explicit wiring fails during compilation; generated graph code cannot inspect missing dependencies until startup."
+        },
+        {
+          "id": "graph_error_timing_follows_wiring_mechanism_d",
+          "text": "The registry fails during compilation, while both constructor wiring and generated graphs wait for first resolution."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "graph_error_timing_follows_wiring_mechanism_b"
+      ],
+      "explanation": "The mechanism determines the observation point. With explicit constructor wiring, an omitted required argument is a compile error at the construction site. A generated, prevalidated reachable graph also turns a missing binding into a build error. A dynamic registry with no prior verification cannot use either guarantee, so the defect appears when the project explicitly validates the registry or when the missing entry is resolved.",
+      "sources": [
+        {
+          "title": "Dependency injection in Android",
+          "url": "https://developer.android.com/training/dependency-injection"
+        },
+        {
+          "title": "Dagger Basic Usage: Compile-time Validation",
+          "url": "https://dagger.dev/dev-guide/basic-usage#compile-time-validation"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "dagger_module_contributes_component_owns",
+      "topicId": "dependency_injection",
+      "subtopicId": "dagger_modules",
+      "text": "A Dagger graph needs a configured third-party HttpClient and one shared Repository. Which design assigns module and component responsibilities correctly?",
+      "answers": [
+        {
+          "id": "dagger_module_contributes_component_owns_a",
+          "text": "A module constructs the component and owns every scoped object; the component only labels its modules."
+        },
+        {
+          "id": "dagger_module_contributes_component_owns_b",
+          "text": "A module contributes the HttpClient binding; a component exposes the graph API and retains scoped results."
+        },
+        {
+          "id": "dagger_module_contributes_component_owns_c",
+          "text": "A component provides the third-party factory body; a module exposes provision entry points to application code."
+        },
+        {
+          "id": "dagger_module_contributes_component_owns_d",
+          "text": "Each module is a separate running graph, and the component copies their scoped instances into one cache."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "dagger_module_contributes_component_owns_b"
+      ],
+      "explanation": "A module contributes binding declarations for cases such as configured or third-party objects. The component selects the reachable binding graph, exposes provision or injection entry points, and its component instance owns the cache for matching scoped bindings. A module is not a running container and does not own scoped objects independently from a component.",
+      "sources": [
+        {
+          "title": "Dagger Basic Usage",
+          "url": "https://dagger.dev/dev-guide/basic-usage"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "dagger_compile_success_not_lifetime_proof",
+      "topicId": "dependency_injection",
+      "subtopicId": "dagger_fundamentals",
+      "text": "A complete Dagger graph stores mutable CheckoutSessionState in an application component, but product requirements say it must reset after each checkout. The graph compiles. What did that success prove?",
+      "answers": [
+        {
+          "id": "dagger_compile_success_not_lifetime_proof_a",
+          "text": "Every reachable key has a valid binding under Dagger's rules, not that the chosen owner matches the product lifetime."
+        },
+        {
+          "id": "dagger_compile_success_not_lifetime_proof_b",
+          "text": "The application component is the correct owner because compile-time validation includes product lifetime requirements."
+        },
+        {
+          "id": "dagger_compile_success_not_lifetime_proof_c",
+          "text": "The state will reset after checkout because a scope annotation derives its lifetime from the mutable data."
+        },
+        {
+          "id": "dagger_compile_success_not_lifetime_proof_d",
+          "text": "The graph is unscoped at runtime because Dagger disables scopes that conflict with product requirements."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "dagger_compile_success_not_lifetime_proof_a"
+      ],
+      "explanation": "Dagger validates the structural relationship among reachable keys, bindings, component scopes, and dependencies. It has no model of the product statement 'reset after each checkout.' An application component can legally own the state and still be architecturally wrong because that owner outlives the required checkout boundary. The team must choose and create a checkout-lived owner; compile success cannot infer it from mutable data.",
+      "sources": [
+        {
+          "title": "Dagger Basic Usage: Compile-time Validation",
+          "url": "https://dagger.dev/dev-guide/basic-usage#compile-time-validation"
+        },
+        {
+          "title": "Dagger Basic Usage: Scoped Bindings",
+          "url": "https://dagger.dev/dev-guide/basic-usage#singletons-and-scoped-bindings"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "hilt_viewmodel_vs_activity_retained_owner",
+      "topicId": "dependency_injection",
+      "subtopicId": "hilt_components",
+      "text": "Two different ViewModels owned by one retained Activity must observe the same in-memory SelectionSession across rotation. Which Hilt ownership choice fits?",
+      "answers": [
+        {
+          "id": "hilt_viewmodel_vs_activity_retained_owner_a",
+          "text": "@ViewModelScoped in ViewModelComponent, because both ViewModels under one Activity share that component."
+        },
+        {
+          "id": "hilt_viewmodel_vs_activity_retained_owner_b",
+          "text": "@ActivityRetainedScoped in ActivityRetainedComponent, because it is shared across those ViewModels and survives rotation."
+        },
+        {
+          "id": "hilt_viewmodel_vs_activity_retained_owner_c",
+          "text": "@ActivityScoped in ActivityComponent, because an Activity component instance survives every configuration change."
+        },
+        {
+          "id": "hilt_viewmodel_vs_activity_retained_owner_d",
+          "text": "@Singleton in SingletonComponent, because sharing between ViewModels always requires process-wide ownership."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "hilt_viewmodel_vs_activity_retained_owner_b"
+      ],
+      "explanation": "Each ViewModel has its own ViewModelComponent, so ViewModel-scoped objects are not shared across two ViewModels. ActivityRetainedComponent is shared by the ViewModels associated with that retained Activity and spans its configuration changes, matching both requirements. ActivityComponent is recreated with the Activity instance, while SingletonComponent is wider than the stated owner.",
+      "sources": [
+        {
+          "title": "Hilt Components",
+          "url": "https://dagger.dev/hilt/components.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "hilt_singleton_component_not_process_durable",
+      "topicId": "dependency_injection",
+      "subtopicId": "hilt_components",
+      "text": "Mutable checkout state is held by a @Singleton binding because it must survive Activity recreation. Product now requires restoring it after the application process is killed. What changes?",
+      "answers": [
+        {
+          "id": "hilt_singleton_component_not_process_durable_a",
+          "text": "Nothing; SingletonComponent is recreated with the same scoped object after process death."
+        },
+        {
+          "id": "hilt_singleton_component_not_process_durable_b",
+          "text": "Move it to ActivityRetainedComponent, whose lifetime continues after the process is destroyed."
+        },
+        {
+          "id": "hilt_singleton_component_not_process_durable_c",
+          "text": "Keep an appropriate in-process owner, but persist and restore the required state outside the Hilt component."
+        },
+        {
+          "id": "hilt_singleton_component_not_process_durable_d",
+          "text": "Add a second scope annotation so Hilt promotes the object from process lifetime to durable storage."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "hilt_singleton_component_not_process_durable_c"
+      ],
+      "explanation": "SingletonComponent is bounded by the current application process. It can outlive Activities and configuration changes, but the component and its in-memory objects disappear with process termination. Durability is therefore a persistence and restoration requirement, separate from the choice of an in-process Hilt owner; ActivityRetainedComponent is shorter lived, and another scope annotation creates no storage.",
+      "sources": [
+        {
+          "title": "Hilt Components",
+          "url": "https://dagger.dev/hilt/components.html"
+        },
+        {
+          "title": "Save UI states",
+          "url": "https://developer.android.com/topic/libraries/architecture/saving-states"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "koin_container_startup_composition_boundary",
+      "topicId": "dependency_injection",
+      "subtopicId": "koin_fundamentals",
+      "text": "A KMP application has common repository definitions and one platform storage module per host. Where should Koin startup and module assembly live?",
+      "answers": [
+        {
+          "id": "koin_container_startup_composition_boundary_a",
+          "text": "Inside each repository method, so the repository starts a container before resolving its storage dependency."
+        },
+        {
+          "id": "koin_container_startup_composition_boundary_b",
+          "text": "At each host's composition boundary, loading common and platform modules once before feature resolution."
+        },
+        {
+          "id": "koin_container_startup_composition_boundary_c",
+          "text": "Inside every module declaration, because a Koin module is a running container with its own lifecycle."
+        },
+        {
+          "id": "koin_container_startup_composition_boundary_d",
+          "text": "Inside each ViewModel constructor, so ViewModel ownership also becomes container ownership."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "koin_container_startup_composition_boundary_b"
+      ],
+      "explanation": "A module groups definitions; it is not a running container. The host is the composition boundary that knows both the shared graph and its platform bindings, so it starts Koin and loads that module set once. Repositories and ViewModels remain consumers with explicit constructor requirements rather than starting or consulting containers inside their business methods.",
+      "sources": [
+        {
+          "title": "Koin Modules",
+          "url": "https://insert-koin.io/docs/reference/koin-core/modules/"
+        },
+        {
+          "title": "Koin Multiplatform",
+          "url": "https://insert-koin.io/docs/reference/koin-mp/kmp/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "koin_interview_scope_owner",
+      "topicId": "dependency_injection",
+      "subtopicId": "koin_scopes",
+      "text": "InterviewSessionState must be one instance across three screens in an interview, then be released before the next interview starts. Which Koin design fits?",
+      "answers": [
+        {
+          "id": "koin_interview_scope_owner_a",
+          "text": "single { InterviewSessionState() }, because the application container ends after each interview."
+        },
+        {
+          "id": "koin_interview_scope_owner_b",
+          "text": "factory { InterviewSessionState() }, resolved independently by every screen that needs it."
+        },
+        {
+          "id": "koin_interview_scope_owner_c",
+          "text": "scoped { InterviewSessionState() } in a scope the interview owner creates and closes."
+        },
+        {
+          "id": "koin_interview_scope_owner_d",
+          "text": "viewModel { InterviewSessionState() }, because every state object should use a ViewModelStore."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "koin_interview_scope_owner_c"
+      ],
+      "explanation": "single is container-wide and therefore too wide; factory creates independent instances and is too narrow. A scoped definition reuses one value inside a particular Koin scope, while the interview owner gives that scope its real beginning and end by creating and closing it. A ViewModel definition would substitute an unrelated host lifetime rather than model the interview requirement.",
+      "sources": [
+        {
+          "title": "Koin Scopes",
+          "url": "https://insert-koin.io/docs/reference/koin-core/scopes/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "koin_viewmodel_construction_vs_ownership",
+      "topicId": "dependency_injection",
+      "subtopicId": "koin_viewmodels",
+      "text": "TopicDetailViewModel(topicId, repository) is declared with Koin and resolved by a Compose destination. Which division of responsibility is correct?",
+      "answers": [
+        {
+          "id": "koin_viewmodel_construction_vs_ownership_a",
+          "text": "Koin chooses the ViewModelStore owner and stores topicId globally; the destination supplies only the repository."
+        },
+        {
+          "id": "koin_viewmodel_construction_vs_ownership_b",
+          "text": "Koin supplies the repository and constructs the ViewModel; the destination passes topicId, and the host store owns it."
+        },
+        {
+          "id": "koin_viewmodel_construction_vs_ownership_c",
+          "text": "The host store constructs repository and ViewModel; Koin retains both until its application container stops."
+        },
+        {
+          "id": "koin_viewmodel_construction_vs_ownership_d",
+          "text": "The destination constructs everything directly because a runtime parameter prevents Koin ViewModel integration."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "koin_viewmodel_construction_vs_ownership_b"
+      ],
+      "explanation": "The Koin ViewModel definition describes construction and supplies graph collaborators such as the repository. The destination knows the selected topicId at runtime and passes it at resolution. The platform ViewModelStore owner, reached by the Compose integration, retains and clears the resulting ViewModel. Container construction does not replace host lifecycle ownership, and a runtime parameter need not become mutable global graph state.",
+      "sources": [
+        {
+          "title": "Koin for Compose",
+          "url": "https://insert-koin.io/docs/reference/koin-compose/compose/"
+        },
+        {
+          "title": "Koin ViewModel",
+          "url": "https://insert-koin.io/docs/reference/koin-core/viewmodel/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "koin_definition_from_reuse_requirement",
+      "topicId": "dependency_injection",
+      "subtopicId": "koin_definitions",
+      "text": "Two repositories must observe the same in-memory AuthTokenCache for the entire running application. The cache has no shorter session boundary. Which Koin definition matches the requirement?",
+      "answers": [
+        {
+          "id": "koin_definition_from_reuse_requirement_a",
+          "text": "factory, so each repository receives a fresh cache and Koin synchronizes their contents."
+        },
+        {
+          "id": "koin_definition_from_reuse_requirement_b",
+          "text": "single, so both repositories receive the same cache instance from the application container."
+        },
+        {
+          "id": "koin_definition_from_reuse_requirement_c",
+          "text": "scoped, without creating a scope, because the declaration itself supplies an application owner."
+        },
+        {
+          "id": "koin_definition_from_reuse_requirement_d",
+          "text": "viewModel, so the first repository becomes the lifecycle owner of the shared cache."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "koin_definition_from_reuse_requirement_b"
+      ],
+      "explanation": "The requirement is one identity shared across consumers for the container's application lifetime, which is what single expresses. factory would create separate caches. A scoped definition needs a deliberately created scope and is useful for a shorter bounded owner, which the stem says does not exist. A ViewModel definition models ViewModel construction and ownership rather than repository-wide application state.",
+      "sources": [
+        {
+          "title": "Koin Definitions",
+          "url": "https://insert-koin.io/docs/reference/koin-core/definitions/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "koin_shared_and_platform_binding_split",
+      "topicId": "dependency_injection",
+      "subtopicId": "koin_multiplatform",
+      "text": "A shared TopicRepository depends on a Storage interface and a Clock. Android and iOS use different Storage implementations, while topicId comes from the current route. How should a Koin KMP graph be split?",
+      "answers": [
+        {
+          "id": "koin_shared_and_platform_binding_split_a",
+          "text": "Keep repository and stable collaborators shared, bind Storage per host, and pass topicId at resolution."
+        },
+        {
+          "id": "koin_shared_and_platform_binding_split_b",
+          "text": "Register the current topicId in the common module, and replace it whenever either host navigates."
+        },
+        {
+          "id": "koin_shared_and_platform_binding_split_c",
+          "text": "Duplicate TopicRepository in every platform module because any platform binding makes the whole graph platform-specific."
+        },
+        {
+          "id": "koin_shared_and_platform_binding_split_d",
+          "text": "Put both platform Storage implementations in commonMain and choose one by inspecting the runtime target."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "koin_shared_and_platform_binding_split_a"
+      ],
+      "explanation": "The shared graph can describe the repository and stable common collaborators against the Storage contract. Each host completes that graph with the implementation that can access its platform storage. The route owns topicId and passes it for this instance; it is not a stable graph binding. One platform edge does not require duplicating shared construction, and commonMain cannot directly construct both platform implementations.",
+      "sources": [
+        {
+          "title": "Koin Multiplatform",
+          "url": "https://insert-koin.io/docs/reference/koin-mp/kmp/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "di_graph_check_timing_by_mechanism",
+      "topicId": "dependency_injection",
+      "subtopicId": "di_framework_tradeoffs",
+      "text": "A team wants a missing graph edge to stop the build. Which statement identifies the mechanism that supplies that guarantee?",
+      "answers": [
+        {
+          "id": "di_graph_check_timing_by_mechanism_a",
+          "text": "Any container supplies it automatically; using Koin, Dagger, or Hilt is enough regardless of configuration."
+        },
+        {
+          "id": "di_graph_check_timing_by_mechanism_b",
+          "text": "Dagger/Hilt validation or configured Koin compiler safety can; unverified classic definitions cannot."
+        },
+        {
+          "id": "di_graph_check_timing_by_mechanism_c",
+          "text": "Only manual constructor wiring supplies it, because every framework defers graph checks to first resolution."
+        },
+        {
+          "id": "di_graph_check_timing_by_mechanism_d",
+          "text": "Only the library name supplies it; enabling verification cannot change when a Koin definition is checked."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "di_graph_check_timing_by_mechanism_b"
+      ],
+      "explanation": "Error timing is a property of the configured mechanism. Dagger and Hilt generate and validate reachable component graphs during compilation. Koin's classic DSL can be executed without that build-time graph guarantee, while Koin 4.2's compiler plugin adds compile-time dependency and call-site validation when configured. Manual constructor wiring also catches omitted constructor arguments at their call sites, but it is not the only mechanism that can stop a build.",
+      "sources": [
+        {
+          "title": "Dagger Basic Usage: Compile-time Validation",
+          "url": "https://dagger.dev/dev-guide/basic-usage#compile-time-validation"
+        },
+        {
+          "title": "Koin Compile-Time Safety",
+          "url": "https://insert-koin.io/docs/reference/koin-compiler/compile-safety/"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "di_strategy_smallest_sufficient_choice",
+      "topicId": "dependency_injection",
+      "subtopicId": "di_framework_tradeoffs",
+      "text": "A mature KMP product shares about forty frequently changed definitions across Android, iOS, desktop, and web. Its Koin classic graph already works and the team knows it well. Missing definitions have caused incidents, but Android lifecycle integration is not a problem and a framework migration would consume a quarter. Which decision is smallest while meeting the new requirement?",
+      "answers": [
+        {
+          "id": "di_strategy_smallest_sufficient_choice_a",
+          "text": "Replace Koin with Hilt, gaining Android lifecycle components even though the shared non-Android graph still needs another mechanism."
+        },
+        {
+          "id": "di_strategy_smallest_sufficient_choice_b",
+          "text": "Replace Koin with manual wiring, accepting repeated host assembly so no build plugin is required."
+        },
+        {
+          "id": "di_strategy_smallest_sufficient_choice_c",
+          "text": "Keep the shared Koin graph and adopt its compiler safety, then revisit if the shared graph or target requirements materially change."
+        },
+        {
+          "id": "di_strategy_smallest_sufficient_choice_d",
+          "text": "Replace Koin with ordinary Dagger components, using one generated JVM graph unchanged on Native, JS, and Wasm."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "ADVANCED",
+      "correctAnswerIds": [
+        "di_strategy_smallest_sufficient_choice_c"
+      ],
+      "explanation": "The hard constraints are one shared multiplatform graph and earlier detection of missing definitions; the operating constraints are an already-working graph, team familiarity, frequent changes, and high migration cost. Koin's compiler safety addresses the new checking requirement without discarding the compatible graph. Manual wiring remains capable but reintroduces repeated host work at this size and change rate. Hilt is Android-specific, and ordinary Dagger generated JVM/Java components cannot become one commonMain graph for Native, JS, and Wasm. The decision is not permanent: a much smaller stable graph, changed targets, or different lifecycle requirements would justify another comparison.",
+      "sources": [
+        {
+          "title": "Koin Compile-Time Safety",
+          "url": "https://insert-koin.io/docs/reference/koin-compiler/compile-safety/"
+        },
+        {
+          "title": "Koin Multiplatform",
+          "url": "https://insert-koin.io/docs/reference/koin-mp/kmp/"
+        },
+        {
+          "title": "Hilt Components",
+          "url": "https://dagger.dev/hilt/components.html"
+        },
+        {
+          "title": "Dagger Basic Usage",
+          "url": "https://dagger.dev/dev-guide/basic-usage"
         }
       ],
       "status": "ACTIVE"

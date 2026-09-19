@@ -1,0 +1,184 @@
+name: Agentic code step
+
+on:
+  workflow_call:
+    inputs:
+      issue_key:
+        required: true
+        type: string
+      branch:
+        required: true
+        type: string
+      mode:
+        required: true
+        type: string
+      commit_message:
+        required: true
+        type: string
+      review_artifact:
+        required: false
+        default: ""
+        type: string
+      validation_artifact:
+        required: false
+        default: ""
+        type: string
+    secrets:
+      OPENAI_API_KEY:
+        required: true
+    outputs:
+      changed:
+        description: Whether Codex produced repository changes.
+        value: ${{ jobs.commit.outputs.changed }}
+
+jobs:
+  codex:
+    name: Generate patch with Codex
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout source without persisted credentials
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.mode == 'implement' && 'main' || inputs.branch }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Exclude agent working files from Git
+        run: echo ".agent-work/" >> .git/info/exclude
+
+      - name: Download task context
+        uses: actions/download-artifact@v4
+        with:
+          name: agent-task-context
+          path: .agent-work
+
+      - name: Download implementation contract
+        uses: actions/download-artifact@v4
+        with:
+          name: agent-spec
+          path: .agent-work
+
+      - name: Download previous review
+        if: ${{ inputs.review_artifact != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.review_artifact }}
+          path: .agent-work
+
+      - name: Download previous validation evidence
+        if: ${{ inputs.validation_artifact != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.validation_artifact }}
+          path: .agent-work
+
+      - name: Build Codex prompt
+        env:
+          MODE: ${{ inputs.mode }}
+        run: |
+          if [ "$MODE" = "implement" ]; then
+            cat .github/agent/prompts/implementer.md > .agent-work/codex-prompt.md
+            printf '\n\n## Canonical task\n```json\n' >> .agent-work/codex-prompt.md
+            cat .agent-work/task.json >> .agent-work/codex-prompt.md
+            printf '\n```\n\n## Planner contract\n```json\n' >> .agent-work/codex-prompt.md
+            cat .agent-work/spec.json >> .agent-work/codex-prompt.md
+            printf '\n```\n' >> .agent-work/codex-prompt.md
+          else
+            cat .github/agent/prompts/fixer.md > .agent-work/codex-prompt.md
+          fi
+
+      # This job deliberately has only contents:read. The agent can edit its local
+      # workspace, but no repository write token is available to the code-generation job.
+      - name: Run Codex
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          permission-profile: ":workspace"
+          prompt-file: .agent-work/codex-prompt.md
+          output-file: .agent-work/codex-result.txt
+          codex-args: "--search --ephemeral"
+
+      - name: Build reviewable patch
+        id: patch
+        env:
+          MODE: ${{ inputs.mode }}
+        run: |
+          git status --short
+          git diff --check
+
+          # Intent-to-add makes untracked files appear in git diff without staging
+          # their contents in a commit or giving the agent a GitHub credential.
+          git ls-files --others --exclude-standard -z | xargs -0 -r git add -N --
+
+          if [ -z "$(git status --porcelain)" ]; then
+            if [ "$MODE" = "implement" ]; then
+              echo "Codex produced no repository changes for the implementation step." >&2
+              exit 1
+            fi
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            : > .agent-work/change.patch
+          else
+            git diff --binary --full-index > .agent-work/change.patch
+            test -s .agent-work/change.patch
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload generated patch
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-code-patch-${{ inputs.mode }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .agent-work/change.patch
+          retention-days: 7
+
+  commit:
+    name: Apply and push trusted patch
+    needs: codex
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
+
+    steps:
+      - name: Checkout trusted base without persisted credentials
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.mode == 'implement' && 'main' || inputs.branch }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download generated patch
+        uses: actions/download-artifact@v4
+        with:
+          name: agent-code-patch-${{ inputs.mode }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .agent-work
+
+      - name: Apply, commit, and push
+        id: commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ inputs.branch }}
+          MODE: ${{ inputs.mode }}
+          COMMIT_MESSAGE: ${{ inputs.commit_message }}
+        run: |
+          if [ ! -s .agent-work/change.patch ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$MODE" = "implement" ]; then
+            git switch -c "$BRANCH"
+          fi
+
+          git apply --index --binary .agent-work/change.patch
+          git diff --cached --check
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "$COMMIT_MESSAGE"
+          gh auth setup-git
+          git push origin "HEAD:$BRANCH"
+          echo "changed=true" >> "$GITHUB_OUTPUT"

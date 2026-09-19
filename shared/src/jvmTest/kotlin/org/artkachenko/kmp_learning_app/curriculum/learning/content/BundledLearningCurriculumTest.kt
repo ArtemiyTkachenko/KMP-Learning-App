@@ -63,6 +63,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_object_graphs_lifetimes_and_scopes",
                 "unit_dagger_compile_time_object_graphs",
                 "unit_hilt_android_lifecycle_integration",
+                "unit_koin_and_dependency_injection_in_kmp",
             ),
             units().map { it.id },
         )
@@ -97,6 +98,7 @@ internal class BundledLearningCurriculumTest {
                 "Object Graphs, Lifetimes and Scopes",
                 "Dagger: Compile-Time Object Graphs",
                 "Hilt: Android Lifecycle-Aware Dagger",
+                "Koin and Dependency Injection in KMP",
             ),
             units().map { it.title },
         )
@@ -129,6 +131,7 @@ internal class BundledLearningCurriculumTest {
                 "architecture",
                 "architecture",
                 "architecture",
+                "dependency_injection",
                 "dependency_injection",
                 "dependency_injection",
                 "dependency_injection",
@@ -663,6 +666,28 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_hilt_android_lifecycle_integration").lessons.map { it.title },
         )
+
+        assertEquals(
+            listOf(
+                "lesson_the_koin_container_and_its_modules",
+                "lesson_koin_definitions_and_reuse",
+                "lesson_koin_scopes_and_their_owners",
+                "lesson_resolving_viewmodels_at_the_boundary",
+                "lesson_one_graph_across_platforms",
+            ),
+            unit("unit_koin_and_dependency_injection_in_kmp").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "The Container, and the Modules That Fill It",
+                "Definitions, and the Reuse Requirement Behind Them",
+                "Scopes, and the Owner That Has to Stay Alive",
+                "Resolving a ViewModel at the Boundary",
+                "One Graph, Several Platforms",
+            ),
+            unit("unit_koin_and_dependency_injection_in_kmp").lessons.map { it.title },
+        )
     }
 
     @Test
@@ -1034,6 +1059,17 @@ internal class BundledLearningCurriculumTest {
                 listOf("hilt_vs_dagger"),
             ),
             unit("unit_hilt_android_lifecycle_integration").lessons.map { it.primarySubtopicIds },
+        )
+
+        assertEquals(
+            listOf(
+                listOf("koin_fundamentals"),
+                listOf("koin_definitions"),
+                listOf("koin_scopes"),
+                listOf("koin_viewmodels"),
+                listOf("koin_multiplatform"),
+            ),
+            unit("unit_koin_and_dependency_injection_in_kmp").lessons.map { it.primarySubtopicIds },
         )
     }
 
@@ -2782,6 +2818,176 @@ internal class BundledLearningCurriculumTest {
         listOf("kapt", "KSP", "build.gradle", "annotationProcessor", "plugins {", "startKoin", "koinViewModel")
             .forEach { token -> assertFalse(allText.contains(token), token) }
         assertFalse(allText.contains("@HiltAndroidApp"), "The Unit turns root integration into setup instruction.")
+    }
+
+    @Test
+    fun koinUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
+        val unit = unit("unit_koin_and_dependency_injection_in_kmp")
+
+        assertEquals(
+            listOf(
+                listOf(
+                    "composition_root",
+                    "dependency_graphs",
+                    "koin_definitions",
+                    "di_framework_tradeoffs",
+                    "kmp_architecture",
+                ),
+                listOf(
+                    "koin_fundamentals",
+                    "di_scopes",
+                    "constructor_injection",
+                    "interface_boundaries",
+                    "service_locator_vs_di",
+                ),
+                listOf("di_scopes", "koin_definitions", "koin_fundamentals", "state_ownership"),
+                listOf(
+                    "koin_definitions",
+                    "service_locator_vs_di",
+                    "kmp_lifecycle_viewmodel",
+                    "viewmodel_lifecycle",
+                    "state_ownership",
+                ),
+                listOf(
+                    "koin_fundamentals",
+                    "expect_actual",
+                    "platform_implementations",
+                    "kmp_architecture",
+                    "composition_root",
+                    "interface_boundaries",
+                ),
+            ),
+            unit.lessons.map { it.supportingSubtopicIds },
+        )
+
+        val primary = unit.lessons.flatMap { it.primarySubtopicIds }.toSet()
+        assertEquals(
+            setOf(
+                "koin_fundamentals",
+                "koin_definitions",
+                "koin_scopes",
+                "koin_viewmodels",
+                "koin_multiplatform",
+            ),
+            primary,
+        )
+        unit.lessons.forEach { lesson ->
+            assertTrue(lesson.primarySubtopicIds.none { it in lesson.supportingSubtopicIds }, lesson.id)
+        }
+    }
+
+    @Test
+    fun koinUnitLinksOnlyToShippedPrerequisites() = runTest {
+        val lessons = unit("unit_koin_and_dependency_injection_in_kmp").lessons.associateBy { it.id }
+
+        assertEquals(
+            listOf("lesson_one_place_that_knows_how_to_build", "lesson_from_one_dependency_to_a_graph"),
+            lessons.getValue("lesson_the_koin_container_and_its_modules").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_one_instance_or_a_new_one",
+                "lesson_a_dependency_should_be_visible",
+                "lesson_asking_for_it_or_being_given_it",
+            ),
+            lessons.getValue("lesson_koin_definitions_and_reuse").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_scope_is_a_rule_owner_is_a_lifetime",
+                "lesson_one_instance_or_a_new_one",
+                "lesson_choosing_the_owner_by_lifetime",
+            ),
+            lessons.getValue("lesson_koin_scopes_and_their_owners").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_runtime_input_is_not_a_dependency",
+                "lesson_viewmodel_lifetime_and_persistence",
+                "lesson_asking_for_it_or_being_given_it",
+                "lesson_two_dependencies_of_the_same_type",
+            ),
+            lessons.getValue("lesson_resolving_viewmodels_at_the_boundary").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_one_place_that_knows_how_to_build",
+                "lesson_when_an_interface_is_a_boundary",
+                "lesson_dependency_inversion_in_practice",
+            ),
+            lessons.getValue("lesson_one_graph_across_platforms").relatedLessonIds,
+        )
+
+        val order = units().flatMap { it.lessons.map { lesson -> lesson.id } }
+        lessons.values.forEach { lesson ->
+            lesson.relatedLessonIds.forEach { related ->
+                assertTrue(order.indexOf(related) < order.indexOf(lesson.id), "${lesson.id} -> $related")
+            }
+        }
+    }
+
+    @Test
+    fun koinUnitProtectsModernCapabilitiesAndRepositoryEvidence() = runTest {
+        val unit = unit("unit_koin_and_dependency_injection_in_kmp")
+
+        fun textOf(lessonId: String): String = unit.lessons
+            .single { it.id == lessonId }
+            .sections
+            .flatMap { it.blocks }
+            .joinToString(" ") { block ->
+                when (block) {
+                    is LearningBlock.Paragraph -> block.text
+                    is LearningBlock.BulletList -> block.items.joinToString(" ")
+                    is LearningBlock.Callout -> block.text
+                    is LearningBlock.Code -> block.code
+                    is LearningBlock.Comparison -> (block.headers + block.rows.flatten()).joinToString(" ")
+                }
+            }
+
+        unit.lessons.forEach { lesson ->
+            assertEquals(
+                listOf("CORE", "PRACTICAL", "SENIOR"),
+                lesson.sections.map { it.depth.name },
+                lesson.id,
+            )
+            assertTrue(lesson.sources.any { it.title.contains("Koin 4.2") }, lesson.id)
+        }
+
+        val container = textOf("lesson_the_koin_container_and_its_modules")
+        assertTrue(container.contains("Koin itself is not the composition root"))
+        assertTrue(container.contains("classic Kotlin DSL"))
+        assertTrue(container.contains("annotations and a Compiler Plugin DSL"))
+        assertTrue(container.contains("not configured"))
+
+        val definitions = textOf("lesson_koin_definitions_and_reuse")
+        assertTrue(definitions.contains("There is no Kotlin `object`"))
+        assertTrue(definitions.contains("does **not** require a class called"))
+        assertTrue(definitions.contains("service-locator shape"))
+
+        val scopes = textOf("lesson_koin_scopes_and_their_owners")
+        assertTrue(scopes.contains("owner that creates and closes the scope"))
+        assertTrue(scopes.contains("no custom Koin scopes"))
+
+        val viewModels = textOf("lesson_resolving_viewmodels_at_the_boundary")
+        assertTrue(viewModels.contains("ViewModelStoreOwner"))
+        assertTrue(viewModels.contains("parameters.get(0)"))
+        assertTrue(viewModels.contains("20 `koinViewModel()` resolutions"))
+
+        val multiplatform = textOf("lesson_one_graph_across_platforms")
+        listOf(
+            "startAndroidLocalDataGraph",
+            "startIosLocalDataGraph",
+            "startDesktopLocalDataGraph",
+            "startWebLocalDataGraph",
+            "AndroidAppPreferenceStorage",
+            "IosAppPreferenceStorage",
+            "JvmAppPreferenceStorage",
+            "WebAppPreferenceStorage",
+        ).forEach { claim -> assertTrue(multiplatform.contains(claim), claim) }
+
+        val allText = unit.lessons.joinToString(" ") { textOf(it.id) }
+        listOf("build.gradle", "plugins {", "koin-ksp-compiler", "@Singleton", "@KoinViewModel")
+            .forEach { token -> assertFalse(allText.contains(token), token) }
     }
 
     @Test

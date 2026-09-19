@@ -2972,3 +2972,316 @@ The production Koin graph is unchanged.
 | 14 | Unit practice mappings contain only primary concepts | **Satisfied** |
 
 ---
+
+### E27-06 authoring outcomes
+
+Issue [#390](https://github.com/ArtemiyTkachenko/KMP-Learning-App/issues/390) was
+implemented on branch `task/E27-06` on 2026-09-19. Unit
+`unit_koin_and_dependency_injection_in_kmp`, **Koin and Dependency Injection in KMP**, is
+ACTIVE under `dependency_injection`. Production now contains **29 ACTIVE Units** and **131 ACTIVE
+Lessons**. No Unit 6 work began.
+
+#### Shipped Lessons and mappings
+
+| Order | Lesson | Primary | Supporting |
+| ---: | --- | --- | --- |
+| 1 | `lesson_the_koin_container_and_its_modules` — The Container, and the Modules That Fill It | `koin_fundamentals` | `composition_root`, `dependency_graphs`, `koin_definitions`, `di_framework_tradeoffs`, `kmp_architecture` |
+| 2 | `lesson_koin_definitions_and_reuse` — Definitions, and the Reuse Requirement Behind Them | `koin_definitions` | `koin_fundamentals`, `di_scopes`, `constructor_injection`, `interface_boundaries`, `service_locator_vs_di` |
+| 3 | `lesson_koin_scopes_and_their_owners` — Scopes, and the Owner That Has to Stay Alive | `koin_scopes` | `di_scopes`, `koin_definitions`, `koin_fundamentals`, `state_ownership` |
+| 4 | `lesson_resolving_viewmodels_at_the_boundary` — Resolving a ViewModel at the Boundary | `koin_viewmodels` | `koin_definitions`, `service_locator_vs_di`, `kmp_lifecycle_viewmodel`, `viewmodel_lifecycle`, `state_ownership` |
+| 5 | `lesson_one_graph_across_platforms` — One Graph, Several Platforms | `koin_multiplatform` | `koin_fundamentals`, `expect_actual`, `platform_implementations`, `kmp_architecture`, `composition_root`, `interface_boundaries` |
+
+There are no identity, title, order, primary or supporting-mapping deviations from the E27-01
+plan. Each Lesson contains substantive CORE, PRACTICAL and SENIOR blocks plus a takeaway, common
+mistake and interview focus. Extra detail is limited to verified production evidence and current
+framework nuance; no forward link or Unit 6 comparison was added.
+
+#### Version and official documentation
+
+`gradle/libs.versions.toml` was reread and still configures **Koin 4.2.2**. The catalog exposes
+`koin-core`, `koin-compose`, `koin-compose-viewmodel` and Android-only `koin-android`. The official
+pages used were reopened on **2026-09-19** and were labelled **Koin 4.2**, the compatible current
+documentation line for 4.2.2:
+
+- [Definitions](https://insert-koin.io/docs/reference/koin-core/definitions/),
+  [starting Koin](https://insert-koin.io/docs/reference/koin-core/starting-koin/),
+  [modules](https://insert-koin.io/docs/reference/koin-core/modules/) and
+  [scopes](https://insert-koin.io/docs/reference/koin-core/scopes/).
+- [Compose integration](https://insert-koin.io/docs/reference/koin-compose/compose/) and
+  [Compose ViewModel integration](https://insert-koin.io/docs/reference/koin-compose/compose-viewmodel/).
+- [KMP setup](https://insert-koin.io/docs/reference/koin-core/kmp-setup/) and the
+  [KMP reference](https://insert-koin.io/docs/reference/koin-mp/kmp/).
+- [Compiler Plugin](https://insert-koin.io/docs/intro/koin-compiler-plugin/), used only to verify
+  current framework capability.
+
+Current Koin documents the classic Kotlin DSL, annotations and Compiler Plugin DSL. The application
+uses only the classic DSL (`module`, `single`, `viewModel`): it has no Koin Compiler Plugin and no
+annotation-generated production definitions. The Lessons acknowledge compiler-assisted declaration
+and verification in one bounded note. They include no plugin ID, Gradle setup, annotation syntax,
+KSP migration, generated internals or build tutorial. Detection timing is presented as a mechanism
+choice, never as the permanent distinction "Dagger is compile time; Koin is runtime."
+
+#### Complete production graph audit
+
+Every production occurrence of `module`, `single`, `factory`, `scoped`, `viewModel`, `startKoin`,
+`koinViewModel`, `koinInject`, `parametersOf`, `GlobalContext`, `KoinPlatform`, direct `get` and
+scope APIs was reviewed. The seven common modules are `curriculumDataModule`,
+`learningContentModule`, `assessmentDataModule`, `savedQuestionDataModule`,
+`lessonStudyDataModule`, `topicStudyPresentationModule` and `appearanceModule`. Modules are taught
+as organizational groups of definitions, not independent graphs, owners, architecture layers,
+build modules or feature boundaries.
+
+The platform modules are Android `androidCurriculumDataModule` and `androidAppearanceModule`; iOS
+`iosCurriculumDataModule` and `iosAppearanceModule`; JVM/Desktop `jvmCurriculumDataModule` and
+`jvmAppearanceModule`; Web `webCurriculumDataModule` and `webAppearanceModule`. The four host roots
+are `startAndroidLocalDataGraph(application)`, `startIosLocalDataGraph()`,
+`startDesktopLocalDataGraph()` and `startWebLocalDataGraph()`. Each calls `startKoin`, explicitly
+lists all seven common modules plus its two host modules, then manually resolves and runs
+`CurriculumDataInitializer`; Android also supplies its `Context`. Android/Desktop use
+`GlobalContext`, while iOS/Web use `KoinPlatform`. The Lessons explain only that host startup creates
+the Koin context, registers definitions and bounds retained objects; they do not tour the global
+context API.
+
+| Production construct | File/source set | Koin mechanism | Required lifetime/boundary it appears to express | Curriculum use |
+| --- | --- | --- | --- | --- |
+| `CurriculumRepository -> LocalCurriculumRepository` | `CurriculumDataModule.kt`, commonMain | typed `single` plus definition-level `get()` | one repository over the host-provided database for the container | Interface binding and constructor-first construction |
+| `AppearanceStateHolder` | `AppearanceModule.kt`, commonMain | `single` | one observable appearance projection shared above navigation while the container lives | Requirement-driven retained identity |
+| `AppPreferenceStorage` | four `*AppearanceModule.kt` files, platform source sets | typed `single` | platform API must satisfy a shared storage abstraction | Shared consumer plus host implementation |
+| `CurriculumDatabase` | four `*CurriculumDataModule.kt` files, platform source sets | `single` | platform-specific Room/database creation retained in the host graph | Second, shorter platform-binding example |
+| `AppCoroutineScope` | `TopicStudyPresentationModule.kt`, commonMain | `single` | application coroutine-lifetime object shared by state holders | Explicitly separated from a Koin scope |
+| `LearningLessonViewModel` | `TopicStudyPresentationModule.kt`, commonMain | parameterized `viewModel` | graph dependencies plus caller-known `unitId`/`lessonId`; host store owns lifetime | Same-type positional runtime-parameter example |
+| `StudyProgressStateHolder` | `TopicStudyPresentationModule.kt`, commonMain | `single` | one live study projection shared by multiple surfaces | Stronger retained-state example than stateless helpers |
+| `startAndroidLocalDataGraph` | `AndroidLocalData.kt`, androidMain | `startKoin`, `androidContext`, explicit modules, startup `get()` | Android composition/startup boundary completes and starts the graph | Container/composition-root case study |
+
+The appearance example is exact: SharedPreferences on Android, NSUserDefaults on iOS, a properties
+file on JVM/Desktop and localStorage on Web satisfy shared `AppPreferenceStorage`; shared
+`appearanceModule` then constructs `ThemePreferenceStore` and `AppearanceStateHolder`. It proves
+that a shared consumer graph can be completed by host bindings. It does not prove that every
+platform boundary needs an interface, that Koin is required for KMP, that this storage design is
+universal, that expect/actual is inferior or that one module per service is a rule.
+
+The database example uses `createCurriculumDatabase(context)`, `createIosCurriculumDatabase()`,
+`createJvmCurriculumDatabase()` and `createWebCurriculumDatabase()`. It remains graph evidence; the
+Lesson does not become Room instruction.
+
+#### Direct-resolution audit
+
+Definition-level `get()` calls across all modules are grouped because they have the same role:
+graph assembly passes explicit constructor dependencies. They are not consumer self-resolution.
+Tests were excluded from the production-site classification.
+
+| Site | Layer/boundary | What is resolved | Why resolution occurs there | Classification |
+| --- | --- | --- | --- | --- |
+| All `get()` calls inside `module { ... }` definitions | graph configuration | constructor collaborators | Build objects whose classes keep explicit constructors | Module graph assembly |
+| Four `*LocalData.kt` roots after `startKoin` | host startup | `CurriculumDataInitializer` | Run post-start database import at the composition boundary | Host composition/startup |
+| `App.kt` | application shell | `AppShellViewModel` | Obtain the shell state holder through Compose/ViewModel integration | UI lifecycle integration |
+| `TopicBrowserDestination`, `ProgressDestination`, `SavedQuestionsDestination` | destination boundary | one no-parameter ViewModel each | Obtain complete screen state holders | UI lifecycle integration |
+| `FocusedResultDestination` | destination boundary | parameterized `FocusedResultViewModel`; `AssessmentLaunchViewModel` | Supply `attemptId`; coordinate launch | UI lifecycle integration |
+| `PracticeBuilderDestination` | destination boundary | parameterized `PracticeBuilderViewModel`; `AssessmentLaunchViewModel` | Supply builder target/initial source; coordinate launch | UI lifecycle integration |
+| `LearningLessonDestination` | destination boundary | `LearningLessonViewModel` | Supply positional `unitId`, `lessonId` | UI lifecycle integration |
+| `TopicDetailDestination`, `LearningUnitDestination`, `ProgressTopicDestination` | destination boundary | corresponding parameterized ViewModel | Supply route `topicId` or `unitId` | UI lifecycle integration |
+| `MistakeReviewDestination`, `InterviewStartDestination` | destination boundary | feature ViewModel and `AssessmentLaunchViewModel` | Obtain screen state plus launch coordinator state | UI lifecycle integration |
+| `MixedInterviewResultDestination` | destination boundary | parameterized result ViewModel and launch ViewModel | Supply `attemptId`; coordinate launch | UI lifecycle integration |
+| `AssessmentTakingDestination` | destination boundary | `AssessmentTakingViewModel` | Supply route `attemptId` | UI lifecycle integration |
+| `AssessmentLaunchCoordinator` | presentation integration | `AssessmentLaunchViewModel` | Obtain the lifecycle-aware launch coordinator | UI lifecycle integration |
+| `SettingsDestination` default parameter | presentation boundary | `AppearanceStateHolder` via `koinInject()` | Allow normal container integration while retaining an explicit-call seam | UI/integration boundary |
+| `AppearanceTheme` nullable lookup | preview/test infrastructure | optional `AppearanceStateHolder` | Tolerate absence of Koin in preview/test composition | Infrastructure boundary; not a general pattern |
+
+These rows account for all **20 `koinViewModel()` calls across 15 production files**, the one
+`koinInject()` call, four initializer resolutions and the nullable infrastructure lookup. No
+ViewModel, repository, use case, domain service or state holder fetches a hidden collaborator from
+Koin. Therefore no business/domain service-locator-shaped self-resolution was found.
+
+#### Definitions, reuse and service location
+
+L5.2 starts with the reuse requirement. `single` means Koin retains one result for that definition
+inside the relevant Koin context; here its effective lifetime is bounded by the globally started
+container. It does not imply a Kotlin `object`, process durability, persistence or identity shared
+between independently started Koin applications. `ReaderSession` remains an ordinary class when
+registered as `single { ReaderSession() }`.
+
+`factory` means construct a fresh result for every resolution. The DSL keyword does not require a
+`FooFactory` class and does not retain results. A factory class or function can independently be
+useful for runtime input. The production graph contains **no `factory` definitions**, so the Lesson
+uses a clearly labelled curriculum example rather than fabricated production evidence.
+
+`single<CurriculumRepository> { LocalCurriculumRepository(database = get()) }` demonstrates an
+abstraction binding and constructor-first design: the implementation declares its requirement and
+does not know Koin. `get()` there is graph assembly. A class calling
+`KoinPlatform.getKoin().get<CurriculumDatabase>()` internally would hide the collaborator and have
+the service-locator shape rejected in Unit 1. The host initializer lookup is manual and couples
+startup to Koin, but occurs at the composition/integration boundary rather than inside business
+behavior.
+
+#### Scopes and ViewModels
+
+L5.3 defines a Koin scope as a bounded resolution context created and closed by an owner;
+`scoped` reuses one result within that context. The interview-session scenario requires one shared
+identity during the session and release/reset at session end: `single` is too wide, `factory` too
+narrow, and a bounded scope fits only if the session coordinator creates and closes it. Closing
+releases scoped instances, makes the closed scope unusable and can invoke close callbacks. The
+production graph contains **no `scoped` definitions or explicit custom Koin scopes**; this is a
+framework capability example, not a production recommendation.
+
+`topicStudyPresentationModule` has **15 ViewModel definitions**: seven without runtime parameters
+(`AppShellViewModel`, `AssessmentLaunchViewModel`, `MistakeReviewViewModel`,
+`SavedQuestionsViewModel`, `InterviewStartViewModel`, `TopicBrowserViewModel`, `ProgressViewModel`)
+and eight parameterized definitions (`ProgressTopicViewModel`, `TopicDetailViewModel`,
+`LearningUnitViewModel`, `LearningLessonViewModel`, `PracticeBuilderViewModel`,
+`AssessmentTakingViewModel`, `FocusedResultViewModel`, `MixedInterviewResultViewModel`).
+
+`TopicDetailViewModel` demonstrates one route `topicId`; `LearningLessonViewModel` demonstrates two
+String parameters read positionally as `unitId` then `lessonId`; that order is part of this call
+contract, not a general same-type API recommendation. Repository/service collaborators remain graph
+dependencies while route ids, attempt ids and builder selections remain caller-known runtime input
+passed with `parametersOf(...)`.
+
+The Lesson preserves the three-part model: a Koin `viewModel` definition describes construction;
+`koinViewModel(...)` resolves through the integration at an application/destination boundary; the
+host `ViewModelStoreOwner` and store determine retention and clearing. Koin does not own a ViewModel
+merely because it constructs it. Ownership claims use the shipped
+`lesson_viewmodel_lifetime_and_persistence` curriculum, which in turn cites AndroidX lifecycle
+semantics; Koin 4.2 documentation settles only its Compose/ViewModel integration role.
+
+#### One graph across platforms
+
+L5.5 asks which construction decisions are common and which require a platform API. Shared
+repositories, services, state holders and ViewModel recipes can live in commonMain when their
+construction is platform-independent. Platform storage and database factories remain in platform
+source sets, satisfying shared abstractions. Each host explicitly composes the common and platform
+modules. Current Koin documentation also shows `expect val platformModule` as one possible
+arrangement; this codebase does not use it and does not need it to form one complete host graph.
+Expect/actual is named as an alternative seam and linked backward, not retaught.
+
+The reason Koin is a KMP candidate is its KMP-compatible common libraries, definition APIs and
+multiplatform Compose/ViewModel integration, not alleged runtime-only behavior. Official Koin 4.2
+core/KMP documentation lists Android, iOS, JVM, JS and Wasm target support. Its Compose integration
+documentation separately describes full Android, iOS and Desktop support and experimental Web
+support. Hilt remains Android-specific lifecycle/framework integration; Dagger's JVM/Java
+annotation-processing and generated API is not a common Kotlin/Native/JS/Wasm graph API. This is a
+capability boundary, not a global ranking; Unit 6 retains framework-selection ownership.
+
+The repository demonstrates one workable classic-DSL shared graph, explicit host composition and
+platform bindings. It does not demonstrate that Koin is required or universally preferable, that
+every definition should be common or `single`, that every platform boundary requires an interface,
+or that its particular module organization is a rule.
+
+#### Production observations deliberately not changed
+
+- The four roots repeat the same seven common-module entries. Explicit host composition is valid;
+  no `includes()` or `expect val platformModule` refactor was justified by this authoring issue.
+- `LearningLessonViewModel` uses positional same-type runtime parameters. The contract is accurate
+  and useful instructionally, but positional order remains a maintenance consideration.
+- Stateless, apparently cheap `PracticeTargetResolver` is registered as `single`. Evidence does
+  not establish a defect: retained identity may be harmless consistency or avoid reconstruction,
+  while a factory could also satisfy a stateless requirement. No critique or refactor was
+  manufactured.
+- `AppCoroutineScope` is a coroutine-lifetime owner registered with the Koin `single` reuse
+  strategy; it is not a custom Koin scope.
+
+No production Koin definition, lookup, module, host root, ViewModel, lifetime or dependency changed.
+Koin remains 4.2.2; no Compiler Plugin, annotation migration, generated definition, scope or new
+dependency was introduced.
+
+#### Cross-links
+
+All links resolve backward; Units 1–4 were not edited.
+
+| Lesson | Related Lessons |
+| --- | --- |
+| L5.1 | `lesson_one_place_that_knows_how_to_build`, `lesson_from_one_dependency_to_a_graph` |
+| L5.2 | `lesson_one_instance_or_a_new_one`, `lesson_a_dependency_should_be_visible`, `lesson_asking_for_it_or_being_given_it` |
+| L5.3 | `lesson_scope_is_a_rule_owner_is_a_lifetime`, `lesson_one_instance_or_a_new_one`, `lesson_choosing_the_owner_by_lifetime` |
+| L5.4 | `lesson_runtime_input_is_not_a_dependency`, `lesson_viewmodel_lifetime_and_persistence`, `lesson_asking_for_it_or_being_given_it`, `lesson_two_dependencies_of_the_same_type` |
+| L5.5 | `lesson_one_place_that_knows_how_to_build`, `lesson_the_interface_between_policy_and_detail`, `lesson_dependency_inversion_without_slogans` |
+
+#### Practice, semantic review and remaining gaps
+
+The real Practice Builder/resolver returns exactly **two ACTIVE Questions** for Unit 5:
+`di_koin_factory_vs_single` (FOUNDATION) and `koin_multiplatform_common_module` (APPLIED), for
+**1 FOUNDATION / 1 APPLIED / 0 ADVANCED**. `koin_fundamentals`, `koin_scopes` and
+`koin_viewmodels` each contribute zero ACTIVE Questions through their primary mapping. Supporting
+concepts do not broaden the pool.
+
+| Question | Finished-Lesson review |
+| --- | --- |
+| `di_koin_factory_vs_single` | Keyed answer remains correct and is answerable from L5.2's retained-versus-fresh reasoning. Its explanation's claim that both resolve at runtime because Koin builds without code generation is stale as a framework-wide claim. It remains definition-level and leaves requirement-driven GAP-U5-D open for E27-08 |
+| `koin_multiplatform_common_module` | Keyed answer remains defensible for KMP candidacy and is answerable from L5.5. The common Kotlin/KMP API point remains current; the runtime-only/no-compile-error explanation has been overtaken by compiler-assisted Koin. It tests candidacy rather than the shared-versus-platform split, leaving GAP-U5-E open |
+
+No Question, AnswerOption, explanation, Source, status, level, mapping or taxonomy changed.
+
+| Gap | Status after authoring |
+| --- | --- |
+| GAP-U5-A — container, module grouping and startup/composition | **Taught; open for assessment.** L5.1 makes it assessable; no ACTIVE Question reaches `koin_fundamentals` |
+| GAP-U5-B — choose bounded scope and name its closing owner | **Taught; open for assessment.** L5.3 makes it assessable; no ACTIVE Question reaches `koin_scopes` |
+| GAP-U5-C — Koin constructs/resolves while host owns ViewModel lifetime, with runtime input | **Taught; open for assessment.** L5.4 makes the widest gap concrete; no ACTIVE Question reaches `koin_viewmodels` |
+| GAP-U5-D — choose `single`/`factory` from a requirement | **Open.** Existing Question remains definitional; L5.2 now supplies the missing teaching |
+| GAP-U5-E — decide shared definitions versus platform bindings | **Open.** Existing Question tests candidacy; L5.5 now supplies the missing split decision |
+
+Cross-topic review found existing lifecycle/ViewModel ownership, same-type runtime input,
+constructor visibility, service-locator, scope-owner and KMP boundary material. L5.1–L5.5 apply and
+link to those explanations instead of duplicating their mechanics.
+
+#### Tests and generated coverage
+
+`BundledLearningCurriculumTest` now protects the exact Unit and five-Lesson identity/order/title,
+exact primary/supporting mappings, backward links, three depth blocks, current capability wording
+and a small set of load-bearing repository facts. It deliberately does not mirror every production
+module filename.
+
+`LearningUnitPracticeIntegrationTest` extends Continue Learning through the fifth DI Unit, updates
+the five Unit lesson counts and final studied-record count, and drives the production resolver to
+protect the exact two-Question pool, 1/1/0 distribution, three primary gaps and supporting-only
+exclusion.
+
+`python3 tools/learning_question_coverage.py --write` generated the snapshot; `--check` reports it
+current. It reports **29 ACTIVE Units, 131 ACTIVE Lessons**, Unit 5's two Questions at **1/1/0**,
+and zero primary ACTIVE coverage for `koin_fundamentals`, `koin_scopes` and `koin_viewmodels`. The
+snapshot was not edited manually.
+
+#### Validation performed
+
+| Command | Result |
+| --- | --- |
+| GitHub issue fetch for #390 | Open issue body read; matched E27-06 backlog entry and 15 criteria |
+| JSON structure/count/link queries | Valid JSON; 29 ACTIVE Units; 131 ACTIVE Lessons; exact Unit/Lesson mappings; all related ids resolve |
+| `./gradlew :shared:jvmTest --tests '*BundledLearningCurriculumTest*' --tests '*LearningUnitPracticeIntegrationTest*' --tests '*LearningCurriculumValidatorTest*'` | **BUILD SUCCESSFUL** after one focused test exposed and prompted addition of literal host-root evidence |
+| `./gradlew :shared:jvmTest --tests '*LearningProductionContentJourneyTest*' --tests '*LearningContentEndToEndTest*'` | **BUILD SUCCESSFUL** |
+| `./gradlew :shared:jvmTest --rerun-tasks` | **Pending final outcome at time of this record's first draft** |
+| `python3 tools/learning_question_coverage.py --write` then `--check` | Snapshot regenerated and current |
+| `cd tools && python3 -m unittest test_learning_question_coverage.py` | 21 tests, OK; an unrelated local RVM `ps` permission message was non-fatal |
+| `./gradlew :shared:check` | Pending |
+| `./gradlew :shared:iosSimulatorArm64Test --rerun-tasks` | Pending |
+| `./gradlew :androidApp:assembleDebug --rerun-tasks` | Pending |
+| `python3 .github/project/validate_backlog.py .github/project/backlog.yml` | **Unavailable:** `ModuleNotFoundError: yaml`; PyYAML is not installed |
+| `git diff --check` | Pending final diff |
+
+The documentation claim and repository validation are intentionally separate. Official Koin 4.2
+pages describe core/KMP support across Android, iOS, JVM, JS and Wasm and give a separate Compose
+support status. Only the targets named by the completed Gradle tasks above are repository evidence.
+`iosArm64` device compilation is not claimed. No CI, emulator/device run or rendered UI validation
+is claimed. Curriculum snippets are content and were not migrated into or compiled as production
+Koin code. The semantic teaching review remains editorial judgement beyond automated structure,
+decoding, routing and integration checks.
+
+#### Acceptance criteria
+
+| # | Criterion | Status |
+| ---: | --- | --- |
+| 1 | Every planned Lesson meets the authoring requirements | **Satisfied** |
+| 2 | Koin definitions taught from reuse/lifetime requirements | **Satisfied** |
+| 3 | `single` distinguished from Kotlin `object` | **Satisfied** |
+| 4 | `factory` shown not to require a factory class | **Satisfied** |
+| 5 | Constructor-first design preserved and service-locator shape distinguished | **Satisfied** |
+| 6 | Scopes explained through their owner/lifetime | **Satisfied** |
+| 7 | ViewModel resolution explained with actual owner lifetime | **Satisfied** |
+| 8 | commonMain/platform split and multiplatform host composition taught | **Satisfied** |
+| 9 | Actual repository Koin graph used as a bounded case study | **Satisfied** |
+| 10 | Koin 4.2.2 and compatible 4.2 documentation verified | **Satisfied** |
+| 11 | Modern Koin not described as inherently runtime-only | **Satisfied** |
+| 12 | Compiler/code-generation setup excluded | **Satisfied** |
+| 13 | KMP source-set/expect-actual material applied rather than retaught | **Satisfied** |
+| 14 | Possible production observations recorded, not implemented | **Satisfied** |
+| 15 | Unit practice mappings contain only primary concepts | **Satisfied** |
+
+---

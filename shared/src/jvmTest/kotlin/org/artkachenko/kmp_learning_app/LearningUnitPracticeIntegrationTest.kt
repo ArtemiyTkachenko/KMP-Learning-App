@@ -265,8 +265,8 @@ internal class LearningUnitPracticeIntegrationTest {
             }
             // E27-02 added a fourth home Topic, and the handover happens once more: exhausting
             // the architecture Units leads into the dependency-injection Units, not to Complete.
-            // E27-03 added the second of those Units, E27-04 the third and E27-05 the fourth. The
-            // traversal walks all four in order without any special case in production code.
+            // E27-03 added the second of those Units, E27-04 the third, E27-05 the fourth and
+            // E27-06 the fifth. The traversal walks all five without a production special case.
             val diUnits = BundledLearningContentRepository().getActiveUnitsByTopic("dependency_injection")
             assertEquals(
                 listOf(
@@ -274,13 +274,14 @@ internal class LearningUnitPracticeIntegrationTest {
                     "unit_object_graphs_lifetimes_and_scopes",
                     "unit_dagger_compile_time_object_graphs",
                     "unit_hilt_android_lifecycle_integration",
+                    "unit_koin_and_dependency_injection_in_kmp",
                 ),
                 diUnits.map { it.id },
             )
             // The Unit plan derives these counts from separately learnable decisions rather than
             // assigning a quota: six generic foundations, six graph decisions, seven Dagger
-            // encodings, then six Android/Hilt integration decisions.
-            assertEquals(listOf(6, 6, 7, 6), diUnits.map { it.lessons.size })
+            // encodings, six Android/Hilt decisions, then five Koin/KMP decisions.
+            assertEquals(listOf(6, 6, 7, 6, 5), diUnits.map { it.lessons.size })
             val diTopic = topic("dependency_injection")
             val diParents = diUnits.associate { it.id to unit(it.id) }
             val diLessonCount = diUnits.sumOf { it.lessons.size }
@@ -362,9 +363,9 @@ internal class LearningUnitPracticeIntegrationTest {
             val rebuilt = LocalLessonStudyRepository(database)
             assertFalse(rebuilt.isStudied(earlierLesson.id))
             // 43 `android_ui` Lessons, 29 in the coroutines and Flow Units, 29 in the six
-            // architecture Units and 25 in the four dependency-injection Units, less the one that
+            // architecture Units and 30 in the five dependency-injection Units, less the one that
             // was just un-studied.
-            assertEquals(125, rebuilt.getStudiedLessons().size)
+            assertEquals(130, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -1673,6 +1674,52 @@ internal class LearningUnitPracticeIntegrationTest {
                     "architecture_tradeoffs",
                 ).all { it in supportingOnly },
             )
+            assertTrue(questions.none { it.subtopicId in supportingOnly })
+            assertEquals(0, attemptCount())
+        }
+
+    /** E27-06. The Koin/KMP Unit's practice through the production resolver. */
+    @Test
+    fun theKoinUnitPractisesOnlyItsFivePrimaryConcepts() =
+        runUnitPracticeTest {
+            val unitId = "unit_koin_and_dependency_injection_in_kmp"
+            val unit = assertNotNull(BundledLearningContentRepository().getUnitById(unitId))
+            val builder = builder(PracticeBuilderTarget.LearningUnit(unitId))
+            val settled = builder.settled()
+
+            assertEquals(unit.title, settled.scope.name)
+            val available = assertIs<PracticeAvailability.Available>(settled.availability)
+            assertEquals(2, available.eligibleQuestionCount)
+            builder.selectQuestionCount(available.eligibleQuestionCount)
+            builder.settled()
+
+            val config = builder.start()
+            val concepts = setOf(
+                "koin_fundamentals",
+                "koin_definitions",
+                "koin_scopes",
+                "koin_viewmodels",
+                "koin_multiplatform",
+            )
+            assertEquals(AssessmentScope.Subtopics(concepts), config.scope)
+
+            val questions = selectedQuestions(config)
+            val questionIds = questions.map { it.id }.toSet()
+            assertEquals(
+                setOf("di_koin_factory_vs_single", "koin_multiplatform_common_module"),
+                questionIds,
+            )
+            assertEquals(2, questions.size)
+            assertEquals(
+                mapOf(QuestionLevel.FOUNDATION to 1, QuestionLevel.APPLIED to 1),
+                questions.groupingBy { it.level }.eachCount(),
+            )
+
+            assertTrue(questions.none { it.subtopicId == "koin_fundamentals" })
+            assertTrue(questions.none { it.subtopicId == "koin_scopes" })
+            assertTrue(questions.none { it.subtopicId == "koin_viewmodels" })
+
+            val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
             assertTrue(questions.none { it.subtopicId in supportingOnly })
             assertEquals(0, attemptCount())
         }

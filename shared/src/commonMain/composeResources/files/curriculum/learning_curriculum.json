@@ -21147,6 +21147,252 @@
           ]
         }
       ]
+    },
+    {
+      "id": "unit_koin_and_dependency_injection_in_kmp",
+      "topicId": "dependency_injection",
+      "title": "Koin and Dependency Injection in KMP",
+      "summary": "Express the construction, reuse and ownership decisions from the earlier Units with Koin's multiplatform definitions, then complete one shared graph with platform bindings at each host boundary.",
+      "status": "ACTIVE",
+      "lessons": [
+        {
+          "id": "lesson_the_koin_container_and_its_modules",
+          "title": "The Container, and the Modules That Fill It",
+          "summary": "Read Koin startup as composition-root work, distinguish a container from the modules that group its definitions, and separate this codebase's classic DSL from modern Koin's wider capabilities.",
+          "status": "ACTIVE",
+          "primarySubtopicIds": ["koin_fundamentals"],
+          "supportingSubtopicIds": ["composition_root", "dependency_graphs", "koin_definitions", "di_framework_tradeoffs", "kmp_architecture"],
+          "relatedLessonIds": ["lesson_one_place_that_knows_how_to_build", "lesson_from_one_dependency_to_a_graph"],
+          "sources": [
+            {"title": "Koin 4.2: Starting Koin", "url": "https://insert-koin.io/docs/reference/koin-core/starting-koin/"},
+            {"title": "Koin 4.2: Modules", "url": "https://insert-koin.io/docs/reference/koin-core/modules/"},
+            {"title": "Koin 4.2: Definitions", "url": "https://insert-koin.io/docs/reference/koin-core/definitions/"},
+            {"title": "Koin 4.2: Koin Compiler Plugin", "url": "https://insert-koin.io/docs/intro/koin-compiler-plugin/"}
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {"type": "paragraph", "text": "Units 1 and 2 made construction explicit: requirements lead to constructor calls, those calls form a graph, and the composition root is the place near an entry point that knows how to assemble it. Koin does not replace those decisions. It stores **definitions** that describe the construction, then resolves requests by following the same graph."},
+                {"type": "code", "code": "dependency requirement\n        ↓\nconstruction decision\n        ↓\nobject graph\n        ↓\nKoin definition", "language": "text"},
+                {"type": "paragraph", "text": "`startKoin { modules(...) }` creates and configures a Koin application, registers its container in the global Koin context, and loads the supplied definitions. Host startup is therefore doing composition-root work: it decides which shared and platform definitions form the runnable graph. **Koin itself is not the composition root.** The root is the host responsibility and location where Koin is configured."},
+                {"type": "code", "code": "fun startDesktopLocalDataGraph() {\n    startKoin {\n        modules(\n            curriculumDataModule,\n            learningContentModule,\n            assessmentDataModule,\n            savedQuestionDataModule,\n            lessonStudyDataModule,\n            topicStudyPresentationModule,\n            appearanceModule,\n            jvmCurriculumDataModule,\n            jvmAppearanceModule,\n        )\n    }\n}", "language": "kotlin"},
+                {"type": "paragraph", "text": "A Koin **module** is an organizational group of definitions. `curriculumDataModule` groups curriculum construction and `appearanceModule` groups appearance construction, but neither module starts an independent graph or owns retained instances merely by existing. A module is also not a Gradle build module, an architecture layer, a lifetime, or a source-set boundary."},
+                {"type": "callout", "kind": "KEY_TAKEAWAY", "text": "The host startup location is the composition root. `startKoin` establishes the Koin application and container there; modules contribute grouped construction definitions; the container's lifetime bounds every instance it retains."}
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {"type": "paragraph", "text": "Consider a multiplatform learning application with four hosts. Android calls `startAndroidLocalDataGraph(application)`, iOS calls `startIosLocalDataGraph()`, desktop calls `startDesktopLocalDataGraph()`, and web calls `startWebLocalDataGraph()`. Each lists the same seven shared modules and then adds two platform modules. The repeated list is one workable arrangement: explicit startup code makes each complete host graph visible."},
+                {"type": "comparison", "headers": ["Thing", "Responsibility", "Does not decide"], "rows": [["Host startup", "Chooses and starts the complete host graph", "How every dependency should be designed"], ["Koin application/container", "Registers definitions, constructs results, retains results requested by reuse rules", "Product lifetime requirements"], ["Koin module", "Groups related definitions", "Architecture layer, source set or lifetime"], ["Definition", "Describes how one requested key is satisfied", "Whether its choice is correct for the product"]]},
+                {"type": "paragraph", "text": "The grouping is deliberately read as evidence, not a rule. A one-definition module can be reasonable when it marks a useful ownership boundary; a larger module can be reasonable when its definitions change together. Current Koin documentation also supports composing modules with `includes()`. Listing modules directly at startup, as this example does, remains valid; organization changes no construction or lifetime decision by itself."},
+                {"type": "paragraph", "text": "Koin 4.2 documents more than one declaration mechanism. The application above uses the **classic Kotlin DSL**: `module { single { ... }; viewModel { ... } }`. Current Koin also documents annotations and a Compiler Plugin DSL. Compiler-assisted forms can transform declarations and verify configuration during compilation. They are framework capabilities, but they are not configured in this example and their setup belongs to build engineering rather than this Unit."},
+                {"type": "comparison", "headers": ["Declaration mechanism", "What matters here"], "rows": [["Classic DSL", "Explicit Kotlin lambdas and `get()` calls; the worked graph uses this"], ["Annotations", "A supported declaration form processed by Koin's compiler tooling"], ["Compiler Plugin DSL", "Compiler-assisted declarations and configuration verification"]]},
+                {"type": "callout", "kind": "COMMON_MISTAKE", "text": "Reducing the comparison to 'Dagger is compile-time and Koin is runtime'. Modern Koin has compiler-assisted declaration and verification mechanisms. This graph uses the classic DSL without the Compiler Plugin; detection timing follows the mechanism and checks a project chooses, not the framework's brand name."}
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {"type": "paragraph", "text": "A container can centralize assembly while leaving product reasoning untouched. `single` cannot decide that an identity should span the container, a module cannot decide that two features form one architecture layer, and a globally registered context cannot make in-memory state durable. Those claims need requirements and owners outside the DSL."},
+                {"type": "paragraph", "text": "For this classic-DSL graph, normal Kotlin compilation checks the lambda code and types, but it does not by itself prove that the assembled configuration satisfies every request. A missing definition may be exposed by resolution or by an explicit verification mechanism. Modern Koin's Compiler Plugin adds compiler-assisted graph and call-site checks. Saying which mechanism is enabled is therefore part of any precise claim about when configuration mistakes are detected."},
+                {"type": "callout", "kind": "INTERVIEW_FOCUS", "text": "Describe three different responsibilities: the composition root chooses the complete graph; `startKoin` establishes a Koin application/container and loads definitions; modules merely organize those definitions. Then qualify detection claims by the declaration and verification mechanism actually configured."}
+              ]
+            }
+          ]
+        },
+        {
+          "id": "lesson_koin_definitions_and_reuse",
+          "title": "Definitions, and the Reuse Requirement Behind Them",
+          "summary": "Choose `single` or `factory` from the identity a requirement needs, bind implementations to abstractions, and keep consumer classes constructor-first.",
+          "status": "ACTIVE",
+          "primarySubtopicIds": ["koin_definitions"],
+          "supportingSubtopicIds": ["koin_fundamentals", "di_scopes", "constructor_injection", "interface_boundaries", "service_locator_vs_di"],
+          "relatedLessonIds": ["lesson_one_instance_or_a_new_one", "lesson_a_dependency_should_be_visible", "lesson_asking_for_it_or_being_given_it"],
+          "sources": [
+            {"title": "Koin 4.2: Definitions", "url": "https://insert-koin.io/docs/reference/koin-core/definitions/"},
+            {"title": "Koin 4.2: Koin DSL", "url": "https://insert-koin.io/docs/reference/koin-core/dsl/"}
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {"type": "paragraph", "text": "Begin with Unit 2's question, not a keyword: **must several resolutions receive the same object identity, or should each resolution receive a fresh result?** Koin's classic DSL records the answer as a definition strategy."},
+                {"type": "comparison", "headers": ["Requirement", "Koin encoding", "Result"], "rows": [["Every resolution from this container/context must share one retained identity", "`single { ... }`", "The definition retains and returns one constructed instance"], ["Each resolution should receive a fresh result", "`factory { ... }`", "The definition runs its construction lambda for each resolution"]]},
+                {"type": "code", "code": "class ReaderSession\n\nval readerModule = module {\n    single { ReaderSession() }\n}", "language": "kotlin"},
+                {"type": "paragraph", "text": "`ReaderSession` remains an ordinary class. Koin controls reuse of the instance it constructs. There is no Kotlin `object`, no language-level global singleton, and no promise that independently started Koin applications share one instance. The retained identity is bounded by the relevant Koin container/context."},
+                {"type": "paragraph", "text": "That identity is also in-memory. `single` does not mean the result survives process termination, is written to disk, is created before first use, or lives forever. In a globally started application container it often effectively spans that container, which is why the container's owner and lifetime must be named."},
+                {"type": "code", "code": "val summaryModule = module {\n    factory { SessionSummaryBuilder() }\n}", "language": "kotlin"},
+                {"type": "paragraph", "text": "`factory` names the per-resolution construction strategy. It does **not** require a class called `SessionSummaryBuilderFactory`, nor does the definition retain the objects it produces. A dedicated factory class or function can still be useful when runtime inputs arrive later; that is a separate design choice, not a consequence of this DSL keyword."},
+                {"type": "callout", "kind": "KEY_TAKEAWAY", "text": "Choose `single` for a stated shared-identity requirement and `factory` for a stated fresh-result requirement. The keywords encode reuse; they do not create product requirements, Kotlin singleton objects, durability, or factory classes."}
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {"type": "paragraph", "text": "A real shared module places a concrete definition beside an interface binding:"},
+                {"type": "code", "code": "single {\n    CurriculumImporter(\n        database = get(),\n    )\n}\n\nsingle<CurriculumRepository> {\n    LocalCurriculumRepository(\n        database = get(),\n    )\n}", "language": "kotlin"},
+                {"type": "paragraph", "text": "The first request key is the concrete `CurriculumImporter` type. The second tells Koin that a request for the consumer-owned `CurriculumRepository` abstraction is satisfied by a `LocalCurriculumRepository`. Interface binding and reuse are separate decisions: the type key answers **which implementation**, while `single` answers **whether resolutions share one retained result**."},
+                {"type": "code", "code": "class LocalCurriculumRepository(\n    private val database: CurriculumDatabase,\n)", "language": "kotlin"},
+                {"type": "paragraph", "text": "The consumer class remains constructor-first. Its source names `CurriculumDatabase`; it does not name Koin. Inside `module { single { LocalCurriculumRepository(database = get()) } }`, `get()` is graph assembly: configuration satisfies the constructor requirement while the class keeps that requirement visible."},
+                {"type": "code", "code": "// Hidden dependency: service-locator-shaped business code\nclass LocalCurriculumRepository {\n    private val database =\n        KoinPlatform.getKoin().get<CurriculumDatabase>()\n}", "language": "kotlin"},
+                {"type": "paragraph", "text": "The second shape is materially different. The repository reaches into a global registry for its own collaborator, so its constructor no longer tells callers what it needs. That is the service-locator shape from Unit 1. The problem is not the spelling `get()`; it is **which code assumes resolution responsibility and whether the consumer hides its own requirement**."},
+                {"type": "paragraph", "text": "Retained state holders provide clearer `single` evidence than a category rule. An `AppearanceStateHolder` is retained because the theme is applied above navigation and must outlive the Settings entry that changes it. A `StudyProgressStateHolder` is retained because several simultaneously alive learning surfaces must show one learner-owned state projection. Those requirements justify shared identity; the words 'state holder' do not."},
+                {"type": "callout", "kind": "COMMON_MISTAKE", "text": "Seeing many `single` declarations and concluding that repositories, services or state holders should generally be retained. For each definition, ask what observable behavior needs one identity and which owner bounds it. Without that answer, the keyword is only a configuration choice."}
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {"type": "paragraph", "text": "Direct container access must be classified by context. `get()` inside a module constructs an explicit constructor graph. A host resolving `CurriculumDataInitializer` immediately after startup crosses from startup code into the completed graph; it couples that boundary to Koin but does not hide a business object's collaborator. A domain class performing the same lookup internally would hide its own dependency and move failure to use time."},
+                {"type": "paragraph", "text": "Stateless, cheap objects expose the limits of keyword-driven reasoning. A graph may retain one for organizational consistency or to avoid repeated construction, and that can be harmless. But if identity, shared state, synchronization, or meaningful construction cost does not require retention, `single` is not made correct by convention. The requirement still has to carry the argument."},
+                {"type": "callout", "kind": "INTERVIEW_FOCUS", "text": "Explain the two axes independently: a Koin definition maps a requested key to construction, and its strategy controls reuse. Show constructor-first consumer code, then contrast module-level graph assembly with a business class fetching a hidden collaborator from the global container."}
+              ]
+            }
+          ]
+        },
+        {
+          "id": "lesson_koin_scopes_and_their_owners",
+          "title": "Scopes, and the Owner That Has to Stay Alive",
+          "summary": "Select a bounded Koin scope when container-wide retention is too wide and per-resolution construction is too narrow, then identify who creates and closes it.",
+          "status": "ACTIVE",
+          "primarySubtopicIds": ["koin_scopes"],
+          "supportingSubtopicIds": ["di_scopes", "koin_definitions", "koin_fundamentals", "state_ownership"],
+          "relatedLessonIds": ["lesson_scope_is_a_rule_owner_is_a_lifetime", "lesson_one_instance_or_a_new_one", "lesson_choosing_the_owner_by_lifetime"],
+          "sources": [
+            {"title": "Koin 4.2: Scopes", "url": "https://insert-koin.io/docs/reference/koin-core/scopes/"},
+            {"title": "Koin 4.2: Definitions", "url": "https://insert-koin.io/docs/reference/koin-core/definitions/"}
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {"type": "paragraph", "text": "Suppose a multi-step interview flow needs one mutable `InterviewSession` shared by its question, notes and result screens. Starting the flow creates that identity; completing or abandoning it must release the identity so the next flow starts clean. The requirement is neither container-wide nor per request."},
+                {"type": "comparison", "headers": ["Strategy", "Behavior", "Why it fits or fails"], "rows": [["`single`", "One retained identity in the application container", "Too wide: a later interview can inherit the previous session"], ["`factory`", "A fresh identity on each resolution", "Too narrow: the three screens do not share one session"], ["bounded Koin scope + `scoped`", "One identity reused inside one explicitly owned scope", "Fits if the flow owner opens and closes the scope at the correct events"]]},
+                {"type": "paragraph", "text": "A Koin scope is a bounded Koin resolution context with its own identity. A `scoped` definition reuses one constructed instance within that scope. This encodes Unit 2's generic rule; it does not invent the product lifetime. Some object or integration boundary still has to own the scope."},
+                {"type": "code", "code": "val interviewModule = module {\n    scope(named(\"interview_session\")) {\n        scoped { InterviewSession() }\n    }\n}\n\n// The flow owner creates a uniquely identified scope when the flow starts.\n// The same owner closes it when the flow completes or is abandoned.", "language": "kotlin"},
+                {"type": "paragraph", "text": "The declaration answers how requests inside one scope reuse an instance. It does not answer who creates the scope, what event begins it, or what event closes it. Those are ownership decisions written at the integration boundary that knows the flow's real lifetime."},
+                {"type": "callout", "kind": "KEY_TAKEAWAY", "text": "A Koin scope is a bounded resolution context. `scoped` means one reused instance within that context. The owner that creates and closes the scope supplies the actual lifetime."}
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {"type": "paragraph", "text": "Work owner-first. Before writing the declaration, answer five questions: who creates the scope, what event starts it, which consumers resolve through it, what event ends it, and who guarantees `close()` runs on every exit path. Only then does `scoped` describe a real product lifetime rather than an attractive middle option."},
+                {"type": "code", "code": "flow entered\n    ↓ owner creates interview scope\nquestion / notes / result resolve the same InterviewSession\n    ↓ complete or cancel\nowner closes interview scope\n    ↓ scoped instances released; scope unusable", "language": "text"},
+                {"type": "paragraph", "text": "Koin 4.2 documents three relevant close effects: scoped instances are released, close callbacks may run, and the closed scope becomes unusable. A later lookup through it fails. Closing too early therefore breaks still-live consumers; never closing retains the scoped identities beyond the intended flow and can carry stale state into work that should be independent."},
+                {"type": "paragraph", "text": "Platform helpers can associate scopes with Activity, navigation, Compose or other lifecycle owners. They are conveniences over the same model, not new definitions of scope. The useful interview answer still begins with the required lifetime and the owner whose start and end events match it."},
+                {"type": "callout", "kind": "COMMON_MISTAKE", "text": "Saying 'the scope controls the lifetime' and stopping there. A declaration cannot call `close()` at the correct product event by itself. Name the owner and both boundary events, or the lifetime argument is incomplete."}
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {"type": "paragraph", "text": "Creating a custom scope is worthwhile when the product has a bounded identity-sharing requirement with no existing owner that already supplies the right lifetime. It also creates coordination work: the owner must be reachable where resolution occurs, concurrent flows need distinct scope identities, and every normal and exceptional exit must close the correct scope."},
+                {"type": "paragraph", "text": "The worked case-study graph currently declares no custom Koin scopes and no `scoped` definitions. It mostly uses container-retained `single` definitions and platform-owned ViewModels. The interview-flow example demonstrates a Koin capability the graph does not presently need; it is not presented as missing architecture."},
+                {"type": "callout", "kind": "INTERVIEW_FOCUS", "text": "Given one bounded sharing requirement, reject `single` as too wide and `factory` as too narrow, then select `scoped` only after naming the owner that opens and closes the Koin scope. Explain that closing releases scoped instances and makes that scope unusable."}
+              ]
+            }
+          ]
+        },
+        {
+          "id": "lesson_resolving_viewmodels_at_the_boundary",
+          "title": "Resolving a ViewModel at the Boundary",
+          "summary": "Separate a Koin ViewModel construction recipe from platform store ownership, pass route values as runtime parameters, and judge resolution by where it occurs.",
+          "status": "ACTIVE",
+          "primarySubtopicIds": ["koin_viewmodels"],
+          "supportingSubtopicIds": ["koin_definitions", "service_locator_vs_di", "kmp_lifecycle_viewmodel", "viewmodel_lifecycle", "state_ownership"],
+          "relatedLessonIds": ["lesson_runtime_input_is_not_a_dependency", "lesson_viewmodel_lifetime_and_persistence", "lesson_asking_for_it_or_being_given_it", "lesson_two_dependencies_of_the_same_type"],
+          "sources": [
+            {"title": "Koin 4.2: ViewModel in Compose", "url": "https://insert-koin.io/docs/reference/koin-compose/compose-viewmodel/"},
+            {"title": "Koin 4.2: Koin for Compose", "url": "https://insert-koin.io/docs/reference/koin-compose/compose/"},
+            {"title": "Android Developers: ViewModel overview", "url": "https://developer.android.com/topic/libraries/architecture/viewmodel"}
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {"type": "paragraph", "text": "Three responsibilities meet at a screen boundary, and they must not be collapsed into 'Koin owns the ViewModel'. A Koin `viewModel { ... }` definition describes construction. `koinViewModel()` integrates resolution with Compose's ViewModel support. The host-supplied `ViewModelStoreOwner` and its store determine which ViewModel instance is retained and when it is cleared."},
+                {"type": "code", "code": "Koin ViewModel definition\n        ↓ construction recipe\n\nkoinViewModel(...) at destination\n        ↓ integrated resolution\n\nViewModelStoreOwner / store\n        ↓ retained identity and clearing", "language": "text"},
+                {"type": "paragraph", "text": "The container participates in constructing the state holder from graph dependencies. It does not gain ownership merely because it called the constructor. This is the same separation the lifecycle curriculum already established: the platform owner supplies the store boundary, while a dependency-injection integration supplies construction."},
+                {"type": "code", "code": "val presentationModule = module {\n    viewModel {\n        AppShellViewModel(\n            mistakeReviewService = get(),\n            historyStore = get(),\n        )\n    }\n}\n\n@Composable\nfun App() {\n    val shellViewModel: AppShellViewModel = koinViewModel()\n}", "language": "kotlin"},
+                {"type": "paragraph", "text": "The ViewModel remains constructor-first: `AppShellViewModel` names its collaborators as constructor parameters and never reaches into Koin. The application boundary asks for the completed state holder where the lifecycle context exists."},
+                {"type": "callout", "kind": "KEY_TAKEAWAY", "text": "Koin defines and resolves ViewModel construction. The selected ViewModel store owner determines retained identity and lifetime. Creation and ownership are related integration concerns, not the same responsibility."}
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {"type": "paragraph", "text": "Route values arrive too late to be ordinary application graph bindings. A `topicId`, `attemptId`, `unitId` or `lessonId` belongs to one destination request, while repositories and services already exist as graph-known collaborators. Koin's runtime parameters carry that late input across the resolution boundary."},
+                {"type": "code", "code": "viewModel { parameters ->\n    TopicDetailViewModel(\n        topicId = parameters.get(),\n        curriculumRepository = get(),\n        learningContentRepository = get(),\n        studyProgressStateHolder = get(),\n    )\n}\n\n@Composable\nfun TopicDetailDestination(topicId: String) {\n    val viewModel: TopicDetailViewModel =\n        koinViewModel { parametersOf(topicId) }\n}", "language": "kotlin"},
+                {"type": "paragraph", "text": "The definition shows the split clearly. `topicId` comes from the current route through `parameters`; repositories and the state holder come from the graph through `get()`. Registering the current route ID as a container-wide binding would turn request-specific input into shared mutable configuration and allow one destination to overwrite another."},
+                {"type": "code", "code": "viewModel { parameters ->\n    LearningLessonViewModel(\n        unitId = parameters.get(0),\n        lessonId = parameters.get(1),\n        learningContentRepository = get(),\n        studyProgressStateHolder = get(),\n    )\n}\n\nval viewModel: LearningLessonViewModel =\n    koinViewModel { parametersOf(unitId, lessonId) }", "language": "kotlin"},
+                {"type": "paragraph", "text": "Both identifiers are `String`, so type alone cannot distinguish them. This definition reads them by position and the destination supplies Unit first, Lesson second. Parameter order is therefore part of this particular resolution contract. The example is useful evidence of Unit 2's same-type ambiguity; it is not a recommendation that every pair of identifiers should use positional values."},
+                {"type": "paragraph", "text": "A destination composable is a legitimate resolution boundary when it owns the screen's lifecycle context and asks for the completed ViewModel. A Settings destination similarly uses `koinInject()` as a default parameter for an application-scoped appearance holder while still allowing a caller to supply the holder explicitly. A theme wrapper's nullable direct lookup is infrastructure that deliberately tolerates previews with no started graph. None of those roles makes direct lookup suitable inside a repository or use case."},
+                {"type": "callout", "kind": "COMMON_MISTAKE", "text": "Calling every Koin lookup service location, or excusing every lookup because it uses Koin. Classify the caller. Resolution at host, UI-lifecycle or infrastructure integration boundaries can be deliberate; a business object fetching its own hidden collaborator still has the service-locator shape."}
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {"type": "paragraph", "text": "The Koin Compose documentation establishes the resolution API and parameter flow, but it does not fully specify which `ViewModelStoreOwner` this application's navigation arrangement selects. Ownership claims therefore come from the platform ViewModel contract and the shipped lifetime curriculum, not from inference about the DI call. When navigation integration changes, the owner selection must be re-verified independently of the Koin definition."},
+                {"type": "paragraph", "text": "The case-study graph contains 15 ViewModel definitions: seven without runtime parameters and eight parameterized definitions. Its UI integration contains 20 `koinViewModel()` resolutions across 15 files; eight pass `parametersOf(...)`. They occur in the application shell, destination composables, or a launch coordinator. No ViewModel, domain service, repository or state holder resolves its own hidden collaborator from Koin."},
+                {"type": "callout", "kind": "INTERVIEW_FOCUS", "text": "Trace one screen end to end: route input enters `parametersOf`, the parameterized definition combines it with graph dependencies, `koinViewModel()` obtains the result through Compose integration, and the host's ViewModel store owner retains and clears it. Then explain why this boundary lookup does not hide collaborators inside the ViewModel."}
+              ]
+            }
+          ]
+        },
+        {
+          "id": "lesson_one_graph_across_platforms",
+          "title": "One Graph, Several Platforms",
+          "summary": "Place platform-independent construction in shared code, supply platform API implementations from host modules, and assemble one complete graph per target.",
+          "status": "ACTIVE",
+          "primarySubtopicIds": ["koin_multiplatform"],
+          "supportingSubtopicIds": ["koin_fundamentals", "expect_actual", "platform_implementations", "kmp_architecture", "composition_root", "interface_boundaries"],
+          "relatedLessonIds": ["lesson_one_place_that_knows_how_to_build", "lesson_when_an_interface_is_a_boundary", "lesson_dependency_inversion_in_practice"],
+          "sources": [
+            {"title": "Koin 4.2: Kotlin Multiplatform setup", "url": "https://insert-koin.io/docs/reference/koin-core/kmp-setup/"},
+            {"title": "Koin 4.2: KMP advanced patterns", "url": "https://insert-koin.io/docs/reference/koin-mp/kmp/"},
+            {"title": "Koin 4.2: Koin for Compose", "url": "https://insert-koin.io/docs/reference/koin-compose/compose/"}
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {"type": "paragraph", "text": "A multiplatform graph starts with a construction question: **which decisions are identical on every target, and which require a platform API?** Shared definitions belong in common code when their constructors and contracts are platform-independent. Each host supplies the definitions that need Android, iOS, JVM desktop, or browser APIs."},
+                {"type": "code", "code": "shared consumer graph\n        ↓\nshared abstraction\n        ↓\nhost-specific implementation binding\n\nshared modules + host modules\n        ↓\ncomplete graph for that host", "language": "text"},
+                {"type": "paragraph", "text": "This is one logical application graph with four host assemblies, not one magically platform-free container. Each host composition root chooses the shared modules plus the bindings that make those shared definitions constructible on that target."},
+                {"type": "comparison", "headers": ["Can be shared", "Must be supplied by a host"], "rows": [["Repositories constructed from already-bound abstractions", "Storage implemented with SharedPreferences, NSUserDefaults, JVM files or browser localStorage"], ["Assessment services and pure resolvers", "Database creation using the target's Room/SQLite environment"], ["State holders and ViewModel construction recipes", "Android Context where an Android implementation requires it"]]},
+                {"type": "callout", "kind": "KEY_TAKEAWAY", "text": "Put construction in shared code when it is genuinely platform-independent. Bind platform API implementations in platform modules, and let each host composition root assemble the shared and platform pieces into a complete graph."}
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {"type": "paragraph", "text": "The appearance graph is a complete worked example. Shared code owns `AppPreferenceStorage`, then builds `ThemePreferenceStore` and `AppearanceStateHolder` from that abstraction. The shared consumer graph names no platform preference API."},
+                {"type": "code", "code": "// commonMain\ninterface AppPreferenceStorage {\n    fun read(key: String): String?\n    fun write(key: String, value: String?)\n}\n\nval appearanceModule = module {\n    single { ThemePreferenceStore(storage = get()) }\n    single { AppearanceStateHolder(store = get()) }\n}", "language": "kotlin"},
+                {"type": "comparison", "headers": ["Host module", "Bound implementation", "Platform facility"], "rows": [["`androidAppearanceModule`", "`AndroidAppPreferenceStorage`", "SharedPreferences"], ["`iosAppearanceModule`", "`IosAppPreferenceStorage`", "NSUserDefaults"], ["`jvmAppearanceModule`", "`JvmAppPreferenceStorage`", "properties file"], ["`webAppearanceModule`", "`WebAppPreferenceStorage`", "browser localStorage"]]},
+                {"type": "paragraph", "text": "Each module binds `single<AppPreferenceStorage> { ... }`. The same `appearanceModule` can then construct its consumers on every target. The example demonstrates that a shared abstraction plus host-specific bindings is workable. It does not prove that every platform boundary needs an interface, that Koin is required for KMP, or that this storage design is universally right."},
+                {"type": "paragraph", "text": "Database construction uses the same split more briefly. Android supplies `createCurriculumDatabase(context)`, iOS supplies `createIosCurriculumDatabase()`, desktop supplies `createJvmCurriculumDatabase()`, and web supplies `createWebCurriculumDatabase()`. Shared `curriculumDataModule` then constructs `CurriculumImporter`, `CurriculumRepository` and `CurriculumDataInitializer` from the already-bound `CurriculumDatabase`. Room and storage mechanics remain outside this lesson."},
+                {"type": "code", "code": "startAndroidLocalDataGraph(application)\n    startKoin(shared modules + androidCurriculumDataModule + androidAppearanceModule)\n\nstartIosLocalDataGraph()\n    startKoin(shared modules + iosCurriculumDataModule + iosAppearanceModule)\n\nstartDesktopLocalDataGraph()\n    startKoin(shared modules + jvmCurriculumDataModule + jvmAppearanceModule)\n\nstartWebLocalDataGraph()\n    startKoin(shared modules + webCurriculumDataModule + webAppearanceModule)", "language": "text"},
+                {"type": "paragraph", "text": "Android also supplies its application context because its two platform implementations require Android APIs. The other hosts need no comparable object. All four explicitly name their modules; current Koin guidance also shows an `expect val platformModule` arrangement. `expect`/`actual` is not required for one multiplatform graph: host-explicit composition and an expected platform-module value are two ways to locate the platform choice."},
+                {"type": "callout", "kind": "COMMON_MISTAKE", "text": "Putting every possible definition in `commonMain`, or treating platform modules as evidence that common code cannot participate. Share construction that is platform-independent; keep platform APIs behind the boundary that owns them; combine both at the host."}
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {"type": "paragraph", "text": "Koin is a candidate for this arrangement because it provides KMP-compatible core APIs and definition mechanisms usable from common Kotlin targets, plus multiplatform Compose/ViewModel integration. The explanation is **not** that Koin is runtime-only. Current Koin also has compiler-assisted mechanisms, including KMP support; target compatibility and declaration timing are separate properties."},
+                {"type": "comparison", "headers": ["Documentation claim", "Scope of the claim"], "rows": [["Koin core/KMP lists Android, iOS, JVM, JS and Wasm support", "Core and multiplatform dependency-injection APIs"], ["Koin Compose lists Android, iOS and desktop as full, web as experimental", "Compose integration, not Koin core as a whole"], ["This case study starts Koin from webMain", "Repository evidence that its selected libraries compile for the configured web targets, not a universal support guarantee"]]},
+                {"type": "paragraph", "text": "Hilt remains Android-specific lifecycle integration and therefore is not a `commonMain` DI solution. Dagger's Java/JVM annotation-processing and generated-code model is not a common Kotlin/Native, JS or Wasm API for one shared graph. Koin offers common multiplatform APIs. These are capability boundaries, not a global ranking: platform mix, graph requirements, verification mechanism, team cost and lifecycle integration still matter, and the next Unit owns that selection."},
+                {"type": "paragraph", "text": "The case study proves only a bounded claim: seven shared classic-DSL modules plus two modules per host form a working local-first graph across its configured targets. It does not prove that one module per concern is correct, that explicit host lists are the best factoring, that every dependency should be retained, that interfaces beat `expect`/`actual`, or that Koin is better for every multiplatform project."},
+                {"type": "callout", "kind": "INTERVIEW_FOCUS", "text": "Explain the split with one real path: shared `AppearanceStateHolder` depends on shared `AppPreferenceStorage`; each host binds one platform implementation; each host startup combines the same shared modules with its two platform modules. Then state both the capability reason Koin can participate in common code and the conclusions this one graph cannot justify."}
+              ]
+            }
+          ]
+        }
+      ]
     }
   ]
 }

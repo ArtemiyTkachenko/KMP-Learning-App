@@ -104,7 +104,8 @@ does not cover: [CI](docs/workflows/ci.md).
 **Workflows**:
 [backlog and issues](docs/workflows/backlog.md) ·
 [code review](docs/workflows/code-review.md) ·
-[CI](docs/workflows/ci.md)
+[CI](docs/workflows/ci.md) ·
+[agentic development](docs/workflows/agentic-development.md)
 
 **Content — assessment** — the interview question bank, not application code:
 [curriculum](docs/content/curriculum.md) ·

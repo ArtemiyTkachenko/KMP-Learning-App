@@ -3922,3 +3922,157 @@ content/mappings, taxonomy, production DI code, build dependencies and all four 
 lifecycles are unchanged. E27-09 was not started.
 
 ---
+
+## E27-09 closure review
+
+Reviewed on **2026-09-19** after E27-08 merged. This pass changed no production Lesson,
+Question, mapping, Koin definition, build dependency or product behavior. The authored sequence
+already satisfies the closure checks, and the existing production-content tests cover the required
+runtime behavior; adding another test would duplicate those assertions rather than close a concrete
+gap.
+
+### Sequence, terminology and curriculum boundaries
+
+The production document contains the six Units in the planned order, with Lesson counts
+**6, 6, 7, 6, 5 and 4**. `BundledLearningCurriculumTest` pins every Unit and Lesson identity and
+order. Each framework Unit consumes the generic vocabulary rather than redefining it:
+
+| Term or boundary | Closure finding |
+| --- | --- |
+| Dependency and requirement | Unit 1 defines a dependency as a collaborator a class needs and makes the requirement visible at the constructor; later Units preserve that consumer shape. |
+| Construction, graph and root | Unit 1 assigns assembly to the composition root; Unit 2 expands one constructor into a transitive graph; Dagger components and Koin containers are mechanisms used by a root, never synonyms for it. |
+| Binding and instance | Unit 2 distinguishes the recipe/selection decision from the object identity produced; Units 3-5 apply that distinction to Dagger bindings, Hilt-installed bindings and Koin definitions. |
+| Lifetime, scope and owner | Unit 2 fixes lifetime as the requirement, owner as what actually lives long enough, and scope as a reuse rule; every framework scope is explained through that model. No Lesson restores "singleton means process durable" shorthand. |
+| Container, module and resolution | A container is a construction/resolution mechanism, a framework module groups declarations rather than denoting a Gradle module or independent graph, and resolution stays at startup or UI integration boundaries rather than entering consumers. |
+
+The three boundaries most likely to duplicate earlier curricula remain intact.
+`lesson_a_dependency_should_be_visible` applies the interface-boundary conclusion without
+re-teaching it; `lesson_injected_inverted_or_both` applies the architecture Unit's dependency-rule
+argument from the injection side; and `lesson_scope_is_a_rule_owner_is_a_lifetime` applies the
+Compose/architecture owner-lifetime ladder without re-teaching lifecycle mechanics. References into
+Architecture, Compose state, and Coroutines and Flow all resolve to shipped Lessons. Every E27 link
+is backward in authored order, while the three earlier handoff Lessons still explicitly point the
+reader forward to dependency construction as the separate responsibility.
+
+### E26 handoff disposition
+
+Every row in [Part 3](#part-3--the-e26--e27-handoff-ledger) was checked against the shipped
+Lessons. Construction of screen owners, delivery of collaborators, injection versus inversion,
+graph assembly, bindings, scopes, qualifiers, Dagger, Hilt, Koin, injected owner construction and
+service-locator contrast are answered where that ledger records them. The E26 assessment deferral
+is answered by `injection_and_inversion_are_separate_decisions`, added in E27-08.
+
+One item remains deliberately partial: multiplatform ViewModel construction is bridged in L5.4,
+which separates Koin resolution from the platform-provided `ViewModelStoreOwner`, but it does not
+teach the non-JVM ViewModel factory API. That mechanism remains deferred to the Kotlin
+Multiplatform and lifecycle curricula because teaching it here would turn a graph-boundary Lesson
+into source-set and platform integration instruction.
+
+### Framework source freshness
+
+The official pages used by Units 3-6 were reopened on **2026-09-19**.
+
+- Dagger still documents generated construction, `@Inject` and module bindings, component roots,
+  component-instance ownership of scoped objects, component-level graph validation, ancestor-only
+  subcomponent visibility, qualifiers, multibindings and assisted parameters as the Lessons state.
+- Android's Hilt guide still lists the five Compose-oriented generated components used by Unit 4,
+  while Hilt's own component reference still lists the wider eight-component hierarchy including
+  Fragment and View components. The recorded two-source distinction therefore remains necessary.
+  Field-injection visibility, `@InstallIn` visibility, ViewModel ownership and entry-point claims
+  remain supported by their official pages.
+- Koin's current **4.2** documentation still presents Compiler Plugin DSL, classic DSL and
+  annotations, and documents compile-time graph/call-site verification for the Compiler Plugin.
+  Classic DSL remains supported. Definition reuse, explicit scope closing, Compose ViewModel
+  resolution and shared-plus-platform KMP module composition still match the Lessons. The
+  repository remains on Koin **4.2.2** and does not configure the Compiler Plugin.
+
+No source-sensitive claim required a correction. All Dagger, Hilt and Koin source URLs carried by
+the shipped DI Lessons resolved during this review.
+
+### Repository Koin evidence
+
+Part 7 still matches the code as it stands: seven shared modules and two platform modules per host;
+four host composition roots that start the same shared modules in the same order; 26 definitions in
+`topicStudyPresentationModule`, including 15 ViewModels and eight parameterized ViewModels; 20
+`koinViewModel()` resolution sites; one destination-level `koinInject()`; one preview-tolerant
+`KoinPlatform` lookup; and the two positional `String` parameters used by
+`LearningLessonViewModel`. Platform preference-storage and database bindings remain split by host.
+No domain, data or presentation consumer resolves its own collaborator from Koin.
+
+A build-file and version-catalog search found no Dagger or Hilt dependency, plugin or processor.
+The Lessons consistently describe both as curriculum subjects and never as frameworks used by this
+application.
+
+### Runtime and assessment verification
+
+Existing tests already exercise the requested behavior through production data:
+
+- `LearningProductionContentJourneyTest` reads every ACTIVE Unit in authored order, renders every
+  structured block type at phone width, exercises real Source links, and marks then unmarks the
+  first Lesson of every Unit while checking Unit and Topic progress.
+- `LearningUnitPracticeIntegrationTest` traverses Architecture into all six DI Units through
+  Continue Learning, reaches Complete only after the final Lesson, reopens the correct target after
+  an unmark, and resolves the six reviewed practice pools through the production resolver.
+- `BundledLearningCurriculumTest`, `LearningContentEndToEndTest` and
+  `LearningCurriculumValidatorTest` cover identities, mappings, links, decoding and structured
+  content invariants. The assessment importer and curriculum validator cover the current Question
+  bank structure.
+
+Final pools remain **7, 5, 11, 9, 7 and 3** Questions for Units 1-6. Primary mappings alone decide
+eligibility; the only cross-Unit overlap is the intentional `manual_di_graph_growth_cost` route
+through Units 1 and 6.
+
+### Remaining limitations and deferrals
+
+- Dagger/Hilt/Koin examples are curriculum text, not compiled framework samples. Official-source
+  review verifies the APIs; repository builds verify serialization and rendering, not external
+  snippet compilation.
+- Koin Compiler Plugin setup, annotation processing and build cost remain with the build and
+  modularization curriculum. Test graph replacement and framework-specific test APIs remain with
+  the testing curriculum. General source-set architecture, `expect`/`actual`, native integration
+  and the non-JVM ViewModel factory mechanism remain with the Kotlin Multiplatform curriculum.
+- The production graph is intentionally evidence rather than prescription: it is small,
+  local-first and single-module, and cannot demonstrate a large graph or a production custom Koin
+  scope. The generic examples continue to carry those scenarios.
+- No CI, physical-device run or visual device review is implied by local validation. The JVM
+  Compose journey checks rendered behavior at phone width; platform commands are reported
+  separately below.
+
+### Acceptance criteria
+
+| # | Criterion | Status |
+| ---: | --- | --- |
+| 1 | Every Unit and Lesson appears in authored order | **Satisfied** |
+| 2 | Cross-Unit prerequisites, contradictions, duplication and terminology reviewed | **Satisfied** |
+| 3 | Framework Units rest on Units 1-2 terminology | **Satisfied** |
+| 4 | Every E26 construction deferral answered or explicitly retained | **Satisfied** |
+| 5 | Architecture, Compose and Coroutines cross-links resolve without duplication | **Satisfied** |
+| 6 | Dagger, Hilt and Koin claims re-verified against current official sources | **Satisfied** |
+| 7 | Repository Koin examples match current code | **Satisfied** |
+| 8 | No implication that the app uses Dagger/Hilt; no such dependency exists | **Satisfied** |
+| 9 | Structured content, code examples and Sources render correctly | **Satisfied** |
+| 10 | Mark/unmark update Unit and Topic progress | **Satisfied** |
+| 11 | Continue Learning traverses the expansion and completion correctly | **Satisfied** |
+| 12 | Unit practice uses intended primary concepts through the production flow | **Satisfied** |
+| 13 | Content and coverage validation passes with current reports | **Satisfied** |
+| 14 | New tests address concrete gaps rather than duplicate coverage | **Satisfied: no gap found; no test added** |
+| 15 | Required build and platform checks are reported accurately | **Satisfied** |
+| 16 | Remaining adjacent-curriculum deferrals are recorded | **Satisfied** |
+| 17 | No unrelated product behavior changes | **Satisfied** |
+
+### Validation performed
+
+| Command or check | Result |
+| --- | --- |
+| Production JSON order, cross-link, terminology and repository-evidence queries with `jq` and `rg` | Six DI Units and all 34 Lessons are in planned order; every related Lesson ID resolves; Koin counts and boundaries match Part 7; no Dagger/Hilt build declaration found |
+| Official Dagger, Hilt/Android and Koin documentation review | Every source-sensitive claim retained; all Dagger, Hilt and Koin URLs used by the Lessons resolved |
+| `python3 tools/learning_question_coverage.py --check` | Coverage snapshot current |
+| `cd tools && python3 -m unittest test_learning_question_coverage.py` | 21 tests, OK |
+| `./gradlew :shared:jvmTest --tests '*BundledLearningCurriculumTest*' --tests '*LearningProductionContentJourneyTest*' --tests '*LearningUnitPracticeIntegrationTest*' --tests '*LearningContentEndToEndTest*' --tests '*LearningCurriculumValidatorTest*' --tests '*InitialCurriculum*'` | **BUILD SUCCESSFUL** |
+| `./gradlew :shared:jvmTest --rerun-tasks` | **BUILD SUCCESSFUL**; the full JVM suite ran, with existing Compose test deprecation and coroutine opt-in warnings |
+| `./gradlew :shared:check` | **BUILD SUCCESSFUL**; configured Android host, JVM, JS, Wasm and iOS Simulator checks passed or were up to date |
+| `./gradlew :androidApp:assembleDebug` | **BUILD SUCCESSFUL** |
+| `./gradlew :shared:compileKotlinIosArm64` | **BUILD SUCCESSFUL** |
+| `git diff --check` and `git status --short` | One documentation file changed; no whitespace defects or generated build/cache output in the diff |
+
+---

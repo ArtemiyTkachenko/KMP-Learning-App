@@ -1284,26 +1284,9 @@ internal class LearningUnitPracticeIntegrationTest {
             assertEquals(0, attemptCount())
         }
 
-    /**
-     * E27-02: the first dependency-injection Unit's pool, and the one routing limitation in it.
-     *
-     * The Unit is deliberately not in the expectation table above, because the table's loop asserts
-     * that the resolved Subtopics equal the Unit's primary concepts — and this Unit's five primaries
-     * do not all hold an ACTIVE Question yet. `di_fundamentals` reaches one, `constructor_injection`
-     * reaches one, and `composition_root`, `service_locator_vs_di` and `manual_di` reach one each,
-     * which is five Questions across five concepts and a pool small enough to name outright.
-     *
-     * What a count cannot state is that one of the five is semantically premature.
-     * `hilt_field_injection_framework_classes` is mapped to `constructor_injection`, and its stem,
-     * options and explanation are entirely about Hilt — so a reader who has finished this Unit, and
-     * has met no framework at all, is handed a Hilt Question three Units early.
-     * `docs/content/dependency-injection-units-1-6-plan.md` records this as the Topic's clearest
-     * mapping mismatch and leaves the re-map to E27-08, paired with GAP-U1-E. It is asserted here so
-     * that the limitation has to be re-stated rather than quietly repaired: this test says the
-     * Question is *reachable*, never that this Unit teaches it.
-     */
+    /** E27-08: generic construction practice, with the premature Hilt route removed. */
     @Test
-    fun theDependencyInjectionFoundationsUnitPractisesOnlyItsFivePrimaryConcepts() =
+    fun theDependencyInjectionFoundationsUnitPractisesItsReviewedPrimaryConcepts() =
         runUnitPracticeTest {
             val unitId = "unit_dependency_injection_as_object_construction"
             val unit = assertNotNull(BundledLearningContentRepository().getUnitById(unitId))
@@ -1312,7 +1295,7 @@ internal class LearningUnitPracticeIntegrationTest {
 
             assertEquals(unit.title, settled.scope.name)
             val available = assertIs<PracticeAvailability.Available>(settled.availability)
-            assertEquals(5, available.eligibleQuestionCount)
+            assertEquals(7, available.eligibleQuestionCount)
             builder.selectQuestionCount(available.eligibleQuestionCount)
             builder.settled()
 
@@ -1331,24 +1314,24 @@ internal class LearningUnitPracticeIntegrationTest {
             assertEquals(
                 setOf(
                     "di_constructor_injection_testability",
-                    "hilt_field_injection_framework_classes",
                     "composition_root_001",
                     "service_locator_vs_di_001",
                     "manual_di_graph_growth_cost",
+                    "injection_and_inversion_are_separate_decisions",
+                    "construct_fetch_receive_responsibility",
+                    "integration_boundary_resolution_vs_service_locator",
                 ),
                 questionIds,
             )
-            // Every primary concept reaches exactly one Question, which is why the pool is five.
             assertEquals(concepts, questions.map { it.subtopicId }.toSet())
-            assertEquals(5, questions.size)
-
-            // The recorded premature routing, pinned rather than repaired. E27-08 owns the re-map
-            // to `hilt_fundamentals`; until it is taken, this Question is structurally reachable
-            // and not taught by any Lesson of this Unit.
+            assertEquals(7, questions.size)
             assertEquals(
-                "constructor_injection",
-                questions.single { it.id == "hilt_field_injection_framework_classes" }.subtopicId,
+                mapOf(QuestionLevel.FOUNDATION to 3, QuestionLevel.APPLIED to 4),
+                questions.groupingBy { it.level }.eachCount(),
             )
+
+            // Android-owned construction belongs to the Hilt Unit, not generic foundations.
+            assertFalse("hilt_field_injection_framework_classes" in questionIds)
 
             // Supporting concepts never broaden a Unit's practice. The two that matter here are
             // `test_doubles` and `test_di`: this Unit argues testability from an explicit
@@ -1389,24 +1372,7 @@ internal class LearningUnitPracticeIntegrationTest {
             assertEquals(0, attemptCount())
         }
 
-    /**
-     * E27-03. The object-graph Unit's practice, resolved through the production Practice Builder.
-     *
-     * Two primary concepts across six Lessons, and they reach two Questions between them. The Unit is
-     * kept out of the shared expectation table for the same reason the first dependency-injection Unit
-     * is: the table's loop can assert that the resolved Subtopics equal the Unit's primaries, and it
-     * cannot say that one of the two resolved Questions is about a framework this Unit refuses to
-     * teach.
-     *
-     * `dagger_compile_time_graph_validation` is mapped to `dependency_graphs`, which is primary in four
-     * of these six Lessons, so a reader who has finished this Unit is handed a Question whose stem names
-     * a component and whose every option names Dagger behaviour. `docs/content/dependency-injection-units-1-6-plan.md`
-     * records the mapping as honest — compile-time validation genuinely is a fact about a dependency
-     * graph — and leaves the re-map to E27-08, where it has to be decided together with GAP-U2-E,
-     * because moving it would leave `dependency_graphs` with no ACTIVE Question at all. It is asserted
-     * here so the limitation has to be re-stated rather than quietly repaired: this test says the
-     * Question is *reachable*, never that this Unit teaches it.
-     */
+    /** E27-08: generic graph, runtime-input, ambiguity and owner/scope practice only. */
     @Test
     fun theObjectGraphUnitPractisesOnlyItsTwoPrimaryConcepts() =
         runUnitPracticeTest {
@@ -1417,7 +1383,7 @@ internal class LearningUnitPracticeIntegrationTest {
 
             assertEquals(unit.title, settled.scope.name)
             val available = assertIs<PracticeAvailability.Available>(settled.availability)
-            assertEquals(2, available.eligibleQuestionCount)
+            assertEquals(5, available.eligibleQuestionCount)
             builder.selectQuestionCount(available.eligibleQuestionCount)
             builder.settled()
 
@@ -1428,21 +1394,24 @@ internal class LearningUnitPracticeIntegrationTest {
             val questions = selectedQuestions(config)
             val questionIds = questions.map { it.id }.toSet()
             assertEquals(
-                setOf("dagger_compile_time_graph_validation", "di_scopes_001"),
+                setOf(
+                    "di_scopes_001",
+                    "scope_rule_requires_lived_owner",
+                    "runtime_input_stays_out_of_graph",
+                    "same_type_dependencies_need_distinct_keys",
+                    "graph_error_timing_follows_wiring_mechanism",
+                ),
                 questionIds,
             )
             assertEquals(concepts, questions.map { it.subtopicId }.toSet())
-            assertEquals(2, questions.size)
-            // FOUNDATION only, which is the whole distribution rather than a sample of it.
-            assertEquals(setOf(QuestionLevel.FOUNDATION), questions.map { it.level }.toSet())
-
-            // The recorded premature routing, pinned rather than repaired. E27-08 owns the re-map to
-            // `dagger_fundamentals`; until it is taken, this Question is structurally reachable and
-            // taught by no Lesson of this Unit.
+            assertEquals(5, questions.size)
             assertEquals(
-                "dependency_graphs",
-                questions.single { it.id == "dagger_compile_time_graph_validation" }.subtopicId,
+                mapOf(QuestionLevel.FOUNDATION to 1, QuestionLevel.APPLIED to 4),
+                questions.groupingBy { it.level }.eachCount(),
             )
+
+            // Dagger component validation is taught and practised in Unit 3.
+            assertFalse("dagger_compile_time_graph_validation" in questionIds)
 
             // Supporting concepts never broaden a Unit's practice, and here that is load-bearing in
             // both directions. `dagger_qualifiers` and `dagger_fundamentals` are supporting because the
@@ -1486,22 +1455,7 @@ internal class LearningUnitPracticeIntegrationTest {
             assertEquals(0, attemptCount())
         }
 
-    /**
-     * E27-04. The Dagger Unit's practice, resolved through the production Practice Builder.
-     *
-     * Seven primary concepts across seven Lessons, reaching eight Questions. This Unit is the first
-     * in the epic whose practice is about the material it actually teaches, which is worth asserting
-     * rather than assuming: every reached Question is a Dagger Question, and every one of them is
-     * about a mechanism one of these Lessons introduces.
-     *
-     * Two limitations are pinned here rather than repaired, because both are E27-08's to decide.
-     * `dagger_modules` is primary in the declaration Lesson and reaches **no** ACTIVE Question at
-     * all — its one Question is DEPRECATED — so the module-against-component distinction this Unit
-     * teaches is currently unassessed, which is GAP-U3-A. And `dagger_compile_time_graph_validation`
-     * is mapped to `dependency_graphs`, so the Question whose reasoning the closing Lesson teaches
-     * in full is reachable from the *previous* Unit and not from this one. Asserting its absence
-     * here means the routing problem has to be re-stated rather than quietly fixed by a mapping.
-     */
+    /** E27-08: Dagger mechanisms plus module responsibility and validation limits. */
     @Test
     fun theDaggerUnitPractisesOnlyItsSevenPrimaryConcepts() =
         runUnitPracticeTest {
@@ -1512,7 +1466,7 @@ internal class LearningUnitPracticeIntegrationTest {
 
             assertEquals(unit.title, settled.scope.name)
             val available = assertIs<PracticeAvailability.Available>(settled.availability)
-            assertEquals(8, available.eligibleQuestionCount)
+            assertEquals(11, available.eligibleQuestionCount)
             builder.selectQuestionCount(available.eligibleQuestionCount)
             builder.settled()
 
@@ -1540,28 +1494,29 @@ internal class LearningUnitPracticeIntegrationTest {
                     "dagger_scope_component_instance_lifetime",
                     "dagger_qualifier_same_type_bindings",
                     "dagger_multibinding_into_set",
+                    "dagger_compile_time_graph_validation",
+                    "dagger_module_contributes_component_owns",
+                    "dagger_compile_success_not_lifetime_proof",
                 ),
                 questionIds,
             )
-            assertEquals(8, questions.size)
+            assertEquals(11, questions.size)
             assertEquals(
-                mapOf(QuestionLevel.FOUNDATION to 5, QuestionLevel.APPLIED to 3),
+                mapOf(QuestionLevel.FOUNDATION to 6, QuestionLevel.APPLIED to 5),
                 questions.groupingBy { it.level }.eachCount(),
             )
 
-            // GAP-U3-A, pinned as data. `dagger_modules` is a primary concept of this Unit and
-            // reaches nothing, so the generated coverage snapshot reports a primary Subtopic with
-            // no ACTIVE coverage. E27-04 deliberately authored no Question to hide that.
-            assertTrue(
-                questions.none { it.subtopicId == "dagger_modules" },
-                "A Question now covers `dagger_modules`; GAP-U3-A needs re-stating.",
+            // The module/component responsibility now has scenario-based coverage.
+            assertEquals(
+                "dagger_modules",
+                questions.single { it.id == "dagger_module_contributes_component_owns" }.subtopicId,
             )
 
-            // The recorded routing problem. The closing Lesson teaches this Question's reasoning in
-            // full, and the Question is not reachable from this Unit, because its Subtopic is
-            // `dependency_graphs` — which stays supporting here precisely so that the mapping is a
-            // decision E27-08 takes rather than one this issue took by accident.
-            assertFalse("dagger_compile_time_graph_validation" in questionIds)
+            // Dagger validation now routes with the framework mechanism that teaches it.
+            assertEquals(
+                "dagger_fundamentals",
+                questions.single { it.id == "dagger_compile_time_graph_validation" }.subtopicId,
+            )
 
             // Supporting concepts never broaden a Unit's practice. Here that keeps the generic
             // reuse and graph Questions of the previous two Units out of this one entirely.
@@ -1604,14 +1559,7 @@ internal class LearningUnitPracticeIntegrationTest {
             assertEquals(0, attemptCount())
         }
 
-    /**
-     * E27-05. The Hilt Unit's practice through the production resolver.
-     *
-     * Supporting lifecycle, Dagger and architecture concepts explain the Android ownership model
-     * but must not broaden practice. `hilt_field_injection_framework_classes` remains deliberately
-     * absent because its current primary Subtopic is `constructor_injection`; E27-08 owns that
-     * probable re-map together with generic constructor-injection coverage for Unit 1.
-     */
+    /** E27-08: Hilt practice includes Android-owned construction and owner-lifetime choices. */
     @Test
     fun theHiltUnitPractisesOnlyItsFivePrimaryConcepts() =
         runUnitPracticeTest {
@@ -1622,7 +1570,7 @@ internal class LearningUnitPracticeIntegrationTest {
 
             assertEquals(unit.title, settled.scope.name)
             val available = assertIs<PracticeAvailability.Available>(settled.availability)
-            assertEquals(6, available.eligibleQuestionCount)
+            assertEquals(9, available.eligibleQuestionCount)
             builder.selectQuestionCount(available.eligibleQuestionCount)
             builder.settled()
 
@@ -1646,16 +1594,22 @@ internal class LearningUnitPracticeIntegrationTest {
                     "dagger_assisted_injection_viewmodel",
                     "hilt_install_in_binding_visibility",
                     "hilt_vs_dagger_convention_tradeoff",
+                    "hilt_field_injection_framework_classes",
+                    "hilt_viewmodel_vs_activity_retained_owner",
+                    "hilt_singleton_component_not_process_durable",
                 ),
                 questionIds,
             )
-            assertEquals(6, questions.size)
+            assertEquals(9, questions.size)
             assertEquals(
-                mapOf(QuestionLevel.FOUNDATION to 2, QuestionLevel.APPLIED to 4),
+                mapOf(QuestionLevel.FOUNDATION to 3, QuestionLevel.APPLIED to 6),
                 questions.groupingBy { it.level }.eachCount(),
             )
 
-            assertFalse("hilt_field_injection_framework_classes" in questionIds)
+            assertEquals(
+                "hilt_fundamentals",
+                questions.single { it.id == "hilt_field_injection_framework_classes" }.subtopicId,
+            )
             val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
             assertTrue(
                 setOf(
@@ -1681,7 +1635,7 @@ internal class LearningUnitPracticeIntegrationTest {
             assertEquals(0, attemptCount())
         }
 
-    /** E27-06. The Koin/KMP Unit's practice through the production resolver. */
+    /** E27-08: every primary Koin concept has semantic scenario coverage. */
     @Test
     fun theKoinUnitPractisesOnlyItsFivePrimaryConcepts() =
         runUnitPracticeTest {
@@ -1692,7 +1646,7 @@ internal class LearningUnitPracticeIntegrationTest {
 
             assertEquals(unit.title, settled.scope.name)
             val available = assertIs<PracticeAvailability.Available>(settled.availability)
-            assertEquals(2, available.eligibleQuestionCount)
+            assertEquals(7, available.eligibleQuestionCount)
             builder.selectQuestionCount(available.eligibleQuestionCount)
             builder.settled()
 
@@ -1709,25 +1663,31 @@ internal class LearningUnitPracticeIntegrationTest {
             val questions = selectedQuestions(config)
             val questionIds = questions.map { it.id }.toSet()
             assertEquals(
-                setOf("di_koin_factory_vs_single", "koin_multiplatform_common_module"),
+                setOf(
+                    "di_koin_factory_vs_single",
+                    "koin_multiplatform_common_module",
+                    "koin_container_startup_composition_boundary",
+                    "koin_interview_scope_owner",
+                    "koin_viewmodel_construction_vs_ownership",
+                    "koin_definition_from_reuse_requirement",
+                    "koin_shared_and_platform_binding_split",
+                ),
                 questionIds,
             )
-            assertEquals(2, questions.size)
+            assertEquals(7, questions.size)
             assertEquals(
-                mapOf(QuestionLevel.FOUNDATION to 1, QuestionLevel.APPLIED to 1),
+                mapOf(QuestionLevel.FOUNDATION to 1, QuestionLevel.APPLIED to 6),
                 questions.groupingBy { it.level }.eachCount(),
             )
 
-            assertTrue(questions.none { it.subtopicId == "koin_fundamentals" })
-            assertTrue(questions.none { it.subtopicId == "koin_scopes" })
-            assertTrue(questions.none { it.subtopicId == "koin_viewmodels" })
+            assertEquals(concepts, questions.map { it.subtopicId }.toSet())
 
             val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
             assertTrue(questions.none { it.subtopicId in supportingOnly })
             assertEquals(0, attemptCount())
         }
 
-    /** E27-07. The synthesis Unit intentionally overlaps Unit 1 through `manual_di`. */
+    /** E27-08: strategy practice plus the intentional Unit 1 overlap through `manual_di`. */
     @Test
     fun theStrategyUnitPractisesOnlyItsTwoPrimaryConcepts() =
         runUnitPracticeTest {
@@ -1738,7 +1698,7 @@ internal class LearningUnitPracticeIntegrationTest {
 
             assertEquals(unit.title, settled.scope.name)
             val available = assertIs<PracticeAvailability.Available>(settled.availability)
-            assertEquals(1, available.eligibleQuestionCount)
+            assertEquals(3, available.eligibleQuestionCount)
             builder.selectQuestionCount(available.eligibleQuestionCount)
             builder.settled()
 
@@ -1747,16 +1707,35 @@ internal class LearningUnitPracticeIntegrationTest {
             assertEquals(AssessmentScope.Subtopics(concepts), config.scope)
 
             val questions = selectedQuestions(config)
-            assertEquals(setOf("manual_di_graph_growth_cost"), questions.map { it.id }.toSet())
-            assertEquals(1, questions.size)
+            val questionIds = questions.map { it.id }.toSet()
             assertEquals(
-                mapOf(QuestionLevel.APPLIED to 1),
+                setOf(
+                    "manual_di_graph_growth_cost",
+                    "di_graph_check_timing_by_mechanism",
+                    "di_strategy_smallest_sufficient_choice",
+                ),
+                questionIds,
+            )
+            assertEquals(3, questions.size)
+            assertEquals(
+                mapOf(QuestionLevel.APPLIED to 2, QuestionLevel.ADVANCED to 1),
                 questions.groupingBy { it.level }.eachCount(),
             )
 
-            assertTrue(questions.none { it.subtopicId == "di_framework_tradeoffs" })
+            assertEquals(concepts, questions.map { it.subtopicId }.toSet())
             val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
             assertTrue(questions.none { it.subtopicId in supportingOnly })
+
+            val foundationsBuilder =
+                builder(PracticeBuilderTarget.LearningUnit("unit_dependency_injection_as_object_construction"))
+            foundationsBuilder.settled()
+            foundationsBuilder.selectQuestionCount(
+                assertIs<PracticeAvailability.Available>(foundationsBuilder.uiState.value.availability)
+                    .eligibleQuestionCount,
+            )
+            foundationsBuilder.settled()
+            val foundations = selectedQuestions(foundationsBuilder.start()).map { it.id }.toSet()
+            assertEquals(setOf("manual_di_graph_growth_cost"), foundations intersect questionIds)
             assertEquals(0, attemptCount())
         }
 

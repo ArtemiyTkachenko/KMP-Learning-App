@@ -17,16 +17,16 @@ internal class InitialCurriculumSmokeTest {
 
         assertEquals(17, initialCurriculum.topics.size)
         assertEquals(361, initialCurriculum.subtopics.size)
-        assertEquals(460, initialCurriculum.questions.size)
+        assertEquals(478, initialCurriculum.questions.size)
         assertEquals(
-            419,
+            437,
             initialCurriculum.questions.count { it.status == ContentStatus.ACTIVE },
         )
         assertEquals(
             41,
             initialCurriculum.questions.count { it.status == ContentStatus.DEPRECATED },
         )
-        assertEquals(413, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.SINGLE })
+        assertEquals(431, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.SINGLE })
         assertEquals(47, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.MULTIPLE })
     }
 
@@ -35,11 +35,11 @@ internal class InitialCurriculumSmokeTest {
         val initialCurriculum = BundledCurriculumSource.load()
 
         assertEquals(
-            LevelDistribution(foundation = 237, applied = 196, advanced = 27),
+            LevelDistribution(foundation = 237, applied = 213, advanced = 28),
             initialCurriculum.questions.levelDistribution(),
         )
         assertEquals(
-            LevelDistribution(foundation = 203, applied = 189, advanced = 27),
+            LevelDistribution(foundation = 203, applied = 206, advanced = 28),
             initialCurriculum.questions
                 .filter { it.status == ContentStatus.ACTIVE }
                 .levelDistribution(),
@@ -58,7 +58,7 @@ internal class InitialCurriculumSmokeTest {
                 "kotlin_language" to LevelDistribution(25, 2, 0),
                 "async_reactive" to LevelDistribution(23, 29, 10),
                 "architecture" to LevelDistribution(10, 32, 2),
-                "dependency_injection" to LevelDistribution(18, 9, 0),
+                "dependency_injection" to LevelDistribution(18, 26, 1),
                 "local_data" to LevelDistribution(17, 4, 1),
                 "networking" to LevelDistribution(12, 11, 1),
                 "background_work" to LevelDistribution(14, 5, 1),
@@ -92,7 +92,7 @@ internal class InitialCurriculumSmokeTest {
                 "kotlin_language" to 25,
                 "async_reactive" to 57,
                 "architecture" to 40,
-                "dependency_injection" to 23,
+                "dependency_injection" to 41,
                 "local_data" to 21,
                 "networking" to 24,
                 "background_work" to 19,

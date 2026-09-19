@@ -53,7 +53,7 @@ invalidate the snapshot, but changing what it says does.
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
 | Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `5b00c12dc6b397cc99e760d9bc7541be47b286aea76a3c17e54b3512a4ac78e0` |
-| Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `3da78c289e4ab49b9771390d1e3ba1bd9b32b9506b1bba8a89f71bb5de28736d` |
+| Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `55e2b92287ad5c30fd3c70afc5fb8dc6dd7fb63c44e4506a47e5f53317b4a022` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
 because editing lesson content can change whether the material still teaches an
@@ -72,10 +72,10 @@ Deprecated units, lessons and questions are excluded throughout.
 | Active lessons in those units | 135 |
 | Distinct primary subtopics | 74 |
 | Distinct supporting subtopics | 117 |
-| Unique active questions reached through primary mappings | 153 |
-| Primary subtopics with at least one active question | 69 |
-| Primary subtopics with no active question | 5 |
-| Active questions in the bank | 419 |
+| Unique active questions reached through primary mappings | 171 |
+| Primary subtopics with at least one active question | 74 |
+| Primary subtopics with no active question | 0 |
+| Active questions in the bank | 437 |
 | Deprecated questions excluded from this report | 41 |
 
 The two bank-size rows are context, not a target. The learning curriculum is
@@ -115,12 +115,12 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Domain Logic, Use Cases and Dependency Direction (`unit_domain_logic_and_dependency_direction`) | 5 | 4 | 0 | 9 | 0 | 9 |
 | MVP, MVVM and MVI Responsibility Models (`unit_responsibility_models_mvp_mvvm_mvi`) | 5 | 5 | 1 | 4 | 0 | 5 |
 | State, Events, Lifetime and Architecture Selection (`unit_state_events_lifetime_and_selection`) | 4 | 2 | 2 | 6 | 2 | 10 |
-| Dependency Injection as Object Construction (`unit_dependency_injection_as_object_construction`) | 6 | 5 | 4 | 1 | 0 | 5 |
-| Object Graphs, Lifetimes and Scopes (`unit_object_graphs_lifetimes_and_scopes`) | 6 | 2 | 2 | 0 | 0 | 2 |
-| Dagger: Compile-Time Object Graphs (`unit_dagger_compile_time_object_graphs`) | 7 | 7 | 5 | 3 | 0 | 8 |
-| Hilt: Android Lifecycle-Aware Dagger (`unit_hilt_android_lifecycle_integration`) | 6 | 5 | 2 | 4 | 0 | 6 |
-| Koin and Dependency Injection in KMP (`unit_koin_and_dependency_injection_in_kmp`) | 5 | 5 | 1 | 1 | 0 | 2 |
-| Choosing a Dependency Injection Strategy (`unit_choosing_a_dependency_injection_strategy`) | 4 | 2 | 0 | 1 | 0 | 1 |
+| Dependency Injection as Object Construction (`unit_dependency_injection_as_object_construction`) | 6 | 5 | 3 | 4 | 0 | 7 |
+| Object Graphs, Lifetimes and Scopes (`unit_object_graphs_lifetimes_and_scopes`) | 6 | 2 | 1 | 4 | 0 | 5 |
+| Dagger: Compile-Time Object Graphs (`unit_dagger_compile_time_object_graphs`) | 7 | 7 | 6 | 5 | 0 | 11 |
+| Hilt: Android Lifecycle-Aware Dagger (`unit_hilt_android_lifecycle_integration`) | 6 | 5 | 3 | 6 | 0 | 9 |
+| Koin and Dependency Injection in KMP (`unit_koin_and_dependency_injection_in_kmp`) | 5 | 5 | 1 | 6 | 0 | 7 |
+| Choosing a Dependency Injection Strategy (`unit_choosing_a_dependency_injection_strategy`) | 4 | 2 | 0 | 2 | 1 | 3 |
 
 ## Unit and lesson detail
 
@@ -1899,7 +1899,7 @@ Supporting context — not primary coverage:
 | `solid` — SOLID principles | 1 | `architecture` — Application Architecture & Design Principles |
 | `clean_architecture` — Clean Architecture | 2 | `architecture` — Application Architecture & Design Principles |
 | `repository_pattern` — Repository pattern | 4 | `architecture` — Application Architecture & Design Principles |
-| `service_locator_vs_di` — Service locator vs dependency injection | 1 | `dependency_injection` — Dependency Injection |
+| `service_locator_vs_di` — Service locator vs dependency injection | 2 | `dependency_injection` — Dependency Injection |
 
 #### Clean Architecture: the Dependency Rule, Not the Diagram (`lesson_clean_architecture_intent`)
 
@@ -2104,8 +2104,8 @@ once each however many lessons share the concept.
 
 | Level | Count | Question IDs |
 |---|---:|---|
-| FOUNDATION | 4 | `composition_root_001`, `di_constructor_injection_testability`, `hilt_field_injection_framework_classes`, `service_locator_vs_di_001` |
-| APPLIED | 1 | `manual_di_graph_growth_cost` |
+| FOUNDATION | 3 | `composition_root_001`, `di_constructor_injection_testability`, `service_locator_vs_di_001` |
+| APPLIED | 4 | `construct_fetch_receive_responsibility`, `injection_and_inversion_are_separate_decisions`, `integration_boundary_resolution_vs_service_locator`, `manual_di_graph_growth_cost` |
 | ADVANCED | 0 | — |
 
 #### Who Constructs This Object? (`lesson_who_constructs_this_object`)
@@ -2114,7 +2114,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `di_fundamentals` — Dependency injection fundamentals | 1 | 0 | 0 | 1 | `di_constructor_injection_testability` |
+| `di_fundamentals` — Dependency injection fundamentals | 0 | 2 | 0 | 2 | `construct_fetch_receive_responsibility`, `injection_and_inversion_are_separate_decisions` |
 
 Supporting context — not primary coverage:
 
@@ -2122,7 +2122,7 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `constructor_injection` — Constructor injection | 1 | `dependency_injection` — Dependency Injection |
 | `manual_di` — Manual dependency injection | 1 | `dependency_injection` — Dependency Injection |
-| `service_locator_vs_di` — Service locator vs dependency injection | 1 | `dependency_injection` — Dependency Injection |
+| `service_locator_vs_di` — Service locator vs dependency injection | 2 | `dependency_injection` — Dependency Injection |
 | `separation_of_concerns` — Separation of concerns | 3 | `architecture` — Application Architecture & Design Principles |
 
 #### A Dependency Should Be Visible (`lesson_a_dependency_should_be_visible`)
@@ -2131,13 +2131,13 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `constructor_injection` — Constructor injection | 1 | 0 | 0 | 1 | `hilt_field_injection_framework_classes` |
+| `constructor_injection` — Constructor injection | 1 | 0 | 0 | 1 | `di_constructor_injection_testability` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `di_fundamentals` — Dependency injection fundamentals | 1 | `dependency_injection` — Dependency Injection |
+| `di_fundamentals` — Dependency injection fundamentals | 2 | `dependency_injection` — Dependency Injection |
 | `interface_boundaries` — Interface boundaries | 2 | `architecture` — Application Architecture & Design Principles |
 | `dependency_direction` — Dependency direction and inversion | 2 | `architecture` — Application Architecture & Design Principles |
 | `test_doubles` — Test doubles | 1 | `testing` — Testing & Testability |
@@ -2148,7 +2148,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `di_fundamentals` — Dependency injection fundamentals | 1 | 0 | 0 | 1 | `di_constructor_injection_testability` |
+| `di_fundamentals` — Dependency injection fundamentals | 0 | 2 | 0 | 2 | `construct_fetch_receive_responsibility`, `injection_and_inversion_are_separate_decisions` |
 
 Supporting context — not primary coverage:
 
@@ -2172,8 +2172,8 @@ Supporting context — not primary coverage:
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `manual_di` — Manual dependency injection | 1 | `dependency_injection` — Dependency Injection |
-| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
-| `service_locator_vs_di` — Service locator vs dependency injection | 1 | `dependency_injection` — Dependency Injection |
+| `dependency_graphs` — Dependency graphs | 3 | `dependency_injection` — Dependency Injection |
+| `service_locator_vs_di` — Service locator vs dependency injection | 2 | `dependency_injection` — Dependency Injection |
 | `separation_of_concerns` — Separation of concerns | 3 | `architecture` — Application Architecture & Design Principles |
 | `layered_architecture` — Layered architecture | 2 | `architecture` — Application Architecture & Design Principles |
 
@@ -2183,13 +2183,13 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `service_locator_vs_di` — Service locator vs dependency injection | 1 | 0 | 0 | 1 | `service_locator_vs_di_001` |
+| `service_locator_vs_di` — Service locator vs dependency injection | 1 | 1 | 0 | 2 | `integration_boundary_resolution_vs_service_locator`, `service_locator_vs_di_001` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `di_fundamentals` — Dependency injection fundamentals | 1 | `dependency_injection` — Dependency Injection |
+| `di_fundamentals` — Dependency injection fundamentals | 2 | `dependency_injection` — Dependency Injection |
 | `composition_root` — Composition root | 1 | `dependency_injection` — Dependency Injection |
 | `constructor_injection` — Constructor injection | 1 | `dependency_injection` — Dependency Injection |
 | `test_di` — Dependency replacement/injection in tests | 1 | `testing` — Testing & Testability |
@@ -2207,8 +2207,8 @@ Supporting context — not primary coverage:
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `composition_root` — Composition root | 1 | `dependency_injection` — Dependency Injection |
-| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
-| `di_framework_tradeoffs` — DI framework trade-offs | 0 | `dependency_injection` — Dependency Injection |
+| `dependency_graphs` — Dependency graphs | 3 | `dependency_injection` — Dependency Injection |
+| `di_framework_tradeoffs` — DI framework trade-offs | 2 | `dependency_injection` — Dependency Injection |
 | `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 2 | `architecture` — Application Architecture & Design Principles |
 
 ### Object Graphs, Lifetimes and Scopes (`unit_object_graphs_lifetimes_and_scopes`)
@@ -2220,8 +2220,8 @@ once each however many lessons share the concept.
 
 | Level | Count | Question IDs |
 |---|---:|---|
-| FOUNDATION | 2 | `dagger_compile_time_graph_validation`, `di_scopes_001` |
-| APPLIED | 0 | — |
+| FOUNDATION | 1 | `di_scopes_001` |
+| APPLIED | 4 | `graph_error_timing_follows_wiring_mechanism`, `runtime_input_stays_out_of_graph`, `same_type_dependencies_need_distinct_keys`, `scope_rule_requires_lived_owner` |
 | ADVANCED | 0 | — |
 
 #### From One Dependency to a Graph (`lesson_from_one_dependency_to_a_graph`)
@@ -2230,7 +2230,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `dependency_graphs` — Dependency graphs | 1 | 0 | 0 | 1 | `dagger_compile_time_graph_validation` |
+| `dependency_graphs` — Dependency graphs | 0 | 3 | 0 | 3 | `graph_error_timing_follows_wiring_mechanism`, `runtime_input_stays_out_of_graph`, `same_type_dependencies_need_distinct_keys` |
 
 Supporting context — not primary coverage:
 
@@ -2247,13 +2247,13 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `di_scopes` — Scopes and lifetimes | 1 | 0 | 0 | 1 | `di_scopes_001` |
+| `di_scopes` — Scopes and lifetimes | 1 | 1 | 0 | 2 | `di_scopes_001`, `scope_rule_requires_lived_owner` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
+| `dependency_graphs` — Dependency graphs | 3 | `dependency_injection` — Dependency Injection |
 | `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
 | `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 2 | `architecture` — Application Architecture & Design Principles |
 
@@ -2263,13 +2263,13 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `di_scopes` — Scopes and lifetimes | 1 | 0 | 0 | 1 | `di_scopes_001` |
+| `di_scopes` — Scopes and lifetimes | 1 | 1 | 0 | 2 | `di_scopes_001`, `scope_rule_requires_lived_owner` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
+| `dependency_graphs` — Dependency graphs | 3 | `dependency_injection` — Dependency Injection |
 | `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
 | `android_process_model` — Application and process model | 2 | `android_platform` — Android Platform & Application Model |
 | `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
@@ -2280,13 +2280,13 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `dependency_graphs` — Dependency graphs | 1 | 0 | 0 | 1 | `dagger_compile_time_graph_validation` |
+| `dependency_graphs` — Dependency graphs | 0 | 3 | 0 | 3 | `graph_error_timing_follows_wiring_mechanism`, `runtime_input_stays_out_of_graph`, `same_type_dependencies_need_distinct_keys` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `di_scopes` — Scopes and lifetimes | 1 | `dependency_injection` — Dependency Injection |
+| `di_scopes` — Scopes and lifetimes | 2 | `dependency_injection` — Dependency Injection |
 | `constructor_injection` — Constructor injection | 1 | `dependency_injection` — Dependency Injection |
 | `navigation_fundamentals` — Navigation and back-stack fundamentals | 4 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 | `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
@@ -2297,7 +2297,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `dependency_graphs` — Dependency graphs | 1 | 0 | 0 | 1 | `dagger_compile_time_graph_validation` |
+| `dependency_graphs` — Dependency graphs | 0 | 3 | 0 | 3 | `graph_error_timing_follows_wiring_mechanism`, `runtime_input_stays_out_of_graph`, `same_type_dependencies_need_distinct_keys` |
 
 Supporting context — not primary coverage:
 
@@ -2313,14 +2313,14 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `dependency_graphs` — Dependency graphs | 1 | 0 | 0 | 1 | `dagger_compile_time_graph_validation` |
+| `dependency_graphs` — Dependency graphs | 0 | 3 | 0 | 3 | `graph_error_timing_follows_wiring_mechanism`, `runtime_input_stays_out_of_graph`, `same_type_dependencies_need_distinct_keys` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `di_framework_tradeoffs` — DI framework trade-offs | 0 | `dependency_injection` — Dependency Injection |
-| `dagger_fundamentals` — Dagger fundamentals | 1 | `dependency_injection` — Dependency Injection |
+| `di_framework_tradeoffs` — DI framework trade-offs | 2 | `dependency_injection` — Dependency Injection |
+| `dagger_fundamentals` — Dagger fundamentals | 3 | `dependency_injection` — Dependency Injection |
 | `kotlin_gradle_plugin` — Kotlin Gradle plugin | 1 | `build_delivery` — Build System, Modularization & Delivery |
 
 ### Dagger: Compile-Time Object Graphs (`unit_dagger_compile_time_object_graphs`)
@@ -2332,8 +2332,8 @@ once each however many lessons share the concept.
 
 | Level | Count | Question IDs |
 |---|---:|---|
-| FOUNDATION | 5 | `dagger_component_graph_root`, `dagger_generated_factory_no_reflection`, `dagger_inject_provides_binds_selection`, `dagger_scope_component_instance_lifetime`, `dagger_subcomponent_parent_binding_inheritance` |
-| APPLIED | 3 | `dagger_component_dependency_vs_subcomponent`, `dagger_multibinding_into_set`, `dagger_qualifier_same_type_bindings` |
+| FOUNDATION | 6 | `dagger_compile_time_graph_validation`, `dagger_component_graph_root`, `dagger_generated_factory_no_reflection`, `dagger_inject_provides_binds_selection`, `dagger_scope_component_instance_lifetime`, `dagger_subcomponent_parent_binding_inheritance` |
+| APPLIED | 5 | `dagger_compile_success_not_lifetime_proof`, `dagger_component_dependency_vs_subcomponent`, `dagger_module_contributes_component_owns`, `dagger_multibinding_into_set`, `dagger_qualifier_same_type_bindings` |
 | ADVANCED | 0 | — |
 
 #### What Dagger Can Construct on Its Own (`lesson_dagger_constructs_what_it_can_see`)
@@ -2342,7 +2342,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `dagger_fundamentals` — Dagger fundamentals | 1 | 0 | 0 | 1 | `dagger_generated_factory_no_reflection` |
+| `dagger_fundamentals` — Dagger fundamentals | 2 | 1 | 0 | 3 | `dagger_compile_success_not_lifetime_proof`, `dagger_compile_time_graph_validation`, `dagger_generated_factory_no_reflection` |
 
 Supporting context — not primary coverage:
 
@@ -2351,7 +2351,7 @@ Supporting context — not primary coverage:
 | `constructor_injection` — Constructor injection | 1 | `dependency_injection` — Dependency Injection |
 | `manual_di` — Manual dependency injection | 1 | `dependency_injection` — Dependency Injection |
 | `composition_root` — Composition root | 1 | `dependency_injection` — Dependency Injection |
-| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
+| `dependency_graphs` — Dependency graphs | 3 | `dependency_injection` — Dependency Injection |
 
 #### Declaring the Rest of the Graph (`lesson_declaring_the_rest_of_the_graph`)
 
@@ -2359,15 +2359,15 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `dagger_modules` — Dagger modules | 0 | 0 | 0 | 0 | — |
+| `dagger_modules` — Dagger modules | 0 | 1 | 0 | 1 | `dagger_module_contributes_component_owns` |
 | `dagger_bindings` — @Provides and @Binds | 1 | 0 | 0 | 1 | `dagger_inject_provides_binds_selection` |
-| **Lesson total (unique)** | 1 | 0 | 0 | 1 | `dagger_inject_provides_binds_selection` |
+| **Lesson total (unique)** | 1 | 1 | 0 | 2 | `dagger_inject_provides_binds_selection`, `dagger_module_contributes_component_owns` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `dagger_fundamentals` — Dagger fundamentals | 1 | `dependency_injection` — Dependency Injection |
+| `dagger_fundamentals` — Dagger fundamentals | 3 | `dependency_injection` — Dependency Injection |
 | `interface_boundaries` — Interface boundaries | 2 | `architecture` — Application Architecture & Design Principles |
 | `dependency_direction` — Dependency direction and inversion | 2 | `architecture` — Application Architecture & Design Principles |
 
@@ -2383,9 +2383,9 @@ Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `dagger_modules` — Dagger modules | 0 | `dependency_injection` — Dependency Injection |
+| `dagger_modules` — Dagger modules | 1 | `dependency_injection` — Dependency Injection |
 | `composition_root` — Composition root | 1 | `dependency_injection` — Dependency Injection |
-| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
+| `dependency_graphs` — Dependency graphs | 3 | `dependency_injection` — Dependency Injection |
 | `dagger_bindings` — @Provides and @Binds | 1 | `dependency_injection` — Dependency Injection |
 
 #### A Child Graph, or a Separate Graph? (`lesson_child_graph_or_separate_graph`)
@@ -2401,7 +2401,7 @@ Supporting context — not primary coverage:
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `dagger_scopes` — Dagger scopes | 1 | `dependency_injection` — Dependency Injection |
-| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
+| `dependency_graphs` — Dependency graphs | 3 | `dependency_injection` — Dependency Injection |
 | `layered_architecture` — Layered architecture | 2 | `architecture` — Application Architecture & Design Principles |
 | `module_dependency_direction` — Module dependency direction | 1 | `build_delivery` — Build System, Modularization & Delivery |
 
@@ -2417,7 +2417,7 @@ Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `di_scopes` — Scopes and lifetimes | 1 | `dependency_injection` — Dependency Injection |
+| `di_scopes` — Scopes and lifetimes | 2 | `dependency_injection` — Dependency Injection |
 | `dagger_components` — Components and subcomponents | 3 | `dependency_injection` — Dependency Injection |
 | `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
 
@@ -2436,7 +2436,7 @@ Supporting context — not primary coverage:
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `dagger_bindings` — @Provides and @Binds | 1 | `dependency_injection` — Dependency Injection |
-| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
+| `dependency_graphs` — Dependency graphs | 3 | `dependency_injection` — Dependency Injection |
 | `dependency_direction` — Dependency direction and inversion | 2 | `architecture` — Application Architecture & Design Principles |
 | `feature_modularization` — Feature modularization | 1 | `build_delivery` — Build System, Modularization & Delivery |
 
@@ -2446,14 +2446,14 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `dagger_fundamentals` — Dagger fundamentals | 1 | 0 | 0 | 1 | `dagger_generated_factory_no_reflection` |
+| `dagger_fundamentals` — Dagger fundamentals | 2 | 1 | 0 | 3 | `dagger_compile_success_not_lifetime_proof`, `dagger_compile_time_graph_validation`, `dagger_generated_factory_no_reflection` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
-| `di_framework_tradeoffs` — DI framework trade-offs | 0 | `dependency_injection` — Dependency Injection |
+| `dependency_graphs` — Dependency graphs | 3 | `dependency_injection` — Dependency Injection |
+| `di_framework_tradeoffs` — DI framework trade-offs | 2 | `dependency_injection` — Dependency Injection |
 | `dagger_components` — Components and subcomponents | 3 | `dependency_injection` — Dependency Injection |
 | `kotlin_gradle_plugin` — Kotlin Gradle plugin | 1 | `build_delivery` — Build System, Modularization & Delivery |
 
@@ -2466,8 +2466,8 @@ once each however many lessons share the concept.
 
 | Level | Count | Question IDs |
 |---|---:|---|
-| FOUNDATION | 2 | `di_hilt_viewmodel_scope`, `hilt_install_in_binding_visibility` |
-| APPLIED | 4 | `dagger_assisted_injection_viewmodel`, `hilt_activity_retained_component_lifetime`, `hilt_entry_point_manual_access`, `hilt_vs_dagger_convention_tradeoff` |
+| FOUNDATION | 3 | `di_hilt_viewmodel_scope`, `hilt_field_injection_framework_classes`, `hilt_install_in_binding_visibility` |
+| APPLIED | 6 | `dagger_assisted_injection_viewmodel`, `hilt_activity_retained_component_lifetime`, `hilt_entry_point_manual_access`, `hilt_singleton_component_not_process_durable`, `hilt_viewmodel_vs_activity_retained_owner`, `hilt_vs_dagger_convention_tradeoff` |
 | ADVANCED | 0 | — |
 
 #### Hilt Is Dagger With the Decisions Already Made (`lesson_hilt_is_dagger_with_decisions_made`)
@@ -2476,7 +2476,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `hilt_fundamentals` — Hilt fundamentals | 0 | 1 | 0 | 1 | `hilt_entry_point_manual_access` |
+| `hilt_fundamentals` — Hilt fundamentals | 1 | 1 | 0 | 2 | `hilt_entry_point_manual_access`, `hilt_field_injection_framework_classes` |
 
 Supporting context — not primary coverage:
 
@@ -2484,7 +2484,7 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `hilt_vs_dagger` — Hilt vs raw Dagger | 1 | `dependency_injection` — Dependency Injection |
 | `dagger_components` — Components and subcomponents | 3 | `dependency_injection` — Dependency Injection |
-| `dagger_fundamentals` — Dagger fundamentals | 1 | `dependency_injection` — Dependency Injection |
+| `dagger_fundamentals` — Dagger fundamentals | 3 | `dependency_injection` — Dependency Injection |
 | `activity_lifecycle` — Activity lifecycle | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 
 #### Which Android Component Owns This? (`lesson_which_android_component_owns_this`)
@@ -2493,13 +2493,13 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `hilt_components` — Hilt components and lifecycle scopes | 0 | 1 | 0 | 1 | `hilt_activity_retained_component_lifetime` |
+| `hilt_components` — Hilt components and lifecycle scopes | 0 | 3 | 0 | 3 | `hilt_activity_retained_component_lifetime`, `hilt_singleton_component_not_process_durable`, `hilt_viewmodel_vs_activity_retained_owner` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `di_scopes` — Scopes and lifetimes | 1 | `dependency_injection` — Dependency Injection |
+| `di_scopes` — Scopes and lifetimes | 2 | `dependency_injection` — Dependency Injection |
 | `dagger_scopes` — Dagger scopes | 1 | `dependency_injection` — Dependency Injection |
 | `activity_lifecycle` — Activity lifecycle | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 | `configuration_changes` — Configuration changes | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
@@ -2511,16 +2511,16 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `hilt_fundamentals` — Hilt fundamentals | 0 | 1 | 0 | 1 | `hilt_entry_point_manual_access` |
+| `hilt_fundamentals` — Hilt fundamentals | 1 | 1 | 0 | 2 | `hilt_entry_point_manual_access`, `hilt_field_injection_framework_classes` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `constructor_injection` — Constructor injection | 1 | `dependency_injection` — Dependency Injection |
-| `service_locator_vs_di` — Service locator vs dependency injection | 1 | `dependency_injection` — Dependency Injection |
+| `service_locator_vs_di` — Service locator vs dependency injection | 2 | `dependency_injection` — Dependency Injection |
 | `activity_lifecycle` — Activity lifecycle | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
-| `hilt_components` — Hilt components and lifecycle scopes | 1 | `dependency_injection` — Dependency Injection |
+| `hilt_components` — Hilt components and lifecycle scopes | 3 | `dependency_injection` — Dependency Injection |
 
 #### ViewModels, Their Component, and the Values That Arrive Late (`lesson_hilt_viewmodels_and_runtime_input`)
 
@@ -2534,11 +2534,11 @@ Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `hilt_components` — Hilt components and lifecycle scopes | 1 | `dependency_injection` — Dependency Injection |
+| `hilt_components` — Hilt components and lifecycle scopes | 3 | `dependency_injection` — Dependency Injection |
 | `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 | `saved_state` — Saved-state mechanisms | 4 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 | `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
-| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
+| `dependency_graphs` — Dependency graphs | 3 | `dependency_injection` — Dependency Injection |
 
 #### Which Graph Does This Binding Join? (`lesson_which_graph_does_this_binding_join`)
 
@@ -2552,10 +2552,10 @@ Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `dagger_modules` — Dagger modules | 0 | `dependency_injection` — Dependency Injection |
-| `hilt_components` — Hilt components and lifecycle scopes | 1 | `dependency_injection` — Dependency Injection |
+| `dagger_modules` — Dagger modules | 1 | `dependency_injection` — Dependency Injection |
+| `hilt_components` — Hilt components and lifecycle scopes | 3 | `dependency_injection` — Dependency Injection |
 | `dagger_scopes` — Dagger scopes | 1 | `dependency_injection` — Dependency Injection |
-| `di_scopes` — Scopes and lifetimes | 1 | `dependency_injection` — Dependency Injection |
+| `di_scopes` — Scopes and lifetimes | 2 | `dependency_injection` — Dependency Injection |
 
 #### Hilt, or Components You Write Yourself? (`lesson_hilt_or_hand_written_dagger`)
 
@@ -2569,9 +2569,9 @@ Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `hilt_components` — Hilt components and lifecycle scopes | 1 | `dependency_injection` — Dependency Injection |
+| `hilt_components` — Hilt components and lifecycle scopes | 3 | `dependency_injection` — Dependency Injection |
 | `dagger_components` — Components and subcomponents | 3 | `dependency_injection` — Dependency Injection |
-| `di_framework_tradeoffs` — DI framework trade-offs | 0 | `dependency_injection` — Dependency Injection |
+| `di_framework_tradeoffs` — DI framework trade-offs | 2 | `dependency_injection` — Dependency Injection |
 | `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 2 | `architecture` — Application Architecture & Design Principles |
 
 ### Koin and Dependency Injection in KMP (`unit_koin_and_dependency_injection_in_kmp`)
@@ -2584,7 +2584,7 @@ once each however many lessons share the concept.
 | Level | Count | Question IDs |
 |---|---:|---|
 | FOUNDATION | 1 | `di_koin_factory_vs_single` |
-| APPLIED | 1 | `koin_multiplatform_common_module` |
+| APPLIED | 6 | `koin_container_startup_composition_boundary`, `koin_definition_from_reuse_requirement`, `koin_interview_scope_owner`, `koin_multiplatform_common_module`, `koin_shared_and_platform_binding_split`, `koin_viewmodel_construction_vs_ownership` |
 | ADVANCED | 0 | — |
 
 #### The Container, and the Modules That Fill It (`lesson_the_koin_container_and_its_modules`)
@@ -2593,16 +2593,16 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `koin_fundamentals` — Koin fundamentals | 0 | 0 | 0 | 0 | — |
+| `koin_fundamentals` — Koin fundamentals | 0 | 1 | 0 | 1 | `koin_container_startup_composition_boundary` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `composition_root` — Composition root | 1 | `dependency_injection` — Dependency Injection |
-| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
-| `koin_definitions` — single/factory definitions | 1 | `dependency_injection` — Dependency Injection |
-| `di_framework_tradeoffs` — DI framework trade-offs | 0 | `dependency_injection` — Dependency Injection |
+| `dependency_graphs` — Dependency graphs | 3 | `dependency_injection` — Dependency Injection |
+| `koin_definitions` — single/factory definitions | 2 | `dependency_injection` — Dependency Injection |
+| `di_framework_tradeoffs` — DI framework trade-offs | 2 | `dependency_injection` — Dependency Injection |
 | `kmp_architecture` — KMP architecture | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
 
 #### Definitions, and the Reuse Requirement Behind Them (`lesson_koin_definitions_and_reuse`)
@@ -2611,17 +2611,17 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `koin_definitions` — single/factory definitions | 1 | 0 | 0 | 1 | `di_koin_factory_vs_single` |
+| `koin_definitions` — single/factory definitions | 1 | 1 | 0 | 2 | `di_koin_factory_vs_single`, `koin_definition_from_reuse_requirement` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `koin_fundamentals` — Koin fundamentals | 0 | `dependency_injection` — Dependency Injection |
-| `di_scopes` — Scopes and lifetimes | 1 | `dependency_injection` — Dependency Injection |
+| `koin_fundamentals` — Koin fundamentals | 1 | `dependency_injection` — Dependency Injection |
+| `di_scopes` — Scopes and lifetimes | 2 | `dependency_injection` — Dependency Injection |
 | `constructor_injection` — Constructor injection | 1 | `dependency_injection` — Dependency Injection |
 | `interface_boundaries` — Interface boundaries | 2 | `architecture` — Application Architecture & Design Principles |
-| `service_locator_vs_di` — Service locator vs dependency injection | 1 | `dependency_injection` — Dependency Injection |
+| `service_locator_vs_di` — Service locator vs dependency injection | 2 | `dependency_injection` — Dependency Injection |
 
 #### Scopes, and the Owner That Has to Stay Alive (`lesson_koin_scopes_and_their_owners`)
 
@@ -2629,15 +2629,15 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `koin_scopes` — Koin scopes | 0 | 0 | 0 | 0 | — |
+| `koin_scopes` — Koin scopes | 0 | 1 | 0 | 1 | `koin_interview_scope_owner` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `di_scopes` — Scopes and lifetimes | 1 | `dependency_injection` — Dependency Injection |
-| `koin_definitions` — single/factory definitions | 1 | `dependency_injection` — Dependency Injection |
-| `koin_fundamentals` — Koin fundamentals | 0 | `dependency_injection` — Dependency Injection |
+| `di_scopes` — Scopes and lifetimes | 2 | `dependency_injection` — Dependency Injection |
+| `koin_definitions` — single/factory definitions | 2 | `dependency_injection` — Dependency Injection |
+| `koin_fundamentals` — Koin fundamentals | 1 | `dependency_injection` — Dependency Injection |
 | `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
 
 #### Resolving a ViewModel at the Boundary (`lesson_resolving_viewmodels_at_the_boundary`)
@@ -2646,14 +2646,14 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `koin_viewmodels` — Koin ViewModel integration | 0 | 0 | 0 | 0 | — |
+| `koin_viewmodels` — Koin ViewModel integration | 0 | 1 | 0 | 1 | `koin_viewmodel_construction_vs_ownership` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `koin_definitions` — single/factory definitions | 1 | `dependency_injection` — Dependency Injection |
-| `service_locator_vs_di` — Service locator vs dependency injection | 1 | `dependency_injection` — Dependency Injection |
+| `koin_definitions` — single/factory definitions | 2 | `dependency_injection` — Dependency Injection |
+| `service_locator_vs_di` — Service locator vs dependency injection | 2 | `dependency_injection` — Dependency Injection |
 | `kmp_lifecycle_viewmodel` — Multiplatform Lifecycle/ViewModel | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
 | `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 | `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
@@ -2664,13 +2664,13 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `koin_multiplatform` — Koin and Kotlin Multiplatform | 0 | 1 | 0 | 1 | `koin_multiplatform_common_module` |
+| `koin_multiplatform` — Koin and Kotlin Multiplatform | 0 | 2 | 0 | 2 | `koin_multiplatform_common_module`, `koin_shared_and_platform_binding_split` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `koin_fundamentals` — Koin fundamentals | 0 | `dependency_injection` — Dependency Injection |
+| `koin_fundamentals` — Koin fundamentals | 1 | `dependency_injection` — Dependency Injection |
 | `expect_actual` — expect/actual | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
 | `platform_implementations` — Platform-specific implementations | 0 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
 | `kmp_architecture` — KMP architecture | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
@@ -2687,8 +2687,8 @@ once each however many lessons share the concept.
 | Level | Count | Question IDs |
 |---|---:|---|
 | FOUNDATION | 0 | — |
-| APPLIED | 1 | `manual_di_graph_growth_cost` |
-| ADVANCED | 0 | — |
+| APPLIED | 2 | `di_graph_check_timing_by_mechanism`, `manual_di_graph_growth_cost` |
+| ADVANCED | 1 | `di_strategy_smallest_sufficient_choice` |
 
 #### What a Container Actually Buys (`lesson_what_a_container_actually_buys`)
 
@@ -2696,16 +2696,16 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `di_framework_tradeoffs` — DI framework trade-offs | 0 | 0 | 0 | 0 | — |
+| `di_framework_tradeoffs` — DI framework trade-offs | 0 | 1 | 1 | 2 | `di_graph_check_timing_by_mechanism`, `di_strategy_smallest_sufficient_choice` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `manual_di` — Manual dependency injection | 1 | `dependency_injection` — Dependency Injection |
-| `dagger_fundamentals` — Dagger fundamentals | 1 | `dependency_injection` — Dependency Injection |
-| `hilt_fundamentals` — Hilt fundamentals | 1 | `dependency_injection` — Dependency Injection |
-| `koin_fundamentals` — Koin fundamentals | 0 | `dependency_injection` — Dependency Injection |
+| `dagger_fundamentals` — Dagger fundamentals | 3 | `dependency_injection` — Dependency Injection |
+| `hilt_fundamentals` — Hilt fundamentals | 2 | `dependency_injection` — Dependency Injection |
+| `koin_fundamentals` — Koin fundamentals | 1 | `dependency_injection` — Dependency Injection |
 | `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 2 | `architecture` — Application Architecture & Design Principles |
 
 #### When Should a Graph Error Surface? (`lesson_when_should_a_graph_error_surface`)
@@ -2714,15 +2714,15 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `di_framework_tradeoffs` — DI framework trade-offs | 0 | 0 | 0 | 0 | — |
+| `di_framework_tradeoffs` — DI framework trade-offs | 0 | 1 | 1 | 2 | `di_graph_check_timing_by_mechanism`, `di_strategy_smallest_sufficient_choice` |
 
 Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `dagger_fundamentals` — Dagger fundamentals | 1 | `dependency_injection` — Dependency Injection |
-| `koin_fundamentals` — Koin fundamentals | 0 | `dependency_injection` — Dependency Injection |
-| `dependency_graphs` — Dependency graphs | 1 | `dependency_injection` — Dependency Injection |
+| `dagger_fundamentals` — Dagger fundamentals | 3 | `dependency_injection` — Dependency Injection |
+| `koin_fundamentals` — Koin fundamentals | 1 | `dependency_injection` — Dependency Injection |
+| `dependency_graphs` — Dependency graphs | 3 | `dependency_injection` — Dependency Injection |
 | `manual_di` — Manual dependency injection | 1 | `dependency_injection` — Dependency Injection |
 | `kotlin_gradle_plugin` — Kotlin Gradle plugin | 1 | `build_delivery` — Build System, Modularization & Delivery |
 
@@ -2732,7 +2732,7 @@ Primary concepts:
 
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
-| `di_framework_tradeoffs` — DI framework trade-offs | 0 | 0 | 0 | 0 | — |
+| `di_framework_tradeoffs` — DI framework trade-offs | 0 | 1 | 1 | 2 | `di_graph_check_timing_by_mechanism`, `di_strategy_smallest_sufficient_choice` |
 
 Supporting context — not primary coverage:
 
@@ -2740,7 +2740,7 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `manual_di` — Manual dependency injection | 1 | `dependency_injection` — Dependency Injection |
 | `hilt_vs_dagger` — Hilt vs raw Dagger | 1 | `dependency_injection` — Dependency Injection |
-| `koin_multiplatform` — Koin and Kotlin Multiplatform | 1 | `dependency_injection` — Dependency Injection |
+| `koin_multiplatform` — Koin and Kotlin Multiplatform | 2 | `dependency_injection` — Dependency Injection |
 | `dagger_components` — Components and subcomponents | 3 | `dependency_injection` — Dependency Injection |
 | `kmp_architecture` — KMP architecture | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
 
@@ -2751,8 +2751,8 @@ Primary concepts:
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
 | `manual_di` — Manual dependency injection | 0 | 1 | 0 | 1 | `manual_di_graph_growth_cost` |
-| `di_framework_tradeoffs` — DI framework trade-offs | 0 | 0 | 0 | 0 | — |
-| **Lesson total (unique)** | 0 | 1 | 0 | 1 | `manual_di_graph_growth_cost` |
+| `di_framework_tradeoffs` — DI framework trade-offs | 0 | 1 | 1 | 2 | `di_graph_check_timing_by_mechanism`, `di_strategy_smallest_sufficient_choice` |
+| **Lesson total (unique)** | 0 | 2 | 1 | 3 | `di_graph_check_timing_by_mechanism`, `di_strategy_smallest_sufficient_choice`, `manual_di_graph_growth_cost` |
 
 Supporting context — not primary coverage:
 
@@ -2760,7 +2760,7 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `composition_root` — Composition root | 1 | `dependency_injection` — Dependency Injection |
 | `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 2 | `architecture` — Application Architecture & Design Principles |
-| `di_fundamentals` — Dependency injection fundamentals | 1 | `dependency_injection` — Dependency Injection |
+| `di_fundamentals` — Dependency injection fundamentals | 2 | `dependency_injection` — Dependency Injection |
 | `constructor_injection` — Constructor injection | 1 | `dependency_injection` — Dependency Injection |
 
 ## Primary assessment gaps
@@ -2773,13 +2773,7 @@ subtopic taxonomy is deliberately finer-grained than the bank — see
 from subtopics that are empty on purpose. This report surfaces the gap; whether it
 matters is editorial judgement.
 
-| Primary subtopic | Owning topic |
-|---|---|
-| `dagger_modules` — Dagger modules | `dependency_injection` — Dependency Injection |
-| `koin_fundamentals` — Koin fundamentals | `dependency_injection` — Dependency Injection |
-| `koin_scopes` — Koin scopes | `dependency_injection` — Dependency Injection |
-| `koin_viewmodels` — Koin ViewModel integration | `dependency_injection` — Dependency Injection |
-| `di_framework_tradeoffs` — DI framework trade-offs | `dependency_injection` — Dependency Injection |
+Every primary concept of every active lesson has at least one active question.
 
 ## Semantic review reminder
 

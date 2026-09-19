@@ -123,6 +123,307 @@ used; the retrieval date of 2026-09-18 is therefore the freshness marker, and ea
 issue re-verifies rather than trusting this table.
 
 ---
+
+## E27-08 detailed assessment audit
+
+**Issue #392, `task/E27-08`. Assessment and source review completed 2026-09-19.** E27-09 was
+not started. The finished production Lessons were treated as authoritative; the E27-01 ledger was
+used as a list of questions to decide, never as an edit script.
+
+### Baseline verified before editing
+
+Production contained **30 ACTIVE Units / 135 ACTIVE Lessons**, including **6 Dependency Injection
+Units / 34 Lessons** with the planned `6, 6, 7, 6, 5, 4` shape. No Unit, Lesson or mapping was
+changed by this issue.
+
+The DI bank contained **27 Questions: 23 ACTIVE / 4 DEPRECATED**, with an ACTIVE distribution of
+**14 FOUNDATION / 9 APPLIED / 0 ADVANCED**. The five primary Subtopics with no ACTIVE Question
+were `dagger_modules`, `koin_fundamentals`, `koin_scopes`, `koin_viewmodels` and
+`di_framework_tradeoffs`. The pre-pass production-resolver pools were exactly the E27-01 model:
+
+| Unit | Count | Levels | Question ids |
+| ---: | ---: | --- | --- |
+| 1 | 5 | 4 F, 1 A | `di_constructor_injection_testability`, `hilt_field_injection_framework_classes`, `composition_root_001`, `service_locator_vs_di_001`, `manual_di_graph_growth_cost` |
+| 2 | 2 | 2 F | `dagger_compile_time_graph_validation`, `di_scopes_001` |
+| 3 | 8 | 5 F, 3 A | `dagger_generated_factory_no_reflection`, `dagger_inject_provides_binds_selection`, `dagger_component_graph_root`, `dagger_subcomponent_parent_binding_inheritance`, `dagger_component_dependency_vs_subcomponent`, `dagger_scope_component_instance_lifetime`, `dagger_qualifier_same_type_bindings`, `dagger_multibinding_into_set` |
+| 4 | 6 | 2 F, 4 A | `hilt_entry_point_manual_access`, `hilt_activity_retained_component_lifetime`, `di_hilt_viewmodel_scope`, `dagger_assisted_injection_viewmodel`, `hilt_install_in_binding_visibility`, `hilt_vs_dagger_convention_tradeoff` |
+| 5 | 2 | 1 F, 1 A | `di_koin_factory_vs_single`, `koin_multiplatform_common_module` |
+| 6 | 1 | 1 A | `manual_di_graph_growth_cost` |
+
+The only overlap was `manual_di_graph_growth_cost` in Units 1 and 6. It remained intentional.
+
+### Required ordering and intermediate state
+
+All 34 Lessons were read, followed by every existing Question and both authoring outcome records and
+source context. Existing Questions were independently solved before mapping, content, source and
+level decisions. Only after those decisions were applied were the remaining gaps authored.
+
+The correction/remap pass made these three mapping changes:
+
+| Question | Before | After | Decision |
+| --- | --- | --- | --- |
+| `hilt_field_injection_framework_classes` | `constructor_injection` | `hilt_fundamentals` | Its responsibility is Android-owned construction and Hilt member injection, taught by L4.3; Unit 1 must not require Hilt |
+| `di_constructor_injection_testability` | `di_fundamentals` | `constructor_injection` | Its whole key is the guarantees created by required constructor parameters, taught by L1.2 |
+| `dagger_compile_time_graph_validation` | `dependency_graphs` | `dagger_fundamentals` | Every branch is about Dagger component validation, taught by L3.7 rather than generic Unit 2 |
+
+The production routing shape after corrections/remaps and before new authoring was:
+
+| Unit | Count | Levels | Exact intermediate pool |
+| ---: | ---: | --- | --- |
+| 1 | 4 | 3 F, 1 A | `di_constructor_injection_testability`, `composition_root_001`, `service_locator_vs_di_001`, `manual_di_graph_growth_cost` |
+| 2 | 1 | 1 F | `di_scopes_001` |
+| 3 | 9 | 6 F, 3 A | the original eight plus `dagger_compile_time_graph_validation` |
+| 4 | 7 | 3 F, 4 A | the original six plus `hilt_field_injection_framework_classes` |
+| 5 | 2 | 1 F, 1 A | unchanged |
+| 6 | 1 | 1 A | unchanged |
+
+This measurement is what made generic graph authoring obligatory: the clean Dagger remap left Unit 2
+with no `dependency_graphs` Question rather than hiding the gap behind a framework API.
+
+### Existing ACTIVE Question audit
+
+Every row records the final disposition after re-reading stem, all options, key, explanation, Sources,
+mapping, level and actual routing. "Keep" means the question was independently solved and no defect
+was found; it does not mean it was accepted from its id or count.
+
+| Question | Actual responsibility and finished Lesson | Mapping / level | Content, source and routing disposition |
+| --- | --- | --- | --- |
+| `di_constructor_injection_testability` | Visibility, formedness and caller substitution from L1.2 | Re-map to `constructor_injection`; FOUNDATION remains direct contract reasoning | Keep text/key/explanation/source; now generic Unit 1 coverage |
+| `composition_root_001` | Centralized graph assembly near entry point from L1.4 | `composition_root`, FOUNDATION correct | Keep; definitional but accurate and taught |
+| `di_scopes_001` | Reuse policy plus consequences of mis-scoping from L2.2-L2.3 | `di_scopes`, FOUNDATION correct | Correct option `b` and explanation: scope governs reuse inside an owner; owner bounds actual lifetime |
+| `service_locator_vs_di_001` | Hidden requirements and lookup timing from L1.5 | `service_locator_vs_di`, FOUNDATION correct | Keep; the new boundary scenario adds the qualification rather than rewriting this direct contrast |
+| `manual_di_graph_growth_cost` | Clerical propagation cost from L1.6 and decision input in L6.4 | `manual_di`, APPLIED correct | Keep and retain intentional Unit 1/6 overlap |
+| `dagger_generated_factory_no_reflection` | Generated constructor factory from L3.1/L3.7 | `dagger_fundamentals`, FOUNDATION correct | Keep |
+| `dagger_inject_provides_binds_selection` | Direct recognition of three binding declaration contracts from L3.1-L3.2 | `dagger_bindings`, FOUNDATION remains correct | Keep; several clauses do not interact enough to require APPLIED |
+| `dagger_component_graph_root` | Component as generated graph API/boundary from L3.3 | `dagger_components`, FOUNDATION correct | Keep |
+| `dagger_subcomponent_parent_binding_inheritance` | Downward inheritance and child bindings from L3.4 | `dagger_components`, FOUNDATION correct | Keep |
+| `dagger_component_dependency_vs_subcomponent` | Narrow published API versus inherited parent graph from L3.4 | `dagger_components`, APPLIED correct | Keep |
+| `dagger_compile_time_graph_validation` | Missing/ambiguous reachable Dagger keys from L3.7 | Re-map to `dagger_fundamentals`; FOUNDATION correct | Keep content; now absent from Unit 2 and present in Unit 3 |
+| `dagger_scope_component_instance_lifetime` | Scoped cache follows component instance from L3.5 | `dagger_scopes`, FOUNDATION remains correct | Keep; one documented mechanism directly determines the answer despite mentioning multiple instances |
+| `dagger_qualifier_same_type_bindings` | Qualifier changes a same-type Dagger key from L3.6 | `dagger_qualifiers`, APPLIED correct | Keep |
+| `dagger_multibinding_into_set` | Independent feature contributions to a collection from L3.6 | `dagger_multibindings`, APPLIED correct | Keep |
+| `hilt_field_injection_framework_classes` | Android owns Activity construction; Hilt injects fields at that boundary from L4.3 | Re-map to `hilt_fundamentals`; FOUNDATION correct | Keep content/source; removed from Unit 1 and added to Unit 4 |
+| `hilt_entry_point_manual_access` | Unmanaged ContentProvider reaches SingletonComponent through an entry point from L4.3 | `hilt_fundamentals`, APPLIED correct | Keep; Android page still supports provider exclusion and entry-point access |
+| `hilt_activity_retained_component_lifetime` | Retained Activity owner across rotation from L4.2 | `hilt_components`, APPLIED correct | Keep answer/content; source changed to full `dagger.dev/hilt` hierarchy |
+| `di_hilt_viewmodel_scope` | ViewModel construction does not determine dependency ownership from L4.4 | `hilt_viewmodels`, FOUNDATION correct | Preserve key/id; clarify that the matching Hilt component owner bounds actual lifetime and use the full component source |
+| `dagger_assisted_injection_viewmodel` | Runtime id arrives through assisted factory while graph supplies collaborators from L4.4 | `hilt_viewmodels`, APPLIED correct | Keep |
+| `hilt_install_in_binding_visibility` | InstallIn selects receiving component/visibility, not scope, from L4.5 | `hilt_modules`, FOUNDATION correct | Keep answer/content; source changed to full hierarchy supporting Fragment/View descendants |
+| `hilt_vs_dagger_convention_tradeoff` | Fixed Android hierarchy versus custom components from L4.6 | `hilt_vs_dagger`, APPLIED correct | Keep answer/content; source changed to full hierarchy |
+| `di_koin_factory_vs_single` | Retained container instance versus fresh resolution from L5.2 | `koin_definitions`, FOUNDATION correct | Keep stem/options/key; qualify explanation to repository classic DSL and current Koin compiler plugin |
+| `koin_multiplatform_common_module` | Why common Kotlin definitions can describe one KMP graph from L5.5 | `koin_multiplatform`, APPLIED correct | Keep stem/options/key; qualify missing-binding timing to the configured classic DSL |
+
+The two explicit Dagger level candidates therefore remain **FOUNDATION**. Neither requires resolving
+interacting constraints: one recognizes which declaration fits each direct case, and the other
+recognizes that a component instance owns the scoped cache. Importance is not depth.
+
+### DEPRECATED Question audit
+
+| Question | Original responsibility and retirement evidence | Final disposition |
+| --- | --- | --- |
+| `constructor_injection_001` | Required dependencies become explicit; deprecated after `di_constructor_injection_testability` provided broader, sharper coverage | Remains DEPRECATED; reasoning is valuable and superseded by the active Question, so restoration would duplicate it |
+| `di_framework_tradeoff_compile_vs_runtime` | Build-time generated graph versus runtime registry; deprecated because the brand-level binary became obsolete | Remains DEPRECATED; the timing axis is valuable and is reassessed by new mechanism-specific Questions |
+| `dagger_module_binding_declarations` | Module contributes bindings while component owns/exposes graph; deprecated as shallow role recognition | Remains DEPRECATED; new scenario `dagger_module_contributes_component_owns` assesses the distinction without mutating history |
+| `dagger_graph_assembly_generated_component` | Dagger generates a component from reachable bindings; deprecated after the generated-factory and validation Questions superseded its mechanism | Remains DEPRECATED; no uncovered reasoning requires restoration |
+
+No historical Question was rewritten into a new responsibility or reactivated to populate an empty
+Subtopic.
+
+### Existing corrections and independent answers
+
+| Changed Question | Independently derived answer | Final correction/source result |
+| --- | --- | --- |
+| `hilt_field_injection_framework_classes` | `b` | Mapping only; Android-owned Activity receives member injection |
+| `di_constructor_injection_testability` | `a`, `b`, `d` | Mapping only; the three constructor guarantees remain correct |
+| `dagger_compile_time_graph_validation` | `a` | Mapping only; missing and ambiguous reachable bindings are compile diagnostics |
+| `di_scopes_001` | `b`, `d` | Wording/explanation corrected without changing option id or logical key |
+| `di_hilt_viewmodel_scope` | `b` | Keyed option/explanation now state scope reuse plus the component owner that bounds lifetime |
+| `di_koin_factory_vs_single` | `b` | Explanation qualified; definition distinction unchanged |
+| `koin_multiplatform_common_module` | `d` | Explanation qualified; KMP candidacy key unchanged |
+| `hilt_activity_retained_component_lifetime` | `c` | Source updated; answer unchanged |
+| `hilt_install_in_binding_visibility` | `d` | Source updated; answer unchanged |
+| `hilt_vs_dagger_convention_tradeoff` | `b` | Source updated; answer unchanged |
+
+All retained AnswerOption ids preserve the same logical claims. `di_scopes_001_b` was narrowed to
+the owner's context rather than reused for a different assertion.
+
+### New Questions
+
+Eighteen Questions were added. Each row gives the primary reasoning responsibility, why it remained
+necessary after remapping, the independently derived key, and authoritative current Sources.
+
+| Question / Subtopic / level | Responsibility and necessity | Independent answer | Sources |
+| --- | --- | --- | --- |
+| `injection_and_inversion_are_separate_decisions` / `di_fundamentals` / APPLIED | Distinguish supplied collaborator from source-direction inversion in the same graph; no existing Question assessed the separation | `b`: first injected/not inverted; second manually injected/inverted | Android DI; Android architecture |
+| `construct_fetch_receive_responsibility` / `di_fundamentals` / APPLIED | Choose receive over construct/fetch from a per-caller requirement | `c`: constructor receives Clock | Android DI |
+| `integration_boundary_resolution_vs_service_locator` / `service_locator_vs_di` / APPLIED | Domain lookup hides its own requirement; UI boundary resolves a complete host-owned object | `b` | Android DI; Koin Compose |
+| `scope_rule_requires_lived_owner` / `di_scopes` / APPLIED | Combine bounded reuse with the owner that creates/closes the lifetime | `c`: interview owner creates/closes scope | Koin scopes; Hilt components |
+| `runtime_input_stays_out_of_graph` / `dependency_graphs` / APPLIED | Separate stable collaborators from route-specific runtime input | `b`: graph repository/clock, caller topicId | Dagger assisted injection; Koin Compose |
+| `same_type_dependencies_need_distinct_keys` / `dependency_graphs` / APPLIED | Resolve same-type ambiguity generically before framework syntax | `a`: distinct semantic types/keys | Dagger semantics |
+| `graph_error_timing_follows_wiring_mechanism` / `dependency_graphs` / APPLIED | Compare explicit wiring, unverified registry and generated validation without naming one universal timing | `b` | Android DI; Dagger validation |
+| `dagger_module_contributes_component_owns` / `dagger_modules` / APPLIED | Apply module contribution versus component assembly/API/scoped ownership | `b` | Dagger basic usage |
+| `dagger_compile_success_not_lifetime_proof` / `dagger_fundamentals` / APPLIED | A structurally valid graph can violate product lifetime | `a`: structural bindings proved, ownership did not | Dagger validation/scopes |
+| `hilt_viewmodel_vs_activity_retained_owner` / `hilt_components` / APPLIED | Choose per-ViewModel versus shared retained-Activity ownership from sharing requirement | `b`: ActivityRetainedComponent | Hilt components |
+| `hilt_singleton_component_not_process_durable` / `hilt_components` / APPLIED | Separate application-process owner from persistence/restoration | `c` | Hilt components; Android saved state |
+| `koin_container_startup_composition_boundary` / `koin_fundamentals` / APPLIED | Distinguish module declarations, container startup and host composition root | `b`: host starts once with common/platform modules | Koin modules/KMP |
+| `koin_interview_scope_owner` / `koin_scopes` / APPLIED | Choose scoped over single/factory and require an owner to close it | `c` | Koin scopes |
+| `koin_viewmodel_construction_vs_ownership` / `koin_viewmodels` / APPLIED | Koin constructs; destination supplies runtime id; host store owns lifetime | `b` | Koin Compose/ViewModel |
+| `koin_definition_from_reuse_requirement` / `koin_definitions` / APPLIED | Select `single` from application-wide identity requirement rather than keyword recall | `b` | Koin definitions |
+| `koin_shared_and_platform_binding_split` / `koin_multiplatform` / APPLIED | Place shared construction, host storage binding and route input at different boundaries | `a` | Koin KMP |
+| `di_graph_check_timing_by_mechanism` / `di_framework_tradeoffs` / APPLIED | Choose build-time checking by configured mechanism, including modern Koin compiler safety | `b` | Dagger validation; Koin compile safety |
+| `di_strategy_smallest_sufficient_choice` / `di_framework_tradeoffs` / ADVANCED | Combine targets, existing graph, graph change rate, incidents, team knowledge, lifecycle need and migration cost | `c`: retain Koin and add compiler safety, with observable revisit triggers | Koin compile safety/KMP; Hilt components; Dagger basic usage |
+
+The single **ADVANCED** classification is not a quota response. All four alternatives satisfy some
+local desire, while the correct answer requires combining seven material constraints and accepting
+a cost; no single cue, including KMP, is sufficient because manual DI is also compatible and the
+existing graph/change/migration constraints select the smaller intervention.
+
+### Final production practice pools
+
+These pools were re-computed through the real Practice Builder/resolver and are pinned by exact id in
+`LearningUnitPracticeIntegrationTest`. Primary concepts are listed exactly; supporting mappings do
+not contribute.
+
+| Unit | Primary Subtopics | Final pool and levels |
+| ---: | --- | --- |
+| 1 | `di_fundamentals`, `constructor_injection`, `composition_root`, `service_locator_vs_di`, `manual_di` | **7: 3 F, 4 A** - `di_constructor_injection_testability`, `composition_root_001`, `service_locator_vs_di_001`, `manual_di_graph_growth_cost`, `injection_and_inversion_are_separate_decisions`, `construct_fetch_receive_responsibility`, `integration_boundary_resolution_vs_service_locator` |
+| 2 | `dependency_graphs`, `di_scopes` | **5: 1 F, 4 A** - `di_scopes_001`, `scope_rule_requires_lived_owner`, `runtime_input_stays_out_of_graph`, `same_type_dependencies_need_distinct_keys`, `graph_error_timing_follows_wiring_mechanism` |
+| 3 | `dagger_fundamentals`, `dagger_modules`, `dagger_bindings`, `dagger_components`, `dagger_scopes`, `dagger_qualifiers`, `dagger_multibindings` | **11: 6 F, 5 A** - `dagger_generated_factory_no_reflection`, `dagger_compile_time_graph_validation`, `dagger_compile_success_not_lifetime_proof`, `dagger_module_contributes_component_owns`, `dagger_inject_provides_binds_selection`, `dagger_component_graph_root`, `dagger_subcomponent_parent_binding_inheritance`, `dagger_component_dependency_vs_subcomponent`, `dagger_scope_component_instance_lifetime`, `dagger_qualifier_same_type_bindings`, `dagger_multibinding_into_set` |
+| 4 | `hilt_fundamentals`, `hilt_components`, `hilt_viewmodels`, `hilt_modules`, `hilt_vs_dagger` | **9: 3 F, 6 A** - `hilt_field_injection_framework_classes`, `hilt_entry_point_manual_access`, `hilt_activity_retained_component_lifetime`, `hilt_viewmodel_vs_activity_retained_owner`, `hilt_singleton_component_not_process_durable`, `di_hilt_viewmodel_scope`, `dagger_assisted_injection_viewmodel`, `hilt_install_in_binding_visibility`, `hilt_vs_dagger_convention_tradeoff` |
+| 5 | `koin_fundamentals`, `koin_definitions`, `koin_scopes`, `koin_viewmodels`, `koin_multiplatform` | **7: 1 F, 6 A** - `di_koin_factory_vs_single`, `koin_definition_from_reuse_requirement`, `koin_container_startup_composition_boundary`, `koin_interview_scope_owner`, `koin_viewmodel_construction_vs_ownership`, `koin_multiplatform_common_module`, `koin_shared_and_platform_binding_split` |
+| 6 | `di_framework_tradeoffs`, `manual_di` | **3: 2 A, 1 ADV** - `manual_di_graph_growth_cost`, `di_graph_check_timing_by_mechanism`, `di_strategy_smallest_sufficient_choice` |
+
+The only cross-Unit overlap remains `manual_di_graph_growth_cost` in Units 1 and 6. No structurally
+reachable Question requires untaught framework knowledge. No primary Subtopic remains at zero ACTIVE
+coverage. The important residual reasoning not given a dedicated Question is recorded in the ledger
+below rather than hidden by these counts.
+
+Final DI bank: **45 total / 41 ACTIVE / 4 DEPRECATED**; ACTIVE levels **14 FOUNDATION / 26 APPLIED /
+1 ADVANCED**.
+
+### Gap ledger disposition
+
+| Gap | Disposition | Evidence / reason |
+| --- | --- | --- |
+| GAP-U1-A | **Closed by new Question** | `injection_and_inversion_are_separate_decisions` |
+| GAP-U1-B | **Closed by new Question** | `construct_fetch_receive_responsibility` |
+| GAP-U1-C | **Deferred with explicit reason** | `composition_root_001` already fixes root responsibility and the two new construction scenarios make caller ownership concrete; a second feature-leak scenario was lower signal than the remaining owner/Koin/strategy gaps |
+| GAP-U1-D | **Closed by new Question** | `integration_boundary_resolution_vs_service_locator` |
+| GAP-U1-E | **Closed by existing Question after remap/correction** | `di_constructor_injection_testability` now maps to `constructor_injection` |
+| GAP-U2-A | **Closed by new Question** | `scope_rule_requires_lived_owner` selects bounded reuse from the interview requirement |
+| GAP-U2-B | **Closed by new Question** | The same Question requires the interview owner to create/close the scope |
+| GAP-U2-C | **Closed by new Question** | `runtime_input_stays_out_of_graph` |
+| GAP-U2-D | **Closed by new Question** | `same_type_dependencies_need_distinct_keys` remains generic |
+| GAP-U2-E | **Closed by new Question** | `graph_error_timing_follows_wiring_mechanism`; Unit 6 separately compares configured framework mechanisms |
+| GAP-U2-F | **Deferred with explicit reason** | Lower-priority transitive tracing would add another Question to a now meaningful five-Question graph pool; graph paths are already exercised through runtime-input and missing-edge consequences rather than vocabulary recall |
+| GAP-U3-A | **Closed by new Question** | `dagger_module_contributes_component_owns` |
+| GAP-U3-B | **Closed by new Question** | `dagger_compile_success_not_lifetime_proof` |
+| GAP-U4-A | **Closed by new Question** | `hilt_viewmodel_vs_activity_retained_owner` |
+| GAP-U4-B | **Closed by existing Question after remap/correction** | `hilt_field_injection_framework_classes` now routes to Unit 4 |
+| GAP-U4-C | **Closed by new Question** | `hilt_singleton_component_not_process_durable` keeps responsibility on component ownership |
+| GAP-U5-A | **Closed by new Question** | `koin_container_startup_composition_boundary` |
+| GAP-U5-B | **Closed by new Question** | `koin_interview_scope_owner` |
+| GAP-U5-C | **Closed by new Question** | `koin_viewmodel_construction_vs_ownership` |
+| GAP-U5-D | **Closed by new Question** | `koin_definition_from_reuse_requirement` adds requirement-driven depth beside the existing definition |
+| GAP-U5-E | **Closed by new Question** | `koin_shared_and_platform_binding_split` |
+| GAP-U6-A | **Closed by new Question** | `di_graph_check_timing_by_mechanism`, with a separate generic Unit 2 Question |
+| GAP-U6-B | **Closed by new Question** | `di_strategy_smallest_sufficient_choice` |
+| GAP-U6-C | **Covered sufficiently by another Question** | The ADVANCED strategy Question includes an explicit observable revisit condition in both key and explanation |
+
+The two deferrals are deliberate semantic decisions, not structural omissions: every Unit has
+meaningful practice and every primary Subtopic has ACTIVE coverage without authoring one Question per
+Lesson or per Subtopic.
+
+### Cross-topic duplication guards
+
+All named guards were re-read before authoring. The injection/inversion Question assumes rather than
+re-tests whether an interface earns a boundary, so it does not duplicate
+`interface_with_one_implementation_is_not_a_boundary`, `architecture_solid_dependency_substitution`
+or `dependency_direction_domain_framework_types`. The service-locator boundary Question is about
+visibility/resolution responsibility, not test substitution, so it does not duplicate
+`test_dependency_substitution_constructor`. The KMP split Question decides graph placement rather
+than `expect`/`actual` mechanics, avoiding `kmp_expect_actual_vs_interface` and `expect_actual_001`.
+The Koin ViewModel Question assumes platform ViewModelStore ownership and assesses the container's
+construction/runtime-input responsibility, avoiding `kmp_shared_viewmodel_owner_platform`,
+`viewmodel_activity_reference_lifetime` and `architecture_state_holder_taxonomy`. The Hilt process
+Question starts from SingletonComponent's owner boundary and asks what DI cannot supply, rather than
+duplicating `android_process_model_001`. No build-cost or modularization Question was added, preserving
+the territory of `ksp_vs_kapt_build_cost` and `modularization_large_app_module_cost`.
+
+`koin_kmp` remains separate, ACTIVE and empty in the KMP Topic. All E27 Koin multiplatform assessment
+uses `koin_multiplatform`; taxonomy was not expanded or repaired.
+
+### Source freshness
+
+Sources were opened and the supporting material read on **2026-09-19**. The repository version is
+**Koin 4.2.2**. Current Koin 4.2 documentation confirms classic DSL definitions and scopes, Compose
+Multiplatform/ViewModel APIs and runtime parameters, KMP support, and a distinct compiler plugin with
+compile-time dependency/call-site validation. Therefore Koin is no longer described as inherently
+runtime-only.
+
+Android's general Hilt page remains Compose-oriented. Android's dedicated Views Hilt page still
+covers Fragment/View injection, and `dagger.dev/hilt/components.html` documents the complete component
+hierarchy, visibility, scopes and lifetimes. The three hierarchy-sensitive Question Sources were
+updated to the latter; no answer changed. Current Dagger documentation continues to support modules,
+components, component-owned scoped instances and compile-time component graph validation.
+
+No shipped Lesson factual defect was discovered. No Lesson was edited to fit an assessment.
+
+### Tests changed
+
+- `InitialCurriculumSmokeTest` pins the 478-question bank, ACTIVE count, selection modes, global and
+  DI level distributions, and per-Topic ACTIVE count.
+- `LearningUnitPracticeIntegrationTest` pins every final E27 Unit pool by exact identity and level,
+  verifies Hilt/Dagger are absent from the premature pools and present in their framework Units,
+  retains supporting-only isolation, and pins the one Unit 1/6 overlap.
+- `CurriculumLocalDataPathTest` and `CurriculumImporterTest` pin the imported 478 Questions, 1,918
+  AnswerOptions, 528 correct-answer rows and 635 source rows.
+- Existing validator and content-quality tests cover identity uniqueness, source hosts, selection
+  mode, option/key validity, duplicate stems and anti-cue length. No generic validator logic was
+  duplicated.
+
+### Acceptance criteria
+
+| # | Criterion | Status |
+| ---: | --- | --- |
+| 1 | Every Unit's primary concepts receive documented semantic review | **Satisfied** |
+| 2 | Existing Questions re-examined against finished Lessons rather than counts | **Satisfied** |
+| 3 | Remapping and level corrections decided before new authoring | **Satisfied** |
+| 4 | Generic constructor, graph, scope and composition-root reasoning assessed independently | **Satisfied** |
+| 5 | Koin fundamentals, scopes and ViewModel integration meaningfully assessed | **Satisfied** |
+| 6 | Framework selection assessed through decision from requirements | **Satisfied** |
+| 7 | Material gaps addressed or explicitly deferred | **Satisfied** |
+| 8 | Reasoning preferred over copied wording and API recall | **Satisfied** |
+| 9 | DEPRECATED Questions restored only if warranted | **Satisfied** - none restored |
+| 10 | Difficulty follows reasoning without quotas | **Satisfied** |
+| 11 | Every changed/new Question independently solved and Sources verified | **Satisfied** |
+| 12 | Supporting mappings do not broaden practice; pools recorded | **Satisfied** |
+| 13 | Question/AnswerOption identity and lifecycle preserved | **Satisfied** |
+| 14 | Taxonomy unchanged and overlap documented | **Satisfied** |
+| 15 | Coverage reports regenerated | **Satisfied** |
+| 16 | Every new Unit has meaningful practice or reviewed explanation | **Satisfied** |
+
+### Validation and limitations
+
+| Command or review | Result |
+| --- | --- |
+| Focused curriculum, validator, importer, journey and practice-routing JVM tests | **BUILD SUCCESSFUL** |
+| `./gradlew :shared:jvmTest` | **BUILD SUCCESSFUL** |
+| `./gradlew :shared:check` | **BUILD SUCCESSFUL**; JVM, Android host, JS browser, Wasm browser and configured iOS simulator checks passed or were up to date |
+| `./gradlew :shared:iosSimulatorArm64Test` | **BUILD SUCCESSFUL** |
+| `./gradlew :shared:compileKotlinIosArm64` | **BUILD SUCCESSFUL**; only the existing expect/actual beta warnings were emitted |
+| `./gradlew :androidApp:assembleDebug` | **BUILD SUCCESSFUL** |
+| `python3 tools/learning_question_coverage.py --write` then `--check` | Coverage regenerated and current |
+| `python3 -m unittest discover -s tools -p 'test_*.py'` | **21 tests, OK** |
+
+Source verification is a semantic review, while deterministic tests prove structure, import and
+routing; neither substitutes for the other. GitHub issue #392 could not be fetched in this
+environment because `gh` is unavailable and the public page did not resolve, so the synchronized
+backlog entry and the user-supplied issue body were the issue authority. No CI or merge result is
+claimed.
+
+E27-09 remains unstarted.
+
+---
 ## Part 1 — Complete dependency-injection taxonomy inventory
 
 Every Subtopic in the `dependency_injection` Topic, read from
@@ -3594,5 +3895,30 @@ catalog, UI and navigation are unchanged. No Dagger, Hilt or other DI framework 
 | 9 | Capability differences use current official sources; reputation/marketing is not fact | **Satisfied** |
 | 10 | The learner can justify a concrete choice through requirement-to-decision reasoning | **Satisfied** |
 | 11 | Unit practice mappings contain only primary concepts | **Satisfied** |
+
+---
+
+## E27-08 assessment outcomes
+
+Issue **#392** was completed on `task/E27-08` on 2026-09-19. The full 23-ACTIVE / 4-DEPRECATED
+disposition record, independent answer checks, source decisions, intermediate pools, gap ledger and
+all 16 acceptance-criteria results are recorded in the
+[detailed assessment audit](#e27-08-detailed-assessment-audit).
+
+The DI bank moved from **27 total / 23 ACTIVE / 4 DEPRECATED** at **14 FOUNDATION / 9 APPLIED /
+0 ADVANCED** to **45 total / 41 ACTIVE / 4 DEPRECATED** at **14 FOUNDATION / 26 APPLIED /
+1 ADVANCED**. Eighteen substantive Questions were added. The only cross-Unit overlap remains the
+intentional `manual_di_graph_growth_cost` route through Units 1 and 6; no primary DI Subtopic remains
+at zero ACTIVE coverage.
+
+Final production-resolver pools are **Unit 1: 7 (3 F / 4 A)**, **Unit 2: 5 (1 F / 4 A)**,
+**Unit 3: 11 (6 F / 5 A)**, **Unit 4: 9 (3 F / 6 A)**, **Unit 5: 7 (1 F / 6 A)** and
+**Unit 6: 3 (2 A / 1 ADV)**. Hilt field injection no longer reaches Unit 1, Dagger validation no
+longer reaches Unit 2, and each now routes only after its framework is taught.
+
+Focused and full JVM tests, `:shared:check`, explicit iOS Simulator tests, `iosArm64` compilation,
+Android debug assembly, coverage write/check and all 21 coverage-tool tests passed. Unit and Lesson
+content/mappings, taxonomy, production DI code, build dependencies and all four DEPRECATED Question
+lifecycles are unchanged. E27-09 was not started.
 
 ---

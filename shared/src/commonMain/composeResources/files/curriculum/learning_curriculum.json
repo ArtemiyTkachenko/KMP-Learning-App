@@ -21393,6 +21393,268 @@
           ]
         }
       ]
+    },
+    {
+      "id": "unit_choosing_a_dependency_injection_strategy",
+      "topicId": "dependency_injection",
+      "title": "Choosing a Dependency Injection Strategy",
+      "summary": "Choose the smallest dependency-construction strategy that satisfies a concrete project's requirements, make every accepted cost visible, and name the observable change that would justify choosing differently.",
+      "status": "ACTIVE",
+      "lessons": [
+        {
+          "id": "lesson_what_a_container_actually_buys",
+          "title": "What a Container Actually Buys",
+          "summary": "Compare manual DI, Dagger, Hilt and Koin by the observable work each performs, the requirements that make that work valuable, and the costs paid to obtain it.",
+          "status": "ACTIVE",
+          "primarySubtopicIds": ["di_framework_tradeoffs"],
+          "supportingSubtopicIds": ["manual_di", "dagger_fundamentals", "hilt_fundamentals", "koin_fundamentals", "architecture_tradeoffs"],
+          "relatedLessonIds": ["lesson_when_wiring_it_yourself_is_enough", "lesson_what_the_dagger_compiler_checked", "lesson_hilt_or_hand_written_dagger", "lesson_the_koin_container_and_its_modules"],
+          "sources": [
+            {"title": "Manual dependency injection", "url": "https://developer.android.com/training/dependency-injection/manual"},
+            {"title": "Dependency injection with Hilt", "url": "https://developer.android.com/training/dependency-injection/hilt-android"},
+            {"title": "Dagger developer guide", "url": "https://dagger.dev/dev-guide/"},
+            {"title": "Koin 4.2: Definitions", "url": "https://insert-koin.io/docs/reference/koin-core/definitions/"},
+            {"title": "Koin 4.2: Koin Compiler Plugin", "url": "https://insert-koin.io/docs/intro/koin-compiler-plugin/"}
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {"type": "paragraph", "text": "**A framework/container should solve a problem the project actually has.** Manual DI, Dagger, Hilt and Koin can all supply constructor dependencies, bind abstractions, reuse instances, create fresh instances and assemble bounded graphs. The capabilities are not the starting difference. The useful question is which construction work the project needs automated or standardized, and what it will pay for that help."},
+                {"type": "code", "code": "project requirements\n        |\n        v\nproperties that matter\n        |\n        v\nstrategies that provide them\n        |\n        v\ncost of each strategy\n        |\n        v\nsmallest sufficient choice\n        |\n        v\nobservable condition that would change the choice", "language": "text"},
+                {"type": "paragraph", "text": "Manual DI buys direct ordinary-code construction, minimal setup and no container abstraction. Dagger buys generated construction, declared bindings, component/scoping machinery and component-level graph validation. Hilt keeps Dagger's model and adds a predefined Android component hierarchy plus generated integration for framework-created Android owners. Koin's classic DSL buys concise Kotlin-declared definitions, container-managed reuse and a graph that can be composed in common KMP code; modern Koin can additionally perform compiler-assisted declaration and verification. Each benefit moves work rather than making it disappear."},
+                {"type": "paragraph", "text": "Graph size is only one input. Two graphs may each contain eighty objects while imposing very different costs. A stable graph assembled through two entry points may change monthly. A smaller graph may change daily across several features, with every deep constructor edit propagating through multiple construction paths. Ask how often wiring changes, how many entry points assemble overlapping subgraphs, how far constructor changes propagate, and how much assembly the team maintains by hand. There is no dependency-count threshold at which manual DI stops being valid."},
+                {"type": "callout", "kind": "KEY_TAKEAWAY", "text": "A container does not create dependency injection capabilities that ordinary construction lacks. It automates or standardizes graph work. Choose it when the project's requirements make that automation worth its configuration, conventions, tooling and migration cost."}
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {"type": "paragraph", "text": "The comparison becomes concrete when every axis names what an engineer must do or what the project will observe. The first group concerns assembly and ownership:"},
+                {"type": "comparison", "headers": ["Requirement or property", "Manual DI", "Dagger", "Hilt", "Koin"], "rows": [
+                  ["Graph size and rate of change", "Every explicit construction path remains readable, but a deep constructor change may require edits at each path above it", "Generated assembly removes much clerical propagation after bindings describe the reachable component graph", "Generated Dagger assembly does the same while Android entry owners follow Hilt's predefined structure", "Definitions centralize construction recipes; classic DSL changes remain Kotlin configuration resolved through the container"],
+                  ["Amount of assembly code", "The team writes constructor calls, owners and reuse explicitly", "The team declares bindings/components and generated code performs reachable construction", "The team declares bindings while generated Android integration supplies standard entry paths", "The team declares Kotlin definitions and resolves completed objects at integration boundaries"],
+                  ["Lifetime complexity", "Application code creates, retains and clears every owner; reuse is as capable as the owners are correct", "Component instances can encode custom owners and scopes; the team designs and creates that component structure", "Predefined Android component owners remove custom plumbing when their lifetimes match the product", "Container and scope owners retain results; application code must create and close bounded scopes at the right events"],
+                  ["Platform and lifecycle integration", "Each host integrates its own framework-created owners explicitly", "Custom components can serve JVM/Android integration, with framework glue designed by the application", "Generated integration connects supported Android owners to a standard lifecycle-aligned hierarchy", "Android integration is available, while KMP APIs and Compose/ViewModel integrations can participate in shared graphs"],
+                  ["Target platforms", "Ordinary Kotlin construction can be used wherever the shared code compiles", "The generated Java/JVM graph is not one common Kotlin/Native, JS and Wasm graph mechanism", "Android-specific integration cannot be the common graph mechanism for iOS, JVM desktop and web", "Common KMP definitions can join target-specific bindings; each selected library/integration still has a documented target set"],
+                  ["Graph and lifetime complexity", "Every boundary is visible as code, and the application carries all creation, retention and cleanup decisions", "Custom component and subcomponent relationships express graph boundaries, at the cost of designing them", "Standard Android component boundaries reduce decisions when they fit and require escape hatches or custom structures when they do not", "Definitions and scopes express container boundaries, while their real lifetime still depends on the owner that starts or closes them"]
+                ]},
+                {"type": "paragraph", "text": "The second group concerns when and where the cost is paid:"},
+                {"type": "comparison", "headers": ["Requirement or property", "Manual DI", "Dagger", "Hilt", "Koin"], "rows": [
+                  ["Graph-error detection", "Ordinary Kotlin catches absent or mistyped constructor arguments at each explicit call site; semantic mistakes that still type-check need review", "The build validates reachable bindings under Dagger's component rules before execution", "Generated Hilt graphs inherit Dagger's checking; Hilt adds Android structure, not a second independent validation model", "Classic DSL problems may surface through verification or resolution; the 4.2 Compiler Plugin can check documented graph and call-site properties during compilation"],
+                  ["Runtime composition flexibility", "Ordinary control flow can choose which objects to construct, with every branch maintained explicitly", "A generated component follows its declared graph; runtime inputs and component instances provide the planned variation points", "The predefined hierarchy favors standard Android composition and bounded escape hatches", "Classic Kotlin definitions can be selected or composed through runtime control flow; projects must exercise the configurations they can select unless compiler-assisted checks cover them"],
+                  ["Build and generated work", "The Kotlin compiler type-checks ordinary construction; no DI-specific graph generator is required", "DI-specific generation and graph analysis become part of the build and toolchain", "Dagger generation plus Hilt's generated Android integration become part of the build and toolchain", "Classic DSL needs no Compiler Plugin; choosing compiler-assisted Koin adds compile-time analysis and plugin integration"],
+                  ["Convention imposed", "Naming, owner structure and entry-point shape remain project decisions", "Components and bindings are explicit, while the project chooses the graph structure", "Android component ownership and integration paths are standardized when the project adopts the hierarchy", "The container and definition vocabulary are standardized, while module and scope organization remain project choices"],
+                  ["Observability and debugging", "Construction calls are direct source and ordinary stacks show the path", "Generated construction paths are inspectable, and errors or stacks may expose generated factories and component machinery", "Generated Dagger paths plus Hilt's Android integration are inspectable, with framework component ownership part of the trace", "Definitions and resolution form the trace; classic DSL behavior can be inspected through configuration/runtime tooling, and compiler tooling can add graph diagnostics"],
+                  ["Team familiarity", "A team fluent in explicit composition reviews and diagnoses it with little framework-specific context", "Existing Dagger skill reduces declaration, generated-source and error-diagnostic learning cost", "Existing Hilt skill reduces Android integration and component-hierarchy learning cost", "Existing Koin skill reduces definition, scope and resolution-diagnostic learning cost"],
+                  ["Migration and reversibility", "Adoption later changes composition roots and build/integration boundaries; constructor-first consumers can remain unchanged", "Bindings, components and build tooling become migration surface; constructor-injected business classes need not", "Android entry integration and predefined components add migration surface beyond ordinary Dagger bindings", "Definitions, startup and resolution boundaries become migration surface; direct container access inside consumers makes that surface much wider"]
+                ]},
+                {"type": "callout", "kind": "COMMON_MISTAKE", "text": "Turning observable differences into reputation labels such as 'scales better', 'easier', 'enterprise', or 'lightweight'. Replace the label with a consequence: which edit disappears, which owner is predefined, where an error appears, which target can participate, or which build and migration work is added."}
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {"type": "paragraph", "text": "Every axis is partly a question of **when the project pays**. Manual assembly pays while writing and reviewing composition roots. Generated validation pays during builds and toolchain maintenance. Runtime-configurable composition pays when configurations are verified, exercised and diagnosed. Convention pays by accepting somebody else's component structure; custom structure pays by designing and maintaining one. Migration pays when a previously local mechanism has spread across boundaries."},
+                {"type": "paragraph", "text": "Official recommendations are evidence, not verdicts. Android's current guidance recommends Hilt for Android dependency injection and says to prefer it over manual DI when possible. The same guidance teaches manual DI and names its growing boilerplate and owner-management costs. A strong decision asks which assumptions behind the recommendation match the project: Android-only targets, framework-created owners, lifecycle-aligned components, graph change rate and willingness to accept the convention. The publisher's typical case is meaningful input; it is not a proof about every Android codebase."},
+                {"type": "paragraph", "text": "Community reputation is not capability evidence. A framework page can establish generated construction, a component hierarchy, KMP target support or compiler verification. It cannot establish that a tool is universally easy, fast, scalable or appropriate for a team. Performance, startup, binary-size and memory claims would require measurements against specific versions and configurations, so they do not belong in this decision without such evidence."},
+                {"type": "paragraph", "text": "The strategy is also easier to change when consumers merely declare dependencies. A class with `LibraryRepository` in its constructor can be assembled by hand, generated by Dagger/Hilt or described in a Koin definition without changing its business behavior. A class that reaches into a container makes the mechanism part of the consumer, increasing the code that a migration must touch. This is why constructor-first design remains valuable after a framework is chosen."},
+                {"type": "callout", "kind": "INTERVIEW_FOCUS", "text": "Asked to compare DI strategies, begin with targets, graph change rate, entry points, lifetime boundaries, framework-created owners, required detection timing, runtime composition, build constraints, current mechanism, team experience and migration cost. Then connect each relevant property to an observable consequence. Do not begin with a framework name."}
+              ]
+            }
+          ]
+        },
+        {
+          "id": "lesson_when_should_a_graph_error_surface",
+          "title": "When Should a Graph Error Surface?",
+          "summary": "Trace one missing dependency through explicit construction, generated Dagger and Hilt graphs, Koin classic DSL, and Koin compiler verification without confusing graph validity with architecture correctness.",
+          "status": "ACTIVE",
+          "primarySubtopicIds": ["di_framework_tradeoffs"],
+          "supportingSubtopicIds": ["dagger_fundamentals", "koin_fundamentals", "dependency_graphs", "manual_di", "kotlin_gradle_plugin"],
+          "relatedLessonIds": ["lesson_when_a_broken_graph_tells_you", "lesson_what_the_dagger_compiler_checked", "lesson_the_koin_container_and_its_modules", "lesson_scope_is_a_rule_owner_is_a_lifetime"],
+          "sources": [
+            {"title": "Kotlin functions", "url": "https://kotlinlang.org/docs/functions.html"},
+            {"title": "Dagger basic usage", "url": "https://dagger.dev/dev-guide/basic-usage.html"},
+            {"title": "Koin 4.2: Compile-Time Safety", "url": "https://insert-koin.io/docs/reference/koin-compiler/compile-safety/"},
+            {"title": "Koin 4.2: Koin Compiler Plugin", "url": "https://insert-koin.io/docs/intro/koin-compiler-plugin/"}
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {"type": "paragraph", "text": "The slogan 'Dagger errors happen at compile time; Koin errors happen at runtime' is no longer an accurate framework-level comparison. The precise question is: **how is this particular project's graph represented and verified?** Detection timing follows the constructor calls, generated component, classic definitions, verification step or compiler mechanism the project actually uses."},
+                {"type": "code", "code": "ReaderViewModel\n    |\n    v\nLibraryRepository\n    |\n    v\nCredentialsProvider   MISSING", "language": "text"},
+                {"type": "paragraph", "text": "Keep that one missing edge fixed while changing only the representation. `ReaderViewModel` needs `LibraryRepository`; the repository requires `CredentialsProvider`; no provider is supplied. The strategies do not disagree about the dependency. They differ in who checks the path and at which project activity the failure becomes visible."},
+                {"type": "code", "code": "ReaderViewModel(\n    repository = LibraryRepository(\n        // required CredentialsProvider omitted\n    ),\n)", "language": "kotlin"},
+                {"type": "paragraph", "text": "In manual DI, this ordinary Kotlin call does not compile because a required constructor argument is absent. A wrong type also fails at the call site. Manual DI therefore does **not** inherently defer missing dependencies to runtime. It may still leave other mistakes for review: two `CredentialsProvider` values of the same type can be swapped while type-checking, and separate construction paths are checked separately rather than as one declared component graph."},
+                {"type": "callout", "kind": "KEY_TAKEAWAY", "text": "Name the representation and checking mechanism before naming failure timing. Manual construction, a generated Dagger component, Koin classic DSL with verification, and Koin 4.2 with its Compiler Plugin provide different answers even when they build the same conceptual graph."}
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {"type": "comparison", "headers": ["Configuration", "What checks the missing edge", "When it becomes visible", "Cost or limit accepted"], "rows": [
+                  ["Manual constructor wiring", "The Kotlin compiler checks the explicit `LibraryRepository(...)` call", "Compilation of each construction path fails when the required argument is absent or mistyped", "The team maintains every call path, and type-correct semantic wiring still needs review"],
+                  ["Dagger component", "Dagger analyzes the reachable component binding graph and generates construction", "A missing reachable binding prevents the component from compiling", "Graph analysis and generated machinery are part of the build; the guarantee is bounded to Dagger's structural rules"],
+                  ["Hilt generated component", "Dagger checks the generated Hilt component graph", "A missing reachable binding prevents compilation", "The same build-time graph work is paid once; Hilt adds Android conventions and integration, not a separate validation advantage"],
+                  ["Koin 4.2 classic DSL without Compiler Plugin", "Kotlin checks definition lambda code; Koin configuration needs verification or resolution to prove the requested path", "The problem can be found by pre-shipping verification/tests or when the unresolved path is requested", "Runtime-selectable definitions remain possible, and the project must exercise the configurations it can choose"],
+                  ["Koin 4.2 with Compiler Plugin", "The plugin validates documented dependency-graph and injection call-site properties", "Missing dependencies, qualifier mismatches and broken call sites can fail compilation", "Compiler/plugin integration and build-time analysis are added; only the properties checked are guaranteed"]
+                ]},
+                {"type": "paragraph", "text": "Dagger's component-level validation is valuable because a missing reachable binding is rejected before execution, across the graph the component exposes. Hilt inherits that behavior because its generated hierarchy is made of Dagger components. Counting 'Dagger compile safety' and 'Hilt compile safety' as two independent benefits would double-count one mechanism; Hilt's additional value is the Android structure and integration layered on top."},
+                {"type": "paragraph", "text": "For a classic Koin DSL graph, configuration mistakes need not wait for a production user. A project can exercise resolution and use Koin verification during development. But Kotlin compiling the definition lambdas is not the same as a generated Dagger component proving every reachable request. Koin 4.2's Compiler Plugin changes that answer again: its current compile-safety documentation covers missing dependencies, qualifier mismatches and broken injection call sites during compilation, including validation of DSL definitions in an assembled graph."},
+                {"type": "paragraph", "text": "Do not repeat the documentation's promotional phrase 'if it compiles, it works' as an architecture guarantee. The narrow statement is stronger engineering: if the configured compiler mechanism successfully verifies the graph, the dependency-graph properties it checks passed. Correct ownership, useful boundaries, business behavior and platform lifecycle choices are separate claims."},
+                {"type": "callout", "kind": "COMMON_MISTAKE", "text": "Treating early failure as free or later checking as inherently unsafe. Moving detection earlier requires earlier work: compiler integration, graph analysis or generation during the build. Runtime-configurable definitions can support environment-dependent composition and late selection, while requiring the project to validate or resolve the configurations it may choose. The requirement decides which trade matters."}
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {"type": "paragraph", "text": "A reliable Koin answer is version- and mechanism-sensitive. State the Koin version, whether the project uses classic DSL, annotations or Compiler Plugin DSL, whether the Compiler Plugin is enabled, and whether classic configuration verification is part of delivery. 'Koin is runtime DI' omits information needed to make the claim true or false. The interview habit is to identify the mechanism before comparing brands."},
+                {"type": "paragraph", "text": "A graph can be structurally valid and architecturally wrong. Suppose `ReaderSession` must end when one reading session ends, but it is bound in an application-wide owner. Every dependency is satisfiable, every key is unambiguous and generated verification passes. The wrong instance is retained for the wrong lifetime. The configuration is structurally valid; the ownership design is wrong. Unit 3's compiler Lesson and Unit 2's scope-owner Lesson carry the full argument."},
+                {"type": "paragraph", "text": "The deprecated assessment question `di_framework_tradeoff_compile_vs_runtime` preserves a useful responsibility: earlier discovery trades against build-time work and generated machinery. Its framework split is obsolete because current Koin can perform compiler-time graph checks and manual constructor wiring can also fail compilation. A future assessment should keep the axis and replace the brand binary with a mechanism-qualified scenario; this Unit does not reactivate or edit that Question."},
+                {"type": "paragraph", "text": "The balanced answer is therefore not that compile time is better or runtime flexibility is better. Earlier checking is valuable when incomplete configurations must be rejected before execution. Runtime composition is valuable when environments or late choices genuinely change the graph. Some projects need both: runtime-selectable configurations whose allowed forms are verified as early and as completely as their mechanism permits."},
+                {"type": "callout", "kind": "INTERVIEW_FOCUS", "text": "Given a graph error, ask four things: how the graph is represented, what mechanism checks it, which configurations that mechanism can see, and what the successful check actually proves. Then name the cost of moving that check earlier and the architectural properties it still cannot validate."}
+              ]
+            }
+          ]
+        },
+        {
+          "id": "lesson_three_projects_three_answers",
+          "title": "Three Projects, Three Answers",
+          "summary": "Apply one decision method to a stable single-platform graph, a growing Android graph and a shared KMP graph so each conclusion follows from requirements rather than framework identity.",
+          "status": "ACTIVE",
+          "primarySubtopicIds": ["di_framework_tradeoffs"],
+          "supportingSubtopicIds": ["manual_di", "hilt_vs_dagger", "koin_multiplatform", "dagger_components", "kmp_architecture"],
+          "relatedLessonIds": ["lesson_hilt_or_hand_written_dagger", "lesson_one_graph_across_platforms", "lesson_when_wiring_it_yourself_is_enough"],
+          "sources": [
+            {"title": "Manual dependency injection", "url": "https://developer.android.com/training/dependency-injection/manual"},
+            {"title": "Dependency injection with Hilt", "url": "https://developer.android.com/training/dependency-injection/hilt-android"},
+            {"title": "Hilt components", "url": "https://dagger.dev/hilt/components.html"},
+            {"title": "Koin 4.2: KMP advanced patterns", "url": "https://insert-koin.io/docs/reference/koin-mp/kmp/"},
+            {"title": "Koin 4.2: Koin for Compose", "url": "https://insert-koin.io/docs/reference/koin-compose/compose/"}
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {"type": "paragraph", "text": "Use the same method every time: **list requirements; identify the properties they make valuable; identify viable strategies; eliminate only concrete mismatches or unjustified costs; choose one plausible strategy; state the cost accepted; name the changed requirement that could alter the answer.** If the conclusion appears before the requirements, brand preference is probably being dressed as analysis."},
+                {"type": "code", "code": "requirements\n  -> valuable properties\n  -> viable strategies\n  -> concrete mismatches and costs\n  -> plausible choice\n  -> cost accepted\n  -> revisit trigger", "language": "text"},
+                {"type": "paragraph", "text": "The method is not a feature-ranking matrix. A strategy can remain technically capable and still be rejected because the project has no requirement for the machinery it adds. Conversely, a framework can be the smallest sufficient choice when writing and maintaining the needed owners, verification or platform integration by hand would be more mechanism in practice."},
+                {"type": "callout", "kind": "KEY_TAKEAWAY", "text": "A defensible DI answer is a trace from requirements to consequences. It ends with both a chosen cost and a condition for reconsideration, so the decision can change when the project changes without pretending the previous choice was wrong."}
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {"type": "paragraph", "text": "**Project A: a small stable application.** It targets one desktop platform, has twelve straightforward objects, two entry points, one application-owned shared catalogue, fresh per-use report builders, no framework-created lifecycle owner, and a three-person team. The graph changes a few times per quarter. Constructor injection and one composition root already make requirements, sharing and fresh construction visible."},
+                {"type": "comparison", "headers": ["Decision step", "Project A trace"], "rows": [
+                  ["Requirements", "One platform; stable graph; two visible entry paths; application and per-use lifetimes; small team"],
+                  ["Valuable properties", "Direct visibility, low setup, ordinary compiler checking, explicit reuse"],
+                  ["Viable strategies", "All four could construct the objects; manual DI already supplies every required property"],
+                  ["Concrete eliminations", "Dagger generation, Hilt Android integration and Koin container configuration solve no stated problem here"],
+                  ["Plausible choice", "Manual constructor wiring in the composition root"],
+                  ["Cost accepted", "The team edits the two explicit construction paths when a deep dependency changes"],
+                  ["Revisit trigger", "Deep changes repeatedly touch many paths, lifecycle-specific owners are duplicated, independent features must contribute bindings, or whole-graph automated checking gains measurable review value"]
+                ]},
+                {"type": "paragraph", "text": "This is professional production code, not an intentionally awkward baseline. The root constructs one catalogue and passes the same instance to both consumers, constructs a fresh report builder when requested, and contains every platform detail. No global registry and no consumer lookup are involved. Explicit constructor wiring is sufficient; adding a container would introduce configuration and tooling for a requirement the project does not have."},
+                {"type": "paragraph", "text": "**Project B: a growing Android-only application.** Android creates Activities, Services and ViewModels around several real lifecycle boundaries. Graph changes land weekly across several feature teams. The team wants consistent Android entry integration, retained-Activity and ViewModel ownership, and early generated checking. These requirements make Hilt's predefined hierarchy and generated framework integration valuable."},
+                {"type": "comparison", "headers": ["Decision step", "Project B trace"], "rows": [
+                  ["Requirements", "Android only; framework-created owners; several matching Android lifetimes; ViewModels; frequent graph changes; multiple contributors"],
+                  ["Valuable properties", "Lifecycle-aligned conventions, generated owner integration, shared component structure and build-time graph checking"],
+                  ["Viable strategies", "Manual DI, raw Dagger, Hilt and Koin can all construct the graph; each leaves different integration work to the team"],
+                  ["Concrete eliminations", "Manual wiring retains repeated owner glue; raw Dagger requires custom component plumbing the scenario does not need; Koin does not supply Hilt's generated Android component convention"],
+                  ["Plausible choice", "Hilt, because the predefined Android ownership model matches the required lifetimes"],
+                  ["Cost accepted", "The project adopts Hilt's component convention and build-generated integration, and custom owners must fit bounded extension paths"],
+                  ["Revisit trigger", "Custom non-Hilt lifetime boundaries become central, or the target/platform requirement changes"]
+                ]},
+                {"type": "paragraph", "text": "Raw Dagger remains a serious alternative if the application already has mature custom account, workspace or device-session components, the custom owners are central, and migration would add many adapters without removing equivalent work. Koin remains a possible Android choice when Kotlin-declared container configuration and its integration model fit the requirements. In this scenario, Hilt is selected because lifecycle conventions and generated Android integration are explicit requirements, not because Android implies Hilt."},
+                {"type": "paragraph", "text": "**Project C: a Kotlin Multiplatform application.** Shared code contains repositories, state holders and ViewModels. Android, iOS, JVM desktop and web hosts supply storage and database implementations. The project explicitly requires one shared construction graph in common Kotlin, while graph growth has made repeated host composition expensive."},
+                {"type": "comparison", "headers": ["Decision step", "Project C trace"], "rows": [
+                  ["Requirements", "Shared graph across Android, iOS, JVM and web; shared ViewModels; host bindings; growing common assembly"],
+                  ["Valuable properties", "A common graph API, host completion points, constructor-first consumers and reduced repeated wiring"],
+                  ["Viable strategies", "Manual DI and Koin can participate in the shared Kotlin graph; platform-specific mechanisms remain possible only if the architecture accepts separate platform graphs"],
+                  ["Concrete eliminations", "Hilt's Android hierarchy and Dagger's ordinary JVM/Java generated graph cannot serve as one commonMain mechanism across Native, JS and Wasm"],
+                  ["Plausible choice", "Koin classic DSL, because common definitions plus host modules satisfy the shared-graph requirement and the team already operates that model"],
+                  ["Cost accepted", "Container startup, definition diagnostics, scope ownership and Koin-specific integration remain project concerns; compiler verification is a separate build choice"],
+                  ["Revisit trigger", "The shared graph shrinks until explicit host wiring is cheaper, target support changes, or error-detection/build requirements justify a different compatible mechanism"]
+                ]},
+                {"type": "paragraph", "text": "Manual DI remains a correct KMP candidate. Ordinary shared constructors can accept host-provided implementations without a container. Koin becomes attractive here because repeated common definitions and host completion are problems the project actually has, not because KMP automatically means Koin. Other KMP-compatible approaches may exist outside this Unit's four taught strategies; completeness of the ecosystem is not required to apply the method."},
+                {"type": "callout", "kind": "COMMON_MISTAKE", "text": "Using the platform name as the conclusion: 'Android, so Hilt' or 'KMP, so Koin'. A platform is a capability filter and a source of integration requirements. It does not answer graph change rate, lifetime fit, existing investment, team experience, build constraints or migration cost."}
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {"type": "paragraph", "text": "Now test whether you can resist the obvious answer. A mature Android application has hundreds of working raw-Dagger bindings, custom account and hardware-session component owners, and engineers who diagnose its generated graph confidently. Surface cue: Android suggests Hilt. Hidden requirement: those custom owners are central and migration would touch critical integration boundaries while Hilt would remove little current work. A plausible answer is to keep raw Dagger, accept custom Android plumbing, and revisit only if the lifetime model converges on Hilt's hierarchy or the integration burden becomes recurrently costly."},
+                {"type": "paragraph", "text": "Construct a second version yourself: a KMP application whose shared graph contains six stable objects and whose host-specific values are passed through one explicit constructor function. Surface cue: KMP suggests Koin. Hidden requirement: manual composition is already trivial and rarely changes. The correct lesson is not to choose manual DI for contrarian effect. It is to ask enough about the project that a brand cue cannot answer in place of requirements."},
+                {"type": "paragraph", "text": "The same discipline keeps migration cost honest. A learning application with shared Koin definitions across Android, iOS, desktop and web cannot replace its entire common graph with Android-specific Hilt. The non-Android hosts would still require another construction strategy. If the same product later became Android-only and heavily lifecycle-bound, Hilt's value would change materially. Nothing about either framework changed; the project constraints did."},
+                {"type": "paragraph", "text": "In an interview, pause before answering 'Dagger, Hilt or Koin?' Ask about targets, existing graph, owner/lifetime boundaries, framework-created objects, change rate, error-detection needs, runtime variation, tooling limits, team experience and migration surface. Then narrate the trace. A senior answer makes the decision inspectable rather than merely confident."},
+                {"type": "callout", "kind": "INTERVIEW_FOCUS", "text": "For each candidate, say: which stated requirement it satisfies, what concrete work it removes or standardizes, what cost the team accepts, and what observable future change would reopen the decision. If you cannot tie the choice to those four statements, ask another question about the project."}
+              ]
+            }
+          ]
+        },
+        {
+          "id": "lesson_the_smallest_sufficient_strategy",
+          "title": "The Smallest Sufficient Strategy",
+          "summary": "Apply architecture proportionality to dependency construction, complete a credible no-container design, and preserve the option to change mechanisms through constructor-first boundaries.",
+          "status": "ACTIVE",
+          "primarySubtopicIds": ["manual_di", "di_framework_tradeoffs"],
+          "supportingSubtopicIds": ["composition_root", "architecture_tradeoffs", "di_fundamentals", "constructor_injection"],
+          "relatedLessonIds": ["lesson_smallest_sufficient_architecture", "lesson_when_wiring_it_yourself_is_enough", "lesson_a_dependency_should_be_visible"],
+          "sources": [
+            {"title": "Manual dependency injection", "url": "https://developer.android.com/training/dependency-injection/manual"},
+            {"title": "Dependency injection in Android", "url": "https://developer.android.com/training/dependency-injection"},
+            {"title": "Dagger basic usage", "url": "https://dagger.dev/dev-guide/basic-usage.html"},
+            {"title": "Koin 4.2: Definitions", "url": "https://insert-koin.io/docs/reference/koin-core/definitions/"}
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {"type": "paragraph", "text": "The architecture curriculum ended with proportionality: every structural element must earn its cost from a requirement. Dependency construction follows the same rule. The **smallest sufficient strategy** is the least mechanism, constraint and tooling that still satisfies the project's actual requirements at acceptable cost. It is not necessarily the fewest lines, no libraries, or the shortest build."},
+                {"type": "paragraph", "text": "A framework can be the smallest sufficient strategy. If an Android application needs standard integration for many framework-created owners, several lifecycle-aligned graphs and automated whole-component checking, hand-writing equivalent owner plumbing may be more machinery in practice. Manual DI can also be the stable final choice when explicit assembly remains cheaper to maintain than container configuration, build tooling and team adoption. Neither answer is a stage on a maturity ladder."},
+                {"type": "code", "code": "requirements satisfied?\n    no  -> strategy is insufficient\n    yes -> compare accepted operating cost\n             |\n             v\n        choose least mechanism\n             |\n             v\n        record a revisit trigger", "language": "text"},
+                {"type": "paragraph", "text": "Team familiarity and migration cost belong in that comparison. Familiarity changes how quickly a team can review configuration, diagnose failures and operate the build. It is not an excuse to ignore capability: a team may know Hilt extremely well, but that does not make Hilt a commonMain graph for iOS. Migration cost is not mere attachment to sunk work either. Changing hundreds of bindings and integration boundaries creates current engineering risk and opportunity cost, and those matter while the current solution still satisfies requirements."},
+                {"type": "callout", "kind": "KEY_TAKEAWAY", "text": "Choose the least mechanism that meets the requirements at acceptable operating cost. Treat the choice as complete today, then record the observable condition that would make its cost balance change. 'Maybe a framework later' is not a condition."}
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {"type": "paragraph", "text": "Work one no-container project to completion. A desktop inventory utility imports a supplier catalogue, displays searchable items, and exports a stock report. It has one platform, one application entry point, a four-person team and releases monthly. The graph changes a few times per year. There are two real lifetimes: catalogue/cache objects live with the application; one `ExportSession` is created fresh for each export. No platform framework constructs feature owners."},
+                {"type": "code", "code": "main\n |- InventoryController\n |   |- CatalogueRepository\n |   |   |- CatalogueFileStore\n |   |   `- SystemClock\n |   `- StockSearch\n |       `- CatalogueRepository  (same instance)\n `- exportSessionFactory\n     `- ExportSession            (fresh per export)\n         |- CatalogueRepository  (same application instance)\n         `- CsvReportWriter", "language": "text"},
+                {"type": "code", "code": "fun main() {\n    val clock = SystemClock()\n    val fileStore = CatalogueFileStore(appDataDirectory())\n    val repository: CatalogueRepository =\n        LocalCatalogueRepository(fileStore, clock)\n    val search = StockSearch(repository)\n    val controller = InventoryController(repository, search)\n\n    startInventoryApp(\n        controller = controller,\n        newExportSession = {\n            ExportSession(\n                repository = repository,\n                writer = CsvReportWriter(),\n            )\n        },\n    )\n}", "language": "kotlin"},
+                {"type": "paragraph", "text": "This root is complete. Required dependencies appear in constructors. One repository identity is passed to the controller, search and each export. Every export gets a new session and writer. Platform file access is confined to the root and store implementation. The application has no hidden registry, no class resolving its own collaborators and no ambiguous owner. Kotlin checks each constructor call. The team can read the whole lifetime story in one place."},
+                {"type": "paragraph", "text": "Manual DI is sufficient because the graph is stable, has one root, carries two simple ownership rules and imposes little repeated assembly work. The accepted cost is explicit maintenance: a new dependency deep under the repository must be threaded through this root, and the team must review that sharing and fresh construction remain correct. That cost is currently smaller than adopting a container, its configuration style, its build or runtime tooling, and its operational knowledge."},
+                {"type": "comparison", "headers": ["Observable change", "Why it reopens the decision"], "rows": [
+                  ["Adding one deep dependency routinely changes five independent construction paths", "Generated or centralized container assembly may remove repeated clerical propagation"],
+                  ["Several flows duplicate creation and cleanup of the same lifecycle-specific owner", "A component/scope convention may replace repeated owner plumbing"],
+                  ["Independent features repeatedly edit one composition root to contribute implementations", "Graph contribution mechanisms may reduce coordination at the shared file"],
+                  ["Configuration mistakes escape review often enough to cause incidents", "Earlier automated graph verification may earn its build/tooling cost"],
+                  ["The product adds shared KMP hosts with repeated platform-service composition", "A common graph mechanism may reduce host duplication if explicit shared wiring no longer remains clear"],
+                  ["Host composition becomes a recurring review and change burden", "The measured maintenance cost, not project size, now supports automation"]
+                ]},
+                {"type": "paragraph", "text": "None of those changes automatically names the replacement. They trigger a new pass through requirements, properties, candidates and costs. A graph becoming 'large', a team becoming 'serious', or a framework becoming fashionable is not observable enough to support a decision."},
+                {"type": "callout", "kind": "COMMON_MISTAKE", "text": "Ending a valid manual-DI design with 'Hilt would be better eventually'. That makes the current conclusion apologetic and leaves no decision rule. End with the accepted maintenance cost and concrete triggers above. Manual DI remains the choice until evidence changes the balance."}
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {"type": "paragraph", "text": "Migration costs exist in both directions. Moving from manual DI to a framework can convert composition roots, add build or container configuration, adapt Android or host integration boundaries, introduce modules/components/definitions and require the team to learn new diagnostics. Moving from one framework to another, or back to manual construction, depends heavily on how far the old API escaped. Business classes with explicit constructors usually survive; container lookups, framework base types and integration annotations deep in consumers expand the migration surface."},
+                {"type": "paragraph", "text": "Constructor-first design is therefore a reversibility property. A Dagger `@Inject` constructor, a Hilt-created application class with constructor injection, a Koin definition calling that constructor, and a manual root can all supply the same consumer shape. Keep resolution and framework-owned entry integration near composition boundaries, and changing the construction mechanism remains mostly a graph concern rather than a business-code rewrite."},
+                {"type": "paragraph", "text": "Consider a mature Android application with a reliable custom Dagger graph. Hilt might remove some future Android integration boilerplate, yet migrating hundreds of bindings and custom components may cost more and create more risk than that saving returns. Including migration cost is not a refusal to improve working code; it is comparing the real transition with the real continuing cost. The decision changes when repeated future integration work or a changed lifetime model can repay it."},
+                {"type": "paragraph", "text": "Team experience works the same way. Between two compatible strategies, years of Dagger experience can lower delivery and incident cost compared with first-time Koin adoption. A KMP team already operating Koin across hosts has a similar advantage over migration. Familiarity can break a tie or change operating cost; it cannot give an Android-only mechanism shared Native/JS capability or make a predefined lifetime fit a custom owner."},
+                {"type": "paragraph", "text": "Use this worksheet before naming a strategy:"},
+                {"type": "code", "code": "Targets:\nGraph size/change rate:\nRequired lifetime boundaries:\nFramework-owned objects:\nShared KMP graph required:\nWhen must configuration errors be detected:\nRuntime composition flexibility required:\nBuild/tooling constraints:\nExisting construction strategy:\nTeam experience:\nMigration cost:\n\nSmallest strategy satisfying these requirements:\nCost accepted:\nObservable trigger for revisiting:", "language": "text"},
+                {"type": "paragraph", "text": "The worksheet deliberately produces no score. It exposes hard capability constraints first, then operating and transition costs. It can legitimately end at manual DI, Dagger, Hilt or Koin. Its most important line is the last one: a decision with a revisit trigger adapts to evidence; a permanent framework identity turns yesterday's constraints into today's habit."},
+                {"type": "callout", "kind": "INTERVIEW_FOCUS", "text": "Asked which DI framework is best, begin by asking about the project. Then choose the smallest strategy that satisfies its targets, ownership, change, checking and integration requirements; name the cost accepted; and finish with the observable change that would justify another choice. The quality of the answer is the reasoning trace, not the brand."}
+              ]
+            }
+          ]
+        }
+      ]
     }
   ]
 }

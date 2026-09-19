@@ -123,7 +123,6 @@ used; the retrieval date of 2026-09-18 is therefore the freshness marker, and ea
 issue re-verifies rather than trusting this table.
 
 ---
-
 ## Part 1 — Complete dependency-injection taxonomy inventory
 
 Every Subtopic in the `dependency_injection` Topic, read from
@@ -3284,5 +3283,314 @@ beyond automated structure, decoding, routing and integration checks.
 | 13 | KMP source-set/expect-actual material applied rather than retaught | **Satisfied** |
 | 14 | Possible production observations recorded, not implemented | **Satisfied** |
 | 15 | Unit practice mappings contain only primary concepts | **Satisfied** |
+
+---
+
+### E27-07 authoring outcomes
+
+Issue [#391](https://github.com/ArtemiyTkachenko/KMP-Learning-App/issues/391) was
+implemented on branch `task/E27-07` on 2026-09-19. Unit
+`unit_choosing_a_dependency_injection_strategy`, **Choosing a Dependency Injection Strategy**,
+is ACTIVE under `dependency_injection`. Production now contains **30 ACTIVE Units** and
+**135 ACTIVE Lessons**. Dependency Injection contains exactly six Units. E27-08 did not begin.
+
+#### Shipped Lessons and mappings
+
+| Order | Lesson | Primary | Supporting |
+| ---: | --- | --- | --- |
+| 1 | `lesson_what_a_container_actually_buys` — What a Container Actually Buys | `di_framework_tradeoffs` | `manual_di`, `dagger_fundamentals`, `hilt_fundamentals`, `koin_fundamentals`, `architecture_tradeoffs` |
+| 2 | `lesson_when_should_a_graph_error_surface` — When Should a Graph Error Surface? | `di_framework_tradeoffs` | `dagger_fundamentals`, `koin_fundamentals`, `dependency_graphs`, `manual_di`, `kotlin_gradle_plugin` |
+| 3 | `lesson_three_projects_three_answers` — Three Projects, Three Answers | `di_framework_tradeoffs` | `manual_di`, `hilt_vs_dagger`, `koin_multiplatform`, `dagger_components`, `kmp_architecture` |
+| 4 | `lesson_the_smallest_sufficient_strategy` — The Smallest Sufficient Strategy | `manual_di`, `di_framework_tradeoffs` | `composition_root`, `architecture_tradeoffs`, `di_fundamentals`, `constructor_injection` |
+
+There are **no deviations** from the planned Unit identity, title, home Topic, Lesson identities,
+titles, order, primary mappings or supporting mappings. Every Lesson contains substantive CORE,
+PRACTICAL and SENIOR sections plus a `KEY_TAKEAWAY`, `COMMON_MISTAKE` and `INTERVIEW_FOCUS`.
+The Unit contains 4,965 words across authored block text and tables. No earlier DI Unit was edited.
+
+#### Comparison method and decision axes
+
+The Unit uses one sequence throughout:
+
+```text
+project requirements
+        -> properties that matter
+        -> strategies that provide them
+        -> cost of each strategy
+        -> smallest sufficient choice
+        -> observable condition that would change the choice
+```
+
+L6.1 compares consequences rather than scores. It teaches all planned axes:
+
+- graph size as one input, never a count threshold;
+- graph change rate and propagation across overlapping construction paths;
+- amount of manual graph assembly;
+- graph and lifetime complexity, including who creates, retains and clears owners;
+- Android lifecycle/framework integration;
+- Android-only against shared KMP target requirements;
+- the graph-error detection mechanism actually configured;
+- runtime composition flexibility and the checking it requires;
+- build analysis, generation and compiler-plugin work without magnitude claims;
+- the conventions each strategy imposes;
+- direct, generated and container-definition observability without a universal debugging claim;
+- team familiarity as adoption, review and incident cost; and
+- migration/reversibility cost at composition, integration and build boundaries.
+
+Every comparison cell names observable work or behavior. No performance, startup, memory or
+binary-size ranking appears. The editorial ranking sweep covered `best`, `better`, `worse`,
+`winner`, `recommended`, `scalable`, `simple`, `complex`, `lightweight`, `enterprise`, `modern`,
+`old`, `standard`, `performance`, `faster` and `slower`. Occurrences are source-attributed,
+requirement-scoped, or quoted misconceptions that the surrounding text rejects; no context-free
+verdict remains.
+
+#### Treatment of the four strategies
+
+- **Manual DI** remains a complete production strategy. The Unit credits it with constructor
+  injection, abstraction bindings, explicit reuse, fresh construction, bounded owners and
+  compile-time checking of explicit constructor calls. Its differentiating cost is maintaining
+  assembly and ownership code. Project A and L6.4 both end at manual DI without an apology or an
+  assumed later migration.
+- **Dagger** buys generated construction, declared component graphs, automated wiring and
+  component-level compile-time validation. Custom components remain plausible when custom owners
+  are central or a mature graph makes migration expensive. The Unit does not treat a compiling
+  graph as architectural proof.
+- **Hilt** keeps Dagger's construction and validation model while adding a predefined Android
+  component hierarchy and generated framework integration. Android-only makes Hilt available;
+  matching lifecycle/integration requirements make it valuable. Neither fact makes it automatic.
+- **Koin** classic DSL buys Kotlin-declared definitions, concise container configuration,
+  runtime-composable graph choices and common KMP graph participation. Koin 4.2's Compiler Plugin
+  is separately credited with documented compile-time graph/call-site checking. Container startup,
+  definition diagnostics, scope ownership, tooling choice and migration remain costs.
+
+Android's current guidance is reported accurately: Hilt is the officially recommended Android DI
+library and the manual-DI page says to prefer it when possible. The same source teaches manual DI
+and names its graph/lifecycle maintenance costs. The Lesson therefore asks which assumptions behind
+the recommendation match the project rather than translating it into a universal rule. Community
+labels and comparison blogs are not used as capability evidence.
+
+#### Error timing, mechanism and validation limit
+
+L6.2 uses one missing edge throughout:
+
+```text
+ReaderViewModel
+    -> LibraryRepository
+        -> missing CredentialsProvider
+```
+
+- **Manual DI:** omitting the required `CredentialsProvider` from an explicit
+  `LibraryRepository(...)` call fails ordinary Kotlin compilation. Manual DI is not described as
+  inherently runtime-checked.
+- **Dagger:** a missing reachable binding prevents the component graph from compiling. This moves
+  discovery before execution and validates the graph under Dagger's structural rules.
+- **Hilt:** generated Hilt components inherit Dagger's graph checking. The Unit does not count this
+  as a second independent validation advantage; Hilt's addition is Android convention/integration.
+- **Koin classic DSL:** Kotlin checks definition-lambda code, while complete configuration errors
+  may surface through explicit verification or resolution. The Unit says they need not wait for a
+  production user and teaches no verification API in depth.
+- **Koin 4.2 Compiler Plugin:** current official compile-safety documentation explicitly covers
+  missing dependencies, qualifier mismatches and broken call sites during compilation. Setup is
+  excluded. The claim is narrowed to the graph properties the plugin checks, never the marketing
+  phrase as an architecture guarantee.
+
+The interview rule is explicit: name the Koin version, declaration mechanism, whether the Compiler
+Plugin is enabled, and whether classic verification is used before claiming when failure occurs.
+Earlier checking is priced as compiler/plugin/generation and build-time analysis work, without a
+claim that the cost is large. Runtime composition can support environment-dependent definitions and
+late selection; the corresponding cost is validating or exercising selectable configurations.
+
+The compile-valid-but-wrong example retains a reading-session-local mutable object in an
+application-wide owner. Every edge is satisfiable and graph verification passes, while the lifetime
+design is wrong. It links back to `lesson_what_the_dagger_compiler_checked` and
+`lesson_scope_is_a_rule_owner_is_a_lifetime` rather than reteaching either Lesson.
+
+#### Three projects and their accepted costs
+
+**Project A — small stable desktop application.** Approximately twelve objects, one platform, two
+visible entry paths, simple application/per-use lifetimes, a three-person team and infrequent graph
+changes. All four strategies are capable. **Manual DI is selected** because explicit construction
+already satisfies every requirement. The accepted cost is editing the two paths when a deep
+dependency changes. Revisit triggers include repeated propagation across many paths, duplicated
+lifecycle-owner glue, independent graph contributors, recurring review burden or demonstrated value
+from earlier whole-graph checking.
+
+**Project B — growing Android-only application.** Framework-created Activities, Services and
+ViewModels, several Android lifecycle boundaries, weekly graph changes, multiple feature teams and a
+desire for consistent Android DI structure. **Hilt is the selected plausible strategy** because its
+predefined ownership and generated integration match those requirements. The accepted cost is the
+component convention and generated build integration. Raw Dagger remains plausible for mature
+custom owners or high migration cost; Koin remains an Android candidate; manual DI remains capable
+but retains repeated owner/integration work in this scenario.
+
+**Project C — shared KMP graph.** Shared repositories, state holders and ViewModels plus
+platform-specific database/storage bindings across Android, iOS, JVM desktop and web. Manual DI and
+Koin are viable common-graph candidates. **Koin classic DSL is selected** because repeated common and
+host composition is already a maintenance problem and the team operates that model. The accepted
+cost is container/configuration diagnostics, explicit scope ownership, Koin integration and a
+separate compiler-tooling choice. Hilt's Android integration and Dagger's ordinary JVM/Java generated
+graph cannot serve as the one requested commonMain graph; this is a scoped capability mismatch, not
+a global ranking. Manual DI remains viable when shared explicit wiring stays cheaper.
+
+The Senior exercise defeats an obvious answer twice: an Android project keeps mature raw Dagger
+because custom owners and migration cost dominate, and a six-object KMP graph stays manual because
+its explicit shared wiring is trivial. The lesson is to inspect the project, not to be contrarian.
+
+#### Smallest sufficient strategy, migration and reversibility
+
+"Smallest" means the least mechanism, constraint and tooling that satisfies actual requirements at
+acceptable cost. It does not mean no library or fewest lines. A framework can be smallest when
+manual owner and integration plumbing would be more machinery in practice.
+
+L6.4 completes one no-container desktop inventory application: one composition root constructs a
+shared `CatalogueRepository`, passes it to the controller and search service, and creates a fresh
+`ExportSession`/writer per export. Constructors expose every requirement, the root contains the
+platform file boundary, and no registry or hidden lookup exists. Manual DI is sufficient because
+the graph is stable, has one root and two simple lifetime requirements. Six observable migration
+triggers are recorded; "the app gets big" and "the team gets serious" are rejected.
+
+Manual-to-framework costs include converting roots, adding framework/build configuration, adapting
+integration boundaries, introducing modules/components/definitions and team learning. Migration in
+the other direction depends on framework API spread. Constructor-first Dagger, Hilt and Koin
+consumers can survive a mechanism change; direct container lookup in business code widens the
+migration surface. Reversibility is therefore treated as a design quality.
+
+Team familiarity is an operating-cost input: Dagger experience or an already-operated Koin KMP
+graph reduces delivery and diagnosis cost. It cannot make an incompatible target set compatible.
+The mature raw-Dagger-to-Hilt thought experiment makes migration cost concrete: possible future
+integration savings may not repay hundreds of binding/component changes while the existing graph
+continues meeting requirements. This is current cost/risk, not a rule never to modernize.
+
+The Practical close provides the planned decision worksheet: targets; graph size/change rate;
+lifetime boundaries; framework-created objects; shared KMP requirement; required detection time;
+runtime flexibility; build constraints; current strategy; team experience; migration cost; then
+smallest sufficient strategy, accepted cost and observable revisit trigger. It produces no score.
+
+#### Sources and freshness
+
+Sources were reopened on 2026-09-19. Koin remains **4.2.2** in
+`gradle/libs.versions.toml`; every Koin page used is labelled **4.2**.
+
+| Source family | Claims used |
+| --- | --- |
+| Android Developers DI and manual-DI guidance | Manual construction/container model, graph and lifecycle maintenance costs, and the conditional recommendation to prefer Hilt |
+| Android Developers Hilt guidance and official Hilt components | Official Android recommendation, standardized Android integration, predefined component hierarchy and lifecycle fit |
+| Official Dagger developer/basic-usage documentation | Generated construction, component graph behavior and compile-time graph validation |
+| Koin 4.2 definitions, Compiler Plugin and compile-safety references | Classic DSL remains available; compiler-assisted declarations; compile-time checks for missing dependencies, qualifier mismatch and broken call sites |
+| Koin 4.2 KMP and Compose documentation | Common KMP graph APIs and multiplatform Compose/ViewModel candidacy |
+
+No comparison blog, marketing ranking, community-reputation claim or unsupported performance
+assertion is presented as capability evidence. The Koin page's strong "if it compiles" wording is
+explicitly narrowed to verified graph properties.
+
+#### Cross-links
+
+All related links resolve backward; Units 1–5 were not edited.
+
+| Lesson | Related Lessons |
+| --- | --- |
+| L6.1 | `lesson_when_wiring_it_yourself_is_enough`, `lesson_what_the_dagger_compiler_checked`, `lesson_hilt_or_hand_written_dagger`, `lesson_the_koin_container_and_its_modules` |
+| L6.2 | `lesson_when_a_broken_graph_tells_you`, `lesson_what_the_dagger_compiler_checked`, `lesson_the_koin_container_and_its_modules`, `lesson_scope_is_a_rule_owner_is_a_lifetime` |
+| L6.3 | `lesson_hilt_or_hand_written_dagger`, `lesson_one_graph_across_platforms`, `lesson_when_wiring_it_yourself_is_enough` |
+| L6.4 | `lesson_smallest_sufficient_architecture`, `lesson_when_wiring_it_yourself_is_enough`, `lesson_a_dependency_should_be_visible` |
+
+#### Practice, overlap and semantic Question review
+
+The real Practice Builder/resolver returns exactly **one ACTIVE Question** for Unit 6:
+`manual_di_graph_growth_cost`, at **0 FOUNDATION / 1 APPLIED / 0 ADVANCED**.
+`di_framework_tradeoffs` remains a primary concept with **zero ACTIVE Questions**. Supporting
+framework, architecture, KMP and build concepts do not broaden the pool.
+
+The overlap with Unit 1 is intentional and preserved: both Units reach
+`manual_di_graph_growth_cost` through primary `manual_di`. In Unit 1 it assesses the maintenance
+cost that grows in hand-wiring; in Unit 6 it supplies one input to the strategy decision.
+
+`manual_di_graph_growth_cost` was reread in full. Its keyed reasoning remains correct and useful:
+manual DI retains injection, scoping/reuse and sharing capabilities while clerical propagation grows
+as deep dependencies change. It does **not** ask whether this project should still use manual DI and
+does not name a revisit trigger, so it does not close GAP-U6-C.
+
+`di_framework_tradeoff_compile_vs_runtime` remains **DEPRECATED** and unchanged. Its responsibility
+— earlier discovery against build-time/generated work — remains useful. Its binary
+"compile-time framework versus runtime service registry" framing is overtaken by manual constructor
+checking and Koin 4.2 compiler verification. E27-08 should leave it deprecated and author or choose a
+mechanism-qualified scenario that retains the axis without restoring the stale wording.
+
+| Gap | Status after authoring |
+| --- | --- |
+| GAP-U6-A — identify when this project's graph configuration is checked from the mechanism | **Taught; open for assessment.** L6.2 fully teaches the mechanism/version reasoning. Coordinate with generic GAP-U2-E to avoid duplicate assessment |
+| GAP-U6-B — select a strategy from requirements, including no container | **Taught; open for assessment.** L6.3 supplies three complete traces and a fourth hidden-requirement exercise. E27-08 owns level and wording |
+| GAP-U6-C — choose the smallest sufficient strategy and name an observable revisit trigger | **Taught; open for assessment.** L6.4 supplies a complete manual project, six triggers and the worksheet; the existing manual-DI Question supplies only one input |
+
+No Question text, option, answer key, explanation, Source, level, mapping, status or taxonomy entry
+changed. No Question was reactivated. E27-08 remains the owner of every assessment disposition.
+
+#### Tests and generated coverage
+
+`BundledLearningCurriculumTest` now protects exact Unit/Lesson identity, order and title; exact
+primary/supporting mappings; all related links and backwardness; and focused positive evidence for
+the three project scenarios, mechanism-qualified Koin validation, compile-valid/wrong architecture,
+the completed manual project, revisit worksheet and constructor-first reversibility.
+
+`LearningUnitPracticeIntegrationTest` extends Continue Learning through all six DI Units, changes
+the DI Lesson counts to `6, 6, 7, 6, 5, 4`, raises the final studied-record expectation to 134 after
+one Lesson is unmarked, and resolves the exact one-Question Unit-6 practice pool. It pins the
+intentional Unit-1 overlap, zero ACTIVE `di_framework_tradeoffs` coverage and supporting-only
+exclusion.
+
+The canonical coverage snapshot was generated, not hand-edited. It reports **30 ACTIVE Units**,
+**135 ACTIVE Lessons**, Unit 6 at **0/1/0**, and zero ACTIVE primary coverage for
+`di_framework_tradeoffs`.
+
+#### Validation performed
+
+| Command or check | Result |
+| --- | --- |
+| GitHub public API fetch for issue #391 | Open issue body read; matched `E27-07` backlog issue, approach and 11 criteria |
+| `jq` structure/count/mapping/link checks | Valid JSON; 30 ACTIVE Units; 135 ACTIVE Lessons; six DI Units; exact four Lessons and mappings; all new links backward and resolvable |
+| Editorial ranking, runtime/compile and manual-DI sweeps | Every occurrence reviewed in context; no global ranking, stale framework slogan, runtime-is-unsafe claim, manual-is-incomplete claim or compile-means-correct claim remains |
+| `./gradlew :shared:jvmTest --tests '*BundledLearningCurriculumTest*' --tests '*LearningUnitPracticeIntegrationTest*' --tests '*LearningCurriculumValidatorTest*'` | **BUILD SUCCESSFUL** |
+| `./gradlew :shared:jvmTest --tests '*LearningProductionContentJourneyTest*' --tests '*LearningContentEndToEndTest*'` | **BUILD SUCCESSFUL** |
+| `./gradlew :shared:jvmTest --rerun-tasks` | **BUILD SUCCESSFUL; 1,481 tests, 0 failures, 0 errors, 0 skipped** |
+| `python3 tools/learning_question_coverage.py --write` then `--check` | Snapshot regenerated and current |
+| `cd tools && python3 -m unittest test_learning_question_coverage.py` | 21 tests, OK; the local RVM `ps` permission message remained non-fatal |
+| `./gradlew :shared:check` | **BUILD SUCCESSFUL**; Android host, JVM, JS browser, Wasm browser, aggregate tests and configured iOS simulator task passed or were up to date |
+| `./gradlew :shared:iosSimulatorArm64Test --rerun-tasks` | **BUILD SUCCESSFUL**; simulator compilation, link and tests executed |
+| `./gradlew :androidApp:assembleDebug --rerun-tasks` | **BUILD SUCCESSFUL**; Android debug assembled; the existing two-native-library strip warning was non-fatal |
+| `python3 .github/project/validate_backlog.py .github/project/backlog.yml` | **Unavailable:** `ModuleNotFoundError: yaml`; PyYAML is not installed |
+
+#### Limitations and production audit
+
+- `iosArm64` device compilation was not run; only iOS Simulator Arm64 was compiled, linked and tested.
+- No CI run, physical device/emulator run or rendered-device visual validation is claimed. The
+  production content journey validates decoding and reader behavior on JVM, not visual layout on a
+  device.
+- Dagger/Hilt and Koin Compiler Plugin snippets are curriculum text; no production Dagger/Hilt or
+  Compiler Plugin dependency was added to compile them.
+- Source support was verified separately from repository compilation. Platform compilation proves
+  the bundled document decodes across configured targets, not every external framework capability.
+- Editorial quality and semantic Question fit remain human judgements beyond structural, routing and
+  journey tests.
+
+The final diff contains the bundled learning document, two focused JVM test files, the generated
+coverage snapshot and this outcome section only. `initial_curriculum.json`, taxonomy, production
+Koin definitions, host composition roots, ViewModel resolution, build configuration, version
+catalog, UI and navigation are unchanged. No Dagger, Hilt or other DI framework was added.
+
+#### Acceptance criteria
+
+| # | Criterion | Status |
+| ---: | --- | --- |
+| 1 | All four Lessons meet the authoring requirements and production format | **Satisfied** |
+| 2 | Comparisons begin from requirements and no framework receives a context-free verdict | **Satisfied** |
+| 3 | Manual DI remains a first-class production option | **Satisfied** |
+| 4 | Runtime-is-worse and compile-time-means-correct misconceptions are defeated | **Satisfied** |
+| 5 | No framework is automatically correct for Android or KMP | **Satisfied** |
+| 6 | Every decision axis names observable consequences | **Satisfied** |
+| 7 | Recurring scenarios are used and Project A selects no container | **Satisfied** |
+| 8 | Migration and team cost are real decision inputs | **Satisfied** |
+| 9 | Capability differences use current official sources; reputation/marketing is not fact | **Satisfied** |
+| 10 | The learner can justify a concrete choice through requirement-to-decision reasoning | **Satisfied** |
+| 11 | Unit practice mappings contain only primary concepts | **Satisfied** |
 
 ---

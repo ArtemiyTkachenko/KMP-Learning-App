@@ -128,6 +128,9 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-UI-004` | Topic detail / accessibility | Low | High | `topic_detail/TopicStudyPage.kt`, `TopicSubtopicsPage.kt`, `TopicDetailScreenTest.kt` | Two custom clickable discovery rows exposed an action but no control role. | `LearningUnitRow` and `SubtopicRow` used foundation `Modifier.clickable` directly. Unlike Material button/card overloads, no semantic role was supplied, so assistive technology could discover activation without identifying the rows as buttons. | Set `Role.Button` on both conditional row click targets and assert the role in their existing interaction tests. | Fixed |
 | `CQ-UI-005` | Topic discovery / accessibility | Low | High | `topic_study/topics/TopicBrowserScreen.kt`, `TopicBrowserScreenTest.kt` | The browser's visible screen title was not exposed as a semantic heading. | This is the only reviewed top-level surface whose title is content rather than `AppTopBar` chrome. Its `headlineMedium` styling conveyed hierarchy visually, but the node had no `heading` semantic for non-visual navigation. | Add heading semantics to the title and protect it with a Compose semantics assertion. | Fixed |
 | `CQ-UI-006` | Lesson reader / duplication | Low | High | `learning_lesson/LearningLessonBlocks.kt`, `LearningLessonScreen.kt` | The lesson body and lesson outline maintained separate exhaustive mappings from `LearningDepth` to the same localized labels. | Both private extensions switched over every depth and returned the identical three resources. A new or renamed depth therefore required two presentation mappings in one reader to remain aligned. | Keep one package-internal depth-label mapping and use it for both rendered depth headings and outline entries. | Fixed |
+| `CQ-UI-007` | Assessment taking / state identity | Medium | High | `assessment_taking/AssessmentTakingScreen.kt`, `AssessmentTakingScreenTest.kt` | Consecutive questions shared the same remembered `LazyListState`, so a new question could open at the previous question's deep scroll position. | `QuestionContent` remained at one composition position while only its state changed. A Compose interaction test scrolled Question A to answer 25, replaced it with Question B, and reproduced B's heading remaining off-screen until the content was keyed by question ID. | Give each question its own composition identity so its lazy list starts at the top, while selection and feedback remain owned by `AssessmentTakingUiState`. | Fixed |
+| `CQ-UI-008` | Practice builder / accessibility | Low | High | `practice_builder/PracticeBuilderScreen.kt`, `PracticeBuilderScreenTest.kt` | The question-count and source controls exposed checkbox roles even though both sets are single-select. | Material `FilterChip` supplies `Role.Checkbox` by default. The builder used it for question count and source radio groups; a nested visual `RadioButton(onClick = null)` did not change the parent chip's role. | Override those two chip groups to `Role.RadioButton`, retain checkbox semantics for levels, and assert all three roles in the merged semantics tree. | Fixed |
+| `CQ-UI-009` | Assessment taking / accessibility | Low | High | `assessment_taking/AssessmentTakingScreen.kt`, `AssessmentTakingScreenTest.kt` | The current question was visually styled as the content heading but was not exposed as one semantically. | The top app bar names the assessment while the `headlineSmall` question text is the primary heading of the changing content. Its semantics previously exposed only text. | Mark the question text as a heading and protect the hierarchy with a Compose semantics assertion. | Fixed |
 
 ## Audit Pass Log
 
@@ -136,6 +139,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | Part 0 | Baseline and inventory | Complete | `75e7b30c9b08a5ea1cf275c1c7793bfa4ab4c96f` | 409 Kotlin paths inventoried plus build, CI, and architecture documentation | 0 | 0 | Four Gradle baseline checks; `git diff --check`; documentation-only final status | No production quality review performed. |
 | Part 1A | App shell, navigation, shared UI, and settings | Complete | `c025e027b077eb5e9600ee26e9283180486b4635` | 41 assigned production Kotlin files, 12 direct dependencies/callers, and 20 relevant tests | 3 | 1 | Targeted `AppRootTest`; `:shared:jvmTest`; `:androidApp:assembleDebug`; `git diff --check` | High 0, Medium 0, Low 3; two deferred. No recomposition, expensive-composition, state-read-scope, stability, remember, `derivedStateOf`, effect-key, lazy-identity, side-effect-during-composition, or accessibility defect was verified. See review record below. |
 | Part 1B | Topic discovery and lesson reading | Complete | `753ab8d8f1db93ea1b2f90b399e8bd28629f65b8` | 25 assigned production Kotlin files, 7 shared/model dependencies, and 16 relevant test files | 4 | 4 | Targeted `TopicBrowserScreenTest` and `TopicDetailScreenTest`; `:shared:jvmTest`; `:androidApp:assembleDebug`; `git diff --check` | High 0, Medium 1, Low 3. One lazy-state identity bug, two accessibility defects, and one duplicated stable concept were fixed. No qualifying recomposition/performance concern was found. See review record below. |
+| Part 1C | Assessment launch, taking, review, and practice builder | Complete | `a37b5a7385572e2b727b6580a62b165a46e51a64` | 23 assigned production Kotlin files, 10 shared dependencies/callers, and 16 relevant test files | 3 | 3 | Targeted `AssessmentTakingScreenTest` and `PracticeBuilderScreenTest`; `:shared:jvmTest`; `:androidApp:assembleDebug`; `git diff --check` | High 0, Medium 1, Low 2. One question-local lazy identity bug and two accessibility defects were fixed. No qualifying recomposition/performance concern or new Part-2 deferral was found. See review record below. |
 
 ### Part 1A Review Record
 
@@ -213,6 +217,69 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
   common-Compose changes use existing multiplatform APIs and the repository has no device UI suite.
   No visual verification was required because the fixes alter scroll identity or semantics only;
   `CQ-UI-006` is a rendering-preserving mapping consolidation.
+
+### Part 1C Review Record
+
+- **Assigned production boundary (23 files):** `assessment/start`:
+  `AssessmentLaunchCoordinator.kt`, `AssessmentLaunchDialog.kt`, `AssessmentLaunchViewModel.kt`,
+  `StartAssessment.kt`; `assessment_taking`: `AssessmentQuestionUiModel.kt`,
+  `AssessmentTakingDestination.kt`, `AssessmentTakingScreen.kt`, `AssessmentTakingUiState.kt`,
+  `AssessmentTakingViewModel.kt`; `assessment_review`: `AssessmentReviewComponents.kt`,
+  `AssessmentReviewLoader.kt`, `AssessmentReviewModels.kt`, `QuestionContentComponents.kt`,
+  `ReviewSaveAction.kt`; `topic_study/practice_builder`: `PracticeBuilderDefaults.kt`,
+  `PracticeBuilderDestination.kt`, `PracticeBuilderRouteMapping.kt`, `PracticeBuilderScreen.kt`,
+  `PracticeBuilderTarget.kt`, `PracticeBuilderUiState.kt`, `PracticeBuilderViewModel.kt`,
+  `PracticeTargetResolver.kt`; and `topic_study/focused_practice/FocusedPracticeDestination.kt`.
+- **Dependencies/callers inspected (10 files):** `App.kt`, `ui/AppTopBar.kt`,
+  `ui/ScreenStatus.kt`, `ui/ContentHierarchy.kt`, `ui/AdaptivePanes.kt`,
+  `assessment/AssessmentConfig.kt`, `assessment/session/AssessmentEngine.kt`,
+  `assessment/session/AssessmentSession.kt`, `focused_result/FocusedResultScreen.kt`, and
+  `mixed_interview/MixedInterviewResultScreen.kt`. Result callers were read only far enough to
+  establish review-component reuse; Part 1D was not audited.
+- **State interfaces inspected:** `AssessmentLaunchViewModel`, `AssessmentTakingViewModel`, and
+  `PracticeBuilderViewModel` were read through their public state/action transitions and immediate
+  guards. Coroutine cancellation, event ownership, persistence sequencing, and stale-result analysis
+  remain owned by Parts 2B/2C and 3; no new verified concern required deferral from this pass.
+- **Relevant tests inspected (16 files):** `AssessmentLaunchDialogTest`,
+  `AssessmentLaunchViewModelTest`, `AssessmentTakingScreenTest`, `AssessmentTakingViewModelTest`,
+  `AssessmentReviewLoaderTest`, `AssessmentReviewComponentsTest`, `AssessmentSessionLoaderTest`,
+  `PracticeBuilderRouteMappingTest`, `PracticeBuilderScreenTest`, `PracticeBuilderViewModelTest`,
+  `PracticeTargetResolverTest`, `FocusedLearningJourneyIntegrationTest`,
+  `LearningUnitPracticeIntegrationTest`, `TargetedPracticeLifecycleIntegrationTest`,
+  `MixedInterviewJourneyIntegrationTest`, and `GuidedLearningPracticePresetIntegrationTest`.
+  They established intended behavior and protected fixes; Part 6's adequacy audit was not performed.
+- **Fixed:** `CQ-UI-007` keys taking content to the semantic Question ID so a changed Question starts
+  at the top; `CQ-UI-008` exposes question-count and source choices as radio buttons while levels
+  remain checkboxes; `CQ-UI-009` exposes the current Question as the content heading. The two screen
+  suites gained interaction and semantics regressions.
+- **Recomposition/performance disposition:** no finding. Expected selection, submission, feedback,
+  progress, and animation state changes recompose their owning content; answer collections are
+  rendered lazily with stable answer-ID keys; review transforms are small or loader-owned; and no
+  expensive work, overly broad state read, `derivedStateOf` opportunity, or measurable static
+  performance concern justified a change.
+- **Effects, transitions, and identity:** coordinator event collectors are keyed to their ViewModels
+  and use current callbacks; completion navigation is keyed to the successful attempt ID. Submit,
+  next, finish, launch, and retry paths have synchronous state guards before asynchronous work. The
+  verified identity defect was confined to the taking list and fixed by Question ID; selection,
+  correctness, review, and lazy-row identity already use answer/Question IDs rather than positions.
+- **Reuse and adaptive-layout decisions:** taking and review rows remain separate because one is an
+  interactive radio/checkbox control and the other is a read-only outcome explanation; their merger
+  would require mode flags. Review already shares authored-content primitives across result and saved
+  surfaces. Focused practice cleanly delegates to `AssessmentTakingDestination`. Builder state and
+  callbacks stay outside compact/expanded branches, while shared list sections preserve content
+  order; no extraction or adaptive-state change was needed. Existing `ScreenLoading`, `ScreenError`,
+  `ScreenMessage`, `ScreenStatus`, `AppTopBar`, `SectionHeading`, and `AppTwoPaneRow` are reused.
+- **Accessibility disposition:** answer rows already expose one coherent radio/checkbox target with
+  non-clickable visual controls, feedback states correctness in text, and progress exposes range
+  semantics. `CQ-UI-008` and `CQ-UI-009` address the two verified gaps. Launch dialogs, standard
+  buttons, disabled states, review outcome labels, and save state expose sufficient Material or
+  explicit semantics; no additional annotation was added.
+- **Validation:** the targeted `AssessmentTakingScreenTest` and `PracticeBuilderScreenTest` run
+  passed; `./gradlew :shared:jvmTest` and `./gradlew :androidApp:assembleDebug` passed. The existing
+  Kotlin expect/actual Beta warning was unchanged. Android lint was not run because no Android source
+  changed; JS/Wasm/iOS and device UI tests were not run because the changes use existing common
+  Compose APIs and the repository has no device/browser UI suite. No visual verification was needed
+  because all changes affect state identity or semantics without changing pixels.
 
 ## Baseline Health
 
@@ -614,10 +681,23 @@ Needs measurement: 0
 Accepted as-is: 0
 Not a defect: 0
 
-Part 1C — Next
+Part 1C — Complete
+
+High: 0
+Medium: 1
+Low: 2
+Observations: 0
+
+Fixed: 3
+Deferred: 0
+Needs measurement: 0
+Accepted as-is: 0
+Not a defect: 0
+
+Part 1D — Next
 ```
 
-Part 1 is not complete. The exact next chunk is **Part 1C — Assessment launch, taking, review, and
-practice builder**: `assessment/start`, `assessment_taking`, `assessment_review`,
-`topic_study/practice_builder`, and `topic_study/focused_practice`. Do not begin it as part of Part
-1B.
+Part 1 is not complete. The exact next chunk is **Part 1D — Results, history, progress, mistakes,
+and saved questions**: `topic_study/focused_result`, `mixed_interview`, `mistake_review`, `progress`,
+and `saved_questions`. It owns the deferred `CQ-UI-002` `PerformanceCard` review. Do not begin it as
+part of Part 1C.

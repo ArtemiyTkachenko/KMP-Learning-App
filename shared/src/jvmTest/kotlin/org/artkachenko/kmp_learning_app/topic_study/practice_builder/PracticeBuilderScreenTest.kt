@@ -4,8 +4,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -40,6 +44,21 @@ internal class PracticeBuilderScreenTest {
         }
         onNodeWithTag(practiceSourceTag(PracticeQuestionSource.ALL)).assertIsSelected()
         onNodeWithTag(PracticeBuilderStartButtonTag).assertIsEnabled()
+    }
+
+    @Test
+    fun filterControlsExposeSingleAndMultipleSelectionRoles() = runComposeUiTest {
+        setContentWith(state())
+
+        onNodeWithTag(practiceQuestionCountTag(10)).assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton),
+        )
+        onNodeWithTag(practiceLevelTag(QuestionLevel.FOUNDATION)).assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox),
+        )
+        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.ALL)).assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton),
+        )
     }
 
     @Test

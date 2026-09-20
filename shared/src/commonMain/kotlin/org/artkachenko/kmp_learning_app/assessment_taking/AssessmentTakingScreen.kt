@@ -30,11 +30,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
@@ -123,13 +126,15 @@ internal fun AssessmentTakingScreen(
                     modifier = Modifier.weight(1f),
                 )
 
-                is AssessmentTakingUiState.Content -> QuestionContent(
-                    state = state,
-                    onAnswerClick = onAnswerClick,
-                    onSubmit = onSubmit,
-                    onNext = onNext,
-                    modifier = Modifier.weight(1f),
-                )
+                is AssessmentTakingUiState.Content -> key(state.question.id) {
+                    QuestionContent(
+                        state = state,
+                        onAnswerClick = onAnswerClick,
+                        onSubmit = onSubmit,
+                        onNext = onNext,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
 
                 is AssessmentTakingUiState.ReadyToComplete -> ScreenStatus(Modifier.weight(1f)) {
                     Text(text = stringResource(Res.string.assessment_taking_ready))
@@ -224,7 +229,9 @@ private fun QuestionContent(
                 text = state.question.text,
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(top = 12.dp),
+                modifier = Modifier
+                    .padding(top = 12.dp)
+                    .semantics { heading() },
             )
             Text(
                 text = stringResource(

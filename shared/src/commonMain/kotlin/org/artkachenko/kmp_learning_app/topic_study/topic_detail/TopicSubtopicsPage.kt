@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.learning_context_accuracy
@@ -117,7 +118,9 @@ private fun SubtopicRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag(SubtopicPracticeButtonTag)
-                .clickable { onStartSubtopicPractice(item.subtopic.id) }
+                .clickable(role = Role.Button) {
+                    onStartSubtopicPractice(item.subtopic.id)
+                }
                 // Inside the clickable, so the state layer spans the pane and the content is inset
                 // within it rather than the whole row being inset and the band hugging the text.
                 .padding(horizontal = margin, vertical = AppSpacing.Comfortable),

@@ -100,9 +100,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import kotlinx.coroutines.launch
-import kmp_learning_app.shared.generated.resources.learning_lesson_depth_core
-import kmp_learning_app.shared.generated.resources.learning_lesson_depth_practical
-import kmp_learning_app.shared.generated.resources.learning_lesson_depth_senior
 import kmp_learning_app.shared.generated.resources.learning_lesson_outline_title
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningDepth
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningSection
@@ -110,7 +107,6 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppNavigationOverlay
 import org.artkachenko.kmp_learning_app.ui.theme.maxWidth
-import org.jetbrains.compose.resources.StringResource
 
 internal const val LearningLessonLoadingTag = "learning_lesson_loading"
 internal const val LearningLessonReadingColumnTag = "learning_lesson_reading_column"
@@ -547,7 +543,7 @@ private data class LessonOutlineEntry(
  */
 @Composable
 private fun rememberLessonOutline(sections: List<LearningSection>): List<LessonOutlineEntry> {
-    val depthLabels = LearningDepth.entries.associateWith { stringResource(it.outlineLabel()) }
+    val depthLabels = LearningDepth.entries.associateWith { stringResource(it.labelResource()) }
     return remember(sections, depthLabels) {
         sections.mapIndexedNotNull { index, section ->
             val startsDepthRun = index == 0 || sections[index - 1].depth != section.depth
@@ -624,20 +620,6 @@ private fun LessonOutline(
         }
     }
 }
-
-/**
- * The depth layer's name as an outline entry.
- *
- * The same resources the page's own depth headings use, so an entry and the heading it points at
- * can never disagree. It is a separate function only because the one in `LearningLessonBlocks` is
- * private to that file.
- */
-private fun LearningDepth.outlineLabel(): StringResource =
-    when (this) {
-        LearningDepth.CORE -> Res.string.learning_lesson_depth_core
-        LearningDepth.PRACTICAL -> Res.string.learning_lesson_depth_practical
-        LearningDepth.SENIOR -> Res.string.learning_lesson_depth_senior
-    }
 
 /**
  * Narrow enough that the reading column keeps the whole measure, wide enough for a Section title

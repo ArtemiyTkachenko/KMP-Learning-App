@@ -30,10 +30,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
@@ -162,6 +165,9 @@ internal fun TopicBrowserScreen(
     val browseListState = rememberLazyListState()
     val resultsListState = rememberLazyListState()
     val query = (state as? TopicBrowserUiState.Content)?.query.orEmpty()
+    LaunchedEffect(query) {
+        if (query.isNotBlank()) resultsListState.scrollToItem(0)
+    }
     val scrolledUnderHeader = if (query.isBlank()) {
         browseListState.canScrollBackward
     } else {
@@ -309,7 +315,7 @@ private fun TopicBrowserHeader(
                         text = stringResource(Res.string.topic_browser_title),
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).semantics { heading() },
                     )
                     IconButton(
                         onClick = onSettingsClick,

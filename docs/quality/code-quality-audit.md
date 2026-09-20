@@ -124,6 +124,10 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-UI-001` | Shared UI / startup | Low | High | `AppRoot.kt`, `ui/ScreenStatus.kt` | The startup root duplicated the shared loading and error status concept. | `AppRoot` had private centred loading and retry layouts with their own literal spacing even though `ScreenLoading` and `ScreenError` already own the same semantics, layout, progress indication, and retry action for the rest of the product. The duplicate also omitted the shared status container's edge padding. | Render startup `Loading` and `Error` through the existing shared status primitives while keeping the startup state machine, strings, loading tag, and retry behavior unchanged. | Fixed |
 | `CQ-BUG-001` | App shell lifecycle | Low | High | `AppRoot.kt`, `androidApp/src/main/kotlin/org/artkachenko/kmp_learning_app/MainActivity.kt`, `shared/src/commonMain/kotlin/org/artkachenko/kmp_learning_app/data/local/curriculum/CurriculumDataInitializer.kt` | Host recreation resets the startup state and launches initialization again. | `AppRoot` stores `AppStartupState` with plain `remember`; Android's activity declares no configuration-change handling, so recreation composes `Loading` and launches `initialize` again. The app-scoped initializer's `initialized` guard prevents a second import and can return before the loading branch reaches a drawn frame, so a visible flash is possible rather than structurally guaranteed. Saving `Ready` directly is unsafe because process recreation also restores saveable state while constructing a fresh initializer that still must run. | In Part 2A / 4B, give initialization completion recreation-stable ownership while preserving a mandatory initialization run after process death; add a recreation-focused host/UI test at the chosen ownership boundary. | Deferred |
 | `CQ-UI-002` | Shared UI API | Low | High | `ui/PerformanceCard.kt`; callers in `progress/**` and `mixed_interview/**` | `PerformanceCard` exposes several independent presentation flags and nullable options that permit incoherent combinations. | The API combines `isWeak`, nullable `weakLabel`, `showChevron`, `showPercentage`, `isSummary`, and nullable `action`. It can render a navigation chevron without requiring an action, requires a percentage even when it is hidden, and silently ignores `weakLabel` unless `isWeak` is also true. Current inspected callers use valid combinations, so this is API friction rather than a confirmed user-visible bug. | Re-evaluate with all callers during Part 1D; prefer small semantic variants or a coherent trailing/action contract rather than adding more flags. Do not redesign it from the shared-UI side before those call sites are audited. | Deferred |
+| `CQ-UI-003` | Topic discovery / state identity | Medium | High | `topic_study/topics/TopicBrowserScreen.kt`, `TopicBrowserScreenTest.kt` | Every search query shared one `LazyListState`, so a new result set could open at the previous query's scroll position. | Browse and search correctly had separate states, but the results state survived all non-blank query changes. After scrolling a long result set to item 25, replacing the query with another 30-item result set kept that index instead of showing its first match. | Reset only the results list to item zero when the query changes; retain the independent browse-list state. | Fixed |
+| `CQ-UI-004` | Topic detail / accessibility | Low | High | `topic_detail/TopicStudyPage.kt`, `TopicSubtopicsPage.kt`, `TopicDetailScreenTest.kt` | Two custom clickable discovery rows exposed an action but no control role. | `LearningUnitRow` and `SubtopicRow` used foundation `Modifier.clickable` directly. Unlike Material button/card overloads, no semantic role was supplied, so assistive technology could discover activation without identifying the rows as buttons. | Set `Role.Button` on both conditional row click targets and assert the role in their existing interaction tests. | Fixed |
+| `CQ-UI-005` | Topic discovery / accessibility | Low | High | `topic_study/topics/TopicBrowserScreen.kt`, `TopicBrowserScreenTest.kt` | The browser's visible screen title was not exposed as a semantic heading. | This is the only reviewed top-level surface whose title is content rather than `AppTopBar` chrome. Its `headlineMedium` styling conveyed hierarchy visually, but the node had no `heading` semantic for non-visual navigation. | Add heading semantics to the title and protect it with a Compose semantics assertion. | Fixed |
+| `CQ-UI-006` | Lesson reader / duplication | Low | High | `learning_lesson/LearningLessonBlocks.kt`, `LearningLessonScreen.kt` | The lesson body and lesson outline maintained separate exhaustive mappings from `LearningDepth` to the same localized labels. | Both private extensions switched over every depth and returned the identical three resources. A new or renamed depth therefore required two presentation mappings in one reader to remain aligned. | Keep one package-internal depth-label mapping and use it for both rendered depth headings and outline entries. | Fixed |
 
 ## Audit Pass Log
 
@@ -131,6 +135,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | ---- | ---- | ------ | --------------- | -------------: | -------: | ----: | ---------- | ----- |
 | Part 0 | Baseline and inventory | Complete | `75e7b30c9b08a5ea1cf275c1c7793bfa4ab4c96f` | 409 Kotlin paths inventoried plus build, CI, and architecture documentation | 0 | 0 | Four Gradle baseline checks; `git diff --check`; documentation-only final status | No production quality review performed. |
 | Part 1A | App shell, navigation, shared UI, and settings | Complete | `c025e027b077eb5e9600ee26e9283180486b4635` | 41 assigned production Kotlin files, 12 direct dependencies/callers, and 20 relevant tests | 3 | 1 | Targeted `AppRootTest`; `:shared:jvmTest`; `:androidApp:assembleDebug`; `git diff --check` | High 0, Medium 0, Low 3; two deferred. No recomposition, expensive-composition, state-read-scope, stability, remember, `derivedStateOf`, effect-key, lazy-identity, side-effect-during-composition, or accessibility defect was verified. See review record below. |
+| Part 1B | Topic discovery and lesson reading | Complete | `753ab8d8f1db93ea1b2f90b399e8bd28629f65b8` | 25 assigned production Kotlin files, 7 shared/model dependencies, and 16 relevant test files | 4 | 4 | Targeted `TopicBrowserScreenTest` and `TopicDetailScreenTest`; `:shared:jvmTest`; `:androidApp:assembleDebug`; `git diff --check` | High 0, Medium 1, Low 3. One lazy-state identity bug, two accessibility defects, and one duplicated stable concept were fixed. No qualifying recomposition/performance concern was found. See review record below. |
 
 ### Part 1A Review Record
 
@@ -162,6 +167,52 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
   not run because the fix only substitutes common primitives already compiled for every target by
   the Part 0 `:shared:check` baseline. No screenshot/golden infrastructure exists, so the changed
   startup status was interaction-verified by the JVM Compose test rather than pixel-verified.
+
+### Part 1B Review Record
+
+- **Assigned production boundary (25 files):** every Kotlin file under
+  `topic_study/topics`, `topic_study/topic_detail`, `topic_study/learning_unit`, and
+  `topic_study/learning_lesson`. The four ViewModels were read only at their public state/action
+  interfaces and far enough to confirm UI invariants; their coroutine and ownership behavior remains
+  owned by Part 2B.
+- **Shared/model dependencies inspected (7 files):** `ScreenStatus.kt`, `ContentHierarchy.kt`,
+  `MetricComponents.kt`, `AdaptivePanes.kt`, `LearningContext.kt`, and the study-progress UI/domain
+  models. Part 1A's `AppTopBar`, adaptive pane, layout, and theme contracts were used as established
+  dependencies rather than re-audited.
+- **Relevant tests inspected (16 files):** the four feature `*ViewModelTest` files; the four direct
+  screen/content suites (`TopicBrowserScreenTest`, `TopicDetailScreenTest`,
+  `TopicDetailLearningContentTest`, `LearningUnitScreenTest`); `LearningLessonScreenTest`;
+  `LessonScrollStateReducerTest`; `TopicPracticeRecommendationTest`; and the five focused Learn
+  journey/integration suites (`FocusedLearningJourneyIntegrationTest`,
+  `LearningNavigationIntegrationTest`, `LearningReaderJourneyIntegrationTest`,
+  `LearningUnitPracticeIntegrationTest`, and `TopicDiscoveryIntegrationTest`). These were used to
+  establish intended UI behavior and protect fixes, not as a Part 6 coverage audit.
+- **Fixed:** `CQ-UI-003` resets search results to their first item for each changed query without
+  disturbing the catalogue's independent scroll position. `CQ-UI-004` gives the two foundation
+  clickable rows `Role.Button`. `CQ-UI-005` exposes the browser title as a heading. `CQ-UI-006`
+  makes the Lesson depth-label resource mapping the one shared concept used by body and outline.
+- **Recomposition/performance disposition:** no finding. State is lifecycle-collected at destination
+  boundaries; meaningful collection transforms live in ViewModels; lazy rows use stable entity keys;
+  Lesson scroll sampling keeps per-pixel reads out of the body composition; outline derivation is
+  remembered by sections and localized labels; and the small per-Unit progress joins did not justify
+  speculative caching. No `derivedStateOf`, stability/skipping, state-read-scope, or expensive-
+  composition change was made.
+- **Effects and identity:** the reader's scroll reducer and `ScrollState` are keyed to Lesson
+  identity, its visibility callback uses `rememberUpdatedState`, and disposal restores shell chrome.
+  Source-open failure state was not changed: adjacent-Lesson navigation replaces the Navigation 3
+  entry, disposing the destination that owns the state. No navigation or other side effect was found
+  executing directly during composition.
+- **Reuse decisions:** the Part 1A status, hierarchy, metric, adaptive-pane, and top-bar primitives
+  already represent the concepts used here and were reused. Topic- and Unit-level study summaries
+  remain separate because their state handling and list placement differ; Topic, Subtopic, Unit, and
+  Lesson rows retain distinct containers/content contracts rather than gaining screen-mode flags.
+- **Validation:** the targeted `TopicBrowserScreenTest` and `TopicDetailScreenTest` run passed;
+  `./gradlew :shared:jvmTest` and `./gradlew :androidApp:assembleDebug` passed. The documented Kotlin
+  expect/actual Beta warning appeared and was unchanged. Android lint was not run because no
+  Android-specific source changed; JS/Wasm/iOS and UI device tests were not run because these local
+  common-Compose changes use existing multiplatform APIs and the repository has no device UI suite.
+  No visual verification was required because the fixes alter scroll identity or semantics only;
+  `CQ-UI-006` is a rendering-preserving mapping consolidation.
 
 ## Baseline Health
 
@@ -549,8 +600,24 @@ Deferred: 2
 Needs measurement: 0
 Accepted as-is: 0
 Not a defect: 0
+
+Part 1B — Complete
+
+High: 0
+Medium: 1
+Low: 3
+Observations: 0
+
+Fixed: 4
+Deferred: 0
+Needs measurement: 0
+Accepted as-is: 0
+Not a defect: 0
+
+Part 1C — Next
 ```
 
-Part 1 is not complete. The exact next chunk is **Part 1B — Topic discovery and lesson reading**:
-`topic_study/{topics,topic_detail,learning_unit,learning_lesson}`. Do not begin it as part of Part
-1A.
+Part 1 is not complete. The exact next chunk is **Part 1C — Assessment launch, taking, review, and
+practice builder**: `assessment/start`, `assessment_taking`, `assessment_review`,
+`topic_study/practice_builder`, and `topic_study/focused_practice`. Do not begin it as part of Part
+1B.

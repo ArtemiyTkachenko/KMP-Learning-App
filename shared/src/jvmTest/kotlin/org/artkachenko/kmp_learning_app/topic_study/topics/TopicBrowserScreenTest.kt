@@ -4,6 +4,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
@@ -12,11 +15,13 @@ import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.assertTouchHeightIsEqualTo
 import androidx.compose.ui.test.assertTouchWidthIsEqualTo
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -42,6 +47,21 @@ import org.artkachenko.kmp_learning_app.ui.topicVisualMarkerTag
 
 @OptIn(ExperimentalTestApi::class)
 internal class TopicBrowserScreenTest {
+    @Test
+    fun browserTitleIsAHeading() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Empty,
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("Learn").assert(isHeading())
+    }
+
     @Test
     fun topSafeAreaAndHeaderSpacingAreEachAppliedOnce() = runComposeUiTest {
         // The shell leaves the top inset unconsumed so this screen, which has no AppTopBar, owns
@@ -163,6 +183,34 @@ internal class TopicBrowserScreenTest {
         onNodeWithTag(TopicBrowserSearchFieldTag).performTextInput("flow")
 
         assertEquals("flow", query)
+    }
+
+    @Test
+    fun changingTheQueryStartsTheNewResultSetAtTheTop() = runComposeUiTest {
+        var query by mutableStateOf("first")
+        setContent {
+            MaterialTheme {
+                val prefix = if (query == "first") "First" else "Second"
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = emptyList(),
+                        query = query,
+                        topicMatches = List(30) { index ->
+                            topicItem("${query}_$index", "$prefix $index")
+                        },
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNode(hasScrollAction()).performScrollToNode(hasText("First 25"))
+        onNodeWithText("First 25").assertIsDisplayed()
+
+        runOnIdle { query = "second" }
+
+        onNodeWithText("Second 0").assertIsDisplayed()
     }
 
     @Test

@@ -4,8 +4,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
@@ -474,7 +477,10 @@ internal class TopicDetailScreenTest {
             }
         }
 
-        onNodeWithTag(learningUnitCardTag("unit_b")).assertHasClickAction().performClick()
+        onNodeWithTag(learningUnitCardTag("unit_b"))
+            .assertHasClickAction()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .performClick()
         assertEquals(listOf("unit_b"), selected)
     }
 
@@ -1518,7 +1524,9 @@ internal class TopicDetailScreenTest {
         }
 
         selectTab(TopicSubtopicsTabTag)
-        onNodeWithTag(SubtopicPracticeButtonTag).performClick()
+        onNodeWithTag(SubtopicPracticeButtonTag)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .performClick()
         assertEquals("subtopic_stable", clicked)
         onAllNodesWithText("Empty Subtopic").assertCountEquals(0)
     }

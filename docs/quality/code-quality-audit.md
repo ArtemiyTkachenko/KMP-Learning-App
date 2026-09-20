@@ -121,13 +121,47 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 
 | ID | Area | Severity | Confidence | File(s) | Finding | Evidence | Recommendation | Status |
 | -- | ---- | -------- | ---------- | ------- | ------- | -------- | -------------- | ------ |
-| — | — | — | — | — | No findings recorded yet — inventory pass only. | — | — | — |
+| `CQ-UI-001` | Shared UI / startup | Low | High | `AppRoot.kt`, `ui/ScreenStatus.kt` | The startup root duplicated the shared loading and error status concept. | `AppRoot` had private centred loading and retry layouts with their own literal spacing even though `ScreenLoading` and `ScreenError` already own the same semantics, layout, progress indication, and retry action for the rest of the product. The duplicate also omitted the shared status container's edge padding. | Render startup `Loading` and `Error` through the existing shared status primitives while keeping the startup state machine, strings, loading tag, and retry behavior unchanged. | Fixed |
+| `CQ-BUG-001` | App shell lifecycle | Low | High | `AppRoot.kt`, `androidApp/src/main/kotlin/org/artkachenko/kmp_learning_app/MainActivity.kt`, `shared/src/commonMain/kotlin/org/artkachenko/kmp_learning_app/data/local/curriculum/CurriculumDataInitializer.kt` | Host recreation resets the startup state and launches initialization again. | `AppRoot` stores `AppStartupState` with plain `remember`; Android's activity declares no configuration-change handling, so recreation composes `Loading` and launches `initialize` again. The app-scoped initializer's `initialized` guard prevents a second import and can return before the loading branch reaches a drawn frame, so a visible flash is possible rather than structurally guaranteed. Saving `Ready` directly is unsafe because process recreation also restores saveable state while constructing a fresh initializer that still must run. | In Part 2A / 4B, give initialization completion recreation-stable ownership while preserving a mandatory initialization run after process death; add a recreation-focused host/UI test at the chosen ownership boundary. | Deferred |
+| `CQ-UI-002` | Shared UI API | Low | High | `ui/PerformanceCard.kt`; callers in `progress/**` and `mixed_interview/**` | `PerformanceCard` exposes several independent presentation flags and nullable options that permit incoherent combinations. | The API combines `isWeak`, nullable `weakLabel`, `showChevron`, `showPercentage`, `isSummary`, and nullable `action`. It can render a navigation chevron without requiring an action, requires a percentage even when it is hidden, and silently ignores `weakLabel` unless `isWeak` is also true. Current inspected callers use valid combinations, so this is API friction rather than a confirmed user-visible bug. | Re-evaluate with all callers during Part 1D; prefer small semantic variants or a coherent trailing/action contract rather than adding more flags. Do not redesign it from the shared-UI side before those call sites are audited. | Deferred |
 
 ## Audit Pass Log
 
 | Pass | Area | Status | Commit reviewed | Files reviewed | Findings | Fixes | Validation | Notes |
 | ---- | ---- | ------ | --------------- | -------------: | -------: | ----: | ---------- | ----- |
 | Part 0 | Baseline and inventory | Complete | `75e7b30c9b08a5ea1cf275c1c7793bfa4ab4c96f` | 409 Kotlin paths inventoried plus build, CI, and architecture documentation | 0 | 0 | Four Gradle baseline checks; `git diff --check`; documentation-only final status | No production quality review performed. |
+| Part 1A | App shell, navigation, shared UI, and settings | Complete | `c025e027b077eb5e9600ee26e9283180486b4635` | 41 assigned production Kotlin files, 12 direct dependencies/callers, and 20 relevant tests | 3 | 1 | Targeted `AppRootTest`; `:shared:jvmTest`; `:androidApp:assembleDebug`; `git diff --check` | High 0, Medium 0, Low 3; two deferred. No recomposition, expensive-composition, state-read-scope, stability, remember, `derivedStateOf`, effect-key, lazy-identity, side-effect-during-composition, or accessibility defect was verified. See review record below. |
+
+### Part 1A Review Record
+
+- **Assigned production boundary (41 files):** every package-root `App*.kt`, every Kotlin file
+  under `shared/commonMain/.../ui/**`, and every Kotlin file under
+  `shared/commonMain/.../settings/**`. The boundary includes `AppShellViewModel` only as the public
+  interface consumed by the shell; its state/coroutine implementation remains owned by Part 2A.
+- **Direct dependencies and callers inspected (12 files):** Android `MainActivity`,
+  `CurriculumDataInitializer`, the four platform `UtcOffset` actuals, `LearningLessonDestination`,
+  `LearningLessonScreen`, `ProgressComponents`, `ProgressScreen`, `MixedInterviewResultScreen`, and
+  `InterviewStartScreen`. These were read only far enough to establish startup recreation, shell
+  chrome callbacks, timestamp cost, and `PerformanceCard` API use; their owning future chunks were
+  not audited.
+- **Relevant tests reviewed (20 files):** `AppearancePreferenceTest`, `TopicVisualIdentityTest`,
+  `CopyReportingTextToolbarTest`, `LocalTimestampTest`, `AppNavigationBarTest`, `AppNavigationTest`,
+  `AppNavigationTransitionsTest`, `AppNavigatorRestorationTest`, `AppNavigatorTest`, `AppRootTest`,
+  `AppearanceThemeTest`, `SettingsNavigationIntegrationTest`, `SharedHostStartupTest`,
+  `SettingsScreenTest`, `AdaptiveLayoutTest`, `ContentHierarchyTest`, `LargeFontScaleTest`,
+  `MetricComponentsTest`, `TopicVisualIdentityCurriculumTest`, and `SelectionCopyDesktopTest`.
+- **Fixed:** `CQ-UI-001`; `AppRoot` now uses `ScreenLoading` and `ScreenError`. `AppRootTest` now
+  interacts with the visible Retry label rather than a production test tag. No shared-component API
+  was widened for test-only access.
+- **Deferred:** `CQ-BUG-001` to Part 2A / 4B and `CQ-UI-002` to Part 1D. No architecture, Gradle,
+  Koin, persistence, schema, curriculum, or dependency change was made.
+- **Validation:** `./gradlew :shared:jvmTest --tests org.artkachenko.kmp_learning_app.AppRootTest`
+  passed; `./gradlew :shared:jvmTest` passed; `./gradlew :androidApp:assembleDebug` passed. The
+  existing Kotlin expect/actual Beta warning appeared during compilation and is unrelated to this
+  change. Android lint was not run because no Android-specific source changed; JS/Wasm and iOS were
+  not run because the fix only substitutes common primitives already compiled for every target by
+  the Part 0 `:shared:check` baseline. No screenshot/golden infrastructure exists, so the changed
+  startup status was interaction-verified by the JVM Compose test rather than pixel-verified.
 
 ## Baseline Health
 
@@ -502,7 +536,21 @@ decisions. A justified deferred item may become a separate future task.
 
 ## Current Audit Status
 
-Part 0 is complete. There are no substantive findings and no “candidates noticed during inventory”
-section because no unverified observation needed preservation. Production, test, Gradle, DI, CI,
-and curriculum files remain unchanged. The next recommended chunk is **Part 1A — App shell,
-navigation, shared UI, and settings**.
+```text
+Part 1A — Complete
+
+High: 0
+Medium: 0
+Low: 3
+Observations: 0
+
+Fixed: 1
+Deferred: 2
+Needs measurement: 0
+Accepted as-is: 0
+Not a defect: 0
+```
+
+Part 1 is not complete. The exact next chunk is **Part 1B — Topic discovery and lesson reading**:
+`topic_study/{topics,topic_detail,learning_unit,learning_lesson}`. Do not begin it as part of Part
+1A.

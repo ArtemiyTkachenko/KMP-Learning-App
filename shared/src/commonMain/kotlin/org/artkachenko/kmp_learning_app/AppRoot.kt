@@ -1,32 +1,20 @@
 package org.artkachenko.kmp_learning_app
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.app_startup_error
 import kmp_learning_app.shared.generated.resources.app_startup_loading
-import kmp_learning_app.shared.generated.resources.app_retry
-import org.jetbrains.compose.resources.stringResource
+import org.artkachenko.kmp_learning_app.ui.ScreenError
+import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.theme.AppearanceTheme
+import org.jetbrains.compose.resources.stringResource
 
 internal const val AppStartupLoadingTag = "app_startup_loading"
-internal const val AppStartupRetryTag = "app_startup_retry"
 
 /**
  * Shared application root: initializes platform-local data, then enters [App].
@@ -58,47 +46,17 @@ public fun AppRoot(initialize: suspend () -> Unit) {
     // light-to-dark flash at startup and nothing here waits on storage.
     AppearanceTheme {
         when (state) {
-            AppStartupState.Loading -> AppStartupLoading()
+            AppStartupState.Loading -> ScreenLoading(
+                message = stringResource(Res.string.app_startup_loading),
+                testTag = AppStartupLoadingTag,
+            )
             AppStartupState.Ready -> App()
-            AppStartupState.Error -> AppStartupError(
+            AppStartupState.Error -> ScreenError(
+                message = stringResource(Res.string.app_startup_error),
                 onRetry = {
                     state = AppStartupState.Loading
                 },
             )
-        }
-    }
-}
-
-@Composable
-private fun AppStartupLoading() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            CircularProgressIndicator(Modifier.testTag(AppStartupLoadingTag))
-            Text(text = stringResource(Res.string.app_startup_loading))
-        }
-    }
-}
-
-@Composable
-private fun AppStartupError(onRetry: () -> Unit) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Text(text = stringResource(Res.string.app_startup_error))
-            Button(onClick = onRetry, modifier = Modifier.testTag(AppStartupRetryTag)) {
-                Text(text = stringResource(Res.string.app_retry))
-            }
         }
     }
 }

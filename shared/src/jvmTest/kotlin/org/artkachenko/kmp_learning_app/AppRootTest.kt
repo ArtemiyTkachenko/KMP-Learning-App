@@ -3,6 +3,7 @@ package org.artkachenko.kmp_learning_app
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import kotlin.test.Test
@@ -35,13 +36,13 @@ internal class AppRootTest {
         }
 
         waitForIdle()
-        onNodeWithTag(AppStartupRetryTag).assertIsDisplayed()
+        onNodeWithText("Retry").assertIsDisplayed()
         assertEquals(1, attempts)
 
-        onNodeWithTag(AppStartupRetryTag).performClick()
+        onNodeWithText("Retry").performClick()
         waitForIdle()
 
         assertEquals(2, attempts)
-        onNodeWithTag(AppStartupRetryTag).assertIsDisplayed()
+        onNodeWithText("Retry").assertIsDisplayed()
     }
 }

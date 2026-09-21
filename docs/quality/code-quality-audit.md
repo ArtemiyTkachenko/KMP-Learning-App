@@ -287,6 +287,126 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
   Compose APIs and the repository has no device/browser UI suite. No visual verification was needed
   because all changes affect state identity or semantics without changing pixels.
 
+### Part 1D Review Record
+
+- **Assigned production boundary (43 files):** `focused_result`: `FocusedResultDestination.kt`,
+  `FocusedResultScreen.kt`, `FocusedResultUiState.kt`, `FocusedResultViewModel.kt`;
+  `mixed_interview`: `InterviewHistoryStateHolder.kt`, `InterviewStartDestination.kt`,
+  `InterviewStartScreen.kt`, `InterviewStartViewModel.kt`, `MixedInterviewDefaults.kt`,
+  `MixedInterviewDestination.kt`, `MixedInterviewResultDestination.kt`,
+  `MixedInterviewResultScreen.kt`, `MixedInterviewResultUiState.kt`,
+  `MixedInterviewResultViewModel.kt`; `mistake_review`: `MistakeReviewDestination.kt`,
+  `MistakeReviewModels.kt`, `MistakeReviewScreen.kt`, `MistakeReviewService.kt`,
+  `MistakeReviewStateHolder.kt`, `MistakeReviewUiState.kt`, `MistakeReviewViewModel.kt`;
+  `progress`: `ProgressComponents.kt`, `ProgressDestination.kt`,
+  `ProgressPracticeShortcuts.kt`, `ProgressScreen.kt`, `ProgressStateHolder.kt`,
+  `ProgressTopicDestination.kt`, `ProgressTopicScreen.kt`, `ProgressTopicUiState.kt`,
+  `ProgressTopicViewModel.kt`, `ProgressUiState.kt`, `ProgressViewModel.kt`,
+  `RecentTrendChart.kt`; `saved_questions`: `SavedQuestion.kt`,
+  `SavedQuestionContentModels.kt`, `SavedQuestionContentResolver.kt`,
+  `SavedQuestionStateHolder.kt`, `SavedQuestionsDestination.kt`, `SavedQuestionsScreen.kt`,
+  `SavedQuestionsState.kt`, `SavedQuestionsUiState.kt`, `SavedQuestionsViewModel.kt`, and
+  `repository/SavedQuestionRepository.kt`. Nineteen of these files currently contain Compose.
+- **Shared review/UI dependencies inspected (9 existing files):** `ui/PerformanceCard.kt`,
+  `ui/AdaptivePanes.kt`, `ui/ScreenStatus.kt`, `ui/ContentHierarchy.kt`, and the five
+  `assessment_review` files `AssessmentReviewComponents.kt`, `AssessmentReviewLoader.kt`,
+  `AssessmentReviewModels.kt`, `QuestionContentComponents.kt`, and `ReviewSaveAction.kt`.
+  `AssessmentResultLayout.kt` was added as the one new shared result primitive.
+- **State/ViewModel interfaces inspected:** all 11 ViewModels/state holders in the boundary were
+  read through the state and action contracts consumed by UI. Repeat concurrency and event
+  ownership were inspected only far enough to establish UI invariants; Part 2C retains their full
+  state/coroutine audit. `SavedQuestionStateHolder` was traced far enough to verify
+  `CQ-STATE-001`, which Part 2D owns.
+- **Relevant tests inspected (32 files):** the direct loader, service, holder, ViewModel, screen,
+  destination, resolver, shortcut, chart, repository, and result integration suites under
+  `assessment_review`, `focused_result`, `mixed_interview`, `mistake_review`, `progress`, and
+  `saved_questions`; `FocusedLearningJourneyIntegrationTest`,
+  `MixedInterviewJourneyIntegrationTest`, `ProgressLearningJourneyIntegrationTest`, and
+  `ui/AdaptiveLayoutTest`. They established intended behavior and protected the fixes; full test
+  architecture adequacy remains Part 6.
+- **Fixed:** `CQ-UI-002` now binds navigation, chevron, click handling, and `Role.Button` through
+  `onClick`, represents an unavailable percentage as `null`, and rejects a nested action on a
+  navigable card. Every caller was migrated: interview latest/best, progress Topic/history,
+  mixed-result Topic performance, weak areas, and Topic/Subtopic detail summaries. `CQ-UI-010`
+  adds the interview heading; `CQ-UI-011` remembers the mistake practice target by queue identity;
+  `CQ-UI-012` shares the result pane shell; `CQ-UI-013` keeps retake callbacks current.
+- **Deferred:** `CQ-STATE-001` to Part 2D. No Part 2C issue was verified: both repeat actions disable
+  while creating and their ViewModels synchronously reject a duplicate launch; attempt identity is
+  constructor-owned and error states remain retryable. No separate Part 6 test finding was opened;
+  the concurrency regression test belongs with the Part 2D fix.
+- **PerformanceCard caller disposition:** inert mixed-result Topic cards show the percentage without
+  a chevron; interview-history, progress-Topic, and progress-history cards navigate as whole button
+  surfaces and show the chevron; weak-area cards remain reading surfaces with a separate labelled
+  action; Topic detail uses summary styling and suppresses percentages only when evidence is below
+  policy. Weak badges are omitted only where the section heading already states weakness. The
+  remaining independent options therefore encode real caller needs and no sealed mode hierarchy or
+  generic configuration object was introduced.
+- **Lists and identity:** mistake, weak-area, Topic, history, Subtopic, and saved lists use stable
+  domain keys. Saved removal pending state is a `Set<String>` checked per row; the two-row UI test
+  confirms one pending removal does not disable another, and `animateItem` follows `questionId`.
+  Result transcripts intentionally remain unkeyed: their order and membership do not change while
+  the destination lives, save state is external per Question ID, and expansion is itself saveable by
+  Question ID. Adding a key would not fix or protect a current behavior.
+- **Adaptive layout:** focused and mixed results now call the same `AssessmentResultLayout`; compact
+  order remains outcome then transcript, while expanded panes contain the same section lambdas and
+  retain independent scroll state. Progress and Mistake Review already declare shared section
+  lambdas once for both arrangements. No action, transcript order, or state owner differs by size.
+- **Progress and weak-area semantics:** joins, grouping, sorting, history mapping, and weakness
+  classification are upstream. UI work is limited to small formatting and a maximum-five-point
+  chart. The dashboard continues to distinguish an observed empty weak-area set from no resolvable
+  observations by checking whether Topic performance exists; that logic was preserved.
+- **Review, saving, missing content, and sources:** result and mistake surfaces use the shared
+  attempt-review card; Saved Questions deliberately uses authored content without learner selection
+  or correctness claims. Missing result Questions have no save/practice action, while a missing
+  saved identity remains removable. Source failure is associated by URL and a successful click
+  clears it. Save/unsave actions use exact Question IDs and per-ID pending state.
+- **Recomposition/performance disposition:** `CQ-UI-011` is the one verified Part 1D finding: a
+  saved-state or source-failure change caused a full mistake-queue target derivation despite an
+  unchanged queue. No other unnecessary recomposition, expensive composition work, broad state-read
+  scope, stability/skipping issue, or justified `derivedStateOf` use was found. The recent chart's
+  collection work is bounded to five values; result notices scan bounded assessment transcripts;
+  progress derivation is upstream.
+- **Accessibility:** navigable performance cards now publish `Role.Button`, and the interview page
+  title is a heading. Score and correctness information remains textual rather than color-only;
+  answer tags cover selected-correct, selected-wrong, missed-correct, and neutral combinations;
+  saved removal and practice shortcuts are standard labelled buttons. Tests assert the new role and
+  heading semantics.
+- **Reuse decisions:** `AssessmentResultLayout` is the stable summary/transcript shell shared by
+  focused and mixed results. Existing score, review, missing-content, retention, status, section,
+  and adaptive-pane primitives remain reused. Feature-specific outcome sections stay separate
+  because repeat state and mixed Topic performance differ; mistake review and saved authored-content
+  cards remain separate from attempt review because their truth and actions differ.
+- **Validation:** the six targeted Compose suites passed; `./gradlew :shared:jvmTest`,
+  `./gradlew :androidApp:assembleDebug`, and `./gradlew :shared:check` passed. The broad check ran
+  Android host tests, JVM tests, JS browser tests, Wasm browser tests, and iOS simulator tests. The
+  existing Kotlin expect/actual Beta warning appeared for JVM, Android, JS, Wasm, and iOS and was
+  unchanged. Android lint, device UI tests, and browser end-to-end tests were not run; no Android
+  source changed, and those UI infrastructures do not exist here. Rendering was not pixel-checked
+  because the UI changes preserve pixels except for semantics and bind already-present chevrons to
+  their existing click actions.
+
+## Part 1 Compose/UI Synthesis
+
+- **Findings:** 15 unique findings across Parts 1A-1D: 13 fixed and two deferred. Severity totals
+  are High 0, Medium 5, Low 10; no observation-only or needs-measurement finding remains.
+- **Bugs fixed:** three user-visible state/effect defects: search-result scroll identity,
+  assessment-Question scroll identity, and stale result-navigation callbacks.
+- **Accessibility:** six findings affected accessibility: two missing button roles, two missing
+  headings, incorrect single-select roles, and navigable performance cards without a button role.
+  All were fixed with JVM Compose semantics protection.
+- **Duplication/reuse:** three duplicated stable concepts were consolidated: startup status,
+  Lesson depth labels, and the adaptive assessment-result shell. Existing assessment review,
+  authored Question content, status, hierarchy, metric, and adaptive-pane primitives were reused.
+- **Recomposition/performance:** one actual repeated-work finding was fixed by remembering the
+  mistake practice target by queue identity. No other unnecessary recomposition, expensive
+  composition, state-read-scope, stability/skipping, or measurement-dependent performance issue
+  was verified.
+- **Deferred ownership:** `CQ-BUG-001` remains for Part 2A/4B and `CQ-STATE-001` for Part 2D. No
+  Part 2C concern and no standalone Part 6 test concern was opened.
+- **Deliberately not created:** no generic ResultScreen, performance-card mode hierarchy, generic
+  Question card, Topic/Unit row merger, taking/review row merger, or compact/expanded state owner.
+  Similar UI whose state, meaning, or actions differ remains separate.
+
 ## Baseline Health
 
 | Check | Result | Failures/warnings | Notes |
@@ -700,10 +820,22 @@ Needs measurement: 0
 Accepted as-is: 0
 Not a defect: 0
 
-Part 1D — Next
+Part 1D — Complete
+
+High: 0
+Medium: 3
+Low: 3
+Observations: 0
+
+Fixed: 5
+Deferred: 1
+Needs measurement: 0
+Accepted as-is: 0
+Not a defect: 0
+
+Part 1 — Complete
+Part 2A — Next
 ```
 
-Part 1 is not complete. The exact next chunk is **Part 1D — Results, history, progress, mistakes,
-and saved questions**: `topic_study/focused_result`, `mixed_interview`, `mistake_review`, `progress`,
-and `saved_questions`. It owns the deferred `CQ-UI-002` `PerformanceCard` review. Do not begin it as
-part of Part 1C.
+Part 1 is complete. The exact next chunk is **Part 2A — Shell, appearance, and application state**.
+Do not begin it automatically.

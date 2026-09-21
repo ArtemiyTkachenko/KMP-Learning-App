@@ -1,6 +1,7 @@
 package org.artkachenko.kmp_learning_app.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 
@@ -36,7 +38,9 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
  * ordering puts weak rows first, and [weakLabel] is available wherever the surrounding context does
  * not already say what these rows are.
  *
- * [action] is an optional low-emphasis control on its own line under the figures. It is absent by
+ * [onClick] makes the whole card a button and adds the navigation chevron. Keeping the callback and
+ * affordance together prevents an inert card from advertising navigation. [action] is an optional
+ * low-emphasis control on its own line under the figures. It is absent by
  * default, so a card stays a reading surface unless a caller deliberately gives it something to do,
  * and it sits below the row rather than inside it so a long title and the control never compete for
  * the same width.
@@ -45,20 +49,30 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 internal fun PerformanceCard(
     title: String,
     detail: String,
-    percentage: Double,
+    percentage: Double?,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     caption: String? = null,
     isWeak: Boolean = false,
     weakLabel: String? = null,
-    showChevron: Boolean = false,
-    showPercentage: Boolean = true,
     isSummary: Boolean = false,
+    onClick: (() -> Unit)? = null,
     action: (@Composable () -> Unit)? = null,
 ) {
+    require(onClick == null || action == null) {
+        "A PerformanceCard cannot be both navigable and contain a separate action."
+    }
     val semantic = AppThemeExtras.semanticColors
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .then(
+                if (onClick == null) {
+                    Modifier
+                } else {
+                    Modifier.clickable(role = Role.Button, onClick = onClick)
+                },
+            ),
         shape = if (isSummary) MaterialTheme.shapes.large else MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = if (isSummary) {
@@ -119,14 +133,14 @@ internal fun PerformanceCard(
                     )
                 }
             }
-            if (showPercentage) {
+            percentage?.let {
                 Text(
-                    text = formatAccuracy(percentage),
+                    text = formatAccuracy(it),
                     style = MaterialTheme.typography.titleLarge,
-                    color = accuracyColor(percentage),
+                    color = accuracyColor(it),
                 )
             }
-            if (showChevron) {
+            if (onClick != null) {
                 Icon(
                     imageVector = AppIcons.ChevronRight,
                     contentDescription = null,

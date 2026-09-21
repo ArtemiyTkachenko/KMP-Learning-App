@@ -30,7 +30,7 @@ internal fun ProgressPerformanceCard(
     subtitle: String?,
     correctCount: Int,
     answeredCount: Int,
-    percentage: Double,
+    percentage: Double?,
     modifier: Modifier = Modifier,
     caption: String? = null,
     isWeak: Boolean = false,
@@ -40,9 +40,8 @@ internal fun ProgressPerformanceCard(
      * "Weak areas" heading, every card carrying the badge repeats that heading once per row.
      */
     weakLabel: String? = stringResource(Res.string.progress_weak_label),
-    showChevron: Boolean = false,
-    showPercentage: Boolean = true,
     isSummary: Boolean = false,
+    onClick: (() -> Unit)? = null,
     action: (@Composable () -> Unit)? = null,
 ) {
     PerformanceCard(
@@ -54,9 +53,8 @@ internal fun ProgressPerformanceCard(
         caption = caption,
         isWeak = isWeak,
         weakLabel = weakLabel,
-        showChevron = showChevron,
-        showPercentage = showPercentage,
         isSummary = isSummary,
+        onClick = onClick,
         action = action,
     )
 }

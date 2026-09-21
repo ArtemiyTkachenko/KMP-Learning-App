@@ -11,7 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.progress_subtopic_unavailable
 import kmp_learning_app.shared.generated.resources.progress_topic_detail_title
@@ -33,6 +32,7 @@ import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
 import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
 import org.artkachenko.kmp_learning_app.ui.theme.AppScreenPane
+import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 
 internal const val ProgressTopicLoadingTag = "progress_topic_loading"
 
@@ -81,7 +81,7 @@ private fun ProgressTopicContent(
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = appScreenContentPadding(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Comfortable),
     ) {
         item {
             ProgressPerformanceCard(
@@ -89,8 +89,9 @@ private fun ProgressTopicContent(
                 subtitle = evidenceLabel(state.answeredCount),
                 correctCount = state.correctCount,
                 answeredCount = state.answeredCount,
-                percentage = state.percentage,
-                showPercentage = state.answeredCount >= LearningProgressPolicy.WeakAreaMinimumAnswered,
+                percentage = state.percentage.takeIf {
+                    state.answeredCount >= LearningProgressPolicy.WeakAreaMinimumAnswered
+                },
                 // Historical correctness above, current coverage below it: the same two concepts
                 // Topic Detail now shows, so a learner does not have to switch surfaces for one
                 // of them. Adding it as a caption keeps this to one card per scope.
@@ -113,8 +114,9 @@ private fun ProgressTopicContent(
                     subtitle = evidenceLabel(subtopic.answeredCount),
                     correctCount = subtopic.correctCount,
                     answeredCount = subtopic.answeredCount,
-                    percentage = subtopic.percentage,
-                    showPercentage = subtopic.answeredCount >= LearningProgressPolicy.WeakAreaMinimumAnswered,
+                    percentage = subtopic.percentage.takeIf {
+                        subtopic.answeredCount >= LearningProgressPolicy.WeakAreaMinimumAnswered
+                    },
                     caption = coverageCaption(subtopic.coverage),
                     isWeak = subtopic.isWeak &&
                         subtopic.answeredCount >= LearningProgressPolicy.WeakAreaMinimumAnswered,

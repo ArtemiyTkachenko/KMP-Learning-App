@@ -10,8 +10,22 @@ Completed history feeds the shared `LearningProgressService`, which derives a
 `QuestionAnswerState.Answered.isCorrect` values plus stable historical Question,
 Topic, and Subtopic lookup. Every completed occurrence counts equally,
 including focused, mixed, and retake attempts; derived statistics are not
-persisted. A Topic is weak after at least 3 observations below 70% accuracy,
-and a Subtopic after at least 2 observations below 70% accuracy.
+persisted. A Topic or a Subtopic is weak after at least 5 observations below
+70% accuracy — one threshold for both, because a recommendation should rest on a
+pattern rather than on one unlucky Question.
+
+The two sources answer slightly different questions, and are allowed to. Overall
+totals come from the persisted score of each completed attempt and therefore
+count every occurrence the learner answered, while the Topic and Subtopic
+breakdown can only place an occurrence whose Question still resolves through
+`CurriculumRepository.getQuestionById`. A historical Question that no longer
+resolves at all — which the never-delete import contract makes unreachable
+through ordinary publishing — keeps its persisted occurrence in the overall
+figures and drops out of the grouped ones, so the grouped answered counts may
+legitimately sum to less than the overall answered count. Deprecation does not
+cause this: `getQuestionById` is the historical resolver and reads a DEPRECATED
+Question, which keeps its Topic and Subtopic accuracy while leaving current
+coverage.
 
 The same snapshot carries curriculum coverage, which answers a different
 question: not "how accurately did I answer what I saw?" but "how much of the

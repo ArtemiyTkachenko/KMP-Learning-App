@@ -159,6 +159,9 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-DATA-006` | Assessment persistence / contract | Low | High | `AssessmentRepository.kt`, `docs/architecture/persistence.md` | The repository interface stated no contract, so its durability, snapshot, ordering and failure semantics were discoverable only by reading the Room implementation. | Three undocumented suspend functions. `save` is whole-snapshot replacement inside one write transaction and is used for both creation and update; `getById` returns `null` only for an absent attempt and raises for a corrupt one; `getCompletedAttempts` is completed-only, newest-first, and fails as a whole on a corrupt row. None of that was written down, and a caller could reasonably have read `save` as an incremental update or `null` as "read failed". | Document each method's semantics on the interface, and record the save/read contract, the one-writer expectation and the corruption policy in the persistence architecture document. | Fixed |
 | `CQ-DATA-007` | Assessment persistence / redundant state | Observation | High | `TestAttempt.kt`, `AssessmentAttemptMapper.kt` | Aggregate score and per-occurrence correctness are stored twice and the schema permits them to disagree. | `test_attempt.score_correct_answers` and `question_attempt.is_correct` express the same fact. `TestAttempt` validates `score.totalQuestions == questionAttempts.size` but not `score.correctAnswers == questionAttempts.count { it is Answered && it.isCorrect }`, so a hand-edited or corrupted database could reconstruct a COMPLETED attempt whose result screen and progress dashboard disagree. No production path can create it: `AssessmentEngine.complete` derives both from the same occurrences, and `save` writes both from one aggregate in one transaction. | Leave as-is. Adding the constructor invariant would churn roughly seventy COMPLETED fixtures across thirty-eight test files to catch a state only external corruption can produce; the summary row is worth keeping because it is what history ordering and the result screen read. | Accepted as-is |
 | `CQ-DATA-008` | Assessment persistence / timestamps | Observation | High | `AssessmentAttemptMapper.kt` | Attempt timestamps round-trip at millisecond resolution, so a reloaded attempt is not `==` to the in-memory one when the clock is finer. | `startedAt` and `completedAt` are stored as epoch milliseconds and rebuilt with `Instant.fromEpochMilliseconds`, while `Clock.System.now()` carries sub-millisecond precision on the JVM. Both values are absolute instants with no local-time interpretation, truncation is monotone so `completedAt >= startedAt` and newest-first ordering both survive it, and no consumer compares a saved aggregate with its reloaded form outside tests that use millisecond-aligned fixtures. | Leave as-is. Millisecond resolution is sufficient for history ordering and the tie-breakers behind it, and widening the columns would be a migration for no observable behavior. | Accepted as-is |
+| `CQ-DATA-009` | Learning progress / documentation | Low | High | `docs/architecture/progress.md`, `LearningProgressPolicy.kt` | The progress architecture document stated weak-area evidence thresholds the code had stopped using. | The document said "A Topic is weak after at least 3 observations below 70% accuracy, and a Subtopic after at least 2", while `LearningProgressPolicy` has used a single `WeakAreaMinimumAnswered = 5` for both since commit `5f95fd3`, which is what `weakPolicyRequiresEvidenceAndTreatsExactlySeventyPercentAsNotWeak` pins. The stale numbers are the only written statement of a product threshold that decides which weak area a recommendation targets, so a later reader reconciling policy against documentation would have reached the wrong figure. | Restate the documented threshold as the single value of 5 the code applies to both scopes, with the reason the constant already records. The product threshold itself is not a code-quality question and was not changed. | Fixed |
+| `CQ-DATA-010` | Historical metadata resolution / query cost | Medium | Medium | `LearningPerformanceDerivation.kt`, `LearningProgressService.kt`, `MistakeReviewService.kt`, `AssessmentReviewLoader.kt` | Historical Question metadata is resolved one stable ID at a time even where the whole ACTIVE bank has already been read in the same call. | `LearningPerformanceDerivation` correctly caches per stable ID, so the per-*occurrence* N+1 does not exist — `historicalLookupsCacheResolvedAndMissingIdentitiesOncePerLoad` pins one lookup per distinct ID. What remains is one `getQuestionById` per distinct historical Question, and `LocalCurriculumRepository` answers each inside its own `withReadTransaction` with several statements. `LearningProgressService.load()` already holds every ACTIVE `Question` from `getActiveQuestions()` in the same call, and `ProgressStateHolder`, `TopicBrowserViewModel` and `TopicDetailViewModel` each issue their own `load()` per history emission. `MistakeReviewService.load` resolves one Question per unresolved mistake for the same reason, though it genuinely needs the full content. No measurement of the cost on any host was taken. | Measure a full-bank history on the JVM and web hosts first. If it matters, the local change is to seed the derivation's cache from the ACTIVE questions the service has already loaded, leaving individual lookups only for identities that ACTIVE content cannot explain; a batched `getQuestionsByIds` on `CurriculumRepository` is the wider alternative and would also serve mistake review. Neither was done without evidence. | Needs measurement |
+| `CQ-DATA-011` | Learning progress / documentation | Low | High | `docs/architecture/progress.md` | Nothing said that grouped Topic and Subtopic answered counts may sum to less than the overall answered count. | Overall totals sum persisted `AssessmentScore` values, while `LearningPerformanceDerivation` can only place an occurrence whose Question still resolves through `getQuestionById` and skips the rest with `continue`. `missingQuestionKeepsPersistedOverallWhileDeprecatedAndMissingMetadataRemainScoped` proves the resulting divergence is intended, and Part 3A's never-delete import contract makes it unreachable through ordinary publishing, but the document described the two sources without stating that they can disagree. | Document the divergence and its one cause beside the existing coverage explanation, including that DEPRECATED content does not cause it because `getQuestionById` is the historical resolver. | Fixed |
 ## Audit Pass Log
 
 | Pass | Area | Status | Commit reviewed | Files reviewed | Findings | Fixes | Validation | Notes |
@@ -174,6 +177,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | Part 2D | Progress and saved-question state | Complete | `7b67932de7ede0c8f9a8c293b53fb3a24c255e39` | 12 owner/state files, 9 supporting contracts, and 12 relevant test files | 4 | 4 | Seven targeted owner/journey commands; `:shared:jvmTest`; `:shared:check`; `git diff --check` | High 0, Medium 2, Low 1, Observation 1. `CQ-STATE-001` is resolved, both history-derived dashboards can now recover a failed derivation, and every remaining Part-2 suspend fallback preserves cancellation. Part 2 is complete; Part 3A is next. See review record below. |
 | Part 3A | Curriculum and bundled learning content | Complete | `0675d0dfbac6de69c4545fd6b6240d66646641a6` | 40 assigned production Kotlin files, 6 supporting contracts, and 14 relevant test files | 6 | 3 | Targeted importer, validator, repository, codec and learning-content commands; `:shared:jvmTest`; `:shared:check`; both Python content validators; `git diff --check` | High 1, Medium 1, Low 2, Observation 2. `CQ-BUG-004` is a verified upgrade-only import abort and is fixed with no schema change; one silent authored-source loss and one misleading data contract are fixed; one cross-document status rule is deferred pending a content decision. Part 3B is next. See review record below. |
 | Part 3B | Assessment sessions, attempts and history persistence | Complete | `c0dafad5468b6c0ba36628bbe0f924db554309e9` | 22 assigned production Kotlin files, 6 supporting contracts, 3 entities plus the attempt DAO, 2 assessment migrations, and 12 relevant test files | 4 | 2 | Four targeted engine/store/migration/integration commands; `:shared:jvmTest`; `:shared:check`; `git diff --check` | High 0, Medium 1, Low 1, Observation 2. `CQ-BUG-005` closes the SINGLE-arity gap between authoring validation and the UI; `CQ-DATA-006` writes down the repository's save, read, corruption and one-writer contract. Aggregate save is atomic and stale-child free, config and scope round-trip exactly, historical correctness is persisted rather than recomputed, and completed history is three queries with deterministic ordering. No schema change. Part 3C is next. See review record below. |
+| Part 3C | Study progress, recommendations and saved questions | Complete | `ef291a087206777d2d06c90bd13648e677a4f288` | 24 assigned production Kotlin files, 5 supporting contracts, 2 learner-owned entities plus their DAOs, 2 learner-state migrations, and 14 relevant test files | 3 | 2 | Two targeted repository commands including a deliberate REPLACE falsification run; six targeted derivation/policy commands; `:shared:jvmTest`; `:shared:check`; `git diff --check` | High 0, Medium 1, Low 2, Observation 0. Both learner-owned repositories satisfy their documented idempotency, re-add, ordering and orphan contracts; insert-ignore plus a stable-ID tie-break makes them correct under concurrent duplicate writes, which two new regressions now pin. The derivation layer keeps historical evidence and current content strictly apart and shares one exposure, weak-area and mistake definition per concept. `CQ-DATA-009` and `CQ-DATA-011` correct and complete the progress architecture document; `CQ-DATA-010` records per-stable-ID historical metadata resolution as needing measurement. No schema change. Part 3D is next. See review record below. |
 
 ### Part 1A Review Record
 
@@ -1478,6 +1482,281 @@ platform code was touched, and no learner-owned persistence was modified.
   UI, navigation route, theme value or resource changed and `:shared:check` already compiled every
   target.
 
+## Part 3C Review Record
+
+- **Assigned production boundary (24 files):** the two learner-owned persistence stacks —
+  `LessonStudyRepository`, `LocalLessonStudyRepository`, `StudiedLessonDao`, `StudiedLessonEntity`,
+  `StudiedLesson`, `LessonStudyDataModule`, and the identical `SavedQuestionRepository`,
+  `LocalSavedQuestionRepository`, `SavedQuestionDao`, `SavedQuestionEntity`, `SavedQuestion`,
+  `SavedQuestionDataModule` — plus the derivation layer: `LearningProgressService`,
+  `LearningPerformanceDerivation`, `LearningProgressPolicy`, `LearningProgressModels`,
+  `RecentPerformancePolicy`, `QuestionExposure`, `StudyProgressService`, `StudyProgressDerivation`,
+  `StudyProgressModels`, `ContinueLearningPolicy`, `ContinueLearningModels`, and the guided-learning
+  set `LearningRecommendationResolver`, `LearningRecommendationPolicy`, `LearningRecommendationModels`,
+  `ContinueStudyingResolver`, `ContinueStudyingModels`, `RecentStudyContextDerivation`.
+- **Supporting contracts inspected, not re-audited (5):** `CurriculumRepository` and
+  `AssessmentRepository` for their documented resolution and ordering guarantees, `MistakeReviewService`
+  with `UnresolvedMistakeDerivation` as the shared latest-occurrence owner, `AssessmentReviewLoader`
+  for what mistake review costs per unresolved candidate, and `TestAttempt` for the completed-attempt
+  invariants every derivation here relies on.
+- **Database objects reviewed:** `saved_question` and `studied_lesson` entities, `SavedQuestionDao`
+  and `StudiedLessonDao`, exported schemas 7 and 8, and migrations `MIGRATION_6_7` and
+  `MIGRATION_7_8`.
+- **Tests inspected (14):** `LocalLessonStudyRepositoryTest`, `LocalSavedQuestionRepositoryTest`,
+  `CurriculumDatabaseMigrationTest`, `LearningProgressServiceTest`,
+  `LearningAnalyticsCurriculumEvolutionIntegrationTest`, `StudyProgressDerivationTest`,
+  `StudyProgressServiceTest`, `StudyProgressStateHolderTest`, `ContinueLearningPolicyTest`,
+  `ContinueStudyingResolverTest`, `LearningRecommendationPolicyTest`,
+  `LearningRecommendationResolverTest`, `MistakeReviewServiceTest`, and
+  `GuidedLearningPracticePresetIntegrationTest`.
+
+### Learner-owned persistence
+
+Both repositories are the same small shape and both satisfy the contract written on their interface.
+`markStudied` and `save` are a single `@Insert(onConflict = IGNORE)` of an entity whose primary key is
+the stable ID, so a repeated write is structurally a no-op and — the part that matters for ordering —
+cannot move the stored timestamp. `unmarkStudied` and `unsave` are a delete by that ID, so a
+re-creation afterwards is a genuinely new learner action and takes the clock's current value.
+`isStudied` and `isSaved` are single-row primary-key lookups rather than a table scan, and
+`getStudiedLessons` and `getSavedQuestions` order in SQL by `<timestamp> DESC, <stable id> ASC`, so
+equal timestamps — which deterministic tests, a coarse clock and batch writes all produce — still
+give one deterministic order rather than SQLite row order. Time is taken from an injected
+`now: () -> Instant` defaulting to `Clock.System.now()`, stored as absolute epoch milliseconds with no
+local-time interpretation, which is what lets every ordering and idempotency test above run on a
+controlled clock without a sleep.
+
+Neither repository wraps its work in a transaction, and neither needs one: every operation is a
+single statement. Neither contains a `catch`, so an operational database failure propagates as a
+failure instead of being reported as "not saved" or "not studied", and coroutine cancellation
+propagates for the same reason. Neither imports `CurriculumRepository` or `LearningContentRepository`,
+so the documented separation — persistence stores identity, derivation decides what current content
+makes of it — is a property of the dependency graph rather than a rule to remember.
+
+### Idempotency, ordering and duplicate writes
+
+The existing suites already covered the sequential contract on both sides: repeated write preserving
+the original timestamp, delete then re-add taking a new one, and an equal-timestamp pair ordered by
+stable ID. What they did not cover is the same question under concurrency: `concurrentSavesForOneIdentityCreateOneRow`
+and `concurrentMarksForOneLessonCreateOneRow` prove one row survives twenty overlapping writes, but
+they run on a fixed clock and so say nothing about the timestamp. Two regressions were added —
+`aConcurrentDuplicateSaveCannotReplaceTheOriginalTimestamp` and
+`aConcurrentRepeatedMarkCannotReplaceTheOriginalRecordedTime` — which write once at one instant, then
+race twenty duplicate writes at a later instant, and assert both the single row and the original
+timestamp. Both were confirmed to fail when `OnConflictStrategy.IGNORE` is temporarily changed to
+`REPLACE` in each DAO, alongside the two sequential tests, and to pass against the real
+implementation; the DAOs were restored before any other validation was run. No application-level lock
+was added: the primary key plus insert-ignore already enforces the documented behavior.
+
+### Orphan identity and content evolution
+
+Neither table carries a foreign key to publisher content, which `PRAGMA foreign_key_list` assertions in
+the migration tests pin and the exported schemas confirm. A saved Question therefore behaves
+identically whether its content is ACTIVE, DEPRECATED, or absent — the repository never looks — and
+`savedIdentityResolvesActiveAndDeprecatedContentAndRetainsMissingContent` exercises all three. The
+studied side has the same property and `aRecordForALessonNoLongerInTheBundleIsRetainedReadableAndRemovable`
+covers it, including removal by stable ID alone with no `LearningContentRepository` present at all. No
+repository-level pruning of unresolvable identities exists anywhere. Part 3A's open question — whether
+an accumulating unresolvable record deserves surfaced treatment — remains a product question and not a
+persistence defect; the current answer, that derivation ignores it and the learner can still remove it,
+is coherent.
+
+### Migrations
+
+`MIGRATION_6_7` and `MIGRATION_7_8` are pure additive `CREATE TABLE IF NOT EXISTS` statements with no
+backfill, which is right: absence of a row already means unsaved and unstudied, so an empty new table
+is correct rather than incomplete, and seeding rows from current content would invent learner claims.
+Nothing destructive appears on either path. `migrationFromSixToSevenAddsEmptySavedIdentityTableAndPreservesExistingRows`,
+`migrationFromSevenToEightAddsEmptyStudiedLessonTableAndPreservesExistingRows` and the full
+`migrationFromOneToEightPreservesCurriculumAndHistoricalAssessmentRows` together prove existing rows
+survive, the new tables are usable immediately, and no foreign key was introduced.
+
+### Historical evidence versus current content
+
+The distinction the pass exists to protect holds throughout. `LearningProgressService` sums
+`AssessmentScore` for overall totals and reads `QuestionAnswerState.Answered.isCorrect` for every
+per-occurrence figure; nothing anywhere recomputes historical correctness from
+`Question.correctAnswerIds`, and `persistedCorrectnessIsUsedEvenWhenAuthoredAnswersChanged` plus the
+Part-3B review tests pin it. Coverage takes its denominator from `CurriculumRepository.getActiveQuestions()`
+alone, so a retired Question keeps the accuracy the learner earned and leaves current coverage, which
+`curriculumRetirementRemovesQuestionFromCoverageButNotFromAccuracy` and
+`deprecatedAndMissingHistoricalQuestionsStayOutOfCurrentCoverage` both cover. The two aggregations are
+deliberately different in shape — performance counts every occurrence, coverage counts each stable ID
+once — and `repeatedQuestionCoversOnceButKeepsAccuracyOccurrenceBased` exists precisely so neither is
+"simplified" into the other.
+
+Completed-only semantics are enforced at each boundary rather than trusted from the caller:
+`LearningProgressService` filters, `LearningPerformanceDerivation` filters again, `QuestionExposure`
+filters, `UnresolvedMistakeDerivation` filters, and `toRecentStudyContext` refuses an IN_PROGRESS
+attempt. Because `TestAttempt.init` requires every question attempt of a COMPLETED attempt to be
+`Answered`, the `as QuestionAnswerState.Answered` casts in the derivations are reading an invariant the
+aggregate already guarantees rather than assuming one, which is why no malformed-data branch was added.
+
+`CQ-DATA-011` records the one thing that was true of the code but unwritten: an occurrence whose
+Question no longer resolves at all stays in the overall totals and drops out of the Topic and Subtopic
+breakdown, so grouped answered counts can sum to less than the overall count.
+`missingQuestionKeepsPersistedOverallWhileDeprecatedAndMissingMetadataRemainScoped` already pinned the
+behavior; `docs/architecture/progress.md` now states it, along with the fact that deprecation does not
+cause it because `getQuestionById` is the historical resolver.
+
+### Exposure, weak areas and recent performance
+
+`QuestionExposure` is a genuine single definition: coverage reads it inside `LearningProgressService`
+and unseen practice reads it in selection, so "Progress says seen, practice says unseen" is not
+expressible. It is keyed by stable ID, set-valued, correctness-independent and completed-only, and it
+deliberately asks nothing about whether an ID still exists — callers intersect with whatever current
+content they care about.
+
+`LearningPerformanceDerivation` is likewise shared: `LearningProgressService` and
+`AssessmentQuestionSelector` both derive weak areas from it rather than each applying its own
+threshold. Weak-area output prefers an actionable weak Subtopic over its parent Topic, retains a Topic
+only when no child qualifies, and sorts by accuracy, then descending evidence, then a stable composite
+key — no map iteration order reaches the result.
+`weakAreasSortByAccuracyThenEvidenceThenStableIdentity` covers it. The thresholds themselves were not
+touched; `CQ-DATA-009` only corrects the architecture document, which still claimed the pre-`5f95fd3`
+values of 3 and 2 rather than the single value of 5 the code applies to both scopes.
+
+`RecentPerformancePolicy` sorts the supplied history with the same comparator
+`AssessmentAttemptDao` orders by rather than trusting the caller, takes the newest five, and reverses
+to oldest-first so a chart reads past to present without presentation reversing domain data. The
+per-answer series is capped with `takeLast`, which keeps the most recent outcomes and leaves the
+summary — derived from the attempt series — unaffected;
+`answerSeriesKeepsTheMostRecentOutcomesWhenTheWindowExceedsTheCap` and
+`answerSeriesCapDoesNotChangeTheRecentSummary` cover both halves, and
+`attemptsCompletedAtTheSameInstantBreakTiesByStartThenIdentity` covers the tie behavior Part 3B
+defined. No derivation re-sorts completed history under a different rule.
+
+### Study progress and Continue Learning
+
+`StudyProgressService` reads study state once per snapshot and collapses it to a `Set` of IDs, so a
+Unit and its Topic cannot disagree by sampling at different moments and neither duplicates nor row
+order can reach the derivation. `StudyProgressDerivation` takes its denominator from the current
+ACTIVE Lessons and never from the studied set, excludes DEPRECATED Lessons from both sides of every
+fraction, and makes an orphan identity a non-event rather than a special case. `StudyProgressSummary`
+keeps "no ACTIVE Lesson in scope" as `Empty` rather than a zero denominator, and completion is a
+derived property of `Progress` so no caller can assemble a contradictory result.
+
+`ContinueLearningPolicy` walks Units then Lessons in the order given, skipping DEPRECATED at both
+levels, returning the first ACTIVE Lesson absent from the studied set, and distinguishing `Complete`
+from `Empty` with a flag it only reads once the walk has run to the end. Nothing sorts — authored list
+position is the pedagogical sequence — and the policy is pure over content plus identities with no
+clock, repository or assessment history reachable from its package.
+`ContinueLearningPolicyTest` covers authored order across Units, deprecated Units and Lessons, orphan
+identities, `Complete`, `Empty`, and determinism.
+
+### Continue Studying and recommendations
+
+`ContinueStudyingResolver` walks completed history in the order it was given, never re-sorting, and
+keeps walking past an unusable newer entry instead of giving up at the top. It skips Mixed attempts
+through the shared `toRecentStudyContext`, skips a Topic that is missing or no longer ACTIVE, degrades
+a DEPRECATED Subtopic to its still-ACTIVE parent Topic — widening a practice preset's scope while
+keeping its source — and skips a Subtopic whose parent cannot be recovered at all. A persisted
+`AssessmentScope.Subtopics` is skipped rather than having one of its members chosen. An `ALL` run
+returns to content while a targeted run reopens the builder on a preset carrying the original source,
+and `ContinueStudyingResolverTest` covers every one of these cases including the source round-trip.
+
+`LearningRecommendationResolver` gathers facts and decides nothing. It reads the progress snapshot the
+caller already derived rather than loading another, asks for the unresolved-mistake count with that
+same completed history, and takes recent context from the same list, so all four inputs describe one
+history snapshot. `TopicBrowserViewModel` supplies that single snapshot and its comment says why. A
+failing count propagates out of `resolve` and the screen loses the card, which
+`anUnknownUnresolvedCountFailsRatherThanReadingAsZero` pins — a fabricated zero would fall through to
+weak areas and recommend practice on a fact nobody established. Loaded-empty history stays distinct
+from unreadable history: the former reaches the policy as `completedAttemptCount == 0` and yields the
+new-user recommendation, the latter never reaches the policy at all. An empty or unusable ACTIVE
+curriculum returns no recommendation rather than a fabricated destination.
+
+`LearningRecommendationPolicy` is an ordered decision tree with no score, and its coverage tie-break is
+resolved by exact integer cross-multiplication rather than floating-point ratios, then by a matching
+recent context, then by more unseen Questions, then by stable Topic ID. Saved Questions appear nowhere
+in it, and Continue Learning appears nowhere in it either; the three state models stay separate.
+
+### Mistake resolution
+
+`UnresolvedMistakeDerivation` consumes newest-first history as given, treats the first occurrence of
+each stable Question ID as authoritative, and therefore resolves a Question the moment a newer correct
+occurrence exists and reopens it when a newer incorrect one does.
+`MistakeReviewServiceTest` covers incorrect-then-correct, correct-then-incorrect, the three-occurrence
+case, cross-configuration resolution, retakes, and `historyOrderIsConsumedAsGivenWithoutReSorting`.
+Identity is the stable Question ID throughout — never text or list index — and current content is
+absent from the derivation, so a historical mistake whose Question is now DEPRECATED or missing stays
+unresolved while review content reports `ReviewQuestionItem.Missing`. Historical unresolvedness and
+current practiceability are separate concepts and remain so.
+
+### Persistence versus derivation
+
+Nothing derived is persisted. The full schema at version 8 holds publisher content, assessment
+occurrences, and two learner-owned identity tables of a stable ID and a timestamp; there is no stored
+progress percentage, weak-area classification, recommendation or continue-learning target, and no
+invalidation problem to go with one. No new persisted derived state was added in this pass.
+
+### Write validation
+
+Neither repository validates a blank ID, and none was added. The only production writers are
+`StudyProgressStateHolder` and `SavedQuestionStateHolder`, both acting on an ID taken from content the
+learner is looking at, and `CurriculumValidator` and `LearningCurriculumValidator` already reject blank
+Topic, Subtopic, Question, Unit and Lesson IDs at the authoring boundary that produces them. Adding a
+`require` at the repository would duplicate a guarantee that is made where content enters the system,
+which is the boundary that can actually be crossed.
+
+### Part-2 closures
+
+Part 2B's outstanding assumption — that `StudyProgressStateHolder`'s `tryLock` refresh strategy is
+safe because every read-back returns authoritative persisted truth in a deterministic order — is
+confirmed: the repositories hold no cache, read straight through the DAO, and order in SQL. Part 2D's
+matching assumption for `SavedQuestionStateHolder` is confirmed on the same evidence, as are the three
+questions it deferred: a repeated save is idempotent and timestamp-preserving, an unsave of an already
+removed identity is a no-op delete, and single-statement operations need no transaction boundary. All
+three Part-2 holder findings are closed as stated rather than reopened, and `CQ-STATE-011`'s duplicate
+history read remains a presentation-level observation rather than a data defect, since the derivation
+it feeds is per-call and consistent.
+
+### Fixes
+
+- `CQ-DATA-009`: `docs/architecture/progress.md` now states the single weak-area threshold of 5
+  observations the code has applied to both Topics and Subtopics since commit `5f95fd3`.
+- `CQ-DATA-011`: the same document now explains that overall totals and the Topic/Subtopic breakdown
+  come from different sources and may legitimately disagree when a historical Question no longer
+  resolves, and that deprecation does not cause it.
+- Two concurrency regressions added to the learner-owned repository suites, both confirmed to fail
+  against a `REPLACE` conflict strategy.
+
+No production Kotlin changed, no schema changed, no migration was added, and no Koin, platform,
+ViewModel or content file was touched.
+
+### Handoffs
+
+- **Part 3D — preference store contract:** none opened. Neither learner-owned repository reaches a
+  generic preference or key-value abstraction; both go straight to Room through `CurriculumDatabase`,
+  so nothing here constrains how preferences are stored.
+- **Part 4 — DI, lifecycle and platform:** `CQ-DATA-010`'s measurement is per-host. The per-stable-ID
+  read transaction that looks modest on the bundled SQLite hosts is the same call on the web worker
+  driver, where Part 4C already owns the transaction and isolation question.
+- **Part 5 — cross-cutting:** `LocalSavedQuestionRepository` and `LocalLessonStudyRepository` are
+  structurally identical — stable ID plus timestamp, insert-ignore, delete by ID, ordered read — and a
+  generic "timestamped identity set" repository is the obvious extraction. It was deliberately not
+  made: the two are separate learner concepts whose contracts are currently identical by coincidence of
+  requirements rather than by definition, and the shared documentation each interface carries is worth
+  more than the twenty lines an abstraction would remove. Recorded for Part 5 with that reasoning, not
+  as a recommendation.
+
+### Validation
+
+- `./gradlew :shared:jvmTest --tests '*LocalLessonStudyRepositoryTest*' --tests '*LocalSavedQuestionRepositoryTest*'`
+  — run first with both DAOs temporarily switched to `OnConflictStrategy.REPLACE`: 21 tests, 4 failed,
+  the two new concurrency regressions among them. Re-run after restoring the DAOs: passing.
+- `./gradlew :shared:jvmTest --tests '*LearningProgressServiceTest*' --tests '*LearningRecommendation*' --tests '*ContinueStudyingResolverTest*' --tests '*ContinueLearningPolicyTest*' --tests '*StudyProgress*' --tests '*MistakeReviewServiceTest*' --tests '*LearningAnalyticsCurriculumEvolutionIntegrationTest*' --tests '*CurriculumDatabaseMigrationTest*'`
+  — passing.
+- `./gradlew :shared:jvmTest` — passing.
+- `./gradlew :shared:check` — passing. JVM, Android host, JS, Wasm and iOS simulator test tasks all
+  executed.
+- `git diff --check` — clean.
+- Room schema: **unchanged**. `shared/schemas` is untouched, no migration was added, and no migration
+  was required.
+- Not run: Android lint and the application-shell assemble tasks, because no platform source, Compose
+  UI, navigation route, theme value or resource changed and `:shared:check` already compiled every
+  target.
+
+
 ## Baseline Health
 
 | Check | Result | Failures/warnings | Notes |
@@ -1985,8 +2264,37 @@ Needs measurement: 0
 Accepted as-is: 2
 Not a defect: 0
 
-Part 3C — Next
+Part 3C — Complete
+
+High: 0
+Medium: 1
+Low: 2
+Observations: 0
+
+Fixed: 2
+Deferred: 0
+Needs measurement: 1
+Accepted as-is: 0
+Not a defect: 0
+
+Part 3D — Next
 ```
+
+Part 3C is complete. The learner-owned persistence layer was found correct against every part of its
+written contract: insert-ignore on a stable-ID primary key makes a repeated save or mark a no-op that
+preserves the original timestamp even under concurrent duplicate writes, a delete-then-re-add records
+a genuinely new time, reads order by timestamp then stable ID in SQL rather than relying on row order,
+neither table carries a foreign key to publisher content, and an identity whose content no longer
+resolves stays readable and removable by ID alone. Two new concurrency regressions pin the timestamp
+half of that, both confirmed to fail against a `REPLACE` conflict strategy. The derivation layer keeps
+historical evidence and current content strictly apart — persisted correctness is never recomputed,
+coverage's denominator is the current ACTIVE bank, exposure and weak areas and mistake resolution each
+have exactly one definition shared by every consumer, and Continue Learning, Continue Studying and the
+recommendation policy remain three separate answers derived from one history snapshot. Two
+documentation defects in `docs/architecture/progress.md` are fixed (`CQ-DATA-009`, `CQ-DATA-011`), and
+`CQ-DATA-010` records per-stable-ID historical metadata resolution as needing measurement before any
+change. No production Kotlin changed, no Room schema change was made and no migration was required.
+The exact next chunk is **Part 3D — Preference store contract**. Do not begin it automatically.
 
 Part 3B is complete. The assessment persistence layer was found sound: `AssessmentAttemptStore.save`
 is an atomic whole-snapshot replacement that cannot leave stale children, reads hydrate inside a

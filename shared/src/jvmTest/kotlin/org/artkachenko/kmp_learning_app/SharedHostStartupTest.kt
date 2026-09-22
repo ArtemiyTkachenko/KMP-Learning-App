@@ -226,7 +226,7 @@ internal class SharedHostStartupTest {
                     }.koin
 
                     setContent {
-                        AppRoot { koin.get<CurriculumDataInitializer>().initialize() }
+                        AppRoot(koin.get<CurriculumDataInitializer>())
                     }
 
                     // Ready replaces the startup UI with the real App graph, whose Topic

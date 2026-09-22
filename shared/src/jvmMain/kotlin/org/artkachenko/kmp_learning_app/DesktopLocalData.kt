@@ -31,8 +31,5 @@ public fun startDesktopLocalDataGraph() {
     }
 }
 
-public suspend fun initializeDesktopLocalData() {
-    GlobalContext.get()
-        .get<CurriculumDataInitializer>()
-        .initialize()
-}
+public fun desktopAppStartupInitializer(): AppStartupInitializer =
+    GlobalContext.get().get<CurriculumDataInitializer>()

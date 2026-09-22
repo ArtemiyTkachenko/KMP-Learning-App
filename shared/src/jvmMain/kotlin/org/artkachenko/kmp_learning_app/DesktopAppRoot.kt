@@ -1,6 +1,7 @@
 package org.artkachenko.kmp_learning_app
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 
 /**
  * Desktop-named entry point kept so `desktopApp` keeps a host-specific root.
@@ -10,5 +11,6 @@ import androidx.compose.runtime.Composable
  */
 @Composable
 public fun DesktopAppRoot() {
-    AppRoot { initializeDesktopLocalData() }
+    val startupInitializer = remember { desktopAppStartupInitializer() }
+    AppRoot(startupInitializer)
 }

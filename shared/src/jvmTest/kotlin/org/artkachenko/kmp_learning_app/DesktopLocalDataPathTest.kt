@@ -19,7 +19,7 @@ internal class DesktopLocalDataPathTest {
             System.setProperty(UserHomeProperty, tempHome.absolutePath)
 
             startDesktopLocalDataGraph()
-            initializeDesktopLocalData()
+            desktopAppStartupInitializer().initialize()
 
             val repository = GlobalContext.get().get<CurriculumRepository>()
             assertEquals(17, repository.getActiveTopics().size)

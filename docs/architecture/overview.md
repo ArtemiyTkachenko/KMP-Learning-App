@@ -95,13 +95,15 @@ route data into their ViewModels, while Navigation 3 entry-scoped ViewModel
 ownership remains intact: each back-stack entry receives its own
 ViewModelStore, and the ViewModel is cleared when that entry is removed.
 
-All runtime hosts share `AppRoot(initialize)` in shared `commonMain`. It owns the
-startup loading, failure, and retry states around the platform initializer and
-then enters `App()`. Hosts start Koin before composition and supply only their
-own initializer, so a failed initialization cannot leave a host without
-content. `App()` keeps its own theme call so it remains usable directly in
-tests and previews that bypass `AppRoot` — both go through `AppearanceTheme`, so the two
-are one decision rather than two that happen to agree.
+All runtime hosts share `AppRoot(initializer)` in shared `commonMain`. The app-scoped
+`CurriculumDataInitializer` implements the small `AppStartupInitializer` host contract and owns
+successful completion for the process lifetime: host reconstruction sees that completion, while a
+fresh graph after process restart begins incomplete and runs initialization again. `AppRoot` owns
+only the transient loading, failure, and retry presentation around that initializer, then enters
+`App()`. Hosts start Koin before composition and supply the one initializer, so a failed
+initialization cannot leave a host without content. `App()` keeps its own theme call so it remains
+usable directly in tests and previews that bypass `AppRoot` — both go through `AppearanceTheme`, so
+the two are one decision rather than two that happen to agree.
 
 ### Runtime Host Coverage
 

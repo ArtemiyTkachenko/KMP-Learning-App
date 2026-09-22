@@ -122,7 +122,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | ID | Area | Severity | Confidence | File(s) | Finding | Evidence | Recommendation | Status |
 | -- | ---- | -------- | ---------- | ------- | ------- | -------- | -------------- | ------ |
 | `CQ-UI-001` | Shared UI / startup | Low | High | `AppRoot.kt`, `ui/ScreenStatus.kt` | The startup root duplicated the shared loading and error status concept. | `AppRoot` had private centred loading and retry layouts with their own literal spacing even though `ScreenLoading` and `ScreenError` already own the same semantics, layout, progress indication, and retry action for the rest of the product. The duplicate also omitted the shared status container's edge padding. | Render startup `Loading` and `Error` through the existing shared status primitives while keeping the startup state machine, strings, loading tag, and retry behavior unchanged. | Fixed |
-| `CQ-BUG-001` | App shell lifecycle | Low | High | `AppRoot.kt`, `androidApp/src/main/kotlin/org/artkachenko/kmp_learning_app/MainActivity.kt`, `shared/src/commonMain/kotlin/org/artkachenko/kmp_learning_app/data/local/curriculum/CurriculumDataInitializer.kt` | Host recreation resets the startup state and launches initialization again. | `AppRoot` stores `AppStartupState` with plain `remember`; Android's activity declares no configuration-change handling, so recreation composes `Loading` and launches `initialize` again. The app-scoped initializer's `initialized` guard prevents a second import and can return before the loading branch reaches a drawn frame, so a visible flash is possible rather than structurally guaranteed. Saving `Ready` directly is unsafe because process recreation also restores saveable state while constructing a fresh initializer that still must run. | In Part 2A / 4B, give initialization completion recreation-stable ownership while preserving a mandatory initialization run after process death; add a recreation-focused host/UI test at the chosen ownership boundary. | Deferred |
+| `CQ-BUG-001` | App shell lifecycle | Low | High | `AppRoot.kt`, four runtime roots/startup bridges, `MainActivity.kt`, `CurriculumDataInitializer.kt`, `AppRootTest.kt` | Host recreation reset the startup state and launched initialization again. | `AppRoot` held completion only in plain `remember`, although the app-scoped initializer already had the required lifetime: it survives host reconstruction and is rebuilt after a fresh process. The initializer now implements the explicit `AppStartupInitializer` host contract and exposes thread-safe in-process completion; a reconstructed root seeds `Ready` from that same owner, while a fresh owner seeds `Loading`. No completion value is saved durably. | Keep durable import completion on the app-scoped initializer and transient loading/error/retry presentation in `AppStartupStateHolder`; protect same-owner reconstruction and fresh-owner behavior at that boundary. | Fixed |
 | `CQ-UI-002` | Shared UI API | Low | High | `ui/PerformanceCard.kt`; callers in `progress/**` and `mixed_interview/**` | `PerformanceCard` exposed independent navigation and percentage-visibility controls that permitted incoherent combinations. | All callers established two stable rules: every chevron card was also clickable, and every hidden percentage represented unavailable evidence. The old API could still render an inert chevron, require an unused percentage, or combine whole-card navigation with a nested action; caller-supplied `Modifier.clickable` also exposed no button role. `isSummary`, weak styling/label, subtitle, caption, and the optional embedded action each have independent real callers and remain coherent. | Encode navigation as nullable `onClick`, derive the chevron and `Role.Button` from it, reject a simultaneous nested action, and encode a hidden percentage as `null`. Keep the remaining presentation controls rather than introducing a mode hierarchy. | Fixed |
 | `CQ-UI-003` | Topic discovery / state identity | Medium | High | `topic_study/topics/TopicBrowserScreen.kt`, `TopicBrowserScreenTest.kt` | Every search query shared one `LazyListState`, so a new result set could open at the previous query's scroll position. | Browse and search correctly had separate states, but the results state survived all non-blank query changes. After scrolling a long result set to item 25, replacing the query with another 30-item result set kept that index instead of showing its first match. | Reset only the results list to item zero when the query changes; retain the independent browse-list state. | Fixed |
 | `CQ-UI-004` | Topic detail / accessibility | Low | High | `topic_detail/TopicStudyPage.kt`, `TopicSubtopicsPage.kt`, `TopicDetailScreenTest.kt` | Two custom clickable discovery rows exposed an action but no control role. | `LearningUnitRow` and `SubtopicRow` used foundation `Modifier.clickable` directly. Unlike Material button/card overloads, no semantic role was supplied, so assistive technology could discover activation without identifying the rows as buttons. | Set `Role.Button` on both conditional row click targets and assert the role in their existing interaction tests. | Fixed |
@@ -136,6 +136,8 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-UI-012` | Assessment results / duplication | Low | High | `assessment_review/AssessmentResultLayout.kt`, `focused_result/FocusedResultScreen.kt`, `mixed_interview/MixedInterviewResultScreen.kt` | Focused and mixed results duplicated the same adaptive one-scroll/two-pane layout behavior. | Both screens had identical pane construction, padding, spacing, weights, compact ordering, and expanded behavior; only their summary and review sections differed. Maintaining two copies could let one result lose content order or pane behavior independently. | Share the stable adaptive assessment-result shell with summary/review `LazyListScope` content, while leaving state handling and feature-specific sections in each result screen. | Fixed |
 | `CQ-UI-013` | Assessment results / effects | Medium | High | `focused_result/FocusedResultDestination.kt`, `mixed_interview/MixedInterviewResultDestination.kt` | Long-lived retake event collectors captured the initial navigation callback. | Each `LaunchedEffect` was keyed only to its ViewModel but invoked `onRetakeCreated` directly. If the callback changed while the same ViewModel remained composed, a later retake event navigated through the stale callback; assessment taking already uses the current-callback pattern for the same boundary. | Read the latest callback through `rememberUpdatedState` while keeping the collector keyed to the ViewModel. | Fixed |
 | `CQ-STATE-001` | Saved questions / concurrency | Medium | High | `saved_questions/SavedQuestionStateHolder.kt`, `SavedQuestionStateHolderTest.kt` | Concurrent mutations for different Question IDs can leave the in-memory saved list older than the repository. | Per-ID pending state correctly keeps other rows interactive, so two writes may run together. Each coroutine then reads the whole repository and independently replaces `savedQuestions`; an older read can settle after a newer read and restore a stale list even though persistence is correct. Existing tests gate both writes together and do not force out-of-order read settlement. | In Part 2D, serialize mutation/readback settlement or version results so an older snapshot cannot replace a newer one; add a deterministic different-ID out-of-order regression test with the fix. | Deferred |
+| `CQ-BUG-002` | App startup cancellation | Low | High | `AppRoot.kt`, `AppRootTest.kt` | Startup converted coroutine cancellation into the normal initialization-error state. | `runCatching` caught `CancellationException` from the host initializer and assigned `Error` before the cancelled effect returned. Host disposal normally made that state unobservable, but the startup wrapper still violated structured cancellation and could represent owner cancellation as an operational failure. | Rethrow cancellation before mapping ordinary initialization exceptions to `Error`; keep the state `Loading` when its owner cancels. | Fixed |
+| `CQ-STATE-002` | App shell badge cancellation | Low | High | `AppShellViewModel.kt` | The unresolved-mistake fallback could convert cancellation from its suspend service boundary into a zero badge. | `runCatching(...).getOrDefault(0)` caught every throwable. The current supplied-history path is an in-memory derivation with no suspension, so cancellation is not presently raised inside it and impact is limited; the suspend contract nevertheless allowed future or explicit cancellation to become plausible data instead of terminating collection. | Preserve the intentional zero fallback for ordinary service exceptions and rethrow `CancellationException`. | Fixed |
 
 ## Audit Pass Log
 
@@ -146,6 +148,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | Part 1B | Topic discovery and lesson reading | Complete | `753ab8d8f1db93ea1b2f90b399e8bd28629f65b8` | 25 assigned production Kotlin files, 7 shared/model dependencies, and 16 relevant test files | 4 | 4 | Targeted `TopicBrowserScreenTest` and `TopicDetailScreenTest`; `:shared:jvmTest`; `:androidApp:assembleDebug`; `git diff --check` | High 0, Medium 1, Low 3. One lazy-state identity bug, two accessibility defects, and one duplicated stable concept were fixed. No qualifying recomposition/performance concern was found. See review record below. |
 | Part 1C | Assessment launch, taking, review, and practice builder | Complete | `a37b5a7385572e2b727b6580a62b165a46e51a64` | 23 assigned production Kotlin files, 10 shared dependencies/callers, and 16 relevant test files | 3 | 3 | Targeted `AssessmentTakingScreenTest` and `PracticeBuilderScreenTest`; `:shared:jvmTest`; `:androidApp:assembleDebug`; `git diff --check` | High 0, Medium 1, Low 2. One question-local lazy identity bug and two accessibility defects were fixed. No qualifying recomposition/performance concern or new Part-2 deferral was found. See review record below. |
 | Part 1D | Results, history, progress, mistakes, and saved questions | Complete | `e499932b8168e2d76661f17eeb39ab511514bc48` | 43 assigned production Kotlin files, 9 shared UI/review dependencies, and 32 relevant tests | 6 | 5 | Six targeted Compose suites; `:shared:jvmTest`; `:androidApp:assembleDebug`; `:shared:check`; `git diff --check` | High 0, Medium 3, Low 3. `CQ-UI-002` and four new UI findings were fixed; one saved-state race was deferred to Part 2D. See review record below. |
+| Part 2A | Shell, appearance, and application state | Complete | `34bb8fae8c35e47b924be3ccc5caad8f7bd59b53` | 24 production/state files and 10 relevant test files | 3 | 3 | Targeted startup, appearance, navigator, and host/initializer suites; `:shared:jvmTest`; `:androidApp:assembleDebug`; `:shared:check`; `git diff --check` | High 0, Medium 0, Low 3. `CQ-BUG-001` and two cancellation findings were fixed. No Part 4 finding was opened. See review record below. |
 
 ### Part 1A Review Record
 
@@ -406,6 +409,75 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 - **Deliberately not created:** no generic ResultScreen, performance-card mode hierarchy, generic
   Question card, Topic/Unit row merger, taking/review row merger, or compact/expanded state owner.
   Similar UI whose state, meaning, or actions differ remains separate.
+
+## Part 2A Review Record
+
+- **Production/state boundary (24 files):** `AppRoot.kt`, `App.kt`, `AppShellViewModel.kt`,
+  `AppNavigator.kt`, `AppNavigation.kt`, the four platform app roots/startup bridges, Android
+  `MainActivity`, `CurriculumDataInitializer.kt`, `CurriculumDataModule.kt`,
+  `AssessmentHistoryStore.kt`, `MistakeReviewService.kt`, and the six common appearance/theme
+  files. Platform preference implementations and `TopicStudyPresentationModule` were read only far
+  enough to establish contracts and lifetimes; their implementation/graph audit remains Part 4.
+- **Tests inspected (10 files):** `AppRootTest`, `SharedHostStartupTest`,
+  `CurriculumLocalDataPathTest`, `DesktopLocalDataPathTest`, `AppNavigatorTest`,
+  `AppNavigatorRestorationTest`, `AppNavigationTest`, `AppearancePreferenceTest`,
+  `AppearanceThemeTest`, and `SettingsNavigationIntegrationTest`. No direct
+  `AppShellViewModelTest` exists; Part 6A retains the broad coverage assessment.
+- **Owner/lifetime conclusion:** shell badge data remains in `AppShellViewModel`; saveable selected
+  area and per-area stacks remain in `AppNavigator`; `AppearanceStateHolder` remains an app-scoped
+  Koin single; successful startup completion now belongs to the app-scoped initializer, while a
+  remembered `AppStartupStateHolder` owns only transient loading/error/retry presentation.
+- **Startup/recreation disposition:** `CQ-BUG-001` is fixed. Every host supplies the same small
+  `AppStartupInitializer` contract. Reconstructing UI with the same application owner seeds `Ready`
+  and does not invoke import again; a fresh graph creates an incomplete initializer and therefore
+  runs initialization. No saveable or persistent completion flag was introduced.
+- **Initializer synchronization:** the existing double-checked `Mutex` still coalesces concurrent
+  calls. Completion is now backed by `MutableStateFlow.value`, giving unlocked checks and host reads
+  a thread-safe in-process value. It is published only after `Imported`; rejection, exceptions, and
+  cancellation leave it false, so later calls can retry. There is no suspension between successful
+  import return and completion publication.
+- **Cancellation and error handling:** `CQ-BUG-002` makes startup rethrow cancellation rather than
+  showing `Error`; ordinary `Exception`s remain retryable. `CQ-STATE-002` makes the shell badge
+  rethrow cancellation while retaining zero as the fallback for an ordinary non-critical count
+  failure. Fatal `Throwable`s are no longer converted into normal startup or badge state. No other
+  broad catch occurs in the Part 2A boundary.
+- **Shell Flow conclusion:** unresolved count is derived from the one app-scoped history cache and
+  has no competing mutable copy. The service receives already-loaded attempts, so it performs an
+  in-memory latest-occurrence derivation and no repository read. `SharingStarted.Eagerly` is kept:
+  the shell always needs the badge once ready, upstream changes only on history invalidation, and
+  eager derivation keeps the value current across lifecycle subscription gaps. Loading, failed
+  history, and ordinary derivation failure intentionally project to zero solely as “hide badge”; no
+  domain data is written or declared resolved.
+- **Appearance conclusion:** application lifetime is correct because the preference applies above
+  navigation and survives Settings removal. `ThemePreference` is the sole mutable preference;
+  effective dark/light remains derived from it and the system value. Constructor read and writes
+  are synchronous by the non-throwing `AppPreferenceStorage` contract. Current implementations are
+  small platform key/value operations and suppress unavailable-storage failures, so the optimistic
+  publish-then-write order does not contradict the contract. No duplicate theme source or invalid
+  System/Light/Dark combination was found.
+- **Navigation conclusion:** Compose saveable state is the appropriate owner for the selected area
+  and four independent back stacks. Existing restoration tests cover area/detail reconstruction,
+  durable route identity, and per-area behavior. Shell data, appearance, startup, and navigation
+  remain separate owners; no duplicated selected-area state or impossible area/active-stack state
+  was found.
+- **Concurrency/stale-result conclusion:** retry cannot overlap a prior startup attempt because the
+  action exists only in settled `Error`; one `LaunchedEffect` owns the active attempt. Concurrent
+  initializer callers remain mutex-coalesced. Appearance calls originate from serialized UI event
+  dispatch and repeated equal choices are no-ops. No stale asynchronous result or non-atomic
+  read-copy-write defect was verified in this slice.
+- **Part 4 handoff:** no Part 4B or 4C finding was opened. Part 4B still owns the full host/Koin graph
+  audit, and Part 4C still owns platform preference durability, file atomicity, and latency; this
+  pass established only the lifetime and non-throwing contracts required by application state.
+- **Fixes and tests:** fixed `CQ-BUG-001`, `CQ-BUG-002`, and `CQ-STATE-002`. `AppRootTest` now covers
+  same-owner reconstruction, a fresh initializer, failure followed by successful retry, and
+  cancellation propagation. Existing initializer concurrency and failure tests and navigation,
+  appearance, and host integration suites passed unchanged apart from startup-interface call sites.
+- **Validation:** targeted startup, appearance, navigator restoration, and host/initializer suites
+  passed; `./gradlew :shared:jvmTest` and `./gradlew :androidApp:assembleDebug` passed; and
+  `./gradlew :shared:check` passed across Android host, JVM, JS, Wasm, and iOS simulator targets.
+  `git diff --check` passed. The existing Kotlin expect/actual Beta warning was unchanged. Android
+  lint and device/browser end-to-end UI tests were not run; no platform implementation changed and
+  those UI test infrastructures do not exist here.
 
 ## Baseline Health
 
@@ -834,8 +906,21 @@ Accepted as-is: 0
 Not a defect: 0
 
 Part 1 — Complete
-Part 2A — Next
+Part 2A — Complete
+
+High: 0
+Medium: 0
+Low: 3
+Observations: 0
+
+Fixed: 3
+Deferred: 0
+Needs measurement: 0
+Accepted as-is: 0
+Not a defect: 0
+
+Part 2B — Next
 ```
 
-Part 1 is complete. The exact next chunk is **Part 2A — Shell, appearance, and application state**.
+Part 2A is complete. The exact next chunk is **Part 2B — Learning and practice-builder state**.
 Do not begin it automatically.

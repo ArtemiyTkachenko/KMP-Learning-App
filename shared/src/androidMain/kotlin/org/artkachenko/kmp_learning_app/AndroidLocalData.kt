@@ -34,8 +34,5 @@ public fun startAndroidLocalDataGraph(application: Application) {
     }
 }
 
-public suspend fun initializeAndroidLocalData() {
-    GlobalContext.get()
-        .get<CurriculumDataInitializer>()
-        .initialize()
-}
+public fun androidAppStartupInitializer(): AppStartupInitializer =
+    GlobalContext.get().get<CurriculumDataInitializer>()

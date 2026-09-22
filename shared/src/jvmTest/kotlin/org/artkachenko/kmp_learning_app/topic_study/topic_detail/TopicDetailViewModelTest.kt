@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.topic_study.topic_detail
 
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -449,6 +450,21 @@ internal class TopicDetailViewModelTest {
         advanceUntilIdle()
 
         assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
+    }
+
+    @Test
+    fun curriculumCancellationDoesNotBecomeAnError() = runViewModelTest {
+        val viewModel = viewModel(
+            topicId = "topic_a",
+            curriculum = FakeCurriculumRepository(
+                topics = emptyList(),
+                topicFailure = CancellationException("cancelled"),
+            ),
+        )
+
+        advanceUntilIdle()
+
+        assertEquals(TopicDetailUiState.Loading, viewModel.uiState.value)
     }
 
     @Test
@@ -1029,6 +1045,7 @@ internal class TopicDetailViewModelTest {
         /** Answered in history and still resolvable, but outside the current ACTIVE bank. */
         retiredQuestions: List<Question> = emptyList(),
         private var failuresRemaining: Int = 0,
+        private val topicFailure: Throwable? = null,
     ) : CurriculumRepository {
         private val questionsById = (questions + retiredQuestions).associateBy(Question::id)
 
@@ -1040,6 +1057,7 @@ internal class TopicDetailViewModelTest {
             private set
 
         override suspend fun getActiveTopics(): List<Topic> {
+            topicFailure?.let { throw it }
             if (failuresRemaining > 0) {
                 failuresRemaining -= 1
                 error("load failed")

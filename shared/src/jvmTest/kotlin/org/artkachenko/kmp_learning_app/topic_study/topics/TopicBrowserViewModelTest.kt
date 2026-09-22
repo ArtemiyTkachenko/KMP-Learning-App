@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.topic_study.topics
 
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -289,6 +290,21 @@ internal class TopicBrowserViewModelTest {
     }
 
     @Test
+    fun catalogCancellationDoesNotBecomeAnError() = runViewModelTest {
+        val viewModel = viewModel(
+            repository = FakeCurriculumRepository(
+                topicResults = ArrayDeque(
+                    listOf(Result.failure(CancellationException("cancelled"))),
+                ),
+            ),
+        )
+
+        advanceUntilIdle()
+
+        assertEquals(TopicBrowserUiState.Loading, viewModel.uiState.value)
+    }
+
+    @Test
     fun loadedHistoryGivesEachTopicItsCoverageAndAccuracy() = runViewModelTest {
         // compose holds four ACTIVE questions; two distinct ones were attempted, one of them again
         // in a retake, so accuracy counts three occurrences while coverage counts two unique
@@ -481,6 +497,27 @@ internal class TopicBrowserViewModelTest {
         val complete = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
         assertTrue(complete.topics.all { it.learningContext != null })
         assertNotNull(complete.continueStudying)
+    }
+
+    @Test
+    fun cancelledHistoryEnrichmentPublishesNoPartialSnapshot() = runViewModelTest {
+        val repository = continueStudyingRepository()
+        val viewModel = viewModel(
+            repository = repository,
+            history = historyRepository(
+                listOf(completedFocusedAttempt("attempt", "compose")),
+            ),
+            learningRecommendationResolver = LearningRecommendationResolver {
+                throw CancellationException("cancelled")
+            },
+        )
+
+        advanceUntilIdle()
+
+        val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        assertTrue(state.topics.all { it.learningContext == null })
+        assertNull(state.recommendedNext)
+        assertNull(state.continueStudying)
     }
 
     @Test

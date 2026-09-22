@@ -4,9 +4,14 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 
 /**
@@ -88,6 +93,21 @@ internal class StudyProgressStateHolderTest {
         advanceUntilIdle()
 
         assertEquals(setOf("lesson_a"), studiedIds(holder))
+    }
+
+    @Test
+    fun cancelledRefreshDoesNotBecomeAnError() = runTest {
+        val repository = FakeLessonStudyRepository()
+        repository.readGate = CompletableDeferred()
+        val owner = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
+        val holder = StudyProgressStateHolder(repository, owner)
+
+        holder.refresh()
+        runCurrent()
+        owner.cancel()
+        advanceUntilIdle()
+
+        assertEquals(StudyProgressState.Loading, holder.state.value)
     }
 
     /** Every Learn destination refreshes on open; overlapping opens must not each query the table. */
@@ -196,6 +216,25 @@ internal class StudyProgressStateHolderTest {
         advanceUntilIdle()
 
         assertEquals(setOf("lesson_a"), studiedIds(holder))
+    }
+
+    @Test
+    fun cancelledMutationIsNotSettledAsAnOperationalFailure() = runTest {
+        val repository = FakeLessonStudyRepository()
+        val owner = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
+        val holder = StudyProgressStateHolder(repository, owner)
+        holder.refresh()
+        advanceUntilIdle()
+        repository.writeGate = CompletableDeferred()
+
+        holder.toggleStudied("lesson_a")
+        runCurrent()
+        owner.cancel()
+        advanceUntilIdle()
+
+        val loaded = assertIs<StudyProgressState.Loaded>(holder.state.value)
+        assertEquals(emptySet(), loaded.studiedLessonIds)
+        assertEquals(setOf("lesson_a"), loaded.pendingLessonIds)
     }
 
     @Test

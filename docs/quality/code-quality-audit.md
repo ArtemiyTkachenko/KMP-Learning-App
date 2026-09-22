@@ -138,6 +138,9 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-STATE-001` | Saved questions / concurrency | Medium | High | `saved_questions/SavedQuestionStateHolder.kt`, `SavedQuestionStateHolderTest.kt` | Concurrent mutations for different Question IDs can leave the in-memory saved list older than the repository. | Per-ID pending state correctly keeps other rows interactive, so two writes may run together. Each coroutine then reads the whole repository and independently replaces `savedQuestions`; an older read can settle after a newer read and restore a stale list even though persistence is correct. Existing tests gate both writes together and do not force out-of-order read settlement. | In Part 2D, serialize mutation/readback settlement or version results so an older snapshot cannot replace a newer one; add a deterministic different-ID out-of-order regression test with the fix. | Deferred |
 | `CQ-BUG-002` | App startup cancellation | Low | High | `AppRoot.kt`, `AppRootTest.kt` | Startup converted coroutine cancellation into the normal initialization-error state. | `runCatching` caught `CancellationException` from the host initializer and assigned `Error` before the cancelled effect returned. Host disposal normally made that state unobservable, but the startup wrapper still violated structured cancellation and could represent owner cancellation as an operational failure. | Rethrow cancellation before mapping ordinary initialization exceptions to `Error`; keep the state `Loading` when its owner cancels. | Fixed |
 | `CQ-STATE-002` | App shell badge cancellation | Low | High | `AppShellViewModel.kt` | The unresolved-mistake fallback could convert cancellation from its suspend service boundary into a zero badge. | `runCatching(...).getOrDefault(0)` caught every throwable. The current supplied-history path is an in-memory derivation with no suspension, so cancellation is not presently raised inside it and impact is limited; the suspend contract nevertheless allowed future or explicit cancellation to become plausible data instead of terminating collection. | Preserve the intentional zero fallback for ordinary service exceptions and rethrow `CancellationException`. | Fixed |
+| `CQ-STATE-003` | Topic browser cancellation | Low | High | `TopicBrowserViewModel.kt`, `TopicBrowserViewModelTest.kt` | Catalogue and optional-enrichment fallbacks converted coroutine cancellation into ordinary screen state. | `runCatching` around `readCatalog`, learning-content enrichment, and `derivedOrNull` caught `CancellationException`. A cancelled catalogue load could publish `Error`; cancelled history or learning-content work could continue and publish absent enrichment. ViewModel clearing normally makes that state unobservable, but the owner still violated structured cancellation and could finish a partial snapshot after cancellation. | Rethrow cancellation at every suspend fallback boundary while retaining `Error` or `null` for ordinary exceptions; protect primary-load and atomic history-enrichment behavior with owner-level tests. | Fixed |
+| `CQ-STATE-004` | Topic detail cancellation | Low | High | `TopicDetailViewModel.kt`, `TopicDetailViewModelTest.kt` | Primary, learning-content, and history fallbacks converted coroutine cancellation into ordinary Topic state. | Broad `runCatching` blocks could turn cancellation into screen `Error`, unavailable learning content, or absent analytics and then render it. Generation checks protected retry ordering but did not distinguish cancellation from operational failure. | Rethrow cancellation before applying the existing primary or enrichment fallback; retain graceful degradation for ordinary exceptions. | Fixed |
+| `CQ-STATE-005` | Study progress cancellation | Low | High | `StudyProgressStateHolder.kt`, `StudyProgressStateHolderTest.kt` | App-scoped study reads and mutations treated owner cancellation as normal repository failure. | Both suspend `runCatching` blocks caught `CancellationException`: a cancelled first refresh could publish `Error`, and a cancelled mutation could clear its pending marker as though persistence had failed normally. The manual refresh mutex did unlock in `finally`, so no lock leak was present. | Rethrow cancellation, keep ordinary read/mutation failure behavior unchanged, and verify cancellation while repository work is suspended. | Fixed |
 
 ## Audit Pass Log
 
@@ -149,6 +152,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | Part 1C | Assessment launch, taking, review, and practice builder | Complete | `a37b5a7385572e2b727b6580a62b165a46e51a64` | 23 assigned production Kotlin files, 10 shared dependencies/callers, and 16 relevant test files | 3 | 3 | Targeted `AssessmentTakingScreenTest` and `PracticeBuilderScreenTest`; `:shared:jvmTest`; `:androidApp:assembleDebug`; `git diff --check` | High 0, Medium 1, Low 2. One question-local lazy identity bug and two accessibility defects were fixed. No qualifying recomposition/performance concern or new Part-2 deferral was found. See review record below. |
 | Part 1D | Results, history, progress, mistakes, and saved questions | Complete | `e499932b8168e2d76661f17eeb39ab511514bc48` | 43 assigned production Kotlin files, 9 shared UI/review dependencies, and 32 relevant tests | 6 | 5 | Six targeted Compose suites; `:shared:jvmTest`; `:androidApp:assembleDebug`; `:shared:check`; `git diff --check` | High 0, Medium 3, Low 3. `CQ-UI-002` and four new UI findings were fixed; one saved-state race was deferred to Part 2D. See review record below. |
 | Part 2A | Shell, appearance, and application state | Complete | `34bb8fae8c35e47b924be3ccc5caad8f7bd59b53` | 24 production/state files and 10 relevant test files | 3 | 3 | Targeted startup, appearance, navigator, and host/initializer suites; `:shared:jvmTest`; `:androidApp:assembleDebug`; `:shared:check`; `git diff --check` | High 0, Medium 0, Low 3. `CQ-BUG-001` and two cancellation findings were fixed. No Part 4 finding was opened. See review record below. |
+| Part 2B | Learning and practice-builder state | Complete | `89420828d45fa7ecb61358990ec499f9a0d7955e` | 31 production/state/dependency files and 15 relevant test files | 3 | 3 | Six targeted owner suites; `:shared:jvmTest`; `git diff --check` | High 0, Medium 0, Low 3. Cancellation now propagates from Topic Browser, Topic Detail, and study-progress work; all stale-result, runtime-parameter, event, and read-back mechanisms were accepted. See review record below. |
 
 ### Part 1A Review Record
 
@@ -478,6 +482,115 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
   `git diff --check` passed. The existing Kotlin expect/actual Beta warning was unchanged. Android
   lint and device/browser end-to-end UI tests were not run; no platform implementation changed and
   those UI test infrastructures do not exist here.
+
+## Part 2B Review Record
+
+- **Owner boundary:** `TopicBrowserViewModel`, `TopicDetailViewModel`, `LearningUnitViewModel`,
+  `LearningLessonViewModel`, `PracticeBuilderViewModel`, and `StudyProgressStateHolder`, together
+  with their UI states, events, runtime targets, route mappings, pure study derivation and continue
+  policy, destinations, Navigation 3 routes, and Koin parameter call sites.
+- **Dependencies inspected:** the curriculum, learning-content, lesson-study, assessment-history,
+  question-selector, learning-progress, recommendation, and continue-studying contracts were read
+  only far enough to establish suspension, ordering, caching, and selection semantics. The bundled
+  learning repository and `AppCoroutineScope` were inspected only for cancellation cooperation and
+  lifetime. Repository implementations, Room, persistence, and graph quality remain Parts 3 and 4.
+- **Tests inspected (15 files):** the six direct owner suites; `PracticeTargetResolverTest`;
+  `PracticeBuilderRouteMappingTest`; and the focused learning, learning navigation, reader, Unit
+  practice, Topic discovery, targeted-practice lifecycle, and guided-preset journeys. Part 1's
+  destination/effect findings were reused rather than re-auditing Compose rendering.
+- **Cancellation audit and fixes:** `CQ-STATE-003`, `CQ-STATE-004`, and `CQ-STATE-005` are fixed.
+  Topic Browser's three broad fallback boundaries, Topic Detail's four, and the holder's two now
+  rethrow `CancellationException` and retain their established fallback only for ordinary
+  exceptions. `LearningUnitViewModel`, `LearningLessonViewModel`, `PracticeBuilderViewModel`, and
+  `PracticeTargetResolver` already rethrew cancellation before broad fallback. The source-opening
+  `runCatching` in `LearningLessonDestination` wraps a synchronous URI action rather than suspend
+  work and is outside state ownership. No other `runCatching`, `getOrElse`, `fold`, or broad catch
+  around suspend work remains in this Part 2B boundary without explicit cancellation propagation.
+- **Topic Browser:** `derivedOrNull` remains the optional-enrichment boundary, now cancellation
+  preserving. Ordinary progress, recommendation, continue-studying, and learning-content failures
+  still cost only their decoration and never become catalogue errors. Retry increments the
+  generation before clearing the old catalogue's count and Unit data; checks after the catalogue
+  read and the full learning-content read reject every stale publisher result. Query is independent,
+  survives retry, and always filters the latest loaded catalogue.
+- **Topic Browser snapshot and work:** progress, recommendation, and continue-studying are derived
+  sequentially from one history emission and assigned only after every derivation finishes. An
+  unrelated render during suspension therefore sees the complete previous enrichment snapshot,
+  never new progress beside old cards. `collect` prevents an older history emission overtaking a
+  newer one. One `LearningProgressService.load` result feeds both rows and recommendation; no
+  duplicate progress derivation or credible measurement-level performance issue was found.
+- **Topic Detail:** the fixed `topicId` is validated, missing or retired content has a controlled
+  state, curriculum generations reject stale primary and learning-content results, and retry clears
+  the previous Unit list before loading. History analytics and unresolved-mistake IDs come from one
+  sequential collector; there is no suspension between their private-field assignments, so render
+  cannot observe a half-written history snapshot. Study progress is derived from the same retained
+  ACTIVE Unit list and shared studied-ID snapshot used by its rows. Loading or unavailable Units can
+  coexist with a derived empty internal progress value, but the study page consumes progress only
+  for `Available` Units; no user-visible false zero or impossible action was found.
+- **Learning Unit and Lesson:** both cancel a prior retry job, rethrow cancellation, retain the
+  resolved publisher object, and derive every row/aggregate studied value from one holder emission.
+  Missing, deprecated, or mismatched IDs become `NotFound`; repository failures remain retryable
+  `Error`. Production learning-content lookup uses a cancellable mutex on first load and immutable
+  cached indexes afterwards, so cancellation is sufficient for retry replacement without a second
+  generation mechanism. Opening or navigating Lessons performs no study write.
+- **Runtime parameters and identity:** Topic, Unit, Lesson, and builder routes are data-class
+  Navigation 3 keys with per-entry ViewModel stores. Destination `parametersOf`, Koin definitions,
+  constructors, and integration helpers agree on parameter order. The same-type Lesson pair is
+  consistently `unitId` then `lessonId`, uses explicit indexed Koin reads, and containment tests
+  reject a valid Lesson paired with the wrong Unit. No runtime-ID mix-up or reused-owner mismatch was
+  found; new inline ID types are not justified in this pass.
+- **Practice Builder target and availability races:** replacement cancels the previous resolver or
+  selector job, both production paths use cooperative suspend contracts, and every broad fallback
+  rethrows cancellation. A resolved scope is published before its eligibility job starts; a changed
+  level/source publishes `Checking` synchronously, so the brief count/options update before
+  `Available` cannot enable Start against old availability. No stale target or availability result
+  can overwrite the latest UI configuration under the current contracts.
+- **Practice Builder selection and events:** question count does not refresh eligibility because it
+  narrows a pool whose size depends only on scope, levels, source, content, and history. StateFlow
+  updates preserve at least one level; unsupported initial and later sources are rejected, and ALL
+  is currently supported. `currentConfig` receives the explicit preflight count at its only call
+  site and snapshots the remaining state once. Repeated builder Start events are harmless at the
+  full destination boundary: the single collector forwards them sequentially to
+  `AssessmentLaunchViewModel`, whose synchronous Idle-to-Launching guard accepts only the first.
+  The buffered Channel appropriately survives a brief collector gap, is owned by the destination's
+  ViewModel, and is discarded with that navigation entry.
+- **Study-progress refresh and mutation ordering:** `tryLock` drops overlapping destination-open
+  refreshes, which is safe for current ownership because every in-process write goes through this
+  holder and performs its own serialized read-back; Part 3C still owns repository/external-writer
+  assumptions. A refresh that sampled before a write publishes before that mutation's locked
+  read-back. Different-Lesson writes may overlap, but every read-back takes the same mutex: a read
+  that misses a still-running write is followed by that write's own read-back, while any read after
+  both writes sees both. Existing deterministic tests cover an older refresh settling after a write
+  and concurrent different-Lesson use; no state regression remains.
+- **Pending and read-back failure:** pending IDs affect only their exact Lesson and are never counted
+  as studied. Success publishes repository read-back; write or read-back failure clears only that
+  pending ID and retains the last persisted snapshot, allowing immediate retry or later refresh.
+  The brief chance to request the opposite operation after a successful write whose read-back failed
+  follows from deliberately refusing to guess persisted truth and was accepted as-is. Cancellation
+  now leaves owner state untouched instead of simulating an operational failure. Manual `tryLock`
+  always unlocks in `finally`, and `withLock` is cancellation safe.
+- **Ownership and collectors:** application scope is appropriate for one study projection shared by
+  retained parent Learn destinations. It is a Koin singleton using the process-lifetime
+  `AppCoroutineScope` (`SupervisorJob + Dispatchers.Default`) and is used for app-scoped state-holder
+  work. Part 4A retains the full Koin/container teardown audit; no Part 4 finding was opened here.
+  Topic Browser and Topic Detail each collect the cached history once for different outputs; all four
+  Learn owners collect the cached study state once. The small retained-destination duplication did
+  not justify a global presentation cache or measurement finding.
+- **State and abstraction conclusion:** unknown, unavailable, loaded-empty, not-found, and primary
+  error states remain distinct. Search, publisher content, assessment history, and learner study
+  state are independent inputs only where the UI can usefully degrade. Manual `render()` aggregation
+  provides synchronous input updates and explicit atomic publication; no lost concurrent write or
+  reachable contradictory action was found. Similar load/render patterns differ in primary versus
+  optional failure and retry behavior, so no Part 5 base-ViewModel or generic state-machine finding
+  was opened.
+- **Handoffs:** Part 3C retains lesson-study repository atomicity, query snapshot, and external-writer
+  assumptions, plus selector/history repository internals. Part 4A retains full graph ownership and
+  process-scope teardown. Part 5 may reassess repetition only with wider cross-feature evidence; no
+  `CQ-CROSS` finding was justified here.
+- **Validation:** the six targeted owner suites passed, including five new cancellation regressions;
+  `./gradlew :shared:jvmTest` passed. `:shared:check` was not run because the common production edit
+  only changes exception branching around APIs already compiled for all targets and the focused plus
+  full JVM suites exercised every changed owner. Android assembly, lint, device UI, and browser UI
+  checks were not run because no platform or Compose code changed. `git diff --check` passed.
 
 ## Baseline Health
 
@@ -919,8 +1032,22 @@ Needs measurement: 0
 Accepted as-is: 0
 Not a defect: 0
 
-Part 2B — Next
+Part 2B — Complete
+
+High: 0
+Medium: 0
+Low: 3
+Observations: 0
+
+Fixed: 3
+Deferred: 0
+Needs measurement: 0
+Accepted as-is: 0
+Not a defect: 0
+
+Part 2C — Next
 ```
 
-Part 2A is complete. The exact next chunk is **Part 2B — Learning and practice-builder state**.
+Part 2B is complete. The exact next chunk is
+**Part 2C — Assessment, mixed interview, results, and mistakes**.
 Do not begin it automatically.

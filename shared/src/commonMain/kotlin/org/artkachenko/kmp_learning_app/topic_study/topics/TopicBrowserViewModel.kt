@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app.topic_study.topics
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -183,7 +184,13 @@ internal class TopicBrowserViewModel(
 
     private suspend fun <T> List<TestAttempt>.derivedOrNull(
         derive: suspend (List<TestAttempt>) -> T?,
-    ): T? = runCatching { derive(this) }.getOrNull()
+    ): T? = try {
+        derive(this)
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (_: Exception) {
+        null
+    }
 
     /**
      * Loads the catalogue, then enriches it with learning availability in the same coroutine.
@@ -207,7 +214,13 @@ internal class TopicBrowserViewModel(
         activeLearningUnits = null
         render()
         viewModelScope.launch {
-            val catalog = runCatching { readCatalog() }.getOrElse { TopicCatalog.Error }
+            val catalog = try {
+                readCatalog()
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                TopicCatalog.Error
+            }
             if (generation != catalogGeneration) return@launch
             this@TopicBrowserViewModel.catalog = catalog
             render()
@@ -228,14 +241,18 @@ internal class TopicBrowserViewModel(
      * one validated document, so every lookup here is a map read over one load.
      */
     private suspend fun loadLearningContent(topics: List<Topic>, generation: Int) {
-        val content = runCatching {
+        val content = try {
             LearningContentEnrichment(
                 unitCounts = topics.associate { topic ->
                     topic.id to learningContentRepository.getActiveUnitsByTopic(topic.id).size
                 },
                 activeUnits = learningContentRepository.getActiveUnits(),
             )
-        }.getOrNull() ?: return
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Exception) {
+            return
+        }
         if (generation != catalogGeneration) return
         learningUnitCounts = content.unitCounts
         activeLearningUnits = content.activeUnits

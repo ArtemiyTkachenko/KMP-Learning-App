@@ -1,10 +1,14 @@
 package org.artkachenko.kmp_learning_app.progress
 
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistory
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
@@ -37,16 +41,48 @@ internal class ProgressStateHolder(
     historyStore: AssessmentHistoryStore,
     scope: CoroutineScope,
 ) {
-    val state: StateFlow<ProgressUiState> = historyStore.history
+    /**
+     * Counts requests to derive again from history that has not itself changed.
+     *
+     * Retry reaches this dashboard as [AssessmentHistoryStore.invalidate], which re-reads the
+     * attempt table — but a re-read of unchanged history produces an equal [AssessmentHistory
+     * .Loaded], and a `StateFlow` does not emit an equal value again. When it was the derivation
+     * that failed rather than the read, nothing downstream would run and Retry would leave the
+     * dashboard in [ProgressUiState.Error] for the rest of the session. Combining this counter in
+     * makes the request itself an emission, so the derivation re-runs against whatever history is
+     * cached whether or not that history changed.
+     */
+    private val derivations = MutableStateFlow(0)
+
+    val state: StateFlow<ProgressUiState> = combine(historyStore.history, derivations) { history, _ ->
+        history
+    }
         .map { history ->
             when (history) {
                 AssessmentHistory.Loading -> ProgressUiState.Loading
                 AssessmentHistory.Failed -> ProgressUiState.Error
                 is AssessmentHistory.Loaded -> runCatching { loadState(history.attempts) }
-                    .getOrElse { ProgressUiState.Error }
+                    .getOrElse { failure ->
+                        // Cancellation means this holder's own scope is ending, which is not an
+                        // operational failure to report as dashboard state.
+                        if (failure is CancellationException) throw failure
+                        ProgressUiState.Error
+                    }
             }
         }
         .stateIn(scope, SharingStarted.Eagerly, ProgressUiState.Loading)
+
+    /**
+     * Derives again from the currently cached history.
+     *
+     * Deliberately separate from invalidating that history: the two failure domains are different.
+     * A history read can fail, and re-reading is what recovers it; a derivation over successfully
+     * read history can also fail — an unavailable curriculum while the attempt table was
+     * readable — and only running it again recovers that. Retry means both.
+     */
+    fun retryDerivation() {
+        derivations.update { it + 1 }
+    }
 
     private suspend fun loadState(completedAttempts: List<TestAttempt>): ProgressUiState {
         // Reuses the history the cache already holds, so one derivation is one read.

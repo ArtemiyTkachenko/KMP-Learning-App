@@ -560,6 +560,33 @@ internal class ProgressViewModelTest {
         assertEquals(listOf("fresh"), content(context.viewModel).history.map { it.attemptId })
     }
 
+    /**
+     * Retry has to recover a failed derivation, not only a failed history read.
+     *
+     * Invalidating the shared history re-reads the attempt table, but an unchanged table produces an
+     * equal `AssessmentHistory.Loaded`, and a `StateFlow` does not emit an equal value again. When
+     * it was the curriculum that was unreadable, nothing downstream would run and the dashboard
+     * would stay in Error for the rest of the session with a working Retry button on it.
+     */
+    @Test
+    fun retryRecoversADerivationFailureEvenThoughHistoryIsUnchanged() = runTest {
+        setMain(testScheduler)
+        val attempt = historyAttempt("first", AssessmentConfig.Mixed(1))
+        val context = TestContext(
+            attempts = listOf(attempt),
+            questions = listOf(question("first-q", "topic", "sub")),
+        )
+        context.curriculum.failActiveQuestions = true
+        advanceUntilIdle()
+        assertIs<ProgressUiState.Error>(context.viewModel.uiState.value)
+
+        context.curriculum.failActiveQuestions = false
+        context.viewModel.refresh()
+        advanceUntilIdle()
+
+        assertEquals(listOf("first"), content(context.viewModel).history.map { it.attemptId })
+    }
+
     private fun setMain(testScheduler: kotlinx.coroutines.test.TestCoroutineScheduler) {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
     }
@@ -623,6 +650,9 @@ private class FakeCurriculumRepository(
     val subtopicLookupCalls = mutableMapOf<String, Int>()
     var activeQuestionCalls = 0
 
+    /** An unreadable curriculum while the attempt table reads perfectly well. */
+    var failActiveQuestions = false
+
     fun resetLookupCounts() {
         topicLookupCalls.clear()
         subtopicLookupCalls.clear()
@@ -635,6 +665,7 @@ private class FakeCurriculumRepository(
     /** LearningProgressService reads the ACTIVE bank once per load to derive curriculum coverage. */
     override suspend fun getActiveQuestions(): List<Question> {
         activeQuestionCalls += 1
+        if (failActiveQuestions) error("Curriculum unavailable.")
         return questions
     }
 

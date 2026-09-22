@@ -240,6 +240,33 @@ internal class MistakeReviewViewModelTest {
         assertIs<SavedQuestionsState.Error>(viewModel.savedQuestions.value)
     }
 
+    /**
+     * Retry has to recover a failed derivation, not only a failed history read.
+     *
+     * Invalidating the shared history re-reads the attempt table, but an unchanged table produces an
+     * equal `AssessmentHistory.Loaded`, and a `StateFlow` does not emit an equal value again. When
+     * it was the curriculum that was unreadable while reconstructing review content, nothing
+     * downstream would run and the queue would stay in Error for the rest of the session.
+     */
+    @Test
+    fun retryRecoversADerivationFailureEvenThoughHistoryIsUnchanged() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val repository = VmHistoryRepository(
+            listOf(vmAttempt("a1", "2026-08-29T10:00:00Z", "q1")),
+        )
+        val curriculum = FailableCurriculumRepository(failing = true)
+        val viewModel = viewModel(repository, curriculum)
+        advanceUntilIdle()
+        assertIs<MistakeReviewUiState.Error>(viewModel.uiState.value)
+
+        curriculum.failing = false
+        viewModel.refresh()
+        advanceUntilIdle()
+
+        val content = assertIs<MistakeReviewUiState.Content>(viewModel.uiState.value)
+        assertEquals(listOf("q1"), content.mistakes.map { it.questionId })
+    }
+
     private fun TestScope.viewModel(
         repository: AssessmentRepository,
         curriculum: CurriculumRepository = VmCurriculumRepository,
@@ -272,6 +299,16 @@ internal class MistakeReviewViewModelTest {
             historyStore = testHistoryStore(repository, scope),
             scope = scope,
         ).state
+    }
+}
+
+/** An otherwise ordinary curriculum that can be made unreadable and readable again. */
+private class FailableCurriculumRepository(
+    var failing: Boolean = false,
+) : CurriculumRepository by VmCurriculumRepository {
+    override suspend fun getQuestionById(questionId: String): Question? {
+        if (failing) error("Curriculum unavailable.")
+        return VmCurriculumRepository.getQuestionById(questionId)
     }
 }
 

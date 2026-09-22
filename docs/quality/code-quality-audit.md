@@ -135,7 +135,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-UI-011` | Mistake review / composition work | Medium | High | `mistake_review/MistakeReviewScreen.kt` | The screen rebuilt its practiceable-Question list and Subtopic set on unrelated recompositions. | `MistakeReviewContent` traversed the full unresolved queue twice to derive the practice-all target. Per-Question saved-state changes and source-open failures recompose this content without changing `state.mistakes`, so a long queue repeated O(n) work and allocations for unrelated UI state. | Derive the count and Subtopic set in one pass and remember the result by the queue identity. Keep the state owner unchanged until Part 2C. | Fixed |
 | `CQ-UI-012` | Assessment results / duplication | Low | High | `assessment_review/AssessmentResultLayout.kt`, `focused_result/FocusedResultScreen.kt`, `mixed_interview/MixedInterviewResultScreen.kt` | Focused and mixed results duplicated the same adaptive one-scroll/two-pane layout behavior. | Both screens had identical pane construction, padding, spacing, weights, compact ordering, and expanded behavior; only their summary and review sections differed. Maintaining two copies could let one result lose content order or pane behavior independently. | Share the stable adaptive assessment-result shell with summary/review `LazyListScope` content, while leaving state handling and feature-specific sections in each result screen. | Fixed |
 | `CQ-UI-013` | Assessment results / effects | Medium | High | `focused_result/FocusedResultDestination.kt`, `mixed_interview/MixedInterviewResultDestination.kt` | Long-lived retake event collectors captured the initial navigation callback. | Each `LaunchedEffect` was keyed only to its ViewModel but invoked `onRetakeCreated` directly. If the callback changed while the same ViewModel remained composed, a later retake event navigated through the stale callback; assessment taking already uses the current-callback pattern for the same boundary. | Read the latest callback through `rememberUpdatedState` while keeping the collector keyed to the ViewModel. | Fixed |
-| `CQ-STATE-001` | Saved questions / concurrency | Medium | High | `saved_questions/SavedQuestionStateHolder.kt`, `SavedQuestionStateHolderTest.kt` | Concurrent mutations for different Question IDs can leave the in-memory saved list older than the repository. | Per-ID pending state correctly keeps other rows interactive, so two writes may run together. Each coroutine then reads the whole repository and independently replaces `savedQuestions`; an older read can settle after a newer read and restore a stale list even though persistence is correct. Existing tests gate both writes together and do not force out-of-order read settlement. | In Part 2D, serialize mutation/readback settlement or version results so an older snapshot cannot replace a newer one; add a deterministic different-ID out-of-order regression test with the fix. | Deferred |
+| `CQ-STATE-001` | Saved questions / concurrency | Medium | High | `saved_questions/SavedQuestionStateHolder.kt`, `SavedQuestionStateHolderTest.kt` | Concurrent mutations for different Question IDs can leave the in-memory saved list older than the repository. | Per-ID pending state correctly keeps other rows interactive, so two writes may run together. Each coroutine then reads the whole repository and independently replaces `savedQuestions`; an older read can settle after a newer read and restore a stale list even though persistence is correct. Existing tests gate both writes together and do not force out-of-order read settlement. | Serialize mutation read-back against every other read of the table so an older snapshot cannot replace a newer one, and protect it with deterministic out-of-order regression tests. Part 2D resolution: the read-back now takes the same `reading` Mutex the refresh holds, matching the pattern Part 2B established for `StudyProgressStateHolder`; the writes stay outside the lock, so one Question's mutation still never waits on another's. Two deterministic tests — an older refresh settling after a write, and a save's read-back sampled before a different Question's removal — fail on the previous implementation and pass on this one. | Fixed |
 | `CQ-BUG-002` | App startup cancellation | Low | High | `AppRoot.kt`, `AppRootTest.kt` | Startup converted coroutine cancellation into the normal initialization-error state. | `runCatching` caught `CancellationException` from the host initializer and assigned `Error` before the cancelled effect returned. Host disposal normally made that state unobservable, but the startup wrapper still violated structured cancellation and could represent owner cancellation as an operational failure. | Rethrow cancellation before mapping ordinary initialization exceptions to `Error`; keep the state `Loading` when its owner cancels. | Fixed |
 | `CQ-STATE-002` | App shell badge cancellation | Low | High | `AppShellViewModel.kt` | The unresolved-mistake fallback could convert cancellation from its suspend service boundary into a zero badge. | `runCatching(...).getOrDefault(0)` caught every throwable. The current supplied-history path is an in-memory derivation with no suspension, so cancellation is not presently raised inside it and impact is limited; the suspend contract nevertheless allowed future or explicit cancellation to become plausible data instead of terminating collection. | Preserve the intentional zero fallback for ordinary service exceptions and rethrow `CancellationException`. | Fixed |
 | `CQ-STATE-003` | Topic browser cancellation | Low | High | `TopicBrowserViewModel.kt`, `TopicBrowserViewModelTest.kt` | Catalogue and optional-enrichment fallbacks converted coroutine cancellation into ordinary screen state. | `runCatching` around `readCatalog`, learning-content enrichment, and `derivedOrNull` caught `CancellationException`. A cancelled catalogue load could publish `Error`; cancelled history or learning-content work could continue and publish absent enrichment. ViewModel clearing normally makes that state unobservable, but the owner still violated structured cancellation and could finish a partial snapshot after cancellation. | Rethrow cancellation at every suspend fallback boundary while retaining `Error` or `null` for ordinary exceptions; protect primary-load and atomic history-enrichment behavior with owner-level tests. | Fixed |
@@ -145,6 +145,10 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-STATE-006` | Assessment lifecycle cancellation | Low | High | `AssessmentTakingViewModel.kt`, `AssessmentHistoryStore.kt`, both result ViewModels, `MistakeReviewStateHolder.kt`, and direct tests | Broad suspend fallbacks converted cancellation into ordinary assessment failure state. | Submission, completion, attempt loading, result loading, retake creation, completed-history reads, mistake derivation, and optional study-link enrichment all used `runCatching` without distinguishing `CancellationException`. Depending on the owner, cancellation could publish a retryable failure/Error, turn history cancellation into `AssessmentHistoryUnavailableException`, or silently remove study links. These paths normally cancel only with their ViewModel or app owner, limiting visible impact. | Rethrow `CancellationException` at each suspend fallback while preserving the established ordinary-error or optional-enrichment behavior. | Fixed |
 | `CQ-STATE-007` | Assessment loading / retry concurrency | Medium | High | `AssessmentTakingViewModel.kt`, `FocusedResultViewModel.kt`, `MixedInterviewResultViewModel.kt`, and direct tests | Retry could start overlapping loads before the UI recomposed out of Error. | Each Retry button existed only in settled Error, but each public owner method unconditionally called its loader. Two callbacks dispatched before recomposition therefore launched two repository/review reads, and whichever completed last could overwrite the other result. | Accept retry only while the owner's current state is Error; publish Loading synchronously before launching so later callbacks are ignored. Protect each owner with a controlled pending-load test. | Fixed |
 
+| `CQ-STATE-008` | Progress and mistake queue / retry | Medium | High | `ProgressStateHolder.kt`, `ProgressViewModel.kt`, `MistakeReviewStateHolder.kt`, `MistakeReviewViewModel.kt`, `ProgressViewModelTest.kt`, `MistakeReviewViewModelTest.kt` | Retry could not recover a failed derivation, only a failed history read. | Both dashboards derive from `AssessmentHistoryStore.history`, and both Retry actions invalidated that store. A re-read of unchanged history produces an equal `AssessmentHistory.Loaded`, and a `StateFlow` does not emit an equal value again, so when the read succeeded and the *derivation* over it failed — an unreadable curriculum while the attempt table was fine — nothing downstream re-ran. The surface stayed in `Error` for the rest of the session with a Retry button that did nothing. Existing tests covered only the failed-read path, where `Failed` -> `Loaded` is a real change. | Keep invalidation for the read failure and add an explicit re-derivation request the holder combines into its own upstream, so the retry is an emission whether or not history changed. Protect both owners with a test that fails the derivation while history reads successfully. | Fixed |
+| `CQ-STATE-009` | Saved questions / stale resolution | Medium | High | `SavedQuestionsViewModel.kt`, `SavedQuestionsViewModelTest.kt` | A superseded content resolution reported its own cancellation as a curriculum failure. | `resolve` cancels the previous job and starts a new one whenever the saved list changes, which ordinary use reaches: removing one Question and then another produces a saved-list change while the first list is still resolving. The replaced job's `runCatching` caught the `CancellationException` it was cancelled with and published `SavedQuestionsUiState.Error`. A recorded emission list proves the unfixed owner publishes `Error` between two valid `Content` states. Whether that `Error` is also the last word depends on dispatcher ordering — under the single-threaded test dispatcher the replacement wins — but the holder does not re-emit an equal value, so a resolution settling after its replacement would leave a readable list showing a full-screen error until Retry. | Rethrow cancellation so a replaced resolution publishes nothing at all, and assert no `Error` is ever published across a supersession. | Fixed |
+| `CQ-STATE-010` | Progress and saved-question cancellation | Low | High | `ProgressStateHolder.kt`, `SavedQuestionStateHolder.kt`, `SavedQuestionStateHolderTest.kt` | The remaining Part-2 suspend fallbacks converted owner cancellation into ordinary state. | Three boundaries caught `CancellationException` alongside operational failure: the progress derivation over loaded history, the saved-state refresh read, and the saved-state mutation with its read-back. A cancelled derivation could publish `ProgressUiState.Error`, a cancelled first read `SavedQuestionsState.Error`, and a cancelled mutation could clear its pending marker as though persistence had failed. All three owners are app-scoped, so cancellation means the process scope is ending and impact is limited — the same reasoning as `CQ-STATE-002`. | Rethrow `CancellationException` before each established fallback, keeping ordinary-failure behavior unchanged. | Fixed |
+| `CQ-STATE-011` | Progress dashboard vs Topic detail | Observation | High | `ProgressStateHolder.kt`, `ProgressTopicViewModel.kt` | Progress Topic detail derives from its own history read rather than the shared cache. | The dashboard derives from the `AssessmentHistoryStore` snapshot, while `ProgressTopicViewModel` calls `LearningProgressService.load()` with no attempts, which falls through to `AssessmentRepository.getCompletedAttempts()`. Opening a Topic detail therefore issues a second full history query and can, during the store's documented stale-while-refresh window, show figures derived from a newer snapshot than the dashboard behind it. The window closes as soon as the store's re-read settles, and both surfaces converge; no contradiction survives. | Leave as-is. Both numbers are correct for the snapshot each read, the divergence is transient by construction, and centralizing every progress representation into one app-scoped model is the broader shared-state redesign this audit defers. Recorded so Part 3C/Part 5 can weigh the duplicate query against that cost. | Accepted as-is |
 ## Audit Pass Log
 
 | Pass | Area | Status | Commit reviewed | Files reviewed | Findings | Fixes | Validation | Notes |
@@ -157,6 +161,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | Part 2A | Shell, appearance, and application state | Complete | `34bb8fae8c35e47b924be3ccc5caad8f7bd59b53` | 24 production/state files and 10 relevant test files | 3 | 3 | Targeted startup, appearance, navigator, and host/initializer suites; `:shared:jvmTest`; `:androidApp:assembleDebug`; `:shared:check`; `git diff --check` | High 0, Medium 0, Low 3. `CQ-BUG-001` and two cancellation findings were fixed. No Part 4 finding was opened. See review record below. |
 | Part 2B | Learning and practice-builder state | Complete | `89420828d45fa7ecb61358990ec499f9a0d7955e` | 31 production/state/dependency files and 15 relevant test files | 3 | 3 | Six targeted owner suites; `:shared:jvmTest`; `git diff --check` | High 0, Medium 0, Low 3. Cancellation now propagates from Topic Browser, Topic Detail, and study-progress work; all stale-result, runtime-parameter, event, and read-back mechanisms were accepted. See review record below. |
 | Part 2C | Assessment, mixed interview, results, and mistakes | Complete | `42e49a5e32a339df77e19082003fbfcc3bfc22d4` | 32 owner/state files, 8 supporting contracts/integration boundaries, and 23 relevant test files | 3 | 3 | Six targeted owner commands; `:shared:jvmTest`; `:shared:check`; `git diff --check` | High 1, Medium 1, Low 1. Durable creation stays locked through navigation-event consumption, retries cannot overlap, and every broad Part-2C suspend fallback now preserves cancellation. Part 2D is next. See review record below. |
+| Part 2D | Progress and saved-question state | Complete | `7b67932de7ede0c8f9a8c293b53fb3a24c255e39` | 12 owner/state files, 9 supporting contracts, and 12 relevant test files | 4 | 4 | Seven targeted owner/journey commands; `:shared:jvmTest`; `:shared:check`; `git diff --check` | High 0, Medium 2, Low 1, Observation 1. `CQ-STATE-001` is resolved, both history-derived dashboards can now recover a failed derivation, and every remaining Part-2 suspend fallback preserves cancellation. Part 2 is complete; Part 3A is next. See review record below. |
 
 ### Part 1A Review Record
 
@@ -722,6 +727,251 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
   pixel verification or Material deviation was needed.
 - **Next:** Part 2D — Progress and saved-question state. It was not started in this pass.
 
+## Part 2D Review Record
+
+- **Owner/file boundary (12 production files):** `progress`: `ProgressStateHolder`,
+  `ProgressViewModel`, `ProgressTopicViewModel`, `ProgressUiState`, `ProgressTopicUiState`,
+  `ProgressDestination`, `ProgressTopicDestination`; `saved_questions`:
+  `SavedQuestionStateHolder`, `SavedQuestionsViewModel`, `SavedQuestionsState`,
+  `SavedQuestionsUiState`, `SavedQuestion`. `MistakeReviewStateHolder` and `MistakeReviewViewModel`
+  were edited for `CQ-STATE-008` only; see the handoff note at the end of this record.
+- **Supporting contracts inspected (9):** `AssessmentHistoryStore` (as the contract Part 2C
+  established, not re-audited), `LearningProgressService`, `MistakeReviewService`,
+  `SavedQuestionContentResolver`, `SavedQuestionRepository`, `CurriculumRepository`, `TestAttempt`,
+  `TopicStudyPresentationModule`, and `StudyProgressStateHolder` as the Part-2B reference pattern.
+- **Tests inspected (12 files):** `SavedQuestionStateHolderTest`, `SavedQuestionsViewModelTest`,
+  `SavedQuestionContentResolverTest`, `SavedQuestionLifecycleIntegrationTest`,
+  `SavedQuestionCaptureIntegrationTest`, `SavedQuestionsScreenTest`, `ProgressViewModelTest`,
+  `ProgressTopicViewModelTest`, `ProgressScreenTest`, `ProgressTopicScreenTest`,
+  `ProgressLearningJourneyIntegrationTest`, and `StudyProgressStateHolderTest`. There is no separate
+  `ProgressStateHolderTest`; `ProgressViewModelTest` constructs the holder directly and is where the
+  dashboard contract lives. Part 6A retains the coverage assessment.
+- **Existing findings:** `CQ-STATE-001`, the only finding deferred to Part 2D, is fixed. No other
+  finding was deferred here, so none remains carrying a Part-2D disposition.
+- **Progress ownership:** app-scoped ownership is correct and unchanged. The Progress tab's
+  navigation entry destroys `ProgressViewModel`, the dashboard must not flash Loading over figures
+  already loaded, and the same completed-history snapshot feeds the mistake queue, interview record
+  and shell badge. `ProgressViewModel` stays thin: it republishes the holder's `StateFlow` and owns
+  no derivation or local copy.
+- **Progress cancellation and failure domains:** `CQ-STATE-010` makes the derivation rethrow
+  `CancellationException` rather than publishing `ProgressUiState.Error`. The remaining fallback is
+  deliberately whole-dashboard: `LearningProgressService.load` produces every headline figure, so
+  its failure leaves nothing to show. Degrading the unresolved mistake count separately was
+  considered and rejected — with history supplied, `MistakeReviewService.countUnresolved` is a pure
+  in-memory derivation that issues no read, so it cannot realistically fail on its own, and
+  inventing an optional-enrichment path for it would add a state distinction no failure produces.
+- **Progress stale history and derivation latency:** no second cache layer exists. The holder maps
+  the history store's emissions and adds nothing of its own. `historyStore.history` is a
+  `StateFlow`, so a derivation running while a newer history arrives resumes on the latest value and
+  an older derivation cannot publish after a newer one; ordinary `map` serializes derivations, which
+  is sequential consistency rather than a race, and `mapLatest` was not adopted for the same reason
+  Part 2C rejected it. The worst-case stale period is one derivation — two curriculum reads and
+  in-memory grouping — which is not a user-facing stale state.
+- **Progress snapshot consistency and duplicate reads:** completed-attempt count, answered/correct
+  counts, percentage, curriculum coverage, recent performance, unresolved mistake count, weak areas,
+  Topic performance and the history cards all derive from the single `history.attempts` list the
+  store supplied. Both `LearningProgressService.load(completedAttempts)` and
+  `MistakeReviewService.countUnresolved(completedAttempts)` consume that snapshot and issue no
+  history read of their own; `mapHistory` reuses it too. The one repository read inside a derivation
+  is the ACTIVE question bank, which is the coverage denominator and not history.
+- **Historical metadata and completed-attempt invariants:** `mapHistory` tolerates a missing Topic
+  or Subtopic as a null label and never fabricates one, so a retired ID keeps its score row and a
+  multi-Subtopic focused scope keeps no subtitle. `getOrLoad` caches null through `containsKey`, so
+  a repeated missing ID is queried once. The `requireNotNull(attempt.score)` and
+  `requireNotNull(attempt.completedAt)` calls are not defensive gaps: `TestAttempt.init` already
+  requires both for `COMPLETED`, so a malformed row cannot reach presentation as a completed
+  attempt — it fails at construction, which is Part 3B's boundary. No finding.
+- **`ProgressTopicViewModel`:** accepted unchanged. `topicId` is required non-blank at
+  construction, retry cancels the previous job before publishing Loading, and the existing explicit
+  `catch (cancellation: CancellationException) { throw cancellation }` is already correct. Stale
+  results cannot publish: the ViewModel runs on the main dispatcher, so a replaced job is either
+  never started or suspended inside a cooperative `LearningProgressService.load`, and resumes by
+  throwing. No generation token is justified. A Topic with no observations is `Empty` rather than
+  `Error`, and coverage stays `null` when the Topic has no ACTIVE questions rather than collapsing
+  to 0%, keeping observed history and current coverage as the two separate figures they are.
+- **Dashboard versus Topic detail:** recorded as `CQ-STATE-011` and accepted. The detail screen
+  reads history independently through `LearningProgressService.load()`; the divergence is bounded by
+  the store's documented stale-while-refresh window and both surfaces converge. No global progress
+  cache was introduced.
+- **`SavedQuestionStateHolder` ownership and concurrency:** app-scoped ownership is correct and was
+  not moved — Focused Result, Mixed Result, Mistake Review and Saved Questions must observe one set
+  of saved identities, and all four consume `savedQuestionStateHolder.state` directly with no local
+  copy. `CQ-STATE-001` is fixed by the Part-2B pattern rather than a new mechanism: the mutation's
+  read-back now takes the same `reading` Mutex that `refresh` holds. Persistence-first visibility is
+  preserved; no optimistic mutation was introduced. Two deterministic tests with snapshot-on-entry
+  repository gates prove both orderings, and both fail against the previous implementation.
+- **Saved refresh deduplication and pending markers:** `tryLock` still drops an overlapping refresh,
+  which remains safe for the same reason Part 2B accepted it for study progress — every in-process
+  write performs its own read-back under the same lock, so a dropped refresh is always followed by a
+  read that observes the write. The same-Question guard is adequate because `toggleSaved` is reached
+  only from serialized UI event dispatch, and the realistic case is two different Questions, which
+  the read-back ordering now covers. `settle` transforms current state, so publishing one mutation's
+  read-back preserves another's pending marker; pending-marker correctness and data-snapshot
+  correctness were checked separately and only the latter was defective.
+- **Save/unsave cancellation and partial success:** `CQ-STATE-010` stops a cancelled mutation from
+  clearing its pending marker as though persistence had failed. Genuine partial success — write
+  committed, read-back failed — still keeps the last state actually read rather than guessing, which
+  Part 2B accepted for the identical study-progress case and which leaves a brief window where the
+  learner could request the opposite operation. Saving is idempotent by primary key; an unsave of an
+  already-removed identity and a re-save of a still-saved one are both repository-level questions
+  recorded for Part 3C. Saved ordering is the repository's own and is never re-sorted here.
+- **`SavedQuestionsViewModel`:** the separation is correct and preserved — the holder owns identity,
+  ordering and pending state, the ViewModel owns only content resolution. `CQ-STATE-009` fixes the
+  one defect: a superseded resolution no longer publishes its own cancellation as `Error`.
+  `resolvedFor` is sound: `SavedQuestion` equality is identity plus saved timestamp, the repository
+  contract preserves that timestamp across a repeated save, and curriculum content is
+  publisher-owned and static for the process, so an equal saved list cannot represent changed
+  content. Pending-only emissions update actions without re-resolving; any emission that changes the
+  saved list re-resolves, so a completed resolution always carries the pending IDs of the emission
+  it was started from. Empty cancels resolution and sets `resolvedFor = emptyList()`, and with
+  cancellation now silent a late job cannot repopulate Content. Retry deliberately re-runs
+  resolution as well as refreshing the holder, for the `StateFlow` equality reason its comment
+  states; that explicit re-run was kept.
+- **Error versus existing content:** keeping stale Content when a new saved list fails to resolve
+  was considered and rejected. Saved identity is this screen's primary data, so showing items
+  resolved from a list the learner no longer has would offer Unsave against identities the screen
+  can no longer describe. `Error` with Retry remains correct.
+- **Cross-screen and refresh fan-out:** saving on a result surface reaches Mixed Result, Mistake
+  Review and the Saved Questions list through the one holder, and the existing
+  `SavedQuestionLifecycleIntegrationTest` and `SavedQuestionCaptureIntegrationTest` journeys prove
+  it; `aQuestionSavedOnAnotherSurfaceAppearsAtItsRepositoryPosition` covers the live case. Progress
+  Retry invalidating shared history is intended, because Retry means the shared read may have
+  failed; saved Retry refreshing global saved state is intended for the same reason. Completing an
+  assessment updates the dashboard without leaving and re-entering Progress, which
+  `ProgressLearningJourneyIntegrationTest` exercises.
+- **Duplicate and retained state:** no competing mutable cache of saved IDs, pending IDs, progress
+  snapshots or unresolved counts exists; every consumer republishes a shared `StateFlow`. Neither
+  app-scoped holder retains screen-specific ephemeral state — no scroll position, expansion or
+  dialog state — so no finding was opened. `SharingStarted.Eagerly` was kept on both history-derived
+  holders: the upstream is an invalidation signal rather than a live subscription, so eager sharing
+  costs a derivation per completed assessment and buys warm state on every return.
+- **Repeated derivation:** `ProgressStateHolder`, `MistakeReviewStateHolder`, `InterviewHistoryStateHolder`
+  and the shell badge each derive from the same history emission. Their outputs differ materially —
+  occurrence-based aggregation, latest-occurrence resolution, interview records, a count — and
+  merging them would produce exactly the broad shared learner-state model this audit defers. No
+  measurement-level cost was established; recorded as a Part-5 observation only.
+- **Cancellation sweep:** four boundaries in this scope wrapped suspend work in `runCatching`,
+  `fold`, `getOrElse` or a broad catch. Three are fixed by `CQ-STATE-010` and one by `CQ-STATE-009`.
+  `ProgressTopicViewModel` already rethrew cancellation and was left alone. The `runCatching` in
+  `SavedQuestionsDestination` wraps a synchronous `openUri` and is outside state ownership, matching
+  the Part-2B and Part-2C disposition. `ProgressTopicViewModel`, `LearningUnitViewModel` and
+  `LearningLessonViewModel` catch `Throwable` rather than `Exception` after rethrowing cancellation;
+  Part 2B reviewed the latter two and accepted them, so no finding was opened here for the breadth
+  difference alone.
+- **Fixes and tests:** fixed `CQ-STATE-001`, `CQ-STATE-008`, `CQ-STATE-009` and `CQ-STATE-010` across
+  six production files. Five test files changed. Added: two deterministic saved-state ordering tests
+  (an older refresh settling after a write; a save read-back sampled before a different Question's
+  removal); two saved-state cancellation regressions; a superseded-resolution test that records
+  every published state and asserts no `Error` appears; and a retry-after-derivation-failure test
+  for each of Progress and Mistake Review. `FakeSavedQuestionRepository` gained the `readGate` and
+  snapshot-on-entry `staleReadGate` already established by `FakeLessonStudyRepository`, and the
+  saved-questions ViewModel test curriculum gained a lookup gate. Every new test was confirmed to
+  fail against the unfixed production code and pass with the fix.
+- **Part-3 handoffs:** Part 3C retains `SavedQuestionRepository` idempotency for the write the
+  learner may repeat after a failed read-back, saved-order stability under concurrent writes, and
+  transaction boundaries around save/unsave. Part 3B retains the persisted-attempt invariants that
+  `TestAttempt.init` currently enforces at construction. `CQ-STATE-011`'s duplicate history query is
+  recorded for Part 3C.
+- **Part-4 handoffs:** none opened. Both holders are Koin singles on the process-lifetime
+  `AppCoroutineScope`; Part 4A retains full graph and teardown ownership, and no Koin definition was
+  changed.
+- **Part-5 handoffs:** repeated app-scoped derivation from one history emission across four
+  consumers, and the structural similarity between `StudyProgressStateHolder` and
+  `SavedQuestionStateHolder`. Deliberately not abstracted here: the two holders now share a
+  refresh/mutation/read-back shape, but their keys, mutation semantics, ordering contracts and
+  failure behavior differ, and a `GenericRepositoryStateHolder<T>` would encode none of that. Part 5
+  may reassess now that both are fully understood.
+- **Cross-chunk note on `CQ-STATE-008`:** the defect was found in `ProgressStateHolder`, which is
+  Part 2D's, and the identical defect exists in `MistakeReviewStateHolder`, which Part 2C reviewed
+  before the pattern was understood. Both were fixed together rather than leaving two sibling
+  holders inconsistent with a known Medium defect open in one of them. Part 2C was not re-audited;
+  only this one defect was applied to its files. The root cause is a consumer-side consequence of
+  `AssessmentHistoryStore`'s value-equality emission contract, which was deliberately left
+  unchanged, so each consumer owns its own re-derivation trigger.
+- **Validation:** the five requested targeted commands passed, plus
+  `*MistakeReviewViewModelTest*`, `*SavedQuestionLifecycleIntegrationTest*` and
+  `*ProgressLearningJourneyIntegrationTest*`. `./gradlew :shared:jvmTest` passed.
+  `./gradlew :shared:check` passed as the Part-2 closure check, running the JVM, JS browser, Wasm
+  browser and iOS simulator test tasks. `git diff --check` passed. The documented Kotlin
+  expect/actual Beta warning and the existing Compose `runComposeUiTest` deprecation warnings
+  appeared and are unchanged. Android assembly, lint and device/browser UI checks were not run
+  because no platform source, Compose code, navigation route, layout or theme token changed.
+
+## Part 2 Presentation/State Synthesis
+
+- **Findings:** 13 unique findings across Parts 2A-2D, all fixed, plus one observation accepted
+  as-is. Severity totals are Critical 0, High 1, Medium 3, Low 9, Observation 1. Nothing remains
+  Deferred, Needs measurement or Not a defect.
+- **Cancellation:** this was the single largest defect class in Part 2. Broad suspend `runCatching`
+  /`fold`/`getOrElse` misuse was systematic rather than incidental: it appeared in startup, the
+  shell badge, Topic Browser, Topic Detail, study progress, assessment taking, both result owners,
+  retakes, the history store, the mistake queue, optional Lesson enrichment, the progress
+  derivation, saved-state reads and mutations, and saved-content resolution. `CQ-BUG-002`,
+  `CQ-STATE-002`, `CQ-STATE-003`, `CQ-STATE-004`, `CQ-STATE-005`, `CQ-STATE-006`, `CQ-STATE-009` and
+  `CQ-STATE-010` corrected it. The resulting convention: a suspend fallback rethrows
+  `CancellationException` before applying its ordinary-failure behavior, whether that behavior is a
+  retryable `Error`, a degraded optional enrichment, a zero fallback, or leaving prior state alone.
+  Cancellation means the owner is going away; it is never evidence about data. Synchronous
+  `runCatching` around a non-suspending call such as `openUri` is outside this rule and was left
+  alone. `CQ-STATE-009` is the one place where the misuse was not merely contract-level: a replaced
+  content resolution published a full-screen `Error` over a readable list.
+- **Stale results and races:** four verified problems. `CQ-STATE-007` — retry could start
+  overlapping loads in three owners before the UI recomposed out of `Error`. `CQ-STATE-001` — a
+  saved-question mutation's read-back was unordered against every other read, so an older snapshot
+  could restore a Question another mutation had removed. `CQ-STATE-008` — a retry over unchanged
+  history could not re-run a failed derivation, because a `StateFlow` does not re-emit an equal
+  value. `CQ-STATE-009` — a superseded resolution published over the one that replaced it.
+  Reviewed and found correct: generation checks in Topic Browser and Topic Detail; Practice Builder
+  target/availability replacement; the history store's two-generation one-shot read; sequential
+  `map` derivation in all three history-derived holders; and `ProgressTopicViewModel`'s
+  cancel-and-rethrow retry, where cancellation alone is sufficient and a generation token is not.
+- **One-shot events:** `CQ-BUG-003` was the pass's only High finding. Launch and both retake owners
+  restored `Idle` before the buffered navigation event was consumed, leaving a real window in which
+  a second durable attempt could be created. Creation now stays locked in an identity-bearing
+  pending-navigation state until the single collector acknowledges that same identity. Buffered
+  one-producer/one-collector Channels owned by a navigation entry were otherwise found appropriate.
+- **State ownership:** the pass moved ownership exactly once, in `CQ-BUG-001`, from a remembered
+  composition value to the app-scoped initializer that already had the required lifetime. Every
+  other ownership question resolved to "already correct". App-scoped holders are justified where
+  several surfaces present one learner-owned truth or where a destroyed navigation entry would
+  otherwise reload it: completed history, study progress, the mistake queue, the progress dashboard,
+  saved identities, and appearance. Screen-specific state stayed in ViewModels, and no app-scoped
+  holder was found retaining ephemeral screen state.
+- **Runtime parameters:** no ID mix-up was found. Routes are data-class Navigation 3 keys with
+  per-entry ViewModel stores; `parametersOf`, Koin definitions and constructors agree on order; the
+  same-type Lesson pair uses explicit indexed reads with containment tests. Blank IDs are rejected at
+  construction. No inline ID wrapper types were justified.
+- **Duplicate state:** none found. Every shared projection is republished from one `StateFlow`
+  rather than copied — saved identities across four surfaces, study progress across four Learn
+  owners, history across five consumers.
+- **Deferred to persistence (Parts 3B/3C):** commit-then-throw and commit-then-cancel outcomes for
+  start, retake, submission and completion; repository idempotency and transaction boundaries for
+  assessments and saved questions; malformed IN_PROGRESS answer-prefix invariants; lesson-study
+  atomicity and external-writer assumptions; saved-order stability; and the duplicate history query
+  behind `CQ-STATE-011`.
+- **Deferred to DI lifetime (Part 4A):** full Koin graph ownership and process-scope teardown for
+  the app-scoped holders and `AppCoroutineScope`. No Part-4 finding was opened in any Part-2 chunk
+  and no Koin definition was changed.
+- **Deferred cross-cutting (Part 5):** repeated derivation from one history emission across four
+  app-scoped consumers; the structural similarity between `StudyProgressStateHolder` and
+  `SavedQuestionStateHolder`; and the parallel focused/mixed result owners. No `CQ-CROSS` finding was
+  justified: in each case the shared shape covers materially different semantics, and abstracting it
+  now would trade explicit correct code for a generic holder that encodes none of the differences.
+
+### Final state-ownership conclusions
+
+| State | Owner | Lifetime |
+| --- | --- | --- |
+| Startup/application readiness | `CurriculumDataInitializer` for durable completion; `AppStartupStateHolder` for transient loading/error/retry | Application graph; composition |
+| Appearance preference | `AppearanceStateHolder` | Application (Koin single) |
+| Navigation state | `AppNavigator` | Compose saveable |
+| Completed assessment history | `AssessmentHistoryStore` | Application (`AppCoroutineScope`) |
+| Study progress | `StudyProgressStateHolder` | Application (`AppCoroutineScope`) |
+| Mistake queue | `MistakeReviewStateHolder` | Application (`AppCoroutineScope`) |
+| Progress dashboard | `ProgressStateHolder` | Application (`AppCoroutineScope`) |
+| Saved-question identities | `SavedQuestionStateHolder` | Application (`AppCoroutineScope`) |
+| Screen-specific state | The feature ViewModel | Navigation entry |
+
 ## Baseline Health
 
 | Check | Result | Failures/warnings | Notes |
@@ -1188,9 +1438,24 @@ Needs measurement: 0
 Accepted as-is: 0
 Not a defect: 0
 
-Part 2D — Next
+Part 2D — Complete
+
+High: 0
+Medium: 2
+Low: 1
+Observations: 1
+
+Fixed: 4
+Deferred: 0
+Needs measurement: 0
+Accepted as-is: 1
+Not a defect: 0
+
+Part 2 — Complete
+Part 3A — Next
 ```
 
-Part 2C is complete. The exact next chunk is
-**Part 2D — Progress and saved-question state**.
+Part 2 is complete: no presentation/state finding remains open, deferred or awaiting
+measurement. The exact next chunk is
+**Part 3A — Curriculum and bundled learning content**.
 Do not begin it automatically.

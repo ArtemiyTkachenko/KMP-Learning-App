@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.saved_questions
 
+import kotlin.coroutines.cancellation.CancellationException
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
@@ -116,21 +117,24 @@ internal class SavedQuestionsViewModel(
             _uiState.value = SavedQuestionsUiState.Loading
         }
         resolution = viewModelScope.launch {
-            runCatching { contentResolver.resolve(state.savedQuestions) }.fold(
-                onSuccess = { items ->
-                    resolvedFor = state.savedQuestions
-                    _uiState.value = SavedQuestionsUiState.Content(
-                        items = items,
-                        pendingQuestionIds = state.pendingQuestionIds,
-                    )
-                },
+            try {
+                val items = contentResolver.resolve(state.savedQuestions)
+                resolvedFor = state.savedQuestions
+                _uiState.value = SavedQuestionsUiState.Content(
+                    items = items,
+                    pendingQuestionIds = state.pendingQuestionIds,
+                )
+            } catch (cancellation: CancellationException) {
+                // This job was superseded — by a newer saved list, or by the list becoming empty.
+                // Publishing anything here would let the replaced resolution have the last word
+                // over the one that replaced it, so it publishes nothing at all.
+                throw cancellation
+            } catch (_: Exception) {
                 // A curriculum read that failed is not evidence that the Questions are gone, so
                 // this is an error with a retry rather than a list of missing placeholders.
-                onFailure = {
-                    resolvedFor = null
-                    _uiState.value = SavedQuestionsUiState.Error
-                },
-            )
+                resolvedFor = null
+                _uiState.value = SavedQuestionsUiState.Error
+            }
         }
     }
 }

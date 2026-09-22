@@ -23,8 +23,10 @@ internal fun AssessmentLaunchCoordinator(
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
-                is AssessmentLaunchEvent.Created ->
+                is AssessmentLaunchEvent.Created -> {
                     currentOnAttemptCreated(event.attemptId)
+                    viewModel.onCreatedEventHandled(event.attemptId)
+                }
             }
         }
     }

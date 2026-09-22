@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.mistake_review
 
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -34,6 +35,9 @@ import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.curriculum.learning.LearningLesson
+import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
+import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
 import org.artkachenko.kmp_learning_app.saved_questions.FakeSavedQuestionRepository
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 import org.artkachenko.kmp_learning_app.saved_questions.repository.SavedQuestionRepository
@@ -103,6 +107,69 @@ internal class MistakeReviewViewModelTest {
         advanceUntilIdle()
         val content = assertIs<MistakeReviewUiState.Content>(state.value)
         assertEquals(listOf("q1"), content.mistakes.map { it.questionId })
+    }
+
+    @Test
+    fun queueCancellationDoesNotBecomeAnError() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val repository = VmHistoryRepository(
+            listOf(vmAttempt("a1", "2026-08-29T10:00:00Z", "q1")),
+        )
+        val scope = testCacheScope()
+        val store = testHistoryStore(repository, scope)
+        val state = MistakeReviewStateHolder(
+            MistakeReviewService(
+                repository,
+                AssessmentReviewLoader(CancelingCurriculumRepository),
+            ),
+            store,
+            scope,
+        ).state
+
+        advanceUntilIdle()
+
+        assertIs<MistakeReviewUiState.Loading>(state.value)
+    }
+
+    @Test
+    fun studyLinkCancellationDoesNotPublishQueueWithoutLinks() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val repository = VmHistoryRepository(
+            listOf(vmAttempt("a1", "2026-08-29T10:00:00Z", "q1")),
+        )
+        val scope = testCacheScope()
+        val store = testHistoryStore(repository, scope)
+        val state = MistakeReviewStateHolder(
+            vmService(repository),
+            store,
+            scope,
+            CancelingLearningContentRepository,
+        ).state
+
+        advanceUntilIdle()
+
+        assertIs<MistakeReviewUiState.Loading>(state.value)
+    }
+
+    @Test
+    fun ordinaryStudyLinkFailureKeepsMistakesWithoutLinks() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val repository = VmHistoryRepository(
+            listOf(vmAttempt("a1", "2026-08-29T10:00:00Z", "q1")),
+        )
+        val scope = testCacheScope()
+        val store = testHistoryStore(repository, scope)
+        val state = MistakeReviewStateHolder(
+            vmService(repository),
+            store,
+            scope,
+            FailingLearningContentRepository,
+        ).state
+
+        advanceUntilIdle()
+
+        val mistake = assertIs<MistakeReviewUiState.Content>(state.value).mistakes.single()
+        assertEquals(null, mistake.studyLesson)
     }
     /**
      * Saved state and unresolved state are separate truths. Saving is learner intent about a
@@ -290,6 +357,34 @@ private object VmCurriculumRepository : CurriculumRepository {
             explanation = "Explanation",
             sources = listOf(SourceReference("Source", "https://example.com/$questionId")),
         )
+}
+
+private object CancelingCurriculumRepository : CurriculumRepository by VmCurriculumRepository {
+    override suspend fun getQuestionById(questionId: String): Question? =
+        throw CancellationException("cancelled")
+}
+
+private object CancelingLearningContentRepository : LearningContentRepository {
+    override suspend fun getActiveUnits(): List<LearningUnit> =
+        throw CancellationException("cancelled")
+
+    override suspend fun getActiveUnitsByTopic(topicId: String): List<LearningUnit> =
+        error("Not used.")
+
+    override suspend fun getUnitById(unitId: String): LearningUnit? = error("Not used.")
+
+    override suspend fun getLessonById(lessonId: String): LearningLesson? = error("Not used.")
+}
+
+private object FailingLearningContentRepository : LearningContentRepository {
+    override suspend fun getActiveUnits(): List<LearningUnit> = error("unavailable")
+
+    override suspend fun getActiveUnitsByTopic(topicId: String): List<LearningUnit> =
+        error("Not used.")
+
+    override suspend fun getUnitById(unitId: String): LearningUnit? = error("Not used.")
+
+    override suspend fun getLessonById(lessonId: String): LearningLesson? = error("Not used.")
 }
 
 /** Review content the curriculum no longer holds, so the queue entry resolves to Missing. */

@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app.topic_study.focused_result
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,6 +44,7 @@ internal class FocusedResultViewModel(
     }
 
     fun retry() {
+        if (_uiState.value != FocusedResultUiState.Error) return
         load()
         savedQuestionStateHolder.refresh()
     }
@@ -65,14 +67,17 @@ internal class FocusedResultViewModel(
 
     fun repeatPractice() {
         val currentState = uiState.value as? FocusedResultUiState.Content ?: return
-        if (currentState.repeatPracticeState == RepeatPracticeState.Creating) return
+        if (
+            currentState.repeatPracticeState == RepeatPracticeState.Creating ||
+            currentState.repeatPracticeState is RepeatPracticeState.Created
+        ) return
         _uiState.value = currentState.copy(repeatPracticeState = RepeatPracticeState.Creating)
         viewModelScope.launch {
             runCatching { assessmentRetakeService.createRetake(attemptId) }
                 .onSuccess { result ->
                     when (result) {
                         is AssessmentRetakeResult.Created -> {
-                            _uiState.value = currentState.copy(repeatPracticeState = RepeatPracticeState.Idle)
+                            setRepeatState(RepeatPracticeState.Created(result.attemptId))
                             _events.send(FocusedResultEvent.RetakeCreated(result.attemptId))
                         }
                         AssessmentRetakeResult.SourceAttemptNotFound ->
@@ -81,8 +86,17 @@ internal class FocusedResultViewModel(
                             setRepeatState(RepeatPracticeState.NoEligibleQuestions)
                     }
                 }
-                .onFailure { setRepeatState(RepeatPracticeState.Error) }
+                .onFailure { failure ->
+                    if (failure is CancellationException) throw failure
+                    setRepeatState(RepeatPracticeState.Error)
+                }
         }
+    }
+
+    fun onRetakeEventHandled(attemptId: String) {
+        val content = _uiState.value as? FocusedResultUiState.Content ?: return
+        val created = content.repeatPracticeState as? RepeatPracticeState.Created ?: return
+        if (created.attemptId == attemptId) setRepeatState(RepeatPracticeState.Idle)
     }
 
     private fun setRepeatState(state: RepeatPracticeState) {
@@ -110,7 +124,8 @@ internal class FocusedResultViewModel(
                 )
             }.onSuccess { state ->
                 _uiState.value = state
-            }.onFailure {
+            }.onFailure { failure ->
+                if (failure is CancellationException) throw failure
                 _uiState.value = FocusedResultUiState.Error
             }
         }

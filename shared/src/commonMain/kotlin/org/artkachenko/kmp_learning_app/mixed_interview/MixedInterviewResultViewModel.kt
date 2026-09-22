@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app.mixed_interview
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,6 +50,7 @@ internal class MixedInterviewResultViewModel(
     }
 
     fun retry() {
+        if (_uiState.value != MixedInterviewResultUiState.Error) return
         load()
         savedQuestionStateHolder.refresh()
     }
@@ -65,14 +67,17 @@ internal class MixedInterviewResultViewModel(
 
     fun repeatInterview() {
         val currentState = uiState.value as? MixedInterviewResultUiState.Content ?: return
-        if (currentState.repeatInterviewState == RepeatInterviewState.Creating) return
+        if (
+            currentState.repeatInterviewState == RepeatInterviewState.Creating ||
+            currentState.repeatInterviewState is RepeatInterviewState.Created
+        ) return
         _uiState.value = currentState.copy(repeatInterviewState = RepeatInterviewState.Creating)
         viewModelScope.launch {
             runCatching { assessmentRetakeService.createRetake(attemptId) }
                 .onSuccess { result ->
                     when (result) {
                         is AssessmentRetakeResult.Created -> {
-                            setRepeatState(RepeatInterviewState.Idle)
+                            setRepeatState(RepeatInterviewState.Created(result.attemptId))
                             _events.send(
                                 MixedInterviewResultEvent.RetakeCreated(
                                     result.attemptId,
@@ -85,8 +90,17 @@ internal class MixedInterviewResultViewModel(
                             setRepeatState(RepeatInterviewState.NoEligibleQuestions)
                     }
                 }
-                .onFailure { setRepeatState(RepeatInterviewState.Error) }
+                .onFailure { failure ->
+                    if (failure is CancellationException) throw failure
+                    setRepeatState(RepeatInterviewState.Error)
+                }
         }
+    }
+
+    fun onRetakeEventHandled(attemptId: String) {
+        val content = _uiState.value as? MixedInterviewResultUiState.Content ?: return
+        val created = content.repeatInterviewState as? RepeatInterviewState.Created ?: return
+        if (created.attemptId == attemptId) setRepeatState(RepeatInterviewState.Idle)
     }
 
     private fun setRepeatState(state: RepeatInterviewState) {
@@ -99,7 +113,10 @@ internal class MixedInterviewResultViewModel(
         viewModelScope.launch {
             runCatching { loadResult() }
                 .onSuccess { _uiState.value = it }
-                .onFailure { _uiState.value = MixedInterviewResultUiState.Error }
+                .onFailure { failure ->
+                    if (failure is CancellationException) throw failure
+                    _uiState.value = MixedInterviewResultUiState.Error
+                }
         }
     }
 

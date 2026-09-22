@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.assessment_taking
 
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -8,9 +9,11 @@ import kotlin.test.assertTrue
 import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
@@ -192,6 +195,41 @@ internal class AssessmentTakingViewModelTest {
     }
 
     @Test
+    fun duplicateSubmissionWhileSaveIsPendingPersistsOnlyOnce() = runViewModelTest {
+        val repository = RecordingAssessmentRepository()
+        val viewModel = viewModel(listOf(question("single", listOf("a"))), repository)
+        advanceUntilIdle()
+        val gate = CompletableDeferred<Unit>()
+        repository.saveGate = gate
+
+        viewModel.selectAnswer("a")
+        viewModel.submitAnswer()
+        runCurrent()
+        viewModel.submitAnswer()
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(2, repository.savedAttempts.size)
+        assertIs<AssessmentTakingUiState.ReadyToComplete>(viewModel.uiState.value)
+    }
+
+    @Test
+    fun submissionCancellationDoesNotBecomeARetryableFailure() = runViewModelTest {
+        val repository = RecordingAssessmentRepository()
+        val viewModel = viewModel(listOf(question("single", listOf("a"))), repository)
+        advanceUntilIdle()
+        repository.saveFailure = CancellationException("cancelled")
+
+        viewModel.selectAnswer("a")
+        viewModel.submitAnswer()
+        advanceUntilIdle()
+
+        val state = content(viewModel)
+        assertTrue(state.isSubmitting)
+        assertTrue(!state.submissionFailed)
+    }
+
+    @Test
     fun finalSubmissionLeavesAttemptInProgressWithoutScore() = runViewModelTest {
         val repository = RecordingAssessmentRepository()
         val viewModel = viewModel(listOf(question("single", listOf("a"))), repository)
@@ -249,6 +287,78 @@ internal class AssessmentTakingViewModelTest {
         advanceUntilIdle()
         assertIs<AssessmentTakingUiState.CompletionSucceeded>(viewModel.uiState.value)
         assertEquals(AssessmentStatus.COMPLETED, repository.savedAttempts.last().status)
+    }
+
+    @Test
+    fun duplicateCompletionWhileSaveIsPendingPersistsOnlyOnce() = runViewModelTest {
+        val repository = RecordingAssessmentRepository()
+        val viewModel = viewModel(listOf(question("single", listOf("a"))), repository)
+        advanceUntilIdle()
+        viewModel.selectAnswer("a")
+        viewModel.submitAnswer()
+        advanceUntilIdle()
+        val gate = CompletableDeferred<Unit>()
+        repository.saveGate = gate
+
+        viewModel.completeAssessment()
+        runCurrent()
+        viewModel.completeAssessment()
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(3, repository.savedAttempts.size)
+        assertIs<AssessmentTakingUiState.CompletionSucceeded>(viewModel.uiState.value)
+    }
+
+    @Test
+    fun completionCancellationDoesNotBecomeARetryableFailure() = runViewModelTest {
+        val repository = RecordingAssessmentRepository()
+        val viewModel = viewModel(listOf(question("single", listOf("a"))), repository)
+        advanceUntilIdle()
+        viewModel.selectAnswer("a")
+        viewModel.submitAnswer()
+        advanceUntilIdle()
+        repository.saveFailure = CancellationException("cancelled")
+
+        viewModel.completeAssessment()
+        advanceUntilIdle()
+
+        val state = assertIs<AssessmentTakingUiState.ReadyToComplete>(viewModel.uiState.value)
+        assertTrue(state.isCompleting)
+        assertTrue(!state.completionFailed)
+    }
+
+    @Test
+    fun loadCancellationDoesNotBecomeAnError() = runViewModelTest {
+        val repository = RecordingAssessmentRepository().apply {
+            loadFailure = CancellationException("cancelled")
+        }
+        val viewModel = viewModel(listOf(question("single", listOf("a"))), repository)
+
+        advanceUntilIdle()
+
+        assertIs<AssessmentTakingUiState.Loading>(viewModel.uiState.value)
+    }
+
+    @Test
+    fun duplicateRetryWhileReloadIsPendingStartsOneLoad() = runViewModelTest {
+        val repository = RecordingAssessmentRepository().apply {
+            loadFailure = IllegalStateException("unavailable")
+        }
+        val viewModel = viewModel(listOf(question("single", listOf("a"))), repository)
+        advanceUntilIdle()
+        assertIs<AssessmentTakingUiState.Error>(viewModel.uiState.value)
+        val gate = CompletableDeferred<Unit>()
+        repository.loadGate = gate
+
+        viewModel.retry()
+        viewModel.retry()
+        runCurrent()
+
+        assertEquals(2, repository.loadCalls)
+        gate.complete(Unit)
+        advanceUntilIdle()
+        assertIs<AssessmentTakingUiState.Content>(viewModel.uiState.value)
     }
 
     @Test
@@ -633,17 +743,34 @@ internal class AssessmentTakingViewModelTest {
         var failNextSave: Boolean = false,
     ) : AssessmentRepository {
         val savedAttempts = mutableListOf<TestAttempt>()
+        var saveFailure: Throwable? = null
+        var loadFailure: Throwable? = null
+        var saveGate: CompletableDeferred<Unit>? = null
+        var loadGate: CompletableDeferred<Unit>? = null
+        var loadCalls = 0
 
         override suspend fun save(attempt: TestAttempt) {
+            saveFailure?.let { failure ->
+                saveFailure = null
+                throw failure
+            }
             if (failNextSave) {
                 failNextSave = false
                 error("save failed")
             }
+            saveGate?.await()
             savedAttempts += attempt
         }
 
-        override suspend fun getById(attemptId: String): TestAttempt? =
-            savedAttempts.lastOrNull { it.id == attemptId }
+        override suspend fun getById(attemptId: String): TestAttempt? {
+            loadCalls++
+            loadFailure?.let { failure ->
+                loadFailure = null
+                throw failure
+            }
+            loadGate?.await()
+            return savedAttempts.lastOrNull { it.id == attemptId }
+        }
 
         override suspend fun getCompletedAttempts(): List<TestAttempt> = emptyList()
     }

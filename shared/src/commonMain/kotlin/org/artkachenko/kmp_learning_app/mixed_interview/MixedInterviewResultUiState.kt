@@ -22,6 +22,7 @@ internal sealed interface MixedInterviewResultUiState {
 internal sealed interface RepeatInterviewState {
     data object Idle : RepeatInterviewState
     data object Creating : RepeatInterviewState
+    data class Created(val attemptId: String) : RepeatInterviewState
     data object SourceAttemptNotFound : RepeatInterviewState
     data object NoEligibleQuestions : RepeatInterviewState
     data object Error : RepeatInterviewState

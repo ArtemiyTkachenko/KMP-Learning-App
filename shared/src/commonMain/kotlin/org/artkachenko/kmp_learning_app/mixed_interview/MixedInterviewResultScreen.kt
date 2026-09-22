@@ -180,7 +180,9 @@ private fun LazyListScope.outcomeSection(
             MistakeRetentionNotice(state.questions, onPracticeMistakes)
             when (state.repeatInterviewState) {
                 RepeatInterviewState.Idle -> Unit
-                RepeatInterviewState.Creating ->
+                RepeatInterviewState.Creating,
+                is RepeatInterviewState.Created,
+                ->
                     Text(stringResource(Res.string.mixed_result_practice_starting))
                 RepeatInterviewState.SourceAttemptNotFound ->
                     Text(
@@ -200,10 +202,14 @@ private fun LazyListScope.outcomeSection(
             }
             OutlinedButton(
                 onClick = onRepeatInterview,
-                enabled = state.repeatInterviewState != RepeatInterviewState.Creating,
+                enabled = state.repeatInterviewState !is RepeatInterviewState.Creating &&
+                    state.repeatInterviewState !is RepeatInterviewState.Created,
                 modifier = Modifier.testTag(MixedResultPracticeAgainTag),
             ) {
-                if (state.repeatInterviewState == RepeatInterviewState.Creating) {
+                if (
+                    state.repeatInterviewState is RepeatInterviewState.Creating ||
+                    state.repeatInterviewState is RepeatInterviewState.Created
+                ) {
                     CircularProgressIndicator(Modifier.testTag(MixedResultCreatingIndicatorTag))
                 } else {
                     Text(stringResource(Res.string.mixed_result_practice_again))

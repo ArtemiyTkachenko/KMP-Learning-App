@@ -31,7 +31,10 @@ internal fun FocusedResultDestination(
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
-                is FocusedResultEvent.RetakeCreated -> currentOnRetakeCreated(event.attemptId)
+                is FocusedResultEvent.RetakeCreated -> {
+                    currentOnRetakeCreated(event.attemptId)
+                    viewModel.onRetakeEventHandled(event.attemptId)
+                }
             }
         }
     }

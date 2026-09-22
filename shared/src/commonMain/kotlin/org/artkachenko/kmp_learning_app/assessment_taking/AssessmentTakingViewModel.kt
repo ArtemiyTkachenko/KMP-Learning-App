@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app.assessment_taking
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,6 +38,7 @@ internal class AssessmentTakingViewModel(
     }
 
     fun retry() {
+        if (_uiState.value != AssessmentTakingUiState.Error) return
         loadAssessment()
     }
 
@@ -98,7 +100,8 @@ internal class AssessmentTakingViewModel(
                     pendingSelectedAnswerIds = emptySet()
                     publishContent()
                 }
-            }.onFailure {
+            }.onFailure { failure ->
+                if (failure is CancellationException) throw failure
                 _uiState.value = currentState.copy(
                     isSubmitting = false,
                     submissionFailed = true,
@@ -152,7 +155,8 @@ internal class AssessmentTakingViewModel(
                 _uiState.value = AssessmentTakingUiState.CompletionSucceeded(
                     attemptId = completedSession.attempt.id,
                 )
-            }.onFailure {
+            }.onFailure { failure ->
+                if (failure is CancellationException) throw failure
                 _uiState.value = AssessmentTakingUiState.ReadyToComplete(
                     attemptId = originalSession.attempt.id,
                     totalQuestions = originalSession.questions.size,
@@ -171,7 +175,8 @@ internal class AssessmentTakingViewModel(
         viewModelScope.launch {
             runCatching { loadExistingAttempt(attemptId) }.onSuccess { state ->
                 _uiState.value = state
-            }.onFailure {
+            }.onFailure { failure ->
+                if (failure is CancellationException) throw failure
                 _uiState.value = AssessmentTakingUiState.Error
             }
         }

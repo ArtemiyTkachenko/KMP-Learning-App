@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.mixed_interview
 
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -102,7 +103,7 @@ internal class MixedInterviewResultViewModelTest {
     }
 
     @Test
-    fun successfulRepeatPersistsBeforeEventPreservesSourceAndResetsAction() = runTest {
+    fun successfulRepeatPersistsBeforeEventAndBlocksReentryWhileNavigationIsPending() = runTest {
         setMain(testScheduler)
         val source = completedAttempt(listOf(answered("q1", true)), AssessmentScore(1, 1))
         val repository = FakeAssessmentRepository(source)
@@ -128,6 +129,14 @@ internal class MixedInterviewResultViewModelTest {
         assertNull(retake.score)
         assertNull(retake.completedAt)
         assertEquals(source, repository.getById(source.id))
+        assertEquals(RepeatInterviewState.Created("retake"), content(viewModel).repeatInterviewState)
+
+        viewModel.repeatInterview()
+        advanceUntilIdle()
+        assertEquals(1, repository.saveCalls)
+        viewModel.onRetakeEventHandled("other-retake")
+        assertEquals(RepeatInterviewState.Created("retake"), content(viewModel).repeatInterviewState)
+        viewModel.onRetakeEventHandled("retake")
         assertEquals(RepeatInterviewState.Idle, content(viewModel).repeatInterviewState)
     }
 
@@ -221,18 +230,18 @@ internal class MixedInterviewResultViewModelTest {
         assertIs<MixedInterviewResultUiState.AttemptNotFound>(viewModel.uiState.value)
 
         repository.attempts[SourceId] = inProgressAttempt()
-        viewModel.retry()
+        val inProgressViewModel = viewModel(repository, curriculum)
         advanceUntilIdle()
-        assertIs<MixedInterviewResultUiState.NotCompleted>(viewModel.uiState.value)
+        assertIs<MixedInterviewResultUiState.NotCompleted>(inProgressViewModel.uiState.value)
 
         repository.attempts[SourceId] = completedAttempt(
             listOf(answered("q", true)),
             AssessmentScore(1, 1),
             AssessmentConfig.Focused(AssessmentScope.Topic("topic"), 1),
         )
-        viewModel.retry()
+        val wrongConfigViewModel = viewModel(repository, curriculum)
         advanceUntilIdle()
-        assertIs<MixedInterviewResultUiState.Error>(viewModel.uiState.value)
+        assertIs<MixedInterviewResultUiState.Error>(wrongConfigViewModel.uiState.value)
     }
 
     @Test
@@ -249,10 +258,56 @@ internal class MixedInterviewResultViewModelTest {
         val viewModel = viewModel(repository, curriculum)
         advanceUntilIdle()
         assertIs<MixedInterviewResultUiState.Error>(viewModel.uiState.value)
+        val gate = CompletableDeferred<Unit>()
+        repository.loadGate = gate
 
         viewModel.retry()
+        viewModel.retry()
+        runCurrent()
+        assertEquals(2, repository.loadCalls)
+        gate.complete(Unit)
         advanceUntilIdle()
         assertIs<MixedInterviewResultUiState.Content>(viewModel.uiState.value)
+    }
+
+    @Test
+    fun resultLoadCancellationDoesNotBecomeAnError() = runTest {
+        setMain(testScheduler)
+        val repository = FakeAssessmentRepository(
+            completedAttempt(listOf(answered("q", true)), AssessmentScore(1, 1)),
+        ).apply {
+            loadFailure = CancellationException("cancelled")
+        }
+        val viewModel = viewModel(
+            repository,
+            FakeCurriculumRepository(
+                listOf(question("q", "topic")),
+                listOf(Topic("topic", "Topic")),
+            ),
+        )
+
+        advanceUntilIdle()
+
+        assertIs<MixedInterviewResultUiState.Loading>(viewModel.uiState.value)
+    }
+
+    @Test
+    fun repeatCancellationDoesNotBecomeAnError() = runTest {
+        setMain(testScheduler)
+        val source = completedAttempt(listOf(answered("q", true)), AssessmentScore(1, 1))
+        val repository = FakeAssessmentRepository(source)
+        val curriculum = FakeCurriculumRepository(
+            listOf(question("q", "topic")),
+            listOf(Topic("topic", "Topic")),
+        )
+        val viewModel = viewModel(repository, curriculum)
+        advanceUntilIdle()
+        curriculum.selectionFailure = CancellationException("cancelled")
+
+        viewModel.repeatInterview()
+        advanceUntilIdle()
+
+        assertEquals(RepeatInterviewState.Creating, content(viewModel).repeatInterviewState)
     }
 
     /**
@@ -428,6 +483,9 @@ internal class MixedInterviewResultViewModelTest {
     ) : AssessmentRepository {
         val attempts = mutableMapOf<String, TestAttempt>()
         var saveCalls = 0
+        var loadFailure: Throwable? = null
+        var loadGate: CompletableDeferred<Unit>? = null
+        var loadCalls = 0
 
         init {
             source?.let { attempts[it.id] = it }
@@ -439,10 +497,16 @@ internal class MixedInterviewResultViewModelTest {
         }
 
         override suspend fun getById(attemptId: String): TestAttempt? {
+            loadCalls++
+            loadFailure?.let { failure ->
+                loadFailure = null
+                throw failure
+            }
             if (failNextLoad) {
                 failNextLoad = false
                 error("load failed")
             }
+            loadGate?.await()
             return attempts[attemptId]
         }
 
@@ -457,11 +521,13 @@ internal class MixedInterviewResultViewModelTest {
     ) : CurriculumRepository {
         var activeQuestions: List<Question> = questions
         var activeQuestionCalls = 0
+        var selectionFailure: Throwable? = null
 
         override suspend fun getActiveTopics(): List<Topic> = error("Not used")
         override suspend fun getActiveSubtopics(topicId: String): List<Subtopic> = error("Not used")
         override suspend fun getActiveQuestions(): List<Question> {
             activeQuestionCalls++
+            selectionFailure?.let { throw it }
             if (failNextActiveSelection) {
                 failNextActiveSelection = false
                 error("selection failed")

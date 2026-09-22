@@ -11,10 +11,12 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
@@ -68,6 +70,20 @@ internal class AssessmentHistoryStoreTest {
     }
 
     @Test
+    fun ownerCancellationDoesNotPublishFailedHistory() = runStoreTest {
+        val repository = FakeAssessmentRepository(emptyList())
+        repository.beforeRead = { CompletableDeferred<Unit>().await() }
+        val owner = testCacheScope()
+        val store = testHistoryStore(repository, owner)
+        runCurrent()
+
+        owner.cancel()
+        advanceUntilIdle()
+
+        assertIs<AssessmentHistory.Loading>(store.history.value)
+    }
+
+    @Test
     fun completedAttemptsRetriesAfterTheCurrentGenerationFailed() = runStoreTest {
         val repository = FakeAssessmentRepository(listOf(completedAttempt("question_a")))
         repository.failure = IllegalStateException("Database unavailable")
@@ -77,6 +93,29 @@ internal class AssessmentHistoryStoreTest {
         repository.failure = null
 
         assertEquals(listOf("question_a"), store.completedAttempts().questionIds())
+        assertEquals(2, repository.reads)
+    }
+
+    @Test
+    fun concurrentOneShotCallersCoalesceOntoOneRetryGeneration() = runStoreTest {
+        val repository = FakeAssessmentRepository(listOf(completedAttempt("question_a")))
+        repository.failure = IllegalStateException("Database unavailable")
+        val store = testHistoryStore(repository, testCacheScope())
+        assertFailsWith<AssessmentHistoryUnavailableException> { store.completedAttempts() }
+        repository.failure = null
+        val retryGate = CompletableDeferred<Unit>()
+        repository.beforeRead = { retryGate.await() }
+
+        val first = async { store.completedAttempts() }
+        val second = async { store.completedAttempts() }
+        runCurrent()
+        assertTrue(first.isActive)
+        assertTrue(second.isActive)
+
+        retryGate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(first.await(), second.await())
         assertEquals(2, repository.reads)
     }
 
@@ -113,6 +152,42 @@ internal class AssessmentHistoryStoreTest {
         advanceUntilIdle()
 
         assertEquals(listOf("question_a", "question_b"), pending.await().questionIds())
+    }
+
+    @Test
+    fun invalidationDuringAnActiveReadKeepsStaleObserverDataButBlocksOneShotCallers() = runStoreTest {
+        val firstReadGate = CompletableDeferred<Unit>()
+        val secondReadGate = CompletableDeferred<Unit>()
+        val repository = FakeAssessmentRepository(listOf(completedAttempt("question_a")))
+        repository.beforeRead = {
+            when (repository.reads) {
+                1 -> firstReadGate.await()
+                2 -> secondReadGate.await()
+            }
+        }
+        val store = testHistoryStore(repository, testCacheScope())
+        runCurrent()
+
+        repository.attempts = listOf(completedAttempt("question_a"), completedAttempt("question_b"))
+        store.invalidate()
+        val oneShot = async { store.completedAttempts() }
+        firstReadGate.complete(Unit)
+        runCurrent()
+
+        assertEquals(
+            listOf("question_a"),
+            assertIs<AssessmentHistory.Loaded>(store.history.value).attempts.questionIds(),
+        )
+        assertTrue(oneShot.isActive)
+
+        secondReadGate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(listOf("question_a", "question_b"), oneShot.await().questionIds())
+        assertEquals(
+            listOf("question_a", "question_b"),
+            assertIs<AssessmentHistory.Loaded>(store.history.value).attempts.questionIds(),
+        )
     }
 
     @Test
@@ -172,10 +247,11 @@ internal class AssessmentHistoryStoreTest {
             error("Not used by AssessmentHistoryStore.")
 
         override suspend fun getCompletedAttempts(): List<TestAttempt> {
-            beforeRead()
+            val result = attempts
             reads++
+            beforeRead()
             failure?.let { throw it }
-            return attempts
+            return result
         }
     }
 }

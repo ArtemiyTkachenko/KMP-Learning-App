@@ -31,8 +31,10 @@ internal fun MixedInterviewResultDestination(
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
-                is MixedInterviewResultEvent.RetakeCreated ->
+                is MixedInterviewResultEvent.RetakeCreated -> {
                     currentOnRetakeCreated(event.attemptId)
+                    viewModel.onRetakeEventHandled(event.attemptId)
+                }
             }
         }
     }

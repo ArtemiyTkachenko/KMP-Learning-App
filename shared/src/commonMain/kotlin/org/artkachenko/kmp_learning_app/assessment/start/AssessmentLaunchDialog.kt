@@ -37,7 +37,9 @@ internal fun AssessmentLaunchDialog(
 ) {
     when (state) {
         AssessmentLaunchState.Idle -> Unit
-        AssessmentLaunchState.Launching -> Dialog(onDismissRequest = {}) {
+        AssessmentLaunchState.Launching,
+        is AssessmentLaunchState.Created,
+        -> Dialog(onDismissRequest = {}) {
             Surface(
                 modifier = Modifier.testTag(AssessmentLaunchDialogTag),
                 shape = MaterialTheme.shapes.medium,

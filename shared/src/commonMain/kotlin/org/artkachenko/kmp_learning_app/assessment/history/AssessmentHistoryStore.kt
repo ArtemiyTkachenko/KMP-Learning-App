@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.assessment.history
 
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -118,7 +119,10 @@ internal class AssessmentHistoryStore(
         runCatching { assessmentRepository.getCompletedAttempts() }
             .fold(
                 onSuccess = { HistoryRefresh.Loaded(generation, it) },
-                onFailure = { HistoryRefresh.Failed(generation) },
+                onFailure = { failure ->
+                    if (failure is CancellationException) throw failure
+                    HistoryRefresh.Failed(generation)
+                },
             )
 
     private fun updateCachedHistory(refresh: HistoryRefresh) {

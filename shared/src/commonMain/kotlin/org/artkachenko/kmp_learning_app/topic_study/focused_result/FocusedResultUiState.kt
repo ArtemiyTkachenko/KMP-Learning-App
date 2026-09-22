@@ -21,6 +21,7 @@ internal sealed interface FocusedResultUiState {
 internal sealed interface RepeatPracticeState {
     data object Idle : RepeatPracticeState
     data object Creating : RepeatPracticeState
+    data class Created(val attemptId: String) : RepeatPracticeState
     data object SourceAttemptNotFound : RepeatPracticeState
     data object NoEligibleQuestions : RepeatPracticeState
     data object Error : RepeatPracticeState

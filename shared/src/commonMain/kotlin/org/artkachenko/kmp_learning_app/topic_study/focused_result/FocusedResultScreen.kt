@@ -166,7 +166,9 @@ private fun LazyListScope.outcomeSection(
             MistakeRetentionNotice(state.questions, onPracticeMistakes)
             when (state.repeatPracticeState) {
                 RepeatPracticeState.Idle -> Unit
-                RepeatPracticeState.Creating ->
+                RepeatPracticeState.Creating,
+                is RepeatPracticeState.Created,
+                ->
                     Text(stringResource(Res.string.focused_result_practice_starting))
                 RepeatPracticeState.SourceAttemptNotFound ->
                     Text(
@@ -186,10 +188,14 @@ private fun LazyListScope.outcomeSection(
             }
             OutlinedButton(
                 onClick = onRepeatPractice,
-                enabled = state.repeatPracticeState != RepeatPracticeState.Creating,
+                enabled = state.repeatPracticeState !is RepeatPracticeState.Creating &&
+                    state.repeatPracticeState !is RepeatPracticeState.Created,
                 modifier = Modifier.testTag(FocusedResultPracticeAgainTag),
             ) {
-                if (state.repeatPracticeState == RepeatPracticeState.Creating) {
+                if (
+                    state.repeatPracticeState is RepeatPracticeState.Creating ||
+                    state.repeatPracticeState is RepeatPracticeState.Created
+                ) {
                     CircularProgressIndicator()
                 } else {
                     Text(stringResource(Res.string.focused_result_practice_again))

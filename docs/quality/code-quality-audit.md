@@ -141,6 +141,9 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-STATE-003` | Topic browser cancellation | Low | High | `TopicBrowserViewModel.kt`, `TopicBrowserViewModelTest.kt` | Catalogue and optional-enrichment fallbacks converted coroutine cancellation into ordinary screen state. | `runCatching` around `readCatalog`, learning-content enrichment, and `derivedOrNull` caught `CancellationException`. A cancelled catalogue load could publish `Error`; cancelled history or learning-content work could continue and publish absent enrichment. ViewModel clearing normally makes that state unobservable, but the owner still violated structured cancellation and could finish a partial snapshot after cancellation. | Rethrow cancellation at every suspend fallback boundary while retaining `Error` or `null` for ordinary exceptions; protect primary-load and atomic history-enrichment behavior with owner-level tests. | Fixed |
 | `CQ-STATE-004` | Topic detail cancellation | Low | High | `TopicDetailViewModel.kt`, `TopicDetailViewModelTest.kt` | Primary, learning-content, and history fallbacks converted coroutine cancellation into ordinary Topic state. | Broad `runCatching` blocks could turn cancellation into screen `Error`, unavailable learning content, or absent analytics and then render it. Generation checks protected retry ordering but did not distinguish cancellation from operational failure. | Rethrow cancellation before applying the existing primary or enrichment fallback; retain graceful degradation for ordinary exceptions. | Fixed |
 | `CQ-STATE-005` | Study progress cancellation | Low | High | `StudyProgressStateHolder.kt`, `StudyProgressStateHolderTest.kt` | App-scoped study reads and mutations treated owner cancellation as normal repository failure. | Both suspend `runCatching` blocks caught `CancellationException`: a cancelled first refresh could publish `Error`, and a cancelled mutation could clear its pending marker as though persistence had failed normally. The manual refresh mutex did unlock in `finally`, so no lock leak was present. | Rethrow cancellation, keep ordinary read/mutation failure behavior unchanged, and verify cancellation while repository work is suspended. | Fixed |
+| `CQ-BUG-003` | Assessment creation / event lifecycle | High | High | `AssessmentLaunchViewModel.kt`, `FocusedResultViewModel.kt`, `MixedInterviewResultViewModel.kt`, their event collectors and state types, and direct tests | Launch and retake owners permitted another durable attempt after persistence completed but before the buffered navigation event was consumed. | All three owners synchronously guarded work while it was running, but success restored `Idle` before `Channel.send`. A second owner call in that real post-persistence window created another independently identified attempt. The UI normally navigated quickly, but neither the owner boundary nor buffered event delivery made consumption atomic with reopening the action. | Hold the created attempt identity in a terminal pending-navigation state, reject re-entry there, and return to `Idle` only after the single collector successfully invokes the navigation callback for that same identity. | Fixed |
+| `CQ-STATE-006` | Assessment lifecycle cancellation | Low | High | `AssessmentTakingViewModel.kt`, `AssessmentHistoryStore.kt`, both result ViewModels, `MistakeReviewStateHolder.kt`, and direct tests | Broad suspend fallbacks converted cancellation into ordinary assessment failure state. | Submission, completion, attempt loading, result loading, retake creation, completed-history reads, mistake derivation, and optional study-link enrichment all used `runCatching` without distinguishing `CancellationException`. Depending on the owner, cancellation could publish a retryable failure/Error, turn history cancellation into `AssessmentHistoryUnavailableException`, or silently remove study links. These paths normally cancel only with their ViewModel or app owner, limiting visible impact. | Rethrow `CancellationException` at each suspend fallback while preserving the established ordinary-error or optional-enrichment behavior. | Fixed |
+| `CQ-STATE-007` | Assessment loading / retry concurrency | Medium | High | `AssessmentTakingViewModel.kt`, `FocusedResultViewModel.kt`, `MixedInterviewResultViewModel.kt`, and direct tests | Retry could start overlapping loads before the UI recomposed out of Error. | Each Retry button existed only in settled Error, but each public owner method unconditionally called its loader. Two callbacks dispatched before recomposition therefore launched two repository/review reads, and whichever completed last could overwrite the other result. | Accept retry only while the owner's current state is Error; publish Loading synchronously before launching so later callbacks are ignored. Protect each owner with a controlled pending-load test. | Fixed |
 
 ## Audit Pass Log
 
@@ -153,6 +156,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | Part 1D | Results, history, progress, mistakes, and saved questions | Complete | `e499932b8168e2d76661f17eeb39ab511514bc48` | 43 assigned production Kotlin files, 9 shared UI/review dependencies, and 32 relevant tests | 6 | 5 | Six targeted Compose suites; `:shared:jvmTest`; `:androidApp:assembleDebug`; `:shared:check`; `git diff --check` | High 0, Medium 3, Low 3. `CQ-UI-002` and four new UI findings were fixed; one saved-state race was deferred to Part 2D. See review record below. |
 | Part 2A | Shell, appearance, and application state | Complete | `34bb8fae8c35e47b924be3ccc5caad8f7bd59b53` | 24 production/state files and 10 relevant test files | 3 | 3 | Targeted startup, appearance, navigator, and host/initializer suites; `:shared:jvmTest`; `:androidApp:assembleDebug`; `:shared:check`; `git diff --check` | High 0, Medium 0, Low 3. `CQ-BUG-001` and two cancellation findings were fixed. No Part 4 finding was opened. See review record below. |
 | Part 2B | Learning and practice-builder state | Complete | `89420828d45fa7ecb61358990ec499f9a0d7955e` | 31 production/state/dependency files and 15 relevant test files | 3 | 3 | Six targeted owner suites; `:shared:jvmTest`; `git diff --check` | High 0, Medium 0, Low 3. Cancellation now propagates from Topic Browser, Topic Detail, and study-progress work; all stale-result, runtime-parameter, event, and read-back mechanisms were accepted. See review record below. |
+| Part 2C | Assessment, mixed interview, results, and mistakes | Complete | `42e49a5e32a339df77e19082003fbfcc3bfc22d4` | 32 owner/state files, 8 supporting contracts/integration boundaries, and 23 relevant test files | 3 | 3 | Six targeted owner commands; `:shared:jvmTest`; `:shared:check`; `git diff --check` | High 1, Medium 1, Low 1. Durable creation stays locked through navigation-event consumption, retries cannot overlap, and every broad Part-2C suspend fallback now preserves cancellation. Part 2D is next. See review record below. |
 
 ### Part 1A Review Record
 
@@ -591,6 +595,132 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
   only changes exception branching around APIs already compiled for all targets and the focused plus
   full JVM suites exercised every changed owner. Android assembly, lint, device UI, and browser UI
   checks were not run because no platform or Compose code changed. `git diff --check` passed.
+
+## Part 2C Review Record
+
+- **Owner/file boundary (32 production files):** assessment launch (`AssessmentLaunchCoordinator`,
+  `AssessmentLaunchDialog`, `AssessmentLaunchViewModel`, `StartAssessment`); assessment taking
+  (`AssessmentQuestionUiModel`, `AssessmentTakingDestination`, `AssessmentTakingScreen`,
+  `AssessmentTakingUiState`, `AssessmentTakingViewModel`); focused result
+  (`FocusedResultDestination`, `FocusedResultScreen`, `FocusedResultUiState`,
+  `FocusedResultViewModel`); mixed interview (`InterviewHistoryStateHolder`,
+  `InterviewStartDestination`, `InterviewStartScreen`, `InterviewStartViewModel`,
+  `MixedInterviewDestination`, `MixedInterviewResultDestination`, `MixedInterviewResultScreen`,
+  `MixedInterviewResultUiState`, `MixedInterviewResultViewModel`); mistake review
+  (`MistakeReviewDestination`, `MistakeReviewModels`, `MistakeReviewScreen`, `MistakeReviewService`,
+  `MistakeReviewStateHolder`, `MistakeReviewUiState`, `MistakeReviewViewModel`); and shared history
+  (`AppCoroutineScope`, `AssessmentHistoryStore`, `CompletedAssessmentHistory`).
+- **Supporting contracts and integration boundaries inspected (8):** `AssessmentEngine`,
+  `AssessmentSession`, `AssessmentSessionLoader`, `AssessmentRepository`, `AssessmentRetakeService`,
+  `AssessmentReviewLoader`, the focused/mixed Navigation 3 route entries in `App`, and the
+  presentation/data Koin definitions only far enough to establish parameters, event collectors,
+  cache fan-out, and owner lifetime. `LocalAssessmentRepository`, Room, persistence atomicity, and
+  graph teardown were not audited.
+- **Tests inspected (23 files):** the direct launch dialog/ViewModel, taking screen/ViewModel,
+  focused screen/ViewModel, interview-start screen/ViewModel, mixed-result screen/ViewModel and
+  integration, mistake destination/screen/ViewModel/study-link, and history-store suites; supporting
+  engine, session-loader, retake, review-loader, and mistake-service suites; plus the targeted-
+  practice and saved-question lifecycle journeys. This was risk-directed inspection, not Part 6.
+- **Existing findings:** no ledger finding was deferred to Part 2C, so none required disposition.
+  `CQ-STATE-001` remains deferred to Part 2D and was not re-audited. New `CQ-BUG-003`,
+  `CQ-STATE-006`, and `CQ-STATE-007` are fixed. Counts for this pass: Critical 0, High 1, Medium 1,
+  Low 1, Observation findings 0; Fixed 3, Deferred 0, Needs measurement 0, Accepted as-is 0, and Not a
+  defect 0.
+- **Cancellation sweep:** ten broad suspend fallback boundaries were verified and fixed: taking
+  submission, completion, and load; focused result load and retake; mixed result load and retake;
+  history read; mistake queue derivation; and optional Lesson enrichment. Each now rethrows
+  `CancellationException` before its ordinary fallback. Launch already used explicit
+  `try/catch` with cancellation rethrow. The three destination `runCatching` calls wrap synchronous
+  `openUri`, and the taking `getOrNull` calls are bounds checks, not exception fallbacks.
+- **Launch and event lifecycle:** the synchronous `Idle` -> `Launching` transition prevents two
+  initial calls from launching. `CQ-BUG-003` covered the distinct post-persistence window: success
+  now publishes `Created(attemptId)`, sends one buffered event, and accepts no new start until the
+  coordinator has invoked navigation and acknowledged the same identity. Failure dismissal still
+  returns to `Idle`; retry retains the original config. The one producer/one collector buffered
+  Channel is appropriate across brief collector gaps and is discarded with its Navigation entry.
+- **Launch partial success:** `AssessmentEngine.start` has no externally meaningful mutation;
+  `StartAssessment` emits `Created` only after `save` returns. Whether a repository write can commit
+  and then throw or be cancelled is a Part 3B durability/idempotency handoff, not a presentation fix.
+- **Taking submission:** `isSubmitting` is published before the coroutine starts, so duplicate calls
+  cannot both save; a deterministic gated-save test now proves it. Selection rejects IDs outside
+  the current Question and enforces SINGLE replacement versus MULTIPLE toggle. Selected IDs and the
+  current Question remain stable while submitting because selection, next, completion, and UI retry
+  are all state-gated; the engine also copies the selected set before the only suspension. No extra
+  snapshot or generation was justified. Nothing throwing runs after a successful in-progress save,
+  so the UI cannot report submission failure after that save returns normally.
+- **Feedback and question identity:** formative feedback reads the answered occurrence at the same
+  guarded index and retains the submitted IDs. Selection is blocked while feedback exists;
+  `nextQuestion` requires feedback and synchronously leaves `Content`, so repeated Next cannot skip.
+  On the final focused Question it enters `ReadyToComplete` and immediately uses the shared guarded
+  completion path. Mixed/interview taking instead remains explicitly ready for Finish.
+- **Completion:** `isCompleting` is published synchronously and a gated-save test proves repeated
+  Finish/completion calls persist once. Completion saves the completed attempt, then synchronously
+  invalidates history, then publishes success; `invalidate` and state construction do not throw or
+  suspend, so no post-save operational-failure window exists after a normally returning save.
+  In-progress saves do not invalidate. A save that commits before throwing/cancelling remains a Part
+  3B repository-contract handoff because presentation cannot infer that partial outcome.
+- **Attempt loading, retry, and resume:** `CQ-STATE-007` is fixed. A completed/non-in-progress
+  attempt goes directly to result navigation state; missing attempts or Questions become retryable
+  Error. Retry is exposed only from settled Error and each owner now verifies that state before
+  synchronously publishing Loading, so repeated callbacks cannot overlap loads or let an older
+  retry overwrite a newer one. Controlled pending-load tests protect taking and both result owners.
+  Resume selects the first unanswered occurrence; the engine produces contiguous answered prefixes,
+  while enforcement for malformed persisted gaps is retained for Part 3B. All-answered IN_PROGRESS
+  attempts correctly become `ReadyToComplete`.
+- **History store:** eager app-scoped state and ordinary sequential `map` are retained. During an
+  in-flight invalidation, observers may briefly keep/publish the previous generation as documented,
+  while one-shot callers wait for the required generation. A controlled two-generation test proves
+  the old generation cannot satisfy the one-shot read and the newer generation ultimately replaces
+  it. `generation >= requiredGeneration` correctly lets a later settled generation satisfy an
+  earlier requirement. Concurrent callers after failure are Mutex-coalesced onto one retry; failed
+  refresh retains prior loaded observer data but is never served to one-shot selection. Cancellation
+  no longer becomes `Failed` or `AssessmentHistoryUnavailableException`. `mapLatest` would weaken
+  the intentional sequential-query contract and was not adopted.
+- **Results and retakes:** both result loads rethrow cancellation and ordinary failures remain
+  retryable. Retry is accepted only from a settled error and synchronously leaves it. Focused and
+  mixed retakes now share the identity-bearing pending-navigation guard and identity-checked event
+  acknowledgement from their single collectors; deterministic tests cover re-entry after durable
+  creation but before consumption. Ordinary retake failures retain result content and allow retry.
+  Focused's captured content previously had no concurrent same-stream writer; success now uses the
+  current state through `setRepeatState` as part of the common fix. Saved-question state remains a
+  separate app-scoped stream and only available review IDs can be toggled.
+- **Result correctness:** mixed results explicitly reject non-Mixed attempts. Focused results are
+  reached only from the typed focused completion/retake routes, so an additional config check would
+  duplicate that integration invariant without a reachable mismatch. Blank IDs are rejected in
+  both result constructors; taking delegates the same check to `AssessmentSessionLoader`. Topic
+  performance excludes missing Questions, retains first-encounter Topic order, permits missing Topic
+  names, and cannot divide by zero because a bucket is created only while incrementing its count.
+- **Mistake state:** the app-scoped holder remains the single queue owner and the ViewModel delegates
+  it without copying state. Full derivation failure remains Error; ordinary optional learning-content
+  failure still publishes the queue without study links. Cancellation propagates from both paths.
+  Sequential history mapping can briefly publish an older queue before a newer generation, matching
+  the history store's documented stale-while-refresh observer contract; results cannot invert.
+  Refresh invalidates the shared history source and refreshes saved state independently, and save
+  toggles reject unavailable review content.
+- **Ownership and fan-out:** one completion invalidation reaches the eagerly derived mistake queue,
+  interview history, progress state, shell badge, Topic learning context/recommendations, and future
+  one-shot selection through the one shared history store. App-scoped history and mistake ownership
+  prevents tab switches from recreating Loading. Full Koin lifetime and shutdown ownership remains
+  Part 4A; no Part 4 finding was opened. No duplicated presentation state or Part 5 base-ViewModel
+  abstraction was justified; focused/mixed repetition remains local and explicit.
+- **Handoffs:** Part 3B retains ambiguous commit-then-throw/cancel outcomes for start, retake,
+  submission, and completion; repository idempotency/transaction guarantees; and malformed
+  IN_PROGRESS answer-prefix invariants. Part 4A retains app-scope teardown. Part 5 may reassess the
+  parallel result owners only with wider evidence; no `CQ-CROSS` finding was opened.
+- **Tests and validation:** changed six direct test files. Added deterministic post-persistence
+  launch/retake re-entry tests; gated duplicate submission/completion tests; cancellation regressions
+  for taking, result loads/retakes, history, mistake derivation, and study enrichment; coalesced retry
+  and two-generation history tests; pending-load duplicate-retry tests for all three owners; and
+  ordinary optional-enrichment degradation coverage. The six
+  requested targeted Gradle commands passed after launch expectations and focused/mixed terminal-
+  state fixtures were updated for the new owner contracts; `./gradlew :shared:jvmTest` passed.
+  `./gradlew :shared:check` and `git diff --check` passed. The existing expect/actual Beta warning
+  appeared during compilation.
+  Android assembly, lint, and device/browser UI checks were not run because no platform source,
+  navigation route, layout, theme token, or visual design changed. The result screens reuse the
+  existing Creating text/spinner/button-disabled presentation for the brief Created state, so no
+  pixel verification or Material deviation was needed.
+- **Next:** Part 2D — Progress and saved-question state. It was not started in this pass.
 
 ## Baseline Health
 
@@ -1045,9 +1175,22 @@ Needs measurement: 0
 Accepted as-is: 0
 Not a defect: 0
 
-Part 2C — Next
+Part 2C — Complete
+
+High: 1
+Medium: 1
+Low: 1
+Observations: 0
+
+Fixed: 3
+Deferred: 0
+Needs measurement: 0
+Accepted as-is: 0
+Not a defect: 0
+
+Part 2D — Next
 ```
 
-Part 2B is complete. The exact next chunk is
-**Part 2C — Assessment, mixed interview, results, and mistakes**.
+Part 2C is complete. The exact next chunk is
+**Part 2D — Progress and saved-question state**.
 Do not begin it automatically.

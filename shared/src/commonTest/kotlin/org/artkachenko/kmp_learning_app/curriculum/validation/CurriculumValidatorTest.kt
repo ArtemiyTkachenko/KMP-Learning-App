@@ -369,6 +369,46 @@ internal class CurriculumValidatorTest {
     }
 
     @Test
+    fun rejectsAQuestionThatCitesTheSameSourceUrlTwice() {
+        // `question_source` is keyed by (question_id, url), so the second row would
+        // overwrite the first and the question would quietly ship one citation short.
+        val curriculum = validCurriculum(
+            questions = listOf(
+                question(
+                    sources = listOf(
+                        SourceReference(title = "Official guide", url = "https://example.com/guide"),
+                        SourceReference(title = "Same page, other title", url = "https://example.com/guide"),
+                    ),
+                ),
+            ),
+        )
+
+        assertCodes(
+            curriculum,
+            CurriculumValidationErrorCode.DUPLICATE_SOURCE_URL,
+            CurriculumValidationErrorCode.DUPLICATE_SOURCE_URL,
+        )
+    }
+
+    @Test
+    fun acceptsTwoDistinctSourceUrlsOnOneQuestion() {
+        assertTrue(
+            validator.validate(
+                validCurriculum(
+                    questions = listOf(
+                        question(
+                            sources = listOf(
+                                SourceReference(title = "Guide", url = "https://example.com/guide"),
+                                SourceReference(title = "Reference", url = "https://example.com/reference"),
+                            ),
+                        ),
+                    ),
+                ),
+            ).isEmpty(),
+        )
+    }
+
+    @Test
     fun allowsHttpAndHttpsSourceUrls() {
         assertTrue(
             validator.validate(

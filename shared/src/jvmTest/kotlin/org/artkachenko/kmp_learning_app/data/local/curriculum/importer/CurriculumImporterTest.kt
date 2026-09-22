@@ -1,6 +1,7 @@
 package org.artkachenko.kmp_learning_app.data.local.curriculum.importer
 
 import androidx.room3.Room
+import androidx.sqlite.SQLiteException
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlin.time.Instant
 import kotlinx.coroutines.test.runTest
@@ -329,6 +330,90 @@ internal class CurriculumImporterTest {
             assertEquals(1, dao.countTopics())
             assertEquals(1, dao.countSubtopics())
             assertEquals(1, dao.countQuestions())
+        }
+    }
+
+    @Test
+    fun subtopicRehomedToAnotherTopicIsImportedIntoAnExistingDatabase() = runTest {
+        withTestDatabase { database ->
+            // Taxonomy maintenance: a concept keeps its stable id but moves under a
+            // different Topic, and the Questions that teach it move with it. A fresh
+            // install always accepted this; an upgrade used to abort the whole import,
+            // because updating subtopic.topic_id orphans the persisted Question rows that
+            // still name the old pair until the very next statement moves them too.
+            assertEquals(
+                CurriculumImportResult.Imported,
+                CurriculumImporter(
+                    database,
+                    loadCurriculum = { rehomingCurriculum(subtopicTopicId = "topic_a") },
+                ).importCurriculum(),
+            )
+            assertEquals(
+                CurriculumImportResult.Imported,
+                CurriculumImporter(
+                    database,
+                    loadCurriculum = { rehomingCurriculum(subtopicTopicId = "topic_b") },
+                ).importCurriculum(),
+            )
+
+            val dao = database.curriculumDao()
+            assertEquals("topic_b", dao.getSubtopicById("shared_subtopic")?.topicId)
+            assertEquals("topic_b", dao.getQuestionById("shared_question")?.topicId)
+            assertEquals(3, dao.countSubtopics())
+            assertEquals(3, dao.countQuestions())
+
+            val repository = LocalCurriculumRepository(database)
+            assertEquals(
+                listOf("shared_question", "topic_b_question"),
+                repository.getActiveQuestionsByTopic("topic_b").map { it.id }.sorted(),
+            )
+            assertEquals(
+                listOf("topic_a_question"),
+                repository.getActiveQuestionsByTopic("topic_a").map { it.id },
+            )
+        }
+    }
+
+    @Test
+    fun anImportThatWouldOrphanAPersistedQuestionFailsWholeAndLeavesTheDatabaseUsable() = runTest {
+        withTestDatabase { database ->
+            // Deferring the foreign keys to COMMIT must not weaken atomicity. Re-homing a
+            // Subtopic while dropping a previously shipped Question from the bundle leaves
+            // a stale row naming a pair that no longer exists, which the authoring contract
+            // forbids: retirement is DEPRECATED status, never omission.
+            assertEquals(
+                CurriculumImportResult.Imported,
+                CurriculumImporter(
+                    database,
+                    loadCurriculum = { rehomingCurriculum(subtopicTopicId = "topic_a") },
+                ).importCurriculum(),
+            )
+
+            assertFailsWith<SQLiteException> {
+                CurriculumImporter(
+                    database,
+                    loadCurriculum = {
+                        rehomingCurriculum(subtopicTopicId = "topic_b").let { curriculum ->
+                            curriculum.copy(
+                                questions = curriculum.questions.filter { it.id != "shared_question" },
+                            )
+                        }
+                    },
+                ).importCurriculum()
+            }
+
+            val dao = database.curriculumDao()
+            assertEquals("topic_a", dao.getSubtopicById("shared_subtopic")?.topicId)
+            assertEquals("topic_a", dao.getQuestionById("shared_question")?.topicId)
+
+            // The rejected transaction leaves the previous curriculum importable again.
+            assertEquals(
+                CurriculumImportResult.Imported,
+                CurriculumImporter(
+                    database,
+                    loadCurriculum = { rehomingCurriculum(subtopicTopicId = "topic_a") },
+                ).importCurriculum(),
+            )
         }
     }
 
@@ -786,6 +871,62 @@ internal class CurriculumImporterTest {
                     question
                 }
             },
+        )
+
+    /**
+     * Two Topics where `shared_subtopic` is homed on [subtopicTopicId] and carries the one
+     * Question that moves with it. Each Topic also keeps a Question of its own, because
+     * curriculum validation rejects a Topic with no questions at all.
+     */
+    private fun rehomingCurriculum(subtopicTopicId: String): Curriculum =
+        Curriculum(
+            topics = listOf(
+                Topic(id = "topic_a", name = "Topic A"),
+                Topic(id = "topic_b", name = "Topic B"),
+            ),
+            subtopics = listOf(
+                Subtopic(id = "shared_subtopic", topicId = subtopicTopicId, name = "Shared subtopic"),
+                Subtopic(id = "topic_a_subtopic", topicId = "topic_a", name = "Topic A subtopic"),
+                Subtopic(id = "topic_b_subtopic", topicId = "topic_b", name = "Topic B subtopic"),
+            ),
+            questions = listOf(
+                rehomingQuestion(
+                    id = "shared_question",
+                    topicId = subtopicTopicId,
+                    subtopicId = "shared_subtopic",
+                ),
+                rehomingQuestion(
+                    id = "topic_a_question",
+                    topicId = "topic_a",
+                    subtopicId = "topic_a_subtopic",
+                ),
+                rehomingQuestion(
+                    id = "topic_b_question",
+                    topicId = "topic_b",
+                    subtopicId = "topic_b_subtopic",
+                ),
+            ),
+        )
+
+    private fun rehomingQuestion(
+        id: String,
+        topicId: String,
+        subtopicId: String,
+    ): Question =
+        Question(
+            id = id,
+            topicId = topicId,
+            subtopicId = subtopicId,
+            text = "$id question?",
+            answers = listOf(
+                AnswerOption("${id}_answer_a", "$id answer A"),
+                AnswerOption("${id}_answer_b", "$id answer B"),
+            ),
+            selectionMode = AnswerSelectionMode.SINGLE,
+            level = QuestionLevel.FOUNDATION,
+            correctAnswerIds = listOf("${id}_answer_a"),
+            explanation = "$id explanation.",
+            sources = listOf(SourceReference("$id source", "https://example.com/$id")),
         )
 
     private fun curriculumOf(vararg graphs: CurriculumGraph): Curriculum =

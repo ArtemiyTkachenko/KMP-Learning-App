@@ -638,8 +638,8 @@ This guide defines editorial and quality expectations. `CurriculumValidator` enf
 deterministic subset at import time — unique IDs, valid topic and subtopic references,
 hierarchy consistency, `correctAnswerIds` referencing real answers, `SINGLE` not carrying
 several correct answers, non-empty required fields, answer options not repeating the same
-text, source presence with a syntactically valid URL, and no authoring placeholder left in
-any authored text. `InitialCurriculumContentQualityTest` enforces the bundled bank's
+text, source presence with a syntactically valid URL, one question never citing the same
+source URL twice, and no authoring placeholder left in any authored text. `InitialCurriculumContentQualityTest` enforces the bundled bank's
 editorial invariants: unique stems, the `MULTIPLE` prompt, approved source hosts, and the
 anti-cue length and absolute-word audits.
 

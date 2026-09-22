@@ -46,8 +46,9 @@ internal interface CurriculumDao {
      * Options that a historical attempt selected are kept. question_attempt_selected_answer
      * has a NO ACTION foreign key onto answer_option(question_id, id), so deleting a
      * referenced row would abort the whole import transaction and leave the app unable to
-     * start. The tradeoff is that such a retained option can still appear in a new
-     * assessment for that question; historical review integrity is worth more.
+     * start. A retained option does not come back as an extra choice: the importer follows
+     * this delete with [deprecateAnswerOptionsForQuestionExcept], and active curriculum
+     * queries read only ACTIVE options.
      *
      * [keepAnswerIds] is never empty: callers derive it from the answer options they just
      * wrote, and CurriculumValidator requires at least two answers per question.

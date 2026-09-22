@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.data.local.curriculum.importer
 
+import androidx.room3.executeSQL
 import androidx.room3.withWriteTransaction
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
@@ -26,6 +27,15 @@ internal class CurriculumImporter(
         val dao = database.curriculumDao()
 
         database.withWriteTransaction {
+            // Foreign keys are enforced per statement by default, but this transaction
+            // rewrites a whole content graph, so intermediate rows legitimately disagree
+            // with each other. Re-homing a Subtopic to another Topic is the case that
+            // proves it: updating subtopic.topic_id orphans the question rows that still
+            // name the old pair, even though the same bundle moves those questions in the
+            // next statement. Deferring to COMMIT checks the finished graph instead of
+            // each step of it, and SQLite resets the pragma at every COMMIT or ROLLBACK.
+            executeSQL("PRAGMA defer_foreign_keys = ON")
+
             dao.upsertTopics(snapshot.topics)
             dao.upsertSubtopics(snapshot.subtopics)
             dao.upsertQuestions(snapshot.questions)

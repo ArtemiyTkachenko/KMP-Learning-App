@@ -352,6 +352,21 @@ still reviewable with the answer text the user actually saw. Re-adding an option
 in a later bundle reactivates it, because the import upserts every authored
 option as `ACTIVE`.
 
+The import transaction opens with `PRAGMA defer_foreign_keys = ON`, so foreign keys
+are checked once against the finished graph at `COMMIT` rather than after every
+statement. It rewrites a whole content graph, and intermediate rows legitimately
+disagree with each other while it does. Re-homing a `Subtopic` to a different
+`Topic` is the case that proves it: `subtopic.topic_id` is updated before the
+`question` rows that still name the old pair are moved by the very next statement,
+which a per-statement check rejects even though the incoming curriculum is
+internally consistent and a fresh install accepts it. Deferral does not weaken
+atomicity. A graph that is still inconsistent at `COMMIT` — a stale `question` row
+whose `Subtopic` moved out from under it, which the authoring contract forbids by
+requiring retirement through status rather than omission — fails the same
+constraint, rolls the whole transaction back, and leaves the previous curriculum
+usable. SQLite resets the pragma at each `COMMIT` or `ROLLBACK`, so it never
+outlives the import.
+
 Stale answer options are deleted last inside the import transaction.
 `question_correct_answer` and `question_attempt_selected_answer` both hold
 `NO ACTION` foreign keys onto `answer_option(question_id, id)`, so an option can

@@ -149,6 +149,12 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-STATE-009` | Saved questions / stale resolution | Medium | High | `SavedQuestionsViewModel.kt`, `SavedQuestionsViewModelTest.kt` | A superseded content resolution reported its own cancellation as a curriculum failure. | `resolve` cancels the previous job and starts a new one whenever the saved list changes, which ordinary use reaches: removing one Question and then another produces a saved-list change while the first list is still resolving. The replaced job's `runCatching` caught the `CancellationException` it was cancelled with and published `SavedQuestionsUiState.Error`. A recorded emission list proves the unfixed owner publishes `Error` between two valid `Content` states. Whether that `Error` is also the last word depends on dispatcher ordering — under the single-threaded test dispatcher the replacement wins — but the holder does not re-emit an equal value, so a resolution settling after its replacement would leave a readable list showing a full-screen error until Retry. | Rethrow cancellation so a replaced resolution publishes nothing at all, and assert no `Error` is ever published across a supersession. | Fixed |
 | `CQ-STATE-010` | Progress and saved-question cancellation | Low | High | `ProgressStateHolder.kt`, `SavedQuestionStateHolder.kt`, `SavedQuestionStateHolderTest.kt` | The remaining Part-2 suspend fallbacks converted owner cancellation into ordinary state. | Three boundaries caught `CancellationException` alongside operational failure: the progress derivation over loaded history, the saved-state refresh read, and the saved-state mutation with its read-back. A cancelled derivation could publish `ProgressUiState.Error`, a cancelled first read `SavedQuestionsState.Error`, and a cancelled mutation could clear its pending marker as though persistence had failed. All three owners are app-scoped, so cancellation means the process scope is ending and impact is limited — the same reasoning as `CQ-STATE-002`. | Rethrow `CancellationException` before each established fallback, keeping ordinary-failure behavior unchanged. | Fixed |
 | `CQ-STATE-011` | Progress dashboard vs Topic detail | Observation | High | `ProgressStateHolder.kt`, `ProgressTopicViewModel.kt` | Progress Topic detail derives from its own history read rather than the shared cache. | The dashboard derives from the `AssessmentHistoryStore` snapshot, while `ProgressTopicViewModel` calls `LearningProgressService.load()` with no attempts, which falls through to `AssessmentRepository.getCompletedAttempts()`. Opening a Topic detail therefore issues a second full history query and can, during the store's documented stale-while-refresh window, show figures derived from a newer snapshot than the dashboard behind it. The window closes as soon as the store's re-read settles, and both surfaces converge; no contradiction survives. | Leave as-is. Both numbers are correct for the snapshot each read, the divergence is transient by construction, and centralizing every progress representation into one app-scoped model is the broader shared-state redesign this audit defers. Recorded so Part 3C/Part 5 can weigh the duplicate query against that cost. | Accepted as-is |
+| `CQ-BUG-004` | Curriculum import / reconciliation | High | High | `CurriculumImporter.kt`, `CurriculumImporterTest.kt`, `docs/architecture/persistence.md` | Re-homing a Subtopic to another Topic aborted the whole import on an existing installation. | `question` holds a composite foreign key onto `subtopic(topic_id, id)`, and the exported schema declares it immediate rather than `DEFERRABLE INITIALLY DEFERRED`, so SQLite checks it after every statement. `upsertSubtopics` runs before `upsertQuestions`, so updating `subtopic.topic_id` orphaned the persisted Question rows that still named the old pair, even though the very next statement moved those same Questions and the incoming curriculum passed validation. A fresh install accepted the identical bundle. A JVM probe against the real importer reproduced `SQLiteException: FOREIGN KEY constraint failed` on the second import; because the failure happens inside the startup importer, an upgrading user would have reached an unrecoverable startup error whose Retry could never succeed. | Open the import transaction with `PRAGMA defer_foreign_keys = ON` so the finished graph is checked once at `COMMIT` instead of after each statement, and keep every other write, ordering, and guard unchanged. Atomicity is preserved: a graph that is still inconsistent at `COMMIT` fails the same constraint, rolls back, and leaves the previous curriculum importable, which a second regression test pins. | Fixed |
+| `CQ-DATA-001` | Curriculum persistence / documentation | Low | High | `CurriculumDao.kt` | The delete-stale-options contract documented behavior the importer had stopped having. | `deleteAnswerOptionsForQuestionExcept` still stated that a historically referenced option "can still appear in a new assessment for that question", which was true before the answer-option status column existed. The importer now follows that delete with `deprecateAnswerOptionsForQuestionExcept`, and every active query reads through `getActiveAnswerOptionsForQuestions`, so the retained option is excluded from new assessments; `retiredAnswerOptionLeavesActiveQuestionsButStaysReviewable` already proves it. Runtime behavior was correct, only its documentation was not. | Correct the comment to describe the deprecate-and-filter behavior that exists, and open no functional finding. | Fixed |
+| `CQ-DATA-002` | Curriculum validation / authored sources | Medium | High | `CurriculumValidator.kt`, `CurriculumValidationErrorCode.kt`, `CurriculumValidatorTest.kt`, `docs/content/content-authoring.md` | A Question citing one source URL twice silently shipped one citation short. | `question_source` is keyed by `(question_id, url)`, but validation checked only presence, blankness, scheme and placeholder hosts. A DAO probe confirmed that upserting two authored sources with the same URL leaves exactly one row, carrying the second title and the second sort order; nothing reported the loss at decode, validation, import or read time. The bundled bank currently contains no such duplicate, so this is a latent authoring trap rather than a live defect. Duplicate answer text was already rejected for the same reason, so the gap was inconsistent as well as silent. | Reject a repeated source URL within a Question with a dedicated `DUPLICATE_SOURCE_URL` code, the way duplicate answer text is already rejected, and leave `LearningCurriculumValidator` alone: Lesson sources are never persisted relationally, so a repeated URL there is a visible duplicate rather than a silent loss. | Fixed |
+| `CQ-DATA-003` | Cross-document status consistency | Low | Medium | `LearningCurriculumValidator.kt`, `CurriculumValidator.kt` | Nothing rejects ACTIVE learning content homed on, or teaching, retired assessment taxonomy. | `LearningCurriculumValidator` checks that a Unit's `topicId` and a Lesson's primary and supporting Subtopic IDs *exist* in the assessment curriculum, never that they are ACTIVE. The assessment repository hides descendants of a deprecated parent by joining parent statuses, so a deprecated Topic is genuinely unreachable there; the learning repository filters on Unit and Lesson status only, so an ACTIVE Unit whose home Topic was retired still appears in `getActiveUnits()` and can still be offered by Continue Learning. The bundled content has no deprecated Topic, Subtopic or Unit today, so no instance exists. | Decide the authoring contract before writing a rule: whether retiring a Topic is meant to retire the Units homed on it, or whether such a Unit is deliberately still readable. Only then add the validator rule, because the two answers produce opposite rules and neither is currently stated anywhere. | Deferred |
+| `CQ-DATA-004` | Learning-content cache publication | Observation | High | `BundledLearningContentRepository.kt` | The cached document is published through a non-volatile field read outside the mutex. | The double-checked `content ?: mutex.withLock { content ?: ... }` is the standard shape, and a reader that observes the reference can only observe a fully constructed `LoadedLearningContent`: every one of its properties is a `val`, so JVM final-field semantics freeze them and everything reachable from them at the end of construction, and the reference is assigned only after the constructor returns. JS and Wasm are single-threaded, and Kotlin/Native's memory model follows the JVM's. No concurrency defect was found; the safety argument is simply not visible from the code. | Leave as-is. Record why the pattern is safe so a later reader does not "fix" it, and revisit only if `LoadedLearningContent` ever gains a mutable property, which would end the final-field guarantee. | Accepted as-is |
+| `CQ-DATA-005` | Validator ownership | Observation | High | `CurriculumValidator.kt`, `LearningCurriculumValidator.kt`, `tools/learning_question_coverage.py` | Kotlin and Python enforce a small overlapping set of authored-content rules. | The coverage tool independently rejects a duplicate Question ID, an unrecognised status or level, an unknown Unit home Topic and an unknown Lesson Subtopic. The boundaries differ legitimately: Python guards the authored repository files in CI before anything is built, the Kotlin validators guard the runtime import and load boundary on a device that may be running an older bundle. The overlapping rules agree today and were checked against each other during this pass. | Keep both. Record the overlap so a future change to one is checked against the other; neither should be deleted for overlapping, because they protect different moments. | Accepted as-is |
 ## Audit Pass Log
 
 | Pass | Area | Status | Commit reviewed | Files reviewed | Findings | Fixes | Validation | Notes |
@@ -162,6 +168,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | Part 2B | Learning and practice-builder state | Complete | `89420828d45fa7ecb61358990ec499f9a0d7955e` | 31 production/state/dependency files and 15 relevant test files | 3 | 3 | Six targeted owner suites; `:shared:jvmTest`; `git diff --check` | High 0, Medium 0, Low 3. Cancellation now propagates from Topic Browser, Topic Detail, and study-progress work; all stale-result, runtime-parameter, event, and read-back mechanisms were accepted. See review record below. |
 | Part 2C | Assessment, mixed interview, results, and mistakes | Complete | `42e49a5e32a339df77e19082003fbfcc3bfc22d4` | 32 owner/state files, 8 supporting contracts/integration boundaries, and 23 relevant test files | 3 | 3 | Six targeted owner commands; `:shared:jvmTest`; `:shared:check`; `git diff --check` | High 1, Medium 1, Low 1. Durable creation stays locked through navigation-event consumption, retries cannot overlap, and every broad Part-2C suspend fallback now preserves cancellation. Part 2D is next. See review record below. |
 | Part 2D | Progress and saved-question state | Complete | `7b67932de7ede0c8f9a8c293b53fb3a24c255e39` | 12 owner/state files, 9 supporting contracts, and 12 relevant test files | 4 | 4 | Seven targeted owner/journey commands; `:shared:jvmTest`; `:shared:check`; `git diff --check` | High 0, Medium 2, Low 1, Observation 1. `CQ-STATE-001` is resolved, both history-derived dashboards can now recover a failed derivation, and every remaining Part-2 suspend fallback preserves cancellation. Part 2 is complete; Part 3A is next. See review record below. |
+| Part 3A | Curriculum and bundled learning content | Complete | `0675d0dfbac6de69c4545fd6b6240d66646641a6` | 40 assigned production Kotlin files, 6 supporting contracts, and 14 relevant test files | 6 | 3 | Targeted importer, validator, repository, codec and learning-content commands; `:shared:jvmTest`; `:shared:check`; both Python content validators; `git diff --check` | High 1, Medium 1, Low 2, Observation 2. `CQ-BUG-004` is a verified upgrade-only import abort and is fixed with no schema change; one silent authored-source loss and one misleading data contract are fixed; one cross-document status rule is deferred pending a content decision. Part 3B is next. See review record below. |
 
 ### Part 1A Review Record
 
@@ -972,6 +979,279 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | Saved-question identities | `SavedQuestionStateHolder` | Application (`AppCoroutineScope`) |
 | Screen-specific state | The feature ViewModel | Navigation entry |
 
+## Part 3A Review Record
+
+- **Assigned production boundary (40 files):** every Kotlin file under
+  `curriculum/**` — the ten assessment domain models plus `content/BundledCurriculumSource`,
+  `repository/CurriculumRepository`, `serialization/CurriculumJsonCodec`, the four files under
+  `validation/`, the nine learning models under `learning/`, and the seven learning
+  content/repository/serialization/validation files — together with every Kotlin file under
+  `data/local/curriculum/**`: `CurriculumDao`, `CurriculumDatabase`, `CurriculumDataInitializer`,
+  `CurriculumDataModule`, `CurriculumMigrations`, the six entities, the four importer files, and
+  `LocalCurriculumRepository` with `CurriculumEntityMapper`. The two bundled JSON resources and the
+  exported Room schemas were read as data, not audited as content.
+- **Supporting contracts inspected (6):** the exported schema `8.json` for the real foreign-key
+  declarations, `.github/workflows/main.yml` for what CI actually enforces,
+  `tools/learning_question_coverage.py` for the authoring-time guarantee, the four platform
+  `CurriculumDatabase` actuals only far enough to establish that every host uses a bundled SQLite
+  build, and the `correctAnswerIds` consumers in `AssessmentEngine`, `AssessmentReviewLoader` and
+  `SavedQuestionContentResolver` to establish that the answer key is read as a set. Platform
+  database builders remain Part 4C; attempt persistence remains Part 3B.
+- **Relevant tests reviewed (14 files):** `CurriculumImporterTest`, `LocalCurriculumRepositoryTest`,
+  `CurriculumDatabaseTest`, `CurriculumDatabaseMigrationTest`, `CurriculumLocalDataPathTest`,
+  `QuestionLevelEndToEndTest`, `CurriculumValidatorTest`, `CurriculumJsonCodecTest`,
+  `CurriculumModelTest`, `InitialCurriculumSmokeTest`, `InitialCurriculumContentQualityTest`,
+  `LearningContentLoaderTest`, `BundledLearningContentRepositoryTest`,
+  `LearningCurriculumValidatorTest`, plus `LearningCurriculumJsonCodecTest`,
+  `LearningContentEndToEndTest` and `BundledLearningCurriculumTest` for the bundled-document
+  guarantees.
+
+### Curriculum evolution policy
+
+The policy is documented rather than inferred, and the two pipelines deliberately differ, so
+**Option C** is the answer to the omitted-versus-DEPRECATED question.
+
+For the assessment curriculum, `docs/architecture/persistence.md` states that "absence from a later
+bundle is not a deletion signal" and that "curriculum retirement must be explicit through
+`ContentStatus.DEPRECATED`", `docs/content/content-authoring.md` requires a materially rewritten
+Question to keep the old one as `DEPRECATED` under its old ID, `CurriculumImporterTest`
+pins it in `absenceFromLaterCurriculumIsNotADeletionSignal`, and the shipped bank practises it:
+41 of its 478 Questions are authored `DEPRECATED`. Stale Topic, Subtopic and Question rows are
+therefore intentional, not a reconciliation bug. The one operation that *is* reconciled is the
+answer-option set of an incoming Question, because an option is the only curriculum row a
+historical attempt points a foreign key at.
+
+For learning content, `docs/architecture/study-progress.md` states the opposite and states it
+explicitly: a studied-Lesson record whose Lesson "no longer resolves at all" is retained, excluded
+from progress, and ignored without error. Nothing persists the learning document, so omission
+costs only resolvability. That asymmetry is a consequence of storage, not an inconsistency.
+
+### Import and reconciliation findings
+
+`CQ-BUG-004` is the pass's one High finding and the only reconciliation defect found. Immediate
+foreign keys plus a fixed write order meant that re-homing a Subtopic to a different Topic — a
+taxonomy edit the validator accepts, that a fresh install imports without complaint, and that moves
+its Questions in the same bundle — aborted the entire import on any existing installation, leaving
+an upgrading user on a startup error screen whose Retry could never succeed. It is fixed inside the
+existing schema with `PRAGMA defer_foreign_keys = ON`, and two regression tests cover both
+directions: the valid re-home now imports, and an import that would genuinely orphan a persisted
+row still fails whole and leaves the previous curriculum importable.
+
+Everything else in the reconciliation surface was verified correct:
+
+| Scenario | Result |
+| --- | --- |
+| New Topic / Subtopic / Question | Inserted; unrelated rows untouched |
+| Renamed Topic / Subtopic / Question under a stable ID | Updated in place, no duplicate identity |
+| Status changed ACTIVE -> DEPRECATED | Updated; row retained and still resolvable by ID |
+| Topic / Subtopic / Question omitted from a later bundle | Row retained, status untouched — the documented contract, not a defect |
+| Subtopic re-homed to another Topic | **Was a whole-import abort on upgrade; fixed by `CQ-BUG-004`** |
+| AnswerOption removed, never selected | Deleted |
+| AnswerOption removed, historically selected | Retained, marked `DEPRECATED`, excluded from active queries, still returned by `getQuestionById` |
+| AnswerOption re-authored after retirement | Reactivated, because the mapper upserts every authored option as ACTIVE |
+| Correct-answer set changed | Rows for incoming Questions deleted and rewritten in the same transaction, after the new options exist and before stale options are removed |
+| Source list changed | Rows for incoming Questions deleted and rewritten; authored order preserved through `sort_order` |
+
+Transactionality is sound: decode, validate and snapshot mapping all complete before
+`withWriteTransaction` opens, and every write and every reconciliation statement is inside it. No
+database mutation happens before validation finishes. Import is idempotent —
+`realBundledCurriculumImportIsIdempotent` compares all six row counts and a specific Question
+across two runs — and a failed import leaves the previous curriculum readable, which
+`invalidCurriculumDoesNotMutateExistingData`,
+`malformedSerializedContentPropagatesAndDoesNotMutateDatabase` and the new commit-time test each
+prove from a different failure point.
+
+The `if (incomingQuestionIds.isNotEmpty())` guard is genuinely dead: `CurriculumValidator` emits
+`EMPTY_QUESTIONS` and returns before the importer could ever be reached with an empty list. It is
+left alone as a cheap local invariant rather than flagged.
+
+`CurriculumImportResult.Rejected` for validation errors while resource, decode and database
+failures throw is a coherent split and is left as-is: `CurriculumDataInitializer` is the only
+caller, a rejected bundle is an authoring fault it turns into a startup error with the individual
+messages attached, and a decode or write failure is not something a caller could branch on
+differently. Nothing needs a wider sealed type.
+
+`CurriculumDataInitializer`'s data contract was checked without redoing Part 2A's lifecycle work:
+`initialized` becomes true only after `Imported`, a `Rejected` or thrown import leaves it false, a
+retry therefore runs the full import again, and that repeat is safe because the import is
+idempotent.
+
+### Historical-content findings
+
+Historical review resolves **current authored content attached to historical answer state**, and
+that is deliberate. `docs/architecture/persistence.md` states that attempts "reference stable
+curriculum IDs rather than copying question text, answer text, explanations, or sources", and
+`LearningProgressService` documents the same for a corrected answer key. A publisher may therefore
+change a Question's text, explanation, sources or correct-answer designation under a stable ID and
+a past attempt will be reviewed against the new content; the authoring contract answers that by
+requiring a new ID whenever the change is material. No snapshotting architecture was designed in
+this pass, and none is needed to make the current behavior correct — only documented, which it is.
+
+Historical foreign-key integrity was traced far enough to reason about reconciliation and no
+further. `question_attempt` references `question(id)` and `question_attempt_selected_answer`
+references `answer_option(question_id, id)`, both `NO ACTION`. Because the importer never deletes a
+Topic, Subtopic or Question, the only deletion that can collide with history is a stale answer
+option, and `deleteAnswerOptionsForQuestionExcept` guards it with a `NOT EXISTS` subquery over the
+selected-answer table. `test_attempt` stores focused scope IDs as plain columns with no foreign
+key, so a historical Focused scope stays labellable for exactly as long as its Topic or Subtopic
+row survives — which, under the never-delete policy, is indefinitely.
+
+### Repository-query findings
+
+No N+1 behavior exists. `LocalCurriculumRepository.toDomainQuestions` issues exactly three batch
+queries for any result set — options, correct answers, sources — inside one read transaction, and
+groups all three by question ID. Composite answer identity is respected everywhere: the hydration
+groups by `questionId` rather than `associateBy { it.id }`, the correct-answer join carries the
+owning question ID, and the stale-option delete is scoped per question for the same reason. No
+accidental global answer map was found.
+
+ACTIVE filtering is correct on every variant, not just one. All six active-question queries join
+both `topic` and `subtopic` and require all three statuses, and `getActiveSubtopicsForTopic` joins
+its parent Topic; `LocalCurriculumRepositoryTest` exercises the full matrix including
+level-filtered variants. The empty level set is resolved in Kotlin before it can reach `IN ()`,
+which is a SQLite extension rather than portable SQL, and is tested on every scope. The five
+historical resolvers — `getTopicById`, `getSubtopicById`, `getQuestionById`, `getUnitById`,
+`getLessonById` — correctly ignore status, and `getQuestionById` is the only read that hydrates
+retired answer options.
+
+Ordering is intentional and protected throughout: Topics, Subtopics and Questions by the
+`sort_order` the mapper derives from authored list position, answer options and sources by their
+own `sort_order`, learning Units and Lessons by list position with nothing sorting them. Because
+`sort_order` is an index, ties and negative values are impossible by construction, so no uniqueness
+rule is warranted. Correct-answer IDs come back ordered by answer ID rather than authored order,
+which is deterministic and harmless: every consumer reads the answer key as a set.
+
+The repository API exposes no storage detail — no entity, no status string, no DAO type crosses
+it — and the several level and scope combinations are justified, because each pushes its filter
+into SQL instead of loading the whole active bank to narrow it in memory.
+
+### Validation findings
+
+`CurriculumValidator` covers every invariant the schema, the queries, selection, grading and review
+actually need: unique Topic, Subtopic and Question IDs, answer IDs unique within a Question, the
+Topic/Subtopic hierarchy and its cross-check, correct answers that exist and are not duplicated,
+`SINGLE` not carrying several correct answers, a minimum of two answers, non-empty required fields,
+sources with a syntactically valid URL, and no authoring placeholder anywhere. `CQ-DATA-002` closed
+the one gap found — a repeated source URL within a Question, which the `(question_id, url)` primary
+key silently collapsed. Parent/child status combinations are deliberately permitted and harmless
+inside the assessment pipeline, because active queries join parent statuses; `CQ-DATA-003` records
+the one place that reasoning does not carry across to learning content.
+
+`LearningCurriculumValidator` validates identity, hierarchy, references and content shape,
+including the two rules that encode product decisions — cross-Topic concepts are valid by design,
+and minimum-content requirements apply to ACTIVE content only. Lesson IDs are compared across every
+Unit, which is what makes `LearningContentRepository.getLessonById` a legal global lookup. Error
+messages on both validators name the rule, the entity and enough context to fix the content; none
+was rewritten for style.
+
+Cross-document references are validated at runtime, in the one place that has both documents:
+`LearningContentLoader` validates the learning document against the bundled `Curriculum` rather
+than the imported Room copy, so an unknown home Topic or Subtopic fails the load loudly.
+`learning_question_coverage.py` re-checks the same references in CI before anything is built, and
+its `--check` mode also fails a stale coverage snapshot. `CQ-DATA-005` records that overlap as
+intentional rather than duplicated.
+
+### Serialization findings
+
+Both codecs use strict `Json` defaults, so an unknown field, a missing required field, a malformed
+document or an unrecognised enum constant all fail decoding rather than producing a quietly wrong
+object; `CurriculumJsonCodecTest` covers each of those cases explicitly. That strictness is the
+right choice for content shipped in the same binary as its reader, and was not changed.
+`LearningCurriculumJsonCodec` additionally pins `type` as the block discriminator so the authored
+JSON never depends on generated class names.
+
+Enums are persisted and serialized as `.name`, which makes the database and the authored JSON
+readable and is documented as deliberate. The consequence is that renaming a constant is a data
+migration: `CurriculumEntityMapper` uses `valueOf` and would throw on an unrecognised persisted
+value. `MIGRATION_3_4` and `MIGRATION_4_5` already show the pattern for introducing one. No format
+was redesigned.
+
+A missing or unreadable bundled resource is deliberately *not* translated into content failure:
+`BundledCurriculumSource` lets it propagate, and `LearningContentLoader` catches only
+`SerializationException` so a packaging fault does not send whoever reads the failure to the wrong
+file. Neither pipeline can degrade an invalid bundle into an empty curriculum.
+
+### Learning-content pipeline findings
+
+The cache is a per-instance double-checked `Mutex` over one validated document, and the repository
+is a Koin `single`, so the document is decoded and validated once per process. Concurrent first
+callers wait on the same load and receive the same document; the cached field is assigned only
+after `LoadedLearningContent` has been constructed from a fully validated curriculum, so no partial
+index can be observed, and `theDocumentIsLoadedOnceAcrossRepeatedQueries` pins the single load. A
+failed load caches nothing and every later call retries, which
+`aFailedLoadStaysAFailureAndCachesNothing` proves across all four query functions. Cancellation
+stays cancellation: nothing in the loader, the repository or the importer catches broadly,
+`withLock` releases on cancellation, and a cancelled first load leaves the cache empty for the
+next caller. `CQ-DATA-004` records why the
+non-volatile field read is nevertheless safe. No invalidation mechanism is warranted, because the
+bundled bytes cannot change while the process lives.
+
+### Duplication findings
+
+The two pipelines share the shape *load bundled resource, decode, validate, expose typed failure*,
+and share their primitive authoring checks through `AuthoredContentChecks`, which already extracts
+the one genuinely common concept. They are not otherwise duplicated: one persists into a relational
+schema with reconciliation and a historical resolver, the other keeps an immutable in-memory
+document; one reports rejection as a result type because its caller is a startup initializer, the
+other throws because its callers return domain models. The mapping code is likewise single-purpose
+— `CurriculumPersistenceMapper` writes, `CurriculumEntityMapper` reads, and they map different
+shapes rather than two copies of one. No `CQ-CROSS` finding is justified, and no generic content
+framework is proposed. Part 5 may revisit the shared load/decode/validate skeleton with the rest of
+the repository in view.
+
+### Fixes
+
+- `CQ-BUG-004`: `CurriculumImporter` defers foreign keys to `COMMIT`; two regression tests in
+  `CurriculumImporterTest`; the behavior is documented in `docs/architecture/persistence.md`.
+- `CQ-DATA-002`: `DUPLICATE_SOURCE_URL` added to `CurriculumValidationErrorCode` and enforced in
+  `CurriculumValidator`; two tests in `CurriculumValidatorTest`; the rule is listed in
+  `docs/content/content-authoring.md`.
+- `CQ-DATA-001`: the stale `CurriculumDao` contract comment now describes the deprecate-and-filter
+  behavior that exists. No production behavior changed.
+
+No Room schema change was made, no migration was added, no bundled curriculum or learning content
+was edited, and no Koin, platform or attempt-persistence code was touched.
+
+### Handoffs
+
+- **Part 3B — assessment sessions, attempts and history persistence:** `CQ-BUG-004` changed when
+  foreign keys are checked inside the *import* transaction only. Attempt-writing transactions were
+  not inspected and keep per-statement enforcement; whether any of them rewrites a graph with the
+  same intermediate-inconsistency shape is a Part-3B question. The `NO ACTION` references from
+  `question_attempt` and `question_attempt_selected_answer` onto curriculum rows were traced only
+  as deletion restrictions on the importer.
+- **Part 3C — learner-owned state:** `saved_question` and `studied_lesson` intentionally hold no
+  foreign key to publisher content, and both survive a Question or Lesson that stops resolving.
+  This pass confirmed the curriculum side of that assumption — rows are never deleted, so a saved
+  Question always resolves; a removed Lesson does not, and the study-progress contract already
+  says it is ignored. Whether an accumulating unresolvable record deserves any surfaced treatment
+  is a Part-3C question.
+- **Part 4C — platform capability implementations:** every host builds on a bundled SQLite
+  distribution, so the `IN (:ids)` batches this pipeline issues — 478 bound question IDs today —
+  sit far below the 32 766 variable ceiling of modern SQLite. Whether that holds for the web
+  worker build is Part 4C's to confirm.
+- **Part 5 — cross-cutting:** the shared *load, decode, validate, expose typed failure* skeleton
+  across the two content pipelines, recorded above as not worth extracting on its own evidence.
+- **Content decision, feeding `CQ-DATA-003`:** whether retiring an assessment Topic or Subtopic is
+  meant to retire the learning Units and Lessons that name it.
+
+### Validation
+
+- `./gradlew :shared:jvmTest --tests '*CurriculumImporterTest*'` — 22 tests, all passing, including
+  the two new regressions.
+- `./gradlew :shared:jvmTest --tests '*CurriculumValidatorTest*'` — passing with the two new
+  source-duplication tests.
+- `./gradlew :shared:jvmTest` — passing.
+- `./gradlew :shared:check` — passing. JVM, Android host, JS, Wasm and iOS simulator test tasks all
+  executed; no asset-size, bundle-ID or duplicate KLIB warning was observed.
+- `python3 -m unittest discover -s tools -p 'test_*.py'` — 21 tests, passing.
+- `python3 tools/learning_question_coverage.py --check` — snapshot current.
+- `git diff --check` — clean.
+- Room schema: **unchanged**. `shared/schemas` is untouched, no migration was added, and no
+  migration test was required; `CurriculumDatabaseMigrationTest` was read but not modified.
+- Not run: Android lint and the application-shell assemble tasks, because no Android-specific or
+  host source changed and `:shared:check` already compiled every target.
+
 ## Baseline Health
 
 | Check | Result | Failures/warnings | Notes |
@@ -1452,10 +1732,27 @@ Accepted as-is: 1
 Not a defect: 0
 
 Part 2 — Complete
-Part 3A — Next
+
+Part 3A — Complete
+
+High: 1
+Medium: 1
+Low: 2
+Observations: 2
+
+Fixed: 3
+Deferred: 1
+Needs measurement: 0
+Accepted as-is: 2
+Not a defect: 0
+
+Part 3B — Next
 ```
 
-Part 2 is complete: no presentation/state finding remains open, deferred or awaiting
-measurement. The exact next chunk is
-**Part 3A — Curriculum and bundled learning content**.
+Part 3A is complete. One High reconciliation defect (`CQ-BUG-004`) was verified against the real
+importer and fixed inside the existing schema, one silent authored-source loss (`CQ-DATA-002`) and
+one misleading data contract (`CQ-DATA-001`) were fixed, and `CQ-DATA-003` is deferred because the
+rule it asks for depends on a content decision this audit should not invent. Nothing else in the
+curriculum or learning-content pipelines remains open or awaiting measurement. The exact next chunk
+is **Part 3B — Assessment sessions, attempts, and history persistence**.
 Do not begin it automatically.

@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.data.local.curriculum
 
+import androidx.room3.Room
 import androidx.room3.testing.MigrationTestHelper
 import androidx.sqlite.async.executeSQL
 import androidx.sqlite.async.prepare
@@ -10,7 +11,18 @@ import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.test.assertIs
+import kotlin.test.assertNotNull
+import kotlin.time.Instant
 import kotlinx.coroutines.test.runTest
+import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
+import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
+import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
+import org.artkachenko.kmp_learning_app.assessment.AssessmentScore
+import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
+import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
+import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
+import org.artkachenko.kmp_learning_app.data.local.assessment.AssessmentAttemptStore
 
 internal class CurriculumDatabaseMigrationTest {
     @Test
@@ -739,6 +751,131 @@ internal class CurriculumDatabaseMigrationTest {
             connection.prepare("PRAGMA foreign_key_check").use { statement ->
                 assertTrue(!statement.step())
             }
+        }
+    }
+
+    @Test
+    fun migratedAttemptsReconstructAsValidAggregatesThroughTheAssessmentStore() = runTest {
+        // The other migration tests prove the rows survive. This one proves the rows a real upgrade
+        // leaves behind still reconstruct into aggregates the domain accepts, for an unfinished
+        // assessment as well as for completed history — an app that upgrades mid-assessment has to
+        // be able to resume it.
+        val databasePath = Files.createTempDirectory("curriculum-migration-test")
+            .resolve("curriculum.db")
+        val helper = MigrationTestHelper(
+            schemaDirectoryPath = Path.of("schemas").toAbsolutePath(),
+            databasePath = databasePath,
+            driver = BundledSQLiteDriver(),
+            databaseClass = CurriculumDatabase::class,
+            databaseFactory = { CurriculumDatabaseConstructor.initialize() },
+        )
+
+        helper.createDatabase(version = 5).use { connection ->
+            connection.executeSQL("INSERT INTO topic (id, name, status, sort_order) VALUES ('topic', 'Topic', 'ACTIVE', 0)")
+            connection.executeSQL(
+                """
+                INSERT INTO subtopic (id, topic_id, name, status, sort_order)
+                VALUES ('subtopic', 'topic', 'Subtopic', 'ACTIVE', 0)
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO question (
+                    id, topic_id, subtopic_id, text, selection_mode, level, explanation, status, sort_order
+                ) VALUES
+                    ('question_a', 'topic', 'subtopic', 'A?', 'SINGLE', 'FOUNDATION', 'A.', 'ACTIVE', 0),
+                    ('question_b', 'topic', 'subtopic', 'B?', 'SINGLE', 'FOUNDATION', 'B.', 'ACTIVE', 1)
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO answer_option (question_id, id, text, sort_order, status) VALUES
+                    ('question_a', 'question_a_a', 'A', 0, 'ACTIVE'),
+                    ('question_b', 'question_b_a', 'A', 0, 'ACTIVE')
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO test_attempt (
+                    id, config_type, requested_question_count, scope_type, scope_id, status,
+                    score_total_questions, score_correct_answers, started_at_epoch_millis,
+                    completed_at_epoch_millis
+                ) VALUES
+                    ('legacy_completed', 'FOCUSED', 10, 'TOPIC', 'topic', 'COMPLETED', 1, 1, 1000, 2000),
+                    ('legacy_in_progress', 'FOCUSED', 10, 'SUBTOPIC', 'subtopic', 'IN_PROGRESS',
+                     NULL, NULL, 3000, NULL)
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO question_attempt (test_attempt_id, question_id, sort_order, is_correct) VALUES
+                    ('legacy_completed', 'question_a', 0, 1),
+                    ('legacy_in_progress', 'question_b', 0, 1),
+                    ('legacy_in_progress', 'question_a', 1, NULL)
+                """,
+            )
+            connection.executeSQL(
+                """
+                INSERT INTO question_attempt_selected_answer (test_attempt_id, question_id, answer_id) VALUES
+                    ('legacy_completed', 'question_a', 'question_a_a'),
+                    ('legacy_in_progress', 'question_b', 'question_b_a')
+                """,
+            )
+        }
+
+        helper.runMigrationsAndValidate(
+            version = 8,
+            migrations = listOf(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8),
+        ).close()
+
+        val database = Room.databaseBuilder<CurriculumDatabase>(name = databasePath.toString())
+            .setDriver(BundledSQLiteDriver())
+            .addMigrations(
+                MIGRATION_1_2,
+                MIGRATION_2_3,
+                MIGRATION_3_4,
+                MIGRATION_4_5,
+                MIGRATION_5_6,
+                MIGRATION_6_7,
+                MIGRATION_7_8,
+            )
+            .build()
+        try {
+            val store = AssessmentAttemptStore(database)
+
+            val completed = assertNotNull(store.getById("legacy_completed"))
+            val completedConfig = assertIs<AssessmentConfig.Focused>(completed.config)
+            assertEquals(AssessmentScope.Topic("topic"), completedConfig.scope)
+            // A pre-v6 FOCUSED row genuinely was an all-levels run over the whole active pool.
+            assertEquals(AllQuestionLevels, completedConfig.levels)
+            assertEquals(PracticeQuestionSource.ALL, completedConfig.source)
+            assertEquals(AssessmentStatus.COMPLETED, completed.status)
+            assertEquals(AssessmentScore(totalQuestions = 1, correctAnswers = 1), completed.score)
+            assertEquals(Instant.fromEpochMilliseconds(2000), completed.completedAt)
+            assertEquals(listOf(completed), store.getCompletedAttempts())
+
+            val inProgress = assertNotNull(store.getById("legacy_in_progress"))
+            val inProgressConfig = assertIs<AssessmentConfig.Focused>(inProgress.config)
+            assertEquals(AssessmentScope.Subtopic("subtopic"), inProgressConfig.scope)
+            assertEquals(AssessmentStatus.IN_PROGRESS, inProgress.status)
+            assertEquals(null, inProgress.score)
+            assertEquals(null, inProgress.completedAt)
+            // Persisted sort order, not insertion or alphabetical order, decides where the learner
+            // resumes.
+            assertEquals(
+                listOf("question_b", "question_a"),
+                inProgress.questionAttempts.map { it.questionId },
+            )
+            assertEquals(
+                QuestionAnswerState.Answered(setOf("question_b_a"), isCorrect = true),
+                inProgress.questionAttempts.first().answerState,
+            )
+            assertEquals(
+                QuestionAnswerState.Unanswered,
+                inProgress.questionAttempts.last().answerState,
+            )
+        } finally {
+            database.close()
         }
     }
 }

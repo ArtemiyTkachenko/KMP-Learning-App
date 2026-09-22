@@ -155,6 +155,10 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-DATA-003` | Cross-document status consistency | Low | Medium | `LearningCurriculumValidator.kt`, `CurriculumValidator.kt` | Nothing rejects ACTIVE learning content homed on, or teaching, retired assessment taxonomy. | `LearningCurriculumValidator` checks that a Unit's `topicId` and a Lesson's primary and supporting Subtopic IDs *exist* in the assessment curriculum, never that they are ACTIVE. The assessment repository hides descendants of a deprecated parent by joining parent statuses, so a deprecated Topic is genuinely unreachable there; the learning repository filters on Unit and Lesson status only, so an ACTIVE Unit whose home Topic was retired still appears in `getActiveUnits()` and can still be offered by Continue Learning. The bundled content has no deprecated Topic, Subtopic or Unit today, so no instance exists. | Decide the authoring contract before writing a rule: whether retiring a Topic is meant to retire the Units homed on it, or whether such a Unit is deliberately still readable. Only then add the validator rule, because the two answers produce opposite rules and neither is currently stated anywhere. | Deferred |
 | `CQ-DATA-004` | Learning-content cache publication | Observation | High | `BundledLearningContentRepository.kt` | The cached document is published through a non-volatile field read outside the mutex. | The double-checked `content ?: mutex.withLock { content ?: ... }` is the standard shape, and a reader that observes the reference can only observe a fully constructed `LoadedLearningContent`: every one of its properties is a `val`, so JVM final-field semantics freeze them and everything reachable from them at the end of construction, and the reference is assigned only after the constructor returns. JS and Wasm are single-threaded, and Kotlin/Native's memory model follows the JVM's. No concurrency defect was found; the safety argument is simply not visible from the code. | Leave as-is. Record why the pattern is safe so a later reader does not "fix" it, and revisit only if `LoadedLearningContent` ever gains a mutable property, which would end the final-field guarantee. | Accepted as-is |
 | `CQ-DATA-005` | Validator ownership | Observation | High | `CurriculumValidator.kt`, `LearningCurriculumValidator.kt`, `tools/learning_question_coverage.py` | Kotlin and Python enforce a small overlapping set of authored-content rules. | The coverage tool independently rejects a duplicate Question ID, an unrecognised status or level, an unknown Unit home Topic and an unknown Lesson Subtopic. The boundaries differ legitimately: Python guards the authored repository files in CI before anything is built, the Kotlin validators guard the runtime import and load boundary on a device that may be running an older bundle. The overlapping rules agree today and were checked against each other during this pass. | Keep both. Record the overlap so a future change to one is checked against the other; neither should be deleted for overlapping, because they protect different moments. | Accepted as-is |
+| `CQ-BUG-005` | Assessment session / domain invariants | Medium | High | `AssessmentEngine.kt`, `AssessmentEngineTest.kt` | `submitAnswer` did not enforce the authored answer arity, so a SINGLE Question could record several selected answers. | The engine validated status, Question membership, non-emptiness, and that every selected ID belongs to the Question, but never compared the submission against `Question.selectionMode`. `CurriculumValidator` already rejects a SINGLE Question with several correct answers, and `AssessmentTakingViewModel` replaces rather than adds the pending ID for SINGLE, so the rule existed on both sides of the engine and not inside it. A non-UI caller could therefore persist an occurrence recording a choice the interaction never offered, and review, scoring and mistake derivation would read it as genuine. | Enforce `SINGLE` -> exactly one selected ID in `submitAnswer`, after the membership check so unknown IDs keep failing for their own reason. Leave MULTIPLE unconstrained beyond non-emptiness. | Fixed |
+| `CQ-DATA-006` | Assessment persistence / contract | Low | High | `AssessmentRepository.kt`, `docs/architecture/persistence.md` | The repository interface stated no contract, so its durability, snapshot, ordering and failure semantics were discoverable only by reading the Room implementation. | Three undocumented suspend functions. `save` is whole-snapshot replacement inside one write transaction and is used for both creation and update; `getById` returns `null` only for an absent attempt and raises for a corrupt one; `getCompletedAttempts` is completed-only, newest-first, and fails as a whole on a corrupt row. None of that was written down, and a caller could reasonably have read `save` as an incremental update or `null` as "read failed". | Document each method's semantics on the interface, and record the save/read contract, the one-writer expectation and the corruption policy in the persistence architecture document. | Fixed |
+| `CQ-DATA-007` | Assessment persistence / redundant state | Observation | High | `TestAttempt.kt`, `AssessmentAttemptMapper.kt` | Aggregate score and per-occurrence correctness are stored twice and the schema permits them to disagree. | `test_attempt.score_correct_answers` and `question_attempt.is_correct` express the same fact. `TestAttempt` validates `score.totalQuestions == questionAttempts.size` but not `score.correctAnswers == questionAttempts.count { it is Answered && it.isCorrect }`, so a hand-edited or corrupted database could reconstruct a COMPLETED attempt whose result screen and progress dashboard disagree. No production path can create it: `AssessmentEngine.complete` derives both from the same occurrences, and `save` writes both from one aggregate in one transaction. | Leave as-is. Adding the constructor invariant would churn roughly seventy COMPLETED fixtures across thirty-eight test files to catch a state only external corruption can produce; the summary row is worth keeping because it is what history ordering and the result screen read. | Accepted as-is |
+| `CQ-DATA-008` | Assessment persistence / timestamps | Observation | High | `AssessmentAttemptMapper.kt` | Attempt timestamps round-trip at millisecond resolution, so a reloaded attempt is not `==` to the in-memory one when the clock is finer. | `startedAt` and `completedAt` are stored as epoch milliseconds and rebuilt with `Instant.fromEpochMilliseconds`, while `Clock.System.now()` carries sub-millisecond precision on the JVM. Both values are absolute instants with no local-time interpretation, truncation is monotone so `completedAt >= startedAt` and newest-first ordering both survive it, and no consumer compares a saved aggregate with its reloaded form outside tests that use millisecond-aligned fixtures. | Leave as-is. Millisecond resolution is sufficient for history ordering and the tie-breakers behind it, and widening the columns would be a migration for no observable behavior. | Accepted as-is |
 ## Audit Pass Log
 
 | Pass | Area | Status | Commit reviewed | Files reviewed | Findings | Fixes | Validation | Notes |
@@ -169,6 +173,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | Part 2C | Assessment, mixed interview, results, and mistakes | Complete | `42e49a5e32a339df77e19082003fbfcc3bfc22d4` | 32 owner/state files, 8 supporting contracts/integration boundaries, and 23 relevant test files | 3 | 3 | Six targeted owner commands; `:shared:jvmTest`; `:shared:check`; `git diff --check` | High 1, Medium 1, Low 1. Durable creation stays locked through navigation-event consumption, retries cannot overlap, and every broad Part-2C suspend fallback now preserves cancellation. Part 2D is next. See review record below. |
 | Part 2D | Progress and saved-question state | Complete | `7b67932de7ede0c8f9a8c293b53fb3a24c255e39` | 12 owner/state files, 9 supporting contracts, and 12 relevant test files | 4 | 4 | Seven targeted owner/journey commands; `:shared:jvmTest`; `:shared:check`; `git diff --check` | High 0, Medium 2, Low 1, Observation 1. `CQ-STATE-001` is resolved, both history-derived dashboards can now recover a failed derivation, and every remaining Part-2 suspend fallback preserves cancellation. Part 2 is complete; Part 3A is next. See review record below. |
 | Part 3A | Curriculum and bundled learning content | Complete | `0675d0dfbac6de69c4545fd6b6240d66646641a6` | 40 assigned production Kotlin files, 6 supporting contracts, and 14 relevant test files | 6 | 3 | Targeted importer, validator, repository, codec and learning-content commands; `:shared:jvmTest`; `:shared:check`; both Python content validators; `git diff --check` | High 1, Medium 1, Low 2, Observation 2. `CQ-BUG-004` is a verified upgrade-only import abort and is fixed with no schema change; one silent authored-source loss and one misleading data contract are fixed; one cross-document status rule is deferred pending a content decision. Part 3B is next. See review record below. |
+| Part 3B | Assessment sessions, attempts and history persistence | Complete | `c0dafad5468b6c0ba36628bbe0f924db554309e9` | 22 assigned production Kotlin files, 6 supporting contracts, 3 entities plus the attempt DAO, 2 assessment migrations, and 12 relevant test files | 4 | 2 | Four targeted engine/store/migration/integration commands; `:shared:jvmTest`; `:shared:check`; `git diff --check` | High 0, Medium 1, Low 1, Observation 2. `CQ-BUG-005` closes the SINGLE-arity gap between authoring validation and the UI; `CQ-DATA-006` writes down the repository's save, read, corruption and one-writer contract. Aggregate save is atomic and stale-child free, config and scope round-trip exactly, historical correctness is persisted rather than recomputed, and completed history is three queries with deterministic ordering. No schema change. Part 3C is next. See review record below. |
 
 ### Part 1A Review Record
 
@@ -1252,6 +1257,227 @@ was edited, and no Koin, platform or attempt-persistence code was touched.
 - Not run: Android lint and the application-shell assemble tasks, because no Android-specific or
   host source changed and `:shared:check` already compiled every target.
 
+## Part 3B Review Record
+
+- **Assigned production boundary (22 files):** the eight assessment domain models
+  (`TestAttempt`, `QuestionAttempt`, `QuestionAnswerState`, `AssessmentScore`, `AssessmentStatus`,
+  `AssessmentConfig`, `AssessmentScope`, `PracticeQuestionSource`); the session package
+  (`AssessmentEngine`, `AssessmentSession`, `AssessmentSessionLoader`, `AssessmentStartResult`,
+  `AnswerOrder`); `AssessmentRepository`; `StartAssessment`; `AssessmentRetakeService` with
+  `AssessmentRetakeResult`; `AssessmentReviewLoader`; and every file under
+  `data/local/assessment/**` — `AssessmentAttemptDao`, `AssessmentAttemptMapper`,
+  `AssessmentAttemptStore`, `AssessmentDataModule`, `LocalAssessmentRepository`, and the three
+  entities. `CurriculumMigrations` and the exported schema `8.json` were read for the assessment
+  tables only.
+- **Supporting contracts inspected (6):** `AnswerSelectionMode` and `CurriculumValidator`'s
+  selection-mode rule to establish the authored arity contract; `AssessmentTakingViewModel`,
+  `AssessmentHistoryStore`, `MistakeReviewService` and `LearningProgressService` only far enough to
+  enumerate writers and history consumers. ViewModel concurrency was not re-reviewed; Koin
+  lifetime, platform database builders and learner-owned persistence were not audited.
+- **Database entities and DAOs reviewed:** `TestAttemptEntity`, `QuestionAttemptEntity`,
+  `QuestionAttemptSelectedAnswerEntity`, and all thirteen `AssessmentAttemptDao` methods.
+- **Migrations reviewed:** `MIGRATION_1_2` (creates the three attempt tables) and `MIGRATION_5_6`
+  (adds `practice_levels` and `practice_source`). `MIGRATION_2_3` was read only for its effect on
+  the answer options historical attempts point at. Curriculum-only migrations were not re-audited.
+- **Tests reviewed (12 files):** `AssessmentAttemptStoreTest`, `LocalAssessmentRepositoryTest`,
+  `CurriculumDatabaseMigrationTest`, `AssessmentEngineTest`, `AssessmentEngineIntegrationTest`,
+  `AssessmentSessionLoaderTest`, `AssessmentModelTest`, `AnswerOrderTest`,
+  `AssessmentRetakeServiceTest`, `AssessmentReviewLoaderTest`,
+  `LearningAnalyticsCurriculumEvolutionIntegrationTest`, and the answer-option retirement tests in
+  `CurriculumImporterTest`.
+- **Existing findings:** no ledger finding was deferred to Part 3B, so none required disposition.
+  Part 3A's foreign-key handoff is resolved below. New `CQ-BUG-005` and `CQ-DATA-006` are fixed;
+  `CQ-DATA-007` and `CQ-DATA-008` are accepted as-is. Counts for this pass: Critical 0, High 0,
+  Medium 1, Low 1, Observation 2; Fixed 2, Deferred 0, Needs measurement 0, Accepted as-is 2, Not a
+  defect 0.
+
+### Aggregate persistence
+
+`TestAttempt` round-trips as one aggregate, not as individually valid rows. Every stored dimension
+survives: identity, config, ordered occurrences, per-occurrence answer state and selected IDs,
+status, both timestamps and the score. Reconstruction runs through the same domain constructors an
+in-memory attempt does, so a row set that cannot form a valid aggregate cannot become one.
+
+### Save transactionality and repeated saves
+
+`AssessmentAttemptStore.save` maps the whole aggregate to a snapshot *before* opening a transaction,
+then inside one `withWriteTransaction` upserts the attempt row, deletes that attempt's selected
+answers, deletes its question occurrences, and writes the snapshot's occurrences and selected
+answers. Delete-then-insert rather than upsert-only is the important detail: a child collection that
+shrinks or changes leaves nothing stale behind, and the delete order satisfies the immediate foreign
+keys, so Part 3A's deferred-foreign-key handoff does not apply here — the attempt write sequence
+never presents an intermediate inconsistency to `COMMIT`. Saving the same aggregate twice is
+idempotent. A new regression test,
+`aFailedSaveLeavesThePreviouslyCommittedSnapshotIntact`, drives a save that fails on its last
+statement and proves the previously committed aggregate and its children are untouched.
+
+Repeated saves of one attempt were already covered by
+`savingUpdatedAttemptReplacesAttemptOwnedSnapshotOnly`, which replaces a selected set
+(`{question_a_b}` -> `{question_a_a}`) and asserts the row counts as well as the reconstructed
+aggregate. `save` therefore means authoritative-snapshot replacement, never monotonic append, and
+that is now stated on the interface rather than inferred. Question membership is reconciled by the
+same mechanism even though no production path changes it after creation.
+
+### Identity, ordering and answer order
+
+`(test_attempt_id, question_id)` is the occurrence key, which matches the domain rule that a
+Question appears at most once in an attempt; no redesign is warranted. Question order is semantic
+and explicit — `sort_order` is written from list position and every read orders by it — while
+selected answers and the config sets are reconstructed as `Set`s with no order dependence. Answer
+order is deliberately not persisted: `withAnswersOrderedFor` derives it from the attempt and
+Question IDs, so resume and review agree by construction, which
+`resumingAnAttemptAndReviewingItShowTheSameAnswerOrder` pins. Persisting positions would be a
+migration for a value that can be recomputed.
+
+### Config and scope round-trip
+
+`Mixed`, `Focused` with `Topic`, `Subtopic` and `Subtopics` scopes, narrowed and full level sets,
+and every `PracticeQuestionSource` all round-trip exactly. `Subtopics` sorts its IDs before JSON
+encoding so equal scopes store identically, and levels are written in authored enum order through
+`inAuthoredOrder()` for the same reason; both are canonicalisation, not semantic order. An empty
+level set round-trips as the empty string and back, and selection refuses such a request before any
+attempt is created, so it is representable but unreachable in stored history. Retake reads the
+reconstructed config, which is why this fidelity matters, and
+`retakeCreatesSeparatePersistedAttemptAndPreservesOriginal` asserts config equality across the
+retake.
+
+### Enums, discriminators and corruption
+
+`AssessmentStatus`, `PracticeQuestionSource` and `QuestionLevel` persist as `.name`; the config and
+scope discriminators are local constants; the completed-history query receives
+`AssessmentStatus.COMPLETED.name` rather than a duplicated `"COMPLETED"` literal. Every unknown
+value fails loudly — `valueOf` raises, unknown discriminators `error(...)`, a malformed
+multi-Subtopic payload is rethrown as an explicit `IllegalStateException` — and the mapper's
+`require` calls reject score fields, timestamps and selected-answer presence that contradict the
+stored status. That is the intended policy and it is now documented: a corrupt row is not an absent
+row, one corrupt attempt fails `getCompletedAttempts()` as a whole, and nothing is silently skipped
+or repaired. Downgrade compatibility is deliberately unsupported.
+
+### Historical correctness
+
+Occurrence data is persisted, never recomputed. `question_attempt.is_correct` holds the correctness
+recorded when the learner answered, the score columns hold the completed result, and
+`AssessmentReviewLoader` combines those with current authored content resolved by stable ID.
+`correctingTheCurrentAnswerKeyLeavesHistoricalCorrectnessAlone` already proved a re-authored answer
+key does not rewrite history. A new end-to-end test,
+`anAnswerOptionRetiredByALaterBundleStaysSelectedInHistoricalReview`, closes the 3A/3B seam: an
+attempt selects an option, a later bundle replaces it, review still renders the retired option as
+the learner's selection with the correctness they earned, and a new assessment is offered only the
+current options.
+
+`AssessmentSessionLoader` resumes an IN_PROGRESS attempt against unrestricted historical lookups, so
+a DEPRECATED Question still resolves while being excluded from new selection, and a Question that no
+longer resolves at all returns `MissingQuestion` rather than a silently shortened session. Both are
+the intended policies and both are pinned by
+`missingQuestionIsExplicitAndDeprecatedQuestionLoads`. Under Part 3A's never-delete import contract,
+the removed-Question case is unreachable through ordinary publishing; the explicit failure state
+exists for a database that lost the row some other way.
+
+### Completed-history queries and read consistency
+
+`getCompletedAttempts()` filters on status in SQL and orders by `completed_at DESC, started_at DESC,
+id ASC`, so ties from a coarse clock stay deterministic — `completedHistoryUsesStartedTimeThenStableIdToBreakCompletionTies`
+covers it. Hydration is three queries regardless of history size: the attempt rows, then occurrences
+and selected answers batched by attempt ID and grouped in memory by
+`(testAttemptId, questionId)` rather than by answer ID alone. There is no N+1 and no measurement is
+needed. The `IN (:attemptIds)` batches sit far below the bundled SQLite variable ceiling for any
+realistic accumulation, matching Part 3A's conclusion for the curriculum batches.
+
+Both reads run inside `withReadTransaction`, so a concurrent save cannot produce a new parent beside
+old children. The store contains no `catch` at all, so cancellation propagates rather than becoming
+"not found" or "empty history".
+
+### Writers and stale-overwrite risk
+
+`AssessmentRepository.save` has exactly three production call sites: `StartAssessment` (once, under
+a freshly generated UUID) and `AssessmentTakingViewModel` at lines 80 and 147 (submission and
+completion, both on the attempt that screen owns). No attempt has two live owners, Part 2C already
+proved submission and completion cannot overlap within that owner, and `AssessmentEngine` refuses to
+submit to or re-complete a COMPLETED session. A status downgrade would therefore require a writer
+the architecture does not have. The one-writer expectation is now written down instead of assumed,
+and no optimistic locking or database guard was added for a race with no path to it.
+
+### Domain session invariants
+
+`AssessmentSession` enforces `questions.map { id } == attempt.questionAttempts.map { questionId }` in
+the same order, so the engine's index-based occurrence update cannot answer the wrong Question; both
+construction paths — `start` and the loader — satisfy it, and `sessionRequiresQuestionAndAttemptOrderAlignment`
+pins it. MULTIPLE submissions normalise duplicates through `Set` conversion and require exact-set
+equality for correctness, which was already correct. `CQ-BUG-005` is the one gap: SINGLE arity was
+enforced by the Practice UI and by authoring validation but not by the engine between them, and is
+now enforced in `submitAnswer`.
+
+### Migrations
+
+`MIGRATION_1_2` creates the three attempt tables with the identity and foreign keys the entities
+declare. `MIGRATION_5_6` is a pure add of two nullable columns, deliberately not backfilled: a
+pre-v6 FOCUSED row genuinely was an all-levels `ALL` run, and the mapper reconstructs exactly that,
+so migrated history keeps the behavior it originally represented rather than claiming a selection
+the learner was never offered. No schema change was needed in this pass. A new test,
+`migratedAttemptsReconstructAsValidAggregatesThroughTheAssessmentStore`, takes a v5 database through
+to v8 and then reads it through `AssessmentAttemptStore`, asserting the reconstructed aggregates for
+both a completed attempt and an unfinished one — an app that upgrades mid-assessment must still be
+able to resume it, and that case had only been covered at the row level.
+
+### Part-2C handoff closure
+
+The durability boundaries Part 2C deferred are now settled and documented. `save` commits or rolls
+back as a whole, so there is no commit-then-throw state for start, submission or completion to
+reason about: when the call returns normally the aggregate is durable, and everything after it —
+history invalidation, navigation — is application synchronisation rather than persistence. Repeated
+saves of one aggregate are idempotent, which makes a retry after an ambiguous failure safe.
+Malformed IN_PROGRESS answer prefixes are not representable: the mapper rejects an occurrence whose
+`is_correct` and selected-answer rows disagree, and resume simply selects the first unanswered
+occurrence in persisted order.
+
+### Fixes
+
+- `CQ-BUG-005`: `AssessmentEngine.submitAnswer` enforces the SINGLE arity after its membership
+  check; `severalAnswersForASingleSelectionQuestionAreRejected` and
+  `repeatedIdsStillCountAsOneSelectionForASingleSelectionQuestion` replace the legacy
+  `extraAnswerForSingleAnswerQuestionIsIncorrect`, whose exact-set semantics
+  `multipleSelectionWithOneCorrectAnswerStillUsesExactSetScoring` already covers for MULTIPLE.
+- `CQ-DATA-006`: `AssessmentRepository` now documents all three methods, and
+  `docs/architecture/persistence.md` gains an "Attempt Save and Read Semantics" section covering
+  transactional snapshot replacement, the one-writer expectation, read consistency, the corruption
+  policy and persisted occurrence correctness. No production behavior changed.
+
+No Room schema change was made, no migration was added, no entity or DAO was altered, no Koin or
+platform code was touched, and no learner-owned persistence was modified.
+
+### Handoffs
+
+- **Part 3C — study progress, recommendations, saved questions:** `saved_question` and
+  `studied_lesson` were not opened. The only cross-reference is that assessment history is the
+  input to the recommendation and mistake surfaces, and this pass confirms that input is a single
+  coherent newest-first snapshot per read.
+- **Part 4C — platform capability implementations:** whether `withReadTransaction` and
+  `withWriteTransaction` give the same isolation on the web worker driver as on the bundled SQLite
+  hosts. The common code depends on it; only Part 4C can confirm the web build.
+- **Part 5 — cross-cutting:** none opened. `AssessmentAttemptMapper` is the single canonical
+  encoder and decoder for status, config, scope, levels and source, with no duplicated encoding
+  anywhere, so there is nothing to generalise.
+
+### Validation
+
+- `./gradlew :shared:jvmTest --tests '*AssessmentEngineTest*'` — passing with the two replacement
+  SINGLE-arity tests.
+- `./gradlew :shared:jvmTest --tests '*AssessmentAttemptStoreTest*'` — passing with the new
+  rollback regression.
+- `./gradlew :shared:jvmTest --tests '*CurriculumDatabaseMigrationTest*'` — passing with the new
+  migrated-aggregate round-trip.
+- `./gradlew :shared:jvmTest --tests '*AssessmentEngineIntegrationTest*'` — passing with the new
+  retired-answer review integration test.
+- `./gradlew :shared:jvmTest` — passing.
+- `./gradlew :shared:check` — passing. JVM, Android host, JS, Wasm and iOS simulator test tasks all
+  executed; only the pre-existing expect/actual Beta warning appeared.
+- `git diff --check` — clean.
+- Room schema: **unchanged**. `shared/schemas` is untouched, no migration was added, and no
+  migration was required.
+- Not run: Android lint and the application-shell assemble tasks, because no platform source, Compose
+  UI, navigation route, theme value or resource changed and `:shared:check` already compiled every
+  target.
+
 ## Baseline Health
 
 | Check | Result | Failures/warnings | Notes |
@@ -1746,13 +1972,31 @@ Needs measurement: 0
 Accepted as-is: 2
 Not a defect: 0
 
-Part 3B — Next
+Part 3B — Complete
+
+High: 0
+Medium: 1
+Low: 1
+Observations: 2
+
+Fixed: 2
+Deferred: 0
+Needs measurement: 0
+Accepted as-is: 2
+Not a defect: 0
+
+Part 3C — Next
 ```
 
-Part 3A is complete. One High reconciliation defect (`CQ-BUG-004`) was verified against the real
-importer and fixed inside the existing schema, one silent authored-source loss (`CQ-DATA-002`) and
-one misleading data contract (`CQ-DATA-001`) were fixed, and `CQ-DATA-003` is deferred because the
-rule it asks for depends on a content decision this audit should not invent. Nothing else in the
-curriculum or learning-content pipelines remains open or awaiting measurement. The exact next chunk
-is **Part 3B — Assessment sessions, attempts, and history persistence**.
+Part 3B is complete. The assessment persistence layer was found sound: `AssessmentAttemptStore.save`
+is an atomic whole-snapshot replacement that cannot leave stale children, reads hydrate inside a
+transaction, config and scope round-trip exactly including canonicalised level and multi-Subtopic
+sets, historical correctness and selected answers are persisted occurrence data rather than
+recomputed from current content, and completed history is three queries with a deterministic
+newest-first order. One Medium domain gap (`CQ-BUG-005`) — the engine not enforcing the authored
+SINGLE answer arity that both authoring validation and the UI already assume — is fixed, and the
+repository's save, read, corruption and one-writer contract (`CQ-DATA-006`) is now written down on
+the interface and in the persistence architecture document. `CQ-DATA-007` and `CQ-DATA-008` are
+accepted as-is with recorded rationale. No Room schema change was made and no migration was
+required. The exact next chunk is **Part 3C — Study progress, recommendations, saved questions**.
 Do not begin it automatically.

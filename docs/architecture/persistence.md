@@ -597,6 +597,53 @@ excluded from completed learning history. Historical naming uses unrestricted
 stable Topic, Subtopic, and Question repository lookups; current browsing and
 selection continue to use ACTIVE-only queries.
 
+### Attempt Save and Read Semantics
+
+`AssessmentRepository.save(attempt)` persists one whole aggregate atomically.
+Creation and update are the same operation on purpose: an assessment saves the
+same attempt ID after every answered Question, and each save is the current
+authoritative snapshot rather than an addition to the previous one. Inside a
+single write transaction the attempt row is upserted, that attempt's selected
+answers and question occurrences are deleted, and the snapshot's occurrences and
+selected answers are written. Deleting before inserting is what stops a changed
+child collection from leaving stale rows behind — a replaced selected-answer set
+does not union with the previous one — and doing it in that order satisfies the
+immediate foreign keys the child tables declare. A save that fails rolls the
+whole transaction back, so a reader never observes an updated attempt row beside
+the previous snapshot's children, and saving the same aggregate twice is
+idempotent.
+
+Callers serialise their own writes: one live owner per attempt ID. `StartAssessment`
+writes an attempt exactly once under a freshly generated identity, and assessment
+taking is the only writer thereafter. Nothing in the repository arbitrates between
+two concurrent writers of one attempt, because no ordering rule would make an
+out-of-order pair of whole snapshots meaningful. Durability ends where the save
+returns: once it returns normally the attempt exists, and cache invalidation or
+navigation after that is application synchronisation rather than persistence.
+
+Reads hydrate an aggregate from several tables inside one read transaction, so a
+concurrent save cannot produce a mixed old-parent/new-children result. Completed
+history is three queries regardless of its size — the completed attempt rows,
+then their occurrences and selected answers batched by attempt ID and grouped in
+memory — rather than a per-attempt fan-out.
+
+Reconstruction treats the domain constructors as the corruption detector.
+`getById` returns `null` only when no row exists; an unknown status, config type
+or scope discriminator, a malformed multi-Subtopic payload, or score fields that
+contradict the stored status raise instead of being reported as absent or
+quietly repaired, and one unreadable attempt fails `getCompletedAttempts()` as a
+whole. A corrupted assessment and an assessment the learner never took are
+different answers, and silently converting the first into the second would hide
+the corruption rather than surface it.
+
+Occurrence data is persisted, never recomputed from current content.
+`question_attempt.is_correct` records whether the learner was right when they
+answered, and the score columns record the result the attempt was completed
+with, so re-authoring a Question's answer key later changes future selection and
+grading without rewriting history. Only the presentational content around that
+state — Question text, answer text, explanation, sources — is resolved from the
+current curriculum at review time.
+
 ## Saved Questions
 
 Schema version 7 adds `saved_question` as learner-owned study state. Each row stores only
